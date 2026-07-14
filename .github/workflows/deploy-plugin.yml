@@ -58,6 +58,33 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
+      - name: Verify target is a real WordPress install
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          REMOTE_DIR: ${{ secrets.WP_PLUGIN_REMOTE_DIR || '/public_html/wp-content/plugins/ai-layoff-tracker' }}
+        run: |
+          set -euo pipefail
+          # WordPress root = three levels up from .../wp-content/plugins/ai-layoff-tracker
+          WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
+          echo "Target plugin dir: $REMOTE_DIR"
+          echo "Expected WordPress root: $WP_ROOT"
+          if ! lftp -c "
+            set cmd:fail-exit true;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 2;
+            set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 \"$WP_ROOT/wp-config.php\";
+          "; then
+            echo "::error::No wp-config.php found at $WP_ROOT — REMOTE_DIR is not inside a WordPress install. Refusing to deploy (this is the guard that stops files landing in the wrong folder)."
+            exit 1
+          fi
+          echo "Confirmed: wp-config.php present — target is a real WordPress install."
+
       - name: Deploy plugin over FTPS
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
