@@ -1,7 +1,7 @@
 name: Verify WordPress path (diagnostic)
 
-# One-off: with the CURRENT creds, tests the corrected path that includes the
-# AskTheRecruiter.com folder, and whether this account can reach it at all.
+# Probes, with whatever creds are currently in the secrets, where the login
+# lands and whether it can reach the blog's wp-config.php by any path form.
 # Manual trigger. Delete after.
 
 on:
@@ -14,7 +14,7 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Probe corrected paths
+      - name: Probe
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -23,26 +23,30 @@ jobs:
           set -euo pipefail
           conn="set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true; set net:timeout 25; open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";"
 
-          echo "===== Can we list the cPanel home? (jail test) ====="
-          lftp -c "$conn cls -1 /home1/xhcvdemy/" || echo "CANNOT reach /home1/xhcvdemy/ (account is jailed)"
+          echo "===== Where does the login land? ====="
+          lftp -c "$conn pwd" || true
 
-          echo "===== /home1/xhcvdemy/public_html/ ====="
-          lftp -c "$conn cls -1 /home1/xhcvdemy/public_html/" || echo "CANNOT list"
+          echo "===== Contents of login root (./) ====="
+          lftp -c "$conn cls -1 ./" || true
 
-          echo "===== /home1/xhcvdemy/public_html/AskTheRecruiter.com/ ====="
-          lftp -c "$conn cls -1 /home1/xhcvdemy/public_html/AskTheRecruiter.com/" || echo "CANNOT list"
+          echo "===== Can we see the account home / public_html? ====="
+          lftp -c "$conn cls -1 /home1/xhcvdemy/public_html/" 2>&1 | head -30 || echo "cannot list /home1/xhcvdemy/public_html/"
 
-          echo "===== /home1/xhcvdemy/public_html/AskTheRecruiter.com/blog/ (should show wp-config etc.) ====="
-          lftp -c "$conn cls -1 /home1/xhcvdemy/public_html/AskTheRecruiter.com/blog/" || echo "CANNOT list"
-
-          echo "===== Candidate wp-config.php paths (corrected, case-sensitive) ====="
+          echo "===== wp-config.php candidates (every plausible form) ====="
           for p in \
-            "/home1/xhcvdemy/public_html/AskTheRecruiter.com/blog/wp-config.php" \
+            "wp-config.php" \
+            "/wp-config.php" \
+            "./wp-config.php" \
             "/public_html/AskTheRecruiter.com/blog/wp-config.php" \
-            "/home1/xhcvdemy/public_html/AskTheRecruiter.com/blog/wp-content/plugins" ; do
+            "/home1/xhcvdemy/public_html/AskTheRecruiter.com/blog/wp-config.php" \
+            "../AskTheRecruiter.com/blog/wp-config.php" \
+            "../../public_html/AskTheRecruiter.com/blog/wp-config.php" ; do
             if lftp -c "$conn cls -1 \"$p\"" >/dev/null 2>&1; then
               echo "FOUND:   $p"
             else
               echo "MISSING: $p"
             fi
           done
+
+          echo "===== Is wp-content/plugins reachable from root? ====="
+          lftp -c "$conn cls -1 /wp-content/plugins/" 2>&1 | head -20 || echo "no /wp-content/plugins/ at login root"
