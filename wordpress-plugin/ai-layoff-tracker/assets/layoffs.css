@@ -30,9 +30,13 @@
     .alt-stats-bar,
     .alt-stats-meta,
     .alt-wrap {
-        width: min(1320px, 94vw);
-        margin-left: 50%;
-        transform: translateX(-50%);
+        /* Block themes cap content children at ~645px via max-width; override it
+           so the wide table fits. Verified against the live theme. */
+        max-width: 1180px !important;
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        transform: none;
     }
     .alt-wrap { margin-bottom: 40px; }
 }
