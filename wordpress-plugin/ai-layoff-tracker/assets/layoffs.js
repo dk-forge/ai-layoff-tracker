@@ -195,10 +195,11 @@
                 return resp.json();
             })
             .then(function (stats) {
+                var since = stats.coverage_start ? ' · since ' + stats.coverage_start : '';
                 setText('alt-stat-total', fmt(stats.total_jobs));
-                setText('alt-stat-total-entries', fmt(stats.total_entries) + ' events');
+                setText('alt-stat-total-entries', fmt(stats.total_entries) + ' events' + since);
                 setText('alt-stat-ai', fmt(stats.ai_jobs));
-                setText('alt-stat-ai-entries', fmt(stats.ai_entries) + ' events');
+                setText('alt-stat-ai-entries', fmt(stats.ai_entries) + ' events' + since);
 
                 setText('alt-stat-week', fmt(stats.week_jobs));
                 setText('alt-stat-week-entries',

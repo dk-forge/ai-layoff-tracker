@@ -6,15 +6,17 @@
 # Both daily runs are expressed instead as a comma list in a single cron
 # expression on this service.
 #
-# Timezone note: Railway cron runs in UTC. 14:00/22:00 UTC == 9 AM / 5 PM
-# Eastern only during EST (winter). During daylight saving (EDT, UTC-4) these
-# fire at 10 AM / 6 PM Eastern. Change to "0 13,21 * * *" if you prefer
-# 9 AM / 5 PM during EDT instead.
+# Timezone note: Railway cron runs in UTC. 12:00/22:00 UTC == 8 AM / 6 PM
+# Eastern during daylight saving (EDT, summer). In winter (EST, UTC-5) these
+# fire at 7 AM / 5 PM Eastern. The morning run catches overnight news + the
+# prior day's after-close 8-Ks; the evening run catches same-day filings made
+# after the 4 PM ET market close. To hold 8 AM/6 PM year-round you'd shift to
+# "0 13,23 * * *" in winter.
 
 [build]
 builder = "NIXPACKS"
 
 [deploy]
 startCommand = "python cron.py"
-cronSchedule = "0 14,22 * * *"
+cronSchedule = "0 12,22 * * *"
 restartPolicyType = "NEVER"

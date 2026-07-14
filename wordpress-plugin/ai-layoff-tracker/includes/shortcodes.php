@@ -58,7 +58,7 @@ function alt_shortcode_stats_bar() {
     <div class="alt-stats-bar" id="alt-stats-bar">
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-total">—</span>
-            <span class="alt-stat-label">Jobs cut (all time)</span>
+            <span class="alt-stat-label">Jobs cut (tracked)</span>
             <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
         </div>
         <div class="alt-stat-card alt-stat-card-ai">

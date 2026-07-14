@@ -313,8 +313,10 @@ function alt_api_stats() {
         'week_range'    => date('M j', $monday_ts) . ' – ' . date('M j', $sunday_ts),
         'month_label'   => current_time('F Y'),
         'year_label'    => current_time('Y'),
+        'coverage_start' => '',   // earliest layoff date on record, e.g. "Jan 2024"
     );
 
+    $min_date = '';
     foreach ($entries as $entry) {
         $jobs = (int) $entry['job_count'];
         $stats['total_jobs'] += $jobs;
@@ -326,6 +328,9 @@ function alt_api_stats() {
 
         $date = (string) $entry['layoff_date'];
         if ($date !== '') {
+            if ($min_date === '' || $date < $min_date) {
+                $min_date = $date;
+            }
             // ISO dates sort lexicographically, so string comparison is a valid range check
             if ($date >= $week_start && $date <= $week_end) {
                 $stats['week_entries']++;
@@ -340,6 +345,10 @@ function alt_api_stats() {
                 $stats['year_jobs'] += $jobs;
             }
         }
+    }
+
+    if ($min_date !== '') {
+        $stats['coverage_start'] = date('M Y', strtotime($min_date));
     }
 
     set_transient('alt_stats_cache', $stats, 5 * MINUTE_IN_SECONDS);

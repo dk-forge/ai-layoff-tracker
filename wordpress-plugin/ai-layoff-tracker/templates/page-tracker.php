@@ -12,7 +12,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <div class="alt-toolbar">
         <div class="alt-toolbar-info">
             <span class="alt-toolbar-title">Layoff database</span>
-            <span class="alt-toolbar-sub">Verified from SEC filings &amp; credible news · updated twice daily</span>
+            <span class="alt-toolbar-sub">Verified from SEC filings &amp; credible news · updated twice daily (morning &amp; after market close, ET)</span>
         </div>
         <div class="alt-toolbar-actions">
             <a class="alt-btn alt-btn-primary" href="<?php echo esc_url($alt_csv); ?>"><?php echo $alt_dl; ?> Download CSV</a>
