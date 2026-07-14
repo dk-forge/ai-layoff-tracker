@@ -119,7 +119,15 @@ def pull_edgar_filings(days_back=1):
     """Pull 8-K filings from the last N days containing layoff language."""
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days_back)
+    return pull_edgar_filings_between(start, end)
 
+
+def pull_edgar_filings_between(start, end):
+    """Pull 8-K filings filed in [start, end] containing layoff language.
+
+    Used by both the daily cron (recent window) and the historical backfill
+    (monthly windows across 2024→now).
+    """
     candidates = {}  # doc_url -> hit metadata, deduped across keywords
     for keyword in KEYWORDS:
         try:

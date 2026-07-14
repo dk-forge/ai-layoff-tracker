@@ -1,0 +1,64 @@
+name: Historical backfill (EDGAR)
+
+# Manually triggered one-off. Walks monthly windows from `start` to `end`,
+# pulls SEC 8-K layoff filings, extracts via DeepSeek, and posts verified
+# entries to WordPress. Idempotent (dedup guard) so it's safe to re-run.
+#
+# Required secrets: OPENROUTER_API_KEY, WP_API_KEY
+# WP_SITE_URL is set below to the /blog install (NOT the parked root domain).
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'Start date YYYY-MM-DD'
+        required: true
+        default: '2024-01-01'
+      end:
+        description: 'End date YYYY-MM-DD (blank = today)'
+        required: false
+        default: ''
+      limit:
+        description: 'Max posts (blank = no cap; set small for a test run)'
+        required: false
+        default: ''
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify required secrets
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          missing=0
+          for v in OPENROUTER_API_KEY WP_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set."; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || { echo "Add the missing secret(s) and re-run."; exit 1; }
+
+      - name: Install dependencies
+        working-directory: railway
+        run: pip install -r requirements.txt
+
+      - name: Run backfill
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
+          BACKFILL_START: ${{ github.event.inputs.start }}
+          BACKFILL_END: ${{ github.event.inputs.end }}
+          BACKFILL_LIMIT: ${{ github.event.inputs.limit }}
+        run: python backfill.py
