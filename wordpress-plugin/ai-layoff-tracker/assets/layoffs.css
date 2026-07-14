@@ -22,6 +22,21 @@
 }
 .alt-wrap { margin: 0 0 40px; }
 
+/* Break the tracker out of the theme's narrow content column on desktop, so the
+   wide table fits without scrolling sideways. Falls back to normal flow (and the
+   table's own horizontal scroll) on smaller screens. */
+@media (min-width: 1000px) {
+    .alt-intro,
+    .alt-stats-bar,
+    .alt-stats-meta,
+    .alt-wrap {
+        width: min(1320px, 94vw);
+        margin-left: 50%;
+        transform: translateX(-50%);
+    }
+    .alt-wrap { margin-bottom: 40px; }
+}
+
 .alt-muted { color: var(--alt-muted); }
 .alt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .alt-center { text-align: center; }

@@ -1,0 +1,48 @@
+name: News catch-up (last N days)
+
+# Manually triggered. Pulls the last N days of layoff news (Reuters/Bloomberg/
+# TechCrunch/etc.) and posts verified events — the source where AI-attributed
+# layoffs actually appear. Idempotent (dedup guard).
+#
+# Required secrets: NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Days to look back (NewsAPI free tier caps at ~30)'
+        required: false
+        default: '28'
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secrets
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          missing=0
+          for v in NEWSAPI_KEY OPENROUTER_API_KEY WP_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set."; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || { echo "Add the missing secret(s) and re-run."; exit 1; }
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run news catch-up
+        working-directory: railway
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          NEWS_DAYS_BACK: ${{ github.event.inputs.days }}
+        run: python news_catchup.py
