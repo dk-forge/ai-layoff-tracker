@@ -19,12 +19,30 @@ GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 QUERY = '(layoffs OR "job cuts" OR "cutting jobs" OR "lays off") (AI OR automation OR "artificial intelligence")'
 
 TRUSTED_DOMAINS = {
-    "reuters.com", "bloomberg.com", "cnbc.com", "techcrunch.com", "theverge.com",
-    "wsj.com", "ft.com", "businessinsider.com", "forbes.com", "fortune.com",
-    "apnews.com", "theguardian.com", "axios.com", "cnn.com", "nytimes.com",
-    "engadget.com", "arstechnica.com", "fastcompany.com", "inc.com",
-    "foxbusiness.com", "bbc.com", "bbc.co.uk", "aljazeera.com",
-    "businessinsider.in", "business-standard.com", "theinformation.com",
+    # wires / national general
+    "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "cnn.com", "nytimes.com",
+    "washingtonpost.com", "latimes.com", "usatoday.com", "npr.org", "abcnews.go.com",
+    "nbcnews.com", "cbsnews.com", "politico.com", "thehill.com", "axios.com",
+    "theguardian.com", "independent.co.uk", "telegraph.co.uk", "foxbusiness.com",
+    "foxnews.com", "aljazeera.com", "semafor.com",
+    # business / finance
+    "bloomberg.com", "wsj.com", "ft.com", "cnbc.com", "forbes.com", "fortune.com",
+    "businessinsider.com", "businessinsider.in", "marketwatch.com", "barrons.com",
+    "morningstar.com", "thestreet.com", "benzinga.com", "fastcompany.com", "inc.com",
+    "hbr.org", "qz.com", "sherwood.news", "economist.com", "financialpost.com",
+    # tech / trade
+    "techcrunch.com", "theverge.com", "wired.com", "arstechnica.com", "engadget.com",
+    "zdnet.com", "venturebeat.com", "theregister.com", "gizmodo.com", "mashable.com",
+    "digitaltrends.com", "theinformation.com", "restofworld.org", "9to5google.com",
+    # regional US
+    "sfgate.com", "sfchronicle.com", "mercurynews.com", "seattletimes.com",
+    "chicagotribune.com", "bostonglobe.com", "dallasnews.com", "denverpost.com",
+    # international
+    "dw.com", "france24.com", "scmp.com", "japantimes.co.jp", "straitstimes.com",
+    "cbc.ca", "globalnews.ca", "smh.com.au", "abc.net.au", "irishtimes.com",
+    "business-standard.com", "moneycontrol.com", "ndtv.com", "ndtvprofit.com",
+    "livemint.com", "hindustantimes.com", "thehindu.com",
+    "timesofindia.indiatimes.com", "economictimes.indiatimes.com",
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
