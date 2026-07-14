@@ -289,16 +289,30 @@ function alt_api_stats() {
     $current_month = current_time('Y-m');
     $current_year  = current_time('Y');
 
+    // Current week, Monday–Sunday, in the site's timezone
+    $now_ts     = current_time('timestamp');
+    $dow        = (int) date('N', $now_ts);              // 1 = Mon … 7 = Sun
+    $monday_ts  = strtotime('-' . ($dow - 1) . ' days', $now_ts);
+    $sunday_ts  = strtotime('+6 days', $monday_ts);
+    $week_start = date('Y-m-d', $monday_ts);
+    $week_end   = date('Y-m-d', $sunday_ts);
+
     $stats = array(
         'generated'     => gmdate('Y-m-d\TH:i:s\Z'),
         'total_entries' => count($entries),
         'total_jobs'    => 0,
         'ai_entries'    => 0,
         'ai_jobs'       => 0,
+        'week_entries'  => 0,
+        'week_jobs'     => 0,
         'month_entries' => 0,
         'month_jobs'    => 0,
         'year_entries'  => 0,
         'year_jobs'     => 0,
+        // Labels that name the actual period and roll over automatically
+        'week_range'    => date('M j', $monday_ts) . ' – ' . date('M j', $sunday_ts),
+        'month_label'   => current_time('F Y'),
+        'year_label'    => current_time('Y'),
     );
 
     foreach ($entries as $entry) {
@@ -312,6 +326,11 @@ function alt_api_stats() {
 
         $date = (string) $entry['layoff_date'];
         if ($date !== '') {
+            // ISO dates sort lexicographically, so string comparison is a valid range check
+            if ($date >= $week_start && $date <= $week_end) {
+                $stats['week_entries']++;
+                $stats['week_jobs'] += $jobs;
+            }
             if (strpos($date, $current_month) === 0) {
                 $stats['month_entries']++;
                 $stats['month_jobs'] += $jobs;

@@ -67,13 +67,18 @@ function alt_shortcode_stats_bar() {
             <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
         </div>
         <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-week">—</span>
+            <span class="alt-stat-label" id="alt-stat-week-label">This week</span>
+            <span class="alt-stat-sub" id="alt-stat-week-entries"></span>
+        </div>
+        <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-month">—</span>
-            <span class="alt-stat-label">This month</span>
+            <span class="alt-stat-label" id="alt-stat-month-label">This month</span>
             <span class="alt-stat-sub" id="alt-stat-month-entries"></span>
         </div>
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-year">—</span>
-            <span class="alt-stat-label">This year</span>
+            <span class="alt-stat-label" id="alt-stat-year-label">This year</span>
             <span class="alt-stat-sub" id="alt-stat-year-entries"></span>
         </div>
     </div>

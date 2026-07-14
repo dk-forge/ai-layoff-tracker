@@ -199,14 +199,23 @@
                 setText('alt-stat-total-entries', fmt(stats.total_entries) + ' events');
                 setText('alt-stat-ai', fmt(stats.ai_jobs));
                 setText('alt-stat-ai-entries', fmt(stats.ai_entries) + ' events');
+
+                setText('alt-stat-week', fmt(stats.week_jobs));
+                setText('alt-stat-week-entries',
+                    (stats.week_range ? stats.week_range + ' · ' : '') + fmt(stats.week_entries) + ' events');
+
                 setText('alt-stat-month', fmt(stats.month_jobs));
+                if (stats.month_label) setText('alt-stat-month-label', stats.month_label);
                 setText('alt-stat-month-entries', fmt(stats.month_entries) + ' events');
+
                 setText('alt-stat-year', fmt(stats.year_jobs));
+                if (stats.year_label) setText('alt-stat-year-label', stats.year_label);
                 setText('alt-stat-year-entries', fmt(stats.year_entries) + ' events');
             })
             .catch(function () {
                 setText('alt-stat-total', 'n/a');
                 setText('alt-stat-ai', 'n/a');
+                setText('alt-stat-week', 'n/a');
                 setText('alt-stat-month', 'n/a');
                 setText('alt-stat-year', 'n/a');
             });
