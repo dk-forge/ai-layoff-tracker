@@ -1,0 +1,49 @@
+name: Verify WordPress path (diagnostic)
+
+# One-off: asks the FTP server where it actually logs in (pwd) and tests each
+# candidate wp-config.php path Cowork suggested. Manual trigger. Delete after.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Probe login dir and candidate paths
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          conn="set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true; set net:timeout 25; open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";"
+
+          echo "===== Where does this login land? (pwd) ====="
+          lftp -c "$conn pwd"
+
+          echo "===== Listing: login root (./) ====="
+          lftp -c "$conn cls -1 ./" || true
+
+          echo "===== Listing: /public_html/ ====="
+          lftp -c "$conn cls -1 /public_html/" || echo "(cannot list /public_html/)"
+
+          echo "===== Listing: /public_html/blog/ (does blog exist here?) ====="
+          lftp -c "$conn cls -1 /public_html/blog/" || echo "MISSING: /public_html/blog/"
+
+          echo "===== Candidate wp-config.php paths ====="
+          for p in \
+            "/public_html/blog/wp-config.php" \
+            "/home/XHCVDEMY/public_html/blog/wp-config.php" \
+            "/home1/xhcvdemy/public_html/blog/wp-config.php" \
+            "/blog/wp-config.php" \
+            "./public_html/blog/wp-config.php" ; do
+            if lftp -c "$conn cls -1 \"$p\"" >/dev/null 2>&1; then
+              echo "FOUND:   $p"
+            else
+              echo "MISSING: $p"
+            fi
+          done
