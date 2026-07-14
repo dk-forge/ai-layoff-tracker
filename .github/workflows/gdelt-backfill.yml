@@ -1,0 +1,54 @@
+name: GDELT news backfill (global, historical)
+
+# Manually triggered. Pulls AI-related layoff coverage from GDELT (free global
+# news index) month-by-month and posts verified events. Idempotent (dedup).
+# Required secrets: OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'Start date YYYY-MM-DD'
+        required: true
+        default: '2024-01-01'
+      end:
+        description: 'End date YYYY-MM-DD (blank = today)'
+        required: false
+        default: ''
+      limit:
+        description: 'Max posts (blank = no cap; small for a test)'
+        required: false
+        default: ''
+
+jobs:
+  gdelt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secrets
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          missing=0
+          for v in OPENROUTER_API_KEY WP_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set."; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run GDELT backfill
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          BACKFILL_START: ${{ github.event.inputs.start }}
+          BACKFILL_END: ${{ github.event.inputs.end }}
+          BACKFILL_LIMIT: ${{ github.event.inputs.limit }}
+        run: python gdelt_backfill.py
