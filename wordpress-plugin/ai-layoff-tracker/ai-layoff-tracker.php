@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 1.4.1
+ * Version: 1.5.0
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '1.4.1');
+define('ALT_VERSION', '1.5.0');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -47,6 +47,7 @@ register_deactivation_hook(__FILE__, 'alt_deactivate');
  */
 function alt_page_needs_assets() {
     if (!is_singular()) return false;
+    if (is_singular('layoffs')) return true;   // per-entry permalink pages
     $post = get_post();
     if (!$post) return false;
     $shortcodes = array(
@@ -157,6 +158,21 @@ function alt_seo_head() {
     }
 }
 add_action('wp_head', 'alt_seo_head', 20);
+
+/**
+ * Render single layoff entries (/blog/layoff/{company}-{date}) with the plugin's
+ * own template so each event has a clean, citable permalink page.
+ */
+function alt_single_template($template) {
+    if (is_singular('layoffs')) {
+        $custom = ALT_PLUGIN_DIR . 'templates/single-layoff.php';
+        if (file_exists($custom)) {
+            return $custom;
+        }
+    }
+    return $template;
+}
+add_filter('single_template', 'alt_single_template');
 
 /**
  * Small admin page (Tools → AI Layoff Tracker) showing the API key the

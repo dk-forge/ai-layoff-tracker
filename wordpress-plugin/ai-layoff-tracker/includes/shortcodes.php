@@ -87,6 +87,7 @@ function alt_shortcode_stats_bar() {
         <span><strong id="alt-meta-companies">—</strong> companies</span>
         <span><strong id="alt-meta-industries">—</strong> industries</span>
         <span><strong id="alt-meta-countries">—</strong> countries</span>
+        <span class="alt-updated" id="alt-last-updated"></span>
     </div>
     <?php
     return ob_get_clean();

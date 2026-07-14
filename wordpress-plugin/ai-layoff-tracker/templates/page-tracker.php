@@ -109,6 +109,23 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         </table>
     </div>
 
+    <details class="alt-methodology">
+        <summary>Methodology &amp; sources</summary>
+        <div class="alt-method-body">
+            <p><b>How entries are collected.</b> Layoffs are pulled from SEC EDGAR 8-K filings and from credible news coverage worldwide (via the open GDELT news index), plus a set of manually verified cases. Each entry is machine-extracted and every field must be supported by the source text — nothing is inferred.</p>
+            <p><b>How the AI tag works.</b> An entry is marked <em>Explicitly AI-attributed</em> only when the source <em>explicitly names</em> AI, machine learning, automation, or robotics as a reason for the cuts. We store and display the <em>exact quote</em>. If a source doesn't name AI, the entry is still listed — just not flagged as AI. We never infer AI from vague "efficiency" language.</p>
+            <p><b>Verification tiers.</b> <span class="alt-badge alt-badge-gold">SEC filing</span> — a legal 8-K the company filed (strongest). <span class="alt-badge alt-badge-silver">Press release</span> — an official company statement. <span class="alt-badge alt-badge-bronze">News</span> — a credible outlet (Reuters, Bloomberg, CNBC, etc.).</p>
+            <p><b>Global coverage limitation.</b> There is <em>no international equivalent of SEC EDGAR</em>. For non-US companies, the verification ceiling is Press release or News — never SEC filing. We label every entry's source type so you always know the strength of the evidence.</p>
+            <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; and "AI" claims that are forward-looking plans (e.g. "could be replaced by 2030") rather than executed cuts.</p>
+        </div>
+    </details>
+
+    <div class="alt-cite-box">
+        <span class="alt-detail-h">Cite this tracker</span>
+        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"></span>. Data from SEC EDGAR 8-K filings and credible news outlets.</code>
+        <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>
+    </div>
+
     <p class="alt-tracker-foot">
         Free to use with attribution to <strong>asktherecruiter.com</strong>. Journalists &amp; researchers can query the live API at
         <code><?php echo esc_html($alt_api); ?></code>.

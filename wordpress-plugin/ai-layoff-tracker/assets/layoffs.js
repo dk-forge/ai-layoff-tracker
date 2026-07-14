@@ -216,6 +216,12 @@
                 setText('alt-meta-companies', fmt(stats.companies_count));
                 setText('alt-meta-industries', fmt(stats.industries_count));
                 setText('alt-meta-countries', fmt(stats.countries_count));
+                if (stats.last_updated) {
+                    var lu = new Date(stats.last_updated);
+                    if (!isNaN(lu.getTime())) {
+                        setText('alt-last-updated', '· updated ' + lu.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+                    }
+                }
             })
             .catch(function () {
                 setText('alt-stat-total', 'n/a');
@@ -956,6 +962,23 @@
     /* ------------------------------------------------------------------ */
 
     $(function () {
+        // "Cite this tracker": fill the accessed date + wire the copy button
+        var citeDate = document.getElementById('alt-cite-date');
+        if (citeDate) {
+            citeDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        var citeCopy = document.getElementById('alt-cite-copy');
+        if (citeCopy) {
+            citeCopy.addEventListener('click', function () {
+                var el = document.getElementById('alt-cite-text');
+                if (el && navigator.clipboard) {
+                    navigator.clipboard.writeText(el.textContent.replace(/\s+/g, ' ').trim());
+                    citeCopy.textContent = 'Copied ✓';
+                    setTimeout(function () { citeCopy.textContent = 'Copy'; }, 1500);
+                }
+            });
+        }
+
         initStatsBar();
 
         var needsData = document.getElementById('alt-table')

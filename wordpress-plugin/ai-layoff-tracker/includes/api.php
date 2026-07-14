@@ -123,6 +123,7 @@ function alt_entry_to_array($post_id) {
         'ai_language'        => $ai_language !== '' ? $ai_language : null,
         'reason_tags'        => array_values(array_map('strval', $tags)),
         'excerpt'            => (string) get_post_meta($post_id, 'excerpt', true),
+        'permalink'          => get_permalink($post_id),
     );
 }
 
@@ -228,10 +229,12 @@ function alt_api_add($request) {
         $title = sprintf('%s — %s jobs — %s', $company, number_format_i18n($job_count), $layoff_date);
     }
 
+    $slug = sanitize_title($company . '-' . ($layoff_date !== '' ? $layoff_date : 'filing'));
     $post_id = wp_insert_post(array(
         'post_type'   => 'layoffs',
         'post_status' => 'publish',
         'post_title'  => $title,
+        'post_name'   => $slug,
     ), true);
 
     if (is_wp_error($post_id)) {
@@ -366,6 +369,12 @@ function alt_api_stats() {
     $stats['companies_count']  = count($companies);
     $stats['industries_count'] = count($industries);
     $stats['countries_count']  = count($countries);
+
+    $latest = get_posts(array(
+        'post_type' => 'layoffs', 'post_status' => 'publish', 'posts_per_page' => 1,
+        'orderby' => 'date', 'order' => 'DESC', 'fields' => 'ids', 'no_found_rows' => true,
+    ));
+    $stats['last_updated'] = $latest ? get_post_time('c', true, $latest[0]) : '';
 
     set_transient('alt_stats_cache', $stats, 5 * MINUTE_IN_SECONDS);
     return rest_ensure_response($stats);
