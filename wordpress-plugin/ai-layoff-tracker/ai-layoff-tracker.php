@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 1.2.1
+ * Version: 1.3.0
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '1.2.1');
+define('ALT_VERSION', '1.3.0');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -107,6 +107,56 @@ function alt_enqueue_assets() {
     ));
 }
 add_action('wp_enqueue_scripts', 'alt_enqueue_assets');
+
+/**
+ * SEO for tracker pages: JSON-LD Dataset structured data (eligible for Google
+ * Dataset Search; signals a citable, downloadable dataset) plus Open Graph /
+ * Twitter tags for shareable link previews. The OG block is filterable off via
+ * `alt_output_og_tags` if an SEO plugin (Yoast/RankMath) already emits them.
+ */
+function alt_seo_head() {
+    if (!alt_page_needs_assets()) return;
+
+    $page_url = get_permalink();
+    if (!$page_url) $page_url = home_url('/');
+    $title = 'AI Layoff Tracker — Live Data on Jobs Lost to AI & Automation';
+    $desc  = 'A continuously updated tracker of verified layoffs across the economy — flagging which ones companies attribute to AI. Sourced from SEC filings and credible news, with the exact quote and primary source link for every entry.';
+
+    $schema = array(
+        '@context'            => 'https://schema.org',
+        '@type'               => 'Dataset',
+        'name'                => 'AI Layoff Tracker',
+        'alternateName'       => 'AI Layoffs Tracker',
+        'description'         => $desc,
+        'url'                 => $page_url,
+        'keywords'            => array('AI layoffs', 'layoffs', 'jobs lost to AI', 'AI job losses', 'AI layoff tracker', 'automation layoffs', 'tech layoffs'),
+        'license'             => 'https://creativecommons.org/licenses/by/4.0/',
+        'isAccessibleForFree' => true,
+        'temporalCoverage'    => '2024-01-01/..',
+        'creator'             => array(
+            '@type' => 'Organization',
+            'name'  => 'AskTheRecruiter',
+            'url'   => home_url('/'),
+        ),
+        'distribution'        => array(
+            array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv',         'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
+            array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => admin_url('admin-post.php?action=alt_export_json')),
+        ),
+    );
+
+    echo "\n<script type=\"application/ld+json\">" . wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+
+    if (apply_filters('alt_output_og_tags', true)) {
+        echo '<meta property="og:type" content="website">' . "\n";
+        echo '<meta property="og:title" content="' . esc_attr($title) . '">' . "\n";
+        echo '<meta property="og:description" content="' . esc_attr($desc) . '">' . "\n";
+        echo '<meta property="og:url" content="' . esc_url($page_url) . '">' . "\n";
+        echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
+        echo '<meta name="twitter:title" content="' . esc_attr($title) . '">' . "\n";
+        echo '<meta name="twitter:description" content="' . esc_attr($desc) . '">' . "\n";
+    }
+}
+add_action('wp_head', 'alt_seo_head', 20);
 
 /**
  * Small admin page (Tools → AI Layoff Tracker) showing the API key the
