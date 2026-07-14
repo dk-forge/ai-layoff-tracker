@@ -45,7 +45,7 @@ def run():
     start = _parse_date(os.environ.get("BACKFILL_START"),
                         datetime(2024, 1, 1, tzinfo=timezone.utc))
     end = _parse_date(os.environ.get("BACKFILL_END"), datetime.now(timezone.utc))
-    limit = int(os.environ.get("BACKFILL_LIMIT", "0")) or None
+    limit = int(os.environ.get("BACKFILL_LIMIT") or 0) or None
 
     print(f"Backfill {start.date()} → {end.date()}"
           + (f" (limit {limit})" if limit else ""))
