@@ -126,6 +126,23 @@ function alt_fuzzy_dupe_exists($company, $date) {
     return false;
 }
 
+/**
+ * Canonicalize country names so "US", "USA", and "United States" collapse to
+ * one value. Unknown countries are returned unchanged (never lose data).
+ */
+function alt_normalize_country($name) {
+    $raw = trim((string) $name);
+    if ($raw === '') return '';
+    $k = strtolower(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z ]/i', '', $raw))));
+    $map = array(
+        'us' => 'US', 'usa' => 'US', 'united states' => 'US',
+        'united states of america' => 'US', 'america' => 'US', 'u s' => 'US', 'u s a' => 'US',
+        'uk' => 'UK', 'united kingdom' => 'UK', 'britain' => 'UK', 'great britain' => 'UK', 'england' => 'UK',
+        'uae' => 'UAE', 'united arab emirates' => 'UAE', 'deutschland' => 'Germany',
+    );
+    return $map[$k] ?? $raw;
+}
+
 /* ------------------------------------------------------------------ */
 /* Shared helpers                                                      */
 /* ------------------------------------------------------------------ */
@@ -299,7 +316,7 @@ function alt_api_add($request) {
         'job_count'          => $job_count,
         'layoff_date'        => $layoff_date,
         'industry'           => sanitize_text_field($meta_in['industry'] ?? ''),
-        'country'            => sanitize_text_field($meta_in['country'] ?? ''),
+        'country'            => alt_normalize_country(sanitize_text_field($meta_in['country'] ?? '')),
         'roles'              => sanitize_text_field($meta_in['roles'] ?? ''),
         'source_url'         => esc_url_raw($meta_in['source_url'] ?? ''),
         'source_type'        => $source_type,
@@ -484,6 +501,15 @@ function alt_api_dedupe($request) {
         'post_type' => 'layoffs', 'post_status' => 'publish', 'posts_per_page' => -1,
         'fields' => 'ids', 'no_found_rows' => true,
     ));
+
+    // Canonicalize country variants (US / USA / United States → US) across all entries
+    foreach ($ids as $id) {
+        $c = (string) get_post_meta($id, 'country', true);
+        $n = alt_normalize_country($c);
+        if ($n !== $c) {
+            update_post_meta($id, 'country', $n);
+        }
+    }
 
     $groups = array();
     foreach ($ids as $id) {
