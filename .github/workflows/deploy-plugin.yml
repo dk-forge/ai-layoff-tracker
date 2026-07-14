@@ -1,0 +1,86 @@
+name: Deploy WordPress plugin
+
+# Ships wordpress-plugin/ai-layoff-tracker/ to the live site whenever the
+# plugin changes on main — no manual zip/upload. Any push that touches the
+# plugin folder deploys it; you can also run it by hand (Actions tab → Run
+# workflow, or `gh workflow run deploy-plugin.yml`).
+#
+# The Railway pipeline (railway/) is NOT handled here — Railway already
+# auto-deploys from this repo on push. This workflow is only the plugin.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   FTP_HOST      e.g. asktherecruiter.com  (or the server host from cPanel)
+#   FTP_USER      an FTP account username from cPanel → FTP Accounts
+#   FTP_PASSWORD  that account's password
+# Optional:
+#   WP_PLUGIN_REMOTE_DIR  defaults to the path below
+#
+# Add FTP_PASSWORD yourself — never paste it into a chat. GitHub encrypts it
+# and it is never printed in logs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wordpress-plugin/ai-layoff-tracker/**'
+      - '.github/workflows/deploy-plugin.yml'
+  workflow_dispatch:      # manual trigger from the Actions tab or gh CLI
+
+concurrency:
+  group: deploy-plugin
+  cancel-in-progress: false   # let an in-flight deploy finish before the next
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Verify secrets are configured
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          missing=0
+          for var in FTP_HOST FTP_USER FTP_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Repo secret $var is not set."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Add the secrets under Settings → Secrets and variables → Actions, then re-run."
+            exit 1
+          fi
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Deploy plugin over FTPS
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          # Change this secret if the plugin lives elsewhere on the host.
+          REMOTE_DIR: ${{ secrets.WP_PLUGIN_REMOTE_DIR || '/public_html/wp-content/plugins/ai-layoff-tracker' }}
+        run: |
+          set -euo pipefail
+          # --- FTPS (default). For SFTP-over-SSH instead, replace the open line
+          #     with:  open -u "$FTP_USER","$FTP_PASSWORD" "sftp://$FTP_HOST"
+          #     and drop the three ftp:ssl* lines. ---
+          lftp -c "
+            set cmd:fail-exit true;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 2;
+            set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            mirror --reverse --delete --verbose \
+              --exclude-glob .git* \
+              --exclude-glob *.zip \
+              wordpress-plugin/ai-layoff-tracker/ \"$REMOTE_DIR\";
+          "
+          echo "Deployed wordpress-plugin/ai-layoff-tracker/ to $REMOTE_DIR"
