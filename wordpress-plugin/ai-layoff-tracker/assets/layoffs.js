@@ -379,8 +379,8 @@
 
     var FILTER_STORAGE_KEY = 'altTrackerFilters:v1';
     var FILTER_IDS = ['alt-f-from', 'alt-f-to', 'alt-f-industry', 'alt-f-country',
-        'alt-f-reasons', 'alt-f-verification', 'alt-f-company', 'alt-f-keyword',
-        'alt-f-minjobs', 'alt-f-ai'];
+        'alt-f-state', 'alt-f-reasons', 'alt-f-verification', 'alt-f-company',
+        'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai'];
 
     function readControl(id) {
         var el = document.getElementById(id);
@@ -455,6 +455,11 @@
             if (country && row.country !== country) return false;
         }
 
+        if (except !== 'state') {
+            var state = readControl('alt-f-state');
+            if (state && row.state !== state) return false;
+        }
+
         if (except !== 'reasons') {
             var reasons = readControl('alt-f-reasons') || [];
             if (reasons.length) {
@@ -516,7 +521,7 @@
         { id: 'alt-f-industry', label: 'Industry', kind: 'single' },
         { id: 'alt-f-country', label: 'Country', kind: 'single' },
         { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS },
-        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: { gold: 'SEC filing', silver: 'Press release', bronze: 'News' } },
+        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' } },
         { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only' }
     ];
 
@@ -568,9 +573,11 @@
     function populateFilterOptions(rows) {
         var industries = {};
         var countries = {};
+        var states = {};
         rows.forEach(function (row) {
             if (row.industry) industries[row.industry] = true;
             if (row.country) countries[row.country] = true;
+            if (row.state) states[row.state] = true;
         });
 
         function fill(id, values) {
@@ -585,9 +592,10 @@
         }
         fill('alt-f-industry', industries);
         fill('alt-f-country', countries);
+        fill('alt-f-state', states);
     }
 
-    var VERIF_LABELS = { gold: 'SEC filing', silver: 'Press release', bronze: 'News' };
+    var VERIF_LABELS = { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' };
     function verificationBadge(level) {
         var safe = escapeHtml(level || 'bronze');
         var label = VERIF_LABELS[level] || 'News';
@@ -666,8 +674,11 @@
                 },
                 {
                     data: 'country',
-                    render: function (data, type) {
-                        return type === 'display' ? escapeHtml(data || '—') : (data || '');
+                    render: function (data, type, row) {
+                        if (type !== 'display') return (data || '') + ' ' + (row.state || '');
+                        var c = escapeHtml(data || '—');
+                        if (row.state) c += ' <span class="alt-state">' + escapeHtml(row.state) + '</span>';
+                        return c;
                     }
                 },
                 {

@@ -41,11 +41,12 @@ function alt_allowed_reason_tags() {
 }
 
 function alt_allowed_verification_levels() {
-    return array('gold', 'silver', 'bronze');
+    // 'warn' = a state WARN Act notice (legally-required mass-layoff filing).
+    return array('gold', 'warn', 'silver', 'bronze');
 }
 
 function alt_allowed_source_types() {
-    return array('8K', 'press_release', 'news');
+    return array('8K', 'warn', 'press_release', 'news');
 }
 
 function alt_register_cpt() {

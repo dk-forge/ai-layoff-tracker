@@ -1,0 +1,53 @@
+name: WARN notice import (US states)
+
+# Manually triggered. Pulls state WARN Act notices (via the open warn-scraper),
+# maps them to the tracker schema, and posts them directly (no LLM). Idempotent.
+# Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: 'Comma list of state codes (e.g. CA,NY,TX)'
+        required: true
+        default: 'CA'
+      min_employees:
+        description: 'Drop notices below this headcount'
+        required: false
+        default: '100'
+      start:
+        description: 'Earliest effective date YYYY-MM-DD'
+        required: false
+        default: '2024-01-01'
+      limit:
+        description: 'Max posts (blank = no cap)'
+        required: false
+        default: ''
+
+jobs:
+  warn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secret
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run WARN import
+        working-directory: railway
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WARN_STATES: ${{ github.event.inputs.states }}
+          WARN_MIN_EMPLOYEES: ${{ github.event.inputs.min_employees }}
+          WARN_START: ${{ github.event.inputs.start }}
+          WARN_LIMIT: ${{ github.event.inputs.limit }}
+        run: python warn_import.py

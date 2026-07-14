@@ -271,8 +271,16 @@
     padding: 3px 8px;
 }
 .alt-badge-gold   { background: #fdf3d7; color: #7a5600; border: 1px solid #e9c65a; }
+.alt-badge-warn   { background: #e4f0e4; color: #206020; border: 1px solid #9cc79c; }
 .alt-badge-silver { background: #eef0f3; color: #52555c; border: 1px solid #ccd0d6; }
 .alt-badge-bronze { background: #f7ebe1; color: #7a4a2b; border: 1px solid #dcb592; }
+
+.alt-state {
+    display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+    color: var(--alt-ink-2); background: var(--alt-surface-2);
+    border: 1px solid var(--alt-grid); border-radius: 4px; padding: 0 5px; margin-left: 4px;
+    vertical-align: middle;
+}
 
 .alt-ai-yes {
     display: inline-block;

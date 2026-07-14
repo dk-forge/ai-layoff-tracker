@@ -23,7 +23,7 @@ def post_to_wordpress(entry):
     layoff_date = entry.get("layoff_date") or "date unknown"
 
     payload = {
-        "title": f"{company} — {job_count:,} jobs — {layoff_date}",
+        "title": f"{company}, {job_count:,} jobs, {layoff_date}",
         "status": "publish",
         "meta": {
             "company_name": company,
@@ -32,6 +32,7 @@ def post_to_wordpress(entry):
             "layoff_date": entry.get("layoff_date"),
             "industry": entry.get("industry"),
             "country": entry.get("country"),
+            "state": entry.get("state"),
             "roles": entry.get("roles"),
             "source_url": entry.get("source_url"),
             "source_type": entry.get("source_type"),

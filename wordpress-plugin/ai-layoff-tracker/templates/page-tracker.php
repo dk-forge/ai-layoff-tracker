@@ -71,6 +71,10 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <select id="alt-f-country"><option value="">All countries</option></select>
             </div>
             <div class="alt-filter">
+                <label for="alt-f-state">US state</label>
+                <select id="alt-f-state"><option value="">All states</option></select>
+            </div>
+            <div class="alt-filter">
                 <label for="alt-f-reasons">Reason tags</label>
                 <select id="alt-f-reasons" multiple size="4">
                     <option value="ai_automation">AI / automation</option>
@@ -86,8 +90,9 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             </div>
             <div class="alt-filter">
                 <label for="alt-f-verification">Source type</label>
-                <select id="alt-f-verification" multiple size="3">
+                <select id="alt-f-verification" multiple size="4">
                     <option value="gold">SEC filing (8-K)</option>
+                    <option value="warn">WARN notice</option>
                     <option value="silver">Press release</option>
                     <option value="bronze">News</option>
                 </select>
@@ -112,6 +117,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 
     <div class="alt-legend">
         <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">SEC filing</span> official 8-K, strongest</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-warn">WARN notice</span> state mass-layoff filing</span>
         <span class="alt-legend-item"><span class="alt-badge alt-badge-silver">Press release</span> company announcement</span>
         <span class="alt-legend-item"><span class="alt-badge alt-badge-bronze">News</span> credible outlet</span>
         <span class="alt-legend-hint">Tap any row for the exact quote &amp; source ↓</span>

@@ -143,6 +143,36 @@ function alt_normalize_country($name) {
     return $map[$k] ?? $raw;
 }
 
+/**
+ * Return a 2-letter US state code, or '' if not a recognizable US state.
+ * Accepts codes ("ca") or full names ("California").
+ */
+function alt_normalize_state($value) {
+    $v = trim((string) $value);
+    if ($v === '') return '';
+    $abbr = array('AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL',
+        'IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV',
+        'NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX',
+        'UT','VT','VA','WA','WV','WI','WY','DC');
+    $up = preg_replace('/[^A-Z]/', '', strtoupper($v));
+    if (in_array($up, $abbr, true)) return $up;
+    $names = array(
+        'alabama'=>'AL','alaska'=>'AK','arizona'=>'AZ','arkansas'=>'AR','california'=>'CA',
+        'colorado'=>'CO','connecticut'=>'CT','delaware'=>'DE','florida'=>'FL','georgia'=>'GA',
+        'hawaii'=>'HI','idaho'=>'ID','illinois'=>'IL','indiana'=>'IN','iowa'=>'IA','kansas'=>'KS',
+        'kentucky'=>'KY','louisiana'=>'LA','maine'=>'ME','maryland'=>'MD','massachusetts'=>'MA',
+        'michigan'=>'MI','minnesota'=>'MN','mississippi'=>'MS','missouri'=>'MO','montana'=>'MT',
+        'nebraska'=>'NE','nevada'=>'NV','new hampshire'=>'NH','new jersey'=>'NJ','new mexico'=>'NM',
+        'new york'=>'NY','north carolina'=>'NC','north dakota'=>'ND','ohio'=>'OH','oklahoma'=>'OK',
+        'oregon'=>'OR','pennsylvania'=>'PA','rhode island'=>'RI','south carolina'=>'SC',
+        'south dakota'=>'SD','tennessee'=>'TN','texas'=>'TX','utah'=>'UT','vermont'=>'VT',
+        'virginia'=>'VA','washington'=>'WA','west virginia'=>'WV','wisconsin'=>'WI','wyoming'=>'WY',
+        'district of columbia'=>'DC','washington dc'=>'DC',
+    );
+    $key = trim(preg_replace('/\s+/', ' ', str_replace('.', '', strtolower($v))));
+    return isset($names[$key]) ? $names[$key] : '';
+}
+
 /* ------------------------------------------------------------------ */
 /* Shared helpers                                                      */
 /* ------------------------------------------------------------------ */
@@ -177,6 +207,7 @@ function alt_entry_to_array($post_id) {
         'layoff_date'        => (string) get_post_meta($post_id, 'layoff_date', true),
         'industry'           => (string) get_post_meta($post_id, 'industry', true),
         'country'            => (string) get_post_meta($post_id, 'country', true),
+        'state'              => (string) get_post_meta($post_id, 'state', true),
         'roles'              => (string) get_post_meta($post_id, 'roles', true),
         'source_type'        => (string) get_post_meta($post_id, 'source_type', true),
         'source_name'        => (string) get_post_meta($post_id, 'source_name', true),
@@ -270,7 +301,10 @@ function alt_api_add($request) {
 
     // Fuzzy same-event guard: a different outlet reporting the same company's
     // layoff with a slightly different count/date shouldn't create a 2nd entry.
-    if (alt_fuzzy_dupe_exists($company, $layoff_date)) {
+    // WARN notices are exempt: one company can legitimately file several within
+    // 30 days (e.g. separate store closures), so they rely on the exact hash.
+    $incoming_source = sanitize_text_field($meta_in['source_type'] ?? '');
+    if ($incoming_source !== 'warn' && alt_fuzzy_dupe_exists($company, $layoff_date)) {
         return new WP_Error('alt_duplicate', 'A same-company entry within ~30 days already exists.', array('status' => 409));
     }
 
@@ -317,6 +351,7 @@ function alt_api_add($request) {
         'layoff_date'        => $layoff_date,
         'industry'           => sanitize_text_field($meta_in['industry'] ?? ''),
         'country'            => alt_normalize_country(sanitize_text_field($meta_in['country'] ?? '')),
+        'state'              => alt_normalize_state(sanitize_text_field($meta_in['state'] ?? '')),
         'roles'              => sanitize_text_field($meta_in['roles'] ?? ''),
         'source_url'         => esc_url_raw($meta_in['source_url'] ?? ''),
         'source_type'        => $source_type,
@@ -518,6 +553,11 @@ function alt_api_dedupe($request) {
 
     $groups = array();
     foreach ($ids as $id) {
+        // WARN notices are authoritative government filings; a company can file
+        // several legitimately close together, so never cross-collapse them.
+        if (get_post_meta($id, 'source_type', true) === 'warn') {
+            continue;
+        }
         $company = (string) get_post_meta($id, 'company_name', true);
         $date = (string) get_post_meta($id, 'layoff_date', true);
         if ($company === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
