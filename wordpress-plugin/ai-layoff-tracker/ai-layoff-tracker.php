@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 1.6.4
+ * Version: 1.6.5
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '1.6.4');
+define('ALT_VERSION', '1.6.5');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -39,6 +39,30 @@ function alt_deactivate() {
     flush_rewrite_rules();
 }
 register_deactivation_hook(__FILE__, 'alt_deactivate');
+
+/**
+ * The plugin is deployed via FTP, which bypasses WordPress's updater hooks — so
+ * a new version's template/asset changes would otherwise sit behind the stale
+ * WP-Super-Cache page cache. On the first PHP request after a version bump,
+ * flush our transients plus the WP-Super-Cache and Autoptimize caches so
+ * changes go live without a manual purge. (On a cache HIT PHP is skipped, but
+ * any cache-missing request — logged-in user, query string, REST call — trips
+ * this and clears the whole page cache.)
+ */
+function alt_flush_caches_on_deploy() {
+    if (get_option('alt_deployed_version') === ALT_VERSION) return;
+    update_option('alt_deployed_version', ALT_VERSION, false);
+
+    delete_transient('alt_all_cache');
+    delete_transient('alt_stats_cache');
+    if (function_exists('wp_cache_clear_cache')) {
+        wp_cache_clear_cache();
+    }
+    if (class_exists('autoptimizeCache') && method_exists('autoptimizeCache', 'clearall')) {
+        autoptimizeCache::clearall();
+    }
+}
+add_action('init', 'alt_flush_caches_on_deploy');
 
 /**
  * Only load DataTables/Chart.js on pages that actually use a plugin shortcode
