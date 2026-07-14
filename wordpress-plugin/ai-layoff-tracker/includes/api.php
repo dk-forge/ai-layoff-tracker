@@ -77,8 +77,54 @@ function alt_register_routes() {
         'callback'            => 'alt_api_company',
         'permission_callback' => '__return_true',
     ));
+
+    register_rest_route('layoffs/v1', '/dedupe', array(
+        'methods'             => 'POST',
+        'callback'            => 'alt_api_dedupe',
+        'permission_callback' => 'alt_api_permission',
+    ));
 }
 add_action('rest_api_init', 'alt_register_routes');
+
+/**
+ * Normalize a company name to a comparison key so "Amazon", "Amazon.com Inc",
+ * and "Amazon.com, Inc." all collapse to the same event when deduping.
+ */
+function alt_company_key($name) {
+    $k = strtolower((string) $name);
+    $k = preg_replace('/[^a-z0-9 ]/', ' ', $k);
+    $k = preg_replace('/\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|group|holdings|holding|technologies|technology|systems|solutions|the|com)\b/', ' ', $k);
+    return trim(preg_replace('/\s+/', ' ', $k));
+}
+
+/**
+ * True if a published entry already exists for the same company (normalized)
+ * within ~30 days of $date — i.e. probably the same event from another outlet.
+ */
+function alt_fuzzy_dupe_exists($company, $date) {
+    if ($company === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return false;
+    }
+    $key = alt_company_key($company);
+    if ($key === '') return false;
+
+    $lo = gmdate('Y-m-d', strtotime($date . ' 00:00:00 UTC') - 30 * DAY_IN_SECONDS);
+    $hi = gmdate('Y-m-d', strtotime($date . ' 00:00:00 UTC') + 30 * DAY_IN_SECONDS);
+    $ids = get_posts(array(
+        'post_type' => 'layoffs', 'post_status' => 'publish', 'posts_per_page' => 200,
+        'fields' => 'ids', 'no_found_rows' => true,
+        'meta_query' => array(array(
+            'key' => 'layoff_date', 'value' => array($lo, $hi),
+            'compare' => 'BETWEEN', 'type' => 'DATE',
+        )),
+    ));
+    foreach ($ids as $id) {
+        if (alt_company_key((string) get_post_meta($id, 'company_name', true)) === $key) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers                                                      */
@@ -203,6 +249,12 @@ function alt_api_add($request) {
     // is the authoritative guard against duplicates
     if (alt_hash_exists($dedup_hash)) {
         return new WP_Error('alt_duplicate', 'An entry with this dedup_hash already exists.', array('status' => 409));
+    }
+
+    // Fuzzy same-event guard: a different outlet reporting the same company's
+    // layoff with a slightly different count/date shouldn't create a 2nd entry.
+    if (alt_fuzzy_dupe_exists($company, $layoff_date)) {
+        return new WP_Error('alt_duplicate', 'A same-company entry within ~30 days already exists.', array('status' => 409));
     }
 
     $verification = sanitize_text_field($meta_in['verification_level'] ?? '');
@@ -416,4 +468,84 @@ function alt_api_company($request) {
         'total_jobs'    => array_sum(wp_list_pluck($rows, 'job_count')),
         'data'          => $rows,
     ));
+}
+
+/**
+ * Collapse cross-outlet duplicates: same company (normalized) reported by
+ * different sources within ~30 days = the same layoff event. Keeps the
+ * best-sourced entry (highest verification, then highest job count), preserves
+ * any AI attribution found in the cluster, and trashes the rest.
+ */
+function alt_api_dedupe($request) {
+    $window = 30 * DAY_IN_SECONDS;
+    $rank = array('gold' => 3, 'silver' => 2, 'bronze' => 1);
+
+    $ids = get_posts(array(
+        'post_type' => 'layoffs', 'post_status' => 'publish', 'posts_per_page' => -1,
+        'fields' => 'ids', 'no_found_rows' => true,
+    ));
+
+    $groups = array();
+    foreach ($ids as $id) {
+        $company = (string) get_post_meta($id, 'company_name', true);
+        $date = (string) get_post_meta($id, 'layoff_date', true);
+        if ($company === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            continue; // leave undated / unnamed entries untouched
+        }
+        $key = alt_company_key($company);
+        if ($key === '') continue;
+        $groups[$key][] = array(
+            'id'      => $id,
+            'ts'      => strtotime($date . ' 00:00:00 UTC'),
+            'jobs'    => (int) get_post_meta($id, 'job_count', true),
+            'verif'   => $rank[(string) get_post_meta($id, 'verification_level', true)] ?? 0,
+            'ai'      => (bool) get_post_meta($id, 'ai_explicit', true),
+            'ai_lang' => (string) get_post_meta($id, 'ai_language', true),
+        );
+    }
+
+    $trashed = 0;
+    $merged  = 0;
+    foreach ($groups as $list) {
+        if (count($list) < 2) continue;
+        usort($list, function ($a, $b) { return $a['ts'] - $b['ts']; });
+
+        // chain consecutive entries within the window into one cluster
+        $cluster = array();
+        $prev_ts = null;
+        $flush = function ($cluster) use (&$trashed, &$merged) {
+            if (count($cluster) < 2) return;
+            $merged++;
+            usort($cluster, function ($a, $b) {
+                if ($b['verif'] !== $a['verif']) return $b['verif'] - $a['verif'];
+                return $b['jobs'] - $a['jobs'];
+            });
+            $keeper = $cluster[0];
+            if (!$keeper['ai']) {
+                foreach ($cluster as $c) {
+                    if ($c['ai'] && $c['ai_lang'] !== '') {
+                        update_post_meta($keeper['id'], 'ai_explicit', true);
+                        update_post_meta($keeper['id'], 'ai_language', $c['ai_lang']);
+                        break;
+                    }
+                }
+            }
+            for ($i = 1; $i < count($cluster); $i++) {
+                wp_trash_post($cluster[$i]['id']);
+                $trashed++;
+            }
+        };
+        foreach ($list as $e) {
+            if ($prev_ts !== null && ($e['ts'] - $prev_ts) > $window) {
+                $flush($cluster);
+                $cluster = array();
+            }
+            $cluster[] = $e;
+            $prev_ts = $e['ts'];
+        }
+        $flush($cluster);
+    }
+
+    alt_flush_caches();
+    return rest_ensure_response(array('merged_events' => $merged, 'trashed' => $trashed));
 }

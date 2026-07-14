@@ -1,0 +1,24 @@
+name: Dedupe entries
+
+# Collapses cross-outlet duplicate layoff entries (same company within ~30 days).
+# Manual trigger. Safe to re-run. Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dedupe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run dedupe
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          echo "Running dedupe…"
+          curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/dedupe" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -w "\nHTTP %{http_code}\n"
