@@ -345,9 +345,11 @@
         fill('alt-f-country', countries);
     }
 
+    var VERIF_LABELS = { gold: 'SEC filing', silver: 'Press release', bronze: 'News' };
     function verificationBadge(level) {
         var safe = escapeHtml(level || 'bronze');
-        return '<span class="alt-badge alt-badge-' + safe + '">' + safe + '</span>';
+        var label = VERIF_LABELS[level] || 'News';
+        return '<span class="alt-badge alt-badge-' + safe + '">' + escapeHtml(label) + '</span>';
     }
 
     function initTracker(rows) {
@@ -521,7 +523,7 @@
         }
         var url = safeUrl(row.source_url);
         var verif = row.verification_level
-            ? ' · <span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(row.verification_level) + '</span>'
+            ? ' · <span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(VERIF_LABELS[row.verification_level] || 'News') + '</span>'
             : '';
         var src = url
             ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">View primary source (' + escapeHtml(row.source_name || 'source') + ') ↗</a>'

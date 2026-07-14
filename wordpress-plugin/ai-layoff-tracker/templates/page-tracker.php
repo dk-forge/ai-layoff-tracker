@@ -57,11 +57,11 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 </select>
             </div>
             <div class="alt-filter">
-                <label for="alt-f-verification">Verification</label>
+                <label for="alt-f-verification">Source type</label>
                 <select id="alt-f-verification" multiple size="3">
-                    <option value="gold">Gold (SEC 8-K)</option>
-                    <option value="silver">Silver (press release)</option>
-                    <option value="bronze">Bronze (news)</option>
+                    <option value="gold">SEC filing (8-K)</option>
+                    <option value="silver">Press release</option>
+                    <option value="bronze">News</option>
                 </select>
             </div>
             <div class="alt-filter">
@@ -83,9 +83,9 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     </div>
 
     <div class="alt-legend">
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">gold</span> SEC 8-K filing</span>
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-silver">silver</span> company press release</span>
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-bronze">bronze</span> credible news outlet</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">SEC filing</span> official 8-K — strongest</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-silver">Press release</span> company announcement</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-bronze">News</span> credible outlet</span>
         <span class="alt-legend-hint">Tap any row for the exact quote &amp; source ↓</span>
     </div>
 
@@ -101,7 +101,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                     <th>Industry</th>
                     <th>Country</th>
                     <th>Reasons</th>
-                    <th>Verification</th>
+                    <th>Source type</th>
                     <th>AI</th>
                     <th>Source</th>
                 </tr>
