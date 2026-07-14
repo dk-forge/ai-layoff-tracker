@@ -2,18 +2,19 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 1.7.0
+ * Version: 1.7.1
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '1.7.0');
+define('ALT_VERSION', '1.7.1');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Load includes
 require_once ALT_PLUGIN_DIR . 'includes/cpt.php';
+require_once ALT_PLUGIN_DIR . 'includes/db.php';
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';
 require_once ALT_PLUGIN_DIR . 'includes/export.php';
@@ -27,6 +28,7 @@ require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 function alt_activate() {
     alt_register_cpt();
     alt_register_feed();
+    alt_db_install();
     flush_rewrite_rules();
 
     if (!get_option('alt_api_key')) {
@@ -52,6 +54,12 @@ register_deactivation_hook(__FILE__, 'alt_deactivate');
 function alt_flush_caches_on_deploy() {
     if (get_option('alt_deployed_version') === ALT_VERSION) return;
     update_option('alt_deployed_version', ALT_VERSION, false);
+
+    // Create/upgrade the fast-query table on every deploy (dbDelta is a no-op
+    // when the schema already matches).
+    if (function_exists('alt_db_install')) {
+        alt_db_install();
+    }
 
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');

@@ -1,0 +1,398 @@
+<?php
+/**
+ * Fast query layer.
+ *
+ * WordPress postmeta can't filter/aggregate 100K+ layoffs at interactive speed
+ * (meta_query does expensive self-JOINs). So we keep a denormalized, indexed
+ * table as the query surface. "Rich" entries (SEC/news/curated) still live as
+ * `layoffs` CPT posts for their permalink pages and are mirrored here on save;
+ * high-volume bulk data (WARN notices) can live here alone.
+ *
+ * Endpoints backed by this table:
+ *   GET layoffs/v1/query      paginated + filtered + sorted rows
+ *   GET layoffs/v1/aggregate  filtered totals, top-N, and time series
+ */
+if (!defined('ABSPATH')) exit;
+
+function alt_db_table() {
+    global $wpdb;
+    return $wpdb->prefix . 'alt_layoffs';
+}
+
+/** Create/upgrade the table. Safe to call repeatedly (dbDelta diffs it). */
+function alt_db_install() {
+    global $wpdb;
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    $table = alt_db_table();
+    $charset = $wpdb->get_charset_collate();
+    $sql = "CREATE TABLE $table (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        post_id BIGINT UNSIGNED NULL,
+        dedup_hash CHAR(32) NOT NULL DEFAULT '',
+        company VARCHAR(255) NOT NULL DEFAULT '',
+        company_key VARCHAR(255) NOT NULL DEFAULT '',
+        ticker VARCHAR(32) NOT NULL DEFAULT '',
+        job_count INT UNSIGNED NOT NULL DEFAULT 0,
+        layoff_date DATE NULL,
+        industry VARCHAR(120) NOT NULL DEFAULT '',
+        country VARCHAR(64) NOT NULL DEFAULT '',
+        state CHAR(2) NOT NULL DEFAULT '',
+        source_type VARCHAR(32) NOT NULL DEFAULT '',
+        verification_level VARCHAR(16) NOT NULL DEFAULT '',
+        source_name VARCHAR(191) NOT NULL DEFAULT '',
+        source_url TEXT NULL,
+        ai_explicit TINYINT(1) NOT NULL DEFAULT 0,
+        ai_language TEXT NULL,
+        reason_tags VARCHAR(255) NOT NULL DEFAULT '',
+        roles TEXT NULL,
+        excerpt TEXT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY dedup_hash (dedup_hash),
+        KEY layoff_date (layoff_date),
+        KEY state (state),
+        KEY country (country),
+        KEY industry (industry),
+        KEY source_type (source_type),
+        KEY ai_explicit (ai_explicit),
+        KEY company_key (company_key),
+        KEY post_id (post_id)
+    ) $charset;";
+    dbDelta($sql);
+}
+
+/** Reason tags are stored as ",tag1,tag2," so a filter is a simple LIKE. */
+function alt_db_pack_tags($tags) {
+    $tags = array_values(array_filter(array_map('sanitize_key', (array) $tags)));
+    return $tags ? ',' . implode(',', $tags) . ',' : '';
+}
+function alt_db_unpack_tags($packed) {
+    $packed = trim((string) $packed, ',');
+    return $packed === '' ? array() : explode(',', $packed);
+}
+
+/**
+ * Insert or update one row, keyed by dedup_hash (falling back to post_id).
+ * $row is an associative array of column => value.
+ */
+function alt_db_upsert(array $row) {
+    global $wpdb;
+    $table = alt_db_table();
+
+    $data = array(
+        'post_id'            => isset($row['post_id']) ? (int) $row['post_id'] : null,
+        'dedup_hash'         => substr((string) ($row['dedup_hash'] ?? ''), 0, 32),
+        'company'            => substr((string) ($row['company'] ?? ''), 0, 255),
+        'company_key'        => substr(function_exists('alt_company_key') ? alt_company_key((string) ($row['company'] ?? '')) : '', 0, 255),
+        'ticker'             => substr((string) ($row['ticker'] ?? ''), 0, 32),
+        'job_count'          => max(0, (int) ($row['job_count'] ?? 0)),
+        'layoff_date'        => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($row['layoff_date'] ?? '')) ? $row['layoff_date'] : null,
+        'industry'           => substr((string) ($row['industry'] ?? ''), 0, 120),
+        'country'            => substr((string) ($row['country'] ?? ''), 0, 64),
+        'state'              => substr((string) ($row['state'] ?? ''), 0, 2),
+        'source_type'        => substr((string) ($row['source_type'] ?? ''), 0, 32),
+        'verification_level' => substr((string) ($row['verification_level'] ?? ''), 0, 16),
+        'source_name'        => substr((string) ($row['source_name'] ?? ''), 0, 191),
+        'source_url'         => (string) ($row['source_url'] ?? ''),
+        'ai_explicit'        => !empty($row['ai_explicit']) ? 1 : 0,
+        'ai_language'        => (string) ($row['ai_language'] ?? ''),
+        'reason_tags'        => alt_db_pack_tags($row['reason_tags'] ?? array()),
+        'roles'              => (string) ($row['roles'] ?? ''),
+        'excerpt'            => (string) ($row['excerpt'] ?? ''),
+    );
+
+    // Find an existing row by dedup_hash first, then post_id.
+    $existing_id = 0;
+    if ($data['dedup_hash'] !== '') {
+        $existing_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table WHERE dedup_hash = %s", $data['dedup_hash']));
+    }
+    if (!$existing_id && $data['post_id']) {
+        $existing_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table WHERE post_id = %d", $data['post_id']));
+    }
+
+    if ($existing_id) {
+        $wpdb->update($table, $data, array('id' => $existing_id));
+        return $existing_id;
+    }
+    $wpdb->insert($table, $data);
+    return (int) $wpdb->insert_id;
+}
+
+/** Mirror one `layoffs` CPT post into the table. */
+function alt_db_sync_post($post_id) {
+    $post_id = (int) $post_id;
+    if (get_post_type($post_id) !== 'layoffs' || get_post_status($post_id) !== 'publish') {
+        alt_db_delete_by_post($post_id);
+        return;
+    }
+    alt_db_upsert(array(
+        'post_id'            => $post_id,
+        'dedup_hash'         => get_post_meta($post_id, 'dedup_hash', true),
+        'company'            => get_post_meta($post_id, 'company_name', true),
+        'ticker'             => get_post_meta($post_id, 'ticker', true),
+        'job_count'          => get_post_meta($post_id, 'job_count', true),
+        'layoff_date'        => get_post_meta($post_id, 'layoff_date', true),
+        'industry'           => get_post_meta($post_id, 'industry', true),
+        'country'            => get_post_meta($post_id, 'country', true),
+        'state'              => get_post_meta($post_id, 'state', true),
+        'source_type'        => get_post_meta($post_id, 'source_type', true),
+        'verification_level' => get_post_meta($post_id, 'verification_level', true),
+        'source_name'        => get_post_meta($post_id, 'source_name', true),
+        'source_url'         => get_post_meta($post_id, 'source_url', true),
+        'ai_explicit'        => get_post_meta($post_id, 'ai_explicit', true),
+        'ai_language'        => get_post_meta($post_id, 'ai_language', true),
+        'reason_tags'        => get_post_meta($post_id, 'reason_tags', true),
+        'roles'              => get_post_meta($post_id, 'roles', true),
+        'excerpt'            => get_post_meta($post_id, 'excerpt', true),
+    ));
+}
+
+function alt_db_delete_by_post($post_id) {
+    global $wpdb;
+    $wpdb->delete(alt_db_table(), array('post_id' => (int) $post_id));
+}
+
+add_action('save_post_layoffs', function ($post_id) {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) return;
+    alt_db_sync_post($post_id);
+}, 20);
+add_action('trashed_post', function ($post_id) {
+    if (get_post_type($post_id) === 'layoffs') alt_db_delete_by_post($post_id);
+});
+add_action('before_delete_post', function ($post_id) {
+    if (get_post_type($post_id) === 'layoffs') alt_db_delete_by_post($post_id);
+});
+
+/** Backfill every existing CPT post into the table. Returns rows synced. */
+function alt_db_migrate() {
+    $ids = get_posts(array(
+        'post_type' => 'layoffs', 'post_status' => 'publish',
+        'posts_per_page' => -1, 'fields' => 'ids', 'no_found_rows' => true,
+    ));
+    foreach ($ids as $id) {
+        alt_db_sync_post($id);
+    }
+    return count($ids);
+}
+
+/* ------------------------------------------------------------------ */
+/* Query builder shared by /query and /aggregate                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Build a parameterized WHERE clause from request filters. `$except` drops one
+ * dimension (for slicer charts). Returns array($sql, $params).
+ */
+function alt_db_where(WP_REST_Request $r, $except = '') {
+    global $wpdb;
+    $where = array("1=1");
+    $params = array();
+
+    $from = $r->get_param('from');
+    $to = $r->get_param('to');
+    if ($except !== 'date') {
+        if ($from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $where[] = "layoff_date >= %s"; $params[] = $from; }
+        if ($to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) { $where[] = "layoff_date <= %s"; $params[] = $to; }
+    }
+    if ($except !== 'industry' && ($v = $r->get_param('industry'))) { $where[] = "industry = %s"; $params[] = $v; }
+    if ($except !== 'country' && ($v = $r->get_param('country'))) { $where[] = "country = %s"; $params[] = $v; }
+    if ($except !== 'state' && ($v = $r->get_param('state'))) { $where[] = "state = %s"; $params[] = $v; }
+    if ($except !== 'reasons') {
+        $reasons = array_filter(array_map('sanitize_key', explode(',', (string) $r->get_param('reasons'))));
+        if ($reasons) {
+            $ors = array();
+            foreach ($reasons as $tag) { $ors[] = "reason_tags LIKE %s"; $params[] = '%,' . $tag . ',%'; }
+            $where[] = '(' . implode(' OR ', $ors) . ')';
+        }
+    }
+    $sources = array_filter(array_map('sanitize_text_field', explode(',', (string) $r->get_param('sources'))));
+    if ($sources) {
+        $ph = implode(',', array_fill(0, count($sources), '%s'));
+        $where[] = "verification_level IN ($ph)";
+        foreach ($sources as $s) { $params[] = $s; }
+    }
+    if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
+    if (($v = $r->get_param('company'))) { $where[] = "company LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
+    if (($v = $r->get_param('keyword'))) { $where[] = "excerpt LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
+    if (($v = $r->get_param('min_jobs')) && (int) $v > 0) { $where[] = "job_count >= %d"; $params[] = (int) $v; }
+
+    return array(implode(' AND ', $where), $params);
+}
+
+function alt_db_prep($sql, $params) {
+    global $wpdb;
+    return $params ? $wpdb->prepare($sql, $params) : $sql;
+}
+
+function alt_db_row_to_array($row) {
+    return array(
+        'id'                 => (int) $row->id,
+        'company_name'       => $row->company,
+        'ticker'             => $row->ticker !== '' ? $row->ticker : null,
+        'job_count'          => (int) $row->job_count,
+        'layoff_date'        => $row->layoff_date ?: '',
+        'industry'           => $row->industry,
+        'country'            => $row->country,
+        'state'              => $row->state,
+        'source_type'        => $row->source_type,
+        'source_name'        => $row->source_name,
+        'verification_level' => $row->verification_level,
+        'source_url'         => $row->source_url,
+        'ai_explicit'        => (bool) $row->ai_explicit,
+        'ai_language'        => $row->ai_language !== '' ? $row->ai_language : null,
+        'reason_tags'        => alt_db_unpack_tags($row->reason_tags),
+        'roles'              => $row->roles,
+        'excerpt'            => $row->excerpt,
+        'permalink'          => $row->post_id ? get_permalink((int) $row->post_id) : '',
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/* REST: /query and /aggregate                                         */
+/* ------------------------------------------------------------------ */
+
+function alt_register_query_routes() {
+    register_rest_route('layoffs/v1', '/query', array(
+        'methods'  => 'GET',
+        'callback' => 'alt_api_query',
+        'permission_callback' => '__return_true',
+    ));
+    register_rest_route('layoffs/v1', '/aggregate', array(
+        'methods'  => 'GET',
+        'callback' => 'alt_api_aggregate',
+        'permission_callback' => '__return_true',
+    ));
+    // Key-protected: backfill existing CPT posts into the table. Idempotent.
+    register_rest_route('layoffs/v1', '/migrate', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_migrate',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+}
+add_action('rest_api_init', 'alt_register_query_routes');
+
+function alt_api_migrate(WP_REST_Request $r) {
+    alt_db_install();
+    $synced = alt_db_migrate();
+    global $wpdb;
+    $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
+    return rest_ensure_response(array('synced' => $synced, 'table_rows' => $count));
+}
+
+function alt_api_query(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    list($where, $params) = alt_db_where($r);
+
+    $sortable = array('layoff_date', 'job_count', 'company', 'country', 'state', 'industry');
+    $sort = in_array($r->get_param('sort'), $sortable, true) ? $r->get_param('sort') : 'layoff_date';
+    $dir = strtolower((string) $r->get_param('dir')) === 'asc' ? 'ASC' : 'DESC';
+
+    $per = min(200, max(1, (int) ($r->get_param('per_page') ?: 25)));
+    $page = max(1, (int) ($r->get_param('page') ?: 1));
+    $offset = ($page - 1) * $per;
+
+    $total = (int) $wpdb->get_var(alt_db_prep("SELECT COUNT(*) FROM $table WHERE $where", $params));
+    $rows = $wpdb->get_results(alt_db_prep(
+        "SELECT * FROM $table WHERE $where ORDER BY $sort $dir, id DESC LIMIT %d OFFSET %d",
+        array_merge($params, array($per, $offset))
+    ));
+
+    return rest_ensure_response(array(
+        'total'    => $total,
+        'page'     => $page,
+        'per_page' => $per,
+        'data'     => array_map('alt_db_row_to_array', $rows ?: array()),
+    ));
+}
+
+function alt_api_aggregate(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    list($where, $params) = alt_db_where($r);
+
+    // Headline totals
+    $totals = $wpdb->get_row(alt_db_prep(
+        "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
+                SUM(ai_explicit) ai_entries,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
+                COUNT(DISTINCT company_key) companies,
+                COUNT(DISTINCT NULLIF(industry,'')) industries,
+                COUNT(DISTINCT NULLIF(country,'')) countries,
+                COUNT(DISTINCT NULLIF(state,'')) states,
+                MIN(layoff_date) min_date, MAX(layoff_date) max_date
+         FROM $table WHERE $where", $params));
+
+    // Top-N helpers (each slicer ignores its own dimension)
+    $topN = function ($col, $except) use ($wpdb, $table, $r) {
+        list($w, $p) = alt_db_where($r, $except);
+        $sql = "SELECT $col k, SUM(job_count) v FROM $table
+                WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT 12";
+        $rows = $wpdb->get_results(alt_db_prep($sql, $p));
+        $out = array();
+        foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v); }
+        return $out;
+    };
+
+    // Reason breakdown (9 fixed tags → one SUM each)
+    $reason_tags = array('ai_automation','possible_ai','revenue_decline','restructuring',
+        'merger_acquisition','offshoring','product_discontinuation','cost_reduction','macroeconomic');
+    list($rw, $rp) = alt_db_where($r, 'reasons');
+    $reasons = array();
+    foreach ($reason_tags as $tag) {
+        $val = (int) $wpdb->get_var(alt_db_prep(
+            "SELECT COALESCE(SUM(job_count),0) FROM $table WHERE $rw AND reason_tags LIKE %s",
+            array_merge($rp, array('%,' . $tag . ',%'))));
+        if ($val > 0) $reasons[] = array($tag, $val);
+    }
+
+    // Monthly series (all jobs + AI jobs) for trend + cumulative charts.
+    // CONCAT(YEAR,LPAD(MONTH)) avoids '%' so it's safe whether or not this SQL
+    // is run through $wpdb->prepare (which would otherwise eat DATE_FORMAT's %).
+    $months = $wpdb->get_results(alt_db_prep(
+        "SELECT CONCAT(YEAR(layoff_date),'-',LPAD(MONTH(layoff_date),2,'0')) m,
+                SUM(job_count) jobs,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
+         FROM $table WHERE $where AND layoff_date IS NOT NULL
+         GROUP BY m ORDER BY m ASC", $params));
+    $series = array();
+    foreach ($months ?: array() as $row) {
+        $series[] = array('month' => $row->m, 'jobs' => (int) $row->jobs, 'ai_jobs' => (int) $row->ai_jobs);
+    }
+
+    // Largest single events
+    list($w2, $p2) = alt_db_where($r);
+    $top_events = $wpdb->get_results(alt_db_prep(
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country
+         FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 10", $p2));
+    $leaders = array();
+    foreach ($top_events ?: array() as $row) {
+        $leaders[] = array(
+            'company_name' => $row->company, 'job_count' => (int) $row->job_count,
+            'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
+            'state' => $row->state, 'country' => $row->country,
+        );
+    }
+
+    return rest_ensure_response(array(
+        'totals' => array(
+            'jobs'       => (int) $totals->jobs,
+            'entries'    => (int) $totals->entries,
+            'ai_jobs'    => (int) $totals->ai_jobs,
+            'ai_entries' => (int) $totals->ai_entries,
+            'companies'  => (int) $totals->companies,
+            'industries' => (int) $totals->industries,
+            'countries'  => (int) $totals->countries,
+            'states'     => (int) $totals->states,
+            'min_date'   => $totals->min_date,
+            'max_date'   => $totals->max_date,
+        ),
+        'top_industries' => $topN('industry', 'industry'),
+        'top_countries'  => $topN('country', 'country'),
+        'top_states'     => $topN('state', 'state'),
+        'reasons'        => $reasons,
+        'series'         => $series,
+        'leaders'        => $leaders,
+    ));
+}

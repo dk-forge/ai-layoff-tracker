@@ -1,0 +1,23 @@
+name: Migrate to fast-query table
+
+# Backfills every existing layoff CPT post into the wp_alt_layoffs table.
+# Idempotent (upsert by dedup_hash). Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run migration
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/migrate" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -w "\nHTTP %{http_code}\n"

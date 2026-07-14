@@ -367,6 +367,12 @@ function alt_api_add($request) {
         update_post_meta($post_id, $key, $value);
     }
 
+    // Mirror into the fast-query table now that all meta is set (the save_post
+    // hook fires before meta exists, so sync explicitly here).
+    if (function_exists('alt_db_sync_post')) {
+        alt_db_sync_post($post_id);
+    }
+
     alt_flush_caches();
 
     return new WP_REST_Response(array('id' => $post_id, 'created' => true), 201);
