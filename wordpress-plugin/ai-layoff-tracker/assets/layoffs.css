@@ -427,6 +427,7 @@
     min-width: 0;
 }
 .alt-chart-card-wide { grid-column: 1 / -1; }
+.alt-overview { margin: 0 0 24px; }
 .alt-chart-card h3 { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: var(--alt-ink); }
 .alt-chart-sub { font-size: 12px; font-weight: 400; color: var(--alt-muted); margin-left: 6px; }
 .alt-chart-box { position: relative; height: 260px; }

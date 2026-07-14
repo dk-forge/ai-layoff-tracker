@@ -20,6 +20,32 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         </div>
     </div>
 
+    <div class="alt-dashboard alt-overview">
+        <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
+        <div class="alt-chart-grid">
+            <div class="alt-chart-card alt-chart-card-wide">
+                <h3>Jobs cut per week <span class="alt-chart-sub">rolling 52 weeks</span></h3>
+                <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+            </div>
+            <div class="alt-chart-card">
+                <h3>Top industries <span class="alt-chart-sub">by total job losses</span></h3>
+                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-industries"></canvas></div>
+            </div>
+            <div class="alt-chart-card">
+                <h3>Reasons cited <span class="alt-chart-sub">jobs by reason tag</span></h3>
+                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-reasons"></canvas></div>
+            </div>
+            <div class="alt-chart-card">
+                <h3>Top countries <span class="alt-chart-sub">by total job losses</span></h3>
+                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-countries"></canvas></div>
+            </div>
+            <div class="alt-chart-card">
+                <h3>Cumulative AI-attributed cuts <span class="alt-chart-sub">acceleration curve</span></h3>
+                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-cumulative"></canvas></div>
+            </div>
+        </div>
+    </div>
+
     <div class="alt-filters-card">
         <div class="alt-filters-head">
             <span class="alt-filters-title">Filter the data</span>

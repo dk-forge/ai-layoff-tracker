@@ -502,10 +502,15 @@ function alt_api_dedupe($request) {
         'fields' => 'ids', 'no_found_rows' => true,
     ));
 
-    // Canonicalize country variants (US / USA / United States → US) across all entries
+    // Canonicalize country variants (US / USA / United States → US) across all
+    // entries. SEC 8-K filers are US registrants by definition, so a gold entry
+    // with no stated country is US.
     foreach ($ids as $id) {
         $c = (string) get_post_meta($id, 'country', true);
         $n = alt_normalize_country($c);
+        if ($n === '' && get_post_meta($id, 'verification_level', true) === 'gold') {
+            $n = 'US';
+        }
         if ($n !== $c) {
             update_post_meta($id, 'country', $n);
         }

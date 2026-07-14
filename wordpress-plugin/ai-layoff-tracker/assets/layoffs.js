@@ -182,6 +182,12 @@
             .slice(0, n);
     }
 
+    // Give each bar its own color so category charts read as a spectrum,
+    // not a wall of one blue.
+    function paletteFor(entries) {
+        return entries.map(function (_, i) { return PALETTE[i % PALETTE.length]; });
+    }
+
     /* ------------------------------------------------------------------ */
     /* Stats bar                                                           */
     /* ------------------------------------------------------------------ */
@@ -751,18 +757,22 @@
 
         buildWeeklyChart(rows);
 
+        // Skip blank industry/country so a big "Unknown" bar doesn't drown out
+        // the real categories.
         var byIndustry = aggregate(rows,
-            function (r) { return r.industry || 'Unknown'; },
+            function (r) { return r.industry || null; },
             function (r) { return r.job_count; });
-        buildBarChart('alt-chart-industries', topEntries(byIndustry, 10), SEQ_BLUE, true);
+        var indEntries = topEntries(byIndustry, 10);
+        buildBarChart('alt-chart-industries', indEntries, paletteFor(indEntries), true);
 
         buildReasonsDonut(rows);
         buildAiCumulativeChart(rows, 'alt-chart-ai-cumulative');
 
         var byCountry = aggregate(rows,
-            function (r) { return r.country || 'Unknown'; },
+            function (r) { return r.country || null; },
             function (r) { return r.job_count; });
-        buildBarChart('alt-chart-countries', topEntries(byCountry, 10), PALETTE[1], true);
+        var ctryEntries = topEntries(byCountry, 10);
+        buildBarChart('alt-chart-countries', ctryEntries, paletteFor(ctryEntries), true);
 
         buildLeaderboard(rows);
     }
@@ -836,9 +846,10 @@
 
             // Industries citing AI most frequently (event counts)
             var byIndustry = aggregate(aiRows,
-                function (r) { return r.industry || 'Unknown'; },
+                function (r) { return r.industry || null; },
                 function () { return 1; });
-            buildBarChart('alt-chart-ai-industries', topEntries(byIndustry, 10), PALETTE[4], true, 'Events: ');
+            var aiIndEntries = topEntries(byIndustry, 10);
+            buildBarChart('alt-chart-ai-industries', aiIndEntries, paletteFor(aiIndEntries), true, 'Events: ');
         }
 
         initQuoteWall(aiRows);
