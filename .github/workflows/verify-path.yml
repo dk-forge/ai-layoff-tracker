@@ -1,8 +1,7 @@
 name: Verify WordPress path (diagnostic)
 
-# Probes, with whatever creds are currently in the secrets, where the login
-# lands and whether it can reach the blog's wp-config.php by any path form.
-# Manual trigger. Delete after.
+# Single-connection, hang-proof probe: confirms login, shows where it lands,
+# and tests whether it can reach the blog's wp-config.php. Manual trigger.
 
 on:
   workflow_dispatch:
@@ -10,43 +9,34 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Probe
+      - name: Probe (one session, 60s cap)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          set -euo pipefail
-          conn="set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true; set net:timeout 25; open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";"
-
-          echo "===== Where does the login land? ====="
-          lftp -c "$conn pwd" || true
-
-          echo "===== Contents of login root (./) ====="
-          lftp -c "$conn cls -1 ./" || true
-
-          echo "===== Can we see the account home / public_html? ====="
-          lftp -c "$conn cls -1 /home1/xhcvdemy/public_html/" 2>&1 | head -30 || echo "cannot list /home1/xhcvdemy/public_html/"
-
-          echo "===== wp-config.php candidates (every plausible form) ====="
-          for p in \
-            "wp-config.php" \
-            "/wp-config.php" \
-            "./wp-config.php" \
-            "/public_html/AskTheRecruiter.com/blog/wp-config.php" \
-            "/home1/xhcvdemy/public_html/AskTheRecruiter.com/blog/wp-config.php" \
-            "../AskTheRecruiter.com/blog/wp-config.php" \
-            "../../public_html/AskTheRecruiter.com/blog/wp-config.php" ; do
-            if lftp -c "$conn cls -1 \"$p\"" >/dev/null 2>&1; then
-              echo "FOUND:   $p"
-            else
-              echo "MISSING: $p"
-            fi
-          done
-
-          echo "===== Is wp-content/plugins reachable from root? ====="
-          lftp -c "$conn cls -1 /wp-content/plugins/" 2>&1 | head -20 || echo "no /wp-content/plugins/ at login root"
+          set -uo pipefail
+          timeout 60 lftp -c "
+            set net:timeout 12;
+            set net:max-retries 1;
+            set net:reconnect-interval-base 4;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            echo '--- pwd (where login lands):';
+            pwd;
+            echo '--- contents of login root:';
+            cls -1 ./;
+            echo '--- try: wp-config.php at login root:';
+            cls -1 wp-config.php;
+            echo '--- try: wp-content/plugins at login root:';
+            cls -1 wp-content/plugins/;
+            echo '--- try: /public_html/AskTheRecruiter.com/blog/wp-config.php:';
+            cls -1 /public_html/AskTheRecruiter.com/blog/wp-config.php;
+          " ; echo "=== lftp exit: $? (0=all commands ok; nonzero=some path missing or auth failed) ==="
