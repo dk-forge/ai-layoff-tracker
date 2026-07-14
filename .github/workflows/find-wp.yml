@@ -1,0 +1,36 @@
+name: Locate WordPress (diagnostic)
+
+# One-off: finds every wp-config.php on the host so we can point the deploy at
+# the real plugins directory. Manual trigger only. Safe — reads/lists nothing
+# destructive. Delete this file once the path is known.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Find wp-config.php + list top-level layout
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          conn="set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true; set net:timeout 25; open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";"
+
+          echo "===== Top level of FTP root ====="
+          lftp -c "$conn cls -1 ./ || true"
+
+          echo "===== /public_html ====="
+          lftp -c "$conn cls -1 /public_html/ || true"
+
+          echo "===== Searching for wp-config.php (maxdepth 5) ====="
+          lftp -c "$conn find --maxdepth=5 ./" 2>/dev/null | grep -i "wp-config.php" || echo "(none found within depth 5)"
+
+          echo "===== Searching for any ai-layoff-tracker plugin folders ====="
+          lftp -c "$conn find --maxdepth=6 ./" 2>/dev/null | grep -i "plugins/ai-layoff-tracker" | head -20 || echo "(none found)"
