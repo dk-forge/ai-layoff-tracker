@@ -55,7 +55,34 @@ add_shortcode('alt_company_history', 'alt_shortcode_company_history');
 function alt_shortcode_stats_bar() {
     ob_start();
     ?>
-    <p class="alt-intro">Tracking verified layoffs across the economy — and flagging the ones companies attribute to AI.</p>
+    <p class="alt-intro">Tracking verified layoffs across the economy, flagging the ones companies attribute to AI.</p>
+    <div class="alt-period" id="alt-period" role="group" aria-label="Time period" style="display:none">
+        <div class="alt-period-years" id="alt-period-years"></div>
+        <div class="alt-period-refine">
+            <select id="alt-period-quarter" aria-label="Quarter">
+                <option value="">All quarters</option>
+                <option value="1">Q1 (Jan–Mar)</option>
+                <option value="2">Q2 (Apr–Jun)</option>
+                <option value="3">Q3 (Jul–Sep)</option>
+                <option value="4">Q4 (Oct–Dec)</option>
+            </select>
+            <select id="alt-period-month" aria-label="Month">
+                <option value="">All months</option>
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            </select>
+        </div>
+    </div>
     <div class="alt-stats-bar" id="alt-stats-bar">
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-total">—</span>
@@ -68,25 +95,22 @@ function alt_shortcode_stats_bar() {
             <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
         </div>
         <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-week">—</span>
-            <span class="alt-stat-label" id="alt-stat-week-label">This week</span>
-            <span class="alt-stat-sub" id="alt-stat-week-entries"></span>
+            <span class="alt-stat-value" id="alt-stat-companies">—</span>
+            <span class="alt-stat-label">Companies</span>
+            <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
         </div>
         <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-month">—</span>
-            <span class="alt-stat-label" id="alt-stat-month-label">This month</span>
-            <span class="alt-stat-sub" id="alt-stat-month-entries"></span>
+            <span class="alt-stat-value" id="alt-stat-industries">—</span>
+            <span class="alt-stat-label">Industries</span>
+            <span class="alt-stat-sub"></span>
         </div>
         <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-year">—</span>
-            <span class="alt-stat-label" id="alt-stat-year-label">This year</span>
-            <span class="alt-stat-sub" id="alt-stat-year-entries"></span>
+            <span class="alt-stat-value" id="alt-stat-countries">—</span>
+            <span class="alt-stat-label">Countries</span>
+            <span class="alt-stat-sub"></span>
         </div>
     </div>
     <div class="alt-stats-meta" id="alt-stats-meta">
-        <span><strong id="alt-meta-companies">—</strong> companies</span>
-        <span><strong id="alt-meta-industries">—</strong> industries</span>
-        <span><strong id="alt-meta-countries">—</strong> countries</span>
         <span class="alt-updated" id="alt-last-updated"></span>
     </div>
     <?php

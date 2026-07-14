@@ -208,50 +208,169 @@
     /* Stats bar                                                           */
     /* ------------------------------------------------------------------ */
 
-    function initStatsBar() {
-        if (!document.getElementById('alt-stats-bar')) return;
-
+    // "Updated" timestamp is global (not filter-dependent), so fetch it once and
+    // show it with the time + Eastern time zone.
+    function initStatsMeta() {
+        if (!document.getElementById('alt-last-updated')) return;
         fetch(API + 'stats', { credentials: 'same-origin' })
-            .then(function (resp) {
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                return resp.json();
-            })
+            .then(function (resp) { return resp.ok ? resp.json() : null; })
             .then(function (stats) {
-                var since = stats.coverage_start ? ' · since ' + stats.coverage_start : '';
-                setText('alt-stat-total', fmt(stats.total_jobs));
-                setText('alt-stat-total-entries', fmt(stats.total_entries) + ' events' + since);
-                setText('alt-stat-ai', fmt(stats.ai_jobs));
-                setText('alt-stat-ai-entries', fmt(stats.ai_entries) + ' events' + since);
-
-                setText('alt-stat-week', fmt(stats.week_jobs));
-                setText('alt-stat-week-entries',
-                    (stats.week_range ? stats.week_range + ' · ' : '') + fmt(stats.week_entries) + ' events');
-
-                setText('alt-stat-month', fmt(stats.month_jobs));
-                if (stats.month_label) setText('alt-stat-month-label', stats.month_label);
-                setText('alt-stat-month-entries', fmt(stats.month_entries) + ' events');
-
-                setText('alt-stat-year', fmt(stats.year_jobs));
-                if (stats.year_label) setText('alt-stat-year-label', stats.year_label);
-                setText('alt-stat-year-entries', fmt(stats.year_entries) + ' events');
-
-                setText('alt-meta-companies', fmt(stats.companies_count));
-                setText('alt-meta-industries', fmt(stats.industries_count));
-                setText('alt-meta-countries', fmt(stats.countries_count));
-                if (stats.last_updated) {
-                    var lu = new Date(stats.last_updated);
-                    if (!isNaN(lu.getTime())) {
-                        setText('alt-last-updated', '· updated ' + lu.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
-                    }
-                }
+                if (!stats || !stats.last_updated) return;
+                var lu = new Date(stats.last_updated);
+                if (isNaN(lu.getTime())) return;
+                var when = lu.toLocaleString('en-US', {
+                    timeZone: 'America/New_York',
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+                });
+                setText('alt-last-updated', 'Updated ' + when);
             })
-            .catch(function () {
-                setText('alt-stat-total', 'n/a');
-                setText('alt-stat-ai', 'n/a');
-                setText('alt-stat-week', 'n/a');
-                setText('alt-stat-month', 'n/a');
-                setText('alt-stat-year', 'n/a');
+            .catch(function () { /* leave blank */ });
+    }
+
+    function computeStats(rows) {
+        var jobs = 0, aiJobs = 0, aiEntries = 0, comp = {}, ind = {}, ctry = {};
+        rows.forEach(function (r) {
+            jobs += r.job_count || 0;
+            if (r.ai_explicit) { aiJobs += r.job_count || 0; aiEntries += 1; }
+            if (r.company_name) comp[String(r.company_name).toLowerCase()] = 1;
+            if (r.industry) ind[r.industry] = 1;
+            if (r.country) ctry[r.country] = 1;
+        });
+        return {
+            jobs: jobs, entries: rows.length, aiJobs: aiJobs, aiEntries: aiEntries,
+            companies: Object.keys(comp).length,
+            industries: Object.keys(ind).length,
+            countries: Object.keys(ctry).length
+        };
+    }
+
+    // Headline numbers reflect the active filters / selected period.
+    function renderStats() {
+        if (!document.getElementById('alt-stats-bar')) return;
+        var rows = ALL_ROWS.filter(function (r) { return rowPassesFilters(r); });
+        var s = computeStats(rows);
+        var period = currentPeriodLabel();
+        setText('alt-stat-total', fmt(s.jobs));
+        setText('alt-stat-total-entries', fmt(s.entries) + ' events · ' + period);
+        setText('alt-stat-ai', fmt(s.aiJobs));
+        setText('alt-stat-ai-entries', fmt(s.aiEntries) + ' events');
+        setText('alt-stat-companies', fmt(s.companies));
+        setText('alt-stat-industries', fmt(s.industries));
+        setText('alt-stat-countries', fmt(s.countries));
+    }
+
+    /* ---- Period selector (All time / year / quarter / month) ---- */
+    // Drives the same From/To date filter the dropdowns use, so table, charts,
+    // and headline numbers all move together.
+
+    var PERIOD_YEAR = '';
+
+    function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); } // m is 1-12
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+    function currentPeriodLabel() {
+        var from = readControl('alt-f-from');
+        var to = readControl('alt-f-to');
+        if (!from && !to) return 'all time';
+        var q = readControl('alt-period-quarter');
+        var mo = readControl('alt-period-month');
+        if (PERIOD_YEAR && mo) return MONTHS[parseInt(mo, 10) - 1] + ' ' + PERIOD_YEAR;
+        if (PERIOD_YEAR && q) return 'Q' + q + ' ' + PERIOD_YEAR;
+        if (PERIOD_YEAR && from === PERIOD_YEAR + '-01-01') return PERIOD_YEAR;
+        return (from || '…') + ' to ' + (to || 'now');
+    }
+
+    function applyPeriod() {
+        var year = PERIOD_YEAR;
+        var q = readControl('alt-period-quarter');
+        var mo = readControl('alt-period-month');
+        var refine = document.getElementById('alt-period-quarter');
+        // Quarter + Month only make sense within a chosen year.
+        if (refine) refine.disabled = !year;
+        var moEl = document.getElementById('alt-period-month');
+        if (moEl) moEl.disabled = !year;
+
+        var from = '', to = '';
+        if (year) {
+            var y = parseInt(year, 10);
+            if (mo) {
+                var m = parseInt(mo, 10);
+                from = year + '-' + pad2(m) + '-01';
+                to = year + '-' + pad2(m) + '-' + pad2(daysInMonth(y, m));
+            } else if (q) {
+                var qn = parseInt(q, 10);
+                var startM = (qn - 1) * 3 + 1;
+                var endM = startM + 2;
+                from = year + '-' + pad2(startM) + '-01';
+                to = year + '-' + pad2(endM) + '-' + pad2(daysInMonth(y, endM));
+            } else {
+                from = year + '-01-01';
+                to = year + '-12-31';
+            }
+        }
+        writeControl('alt-f-from', from);
+        writeControl('alt-f-to', to);
+        saveFilters();
+        refreshAll();
+    }
+
+    function updatePeriodActiveState() {
+        var host = document.getElementById('alt-period-years');
+        if (!host) return;
+        Array.prototype.forEach.call(host.querySelectorAll('.alt-period-btn'), function (b) {
+            b.classList.toggle('alt-period-on', b.getAttribute('data-year') === PERIOD_YEAR);
+        });
+    }
+
+    var periodBuilt = false;
+    function initPeriodSelector() {
+        var wrap = document.getElementById('alt-period');
+        var host = document.getElementById('alt-period-years');
+        if (!wrap || !host || periodBuilt) return;
+        // Needs the From/To filter inputs to write to (the tracker page).
+        if (!document.getElementById('alt-f-from')) return;
+        periodBuilt = true;
+        wrap.style.display = '';
+
+        var years = {};
+        ALL_ROWS.forEach(function (r) {
+            if (isValidDate(r.layoff_date)) years[r.layoff_date.slice(0, 4)] = 1;
+        });
+        var list = Object.keys(years).sort().reverse();
+
+        // Reconstruct current selection from restored From/To.
+        var from = readControl('alt-f-from');
+        PERIOD_YEAR = (from && /^\d{4}-01-01$/.test(from)) ? from.slice(0, 4)
+            : (from ? from.slice(0, 4) : '');
+        if (from && list.indexOf(PERIOD_YEAR) === -1) PERIOD_YEAR = '';
+
+        var html = '<button type="button" class="alt-period-btn" data-year="">All time</button>';
+        list.forEach(function (y) {
+            html += '<button type="button" class="alt-period-btn" data-year="' + y + '">' + y + '</button>';
+        });
+        host.innerHTML = html;
+
+        Array.prototype.forEach.call(host.querySelectorAll('.alt-period-btn'), function (btn) {
+            btn.addEventListener('click', function () {
+                PERIOD_YEAR = btn.getAttribute('data-year');
+                if (!PERIOD_YEAR) {
+                    writeControl('alt-period-quarter', '');
+                    writeControl('alt-period-month', '');
+                }
+                applyPeriod();
+                updatePeriodActiveState();
             });
+        });
+
+        var qSel = document.getElementById('alt-period-quarter');
+        var mSel = document.getElementById('alt-period-month');
+        if (qSel) qSel.addEventListener('change', function () { writeControl('alt-period-month', ''); applyPeriod(); });
+        if (mSel) mSel.addEventListener('change', function () { writeControl('alt-period-quarter', ''); applyPeriod(); });
+
+        qSel && (qSel.disabled = !PERIOD_YEAR);
+        mSel && (mSel.disabled = !PERIOD_YEAR);
+        updatePeriodActiveState();
     }
 
     /* ------------------------------------------------------------------ */
@@ -388,6 +507,7 @@
     function refreshAll() {
         if (TABLE) TABLE.draw();
         renderDashboard();
+        renderStats();
         updateActiveFilterBar();
     }
 
@@ -503,6 +623,16 @@
             language: {
                 emptyTable: 'No layoff entries match the current filters.',
                 zeroRecords: 'No layoff entries match the current filters.'
+            },
+            drawCallback: function () {
+                var el = document.getElementById('alt-table-count');
+                if (!el) return;
+                var info = this.api().page.info();
+                if (!info.recordsDisplay) { el.textContent = 'No entries match the current filters.'; return; }
+                var base = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' entries';
+                el.textContent = (info.recordsDisplay !== info.recordsTotal)
+                    ? base + ' (filtered from ' + fmt(info.recordsTotal) + ' total)'
+                    : base;
             },
             columns: [
                 {
@@ -893,7 +1023,7 @@
             setStatus('alt-dashboard-status', 'Chart library failed to load (CDN blocked?).', true);
             return;
         }
-        setStatus('alt-dashboard-status', ALL_ROWS.length ? null : 'No entries yet — the pipeline hasn’t posted data.');
+        setStatus('alt-dashboard-status', ALL_ROWS.length ? null : 'No entries yet. The pipeline hasn’t posted data.');
         renderDashboard();
     }
 
@@ -966,7 +1096,7 @@
         if (chartsAvailable()) {
             setStatus('alt-ai-status', null);
         } else {
-            setStatus('alt-ai-status', 'Chart library failed to load (CDN blocked?) — charts unavailable.', true);
+            setStatus('alt-ai-status', 'Chart library failed to load (CDN blocked?). Charts unavailable.', true);
         }
 
         if (chartsAvailable()) {
@@ -1149,9 +1279,10 @@
             });
         }
 
-        initStatsBar();
+        initStatsMeta();
 
         var needsData = document.getElementById('alt-table')
+            || document.getElementById('alt-stats-bar')
             || document.querySelector('.alt-dashboard')
             || document.querySelector('.alt-ai-tracker')
             || document.querySelector('.alt-company-history');
@@ -1166,7 +1297,9 @@
             .then(function (rows) {
                 ALL_ROWS = rows;
                 initTracker(rows);
+                initPeriodSelector();
                 initDashboard();
+                renderStats();
                 initAiTracker(rows);
                 initCompanyHistory(rows);
             })

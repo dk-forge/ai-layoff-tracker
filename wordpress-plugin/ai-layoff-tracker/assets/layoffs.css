@@ -466,6 +466,28 @@
     text-decoration: underline;
 }
 .alt-af-clear:hover { color: var(--alt-blue-dark); }
+
+/* Period selector (All time / year / quarter / month) */
+.alt-period { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
+.alt-period-years { display: flex; flex-wrap: wrap; gap: 6px; }
+.alt-period-btn {
+    font-size: 13px; font-weight: 600; color: var(--alt-ink-2);
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 20px; padding: 6px 14px; cursor: pointer; line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.alt-period-btn:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
+.alt-period-on, .alt-period-on:hover { background: var(--alt-blue); border-color: var(--alt-blue); color: #fff; }
+.alt-period-refine { display: flex; gap: 8px; }
+.alt-period-refine select {
+    font-size: 13px; padding: 6px 10px; border: 1px solid var(--alt-grid);
+    border-radius: 8px; background: #fff; color: var(--alt-ink); cursor: pointer;
+}
+.alt-period-refine select:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Count line above the table */
+.alt-table-count { font-size: 13px; color: var(--alt-muted); margin: 0 2px 8px; font-variant-numeric: tabular-nums; }
 .alt-chart-card h3,
 .alt-chart-card .alt-chart-h { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: var(--alt-ink); }
 .alt-chart-sub { font-size: 12px; font-weight: 400; color: var(--alt-muted); margin-left: 6px; }

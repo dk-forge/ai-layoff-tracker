@@ -22,7 +22,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 
     <div class="alt-dashboard alt-overview">
         <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
-        <div class="alt-overview-hint">Click any bar or slice to filter everything below — the charts, the totals, and the company table all move together.</div>
+        <div class="alt-overview-hint">Click any bar or slice to filter everything below: the charts, the totals, and the company table all move together.</div>
         <div id="alt-active-filters" class="alt-active-filters" style="display:none"></div>
         <div class="alt-chart-grid">
             <div class="alt-chart-card alt-chart-card-wide">
@@ -111,13 +111,14 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     </div>
 
     <div class="alt-legend">
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">SEC filing</span> official 8-K — strongest</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">SEC filing</span> official 8-K, strongest</span>
         <span class="alt-legend-item"><span class="alt-badge alt-badge-silver">Press release</span> company announcement</span>
         <span class="alt-legend-item"><span class="alt-badge alt-badge-bronze">News</span> credible outlet</span>
         <span class="alt-legend-hint">Tap any row for the exact quote &amp; source ↓</span>
     </div>
 
     <div id="alt-table-status" class="alt-status" role="status">Loading layoff data…</div>
+    <div id="alt-table-count" class="alt-table-count"></div>
 
     <div class="alt-table-scroll">
         <table id="alt-table" class="display" style="width:100%">
@@ -140,10 +141,10 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <details class="alt-methodology">
         <summary>Methodology &amp; sources</summary>
         <div class="alt-method-body">
-            <p><b>How entries are collected.</b> Layoffs are pulled from SEC EDGAR 8-K filings and from credible news coverage worldwide (via the open GDELT news index), plus a set of manually verified cases. Each entry is machine-extracted and every field must be supported by the source text — nothing is inferred.</p>
-            <p><b>How the AI tag works.</b> An entry is marked <em>Explicitly AI-attributed</em> only when the source <em>explicitly names</em> AI, machine learning, automation, or robotics as a reason for the cuts. We store and display the <em>exact quote</em>. If a source doesn't name AI, the entry is still listed — just not flagged as AI. We never infer AI from vague "efficiency" language.</p>
-            <p><b>Verification tiers.</b> <span class="alt-badge alt-badge-gold">SEC filing</span> — a legal 8-K the company filed (strongest). <span class="alt-badge alt-badge-silver">Press release</span> — an official company statement. <span class="alt-badge alt-badge-bronze">News</span> — a credible outlet (Reuters, Bloomberg, CNBC, etc.).</p>
-            <p><b>Global coverage limitation.</b> There is <em>no international equivalent of SEC EDGAR</em>. For non-US companies, the verification ceiling is Press release or News — never SEC filing. We label every entry's source type so you always know the strength of the evidence.</p>
+            <p><b>How entries are collected.</b> Layoffs are pulled from SEC EDGAR 8-K filings and from credible news coverage worldwide (via the open GDELT news index), plus a set of manually verified cases. Each entry is machine-extracted, and the core facts (company, job count, date, and any AI attribution) always come straight from the source text. The only field we infer is location: a company that files an 8-K is a US registrant, so SEC entries with no stated country are marked US.</p>
+            <p><b>How the AI tag works.</b> An entry is marked <em>Explicitly AI-attributed</em> only when the source <em>explicitly names</em> AI, machine learning, automation, or robotics as a reason for the cuts. We store and display the <em>exact quote</em>. If a source doesn't name AI, the entry is still listed, just not flagged as AI. We never infer AI from vague "efficiency" language.</p>
+            <p><b>Verification tiers.</b> <span class="alt-badge alt-badge-gold">SEC filing</span> is a legal 8-K the company filed (strongest). <span class="alt-badge alt-badge-silver">Press release</span> is an official company statement. <span class="alt-badge alt-badge-bronze">News</span> is a credible outlet (Reuters, Bloomberg, CNBC, etc.).</p>
+            <p><b>Global coverage limitation.</b> There is <em>no international equivalent of SEC EDGAR</em>. For non-US companies, the verification ceiling is Press release or News, never SEC filing. We label every entry's source type so you always know the strength of the evidence.</p>
             <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; and "AI" claims that are forward-looking plans (e.g. "could be replaced by 2030") rather than executed cuts.</p>
         </div>
     </details>
