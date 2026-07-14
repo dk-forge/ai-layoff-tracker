@@ -1,0 +1,31 @@
+name: Seed curated AI layoffs
+
+# Manually triggered. Posts the curated, verified AI-attributed layoffs in
+# railway/seed_data/ai_layoffs.json. Idempotent (dedup guard).
+# Required secrets: WP_API_KEY
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secret
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: '[ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Seed
+        working-directory: railway
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: python seed_ai.py
