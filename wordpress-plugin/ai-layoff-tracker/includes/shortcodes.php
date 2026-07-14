@@ -55,6 +55,7 @@ add_shortcode('alt_company_history', 'alt_shortcode_company_history');
 function alt_shortcode_stats_bar() {
     ob_start();
     ?>
+    <p class="alt-intro">Tracking verified layoffs across the economy — and flagging the ones companies attribute to AI.</p>
     <div class="alt-stats-bar" id="alt-stats-bar">
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-total">—</span>
@@ -81,6 +82,11 @@ function alt_shortcode_stats_bar() {
             <span class="alt-stat-label" id="alt-stat-year-label">This year</span>
             <span class="alt-stat-sub" id="alt-stat-year-entries"></span>
         </div>
+    </div>
+    <div class="alt-stats-meta" id="alt-stats-meta">
+        <span><strong id="alt-meta-companies">—</strong> companies</span>
+        <span><strong id="alt-meta-industries">—</strong> industries</span>
+        <span><strong id="alt-meta-countries">—</strong> countries</span>
     </div>
     <?php
     return ob_get_clean();

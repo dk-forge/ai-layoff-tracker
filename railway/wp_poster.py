@@ -32,6 +32,7 @@ def post_to_wordpress(entry):
             "layoff_date": entry.get("layoff_date"),
             "industry": entry.get("industry"),
             "country": entry.get("country"),
+            "roles": entry.get("roles"),
             "source_url": entry.get("source_url"),
             "source_type": entry.get("source_type"),
             "source_name": entry.get("source_name"),

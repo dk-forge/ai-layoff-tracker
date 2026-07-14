@@ -60,6 +60,7 @@ Response format:
   "layoff_date": "YYYY-MM-DD or null",
   "industry": "string or null",
   "country": "string or null",
+  "roles": "the specific roles, teams, or departments affected, exactly as stated in the source (e.g. 'customer service and engineering'), or null if not stated",
   "excerpt": "2-3 sentence excerpt from the source that confirms the layoff. Exact text from source.",
   "reason_tags": ["array", "of", "tags"],
   "ai_explicit": true or false,
@@ -213,6 +214,9 @@ TEXT:
     extracted["ai_explicit"] = bool(extracted.get("ai_explicit"))
     if not isinstance(extracted.get("ai_language"), str) or not extracted["ai_language"].strip():
         extracted["ai_language"] = None
+
+    if not isinstance(extracted.get("roles"), str) or not extracted["roles"].strip():
+        extracted["roles"] = None
 
     # Add source metadata
     extracted["source_url"] = raw_entry.get("source_url")

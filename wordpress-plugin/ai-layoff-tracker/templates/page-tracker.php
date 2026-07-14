@@ -82,6 +82,13 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         </div>
     </div>
 
+    <div class="alt-legend">
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">gold</span> SEC 8-K filing</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-silver">silver</span> company press release</span>
+        <span class="alt-legend-item"><span class="alt-badge alt-badge-bronze">bronze</span> credible news outlet</span>
+        <span class="alt-legend-hint">Tap any row for the exact quote &amp; source ↓</span>
+    </div>
+
     <div id="alt-table-status" class="alt-status" role="status">Loading layoff data…</div>
 
     <div class="alt-table-scroll">
@@ -90,7 +97,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <tr>
                     <th>Date</th>
                     <th>Company</th>
-                    <th>Jobs</th>
+                    <th>Employees</th>
                     <th>Industry</th>
                     <th>Country</th>
                     <th>Reasons</th>

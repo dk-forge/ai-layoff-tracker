@@ -114,6 +114,7 @@ function alt_entry_to_array($post_id) {
         'layoff_date'        => (string) get_post_meta($post_id, 'layoff_date', true),
         'industry'           => (string) get_post_meta($post_id, 'industry', true),
         'country'            => (string) get_post_meta($post_id, 'country', true),
+        'roles'              => (string) get_post_meta($post_id, 'roles', true),
         'source_type'        => (string) get_post_meta($post_id, 'source_type', true),
         'source_name'        => (string) get_post_meta($post_id, 'source_name', true),
         'verification_level' => (string) get_post_meta($post_id, 'verification_level', true),
@@ -244,6 +245,7 @@ function alt_api_add($request) {
         'layoff_date'        => $layoff_date,
         'industry'           => sanitize_text_field($meta_in['industry'] ?? ''),
         'country'            => sanitize_text_field($meta_in['country'] ?? ''),
+        'roles'              => sanitize_text_field($meta_in['roles'] ?? ''),
         'source_url'         => esc_url_raw($meta_in['source_url'] ?? ''),
         'source_type'        => $source_type,
         'source_name'        => sanitize_text_field($meta_in['source_name'] ?? ''),
@@ -313,13 +315,24 @@ function alt_api_stats() {
         'week_range'    => date('M j', $monday_ts) . ' – ' . date('M j', $sunday_ts),
         'month_label'   => current_time('F Y'),
         'year_label'    => current_time('Y'),
-        'coverage_start' => '',   // earliest layoff date on record, e.g. "Jan 2024"
+        'coverage_start'   => '',   // earliest layoff date on record, e.g. "Jan 2024"
+        'companies_count'  => 0,
+        'industries_count' => 0,
+        'countries_count'  => 0,
     );
 
-    $min_date = '';
+    $min_date   = '';
+    $companies  = array();
+    $industries = array();
+    $countries  = array();
     foreach ($entries as $entry) {
         $jobs = (int) $entry['job_count'];
         $stats['total_jobs'] += $jobs;
+
+        $cn = strtolower(trim((string) $entry['company_name']));
+        if ($cn !== '') { $companies[$cn] = true; }
+        if ((string) $entry['industry'] !== '') { $industries[strtolower(trim($entry['industry']))] = true; }
+        if ((string) $entry['country'] !== '') { $countries[strtolower(trim($entry['country']))] = true; }
 
         if (!empty($entry['ai_explicit'])) {
             $stats['ai_entries']++;
@@ -350,6 +363,9 @@ function alt_api_stats() {
     if ($min_date !== '') {
         $stats['coverage_start'] = date('M Y', strtotime($min_date));
     }
+    $stats['companies_count']  = count($companies);
+    $stats['industries_count'] = count($industries);
+    $stats['countries_count']  = count($countries);
 
     set_transient('alt_stats_cache', $stats, 5 * MINUTE_IN_SECONDS);
     return rest_ensure_response($stats);

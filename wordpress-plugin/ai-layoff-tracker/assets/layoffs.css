@@ -284,6 +284,75 @@
     word-break: break-all;
 }
 
+/* Intro line + secondary stat strip */
+.alt-intro {
+    font-size: 15px;
+    color: var(--alt-ink-2);
+    margin: 0 0 16px;
+    max-width: 660px;
+    line-height: 1.5;
+}
+.alt-stats-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: -14px 0 26px;
+    font-size: 14px;
+    color: var(--alt-muted);
+}
+.alt-stats-meta strong { color: var(--alt-ink); font-variant-numeric: tabular-nums; }
+
+/* Verification legend */
+.alt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin: 0 2px 12px;
+    font-size: 13px;
+    color: var(--alt-ink-2);
+}
+.alt-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.alt-legend-hint { margin-left: auto; color: var(--alt-muted); font-style: italic; }
+
+/* Expandable row detail */
+.alt-tracker-wrap table.dataTable tbody tr { cursor: pointer; }
+.alt-tracker-wrap table.dataTable tbody tr.alt-row-open { background: var(--alt-blue-tint); }
+.alt-detail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px 22px;
+    padding: 14px 16px;
+    background: var(--alt-surface-2);
+    border-left: 3px solid var(--alt-blue);
+    cursor: default;
+}
+.alt-detail-block p, .alt-detail-block > div { margin: 0; font-size: 13.5px; color: var(--alt-ink); line-height: 1.5; }
+.alt-detail-h {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--alt-muted);
+    margin-bottom: 4px;
+}
+.alt-detail-quote { grid-column: 1 / -1; }
+.alt-detail-quote blockquote {
+    margin: 0;
+    padding: 9px 14px;
+    border-left: 3px solid var(--alt-red);
+    background: var(--alt-red-tint);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--alt-ink);
+    border-radius: 0 6px 6px 0;
+}
+
+@media (max-width: 600px) {
+    .alt-legend-hint { margin-left: 0; flex-basis: 100%; }
+}
+
 /* DataTables built-in controls */
 .alt-tracker-wrap .dataTables_wrapper .dataTables_filter input,
 .alt-tracker-wrap .dataTables_wrapper .dataTables_length select {

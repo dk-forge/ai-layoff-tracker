@@ -13,6 +13,7 @@ function alt_meta_fields() {
         'layoff_date'        => 'string',   // "2025-01-15" ISO format
         'industry'           => 'string',
         'country'            => 'string',
+        'roles'              => 'string',   // roles/departments affected, when stated
         'source_url'         => 'string',
         'source_type'        => 'string',   // "8K" | "press_release" | "news"
         'verification_level' => 'string',   // "gold" | "silver" | "bronze"

@@ -212,6 +212,10 @@
                 setText('alt-stat-year', fmt(stats.year_jobs));
                 if (stats.year_label) setText('alt-stat-year-label', stats.year_label);
                 setText('alt-stat-year-entries', fmt(stats.year_entries) + ' events');
+
+                setText('alt-meta-companies', fmt(stats.companies_count));
+                setText('alt-meta-industries', fmt(stats.industries_count));
+                setText('alt-meta-countries', fmt(stats.countries_count));
             })
             .catch(function () {
                 setText('alt-stat-total', 'n/a');
@@ -477,8 +481,53 @@
             });
         }
 
+        // Click/tap a row to reveal the exact quote, roles, and source link
+        $(tableEl).on('click', 'tbody tr', function (e) {
+            if (e.target && e.target.closest && e.target.closest('a')) return; // let real links work
+            var row = table.row(this);
+            if (!row.data()) return; // the "no entries" message row
+            if (row.child.isShown()) {
+                row.child.hide();
+                $(this).removeClass('alt-row-open');
+            } else {
+                row.child(formatDetail(row.data())).show();
+                $(this).addClass('alt-row-open');
+            }
+        });
+
         // Filters were restored from storage — apply them to the first view
         table.draw();
+    }
+
+    function formatDetail(row) {
+        var parts = [];
+        if (row.ai_language) {
+            parts.push('<div class="alt-detail-block alt-detail-quote"><span class="alt-detail-h">Exact AI / automation quote</span>'
+                + '<blockquote>“' + escapeHtml(row.ai_language) + '”</blockquote></div>');
+        }
+        if (row.excerpt) {
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">From the source</span>'
+                + '<p>' + escapeHtml(row.excerpt) + '</p></div>');
+        }
+        if (row.roles) {
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Roles affected</span>'
+                + '<p>' + escapeHtml(row.roles) + '</p></div>');
+        }
+        var tags = (row.reason_tags || []).map(function (t) {
+            return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[t] || t) + '</span>';
+        }).join(' ');
+        if (tags) {
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Reasons cited</span><div>' + tags + '</div></div>');
+        }
+        var url = safeUrl(row.source_url);
+        var verif = row.verification_level
+            ? ' · <span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(row.verification_level) + '</span>'
+            : '';
+        var src = url
+            ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">View primary source (' + escapeHtml(row.source_name || 'source') + ') ↗</a>'
+            : escapeHtml(row.source_name || '—');
+        parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div>' + src + verif + '</div></div>');
+        return '<div class="alt-detail">' + (parts.join('') || 'No additional detail recorded.') + '</div>';
     }
 
     /* ------------------------------------------------------------------ */

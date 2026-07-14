@@ -37,8 +37,8 @@ function alt_export_csv() {
 
     fputcsv($out, array(
         'company_name', 'ticker', 'job_count', 'layoff_date', 'industry',
-        'country', 'source_type', 'verification_level', 'source_url',
-        'ai_explicit', 'ai_language', 'reason_tags', 'excerpt',
+        'country', 'roles', 'source_type', 'verification_level', 'source_url',
+        'ai_explicit', 'ai_language', 'reason_tags', 'excerpt', 'source_attribution',
     ));
 
     foreach ($entries as $entry) {
@@ -49,6 +49,7 @@ function alt_export_csv() {
             $entry['layoff_date'],
             alt_csv_guard($entry['industry']),
             alt_csv_guard($entry['country']),
+            alt_csv_guard((string) $entry['roles']),
             $entry['source_type'],
             $entry['verification_level'],
             alt_csv_guard($entry['source_url']),
@@ -56,6 +57,7 @@ function alt_export_csv() {
             alt_csv_guard((string) $entry['ai_language']),
             implode('|', $entry['reason_tags']),
             alt_csv_guard($entry['excerpt']),
+            'AI Layoff Tracker — asktherecruiter.com',
         ));
     }
 
@@ -78,6 +80,9 @@ function alt_export_json() {
     header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . gmdate('Y-m-d') . '.json"');
 
     echo wp_json_encode(array(
+        'source'        => 'AI Layoff Tracker — asktherecruiter.com',
+        'license'       => 'Free to use with attribution to asktherecruiter.com.',
+        'source_url'    => home_url('/ai-layoff-tracker/'),
         'generated'     => gmdate('Y-m-d\TH:i:s\Z'),
         'total_records' => count($data),
         'data'          => $data,
