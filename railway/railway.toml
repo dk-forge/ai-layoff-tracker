@@ -1,0 +1,20 @@
+# Railway config-as-code for the layoff-cron service.
+#
+# NOTE (spec deviation): the original spec used a [[services]] array with two
+# cron services in one file. Railway does not parse that shape — a railway.toml
+# configures exactly ONE service, and the schedule would be silently ignored.
+# Both daily runs are expressed instead as a comma list in a single cron
+# expression on this service.
+#
+# Timezone note: Railway cron runs in UTC. 14:00/22:00 UTC == 9 AM / 5 PM
+# Eastern only during EST (winter). During daylight saving (EDT, UTC-4) these
+# fire at 10 AM / 6 PM Eastern. Change to "0 13,21 * * *" if you prefer
+# 9 AM / 5 PM during EDT instead.
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python cron.py"
+cronSchedule = "0 14,22 * * *"
+restartPolicyType = "NEVER"
