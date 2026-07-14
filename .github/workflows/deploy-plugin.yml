@@ -33,6 +33,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 6
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -70,13 +71,13 @@ jobs:
           WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
           echo "Target plugin dir: $REMOTE_DIR"
           echo "Expected WordPress root: $WP_ROOT"
-          if ! lftp -c "
+          if ! timeout 60 lftp -c "
             set cmd:fail-exit true;
             set ssl:verify-certificate no;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
-            set net:max-retries 2;
-            set net:timeout 20;
+            set net:max-retries 1;
+            set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             cls -1 \"$WP_ROOT/wp-config.php\";
           "; then
@@ -97,13 +98,13 @@ jobs:
           # --- FTPS (default). For SFTP-over-SSH instead, replace the open line
           #     with:  open -u "$FTP_USER","$FTP_PASSWORD" "sftp://$FTP_HOST"
           #     and drop the three ftp:ssl* lines. ---
-          lftp -c "
+          timeout 180 lftp -c "
             set cmd:fail-exit true;
             set ssl:verify-certificate no;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
-            set net:max-retries 2;
-            set net:timeout 20;
+            set net:max-retries 1;
+            set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             mirror --reverse --delete --verbose \
               --exclude-glob .git* \
