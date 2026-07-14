@@ -26,7 +26,11 @@ def is_duplicate(dedup_hash):
         resp = requests.get(
             f"{wp_url}/wp-json/layoffs/v1/check-duplicate",
             params={"hash": dedup_hash},
-            headers={"X-Layoff-API-Key": api_key},
+            headers={
+                "X-Layoff-API-Key": api_key,
+                # ModSecurity on the host blocks the default python-requests UA
+                "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)",
+            },
             timeout=15,
         )
         if resp.status_code != 200:

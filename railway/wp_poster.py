@@ -52,6 +52,8 @@ def post_to_wordpress(entry):
             headers={
                 "X-Layoff-API-Key": api_key,
                 "Content-Type": "application/json",
+                # ModSecurity on the host blocks the default python-requests UA
+                "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)",
             },
             timeout=30,
         )
