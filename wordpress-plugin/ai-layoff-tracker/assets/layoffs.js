@@ -93,6 +93,22 @@
         return typeof window.Chart !== 'undefined';
     }
 
+    /* Chart instance registry so charts can be re-rendered (destroyed + rebuilt)
+       when cross-filters change — Chart.js throws if you reuse a live canvas. */
+    var CHARTS = {};
+    function mountChart(canvasId, config) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) return null;
+        if (CHARTS[canvasId]) { CHARTS[canvasId].destroy(); delete CHARTS[canvasId]; }
+        CHARTS[canvasId] = new Chart(canvas, config);
+        return CHARTS[canvasId];
+    }
+
+    /* Shared state for cross-filtering: chart click ⇄ table ⇄ other charts. */
+    var ALL_ROWS = [];
+    var TABLE = null;
+    var DASH_PRESENT = false;
+
     var baseChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -298,24 +314,35 @@
         try { window.localStorage.removeItem(FILTER_STORAGE_KEY); } catch (e) { /* noop */ }
     }
 
-    function rowPassesFilters(row) {
-        var from = readControl('alt-f-from');
-        var to = readControl('alt-f-to');
-        if ((from || to) && !isValidDate(row.layoff_date)) return false;
-        if (from && row.layoff_date < from) return false;
-        if (to && row.layoff_date > to) return false;
+    // `except` lets a category chart render without filtering on its own
+    // dimension (so a "slicer" bar chart still shows all categories while the
+    // table and other charts narrow). Pass 'industry' | 'country' | 'reasons'.
+    function rowPassesFilters(row, except) {
+        if (except !== 'date') {
+            var from = readControl('alt-f-from');
+            var to = readControl('alt-f-to');
+            if ((from || to) && !isValidDate(row.layoff_date)) return false;
+            if (from && row.layoff_date < from) return false;
+            if (to && row.layoff_date > to) return false;
+        }
 
-        var industry = readControl('alt-f-industry');
-        if (industry && row.industry !== industry) return false;
+        if (except !== 'industry') {
+            var industry = readControl('alt-f-industry');
+            if (industry && row.industry !== industry) return false;
+        }
 
-        var country = readControl('alt-f-country');
-        if (country && row.country !== country) return false;
+        if (except !== 'country') {
+            var country = readControl('alt-f-country');
+            if (country && row.country !== country) return false;
+        }
 
-        var reasons = readControl('alt-f-reasons') || [];
-        if (reasons.length) {
-            var tags = row.reason_tags || [];
-            var hit = reasons.some(function (r) { return tags.indexOf(r) !== -1; });
-            if (!hit) return false;
+        if (except !== 'reasons') {
+            var reasons = readControl('alt-f-reasons') || [];
+            if (reasons.length) {
+                var tags = row.reason_tags || [];
+                var hit = reasons.some(function (r) { return tags.indexOf(r) !== -1; });
+                if (!hit) return false;
+            }
         }
 
         var levels = readControl('alt-f-verification') || [];
@@ -333,6 +360,89 @@
         if (!isNaN(minJobs) && minJobs > 0 && row.job_count < minJobs) return false;
 
         return true;
+    }
+
+    /* ---- Cross-filter plumbing: chart clicks drive the same controls the
+       dropdowns use, then redraw the table + re-render every chart. ---- */
+
+    // Toggle a single-value <select> (industry / country). Clicking the active
+    // value again clears it. Returns false if the control isn't on this page.
+    function toggleSingleFilter(id, value) {
+        var el = document.getElementById(id);
+        if (!el) return false;
+        el.value = (el.value === value) ? '' : value;
+        return true;
+    }
+
+    // Toggle one option in a multi-select (reason tags).
+    function toggleMultiFilter(id, value) {
+        var el = document.getElementById(id);
+        if (!el) return false;
+        var toggled = false;
+        Array.prototype.forEach.call(el.options, function (o) {
+            if (o.value === value) { o.selected = !o.selected; toggled = true; }
+        });
+        return toggled;
+    }
+
+    function refreshAll() {
+        if (TABLE) TABLE.draw();
+        renderDashboard();
+        updateActiveFilterBar();
+    }
+
+    // Chip bar above the charts so clicking a chart shows *why* the data changed.
+    var ACTIVE_FILTER_DEFS = [
+        { id: 'alt-f-industry', label: 'Industry', kind: 'single' },
+        { id: 'alt-f-country', label: 'Country', kind: 'single' },
+        { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS },
+        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: { gold: 'SEC filing', silver: 'Press release', bronze: 'News' } },
+        { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only' }
+    ];
+
+    function updateActiveFilterBar() {
+        var bar = document.getElementById('alt-active-filters');
+        if (!bar) return;
+        var chips = [];
+        ACTIVE_FILTER_DEFS.forEach(function (def) {
+            var val = readControl(def.id);
+            if (def.kind === 'bool') {
+                if (val) chips.push({ id: def.id, text: def.on, value: true, kind: 'bool' });
+            } else if (def.kind === 'multi') {
+                (val || []).forEach(function (v) {
+                    chips.push({ id: def.id, text: def.label + ': ' + ((def.map && def.map[v]) || v), value: v, kind: 'multi' });
+                });
+            } else if (val) {
+                chips.push({ id: def.id, text: def.label + ': ' + val, value: val, kind: 'single' });
+            }
+        });
+
+        if (!chips.length) { bar.innerHTML = ''; bar.style.display = 'none'; return; }
+        bar.style.display = '';
+        var html = '<span class="alt-af-label">Filtering:</span>';
+        chips.forEach(function (c, i) {
+            html += '<button type="button" class="alt-af-chip" data-i="' + i + '">'
+                + escapeHtml(c.text) + ' <span aria-hidden="true">✕</span></button>';
+        });
+        html += '<button type="button" class="alt-af-clear" id="alt-af-clear">Clear all</button>';
+        bar.innerHTML = html;
+
+        bar.querySelectorAll('.alt-af-chip').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var c = chips[parseInt(btn.getAttribute('data-i'), 10)];
+                if (c.kind === 'bool') { var el = document.getElementById(c.id); if (el) el.checked = false; }
+                else if (c.kind === 'multi') { toggleMultiFilter(c.id, c.value); }
+                else { toggleSingleFilter(c.id, ''); }
+                saveFilters();
+                refreshAll();
+            });
+        });
+        var clearBtn = document.getElementById('alt-af-clear');
+        if (clearBtn) clearBtn.addEventListener('click', function () {
+            clearFilters();
+            if (TABLE) TABLE.search('');
+            refreshAll();
+        });
     }
 
     function populateFilterOptions(rows) {
@@ -469,13 +579,14 @@
             ]
         });
 
+        TABLE = table;
         setStatus('alt-table-status', null);
 
         var redrawTimer = null;
         function onFilterChange() {
             saveFilters();
             clearTimeout(redrawTimer);
-            redrawTimer = setTimeout(function () { table.draw(); }, 150);
+            redrawTimer = setTimeout(refreshAll, 150);
         }
 
         FILTER_IDS.forEach(function (id) {
@@ -491,7 +602,8 @@
         if (reset) {
             reset.addEventListener('click', function () {
                 clearFilters();
-                table.search('').draw();
+                table.search('');
+                refreshAll();
             });
         }
 
@@ -511,6 +623,7 @@
 
         // Filters were restored from storage — apply them to the first view
         table.draw();
+        updateActiveFilterBar();
     }
 
     function formatDetail(row) {
@@ -578,7 +691,7 @@
 
         var options = cloneOptions();
         options.plugins.tooltip = $.extend(options.plugins.tooltip, jobsTooltip('Jobs cut: '));
-        new Chart(canvas, {
+        mountChart('alt-chart-weekly', {
             type: 'line',
             data: {
                 labels: labels,
@@ -597,12 +710,16 @@
         });
     }
 
-    function buildBarChart(canvasId, entries, color, horizontal, tooltipPrefix) {
-        var canvas = document.getElementById(canvasId);
-        if (!canvas || !entries.length) {
-            if (canvas) canvas.parentNode.innerHTML = '<p class="alt-muted alt-empty">No data yet.</p>';
+    function buildBarChart(canvasId, entries, colors, horizontal, tooltipPrefix, onClick, activeValue) {
+        if (!entries.length) {
+            if (CHARTS[canvasId]) { CHARTS[canvasId].destroy(); delete CHARTS[canvasId]; }
             return;
         }
+        // Dim the other bars when a value in this dimension is selected.
+        var bg = entries.map(function (e, i) {
+            var base = Array.isArray(colors) ? colors[i % colors.length] : colors;
+            return (activeValue && e[0] !== activeValue) ? '#d6d8de' : base;
+        });
         var options = cloneOptions();
         if (horizontal) {
             options.indexAxis = 'y';
@@ -623,13 +740,21 @@
                 }
             }
         });
-        new Chart(canvas, {
+        if (onClick) {
+            options.onClick = function (evt, els) {
+                if (els && els.length) onClick(entries[els[0].index][0]);
+            };
+            options.onHover = function (evt, els) {
+                if (evt.native) evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
+            };
+        }
+        mountChart(canvasId, {
             type: 'bar',
             data: {
                 labels: entries.map(function (e) { return e[0]; }),
                 datasets: [{
                     data: entries.map(function (e) { return e[1]; }),
-                    backgroundColor: color,
+                    backgroundColor: bg,
                     borderRadius: 4,
                     maxBarThickness: 26
                 }]
@@ -638,9 +763,8 @@
         });
     }
 
-    function buildReasonsDonut(rows) {
-        var canvas = document.getElementById('alt-chart-reasons');
-        if (!canvas) return;
+    function buildReasonsDonut(rows, onClick, activeValues) {
+        if (!document.getElementById('alt-chart-reasons')) return;
 
         var sums = {};
         rows.forEach(function (row) {
@@ -650,47 +774,62 @@
         });
         var entries = topEntries(sums, 9);
         if (!entries.length) {
-            canvas.parentNode.innerHTML = '<p class="alt-muted alt-empty">No data yet.</p>';
+            if (CHARTS['alt-chart-reasons']) { CHARTS['alt-chart-reasons'].destroy(); delete CHARTS['alt-chart-reasons']; }
             return;
         }
 
-        new Chart(canvas, {
+        var active = activeValues || [];
+        var bg = entries.map(function (e, i) {
+            var base = PALETTE[i % PALETTE.length];
+            return (active.length && active.indexOf(e[0]) === -1) ? '#d6d8de' : base;
+        });
+
+        var options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: INK.secondary, boxWidth: 12, boxHeight: 12 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) { return ctx.label + ': ' + fmt(ctx.parsed) + ' jobs'; }
+                    }
+                }
+            }
+        };
+        if (onClick) {
+            options.onClick = function (evt, els) {
+                if (els && els.length) onClick(entries[els[0].index][0]);
+            };
+            options.onHover = function (evt, els) {
+                if (evt.native) evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
+            };
+        }
+
+        mountChart('alt-chart-reasons', {
             type: 'doughnut',
             data: {
                 labels: entries.map(function (e) { return REASON_LABELS[e[0]] || e[0]; }),
                 datasets: [{
                     data: entries.map(function (e) { return e[1]; }),
-                    backgroundColor: entries.map(function (e, i) { return PALETTE[i % PALETTE.length]; }),
+                    backgroundColor: bg,
                     borderColor: '#fcfcfb',
                     borderWidth: 2
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { color: INK.secondary, boxWidth: 12, boxHeight: 12 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (ctx) { return ctx.label + ': ' + fmt(ctx.parsed) + ' jobs'; }
-                        }
-                    }
-                }
-            }
+            options: options
         });
     }
 
     function buildAiCumulativeChart(rows, canvasId) {
-        var canvas = document.getElementById(canvasId);
-        if (!canvas) return;
+        if (!document.getElementById(canvasId)) return;
 
         var aiRows = rows.filter(function (r) { return r.ai_explicit && isValidDate(r.layoff_date); });
         if (!aiRows.length) {
-            canvas.parentNode.innerHTML = '<p class="alt-muted alt-empty">No explicitly AI-attributed entries yet.</p>';
+            if (CHARTS[canvasId]) { CHARTS[canvasId].destroy(); delete CHARTS[canvasId]; }
             return;
         }
 
@@ -704,7 +843,7 @@
 
         var options = cloneOptions();
         options.plugins.tooltip = $.extend(options.plugins.tooltip, jobsTooltip('Cumulative AI-attributed: '));
-        new Chart(canvas, {
+        mountChart(canvasId, {
             type: 'line',
             data: {
                 labels: keys.map(monthLabel),
@@ -747,34 +886,54 @@
         box.innerHTML = html + '</tbody></table>';
     }
 
-    function initDashboard(rows) {
+    function initDashboard() {
         if (!document.querySelector('.alt-dashboard')) return;
+        DASH_PRESENT = true;
         if (!chartsAvailable()) {
             setStatus('alt-dashboard-status', 'Chart library failed to load (CDN blocked?).', true);
             return;
         }
-        setStatus('alt-dashboard-status', rows.length ? null : 'No entries yet — the pipeline hasn’t posted data.');
+        setStatus('alt-dashboard-status', ALL_ROWS.length ? null : 'No entries yet — the pipeline hasn’t posted data.');
+        renderDashboard();
+    }
 
-        buildWeeklyChart(rows);
+    // Rebuilds every chart from ALL_ROWS honoring the active filters. Trend
+    // charts + leaderboard use the fully-filtered set; each category "slicer"
+    // ignores its own dimension and highlights the current selection, so
+    // clicking one chart narrows the table and the *other* charts.
+    function renderDashboard() {
+        if (!DASH_PRESENT || !chartsAvailable()) return;
 
-        // Skip blank industry/country so a big "Unknown" bar doesn't drown out
-        // the real categories.
-        var byIndustry = aggregate(rows,
+        // Only wire chart clicks where the filter controls live (the tracker page).
+        var wired = !!document.getElementById('alt-f-industry');
+
+        var full = ALL_ROWS.filter(function (r) { return rowPassesFilters(r); });
+        buildWeeklyChart(full);
+        buildAiCumulativeChart(full, 'alt-chart-ai-cumulative');
+        buildLeaderboard(full);
+
+        // Category "slicers": skip blank values (no giant "Unknown" bar) and
+        // ignore this dimension's own filter so all categories stay visible.
+        var forInd = ALL_ROWS.filter(function (r) { return rowPassesFilters(r, 'industry'); });
+        var indEntries = topEntries(aggregate(forInd,
             function (r) { return r.industry || null; },
-            function (r) { return r.job_count; });
-        var indEntries = topEntries(byIndustry, 10);
-        buildBarChart('alt-chart-industries', indEntries, paletteFor(indEntries), true);
+            function (r) { return r.job_count; }), 10);
+        buildBarChart('alt-chart-industries', indEntries, paletteFor(indEntries), true, 'Jobs: ',
+            wired ? function (v) { if (toggleSingleFilter('alt-f-industry', v)) { saveFilters(); refreshAll(); } } : null,
+            readControl('alt-f-industry'));
 
-        buildReasonsDonut(rows);
-        buildAiCumulativeChart(rows, 'alt-chart-ai-cumulative');
-
-        var byCountry = aggregate(rows,
+        var forCtry = ALL_ROWS.filter(function (r) { return rowPassesFilters(r, 'country'); });
+        var ctryEntries = topEntries(aggregate(forCtry,
             function (r) { return r.country || null; },
-            function (r) { return r.job_count; });
-        var ctryEntries = topEntries(byCountry, 10);
-        buildBarChart('alt-chart-countries', ctryEntries, paletteFor(ctryEntries), true);
+            function (r) { return r.job_count; }), 10);
+        buildBarChart('alt-chart-countries', ctryEntries, paletteFor(ctryEntries), true, 'Jobs: ',
+            wired ? function (v) { if (toggleSingleFilter('alt-f-country', v)) { saveFilters(); refreshAll(); } } : null,
+            readControl('alt-f-country'));
 
-        buildLeaderboard(rows);
+        var forReasons = ALL_ROWS.filter(function (r) { return rowPassesFilters(r, 'reasons'); });
+        buildReasonsDonut(forReasons,
+            wired ? function (v) { if (toggleMultiFilter('alt-f-reasons', v)) { saveFilters(); refreshAll(); } } : null,
+            readControl('alt-f-reasons'));
     }
 
     /* ------------------------------------------------------------------ */
@@ -1005,8 +1164,9 @@
 
         fetchAll()
             .then(function (rows) {
+                ALL_ROWS = rows;
                 initTracker(rows);
-                initDashboard(rows);
+                initDashboard();
                 initAiTracker(rows);
                 initCompanyHistory(rows);
             })

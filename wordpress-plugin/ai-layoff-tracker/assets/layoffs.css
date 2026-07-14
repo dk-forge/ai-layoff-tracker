@@ -428,6 +428,44 @@
 }
 .alt-chart-card-wide { grid-column: 1 / -1; }
 .alt-overview { margin: 0 0 24px; }
+.alt-overview-hint { font-size: 13px; color: var(--alt-muted); margin: 0 2px 10px; }
+
+/* Active cross-filter chips (chart click ⇄ table) */
+.alt-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+.alt-af-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--alt-muted); }
+.alt-af-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--alt-blue);
+    border: 1px solid var(--alt-blue);
+    border-radius: 20px;
+    padding: 5px 12px;
+    cursor: pointer;
+    line-height: 1.2;
+}
+.alt-af-chip:hover { background: var(--alt-blue-dark); border-color: var(--alt-blue-dark); }
+.alt-af-chip span { font-size: 11px; opacity: 0.85; }
+.alt-af-clear {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--alt-blue);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px 6px;
+    text-decoration: underline;
+}
+.alt-af-clear:hover { color: var(--alt-blue-dark); }
 .alt-chart-card h3,
 .alt-chart-card .alt-chart-h { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: var(--alt-ink); }
 .alt-chart-sub { font-size: 12px; font-weight: 400; color: var(--alt-muted); margin-left: 6px; }

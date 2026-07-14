@@ -22,6 +22,8 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 
     <div class="alt-dashboard alt-overview">
         <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
+        <div class="alt-overview-hint">Click any bar or slice to filter everything below — the charts, the totals, and the company table all move together.</div>
+        <div id="alt-active-filters" class="alt-active-filters" style="display:none"></div>
         <div class="alt-chart-grid">
             <div class="alt-chart-card alt-chart-card-wide">
                 <div class="alt-chart-h">Jobs cut per week <span class="alt-chart-sub">rolling 52 weeks</span></div>
