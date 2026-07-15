@@ -301,8 +301,13 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <details class="alt-methodology">
         <summary>Data notes &amp; corrections log</summary>
         <div class="alt-method-body">
-            <p>Errors are corrected openly, not silently — any correction to published figures will be dated and described here.</p>
-            <p><b>No public corrections since launch.</b></p>
+            <p>Errors are corrected openly, not silently — any correction to published figures will be dated and described here. Corrected rows are also flagged <code>edited: true</code> in the API.</p>
+            <ul>
+                <li><b>2026-07-15 — Florida test rows removed (−87,600 jobs).</b> Florida's official WARN export contains internal test entries (fictitious notices sharing one WARN number, non-existent zip codes). Eight such rows were removed, the largest a fake 78,788-worker "AT&amp;T" notice that briefly ranked as our biggest entry. Our importer now skips test-named rows, and each removed row is permanently blocked from re-import.</li>
+                <li><b>2026-07-15 — Country assigned to 88 news/SEC entries.</b> These rows had no country recorded, hiding them from the regional views and country charts (they were always in the worldwide totals). Each was resolved from its own source article — the largest: Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay → "Multiple countries") and BBC (2,000 → United Kingdom).</li>
+                <li><b>2026-07-15 — Ideal US Talent Systems RI corrected 9,891 → 2.</b> The Rhode Island notice states the company-wide figure with only 2 RI employees affected; the per-state filings (DC, GA, IL, VA) are already separate entries. Counting the company-wide total under RI double-counted the event.</li>
+                <li><b>2026-07-15 — Ten non-events removed.</b> SEC-filing extraction artifacts: severance dollar figures and workforce-reduction percentages misread as headcounts, WARN-Act boilerplate clauses from acquisition agreements, and three duplicate rows of one Meta story carrying wrong dates.</li>
+            </ul>
             <p>Spotted something off? Every entry links to its primary source so you can check us — send corrections via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>. Corrections get priority.</p>
         </div>
     </details>
