@@ -12,13 +12,13 @@ on:
         required: true
         default: 'CA'
       min_employees:
-        description: 'Drop notices below this headcount'
+        description: 'Drop notices below this headcount (0 = keep all)'
         required: false
-        default: '100'
+        default: '0'
       start:
-        description: 'Earliest effective date YYYY-MM-DD'
+        description: 'Earliest effective date YYYY-MM-DD (blank = all history)'
         required: false
-        default: '2024-01-01'
+        default: ''
       limit:
         description: 'Max posts (blank = no cap)'
         required: false
