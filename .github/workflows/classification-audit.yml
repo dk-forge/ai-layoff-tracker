@@ -1,0 +1,96 @@
+name: Classification audit (full dataset, LLM)
+
+# Second-opinion audit of EVERY classified entry (industry + country + counts
+# that look like non-headcount figures). WARN rows carry no industry so the
+# auditable universe is ~9K entries; a full pass costs well under $1 of
+# DeepSeek tokens. Flags go to the run summary + a JSON artifact — apply
+# fixes via the edit-entries workflow (pinned + publicly disclosed).
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 1 * *'   # monthly full sweep; the daily spot-check covers new rows
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Audit all classified entries
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.parse
+
+          API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
+          UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
+
+          def get(path):
+              req = urllib.request.Request(API + path, headers=UA)
+              return json.load(urllib.request.urlopen(req, timeout=60))
+
+          # collect every entry that has something auditable (an industry
+          # label, or a non-WARN source whose country/count came from a model)
+          rows, page = [], 1
+          while True:
+              d = get(f"query?per_page=100&page={page}&sort=id&dir=asc")
+              batch = d["data"]
+              if not batch:
+                  break
+              rows += [r for r in batch
+                       if r.get("industry") or r.get("source_type") in ("news", "8K", "press_release", "erm")]
+              if page * 100 >= d["total"]:
+                  break
+              page += 1
+          print(f"auditable entries: {len(rows)}")
+
+          def ask(sample):
+              payload = [{"id": r["id"], "company": r["company_name"], "industry": r["industry"],
+                          "country": r["country"], "jobs": r["job_count"],
+                          "excerpt": (r["excerpt"] or "")[:180]} for r in sample]
+              prompt = ("Audit these layoff-tracker entries. Flag ONLY clear mistakes: "
+                        "(a) industry label contradicting what the company is known for, "
+                        "(b) country contradicting the excerpt, "
+                        "(c) a jobs count that is obviously not a headcount (a dollar figure, "
+                        "a percentage, a year). Reply STRICT JSON "
+                        '{"flags":[{"id":..,"field":"industry|country|jobs","current":"..","suggested":"..","why":".."}]}. '
+                        "Empty list if all reasonable. Do not flag debatable classifications.\n\n"
+                        + json.dumps(payload, ensure_ascii=False))
+              req = urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
+                  data=json.dumps({"model": "deepseek/deepseek-chat",
+                                   "messages": [{"role": "user", "content": prompt}],
+                                   "response_format": {"type": "json_object"}}).encode(),
+                  headers={"Authorization": "Bearer " + os.environ["OPENROUTER_API_KEY"],
+                           "Content-Type": "application/json", **UA})
+              for attempt in range(3):
+                  try:
+                      out = json.load(urllib.request.urlopen(req, timeout=180))
+                      return json.loads(out["choices"][0]["message"]["content"]).get("flags", [])
+                  except Exception as e:
+                      print(f"  batch retry {attempt+1}: {e}")
+                      time.sleep(10 * (attempt + 1))
+              return [{"id": None, "field": "batch-error", "why": "3 failures — rerun"}]
+
+          flags = []
+          BATCH = 80
+          for i in range(0, len(rows), BATCH):
+              fl = ask(rows[i:i+BATCH])
+              flags += fl
+              print(f"batch {i//BATCH+1}/{-(-len(rows)//BATCH)}: {len(fl)} flag(s)")
+
+          with open("audit-flags.json", "w") as f:
+              json.dump(flags, f, indent=1)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as s:
+              s.write(f"## Full classification audit — {len(flags)} flag(s) across {len(rows)} entries\n")
+              for f2 in flags[:100]:
+                  s.write(f"- id {f2.get('id')}: {f2.get('field')} \"{f2.get('current','')}\" -> "
+                          f"\"{f2.get('suggested','')}\" — {f2.get('why','')}\n")
+              if len(flags) > 100:
+                  s.write(f"\n…and {len(flags)-100} more in the artifact.\n")
+              s.write("\nApply fixes via the edit-entries workflow (pinned + disclosed).\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-flags
+          path: audit-flags.json
