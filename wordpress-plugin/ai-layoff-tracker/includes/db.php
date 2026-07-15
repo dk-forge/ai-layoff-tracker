@@ -377,11 +377,21 @@ function alt_api_cleanup(WP_REST_Request $r) {
         }
     }
 
+    // Date sanity: a filing typo like "2050-12-31" or "3030-03-30" must not
+    // define the tracker's visible range. Implausible dates are cleared (the
+    // entry stays listed, just undated). WARN effective dates run at most
+    // about a year out, so allow 18 months of headroom.
+    $changed['dates'] = (int) $wpdb->query(
+        "UPDATE $table SET layoff_date = NULL
+         WHERE layoff_date > DATE_ADD(CURDATE(), INTERVAL 18 MONTH)
+            OR layoff_date < '2000-01-01'");
+
     // CPT posts (a few hundred, not the bulk rows) — keep meta consistent.
     $ids = get_posts(array(
         'post_type' => 'layoffs', 'post_status' => 'publish',
         'posts_per_page' => -1, 'fields' => 'ids', 'no_found_rows' => true,
     ));
+    $date_ceiling = gmdate('Y-m-d', strtotime('+18 months'));
     foreach ($ids as $id) {
         $dirty = false;
         foreach (array('country' => 'alt_normalize_country', 'industry' => 'alt_normalize_industry') as $key => $fn) {
@@ -392,6 +402,11 @@ function alt_api_cleanup(WP_REST_Request $r) {
                 $new = 'United States';
             }
             if ($new !== $old) { update_post_meta($id, $key, $new); $dirty = true; }
+        }
+        $date = (string) get_post_meta($id, 'layoff_date', true);
+        if ($date !== '' && ($date > $date_ceiling || $date < '2000-01-01')) {
+            update_post_meta($id, 'layoff_date', '');
+            $dirty = true;
         }
         if ($dirty) { alt_db_sync_post($id); $changed['posts']++; }
     }
