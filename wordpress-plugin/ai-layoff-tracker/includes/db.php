@@ -518,21 +518,33 @@ function alt_api_cleanup(WP_REST_Request $r) {
 }
 
 /**
- * WordPress appends "Cache-Control: no-cache, no-store" + "Expires: 0" to REST
- * responses, which overrides our max-age and makes Cloudflare's cache rule
- * useless. Suppress that for anonymous GETs on our public read endpoints only.
+ * Something in the stack (WP core nocache, a host cache plugin) appends
+ * "Cache-Control: no-cache, no-store" + "Expires: 0" to REST responses, which
+ * overrides our max-age and disables browser caching. Two-layer suppression
+ * for anonymous GETs on the public read endpoints only.
  */
-add_filter('rest_send_nocache_headers', function ($send) {
-    if (is_user_logged_in()) return $send;
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') return $send;
+function alt_is_public_read_request() {
+    if (is_user_logged_in()) return false;
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') return false;
     $uri = $_SERVER['REQUEST_URI'] ?? '';
-    $public = strpos($uri, 'layoffs/v1/query') !== false
-        || strpos($uri, 'layoffs/v1/aggregate') !== false
-        || strpos($uri, 'layoffs/v1/facets') !== false
-        || strpos($uri, 'layoffs/v1/stats') !== false
-        || strpos($uri, 'layoffs/v1/all') !== false;
-    return $public ? false : $send;
+    foreach (array('query', 'aggregate', 'facets', 'stats', 'all') as $ep) {
+        if (strpos($uri, 'layoffs/v1/' . $ep) !== false) return true;
+    }
+    return false;
+}
+add_filter('rest_send_nocache_headers', function ($send) {
+    return alt_is_public_read_request() ? false : $send;
 });
+// Last write wins: replace whatever Cache-Control anyone else emitted just
+// before the body is served (header() with replace=true collapses duplicates).
+add_filter('rest_pre_serve_request', function ($served) {
+    if (alt_is_public_read_request() && !headers_sent()) {
+        header('Cache-Control: public, max-age=60', true);
+        header_remove('Expires');
+        header_remove('Pragma');
+    }
+    return $served;
+}, 999);
 
 /**
  * Micro-cache for the public read endpoints. Nearly every visitor issues the
@@ -576,8 +588,13 @@ function alt_api_query_compute(WP_REST_Request $r) {
     $offset = ($page - 1) * $per;
 
     $total = (int) $wpdb->get_var(alt_db_prep("SELECT COUNT(*) FROM $table WHERE $where", $params));
+    // Undated rows always sort LAST (MySQL would otherwise put NULLs first on
+    // ascending date sorts, burying real oldest entries under blanks).
+    $order = ($sort === 'layoff_date')
+        ? "(layoff_date IS NULL) ASC, layoff_date $dir, id DESC"
+        : "$sort $dir, id DESC";
     $rows = $wpdb->get_results(alt_db_prep(
-        "SELECT * FROM $table WHERE $where ORDER BY $sort $dir, id DESC LIMIT %d OFFSET %d",
+        "SELECT * FROM $table WHERE $where ORDER BY $order LIMIT %d OFFSET %d",
         array_merge($params, array($per, $offset))
     ));
 

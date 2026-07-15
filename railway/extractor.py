@@ -244,6 +244,20 @@ TEXT:
         _normalize_date(extracted.get("layoff_date"))
         or _normalize_date(raw_entry.get("filing_date"))
     )
+    # Coverage floor: filings/articles often reference older restructurings;
+    # a date before 2015 means the model grabbed a historical date from the
+    # text. Fall back to the source's own date, else leave undated.
+    if extracted["layoff_date"] and extracted["layoff_date"] < "2015-01-01":
+        fallback = _normalize_date(raw_entry.get("filing_date"))
+        extracted["layoff_date"] = fallback if (fallback and fallback >= "2015-01-01") else None
+
+    # Plausibility cap: no single verified company layoff event reaches this
+    # size (largest in US history ~60K). Bigger numbers are industry-wide
+    # estimates or cumulative headcount stories misread as one event.
+    if job_count and job_count > 60000:
+        print(f"Extraction skipped: implausible single-event count {job_count} "
+              f"({extracted['company_name']}) — {raw_entry.get('source_url')}")
+        return None
 
     tags = extracted.get("reason_tags")
     if not isinstance(tags, list):

@@ -362,13 +362,28 @@
         return period === 'all time' ? 'all time' : period.replace(/^in /, '');
     }
 
+    // The scope suffix makes an active place/industry filter impossible to
+    // miss right where the numbers are ("· United States"), so nobody reads a
+    // filtered total as the global one.
+    function statScopeLabel() {
+        var parts = [];
+        [['alt-f-country', null], ['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
+            var v = selectedList(p[0]);
+            if (v.length) parts.push((p[1] || '') + v[0] + (v.length > 1 ? ' +' + (v.length - 1) : ''));
+        });
+        return parts.length ? ' · ' + parts.join(' · ') : '';
+    }
+
+    function plural(n, word) { return fmt(n) + ' ' + word + (n === 1 ? '' : 's'); }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
+        var scope = statScopeLabel();
         setText('alt-stat-total', fmt(t.jobs));
-        setText('alt-stat-total-entries', fmt(t.entries) + ' layoffs · ' + period);
+        setText('alt-stat-total-entries', plural(t.entries, 'layoff') + ' · ' + period + scope);
         setText('alt-stat-ai', fmt(t.ai_jobs));
-        setText('alt-stat-ai-entries', fmt(t.ai_entries) + ' layoffs · ' + period);
+        setText('alt-stat-ai-entries', plural(t.ai_entries, 'layoff') + ' · ' + period + scope);
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));
         setText('alt-stat-countries', fmt(t.countries));
