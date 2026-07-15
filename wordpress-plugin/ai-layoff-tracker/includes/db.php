@@ -276,6 +276,49 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_migrate',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: bulk table-only upsert (for high-volume WARN data that
+    // shouldn't create a CPT post per row). Idempotent by dedup_hash.
+    register_rest_route('layoffs/v1', '/bulk', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_bulk',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+}
+
+function alt_api_bulk(WP_REST_Request $r) {
+    $entries = $r->get_param('entries');
+    if (!is_array($entries)) {
+        return new WP_Error('alt_bad_request', 'entries must be an array.', array('status' => 400));
+    }
+    $upserted = 0;
+    foreach ($entries as $e) {
+        if (!is_array($e)) continue;
+        $hash = substr((string) ($e['dedup_hash'] ?? ''), 0, 32);
+        $company = trim((string) ($e['company_name'] ?? ''));
+        if ($hash === '' || $company === '') continue;
+        alt_db_upsert(array(
+            'post_id'            => null,
+            'dedup_hash'         => $hash,
+            'company'            => $company,
+            'ticker'             => $e['ticker'] ?? '',
+            'job_count'          => $e['job_count'] ?? 0,
+            'layoff_date'        => $e['layoff_date'] ?? '',
+            'industry'           => $e['industry'] ?? '',
+            'country'            => function_exists('alt_normalize_country') ? alt_normalize_country((string) ($e['country'] ?? '')) : ($e['country'] ?? ''),
+            'state'              => function_exists('alt_normalize_state') ? alt_normalize_state((string) ($e['state'] ?? '')) : ($e['state'] ?? ''),
+            'source_type'        => $e['source_type'] ?? '',
+            'verification_level' => $e['verification_level'] ?? '',
+            'source_name'        => $e['source_name'] ?? '',
+            'source_url'         => $e['source_url'] ?? '',
+            'ai_explicit'        => !empty($e['ai_explicit']),
+            'ai_language'        => $e['ai_language'] ?? '',
+            'reason_tags'        => $e['reason_tags'] ?? array(),
+            'roles'              => $e['roles'] ?? '',
+            'excerpt'            => $e['excerpt'] ?? '',
+        ));
+        $upserted++;
+    }
+    return rest_ensure_response(array('received' => count($entries), 'upserted' => $upserted));
 }
 
 function alt_api_facets(WP_REST_Request $r) {

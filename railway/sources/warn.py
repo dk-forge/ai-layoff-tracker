@@ -71,17 +71,26 @@ def _run_scraper(states, workdir):
 def pull_warn(states, min_employees=0, start_date=""):
     """Return normalized WARN entries for the given state codes.
 
-    states         list of 2-letter codes, e.g. ["CA", "NY"]
+    states         list of 2-letter codes (e.g. ["CA", "NY"]), or ["all"] to
+                   scrape every state warn-scraper supports
     min_employees  drop notices below this headcount (volume control)
     start_date     'YYYY-MM-DD'; drop notices with an earlier effective date
     """
-    states = [s.upper() for s in states]
+    scrape_all = len(states) == 1 and states[0].lower() == "all"
     workdir = tempfile.mkdtemp(prefix="warn_")
-    _run_scraper(states, workdir)
+    _run_scraper(["all"] if scrape_all else [s.upper() for s in states], workdir)
+
+    if scrape_all:
+        # warn-scraper writes one CSV per state it scraped; derive the code from
+        # the filename (ca.csv -> CA), skipping the cache dir.
+        import glob
+        files = sorted(glob.glob(os.path.join(workdir, "*.csv")))
+        state_files = [(os.path.splitext(os.path.basename(f))[0].upper(), f) for f in files]
+    else:
+        state_files = [(s.upper(), os.path.join(workdir, f"{s.lower()}.csv")) for s in states]
 
     results = []
-    for st in states:
-        path = os.path.join(workdir, f"{st.lower()}.csv")
+    for st, path in state_files:
         if not os.path.exists(path):
             print(f"WARN: no output file for {st}")
             continue
