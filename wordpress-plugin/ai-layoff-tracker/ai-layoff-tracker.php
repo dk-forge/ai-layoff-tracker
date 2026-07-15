@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.7.2
+ * Version: 2.7.3
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.7.2');
+define('ALT_VERSION', '2.7.3');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -66,9 +66,11 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('wp_cache_clear_cache')) {
         wp_cache_clear_cache();
     }
-    if (class_exists('autoptimizeCache') && method_exists('autoptimizeCache', 'clearall')) {
-        autoptimizeCache::clearall();
-    }
+    // Do NOT call autoptimizeCache::clearall() here. AO filenames are content
+    // hashes, so a changed asset gets a NEW aggregate automatically — deleting
+    // the old files only opens a window where in-flight HTML references a file
+    // that 410s, and Cloudflare then caches that 410 for 24h (incident
+    // 2026-07-15, v2.7.3). Old aggregates are harmless; AO prunes its own cache.
 }
 add_action('init', 'alt_flush_caches_on_deploy');
 
