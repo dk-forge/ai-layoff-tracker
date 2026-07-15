@@ -369,9 +369,23 @@
     // filtered total as the global one.
     function statScopeLabel() {
         var parts = [];
-        [['alt-f-country', null], ['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
+        // A region tab's country set reads as its region name ("Europe"),
+        // not as "France +7" — the raw form confused readers.
+        var countries = selectedList('alt-f-country');
+        if (countries.length) {
+            var sel = countries.slice().sort().join('|'), named = '';
+            Object.keys(REGION_TABS).forEach(function (k) {
+                var t = REGION_TABS[k];
+                if (t.countries.length && t.countries.slice().sort().join('|') === sel) {
+                    named = t.label.replace(/^in (the )?/, '');
+                    named = named.charAt(0).toUpperCase() + named.slice(1);
+                }
+            });
+            parts.push(named || (countries[0] + (countries.length > 1 ? ' +' + (countries.length - 1) + ' more' : '')));
+        }
+        [['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
             var v = selectedList(p[0]);
-            if (v.length) parts.push((p[1] || '') + v[0] + (v.length > 1 ? ' +' + (v.length - 1) : ''));
+            if (v.length) parts.push((p[1] || '') + v[0] + (v.length > 1 ? ' +' + (v.length - 1) + ' more' : ''));
         });
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
