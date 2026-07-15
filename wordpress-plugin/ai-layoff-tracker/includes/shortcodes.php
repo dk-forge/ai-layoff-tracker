@@ -64,7 +64,7 @@ function alt_shortcode_stats_bar() {
     <div class="alt-header">
         <span class="alt-live"><span class="alt-live-dot" aria-hidden="true"></span> Live · updated <span id="alt-live-time">twice daily (ET)</span></span>
         <span class="alt-brand">by <strong>AskTheRecruiter.com</strong></span>
-        <p class="alt-subtitle">Verified layoffs across the economy, with the ones companies explicitly blame on AI flagged and quoted. Every entry links to its primary source: SEC filings, state WARN notices, and credible news.</p>
+        <p class="alt-subtitle">Verified layoffs <strong>worldwide</strong>, all industries, all causes, with the ones companies explicitly blame on AI flagged and quoted. Use the Country and US-state filters to scope to your region. Every entry links to its primary source: SEC filings, state WARN notices, and credible news from outlets on every continent.</p>
     </div>
     <?php
     return ob_get_clean();

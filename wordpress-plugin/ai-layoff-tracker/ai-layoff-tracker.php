@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.4.0
+ * Version: 2.4.1
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.4.0');
+define('ALT_VERSION', '2.4.1');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -173,7 +173,7 @@ function alt_seo_head() {
     $page_url = get_permalink();
     if (!$page_url) $page_url = home_url('/');
     $title = 'AI Layoff Tracker — Live Data on Jobs Lost to AI & Automation';
-    $desc  = 'A continuously updated tracker of verified layoffs across the economy, flagging which ones companies attribute to AI. Sourced from SEC filings and credible news, with the exact quote and primary source link for every entry.';
+    $desc  = 'A continuously updated tracker of verified layoffs worldwide, all industries and causes, flagging which ones companies attribute to AI. Filter by country, US state, industry, or period. Sourced from SEC filings, state WARN notices, and credible news globally, with the exact quote and primary source link for every entry.';
 
     $schema = array(
         '@context'            => 'https://schema.org',
@@ -182,7 +182,7 @@ function alt_seo_head() {
         'alternateName'       => 'AI Layoffs Tracker',
         'description'         => $desc,
         'url'                 => $page_url,
-        'keywords'            => array('AI layoffs', 'layoffs', 'jobs lost to AI', 'AI job losses', 'AI layoff tracker', 'automation layoffs', 'tech layoffs'),
+        'keywords'            => array('AI layoffs', 'layoffs', 'jobs lost to AI', 'AI job losses', 'AI layoff tracker', 'automation layoffs', 'tech layoffs', 'layoffs worldwide', 'global layoffs', 'layoffs by country', 'WARN notices'),
         'license'             => 'https://creativecommons.org/licenses/by/4.0/',
         'isAccessibleForFree' => true,
         'temporalCoverage'    => '2019-01-01/..',
