@@ -367,21 +367,36 @@
     // The scope suffix makes an active place/industry filter impossible to
     // miss right where the numbers are ("· United States"), so nobody reads a
     // filtered total as the global one.
+    // A region tab can only select the subset of its countries that exist in
+    // the dropdown (facets only list countries WITH data) — so every
+    // "selection == tab" comparison must use that same intersection.
+    function tabSelectableCountries(k) {
+        var sel = document.getElementById('alt-f-country');
+        var avail = {};
+        if (sel) Array.prototype.forEach.call(sel.options, function (o) { avail[o.value] = 1; });
+        return (REGION_TABS[k] ? REGION_TABS[k].countries : []).filter(function (c) { return avail[c]; });
+    }
+    function regionNameFor(selection) {
+        var sel = selection.slice().sort().join('|'), named = '';
+        Object.keys(REGION_TABS).forEach(function (k) {
+            var t = REGION_TABS[k];
+            if (!t.countries.length) return;
+            if (tabSelectableCountries(k).sort().join('|') === sel) {
+                named = t.label.replace(/^in (the )?/, '');
+                named = named.charAt(0).toUpperCase() + named.slice(1);
+            }
+        });
+        return named;
+    }
+
     function statScopeLabel() {
         var parts = [];
         // A region tab's country set reads as its region name ("Europe"),
         // not as "France +7" — the raw form confused readers.
         var countries = selectedList('alt-f-country');
         if (countries.length) {
-            var sel = countries.slice().sort().join('|'), named = '';
-            Object.keys(REGION_TABS).forEach(function (k) {
-                var t = REGION_TABS[k];
-                if (t.countries.length && t.countries.slice().sort().join('|') === sel) {
-                    named = t.label.replace(/^in (the )?/, '');
-                    named = named.charAt(0).toUpperCase() + named.slice(1);
-                }
-            });
-            parts.push(named || (countries[0] + (countries.length > 1 ? ' +' + (countries.length - 1) + ' more' : '')));
+            parts.push(regionNameFor(countries) ||
+                (countries[0] + (countries.length > 1 ? ' +' + (countries.length - 1) + ' more' : '')));
         }
         [['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
             var v = selectedList(p[0]);
@@ -1152,7 +1167,9 @@
         var sel = selectedList('alt-f-country').slice().sort().join('|');
         ACTIVE_TAB = 'world';
         Object.keys(REGION_TABS).forEach(function (k) {
-            if (k !== 'world' && REGION_TABS[k].countries.slice().sort().join('|') === sel) ACTIVE_TAB = k;
+            // Compare against the SELECTABLE subset (countries with data) —
+            // the raw config list can never all be selected.
+            if (k !== 'world' && sel && tabSelectableCountries(k).sort().join('|') === sel) ACTIVE_TAB = k;
         });
         document.querySelectorAll('.alt-tab').forEach(function (b) {
             b.classList.toggle('alt-tab-on', b.getAttribute('data-tab') === ACTIVE_TAB);
