@@ -349,19 +349,39 @@ function alt_api_trash(WP_REST_Request $r) {
     $table = alt_db_table();
     $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'not_found' => array());
 
+    // `ids` are TABLE row ids — the `id` field the public /query API returns.
+    // Rows mirrored from a CPT post get the post trashed (hooks remove the
+    // row); table-only rows (bulk WARN) are deleted directly.
+    foreach ((array) $r->get_param('ids') as $tid) {
+        $tid = (int) $tid;
+        $row = $tid ? $wpdb->get_row($wpdb->prepare(
+            "SELECT id, post_id FROM $table WHERE id = %d", $tid)) : null;
+        if (!$row) {
+            $out['not_found'][] = $tid;
+        } elseif ($row->post_id) {
+            wp_trash_post((int) $row->post_id);
+            $wpdb->delete($table, array('id' => (int) $row->id)); // belt & braces
+            $out['trashed_posts'][] = (int) $row->post_id;
+        } else {
+            $wpdb->delete($table, array('id' => (int) $row->id));
+            $out['deleted_rows'][] = (int) $row->id;
+        }
+    }
+
+    // Direct id spaces still accepted for completeness.
     foreach ((array) $r->get_param('post_ids') as $pid) {
         $pid = (int) $pid;
         if ($pid && get_post_type($pid) === 'layoffs') {
-            wp_trash_post($pid);                    // hooks remove the table row
+            wp_trash_post($pid);
             $out['trashed_posts'][] = $pid;
-        } else {
+        } elseif ($pid) {
             $out['not_found'][] = $pid;
         }
     }
     foreach ((array) $r->get_param('row_ids') as $rid) {
         $rid = (int) $rid;
         $deleted = $rid ? $wpdb->delete($table, array('id' => $rid, 'post_id' => null)) : 0;
-        if ($deleted) { $out['deleted_rows'][] = $rid; } else { $out['not_found'][] = $rid; }
+        if ($deleted) { $out['deleted_rows'][] = $rid; } elseif ($rid) { $out['not_found'][] = $rid; }
     }
 
     if (function_exists('alt_flush_caches')) alt_flush_caches();
