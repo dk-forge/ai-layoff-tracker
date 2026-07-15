@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       states:
-        description: 'Comma list of state codes (e.g. CA,NY,TX)'
+        description: 'Comma list of state codes, or all (manual runs almost always want all)'
         required: true
-        default: 'CA'
+        default: 'all'
       min_employees:
         description: 'Drop notices below this headcount (0 = keep all)'
         required: false
