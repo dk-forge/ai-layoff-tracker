@@ -891,6 +891,7 @@
                 var el = document.getElementById('alt-table-count');
                 if (!el) return;
                 var info = this.api().page.info();
+                el.classList.toggle('alt-count-empty', !info.recordsDisplay);
                 if (!info.recordsDisplay) { el.textContent = 'No layoffs match the current filters.'; return; }
                 el.textContent = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' layoffs';
             },
@@ -1087,14 +1088,22 @@
     /* Region tabs + auto-updating narrative                               */
     /* ------------------------------------------------------------------ */
 
+    // World = no country filter (the aggregate of EVERYTHING, including rows
+    // whose region has no tab). Region lists are generous — the dropdown only
+    // holds countries with data, and tabSelectableCountries() intersects, so
+    // a listed country with no rows yet costs nothing and lights up the day
+    // its first entry lands.
     var REGION_TABS = {
         world:  { label: 'worldwide', countries: [] },
         usa:    { label: 'in the United States', countries: ['United States'] },
-        europe: { label: 'in Europe', countries: ['United Kingdom', 'Germany', 'France', 'Spain', 'Sweden', 'Netherlands', 'Italy', 'Ireland'] },
+        canada: { label: 'in Canada', countries: ['Canada'] },
+        latam:  { label: 'in Latin America', countries: ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Uruguay', 'Paraguay', 'Bolivia', 'Ecuador', 'Venezuela', 'Costa Rica', 'Panama', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua', 'Dominican Republic', 'Cuba'] },
+        europe: { label: 'in Europe', countries: ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Portugal', 'Italy', 'Netherlands', 'Belgium', 'Luxembourg', 'Switzerland', 'Austria', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Iceland', 'Poland', 'Czech Republic', 'Slovakia', 'Hungary', 'Romania', 'Bulgaria', 'Greece', 'Croatia', 'Slovenia', 'Serbia', 'Ukraine', 'Estonia', 'Latvia', 'Lithuania'] },
         uk:     { label: 'in the United Kingdom', countries: ['United Kingdom'] },
-        asia:   { label: 'in Asia', countries: ['India', 'Japan', 'China', 'Singapore', 'Malaysia', 'Philippines', 'Cambodia', 'South Korea'] },
-        aus:    { label: 'in Australia', countries: ['Australia'] },
-        canada: { label: 'in Canada', countries: ['Canada'] }
+        mideast:{ label: 'in the Middle East', countries: ['Israel', 'UAE', 'Saudi Arabia', 'Qatar', 'Kuwait', 'Bahrain', 'Oman', 'Turkey', 'Jordan', 'Lebanon', 'Iraq', 'Iran'] },
+        africa: { label: 'in Africa', countries: ['South Africa', 'Nigeria', 'Kenya', 'Egypt', 'Morocco', 'Ghana', 'Ethiopia', 'Tanzania', 'Uganda', 'Tunisia', 'Algeria', 'Zimbabwe', 'Zambia', 'Senegal', 'Ivory Coast', 'Botswana', 'Namibia', 'Rwanda'] },
+        asia:   { label: 'in Asia', countries: ['China', 'India', 'Japan', 'South Korea', 'Taiwan', 'Hong Kong', 'Singapore', 'Malaysia', 'Indonesia', 'Thailand', 'Vietnam', 'Philippines', 'Cambodia', 'Bangladesh', 'Pakistan', 'Sri Lanka', 'Nepal', 'Myanmar', 'Mongolia', 'Kazakhstan'] },
+        aus:    { label: 'in Australia & NZ', countries: ['Australia', 'New Zealand'] }
     };
     var ACTIVE_TAB = 'world';
 
@@ -1134,15 +1143,16 @@
             var t = r[0].totals, p = r[1].totals;
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var perDay = p.jobs ? Math.round(p.jobs / 365) : 0;
-            var txt = 'Today, ' + today + ': so far in ' + y + ', ' + fmt(t.entries) +
-                ' verified layoff' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' with ' + fmt(t.jobs) + ' people impacted';
-            if (t.ai_jobs) txt += ', ' + fmt(t.ai_jobs) + ' of them in cuts companies attribute to AI';
-            txt += '. In ' + (y - 1) + ', ' + fmt(p.entries) + ' layoff' + (p.entries === 1 ? '' : 's') + ' with ' + fmt(p.jobs) +
-                ' people impacted' + (perDay ? ' (' + fmt(perDay) + ' people per day)' : '') + '.';
+            var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt()/config output
+            var txt = 'Today, ' + b(today) + ': so far in ' + b(y) + ', ' + b(fmt(t.entries)) +
+                ' verified layoff' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' with ' + b(fmt(t.jobs)) + ' people impacted';
+            if (t.ai_jobs) txt += ', ' + b(fmt(t.ai_jobs)) + ' of them in cuts companies attribute to AI';
+            txt += '. In ' + b(y - 1) + ', ' + b(fmt(p.entries)) + ' layoff' + (p.entries === 1 ? '' : 's') + ' with ' + b(fmt(p.jobs)) +
+                ' people impacted' + (perDay ? ' (' + b(fmt(perDay)) + ' people per day)' : '') + '.';
             if (!t.entries && !p.entries && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still back-filling from the worldwide press index — pick "All time" in the Years filter to see earlier verified events.';
             }
-            el.textContent = txt;
+            el.innerHTML = txt;
         }).catch(function () { el.textContent = ''; });
     }
 

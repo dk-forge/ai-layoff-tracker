@@ -172,13 +172,20 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 }
 .alt-tab:hover { transform: translateY(-1px); }
 .alt-tab-on { background: var(--tabc); color: #fff; }
-.alt-tab-world  { --tabc: #52607a; }
-.alt-tab-usa    { --tabc: #2a78d6; }
-.alt-tab-europe { --tabc: #6b4bd6; }
-.alt-tab-uk     { --tabc: #c62f2e; }
-.alt-tab-asia   { --tabc: #d2691e; }
-.alt-tab-aus    { --tabc: #0f8a7d; }
-.alt-tab-canada { --tabc: #c2417e; }
+.alt-tab-world   { --tabc: #52607a; }
+.alt-tab-usa     { --tabc: #2a78d6; }
+.alt-tab-canada  { --tabc: #c2417e; }
+.alt-tab-latam   { --tabc: #7a3fa8; }
+.alt-tab-europe  { --tabc: #6b4bd6; }
+.alt-tab-uk      { --tabc: #c62f2e; }
+.alt-tab-mideast { --tabc: #b8860b; }
+.alt-tab-africa  { --tabc: #2e8b57; }
+.alt-tab-asia    { --tabc: #d2691e; }
+.alt-tab-aus     { --tabc: #0f8a7d; }
+@media (max-width: 640px) {
+    .alt-tabs { gap: 6px; }
+    .alt-tab { font-size: 12.5px; padding: 6px 11px; border-width: 1.5px; }
+}
 
 .alt-narrative {
     font-size: 15.5px; line-height: 1.6; color: var(--alt-ink);
@@ -283,7 +290,8 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 .alt-btn-reset:hover { background: #fbe7e5; border-color: #d99490; color: #8f1d17; }
 
 /* Clickable date-range control under the stats */
-.alt-range-wrap { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 18px; }
+/* Lives inside .alt-toolbar2 (one compact row with search + sort) */
+.alt-range-wrap { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; }
 .alt-range-btn {
     display: inline-flex; align-items: center; gap: 7px;
     font-size: 13.5px; font-weight: 600; color: #1c5cab;
@@ -351,6 +359,9 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-count-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
 .alt-count-left .alt-active-filters { margin: 0; }
 .alt-count-strong { font-size: 14px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Zero-result state is unmissable: light red pill on the count + the table cell */
+.alt-count-empty { background: #fdecea; color: #b3261e; border: 1px solid #f5c6c0; border-radius: 8px; padding: 4px 10px; white-space: normal; }
+.alt-table-scroll td.dataTables_empty { background: #fdecea; color: #b3261e; font-weight: 600; padding: 18px 12px; }
 
 /* "Where the cuts are" bar lists */
 .alt-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }

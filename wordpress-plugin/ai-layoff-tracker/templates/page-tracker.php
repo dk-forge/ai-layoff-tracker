@@ -10,13 +10,16 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
-        <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌍 World</button>
+        <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
         <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
+        <button type="button" class="alt-tab alt-tab-canada" data-tab="canada">🇨🇦 Canada</button>
+        <button type="button" class="alt-tab alt-tab-latam" data-tab="latam">🌎 Latin America</button>
         <button type="button" class="alt-tab alt-tab-europe" data-tab="europe">🇪🇺 Europe</button>
         <button type="button" class="alt-tab alt-tab-uk" data-tab="uk">🇬🇧 UK</button>
+        <button type="button" class="alt-tab alt-tab-mideast" data-tab="mideast">🌅 Middle East</button>
+        <button type="button" class="alt-tab alt-tab-africa" data-tab="africa">🌍 Africa</button>
         <button type="button" class="alt-tab alt-tab-asia" data-tab="asia">🌏 Asia</button>
         <button type="button" class="alt-tab alt-tab-aus" data-tab="aus">🇦🇺 Australia</button>
-        <button type="button" class="alt-tab alt-tab-canada" data-tab="canada">🇨🇦 Canada</button>
     </div>
     <p class="alt-narrative" id="alt-narrative"></p>
 
@@ -54,27 +57,26 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <span class="alt-stat-sub"></span>
         </div>
     </div>
-    <div class="alt-range-wrap">
-        <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            <span id="alt-range-label">Date range</span>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <span class="alt-range-note-data" id="alt-range-note"></span>
-        <div class="alt-range-pop" id="alt-range-pop" hidden>
-            <div class="alt-filter">
-                <label for="alt-f-from">From</label>
-                <input type="date" id="alt-f-from">
-            </div>
-            <div class="alt-filter">
-                <label for="alt-f-to">To</label>
-                <input type="date" id="alt-f-to">
-            </div>
-            <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear dates</button>
-        </div>
-    </div>
-
     <div class="alt-toolbar2">
+        <div class="alt-range-wrap">
+            <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <span id="alt-range-label">Date range</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <span class="alt-range-note-data" id="alt-range-note"></span>
+            <div class="alt-range-pop" id="alt-range-pop" hidden>
+                <div class="alt-filter">
+                    <label for="alt-f-from">From</label>
+                    <input type="date" id="alt-f-from">
+                </div>
+                <div class="alt-filter">
+                    <label for="alt-f-to">To</label>
+                    <input type="date" id="alt-f-to">
+                </div>
+                <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear dates</button>
+            </div>
+        </div>
         <div class="alt-search-wrap">
             <svg class="alt-search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input type="search" id="alt-search" placeholder="Search company, industry, keyword…" autocomplete="off" aria-label="Search">
