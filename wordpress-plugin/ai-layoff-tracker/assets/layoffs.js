@@ -118,9 +118,9 @@
     /* ------------------------------------------------------------------ */
 
     var FILTER_STORAGE_KEY = 'altTrackerFilters:v2';
-    var FILTER_IDS = ['alt-search', 'alt-f-from', 'alt-f-to', 'alt-f-industry', 'alt-f-country',
-        'alt-f-state', 'alt-f-reasons', 'alt-f-verification', 'alt-f-company',
-        'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai'];
+    var FILTER_IDS = ['alt-search', 'alt-f-from', 'alt-f-to', 'alt-f-years', 'alt-f-quarters',
+        'alt-f-months', 'alt-f-industry', 'alt-f-country', 'alt-f-state', 'alt-f-reasons',
+        'alt-f-verification', 'alt-f-company', 'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai'];
 
     function readControl(id) {
         var el = document.getElementById(id);
@@ -164,21 +164,26 @@
         try { window.localStorage.removeItem(FILTER_STORAGE_KEY); } catch (e) { /* noop */ }
     }
 
-    // Current filter state → REST query params.
+    // Current filter state → REST query params. Multi-selects send comma lists.
+    function multiParam(id) {
+        var v = readControl(id);
+        if (Array.isArray(v)) return v.length ? v.join(',') : '';
+        return v || '';
+    }
+
     function currentParams() {
         var p = {};
         var v;
         if ((v = readControl('alt-f-from'))) p.from = v;
         if ((v = readControl('alt-f-to'))) p.to = v;
-        if ((v = readControl('alt-f-industry'))) p.industry = v;
-        if ((v = readControl('alt-f-country'))) p.country = v;
-        if ((v = readControl('alt-f-state'))) p.state = v;
-        var reasons = readControl('alt-f-reasons') || [];
-        if (reasons.length) p.reasons = reasons.join(',');
-        // Source select may be single (tracker) or multi (legacy pages).
-        var sources = readControl('alt-f-verification');
-        if (Array.isArray(sources)) { if (sources.length) p.sources = sources.join(','); }
-        else if (sources) { p.sources = sources; }
+        if ((v = multiParam('alt-f-years'))) p.years = v;
+        if ((v = multiParam('alt-f-quarters'))) p.quarters = v;
+        if ((v = multiParam('alt-f-months'))) p.months = v;
+        if ((v = multiParam('alt-f-industry'))) p.industry = v;
+        if ((v = multiParam('alt-f-country'))) p.country = v;
+        if ((v = multiParam('alt-f-state'))) p.state = v;
+        if ((v = multiParam('alt-f-reasons'))) p.reasons = v;
+        if ((v = multiParam('alt-f-verification'))) p.sources = v;
         if ((v = (readControl('alt-search') || '').trim())) p.q = v;
         if ((v = (readControl('alt-f-company') || '').trim())) p.company = v;
         if ((v = (readControl('alt-f-keyword') || '').trim())) p.keyword = v;
@@ -216,6 +221,8 @@
         fetchAndRenderAggregate();
         updateActiveFilterBar();
         updateQuickViewStates();
+        updateDropdownSummaries();
+        updateRangeLabel();
     }
 
     function fetchAndRenderAggregate() {
@@ -231,14 +238,23 @@
 
     /* Active-filter chip bar ------------------------------------------- */
 
+    var MONTH_MAP = {};
+    MONTHS.forEach(function (m, i) { MONTH_MAP[String(i + 1)] = m; });
+    var QUARTER_MAP = { '1': 'Q1', '2': 'Q2', '3': 'Q3', '4': 'Q4' };
+
+    // Each dimension gets its own chip color so stacked cross-filters read at
+    // a glance (year chips blue, industry green, country orange, ...).
     var ACTIVE_FILTER_DEFS = [
-        { id: 'alt-search', label: 'Search', kind: 'single' },
-        { id: 'alt-f-industry', label: 'Industry', kind: 'single' },
-        { id: 'alt-f-country', label: 'Country', kind: 'single' },
-        { id: 'alt-f-state', label: 'State', kind: 'single' },
-        { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS },
-        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: VERIF_LABELS },
-        { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only' }
+        { id: 'alt-search', label: 'Search', kind: 'single', color: 'ink' },
+        { id: 'alt-f-years', label: 'Year', kind: 'multi', color: 'blue' },
+        { id: 'alt-f-quarters', label: 'Quarter', kind: 'multi', map: QUARTER_MAP, color: 'teal' },
+        { id: 'alt-f-months', label: 'Month', kind: 'multi', map: MONTH_MAP, color: 'violet' },
+        { id: 'alt-f-industry', label: 'Industry', kind: 'multi', color: 'green' },
+        { id: 'alt-f-country', label: 'Country', kind: 'multi', color: 'orange' },
+        { id: 'alt-f-state', label: 'State', kind: 'multi', color: 'pink' },
+        { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS, color: 'slate' },
+        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: VERIF_LABELS, color: 'gold' },
+        { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only', color: 'red' }
     ];
 
     function updateActiveFilterBar() {
@@ -247,21 +263,21 @@
         var chips = [];
         ACTIVE_FILTER_DEFS.forEach(function (def) {
             var val = readControl(def.id);
-            if (def.kind === 'bool') { if (val) chips.push({ id: def.id, text: def.on, value: true, kind: 'bool' }); }
+            if (def.kind === 'bool') { if (val) chips.push({ id: def.id, text: def.on, value: true, kind: 'bool', color: def.color }); }
             else if (def.kind === 'multi') {
                 // A "multi" control may actually be a single select on some pages.
                 var vals = Array.isArray(val) ? val : (val ? [val] : []);
                 var kind = Array.isArray(val) ? 'multi' : 'single';
                 vals.forEach(function (v) {
-                    chips.push({ id: def.id, text: def.label + ': ' + ((def.map && def.map[v]) || v), value: v, kind: kind });
+                    chips.push({ id: def.id, text: def.label + ': ' + ((def.map && def.map[v]) || v), value: v, kind: kind, color: def.color });
                 });
-            } else if (val) { chips.push({ id: def.id, text: def.label + ': ' + val, value: val, kind: 'single' }); }
+            } else if (val) { chips.push({ id: def.id, text: def.label + ': ' + val, value: val, kind: 'single', color: def.color }); }
         });
         if (!chips.length) { bar.innerHTML = ''; bar.style.display = 'none'; return; }
         bar.style.display = '';
         var html = '<span class="alt-af-label">Filtering:</span>';
         chips.forEach(function (c, i) {
-            html += '<button type="button" class="alt-af-chip" data-i="' + i + '">' + escapeHtml(c.text) + ' <span aria-hidden="true">✕</span></button>';
+            html += '<button type="button" class="alt-af-chip alt-af-' + (c.color || 'blue') + '" data-i="' + i + '">' + escapeHtml(c.text) + ' <span aria-hidden="true">✕</span></button>';
         });
         html += '<button type="button" class="alt-af-clear" id="alt-af-clear">Clear all</button>';
         bar.innerHTML = html;
@@ -275,7 +291,7 @@
             });
         });
         var clr = document.getElementById('alt-af-clear');
-        if (clr) clr.addEventListener('click', function () { clearFilters(); PERIOD_YEAR = ''; updatePeriodActiveState(); refreshAll(); });
+        if (clr) clr.addEventListener('click', function () { clearFilters(); refreshAll(); });
     }
 
     /* ------------------------------------------------------------------ */
@@ -306,100 +322,168 @@
 
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
+        var period = currentPeriodLabel();
         setText('alt-stat-total', fmt(t.jobs));
-        setText('alt-stat-total-entries', fmt(t.entries) + ' events · ' + currentPeriodLabel());
+        setText('alt-stat-total-entries', fmt(t.entries) + ' layoffs' + (period === 'all time' ? ' · all time' : ' ' + period));
         setText('alt-stat-ai', fmt(t.ai_jobs));
-        setText('alt-stat-ai-entries', fmt(t.ai_entries) + ' events');
+        setText('alt-stat-ai-entries', fmt(t.ai_entries) + ' layoffs');
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));
         setText('alt-stat-countries', fmt(t.countries));
         var sub = document.getElementById('alt-stat-companies-sub');
         if (sub) sub.textContent = t.states > 0 ? fmt(t.states) + ' US states' : '';
 
-        // Answer "what date range am I looking at?" explicitly: the earliest
-        // and latest event dates within the current filters.
+        // The earliest and latest layoff dates actually present in this view.
         var note = document.getElementById('alt-range-note');
         if (note) {
-            if (t.entries && t.min_date) {
-                note.textContent = 'Data in view: ' + fmtDate(t.min_date)
-                    + (t.max_date && t.max_date !== t.min_date ? ' – ' + fmtDate(t.max_date) : '') + '.';
-            } else {
-                note.textContent = 'No events match the current filters.';
-            }
+            note.textContent = (t.entries && t.min_date)
+                ? 'earliest ' + fmtDate(t.min_date) + ' · latest ' + fmtDate(t.max_date)
+                : 'no layoffs match the current filters';
         }
     }
 
     /* ------------------------------------------------------------------ */
-    /* Period selector                                                     */
+    /* Period selections + multi-select dropdowns                          */
     /* ------------------------------------------------------------------ */
 
-    var PERIOD_YEAR = '';
     function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
+    // Human summary of the selected period, e.g. "in 2026", "in Q1 2024 & 2026".
     function currentPeriodLabel() {
+        var years = readControl('alt-f-years') || [];
+        var quarters = readControl('alt-f-quarters') || [];
+        var months = readControl('alt-f-months') || [];
         var from = readControl('alt-f-from'); var to = readControl('alt-f-to');
-        if (!from && !to) return 'all time';
-        var q = readControl('alt-period-quarter'); var mo = readControl('alt-period-month');
-        if (PERIOD_YEAR && mo) return MONTHS[parseInt(mo, 10) - 1] + ' ' + PERIOD_YEAR;
-        if (PERIOD_YEAR && q) return 'Q' + q + ' ' + PERIOD_YEAR;
-        if (PERIOD_YEAR && from === PERIOD_YEAR + '-01-01') return PERIOD_YEAR;
-        return (from || '…') + ' to ' + (to || 'now');
+        var parts = [];
+        if (months.length) parts.push(months.map(function (m) { return MONTHS[parseInt(m, 10) - 1]; }).join(' & '));
+        if (quarters.length) parts.push(quarters.map(function (q) { return 'Q' + q; }).join(' & '));
+        if (years.length) parts.push(years.slice().sort().join(' & '));
+        if (from || to) parts.push((from ? fmtDate(from) : '…') + ' – ' + (to ? fmtDate(to) : 'now'));
+        return parts.length ? 'in ' + parts.join(' ') : 'all time';
     }
 
-    function applyPeriod() {
-        var year = PERIOD_YEAR;
-        var q = readControl('alt-period-quarter'); var mo = readControl('alt-period-month');
-        var qEl = document.getElementById('alt-period-quarter'); if (qEl) qEl.disabled = !year;
-        var mEl = document.getElementById('alt-period-month'); if (mEl) mEl.disabled = !year;
-        var from = '', to = '';
-        if (year) {
-            var y = parseInt(year, 10);
-            if (mo) { var m = parseInt(mo, 10); from = year + '-' + pad2(m) + '-01'; to = year + '-' + pad2(m) + '-' + pad2(daysInMonth(y, m)); }
-            else if (q) { var qn = parseInt(q, 10); var sm = (qn - 1) * 3 + 1, em = sm + 2; from = year + '-' + pad2(sm) + '-01'; to = year + '-' + pad2(em) + '-' + pad2(daysInMonth(y, em)); }
-            else { from = year + '-01-01'; to = year + '-12-31'; }
-        }
-        writeControl('alt-f-from', from); writeControl('alt-f-to', to);
-        refreshAll();
-    }
-
-    function updatePeriodActiveState() {
-        var host = document.getElementById('alt-period-years');
-        if (!host) return;
-        Array.prototype.forEach.call(host.querySelectorAll('.alt-period-btn'), function (b) {
-            b.classList.toggle('alt-period-on', b.getAttribute('data-year') === PERIOD_YEAR);
-        });
-    }
-
-    function initPeriodSelector(facets) {
-        var wrap = document.getElementById('alt-period');
-        var host = document.getElementById('alt-period-years');
-        if (!wrap || !host || !document.getElementById('alt-f-from')) return;
-        wrap.style.display = '';
-
+    // Fill the Years select from the data range, newest first, capped at the
+    // current year (no future years even if a filing is future-dated).
+    function initYears(facets) {
+        var sel = document.getElementById('alt-f-years');
+        if (!sel) return;
+        var nowY = new Date().getFullYear();
         var minY = facets.min_date ? parseInt(facets.min_date.slice(0, 4), 10) : 2019;
-        var maxY = facets.max_date ? parseInt(facets.max_date.slice(0, 4), 10) : (new Date()).getUTCFullYear();
-        var years = [];
-        for (var y = maxY; y >= minY; y--) years.push(String(y));
+        var maxY = facets.max_date ? Math.min(parseInt(facets.max_date.slice(0, 4), 10), nowY) : nowY;
+        for (var y = maxY; y >= minY; y--) {
+            var opt = document.createElement('option');
+            opt.value = String(y); opt.textContent = String(y);
+            sel.appendChild(opt);
+        }
+    }
 
-        var from = readControl('alt-f-from');
-        PERIOD_YEAR = (from && /^\d{4}/.test(from) && years.indexOf(from.slice(0, 4)) !== -1) ? from.slice(0, 4) : '';
+    /* Custom checkbox-dropdowns over the hidden native multi-selects. The
+       native select stays the single source of truth (readControl/writeControl,
+       persistence, chips, quick views all keep working); the dropdown is pure
+       presentation and dispatches 'change' on the select when toggled. */
+    function initMultiDropdowns() {
+        document.querySelectorAll('.alt-filter[data-dd]').forEach(function (cell) {
+            var select = cell.querySelector('select[multiple]');
+            if (!select || cell.querySelector('.alt-dd')) return;
+            select.style.display = 'none';
 
-        var html = '<button type="button" class="alt-period-btn" data-year="">All time</button>';
-        years.forEach(function (yr) { html += '<button type="button" class="alt-period-btn" data-year="' + yr + '">' + yr + '</button>'; });
-        host.innerHTML = html;
-        Array.prototype.forEach.call(host.querySelectorAll('.alt-period-btn'), function (btn) {
-            btn.addEventListener('click', function () {
-                PERIOD_YEAR = btn.getAttribute('data-year');
-                if (!PERIOD_YEAR) { writeControl('alt-period-quarter', ''); writeControl('alt-period-month', ''); }
-                applyPeriod(); updatePeriodActiveState();
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'alt-dd';
+            btn.setAttribute('aria-haspopup', 'listbox');
+            var pop = document.createElement('div');
+            pop.className = 'alt-dd-pop';
+            pop.hidden = true;
+            cell.appendChild(btn);
+            cell.appendChild(pop);
+
+            function summary() {
+                var picked = Array.prototype.filter.call(select.options, function (o) { return o.selected; });
+                if (!picked.length) return cell.getAttribute('data-empty') || 'All';
+                if (picked.length === 1) return picked[0].textContent;
+                return picked[0].textContent + ' +' + (picked.length - 1);
+            }
+            function render() {
+                btn.innerHTML = '<span class="alt-dd-txt">' + escapeHtml(summary()) + '</span>'
+                    + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+                btn.classList.toggle('alt-dd-on', select.selectedOptions.length > 0);
+                pop.innerHTML = '';
+                Array.prototype.forEach.call(select.options, function (o) {
+                    var row = document.createElement('label');
+                    row.className = 'alt-dd-row';
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = o.selected;
+                    cb.addEventListener('change', function () {
+                        o.selected = cb.checked;
+                        select.dispatchEvent(new Event('change', { bubbles: false }));
+                    });
+                    row.appendChild(cb);
+                    row.appendChild(document.createTextNode(' ' + o.textContent));
+                    pop.appendChild(row);
+                });
+            }
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var willOpen = pop.hidden;
+                closeAllDropdowns();
+                if (willOpen) { render(); pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); }
             });
+            pop.addEventListener('click', function (e) { e.stopPropagation(); });
+            select.addEventListener('change', render);
+            cell._altDdRender = render;
+            render();
         });
-        var qSel = document.getElementById('alt-period-quarter');
-        var mSel = document.getElementById('alt-period-month');
-        if (qSel) { qSel.addEventListener('change', function () { writeControl('alt-period-month', ''); applyPeriod(); }); qSel.disabled = !PERIOD_YEAR; }
-        if (mSel) { mSel.addEventListener('change', function () { writeControl('alt-period-quarter', ''); applyPeriod(); }); mSel.disabled = !PERIOD_YEAR; }
-        updatePeriodActiveState();
+
+        document.addEventListener('click', closeAllDropdowns);
+    }
+    function closeAllDropdowns() {
+        document.querySelectorAll('.alt-dd-pop').forEach(function (p) { p.hidden = true; });
+        document.querySelectorAll('.alt-dd').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    }
+    function updateDropdownSummaries() {
+        document.querySelectorAll('.alt-filter[data-dd]').forEach(function (cell) {
+            if (cell._altDdRender) cell._altDdRender();
+        });
+    }
+
+    /* Clickable date-range control (replaces the From/To calendars in the bar) */
+    function updateRangeLabel() {
+        var label = document.getElementById('alt-range-label');
+        if (!label) return;
+        var from = readControl('alt-f-from'); var to = readControl('alt-f-to');
+        if (from || to) {
+            label.textContent = (from ? fmtDate(from) : 'Start') + ' – ' + (to ? fmtDate(to) : 'now');
+            return;
+        }
+        var years = (readControl('alt-f-years') || []).slice().sort();
+        if (years.length) {
+            var a = years[0], b = years[years.length - 1];
+            label.textContent = 'Jan 1' + (a === b ? '' : ', ' + a) + ' – Dec 31, ' + b;
+            return;
+        }
+        label.textContent = 'All time';
+    }
+
+    function initRangeControl() {
+        var btn = document.getElementById('alt-range-btn');
+        var pop = document.getElementById('alt-range-pop');
+        if (!btn || !pop) return;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var willOpen = pop.hidden;
+            closeAllDropdowns();
+            pop.hidden = !willOpen;
+            btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { pop.hidden = true; });
+        var clr = document.getElementById('alt-range-clear');
+        if (clr) clr.addEventListener('click', function () {
+            writeControl('alt-f-from', ''); writeControl('alt-f-to', '');
+            refreshAll();
+        });
     }
 
     /* ------------------------------------------------------------------ */
@@ -416,15 +500,20 @@
         }
         renderLeaderboard(agg.leaders);
         var wired = !!document.getElementById('alt-f-industry');
-        renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, readControl('alt-f-industry'));
-        renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, readControl('alt-f-state'));
-        renderBarList('alt-bars-countries', agg.top_countries, wired ? 'alt-f-country' : null, readControl('alt-f-country'));
+        renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
+        renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
+        renderBarList('alt-bars-countries', agg.top_countries, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+    }
+
+    function selectedList(id) {
+        var v = readControl(id);
+        return Array.isArray(v) ? v : (v ? [v] : []);
     }
 
     // "Where the cuts are" bars: name left, value right, a track whose blue
     // fill is scaled to the top bar, with an orange leading segment showing the
     // AI-attributed share. Rows are buttons that toggle the matching filter.
-    function renderBarList(containerId, entries, filterId, activeValue) {
+    function renderBarList(containerId, entries, filterId, activeValues) {
         var box = document.getElementById(containerId);
         if (!box) return;
         // Compact cards show a top-4 preview; expanded (or full-size dashboard
@@ -436,6 +525,7 @@
             box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
             return;
         }
+        var active = activeValues || [];
         var max = entries[0][1] || 1;
         entries.forEach(function (e) { if (e[1] > max) max = e[1]; });
 
@@ -444,8 +534,8 @@
             var label = e[0], jobs = e[1], ai = e[2] || 0;
             var w = Math.max(2, Math.round(jobs / max * 100));
             var aiW = jobs > 0 ? (ai / jobs * w) : 0;
-            var isActive = activeValue && label === activeValue;
-            var dim = activeValue && !isActive;
+            var isActive = active.indexOf(label) !== -1;
+            var dim = active.length && !isActive;
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + (filterId ? '' : ' disabled')
                 + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
@@ -461,7 +551,9 @@
         if (filterId) {
             box.querySelectorAll('.alt-barrow').forEach(function (btn) {
                 btn.addEventListener('click', function () {
-                    toggleSingleFilter(filterId, btn.getAttribute('data-val'));
+                    // Multi-select: each click adds/removes that value, so bars
+                    // compose (e.g. CA + WA + Technology).
+                    toggleMultiFilter(filterId, btn.getAttribute('data-val'));
                     refreshAll();
                 });
             });
@@ -663,8 +755,8 @@
                 var el = document.getElementById('alt-table-count');
                 if (!el) return;
                 var info = this.api().page.info();
-                if (!info.recordsDisplay) { el.textContent = 'No entries match the current filters.'; return; }
-                el.textContent = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' entries';
+                if (!info.recordsDisplay) { el.textContent = 'No layoffs match the current filters.'; return; }
+                el.textContent = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' layoffs';
             },
             columns: [
                 { data: 'layoff_date', render: function (d, t) { return t === 'display' ? (d ? escapeHtml(d) : '<span class="alt-muted">unknown</span>') : (d || ''); } },
@@ -712,7 +804,7 @@
             if (el.type === 'text' || el.type === 'number') el.addEventListener('input', onFilterChange);
         });
         var reset = document.getElementById('alt-f-reset');
-        if (reset) reset.addEventListener('click', function () { clearFilters(); PERIOD_YEAR = ''; updatePeriodActiveState(); refreshAll(); });
+        if (reset) reset.addEventListener('click', function () { clearFilters(); refreshAll(); });
 
         // expand a row for the exact quote + source
         $(tableEl).on('click', 'tbody tr', function (e) {
@@ -848,12 +940,6 @@
     }
     function currentSort() { var s = document.getElementById('alt-sort'); return s ? s.value : 'newest'; }
 
-    function thisMonthRange() {
-        var now = new Date();
-        var y = now.getFullYear(), m = now.getMonth() + 1;
-        return { from: y + '-' + pad2(m) + '-01', to: y + '-' + pad2(m) + '-' + pad2(daysInMonth(y, m)) };
-    }
-
     var QUICK_VIEWS = {
         ai: {
             apply: function () { var el = document.getElementById('alt-f-ai'); if (el) el.checked = true; },
@@ -861,9 +947,19 @@
             active: function () { return !!readControl('alt-f-ai'); }
         },
         month: {
-            apply: function () { var d = thisMonthRange(); writeControl('alt-f-from', d.from); writeControl('alt-f-to', d.to); PERIOD_YEAR = ''; updatePeriodActiveState(); },
-            clear: function () { writeControl('alt-f-from', ''); writeControl('alt-f-to', ''); },
-            active: function () { var d = thisMonthRange(); return readControl('alt-f-from') === d.from && readControl('alt-f-to') === d.to; }
+            apply: function () {
+                var now = new Date();
+                writeControl('alt-f-years', [String(now.getFullYear())]);
+                writeControl('alt-f-months', [String(now.getMonth() + 1)]);
+                writeControl('alt-f-quarters', []);
+            },
+            clear: function () { writeControl('alt-f-months', []); },
+            active: function () {
+                var now = new Date();
+                var ys = readControl('alt-f-years') || [], ms = readControl('alt-f-months') || [];
+                return ms.length === 1 && ms[0] === String(now.getMonth() + 1)
+                    && ys.length === 1 && ys[0] === String(now.getFullYear());
+            }
         },
         largest: {
             apply: function () { setSort('largest'); },
@@ -886,9 +982,13 @@
             }
         },
         tech: {
-            apply: function () { writeControl('alt-f-industry', 'Technology'); },
-            clear: function () { writeControl('alt-f-industry', ''); },
-            active: function () { return readControl('alt-f-industry') === 'Technology'; }
+            apply: function () { writeControl('alt-f-industry', ['Technology']); },
+            clear: function () { writeControl('alt-f-industry', []); },
+            active: function () {
+                var v = readControl('alt-f-industry');
+                var arr = Array.isArray(v) ? v : (v ? [v] : []);
+                return arr.length === 1 && arr[0] === 'Technology';
+            }
         }
     };
 
@@ -909,15 +1009,6 @@
 
         var sort = document.getElementById('alt-sort');
         if (sort) sort.addEventListener('change', function () { setSort(sort.value); refreshAll(); });
-
-        var ft = document.getElementById('alt-filters-toggle');
-        var fp = document.getElementById('alt-filters-panel');
-        if (ft && fp) ft.addEventListener('click', function () {
-            var willOpen = fp.hasAttribute('hidden');
-            if (willOpen) fp.removeAttribute('hidden'); else fp.setAttribute('hidden', '');
-            ft.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            ft.classList.toggle('alt-btn-active', willOpen);
-        });
 
         Array.prototype.forEach.call(document.querySelectorAll('.alt-qv'), function (btn) {
             btn.addEventListener('click', function () {
@@ -991,11 +1082,24 @@
             fillSelect('alt-f-industry', facets.industries);
             fillSelect('alt-f-country', facets.countries);
             fillSelect('alt-f-state', facets.states);
+            initYears(facets);
+
+            // Restore saved filters; first-time visitors default to the
+            // current year so every number on the page is explicitly scoped.
+            var hadSaved = false;
+            try { hadSaved = !!window.localStorage.getItem(FILTER_STORAGE_KEY); } catch (e) { /* noop */ }
             restoreFilters();
-            initPeriodSelector(facets);
+            if (!hadSaved && document.getElementById('alt-f-years')) {
+                writeControl('alt-f-years', [String(new Date().getFullYear())]);
+            }
+
+            initMultiDropdowns();
+            initRangeControl();
             initTracker();            // builds the server-side table (reads restored filters)
-            initChrome();             // search / sort / Filters panel / quick views
+            initChrome();             // search / sort / quick views / expanders
             updateActiveFilterBar();
+            updateDropdownSummaries();
+            updateRangeLabel();
             fetchAndRenderAggregate(); // charts + stats
         }).catch(function () {
             setStatus('alt-table-status', 'Could not load filters.', true);

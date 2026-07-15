@@ -38,17 +38,31 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <span class="alt-stat-sub"></span>
         </div>
     </div>
-    <div class="alt-range-note" id="alt-range-note"></div>
+    <div class="alt-range-wrap">
+        <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span id="alt-range-label">Date range</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <span class="alt-range-note-data" id="alt-range-note"></span>
+        <div class="alt-range-pop" id="alt-range-pop" hidden>
+            <div class="alt-filter">
+                <label for="alt-f-from">From</label>
+                <input type="date" id="alt-f-from" max="2026-12-31">
+            </div>
+            <div class="alt-filter">
+                <label for="alt-f-to">To</label>
+                <input type="date" id="alt-f-to" max="2026-12-31">
+            </div>
+            <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear dates</button>
+        </div>
+    </div>
 
     <div class="alt-toolbar2">
         <div class="alt-search-wrap">
             <svg class="alt-search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input type="search" id="alt-search" placeholder="Search company, industry, keyword…" autocomplete="off" aria-label="Search">
         </div>
-        <button type="button" id="alt-filters-toggle" class="alt-btn" aria-expanded="false">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-            More filters
-        </button>
         <label class="alt-sort"><span>Sort</span>
             <select id="alt-sort">
                 <option value="newest">Newest first</option>
@@ -70,45 +84,22 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 
     <div class="alt-filterbar">
         <div class="alt-filterbar-row">
-            <div class="alt-filter">
-                <label for="alt-f-industry">Industry</label>
-                <select id="alt-f-industry"><option value="">All industries</option></select>
+            <div class="alt-filter" data-dd="Years" data-empty="All years">
+                <label for="alt-f-years">Years</label>
+                <select id="alt-f-years" multiple></select>
             </div>
-            <div class="alt-filter">
-                <label for="alt-f-country">Country</label>
-                <select id="alt-f-country"><option value="">All countries</option></select>
-            </div>
-            <div class="alt-filter">
-                <label for="alt-f-state">US state</label>
-                <select id="alt-f-state"><option value="">All states</option></select>
-            </div>
-            <div class="alt-filter">
-                <label for="alt-f-verification">Source type</label>
-                <select id="alt-f-verification">
-                    <option value="">All sources</option>
-                    <option value="gold">SEC filing (8-K)</option>
-                    <option value="warn">WARN notice</option>
-                    <option value="silver">Press release</option>
-                    <option value="bronze">News</option>
-                </select>
-            </div>
-            <div class="alt-filter alt-filter-toggle">
-                <label><input type="checkbox" id="alt-f-ai"> AI-attributed only</label>
-            </div>
-        </div>
-        <div class="alt-filterbar-row alt-filterbar-period">
-            <div class="alt-period" id="alt-period" role="group" aria-label="Time period">
-                <span class="alt-period-lbl">Period:</span>
-                <div class="alt-period-years" id="alt-period-years"></div>
-                <select id="alt-period-quarter" aria-label="Quarter">
-                    <option value="">All quarters</option>
+            <div class="alt-filter" data-dd="Quarters" data-empty="All quarters">
+                <label for="alt-f-quarters">Quarters</label>
+                <select id="alt-f-quarters" multiple>
                     <option value="1">Q1 (Jan–Mar)</option>
                     <option value="2">Q2 (Apr–Jun)</option>
                     <option value="3">Q3 (Jul–Sep)</option>
                     <option value="4">Q4 (Oct–Dec)</option>
                 </select>
-                <select id="alt-period-month" aria-label="Month">
-                    <option value="">All months</option>
+            </div>
+            <div class="alt-filter" data-dd="Months" data-empty="All months">
+                <label for="alt-f-months">Months</label>
+                <select id="alt-f-months" multiple>
                     <option value="1">January</option><option value="2">February</option>
                     <option value="3">March</option><option value="4">April</option>
                     <option value="5">May</option><option value="6">June</option>
@@ -117,46 +108,60 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                     <option value="11">November</option><option value="12">December</option>
                 </select>
             </div>
-            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-sm">Reset all</button>
-        </div>
-        <div class="alt-filters-more" id="alt-filters-panel" hidden>
-            <div class="alt-filters">
-                <div class="alt-filter">
-                    <label for="alt-f-from">From</label>
-                    <input type="date" id="alt-f-from">
-                </div>
-                <div class="alt-filter">
-                    <label for="alt-f-to">To</label>
-                    <input type="date" id="alt-f-to">
-                </div>
-                <div class="alt-filter">
-                    <label for="alt-f-reasons">Reason tags</label>
-                    <select id="alt-f-reasons" multiple size="4">
-                        <option value="ai_automation">AI / automation</option>
-                        <option value="possible_ai">Possible AI</option>
-                        <option value="revenue_decline">Revenue decline</option>
-                        <option value="restructuring">Restructuring</option>
-                        <option value="merger_acquisition">Merger / acquisition</option>
-                        <option value="offshoring">Offshoring</option>
-                        <option value="product_discontinuation">Product discontinued</option>
-                        <option value="cost_reduction">Cost reduction</option>
-                        <option value="macroeconomic">Macroeconomic</option>
-                    </select>
-                </div>
-                <div class="alt-filter">
-                    <label for="alt-f-company">Company</label>
-                    <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
-                </div>
-                <div class="alt-filter">
-                    <label for="alt-f-keyword">Keyword in excerpt</label>
-                    <input type="text" id="alt-f-keyword" placeholder="Search excerpts">
-                </div>
-                <div class="alt-filter">
-                    <label for="alt-f-minjobs">Min job count</label>
-                    <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
-                </div>
+            <div class="alt-filter" data-dd="Industries" data-empty="All industries">
+                <label for="alt-f-industry">Industries</label>
+                <select id="alt-f-industry" multiple></select>
+            </div>
+            <div class="alt-filter" data-dd="Countries" data-empty="All countries">
+                <label for="alt-f-country">Countries</label>
+                <select id="alt-f-country" multiple></select>
+            </div>
+            <div class="alt-filter" data-dd="US states" data-empty="All states">
+                <label for="alt-f-state">US states</label>
+                <select id="alt-f-state" multiple></select>
+            </div>
+            <div class="alt-filter" data-dd="Sources" data-empty="All sources">
+                <label for="alt-f-verification">Sources</label>
+                <select id="alt-f-verification" multiple>
+                    <option value="gold">SEC filing (8-K)</option>
+                    <option value="warn">WARN notice</option>
+                    <option value="silver">Press release</option>
+                    <option value="bronze">News</option>
+                </select>
+            </div>
+            <div class="alt-filter" data-dd="Reasons" data-empty="All reasons">
+                <label for="alt-f-reasons">Reasons</label>
+                <select id="alt-f-reasons" multiple>
+                    <option value="ai_automation">AI / automation</option>
+                    <option value="possible_ai">Possible AI</option>
+                    <option value="revenue_decline">Revenue decline</option>
+                    <option value="restructuring">Restructuring</option>
+                    <option value="merger_acquisition">Merger / acquisition</option>
+                    <option value="offshoring">Offshoring</option>
+                    <option value="product_discontinuation">Product discontinued</option>
+                    <option value="cost_reduction">Cost reduction</option>
+                    <option value="macroeconomic">Macroeconomic</option>
+                </select>
+            </div>
+            <div class="alt-filter">
+                <label for="alt-f-company">Company</label>
+                <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
+            </div>
+            <div class="alt-filter">
+                <label for="alt-f-keyword">Keyword in excerpt</label>
+                <input type="text" id="alt-f-keyword" placeholder="Search excerpts">
+            </div>
+            <div class="alt-filter">
+                <label for="alt-f-minjobs">Min job count</label>
+                <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
+            </div>
+            <div class="alt-filter alt-filter-reset">
+                <label>&nbsp;</label>
+                <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset all filters</button>
             </div>
         </div>
+        <!-- Hidden state holder: the "AI-attributed" quick-view pill is the visible control -->
+        <input type="checkbox" id="alt-f-ai" hidden>
     </div>
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>

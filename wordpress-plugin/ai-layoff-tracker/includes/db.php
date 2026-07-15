@@ -194,10 +194,41 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($except !== 'date') {
         if ($from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $where[] = "layoff_date >= %s"; $params[] = $from; }
         if ($to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) { $where[] = "layoff_date <= %s"; $params[] = $to; }
+
+        // Multi-select period dimensions: years=2024,2026 quarters=1,3 months=1,2.
+        // They AND together (years 2024+2025 with Q1 = Q1 of both years), which
+        // is the natural cross-reference behavior.
+        $int_in = function ($param, $expr, $min, $max) use (&$where, &$params, $r) {
+            $vals = array();
+            foreach (explode(',', (string) $r->get_param($param)) as $v) {
+                $v = (int) trim($v);
+                if ($v >= $min && $v <= $max) { $vals[] = $v; }
+            }
+            if ($vals) {
+                $ph = implode(',', array_fill(0, count($vals), '%d'));
+                $where[] = "layoff_date IS NOT NULL AND $expr IN ($ph)";
+                foreach ($vals as $v) { $params[] = $v; }
+            }
+        };
+        $int_in('years', 'YEAR(layoff_date)', 1990, 2100);
+        $int_in('quarters', 'QUARTER(layoff_date)', 1, 4);
+        $int_in('months', 'MONTH(layoff_date)', 1, 12);
     }
-    if ($except !== 'industry' && ($v = $r->get_param('industry'))) { $where[] = "industry = %s"; $params[] = $v; }
-    if ($except !== 'country' && ($v = $r->get_param('country'))) { $where[] = "country = %s"; $params[] = $v; }
-    if ($except !== 'state' && ($v = $r->get_param('state'))) { $where[] = "state = %s"; $params[] = $v; }
+
+    // Category filters accept comma lists (multi-select cross-referencing).
+    // None of the canonical values contain a comma, so the split is safe.
+    $str_in = function ($param, $col, $except_key) use (&$where, &$params, $r, $except) {
+        if ($except === $except_key) return;
+        $vals = array_filter(array_map('trim', explode(',', (string) $r->get_param($param))), 'strlen');
+        if ($vals) {
+            $ph = implode(',', array_fill(0, count($vals), '%s'));
+            $where[] = "$col IN ($ph)";
+            foreach ($vals as $v) { $params[] = $v; }
+        }
+    };
+    $str_in('industry', 'industry', 'industry');
+    $str_in('country', 'country', 'country');
+    $str_in('state', 'state', 'state');
     if ($except !== 'reasons') {
         $reasons = array_filter(array_map('sanitize_key', explode(',', (string) $r->get_param('reasons'))));
         if ($reasons) {

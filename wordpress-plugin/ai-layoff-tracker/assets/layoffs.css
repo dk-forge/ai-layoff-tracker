@@ -221,6 +221,69 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 .alt-expand:hover { border-color: #2a78d6; color: #2a78d6; }
 .alt-expanded .alt-expand { background: #2a78d6; border-color: #2a78d6; color: #fff; }
 
+/* Multi-select checkbox dropdowns (presentation over hidden native selects) */
+.alt-filter { position: relative; }
+.alt-dd {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; box-sizing: border-box; font-size: 14px; text-align: left;
+    padding: 8px 10px; border: 1px solid var(--alt-grid); border-radius: 8px;
+    background: #fff; color: var(--alt-ink); cursor: pointer; line-height: 1.25;
+}
+.alt-dd:hover { border-color: #2a78d6; }
+.alt-dd-on { border-color: #2a78d6; background: var(--alt-blue-tint, #eef4fc); font-weight: 600; }
+.alt-dd-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alt-dd-pop {
+    position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; min-width: 100%;
+    max-height: 260px; overflow-y: auto; background: #fff;
+    border: 1px solid var(--alt-border); border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(16, 18, 24, .14); padding: 6px;
+}
+.alt-dd-pop[hidden] { display: none; }
+.alt-dd-row {
+    display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--alt-ink);
+    padding: 6px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+}
+.alt-dd-row:hover { background: var(--alt-surface-2); }
+.alt-dd-row input { accent-color: #2a78d6; }
+
+/* Reset button: visually distinct so it isn't mistaken for a filter */
+.alt-btn-reset {
+    width: 100%; justify-content: center;
+    color: #b3261e; border-color: #e6b6b3; background: #fdf3f2;
+}
+.alt-btn-reset:hover { background: #fbe7e5; border-color: #d99490; color: #8f1d17; }
+
+/* Clickable date-range control under the stats */
+.alt-range-wrap { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 18px; }
+.alt-range-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13.5px; font-weight: 600; color: #1c5cab;
+    background: #eef4fc; border: 1px dashed #9cbfe8; border-radius: 8px;
+    padding: 7px 12px; cursor: pointer;
+}
+.alt-range-btn:hover { border-style: solid; border-color: #2a78d6; }
+.alt-range-note-data { font-size: 12.5px; color: var(--alt-muted); }
+.alt-range-pop {
+    position: absolute; z-index: 60; top: calc(100% + 6px); left: 0;
+    display: flex; align-items: end; gap: 12px; padding: 14px;
+    background: #fff; border: 1px solid var(--alt-border); border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(16, 18, 24, .14);
+}
+.alt-range-pop[hidden] { display: none; }
+.alt-range-pop .alt-filter { min-width: 150px; }
+
+/* Per-dimension chip colors so stacked cross-filters read at a glance */
+.alt-af-blue   { background: #2a78d6; border-color: #2a78d6; }
+.alt-af-teal   { background: #0f8a7d; border-color: #0f8a7d; }
+.alt-af-violet { background: #6b4bd6; border-color: #6b4bd6; }
+.alt-af-green  { background: #1e8a3c; border-color: #1e8a3c; }
+.alt-af-orange { background: #d2691e; border-color: #d2691e; }
+.alt-af-pink   { background: #c2417e; border-color: #c2417e; }
+.alt-af-slate  { background: #52607a; border-color: #52607a; }
+.alt-af-gold   { background: #9a7b0a; border-color: #9a7b0a; }
+.alt-af-red    { background: #c62f2e; border-color: #c62f2e; }
+.alt-af-ink    { background: #16181d; border-color: #16181d; }
+
 /* Always-visible filter bar (primary controls) + "More filters" drawer */
 .alt-filterbar {
     background: var(--alt-surface); border: 1px solid var(--alt-border);
