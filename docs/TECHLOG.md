@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| 2.2.2 | `/trash` resolves public API entry ids; executed the three editorial removals (posts 6499/6179/6516) — totals recomputed to 22,688 layoffs / 2.97M jobs |
 | 2.2.1 | Ingest-safety HIGHs from 2nd audit: purge only after successful scrape + only with states=all + ≥5K threshold; date-shaped count values rejected; future WARN data no longer dropped from trend charts; REST nocache headers suppressed on public GETs (unblocks CF edge cache); `/trash` editorial endpoint + workflow; contact-page creation lock; JS races/popover/timezone fixes; docs/ created |
 | 2.2.0 | API micro-cache (5-min transients keyed by params + `alt_data_ver`); journalist card light restyle; corrections log reset to launch state |
 | 2.1.3 | Trend zero-fill honors multi-select periods (Apr–Jul selection → Apr 0 · May 0 · Jun x · Jul 0) |
