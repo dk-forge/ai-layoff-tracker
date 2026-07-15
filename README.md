@@ -111,8 +111,8 @@ EDGAR_USER_AGENT="AiLayoffTracker you@example.com" python cron.py
 
 Then verify:
 
-- `GET https://asktherecruiter.com/wp-json/layoffs/v1/stats` returns counts
-- `GET .../wp-json/layoffs/v1/all` returns the entries
+- `GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/stats` returns counts
+- `GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query` returns the full dataset (paginated, filterable)
 - the `/ai-layoffs` page renders the table
 
 ## REST API

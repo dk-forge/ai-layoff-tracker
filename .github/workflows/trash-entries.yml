@@ -1,0 +1,44 @@
+name: Trash entries (editorial correction)
+
+# Removes specific entries: bad extractions or confirmed duplicates.
+# CPT posts are trashed (recoverable in wp-admin for 30 days); table-only rows
+# are deleted. Log the reason in docs/TECHLOG.md and, if figures were public,
+# in the site's corrections log. Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_ids:
+        description: 'Comma list of CPT post ids to trash (from entry id in /query)'
+        required: false
+        default: ''
+      row_ids:
+        description: 'Comma list of table-only row ids to delete'
+        required: false
+        default: ''
+      reason:
+        description: 'Why (goes in the run log for the audit trail)'
+        required: true
+
+jobs:
+  trash:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trash
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          POST_IDS: ${{ github.event.inputs.post_ids }}
+          ROW_IDS: ${{ github.event.inputs.row_ids }}
+          REASON: ${{ github.event.inputs.reason }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          echo "Reason: $REASON"
+          PIDS=$(python3 -c "import os,json;print(json.dumps([int(x) for x in os.environ.get('POST_IDS','').split(',') if x.strip()]))")
+          RIDS=$(python3 -c "import os,json;print(json.dumps([int(x) for x in os.environ.get('ROW_IDS','').split(',') if x.strip()]))")
+          curl -sS --fail-with-body -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/trash" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -d "{\"post_ids\": $PIDS, \"row_ids\": $RIDS}" \
+            -w "\nHTTP %{http_code}\n"

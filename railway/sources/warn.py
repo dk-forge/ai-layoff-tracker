@@ -128,8 +128,15 @@ def _count(s):
     """Parse the FIRST number in the field. Stripping all non-digits is wrong:
     RI publishes values like '9,891 Remote Workers (2 from RI)', which would
     concatenate into 98912. First-number also makes ranges ('50-100') resolve
-    to the lower bound, matching the tracker's stated methodology."""
-    m = re.search(r"\d{1,3}(?:,\d{3})+|\d+", s or "")
+    to the lower bound, matching the tracker's stated methodology.
+
+    A date-shaped value means the column matcher grabbed the wrong field — a
+    first-number parse of '2026-07-01' would fabricate a plausible-looking
+    2,026-worker count, so reject those outright."""
+    s = (s or "").strip()
+    if re.match(r"^\d{4}-\d{1,2}-\d{1,2}", s) or re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}", s):
+        return 0
+    m = re.search(r"\d{1,3}(?:,\d{3})+|\d+", s)
     return int(m.group(0).replace(",", "")) if m else 0
 
 

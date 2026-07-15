@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.2.0
+ * Version: 2.2.1
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.2.0');
+define('ALT_VERSION', '2.2.1');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -80,6 +80,10 @@ add_action('init', 'alt_flush_caches_on_deploy');
 function alt_ensure_contact_page_once() {
     if (get_option('alt_contact_page_done')) return;
     if (!function_exists('alt_ensure_contact_page')) return;
+    // Short-lived lock: this runs on public init, so concurrent first requests
+    // could otherwise race the check-then-insert and create duplicate pages.
+    if (get_transient('alt_contact_page_lock')) return;
+    set_transient('alt_contact_page_lock', 1, MINUTE_IN_SECONDS);
     alt_ensure_contact_page();
     if (get_page_by_path('contact')) {
         update_option('alt_contact_page_done', 1, false);

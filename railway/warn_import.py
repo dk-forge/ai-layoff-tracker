@@ -66,11 +66,31 @@ def main():
     limit = int(os.environ.get("WARN_LIMIT") or 0) or None
 
     scope = "all supported states" if states == ["all"] else f"{len(states)} states"
-    print(f"WARN import: {scope}, min_employees={min_emp}, start={start or 'all'}, limit={limit}")
+    purge = (os.environ.get("WARN_PURGE") or "").lower() in ("1", "true", "yes")
+    print(f"WARN import: {scope}, min_employees={min_emp}, start={start or 'all'}, limit={limit}, purge={purge}")
 
-    # WARN_PURGE=1: clear table-only WARN rows first so corrected values can't
-    # coexist with stale ones (count changes alter the dedup hash).
-    if (os.environ.get("WARN_PURGE") or "").lower() in ("1", "true", "yes"):
+    # Purge deletes EVERY state's table-only WARN rows, so it may only pair
+    # with a full nationwide reload — purging then importing one state would
+    # silently drop the rest.
+    if purge and states != ["all"]:
+        print("ERROR: WARN_PURGE requires WARN_STATES=all (purge is global; a "
+              "state-scoped reload would wipe the other states)")
+        sys.exit(1)
+    entries = pull_warn(states, min_employees=min_emp, start_date=start)
+    entries.sort(key=lambda e: e["layoff_date"], reverse=True)
+    if limit:
+        entries = entries[:limit]
+    print(f"WARN import: {len(entries)} notices to upsert (bulk)")
+
+    # Purge only AFTER a successful scrape, and only when the scrape looks like
+    # a real nationwide sweep — never leave the public table empty because the
+    # state sites happened to be down today.
+    if purge:
+        if len(entries) < 5000:
+            print(f"ERROR: refusing to purge — scrape returned only "
+                  f"{len(entries)} notices (expected 20K+ nationwide); the "
+                  f"replacement data is too small to swap in safely")
+            sys.exit(1)
         wp = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
         key = os.environ.get("WP_API_KEY")
         try:
@@ -85,11 +105,6 @@ def main():
         except Exception as e:
             print(f"ERROR: purge failed ({e}), aborting")
             sys.exit(1)
-    entries = pull_warn(states, min_employees=min_emp, start_date=start)
-    entries.sort(key=lambda e: e["layoff_date"], reverse=True)
-    if limit:
-        entries = entries[:limit]
-    print(f"WARN import: {len(entries)} notices to upsert (bulk)")
 
     upserted = post_bulk(entries)
     print(f"WARN import done: {upserted} upserted from {len(entries)} notices")

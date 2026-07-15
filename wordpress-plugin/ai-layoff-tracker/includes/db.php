@@ -326,6 +326,14 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_cleanup',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: editorial removal of specific entries (bad extractions,
+    // confirmed duplicates). Trashes CPT posts (recoverable in wp-admin) and
+    // deletes table-only rows by table id.
+    register_rest_route('layoffs/v1', '/trash', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_trash',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Key-protected: drop table-only WARN rows ahead of a clean re-import.
     // (Corrected counts change the dedup hash, so upsert alone would leave the
     // old wrong rows behind as duplicates.) CPT-backed rows are untouched.
@@ -334,6 +342,30 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_bulk_purge',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+}
+
+function alt_api_trash(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'not_found' => array());
+
+    foreach ((array) $r->get_param('post_ids') as $pid) {
+        $pid = (int) $pid;
+        if ($pid && get_post_type($pid) === 'layoffs') {
+            wp_trash_post($pid);                    // hooks remove the table row
+            $out['trashed_posts'][] = $pid;
+        } else {
+            $out['not_found'][] = $pid;
+        }
+    }
+    foreach ((array) $r->get_param('row_ids') as $rid) {
+        $rid = (int) $rid;
+        $deleted = $rid ? $wpdb->delete($table, array('id' => $rid, 'post_id' => null)) : 0;
+        if ($deleted) { $out['deleted_rows'][] = $rid; } else { $out['not_found'][] = $rid; }
+    }
+
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
 }
 
 function alt_api_bulk_purge(WP_REST_Request $r) {
@@ -464,6 +496,23 @@ function alt_api_cleanup(WP_REST_Request $r) {
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($changed);
 }
+
+/**
+ * WordPress appends "Cache-Control: no-cache, no-store" + "Expires: 0" to REST
+ * responses, which overrides our max-age and makes Cloudflare's cache rule
+ * useless. Suppress that for anonymous GETs on our public read endpoints only.
+ */
+add_filter('rest_send_nocache_headers', function ($send) {
+    if (is_user_logged_in()) return $send;
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') return $send;
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $public = strpos($uri, 'layoffs/v1/query') !== false
+        || strpos($uri, 'layoffs/v1/aggregate') !== false
+        || strpos($uri, 'layoffs/v1/facets') !== false
+        || strpos($uri, 'layoffs/v1/stats') !== false
+        || strpos($uri, 'layoffs/v1/all') !== false;
+    return $public ? false : $send;
+});
 
 /**
  * Micro-cache for the public read endpoints. Nearly every visitor issues the

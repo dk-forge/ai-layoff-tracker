@@ -1,0 +1,87 @@
+# Architecture
+
+```
+                         ┌────────────────────────────────────────────────┐
+  SOURCES                │  INGEST (railway/ — Python, GitHub Actions)    │
+  ────────               │                                                │
+  SEC EDGAR 8-K ────────►│ cron.py (Railway cron 12:00 & 22:00 UTC)       │
+  NewsAPI ──────────────►│   EDGAR + NewsAPI + GDELT(36h worldwide)       │
+  GDELT (worldwide press)│   → extractor.py (DeepSeek-V3 via OpenRouter)  │──POST /add──┐
+                         │                                                │             │
+  State WARN sites ─────►│ warn_import.py (GH cron daily 15:00 UTC)       │──POST /bulk─┤
+  (~25 states via        │   warn-scraper → keyword column parsing        │             │
+   warn-scraper)         │   NO LLM — filings are already structured      │             │
+                         └────────────────────────────────────────────────┘             │
+                                                                                        ▼
+  ┌──────────────────────────────────────────────────────────────────────────────────────┐
+  │  WORDPRESS PLUGIN (Bluehost, install at /blog; Cloudflare in front)                  │
+  │                                                                                      │
+  │  wp_alt_layoffs (custom indexed table — THE query surface, holds everything)         │
+  │  layoffs CPT posts (rich entries only: SEC/news/curated → permalink pages)           │
+  │      └── mirrored into the table on save (alt_db_sync_post)                          │
+  │                                                                                      │
+  │  REST layoffs/v1:                                                                    │
+  │   PUBLIC  /query /aggregate /facets   ← 5-min micro-cache (transients, alt_data_ver) │
+  │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
+  │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
+  │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
+  │                                                                                      │
+  │  Front-end (assets/layoffs.js): DataTables serverSide → /query; charts+stats →       │
+  │  /aggregate; dropdowns → /facets. All filters are multi-select; chart bars toggle    │
+  │  filters; chips are color-coded per dimension.                                       │
+  └──────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Repo layout
+```
+wordpress-plugin/ai-layoff-tracker/
+  ai-layoff-tracker.php      plugin bootstrap: version, enqueues, SEO JSON-LD, deploy hooks
+  includes/db.php            fast table, /query /aggregate /facets /bulk /bulk-purge /cleanup /migrate, micro-cache
+  includes/api.php           /add /dedupe /stats /all + normalizers (country/industry/state) + dedup guards
+  includes/cpt.php           CPT + allowed source/verification tiers (gold|warn|silver|bronze)
+  includes/contact.php       /contact page auto-creation + form handler (mails info@) + spam defenses
+  includes/export.php        CSV/JSON streaming exports (full table, chunked)
+  includes/shortcodes.php    [alt_tracker] [alt_stats_bar] [alt_dashboard] [alt_contact] ...
+  templates/page-tracker.php the main page markup (stats → filters → charts → table)
+  assets/layoffs.js|css      the entire front-end
+railway/
+  cron.py                    2×daily ingest (EDGAR + NewsAPI + GDELT 36h)
+  extractor.py               DeepSeek prompt + post-processing (taxonomies, state/country rules)
+  sources/{edgar,gdelt,newsapi,warn}.py
+  warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
+  backfill.py gdelt_backfill.py news_catchup.py seed_ai.py   one-off runners
+.github/workflows/           see RUNBOOK for the full table
+docs/                        this documentation
+```
+
+## Data semantics (the parts that bite)
+- **Verification tiers:** `gold`=SEC 8-K, `warn`=state WARN notice, `silver`=press release, `bronze`=news.
+- **Dedup:** exact = md5(company+date+count). Fuzzy = same normalized company within ±30 days blocks
+  a second *news* entry. `/dedupe` collapses cross-outlet clusters keeping best tier. **WARN is exempt
+  from fuzzy + cluster dedup** — its hash also includes city+state.
+- **Countries:** canonical "United States"/"United Kingdom"; regions & multi-country phrases
+  ("Global", "Europe", "India and US") → **"Multiple countries"** (splitting would double-count).
+  Real "and"-countries (Trinidad and Tobago…) are whitelisted first.
+- **Industries:** fixed ~19-value taxonomy via keyword rules; order matters (biotech/fintech/edtech
+  must match before the bare 'tech' keyword); keywords ≤4 chars match on word boundaries only.
+- **Counts:** first number in the field ("9,891 Remote Workers (2 from RI)" → 9,891; "60-80" → 60);
+  any single notice >100,000 rejected as a parse error.
+- **Dates:** valid window 2015-01-01 → today+18 months (WARN files up to ~a year ahead). Future
+  effective dates get an "upcoming" tag in the UI. `/cleanup` NULLs implausible dates.
+- **WARN quirks:** filings carry NO industry/reason (industry charts reflect SEC/news entries);
+  remote/multi-state employers file in several states with overlapping counts (shown as-filed,
+  disclosed in methodology; the weekly data-quality report flags them).
+- **Link precision:** most states publish one list page, not per-notice URLs. UI labels list-page
+  links "(list)"; exact per-notice links (VT etc.) display plain.
+
+## Filter model (front-end ⇄ API)
+Multi-select params, comma-joined: `years, quarters, months, industry, country, state, sources,
+reasons` (+ `from,to,q,company,keyword,min_jobs,ai`). Dimensions AND together; values within a
+dimension OR. Slicer charts call /aggregate ignoring their own dimension (`except`) so you can
+always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; every write bumps it.
+
+## Caching layers
+1. Page HTML: WP-Super-Cache (+ Autoptimize) — flushed automatically on version bump.
+2. API JSON: 5-min transients keyed by params+alt_data_ver; `Cache-Control: public, max-age=60`.
+3. Cloudflare: Cache Rule (added 2026-07-15 by owner) edge-caches `/blog/wp-json/layoffs/v1/*` GETs.
+   ⚠ Ensure the rule's Browser TTL = "Respect origin" (a 5-day browser TTL was observed initially).

@@ -235,15 +235,18 @@
         updateRangeLabel();
     }
 
+    var AGG_SEQ = 0;
     function fetchAndRenderAggregate() {
         if (!document.getElementById('alt-stats-bar') && !DASH_PRESENT) return;
+        var seq = ++AGG_SEQ; // drop stale responses that resolve out of order
         apiGet('aggregate', currentParams())
             .then(function (agg) {
+                if (seq !== AGG_SEQ) return;
                 LAST_AGG = agg;
                 renderStats(agg.totals);
                 renderCharts(agg);
             })
-            .catch(function () { setStatus('alt-dashboard-status', 'Could not load chart data.', true); });
+            .catch(function () { if (seq === AGG_SEQ) setStatus('alt-dashboard-status', 'Could not load chart data.', true); });
     }
 
     /* Active-filter chip bar ------------------------------------------- */
@@ -449,8 +452,8 @@
         document.addEventListener('click', closeAllDropdowns);
     }
     function closeAllDropdowns() {
-        document.querySelectorAll('.alt-dd-pop').forEach(function (p) { p.hidden = true; });
-        document.querySelectorAll('.alt-dd').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+        document.querySelectorAll('.alt-dd-pop, .alt-range-pop').forEach(function (p) { p.hidden = true; });
+        document.querySelectorAll('.alt-dd, .alt-range-btn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
     }
     function updateDropdownSummaries() {
         document.querySelectorAll('.alt-filter[data-dd]').forEach(function (cell) {
@@ -602,9 +605,13 @@
         else if (years.length) end = years[years.length - 1] + '-12';
         else end = series[series.length - 1].month;
 
+        // Cap the ZERO-FILL at the current month, but never below real data:
+        // WARN filings carry future effective dates that must stay visible.
         var now = new Date();
         var nowKey = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
-        if (end > nowKey) end = nowKey;
+        var lastData = series[series.length - 1].month;
+        var cap = lastData > nowKey ? lastData : nowKey;
+        if (end > cap) end = cap;
         if (end < start) return series;
 
         var out = [];
@@ -794,8 +801,11 @@
                     if (t !== 'display') return d || '';
                     if (!d) return '<span class="alt-muted">unknown</span>';
                     // WARN filings are legally filed 60+ days ahead — flag cuts
-                    // whose effective date hasn't arrived yet as planned, not done.
-                    var today = new Date().toISOString().slice(0, 10);
+                    // whose effective date hasn't arrived yet as planned, not
+                    // done. Local calendar date, not UTC, so the tag doesn't
+                    // flip early/late around midnight.
+                    var n = new Date();
+                    var today = n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate());
                     return escapeHtml(d) + (d > today ? ' <span class="alt-upcoming" title="Filed in advance — effective date has not arrived yet">upcoming</span>' : '');
                 } },
                 { data: 'company_name', render: function (d, t, row) {
@@ -1148,6 +1158,8 @@
             fetchAndRenderAggregate(); // charts + stats
         }).catch(function () {
             setStatus('alt-table-status', 'Could not load filters.', true);
+            initMultiDropdowns();
+            initRangeControl();
             initTracker();
             initChrome();
             fetchAndRenderAggregate();
