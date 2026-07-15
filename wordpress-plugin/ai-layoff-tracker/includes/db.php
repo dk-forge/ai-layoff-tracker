@@ -215,6 +215,12 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
     if (($v = $r->get_param('company'))) { $where[] = "company LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
     if (($v = $r->get_param('keyword'))) { $where[] = "excerpt LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
+    // Unified search box: company OR industry OR excerpt OR state OR country.
+    if (($v = $r->get_param('q'))) {
+        $like = '%' . $wpdb->esc_like($v) . '%';
+        $where[] = "(company LIKE %s OR industry LIKE %s OR excerpt LIKE %s OR state LIKE %s OR country LIKE %s)";
+        array_push($params, $like, $like, $like, $like, $like);
+    }
     if (($v = $r->get_param('min_jobs')) && (int) $v > 0) { $where[] = "job_count >= %d"; $params[] = (int) $v; }
 
     return array(implode(' AND ', $where), $params);

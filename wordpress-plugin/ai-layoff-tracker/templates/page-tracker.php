@@ -1,63 +1,44 @@
 <?php
-/** Main filterable tracker table — rendered by [alt_tracker]. */
+/** Main filterable tracker — rendered by [alt_tracker]. */
 if (!defined('ABSPATH')) exit;
 
 $alt_csv  = admin_url('admin-post.php?action=alt_export_csv');
 $alt_json = admin_url('admin-post.php?action=alt_export_json');
-$alt_api  = rest_url('layoffs/v1/all');
+$alt_api  = rest_url('layoffs/v1/query');
 $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>';
 ?>
 <div class="alt-wrap alt-tracker-wrap">
 
-    <div class="alt-toolbar">
-        <div class="alt-toolbar-info">
-            <span class="alt-toolbar-title">Layoff database</span>
-            <span class="alt-toolbar-sub">Verified from SEC filings &amp; credible news · updated twice daily (morning &amp; after market close, ET)</span>
+    <div class="alt-toolbar2">
+        <div class="alt-search-wrap">
+            <svg class="alt-search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="search" id="alt-search" placeholder="Search company, industry, keyword…" autocomplete="off" aria-label="Search">
         </div>
-        <div class="alt-toolbar-actions">
-            <a class="alt-btn alt-btn-primary" href="<?php echo esc_url($alt_csv); ?>"><?php echo $alt_dl; ?> Download CSV</a>
-            <a class="alt-btn" href="<?php echo esc_url($alt_json); ?>"><?php echo $alt_dl; ?> JSON</a>
-        </div>
+        <button type="button" id="alt-filters-toggle" class="alt-btn" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            Filters
+        </button>
+        <label class="alt-sort"><span>Sort</span>
+            <select id="alt-sort">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="largest">Largest cuts</option>
+                <option value="smallest">Smallest cuts</option>
+            </select>
+        </label>
     </div>
 
-    <div class="alt-dashboard alt-overview">
-        <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
-        <div class="alt-overview-hint">Click any bar or slice to filter everything below: the charts, the totals, and the company table all move together.</div>
-        <div id="alt-active-filters" class="alt-active-filters" style="display:none"></div>
-        <div class="alt-chart-grid">
-            <div class="alt-chart-card alt-chart-card-wide">
-                <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub">full history</span></div>
-                <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
-            </div>
-            <div class="alt-chart-card">
-                <div class="alt-chart-h">Top industries <span class="alt-chart-sub">by total job losses</span></div>
-                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-industries"></canvas></div>
-            </div>
-            <div class="alt-chart-card">
-                <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">jobs by reason tag</span></div>
-                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-reasons"></canvas></div>
-            </div>
-            <div class="alt-chart-card">
-                <div class="alt-chart-h">Top US states <span class="alt-chart-sub">by total job losses</span></div>
-                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-states"></canvas></div>
-            </div>
-            <div class="alt-chart-card">
-                <div class="alt-chart-h">Top countries <span class="alt-chart-sub">by total job losses</span></div>
-                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-countries"></canvas></div>
-            </div>
-            <div class="alt-chart-card alt-chart-card-wide">
-                <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub">acceleration curve</span></div>
-                <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-cumulative"></canvas></div>
-            </div>
-        </div>
+    <div class="alt-quickviews">
+        <span class="alt-qv-label">Quick views:</span>
+        <button type="button" class="alt-qv" data-qv="ai">✦ AI-attributed</button>
+        <button type="button" class="alt-qv" data-qv="month">This month</button>
+        <button type="button" class="alt-qv" data-qv="largest">Largest cuts</button>
+        <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
+        <button type="button" class="alt-qv" data-qv="tech">Tech industry</button>
     </div>
 
-    <div class="alt-filters-card">
-        <div class="alt-filters-head">
-            <span class="alt-filters-title">Filter the data</span>
-            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-sm">Reset filters</button>
-        </div>
-        <div class="alt-filters" id="alt-filters">
+    <div class="alt-filters-panel" id="alt-filters-panel" hidden>
+        <div class="alt-filters">
             <div class="alt-filter">
                 <label for="alt-f-from">From</label>
                 <input type="date" id="alt-f-from">
@@ -106,7 +87,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
             </div>
             <div class="alt-filter">
-                <label for="alt-f-keyword">Keyword</label>
+                <label for="alt-f-keyword">Keyword in excerpt</label>
                 <input type="text" id="alt-f-keyword" placeholder="Search excerpts">
             </div>
             <div class="alt-filter">
@@ -117,18 +98,42 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <label><input type="checkbox" id="alt-f-ai"> AI-attributed only</label>
             </div>
         </div>
+        <div class="alt-filters-foot">
+            <div class="alt-period" id="alt-period" role="group" aria-label="Time period">
+                <span class="alt-period-lbl">Period:</span>
+                <div class="alt-period-years" id="alt-period-years"></div>
+                <select id="alt-period-quarter" aria-label="Quarter">
+                    <option value="">All quarters</option>
+                    <option value="1">Q1 (Jan–Mar)</option>
+                    <option value="2">Q2 (Apr–Jun)</option>
+                    <option value="3">Q3 (Jul–Sep)</option>
+                    <option value="4">Q4 (Oct–Dec)</option>
+                </select>
+                <select id="alt-period-month" aria-label="Month">
+                    <option value="">All months</option>
+                    <option value="1">January</option><option value="2">February</option>
+                    <option value="3">March</option><option value="4">April</option>
+                    <option value="5">May</option><option value="6">June</option>
+                    <option value="7">July</option><option value="8">August</option>
+                    <option value="9">September</option><option value="10">October</option>
+                    <option value="11">November</option><option value="12">December</option>
+                </select>
+            </div>
+            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-sm">Reset all filters</button>
+        </div>
     </div>
 
-    <div class="alt-legend">
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-gold">SEC filing</span> official 8-K, strongest</span>
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-warn">WARN notice</span> state mass-layoff filing</span>
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-silver">Press release</span> company announcement</span>
-        <span class="alt-legend-item"><span class="alt-badge alt-badge-bronze">News</span> credible outlet</span>
-        <span class="alt-legend-hint">Tap any row for the exact quote &amp; source ↓</span>
+    <div id="alt-active-filters" class="alt-active-filters" style="display:none"></div>
+
+    <div class="alt-count-row">
+        <span id="alt-table-count" class="alt-count-strong">Loading…</span>
+        <div class="alt-toolbar-actions">
+            <a class="alt-btn alt-btn-sm" href="<?php echo esc_url($alt_csv); ?>"><?php echo $alt_dl; ?> CSV</a>
+            <a class="alt-btn alt-btn-sm" href="<?php echo esc_url($alt_json); ?>"><?php echo $alt_dl; ?> JSON</a>
+        </div>
     </div>
 
-    <div id="alt-table-status" class="alt-status" role="status">Loading layoff data…</div>
-    <div id="alt-table-count" class="alt-table-count"></div>
+    <div id="alt-table-status" class="alt-status" role="status" style="display:none"></div>
 
     <div class="alt-table-scroll">
         <table id="alt-table" class="display" style="width:100%">
@@ -136,37 +141,103 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <tr>
                     <th>Date</th>
                     <th>Company</th>
-                    <th>Employees</th>
+                    <th>Jobs</th>
                     <th>Industry</th>
                     <th>Country</th>
                     <th>Reasons</th>
-                    <th>Source type</th>
-                    <th>AI</th>
                     <th>Source</th>
+                    <th>AI</th>
+                    <th>Link</th>
                 </tr>
             </thead>
         </table>
     </div>
 
+    <details class="alt-overview-collapse">
+        <summary>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+            Charts &amp; overview
+        </summary>
+        <div class="alt-dashboard alt-overview">
+            <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
+            <div class="alt-stats-bar" id="alt-stats-bar">
+                <div class="alt-stat-card">
+                    <span class="alt-stat-value" id="alt-stat-total">—</span>
+                    <span class="alt-stat-label">Jobs cut (tracked)</span>
+                    <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
+                </div>
+                <div class="alt-stat-card alt-stat-card-ai">
+                    <span class="alt-stat-value" id="alt-stat-ai">—</span>
+                    <span class="alt-stat-label">Explicitly AI-attributed</span>
+                    <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
+                </div>
+                <div class="alt-stat-card">
+                    <span class="alt-stat-value" id="alt-stat-companies">—</span>
+                    <span class="alt-stat-label">Companies</span>
+                    <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
+                </div>
+                <div class="alt-stat-card">
+                    <span class="alt-stat-value" id="alt-stat-industries">—</span>
+                    <span class="alt-stat-label">Industries</span>
+                    <span class="alt-stat-sub"></span>
+                </div>
+                <div class="alt-stat-card">
+                    <span class="alt-stat-value" id="alt-stat-countries">—</span>
+                    <span class="alt-stat-label">Countries</span>
+                    <span class="alt-stat-sub"></span>
+                </div>
+            </div>
+            <div class="alt-chart-grid">
+                <div class="alt-chart-card alt-chart-card-wide">
+                    <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub">full history</span></div>
+                    <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+                </div>
+                <div class="alt-chart-card">
+                    <div class="alt-chart-h">Top industries <span class="alt-chart-sub">by total job losses</span></div>
+                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-industries"></canvas></div>
+                </div>
+                <div class="alt-chart-card">
+                    <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">jobs by reason tag</span></div>
+                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-reasons"></canvas></div>
+                </div>
+                <div class="alt-chart-card">
+                    <div class="alt-chart-h">Top US states <span class="alt-chart-sub">by total job losses</span></div>
+                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-states"></canvas></div>
+                </div>
+                <div class="alt-chart-card">
+                    <div class="alt-chart-h">Top countries <span class="alt-chart-sub">by total job losses</span></div>
+                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-countries"></canvas></div>
+                </div>
+                <div class="alt-chart-card alt-chart-card-wide">
+                    <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub">acceleration curve</span></div>
+                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-cumulative"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </details>
+
     <details class="alt-methodology">
         <summary>Methodology &amp; sources</summary>
         <div class="alt-method-body">
-            <p><b>How entries are collected.</b> Layoffs are pulled from SEC EDGAR 8-K filings and from credible news coverage worldwide (via the open GDELT news index), plus a set of manually verified cases. Each entry is machine-extracted, and the core facts (company, job count, date, and any AI attribution) always come straight from the source text. The only field we infer is location: a company that files an 8-K is a US registrant, so SEC entries with no stated country are marked US.</p>
+            <p><b>How entries are collected.</b> Layoffs are pulled from SEC EDGAR 8-K filings, US state WARN Act notices, and credible news coverage worldwide (via the open GDELT news index), plus a set of manually verified cases. Each entry is machine-extracted, and the core facts (company, job count, date, and any AI attribution) always come straight from the source text. The only field we infer is location: a company that files an 8-K is a US registrant, so SEC entries with no stated country are marked US.</p>
             <p><b>How the AI tag works.</b> An entry is marked <em>Explicitly AI-attributed</em> only when the source <em>explicitly names</em> AI, machine learning, automation, or robotics as a reason for the cuts. We store and display the <em>exact quote</em>. If a source doesn't name AI, the entry is still listed, just not flagged as AI. We never infer AI from vague "efficiency" language.</p>
-            <p><b>Verification tiers.</b> <span class="alt-badge alt-badge-gold">SEC filing</span> is a legal 8-K the company filed (strongest). <span class="alt-badge alt-badge-silver">Press release</span> is an official company statement. <span class="alt-badge alt-badge-bronze">News</span> is a credible outlet (Reuters, Bloomberg, CNBC, etc.).</p>
-            <p><b>Global coverage limitation.</b> There is <em>no international equivalent of SEC EDGAR</em>. For non-US companies, the verification ceiling is Press release or News, never SEC filing. We label every entry's source type so you always know the strength of the evidence.</p>
-            <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; and "AI" claims that are forward-looking plans (e.g. "could be replaced by 2030") rather than executed cuts.</p>
+            <p><b>Verification tiers.</b> <span class="alt-badge alt-badge-gold">SEC filing</span> is a legal 8-K the company filed (strongest). <span class="alt-badge alt-badge-warn">WARN notice</span> is a state mass-layoff filing (legally required, US-only). <span class="alt-badge alt-badge-silver">Press release</span> is an official company statement. <span class="alt-badge alt-badge-bronze">News</span> is a credible outlet (Reuters, Bloomberg, CNBC, etc.).</p>
+            <p><b>Coverage.</b> US WARN notices cover ~22 states that publish machine-readable data. There is <em>no international equivalent of WARN or EDGAR</em>, so non-US layoffs come from news and top out at Press release or News verification. We label every entry's source so you always know the strength of the evidence.</p>
+            <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; and "AI" claims that are forward-looking plans rather than executed cuts.</p>
         </div>
     </details>
 
     <div class="alt-cite-box">
         <span class="alt-detail-h">Cite this tracker</span>
-        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"></span>. Data from SEC EDGAR 8-K filings and credible news outlets.</code>
+        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"></span>. Data from SEC EDGAR 8-K filings, US state WARN notices, and credible news outlets.</code>
         <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>
     </div>
 
-    <p class="alt-tracker-foot">
-        Free to use with attribution to <strong>asktherecruiter.com</strong>. Journalists &amp; researchers can query the live API at
-        <code><?php echo esc_html($alt_api); ?></code>.
-    </p>
+    <div class="alt-journalist">
+        <div class="alt-journalist-text">
+            <strong>Built for journalists &amp; researchers</strong>
+            <p>Free to use with attribution to <strong>asktherecruiter.com</strong>. Every figure links to a primary source. Query the full dataset live via our API.</p>
+        </div>
+        <code class="alt-journalist-api"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
+    </div>
 </div>

@@ -177,6 +177,7 @@
         if (reasons.length) p.reasons = reasons.join(',');
         var sources = readControl('alt-f-verification') || [];
         if (sources.length) p.sources = sources.join(',');
+        if ((v = (readControl('alt-search') || '').trim())) p.q = v;
         if ((v = (readControl('alt-f-company') || '').trim())) p.company = v;
         if ((v = (readControl('alt-f-keyword') || '').trim())) p.keyword = v;
         var mj = parseInt(readControl('alt-f-minjobs'), 10);
@@ -205,18 +206,31 @@
 
     var TABLE = null;
     var DASH_PRESENT = false;
+    var LAST_AGG = null;
+
+    // Charts live inside a collapsed <details>; only draw them when it's open
+    // (Chart.js can't size a canvas that's display:none).
+    function overviewOpen() {
+        var d = document.querySelector('.alt-overview-collapse');
+        return !d || d.open;
+    }
 
     function refreshAll() {
         saveFilters();
         if (TABLE) TABLE.ajax.reload(null, true);
         fetchAndRenderAggregate();
         updateActiveFilterBar();
+        updateQuickViewStates();
     }
 
     function fetchAndRenderAggregate() {
         if (!document.getElementById('alt-stats-bar') && !DASH_PRESENT) return;
         apiGet('aggregate', currentParams())
-            .then(function (agg) { renderStats(agg.totals); renderCharts(agg); })
+            .then(function (agg) {
+                LAST_AGG = agg;
+                renderStats(agg.totals);
+                if (overviewOpen()) renderCharts(agg);
+            })
             .catch(function () { setStatus('alt-dashboard-status', 'Could not load chart data.', true); });
     }
 
@@ -270,16 +284,19 @@
     /* ------------------------------------------------------------------ */
 
     function initStatsMeta() {
-        if (!document.getElementById('alt-last-updated')) return;
+        var target = document.getElementById('alt-live-time') || document.getElementById('alt-last-updated');
+        if (!target) return;
         apiGet('stats', {}).then(function (stats) {
             if (!stats || !stats.last_updated) return;
             var lu = new Date(stats.last_updated);
             if (isNaN(lu.getTime())) return;
-            setText('alt-last-updated', 'Updated ' + lu.toLocaleString('en-US', {
-                timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric',
+            var when = lu.toLocaleString('en-US', {
+                timeZone: 'America/New_York', month: 'short', day: 'numeric',
                 hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
-            }));
-        }).catch(function () { /* leave blank */ });
+            });
+            // The Live pill already says "updated"; the meta line wants the verb.
+            target.textContent = (target.id === 'alt-live-time') ? when : ('Updated ' + when);
+        }).catch(function () { /* leave the fallback text */ });
     }
 
     function renderStats(t) {
@@ -716,6 +733,94 @@
     }
 
     /* ------------------------------------------------------------------ */
+    /* Toolbar chrome: search, sort, Filters panel, quick views            */
+    /* ------------------------------------------------------------------ */
+
+    var SORT_MAP = { newest: [0, 'desc'], oldest: [0, 'asc'], largest: [2, 'desc'], smallest: [2, 'asc'] };
+    function setSort(val) {
+        var sel = document.getElementById('alt-sort');
+        if (sel && sel.value !== val) sel.value = val;
+        if (TABLE && SORT_MAP[val]) TABLE.order(SORT_MAP[val]);
+    }
+    function currentSort() { var s = document.getElementById('alt-sort'); return s ? s.value : 'newest'; }
+
+    function thisMonthRange() {
+        var now = new Date();
+        var y = now.getFullYear(), m = now.getMonth() + 1;
+        return { from: y + '-' + pad2(m) + '-01', to: y + '-' + pad2(m) + '-' + pad2(daysInMonth(y, m)) };
+    }
+
+    var QUICK_VIEWS = {
+        ai: {
+            apply: function () { var el = document.getElementById('alt-f-ai'); if (el) el.checked = true; },
+            clear: function () { var el = document.getElementById('alt-f-ai'); if (el) el.checked = false; },
+            active: function () { return !!readControl('alt-f-ai'); }
+        },
+        month: {
+            apply: function () { var d = thisMonthRange(); writeControl('alt-f-from', d.from); writeControl('alt-f-to', d.to); PERIOD_YEAR = ''; updatePeriodActiveState(); },
+            clear: function () { writeControl('alt-f-from', ''); writeControl('alt-f-to', ''); },
+            active: function () { var d = thisMonthRange(); return readControl('alt-f-from') === d.from && readControl('alt-f-to') === d.to; }
+        },
+        largest: {
+            apply: function () { setSort('largest'); },
+            clear: function () { setSort('newest'); },
+            active: function () { return currentSort() === 'largest'; }
+        },
+        sec: {
+            apply: function () { writeControl('alt-f-verification', ['gold']); },
+            clear: function () { writeControl('alt-f-verification', []); },
+            active: function () { var v = readControl('alt-f-verification') || []; return v.length === 1 && v[0] === 'gold'; }
+        },
+        tech: {
+            apply: function () { writeControl('alt-f-industry', 'Technology'); },
+            clear: function () { writeControl('alt-f-industry', ''); },
+            active: function () { return readControl('alt-f-industry') === 'Technology'; }
+        }
+    };
+
+    function updateQuickViewStates() {
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-qv'), function (btn) {
+            var qv = QUICK_VIEWS[btn.getAttribute('data-qv')];
+            btn.classList.toggle('alt-qv-on', !!(qv && qv.active()));
+        });
+    }
+
+    function initChrome() {
+        var search = document.getElementById('alt-search');
+        var searchTimer = null;
+        if (search) search.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(refreshAll, 300);
+        });
+
+        var sort = document.getElementById('alt-sort');
+        if (sort) sort.addEventListener('change', function () { setSort(sort.value); refreshAll(); });
+
+        var ft = document.getElementById('alt-filters-toggle');
+        var fp = document.getElementById('alt-filters-panel');
+        if (ft && fp) ft.addEventListener('click', function () {
+            var willOpen = fp.hasAttribute('hidden');
+            if (willOpen) fp.removeAttribute('hidden'); else fp.setAttribute('hidden', '');
+            ft.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            ft.classList.toggle('alt-btn-active', willOpen);
+        });
+
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-qv'), function (btn) {
+            btn.addEventListener('click', function () {
+                var qv = QUICK_VIEWS[btn.getAttribute('data-qv')];
+                if (!qv) return;
+                if (qv.active()) qv.clear(); else qv.apply();
+                refreshAll();
+            });
+        });
+
+        var ov = document.querySelector('.alt-overview-collapse');
+        if (ov) ov.addEventListener('toggle', function () { if (ov.open && LAST_AGG) renderCharts(LAST_AGG); });
+
+        updateQuickViewStates();
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Boot                                                                */
     /* ------------------------------------------------------------------ */
 
@@ -765,11 +870,13 @@
             restoreFilters();
             initPeriodSelector(facets);
             initTracker();            // builds the server-side table (reads restored filters)
+            initChrome();             // search / sort / Filters panel / quick views
             updateActiveFilterBar();
             fetchAndRenderAggregate(); // charts + stats
         }).catch(function () {
             setStatus('alt-table-status', 'Could not load filters.', true);
             initTracker();
+            initChrome();
             fetchAndRenderAggregate();
         });
     });
