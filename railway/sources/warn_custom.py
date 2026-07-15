@@ -88,17 +88,27 @@ def fetch_fl():
         headers=UA, timeout=120)
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", resp.text, re.S | re.I)
     out = []
+    skipped_test = 0
     for tr in rows[1:]:  # first <tr> is the header (td cells, no th)
         cells = [_strip_tags(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S | re.I)]
         if len(cells) < 14:
             continue
         # WarnNo, LWDB, Company, Addr1, Addr2, City, State, Zip, County,
         # NotifDate, LayoffBegin, LayoffEnd, Affected, Industry
+        # Florida's export contains staff TEST rows ("test testie", "BOEING
+        # test", "test2" — one carried 78,788 fake workers under an AT&T name
+        # and briefly topped our whole tracker). "test" as its own token skips
+        # them without touching legit names like "DuctTesters, Inc.".
+        if re.search(r"(?:^|[^a-z])test(?:[^a-z]|\d|$)", cells[2], re.I):
+            skipped_test += 1
+            continue
         jobs = _count(cells[12])
         date = _to_iso_date(cells[10]) or _to_iso_date(cells[9])
         e = _entry("FL", cells[2], jobs, date, cells[5])
         if e:
             out.append(e)
+    if skipped_test:
+        print(f"    FL: skipped {skipped_test} state-side test row(s)")
     return out
 
 

@@ -26,7 +26,8 @@ STATE_WARN_URL = {
     "CT": "https://www.ctdol.state.ct.us/progsupt/bussrvce/warnreports/warnreports.htm",
     "DC": "https://does.dc.gov/page/industry-closings-and-layoffs-warn-notifications",
     "DE": "https://joblink.delaware.gov/search/warn_lookups",
-    "FL": "https://floridajobs.org/office-directory/division-of-workforce-services/workforce-programs/reemployment-and-emergency-assistance-coordination-team-react/warn-notices",
+    # FloridaCommerce moved the WARN page 2026-07 (old REACT path now 404s)
+    "FL": "https://floridajobs.org/workforce-resources/worker-adjustment-and-retraining-notification-(warn)",
     "GA": "https://www.dol.state.ga.us/public/es/warn/searchwarns/list",
     "HI": "https://labor.hawaii.gov/wdc/warn-notices/",
     "IA": "https://www.iowaworkforcedevelopment.gov/worker-adjustment-and-retraining-notification-act",
