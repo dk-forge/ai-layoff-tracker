@@ -486,7 +486,7 @@ function alt_api_cleanup(WP_REST_Request $r) {
     $changed['dates'] = (int) $wpdb->query(
         "UPDATE $table SET layoff_date = NULL
          WHERE layoff_date > DATE_ADD(CURDATE(), INTERVAL 18 MONTH)
-            OR layoff_date < '2000-01-01'");
+            OR layoff_date < '2015-01-01'");
 
     // CPT posts (a few hundred, not the bulk rows) — keep meta consistent.
     $ids = get_posts(array(
@@ -506,7 +506,7 @@ function alt_api_cleanup(WP_REST_Request $r) {
             if ($new !== $old) { update_post_meta($id, $key, $new); $dirty = true; }
         }
         $date = (string) get_post_meta($id, 'layoff_date', true);
-        if ($date !== '' && ($date > $date_ceiling || $date < '2000-01-01')) {
+        if ($date !== '' && ($date > $date_ceiling || $date < '2015-01-01')) {
             update_post_meta($id, 'layoff_date', '');
             $dirty = true;
         }

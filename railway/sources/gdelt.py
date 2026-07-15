@@ -99,14 +99,25 @@ def pull_gdelt_between(start, end, max_records=250):
         "startdatetime": start.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "enddatetime": end.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
     }
-    time.sleep(REQUEST_DELAY)
-    try:
-        resp = requests.get(GDELT_URL, params=params,
-                            headers={"User-Agent": BROWSER_UA}, timeout=30)
-        resp.raise_for_status()
-        articles = resp.json().get("articles", []) or []
-    except Exception as e:
-        print(f"GDELT query error: {e}")
+    # GDELT throttles aggressively on historical sweeps — back off and retry
+    # instead of surrendering the whole month window (a 72-window backfill
+    # once lost 63 windows to 429s without this).
+    articles = None
+    for attempt in range(5):
+        time.sleep(REQUEST_DELAY if attempt == 0 else 45 * attempt)
+        try:
+            resp = requests.get(GDELT_URL, params=params,
+                                headers={"User-Agent": BROWSER_UA}, timeout=30)
+            if resp.status_code == 429:
+                print(f"GDELT 429 (attempt {attempt + 1}/5), backing off")
+                continue
+            resp.raise_for_status()
+            articles = resp.json().get("articles", []) or []
+            break
+        except Exception as e:
+            print(f"GDELT query error (attempt {attempt + 1}/5): {e}")
+    if articles is None:
+        print("GDELT window abandoned after 5 attempts")
         return []
 
     results, seen = [], set()
