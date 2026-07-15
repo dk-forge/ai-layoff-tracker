@@ -477,6 +477,7 @@ function alt_api_add($request) {
         'excerpt'            => sanitize_textarea_field($meta_in['excerpt'] ?? ''),
         'reason_tags'        => $tags,
         'ai_explicit'        => !empty($meta_in['ai_explicit']),
+        'announced'          => !empty($meta_in['announced']),
         'ai_language'        => sanitize_text_field($meta_in['ai_language'] ?? ''),
         'dedup_hash'         => $dedup_hash,
     );

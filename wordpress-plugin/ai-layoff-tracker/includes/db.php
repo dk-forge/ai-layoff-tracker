@@ -42,6 +42,7 @@ function alt_db_install() {
         source_name VARCHAR(191) NOT NULL DEFAULT '',
         source_url TEXT NULL,
         ai_explicit TINYINT(1) NOT NULL DEFAULT 0,
+        announced TINYINT(1) NOT NULL DEFAULT 0,
         ai_language TEXT NULL,
         reason_tags VARCHAR(255) NOT NULL DEFAULT '',
         roles TEXT NULL,
@@ -94,6 +95,7 @@ function alt_db_upsert(array $row) {
         'source_name'        => substr((string) ($row['source_name'] ?? ''), 0, 191),
         'source_url'         => (string) ($row['source_url'] ?? ''),
         'ai_explicit'        => !empty($row['ai_explicit']) ? 1 : 0,
+        'announced'          => !empty($row['announced']) ? 1 : 0,
         'ai_language'        => (string) ($row['ai_language'] ?? ''),
         'reason_tags'        => alt_db_pack_tags($row['reason_tags'] ?? array()),
         'roles'              => (string) ($row['roles'] ?? ''),
@@ -141,6 +143,7 @@ function alt_db_sync_post($post_id) {
         'source_name'        => get_post_meta($post_id, 'source_name', true),
         'source_url'         => get_post_meta($post_id, 'source_url', true),
         'ai_explicit'        => get_post_meta($post_id, 'ai_explicit', true),
+        'announced'          => get_post_meta($post_id, 'announced', true),
         'ai_language'        => get_post_meta($post_id, 'ai_language', true),
         'reason_tags'        => get_post_meta($post_id, 'reason_tags', true),
         'roles'              => get_post_meta($post_id, 'roles', true),
@@ -244,6 +247,10 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
         foreach ($sources as $s) { $params[] = $s; }
     }
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
+    // stage=announced -> announcement-stage only; stage=verified -> filed/reported only
+    $stage = (string) $r->get_param('stage');
+    if ($stage === 'announced') { $where[] = "announced = 1"; }
+    elseif ($stage === 'verified') { $where[] = "announced = 0"; }
     if (($v = $r->get_param('company'))) { $where[] = "company LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
     if (($v = $r->get_param('keyword'))) { $where[] = "excerpt LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
     // Unified search box: company OR industry OR excerpt OR state OR country.
@@ -277,6 +284,7 @@ function alt_db_row_to_array($row) {
         'verification_level' => $row->verification_level,
         'source_url'         => $row->source_url,
         'ai_explicit'        => (bool) $row->ai_explicit,
+        'announced'          => (bool) $row->announced,
         'ai_language'        => $row->ai_language !== '' ? $row->ai_language : null,
         'reason_tags'        => alt_db_unpack_tags($row->reason_tags),
         'roles'              => $row->roles,
@@ -422,6 +430,7 @@ function alt_api_bulk(WP_REST_Request $r) {
             'source_name'        => $e['source_name'] ?? '',
             'source_url'         => $e['source_url'] ?? '',
             'ai_explicit'        => !empty($e['ai_explicit']),
+            'announced'          => !empty($e['announced']),
             'ai_language'        => $e['ai_language'] ?? '',
             'reason_tags'        => $e['reason_tags'] ?? array(),
             'roles'              => $e['roles'] ?? '',
@@ -620,6 +629,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                 SUM(ai_explicit) ai_entries,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
+                SUM(announced) announced_entries,
+                COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) announced_jobs,
                 COUNT(DISTINCT company_key) companies,
                 COUNT(DISTINCT NULLIF(industry,'')) industries,
                 COUNT(DISTINCT NULLIF(country,'')) countries,
@@ -686,6 +697,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'jobs'       => (int) $totals->jobs,
             'entries'    => (int) $totals->entries,
             'ai_jobs'    => (int) $totals->ai_jobs,
+            'announced_entries' => (int) $totals->announced_entries,
+            'announced_jobs'    => (int) $totals->announced_jobs,
             'ai_entries' => (int) $totals->ai_entries,
             'companies'  => (int) $totals->companies,
             'industries' => (int) $totals->industries,

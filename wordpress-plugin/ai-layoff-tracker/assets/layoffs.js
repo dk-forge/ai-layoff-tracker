@@ -130,7 +130,7 @@
     var FILTER_STORAGE_KEY = 'altTrackerFilters:v2';
     var FILTER_IDS = ['alt-search', 'alt-f-from', 'alt-f-to', 'alt-f-years', 'alt-f-quarters',
         'alt-f-months', 'alt-f-industry', 'alt-f-country', 'alt-f-state', 'alt-f-reasons',
-        'alt-f-verification', 'alt-f-company', 'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai'];
+        'alt-f-verification', 'alt-f-company', 'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai', 'alt-f-announced'];
 
     function readControl(id) {
         var el = document.getElementById(id);
@@ -200,6 +200,7 @@
         var mj = parseInt(readControl('alt-f-minjobs'), 10);
         if (!isNaN(mj) && mj > 0) p.min_jobs = mj;
         if (readControl('alt-f-ai')) p.ai = '1';
+        if (readControl('alt-f-announced')) p.stage = 'announced';
         return p;
     }
 
@@ -283,7 +284,8 @@
         { id: 'alt-f-state', label: 'State', kind: 'multi', color: 'pink' },
         { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS, color: 'slate' },
         { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: VERIF_LABELS, color: 'gold' },
-        { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only', color: 'red' }
+        { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only', color: 'red' },
+        { id: 'alt-f-announced', label: '', kind: 'bool', on: 'Announced only', color: 'gold' }
     ];
 
     function updateActiveFilterBar() {
@@ -380,8 +382,11 @@
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
         var scope = statScopeLabel();
-        setText('alt-stat-total', fmt(t.jobs));
-        setText('alt-stat-total-entries', plural(t.entries, 'layoff') + ' · ' + period + scope);
+        var annJ = t.announced_jobs || 0, annE = t.announced_entries || 0;
+        setText('alt-stat-total', fmt(t.jobs - annJ));
+        setText('alt-stat-total-entries', plural(t.entries - annE, 'layoff') + ' · ' + period + scope);
+        setText('alt-stat-announced', fmt(annJ));
+        setText('alt-stat-announced-sub', plural(annE, 'announcement') + ' · ' + period + scope);
         setText('alt-stat-ai', fmt(t.ai_jobs));
         setText('alt-stat-ai-entries', plural(t.ai_entries, 'layoff') + ' · ' + period + scope);
         setText('alt-stat-companies', fmt(t.companies));
@@ -870,7 +875,9 @@
                     // flip early/late around midnight.
                     var n = new Date();
                     var today = n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate());
-                    return escapeHtml(d) + (d > today ? ' <span class="alt-upcoming" title="Filed in advance — effective date has not arrived yet">upcoming</span>' : '');
+                    var badges = (d > today ? ' <span class="alt-upcoming" title="Filed in advance — effective date has not arrived yet">upcoming</span>' : '');
+                    if (row.announced) badges += ' <span class="alt-upcoming" title="Announcement of planned cuts — not yet executed or filed">announced</span>';
+                    return escapeHtml(d) + badges;
                 } },
                 { data: 'company_name', render: function (d, t, row) {
                     if (t !== 'display') return d || '';
@@ -1099,6 +1106,11 @@
                 if (Array.isArray(v)) return v.length === 1 && v[0] === 'gold';
                 return v === 'gold';
             }
+        },
+        announced: {
+            apply: function () { var el = document.getElementById('alt-f-announced'); if (el) el.checked = true; },
+            clear: function () { var el = document.getElementById('alt-f-announced'); if (el) el.checked = false; },
+            active: function () { return !!readControl('alt-f-announced'); }
         },
         tech: {
             apply: function () { writeControl('alt-f-industry', ['Technology']); },

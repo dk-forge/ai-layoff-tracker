@@ -41,6 +41,7 @@ def post_to_wordpress(entry):
             "excerpt": entry.get("excerpt"),
             "reason_tags": entry.get("reason_tags", []),
             "ai_explicit": entry.get("ai_explicit", False),
+            "announced": entry.get("announced", False),
             "ai_language": entry.get("ai_language"),
             "dedup_hash": entry.get("dedup_hash"),
         },

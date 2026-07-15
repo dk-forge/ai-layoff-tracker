@@ -66,6 +66,7 @@ Response format:
   "reason_tags": ["array", "of", "tags"],
   "ai_explicit": true or false,
   "ai_language": "exact phrase from source or null",
+  "announced": "true if this is an ANNOUNCEMENT of planned future cuts that have not yet begun (e.g. 'will cut 5,000 over the next year', 'plans to reduce'); false if the cuts are already executed, underway, or legally filed",
   "is_layoff_event": true or false
 }"""
 
@@ -265,6 +266,12 @@ TEXT:
     extracted["reason_tags"] = [t for t in tags if t in ALLOWED_REASON_TAGS]
 
     extracted["ai_explicit"] = bool(extracted.get("ai_explicit"))
+    # Announcement-stage vs executed/filed: SEC filings and WARN notices are by
+    # definition filed events, so only news can carry the announced flag.
+    extracted["announced"] = (
+        bool(extracted.get("announced"))
+        and raw_entry.get("source_type") == "news"
+    )
     if not isinstance(extracted.get("ai_language"), str) or not extracted["ai_language"].strip():
         extracted["ai_language"] = None
 

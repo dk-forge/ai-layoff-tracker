@@ -14,8 +14,13 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <div class="alt-stats-bar" id="alt-stats-bar">
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-total">—</span>
-            <span class="alt-stat-label">Jobs cut (all causes)</span>
+            <span class="alt-stat-label">Verified job cuts (filed / reported)</span>
             <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
+        </div>
+        <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-announced">—</span>
+            <span class="alt-stat-label">Announced (not yet executed)</span>
+            <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
         </div>
         <div class="alt-stat-card alt-stat-card-ai">
             <span class="alt-stat-value" id="alt-stat-ai">—</span>
@@ -79,6 +84,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         <button type="button" class="alt-qv" data-qv="month">This month</button>
         <button type="button" class="alt-qv" data-qv="largest">Largest cuts</button>
         <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
+        <button type="button" class="alt-qv" data-qv="announced">Announced only</button>
         <button type="button" class="alt-qv" data-qv="tech">Tech industry</button>
     </div>
 
@@ -160,8 +166,9 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset all filters</button>
             </div>
         </div>
-        <!-- Hidden state holder: the "AI-attributed" quick-view pill is the visible control -->
+        <!-- Hidden state holders: quick-view pills are the visible controls -->
         <input type="checkbox" id="alt-f-ai" hidden>
+        <input type="checkbox" id="alt-f-announced" hidden>
     </div>
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
@@ -262,7 +269,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 
             <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; forward-looking projections (e.g. "could cost X jobs by 2050") rather than announced or executed cuts; and retrospective summary articles that would double-count events already tracked.</p>
 
-            <p><b>Why our totals differ from other headline numbers.</b> Three kinds of trackers measure three different things. Government statistics (BLS) count <em>every</em> separation in the economy, millions per month, with no event-level detail. Announcement surveys (Challenger, Gray &amp; Christmas; the WSJ and TrueUp trackers) count corporate <em>intentions</em>: when a CEO announces "20,000 cuts over the next two years," the full 20,000 lands in their total that day, even though much of it may come through attrition, get scaled back, or never produce a single filing. This tracker counts only what has a <em>verifiable document or quoted primary source behind it</em>: the WARN notices and SEC filings that appear as those 20,000 cuts actually execute, plus reported cuts with a named-outlet source. A worked example: in the first half of 2026, announcement surveys reported roughly 443,600 US job cuts; verified filings and sourced reports here totaled about 96,000 for the same period, both correct answers to different questions. Theirs answers "what are companies saying?" Ours answers "what can you prove?" Treat our figures as a documented floor: smaller than the estimates, but every single number is clickable back to a legal filing or named outlet.</p>
+            <p><b>Why our totals differ from other headline numbers.</b> Three kinds of trackers measure three different things. Government statistics (BLS) count <em>every</em> separation in the economy, millions per month, with no event-level detail. Announcement surveys (Challenger, Gray &amp; Christmas; the WSJ and TrueUp trackers) count corporate <em>intentions</em>: when a CEO announces "20,000 cuts over the next two years," the full 20,000 lands in their total that day, even though much of it may come through attrition, get scaled back, or never produce a single filing. This tracker counts only what has a <em>verifiable document or quoted primary source behind it</em>: the WARN notices and SEC filings that appear as those 20,000 cuts actually execute, plus reported cuts with a named-outlet source. A worked example: in the first half of 2026, announcement surveys reported roughly 443,600 US job cuts; verified filings and sourced reports here totaled about 96,000 for the same period, both correct answers to different questions. Theirs answers "what are companies saying?" Ours answers "what can you prove?" Treat our verified figure as a documented floor: smaller than the estimates, but every single number is clickable back to a legal filing or named outlet. Since July 2026 we also track <em>announcement-stage</em> cuts as their own labeled tier ("Announced", tagged in the table and shown as a separate headline number) so both questions are answered on one page, and unlike the announcement surveys, every announcement here links to its source too.</p>
 
             <p><b>Using the data.</b> Free with attribution to <b>asktherecruiter.com</b>. The CSV and JSON buttons download exactly what your current filters show (or the full dataset when unfiltered); each chart offers its own image or data download. Programmatic access: <code>GET /blog/wp-json/layoffs/v1/query</code> (paginated; filter params match the page: years, quarters, months, industry, country, state, sources, reasons, q, from, to) and <code>GET /blog/wp-json/layoffs/v1/aggregate</code> for totals and breakdowns. Corrections get priority via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or info@asktherecruiter.com, and every fix is disclosed in the corrections log below.</p>
         </div>
