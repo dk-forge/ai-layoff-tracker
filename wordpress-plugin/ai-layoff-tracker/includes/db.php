@@ -326,6 +326,22 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_cleanup',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: drop table-only WARN rows ahead of a clean re-import.
+    // (Corrected counts change the dedup hash, so upsert alone would leave the
+    // old wrong rows behind as duplicates.) CPT-backed rows are untouched.
+    register_rest_route('layoffs/v1', '/bulk-purge', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_bulk_purge',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+}
+
+function alt_api_bulk_purge(WP_REST_Request $r) {
+    global $wpdb;
+    $deleted = (int) $wpdb->query(
+        "DELETE FROM " . alt_db_table() . " WHERE source_type = 'warn' AND post_id IS NULL");
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response(array('deleted' => $deleted));
 }
 
 function alt_api_bulk(WP_REST_Request $r) {

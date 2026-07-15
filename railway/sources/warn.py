@@ -125,8 +125,12 @@ def _to_iso_date(s):
 
 
 def _count(s):
-    digits = re.sub(r"[^0-9]", "", (s or "").split(".")[0])
-    return int(digits) if digits else 0
+    """Parse the FIRST number in the field. Stripping all non-digits is wrong:
+    RI publishes values like '9,891 Remote Workers (2 from RI)', which would
+    concatenate into 98912. First-number also makes ranges ('50-100') resolve
+    to the lower bound, matching the tracker's stated methodology."""
+    m = re.search(r"\d{1,3}(?:,\d{3})+|\d+", s or "")
+    return int(m.group(0).replace(",", "")) if m else 0
 
 
 # States warn-scraper supports (used for the "all" sweep).

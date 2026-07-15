@@ -26,6 +26,10 @@ on:
         description: 'Max posts (blank = no cap)'
         required: false
         default: ''
+      purge:
+        description: 'Purge table-only WARN rows first (clean reload)'
+        required: false
+        default: ''
 
 jobs:
   warn:
@@ -54,4 +58,5 @@ jobs:
           WARN_MIN_EMPLOYEES: ${{ github.event.inputs.min_employees || '0' }}
           WARN_START: ${{ github.event.inputs.start || '' }}
           WARN_LIMIT: ${{ github.event.inputs.limit || '' }}
+          WARN_PURGE: ${{ github.event.inputs.purge || '' }}
         run: python warn_import.py

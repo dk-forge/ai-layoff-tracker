@@ -67,6 +67,24 @@ def main():
 
     scope = "all supported states" if states == ["all"] else f"{len(states)} states"
     print(f"WARN import: {scope}, min_employees={min_emp}, start={start or 'all'}, limit={limit}")
+
+    # WARN_PURGE=1: clear table-only WARN rows first so corrected values can't
+    # coexist with stale ones (count changes alter the dedup hash).
+    if (os.environ.get("WARN_PURGE") or "").lower() in ("1", "true", "yes"):
+        wp = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
+        key = os.environ.get("WP_API_KEY")
+        try:
+            resp = requests.post(f"{wp}/wp-json/layoffs/v1/bulk-purge", headers={
+                "X-Layoff-API-Key": key,
+                "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)",
+            }, timeout=120)
+            print(f"purge: HTTP {resp.status_code} {resp.text[:120]}")
+            if resp.status_code != 200:
+                print("ERROR: purge failed, aborting so stale rows aren't duplicated")
+                sys.exit(1)
+        except Exception as e:
+            print(f"ERROR: purge failed ({e}), aborting")
+            sys.exit(1)
     entries = pull_warn(states, min_employees=min_emp, start_date=start)
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
     if limit:
