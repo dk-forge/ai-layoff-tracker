@@ -349,6 +349,9 @@ function alt_get_all_entries() {
 function alt_flush_caches() {
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');
+    // Invalidate every cached /query and /aggregate response at once: their
+    // cache keys embed this version, so bumping it orphans the old entries.
+    update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);
 }
 // Manual edits/deletes in wp-admin must also invalidate the caches
 add_action('save_post_layoffs', 'alt_flush_caches');

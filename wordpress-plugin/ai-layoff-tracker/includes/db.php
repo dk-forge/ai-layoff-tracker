@@ -377,20 +377,23 @@ function alt_api_bulk(WP_REST_Request $r) {
         ));
         $upserted++;
     }
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response(array('received' => count($entries), 'upserted' => $upserted));
 }
 
 function alt_api_facets(WP_REST_Request $r) {
-    global $wpdb;
-    $t = alt_db_table();
-    $range = $wpdb->get_row("SELECT MIN(layoff_date) mn, MAX(layoff_date) mx FROM $t WHERE layoff_date IS NOT NULL");
-    return rest_ensure_response(array(
-        'industries' => $wpdb->get_col("SELECT DISTINCT industry FROM $t WHERE industry <> '' ORDER BY industry") ?: array(),
-        'countries'  => $wpdb->get_col("SELECT DISTINCT country FROM $t WHERE country <> '' ORDER BY country") ?: array(),
-        'states'     => $wpdb->get_col("SELECT DISTINCT state FROM $t WHERE state <> '' ORDER BY state") ?: array(),
-        'min_date'   => $range ? $range->mn : null,
-        'max_date'   => $range ? $range->mx : null,
-    ));
+    return alt_api_cached('facets', $r, function () {
+        global $wpdb;
+        $t = alt_db_table();
+        $range = $wpdb->get_row("SELECT MIN(layoff_date) mn, MAX(layoff_date) mx FROM $t WHERE layoff_date IS NOT NULL");
+        return array(
+            'industries' => $wpdb->get_col("SELECT DISTINCT industry FROM $t WHERE industry <> '' ORDER BY industry") ?: array(),
+            'countries'  => $wpdb->get_col("SELECT DISTINCT country FROM $t WHERE country <> '' ORDER BY country") ?: array(),
+            'states'     => $wpdb->get_col("SELECT DISTINCT state FROM $t WHERE state <> '' ORDER BY state") ?: array(),
+            'min_date'   => $range ? $range->mn : null,
+            'max_date'   => $range ? $range->mx : null,
+        );
+    });
 }
 add_action('rest_api_init', 'alt_register_query_routes');
 
@@ -462,7 +465,35 @@ function alt_api_cleanup(WP_REST_Request $r) {
     return rest_ensure_response($changed);
 }
 
+/**
+ * Micro-cache for the public read endpoints. Nearly every visitor issues the
+ * identical default requests, so a 5-minute transient keyed by (params + data
+ * version) collapses thousands of MySQL round-trips into one. Any write bumps
+ * alt_data_ver (see alt_flush_caches), instantly orphaning stale entries.
+ */
+function alt_api_cached($tag, WP_REST_Request $r, $compute) {
+    $params = $r->get_query_params();
+    unset($params['_'], $params['cb']); // cache-buster noise
+    ksort($params);
+    $key = 'altq_' . md5($tag . '|' . (int) get_option('alt_data_ver', 1) . '|' . wp_json_encode($params));
+
+    $payload = get_transient($key);
+    if ($payload === false) {
+        $payload = call_user_func($compute);
+        set_transient($key, $payload, 5 * MINUTE_IN_SECONDS);
+    }
+    $resp = rest_ensure_response($payload);
+    $resp->header('Cache-Control', 'public, max-age=60');
+    return $resp;
+}
+
 function alt_api_query(WP_REST_Request $r) {
+    return alt_api_cached('query', $r, function () use ($r) {
+        return alt_api_query_compute($r);
+    });
+}
+
+function alt_api_query_compute(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
     list($where, $params) = alt_db_where($r);
@@ -481,15 +512,21 @@ function alt_api_query(WP_REST_Request $r) {
         array_merge($params, array($per, $offset))
     ));
 
-    return rest_ensure_response(array(
+    return array(
         'total'    => $total,
         'page'     => $page,
         'per_page' => $per,
         'data'     => array_map('alt_db_row_to_array', $rows ?: array()),
-    ));
+    );
 }
 
 function alt_api_aggregate(WP_REST_Request $r) {
+    return alt_api_cached('aggregate', $r, function () use ($r) {
+        return alt_api_aggregate_compute($r);
+    });
+}
+
+function alt_api_aggregate_compute(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
     list($where, $params) = alt_db_where($r);
@@ -560,7 +597,7 @@ function alt_api_aggregate(WP_REST_Request $r) {
         );
     }
 
-    return rest_ensure_response(array(
+    return array(
         'totals' => array(
             'jobs'       => (int) $totals->jobs,
             'entries'    => (int) $totals->entries,
@@ -579,5 +616,5 @@ function alt_api_aggregate(WP_REST_Request $r) {
         'reasons'        => $reasons,
         'series'         => $series,
         'leaders'        => $leaders,
-    ));
+    );
 }

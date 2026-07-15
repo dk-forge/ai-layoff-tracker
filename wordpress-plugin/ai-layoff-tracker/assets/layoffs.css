@@ -360,12 +360,18 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-journalist {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 16px; margin: 22px 0 0; padding: 22px 24px;
-    background: #16181d; border-radius: 16px; color: #e7e8ec;
+    background: #f2f5f0; border: 1px solid #cfdad0; border-left: 4px solid #537a5c;
+    border-radius: 14px; color: #20283a;
 }
-.alt-journalist-text > strong { display: block; font-size: 16px; color: #fff; margin-bottom: 5px; }
-.alt-journalist-text p { margin: 0; font-size: 13.5px; line-height: 1.55; color: #b7bac2; max-width: 520px; }
-.alt-journalist-text p strong { color: #fff; }
-.alt-journalist-api { font-size: 13px; color: #cdd0d6; background: #22252c; border: 1px solid #33373f; border-radius: 8px; padding: 9px 14px; white-space: nowrap; }
+.alt-journalist-text > strong { display: block; font-size: 16px; color: #20283a; margin-bottom: 5px; }
+.alt-journalist-text p { margin: 0; font-size: 13.5px; line-height: 1.6; color: #3d4658; max-width: 560px; }
+.alt-journalist-text p strong { color: #20283a; }
+.alt-journalist-text a { color: #537a5c; font-weight: 600; }
+.alt-journalist-text a:hover { color: #47694f; }
+.alt-journalist-api {
+    font-size: 13px; color: #20283a; background: #fafaf8;
+    border: 1px solid #b89f70; border-radius: 10px; padding: 9px 14px; white-space: nowrap;
+}
 
 @media (max-width: 640px) {
     .alt-toolbar2 { flex-direction: column; align-items: stretch; }

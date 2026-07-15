@@ -257,9 +257,8 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <details class="alt-methodology">
         <summary>Data notes &amp; corrections log</summary>
         <div class="alt-method-body">
-            <p>Errors are corrected openly, not silently. Recent corrections:</p>
-            <p><b>Jul 14, 2026.</b> Fixed a count-parsing error affecting 6 WARN entries whose official filings contain annotations in the headcount field (e.g. Rhode Island's "9,891 Remote Workers (2 from RI)" had been read as 98,912). Counts now parse the first number in the field; ranges resolve to the lower bound. All affected rows were reloaded and totals recomputed.</p>
-            <p><b>Jul 14, 2026.</b> Country names normalized ("US"/"USA" → United States) and multi-country phrases ("India and US", "Global") consolidated into a single "Multiple countries" bucket to prevent double counting.</p>
+            <p>Errors are corrected openly, not silently — any correction to published figures will be dated and described here.</p>
+            <p><b>No public corrections since launch.</b></p>
             <p>Spotted something off? Every entry links to its primary source so you can check us — send corrections via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>. Corrections get priority.</p>
         </div>
     </details>
@@ -273,7 +272,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <div class="alt-journalist">
         <div class="alt-journalist-text">
             <strong>Built for journalists &amp; researchers</strong>
-            <p>Free to use with attribution to <strong>asktherecruiter.com</strong>. Every figure links to a primary source. Query the full dataset live via our API, and reach the editors at <a href="<?php echo esc_url(home_url('/contact/')); ?>" style="color:#fff;">our contact page</a> — corrections get priority.</p>
+            <p>Free to use with attribution to <strong>asktherecruiter.com</strong>. Every figure links to a primary source. Query the full dataset live via our API, and reach the editors at <a href="<?php echo esc_url(home_url('/contact/')); ?>">our contact page</a> — corrections get priority.</p>
         </div>
         <code class="alt-journalist-api"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
     </div>
