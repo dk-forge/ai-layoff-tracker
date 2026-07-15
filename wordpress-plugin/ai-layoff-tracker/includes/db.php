@@ -263,11 +263,31 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_aggregate',
         'permission_callback' => '__return_true',
     ));
+    // Distinct filter values + date range, for populating dropdowns/period pills
+    // without loading every row.
+    register_rest_route('layoffs/v1', '/facets', array(
+        'methods'  => 'GET',
+        'callback' => 'alt_api_facets',
+        'permission_callback' => '__return_true',
+    ));
     // Key-protected: backfill existing CPT posts into the table. Idempotent.
     register_rest_route('layoffs/v1', '/migrate', array(
         'methods'  => 'POST',
         'callback' => 'alt_api_migrate',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+}
+
+function alt_api_facets(WP_REST_Request $r) {
+    global $wpdb;
+    $t = alt_db_table();
+    $range = $wpdb->get_row("SELECT MIN(layoff_date) mn, MAX(layoff_date) mx FROM $t WHERE layoff_date IS NOT NULL");
+    return rest_ensure_response(array(
+        'industries' => $wpdb->get_col("SELECT DISTINCT industry FROM $t WHERE industry <> '' ORDER BY industry") ?: array(),
+        'countries'  => $wpdb->get_col("SELECT DISTINCT country FROM $t WHERE country <> '' ORDER BY country") ?: array(),
+        'states'     => $wpdb->get_col("SELECT DISTINCT state FROM $t WHERE state <> '' ORDER BY state") ?: array(),
+        'min_date'   => $range ? $range->mn : null,
+        'max_date'   => $range ? $range->mx : null,
     ));
 }
 add_action('rest_api_init', 'alt_register_query_routes');
