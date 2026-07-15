@@ -19,6 +19,7 @@ import sys
 import requests
 
 from sources.warn import pull_warn
+from sources.warn_custom import pull_warn_custom
 
 BATCH = 1000
 FAILED_BATCHES = 0
@@ -77,6 +78,14 @@ def main():
               "state-scoped reload would wipe the other states)")
         sys.exit(1)
     entries = pull_warn(states, min_employees=min_emp, start_date=start)
+    # Custom collectors cover the states whose sites broke the open scraper
+    # (TX, FL, GA, OH, MI, CO, ID, LA).
+    customs = pull_warn_custom(states)
+    if min_emp:
+        customs = [e for e in customs if e["job_count"] >= min_emp]
+    if start:
+        customs = [e for e in customs if e["layoff_date"] >= start]
+    entries.extend(customs)
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
     if limit:
         entries = entries[:limit]
