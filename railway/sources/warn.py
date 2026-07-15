@@ -84,19 +84,41 @@ def _match(rl, *groups):
     return ""
 
 
-# Count column detection: a header that names a headcount, but never an
-# address/site/reason/id column (those hold digits that look like counts).
-_COUNT_INCL = ["affected", "employee", "worker", "workforce", "total_layoff", "layoff_number", "headcount"]
+def _date_from(rl, *groups):
+    """Like _match, but only accepts values that PARSE as dates — Illinois has
+    a boolean 'WARN Notice' column whose 'True' would otherwise win the
+    'notice' tier and block the real date columns behind it."""
+    for keywords in groups:
+        for k, v in rl.items():
+            if not v or not any(kw in k for kw in keywords):
+                continue
+            iso = _to_iso_date(v)
+            if iso:
+                return iso
+    return ""
+
+
+# Count column detection in priority tiers: layoff-specific columns first
+# (IL publishes BOTH "Approximate Total # of Full-Time Employees" — site
+# headcount — and "Expected Layoff"; the latter is the real number), generic
+# jobs/workers second, bare "employee" columns last. Never an address/site/
+# reason/id column (those hold digits that look like counts).
+_COUNT_TIERS = [
+    ["affected", "laid off", "expected layoff", "revised layoff", "total_layoff", "layoff_number", "workforce"],
+    ["worker", "headcount", "jobs", "job "],
+    ["employee"],
+]
 _COUNT_EXCL = ["address", "site", "county", "zip", "postal", "code", "reason", "index",
                "name", "date", "phone", "area", "region", "wda", "lwib", "url", "page"]
 
 
 def _count_col(rl):
-    for k, v in rl.items():
-        if not v or any(x in k for x in _COUNT_EXCL):
-            continue
-        if any(kw in k for kw in _COUNT_INCL):
-            return v
+    for tier in _COUNT_TIERS:
+        for k, v in rl.items():
+            if not v or any(x in k for x in _COUNT_EXCL):
+                continue
+            if any(kw in k for kw in tier) or k.strip() == "jobs":
+                return v
     return ""
 
 
@@ -117,7 +139,10 @@ def _to_iso_date(s):
         if len(y) == 2:
             y = "20" + y
         return f"{y}-{int(m.group(1)):02d}-{int(m.group(2)):02d}"
-    m = re.match(r"^([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})", s)  # Jan 22, 2026
+    # "Jan 22, 2026" — searched anywhere, not anchored, because states embed
+    # dates in prose ("Beginning: January 23, 2023; Ending: March 24, 2023" —
+    # the first date is the start, which matches our lower-bound convention).
+    m = re.search(r"([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})", s)
     if m:
         mon = _MON3.get(m.group(1)[:3].lower())
         if mon:
@@ -193,14 +218,15 @@ def pull_warn(states, min_employees=0, start_date=""):
             for row in csv.DictReader(fh):
                 rl = _row_lower(row)
                 company = _match(rl, ["company", "employer", "business", "job_site",
-                                      "job site", "organization", "establishment", "firm"])
+                                      "job site", "organization", "establishment", "firm",
+                                      "location name"])  # Illinois names it "Location Name"
                 jobs = _count(_count_col(rl))
-                date = _to_iso_date(_match(rl,
+                date = _date_from(rl,
                     ["effective", "layoff start", "layoff_date", "closure start",
-                     "starts", "layoff/closure"],   # preferred: effective / start dates
+                     "starts", "layoff/closure", "impact date"],  # preferred: effective/impact
                     ["notice"],                       # then notice date
                     ["received"],                     # then received date
-                    ["date"]))                        # any remaining date column
+                    ["date"])                         # any remaining date column
                 city = _match(rl, ["city"], ["location"])
                 kind = _match(rl, ["closure", "warn_type", "type of layoff", "layoff or closure"])
                 # Some states publish a per-notice detail link (e.g. VT's
