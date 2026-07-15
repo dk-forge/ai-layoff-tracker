@@ -15,8 +15,13 @@ import requests
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
-# GDELT space = AND, OR must be explicit. Bias toward AI-related layoff coverage.
-QUERY = '(layoffs OR "job cuts" OR "cutting jobs" OR "lays off") (AI OR automation OR "artificial intelligence")'
+# GDELT space = AND, OR must be explicit. ALL layoffs, not only AI-related —
+# the extractor tags ai_explicit itself, so an AI clause here was pure
+# coverage loss (Europe/world general layoffs never entered the pipeline).
+# "redundancies" catches UK/Commonwealth English. GDELT Translingual machine-
+# translates 65 languages into English before indexing, so these English
+# keywords match Le Monde / Handelsblatt / NRC / Gazeta coverage too.
+QUERY = '(layoffs OR "job cuts" OR "cutting jobs" OR "lays off" OR redundancies OR "job losses" OR "workforce reduction")'
 
 TRUSTED_DOMAINS = {
     # wires / national general

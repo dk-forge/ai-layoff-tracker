@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.9.2
+ * Version: 2.10.0
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.9.2');
+define('ALT_VERSION', '2.10.0');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -181,13 +181,16 @@ function alt_seo_head() {
         '@context'            => 'https://schema.org',
         '@type'               => 'Dataset',
         'name'                => 'AI Layoff Tracker',
-        'alternateName'       => 'AI Layoffs Tracker',
+        'alternateName'       => array('AI Layoffs Tracker', 'AI Job Layoff Tracker', 'Job Layoff Tracker', 'Layoff Tracker', 'Layoffs Tracker ' . gmdate('Y')),
         'description'         => $desc,
         'url'                 => $page_url,
-        'keywords'            => array('AI layoffs', 'layoffs', 'jobs lost to AI', 'AI job losses', 'AI layoff tracker', 'automation layoffs', 'tech layoffs', 'layoffs worldwide', 'global layoffs', 'layoffs by country', 'WARN notices'),
+        'keywords'            => array('AI layoffs', 'layoffs', 'layoff tracker', 'job layoff tracker', 'jobs lost to AI', 'AI job losses', 'AI layoff tracker', 'automation layoffs', 'tech layoffs', 'layoffs worldwide', 'global layoffs', 'layoffs by country', 'layoffs ' . gmdate('Y'), 'WARN notices'),
         'license'             => 'https://creativecommons.org/licenses/by/4.0/',
         'isAccessibleForFree' => true,
-        'temporalCoverage'    => '2019-01-01/..',
+        'temporalCoverage'    => '2015-01-01/..',
+        'spatialCoverage'     => 'Worldwide',
+        'dateModified'        => gmdate('Y-m-d'),
+        'variableMeasured'    => array('company', 'job_count', 'layoff_date', 'country', 'US state', 'industry', 'AI attribution', 'source URL'),
         'creator'             => array(
             '@type' => 'Organization',
             'name'  => 'AskTheRecruiter',
@@ -201,6 +204,21 @@ function alt_seo_head() {
 
     echo "\n<script type=\"application/ld+json\">" . wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
 
+    // FAQ rich results + the same Q/A rendered server-side on the page (so
+    // crawlers and LLM bots see real numbers without executing JavaScript).
+    $faq_schema = array(
+        '@context'   => 'https://schema.org',
+        '@type'      => 'FAQPage',
+        'mainEntity' => array_map(function ($qa) {
+            return array(
+                '@type'          => 'Question',
+                'name'           => $qa[0],
+                'acceptedAnswer' => array('@type' => 'Answer', 'text' => $qa[1]),
+            );
+        }, alt_faq_items()),
+    );
+    echo "<script type=\"application/ld+json\">" . wp_json_encode($faq_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+
     if (apply_filters('alt_output_og_tags', true)) {
         echo '<meta property="og:type" content="website">' . "\n";
         echo '<meta property="og:title" content="' . esc_attr($title) . '">' . "\n";
@@ -212,6 +230,52 @@ function alt_seo_head() {
     }
 }
 add_action('wp_head', 'alt_seo_head', 20);
+
+/**
+ * FAQ content shared by the FAQPage JSON-LD (wp_head) and the on-page FAQ
+ * section (template) — one source so Google's "must match visible text" rule
+ * holds. Numbers come from the live table, cached an hour.
+ */
+function alt_faq_items() {
+    $n = get_transient('alt_faq_numbers');
+    if (!is_array($n)) {
+        global $wpdb;
+        $t = alt_db_table();
+        $y = (int) gmdate('Y');
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
+                    COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
+             FROM $t WHERE YEAR(layoff_date) = %d", $y));
+        $all = $wpdb->get_row(
+            "SELECT COUNT(*) entries, COUNT(DISTINCT NULLIF(country,'')) countries,
+                    COUNT(DISTINCT NULLIF(state,'')) states FROM $t");
+        $n = array(
+            'y'         => $y,
+            'entries'   => $row ? (int) $row->entries : 0,
+            'jobs'      => $row ? (int) $row->jobs : 0,
+            'ai_jobs'   => $row ? (int) $row->ai_jobs : 0,
+            'all'       => $all ? (int) $all->entries : 0,
+            'countries' => $all ? (int) $all->countries : 0,
+            'states'    => $all ? (int) $all->states : 0,
+        );
+        set_transient('alt_faq_numbers', $n, HOUR_IN_SECONDS);
+    }
+    $f = function ($v) { return number_format((float) $v); };
+    return array(
+        array('What is the AI Layoff Tracker?',
+            'A free, continuously updated layoff tracker covering verified job cuts worldwide — all industries and causes — that flags which layoffs companies explicitly attribute to AI or automation. Every entry links to a primary source: a SEC 8-K filing, a US state WARN notice, or a named news outlet with the exact quote.'),
+        array('How many layoffs have there been in ' . $n['y'] . ' so far?',
+            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide, ' . $f($n['ai_jobs']) . ' of them in cuts companies explicitly attribute to AI. Totals update daily as new filings and reports are verified.'),
+        array('Where does the layoff data come from?',
+            'Three source families: SEC 8-K filings (searched twice daily), official WARN notices from ' . $f($n['states']) . ' US states (imported daily, no AI processing), and worldwide press coverage in 65+ languages via the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+        array('How is this different from the Challenger report or the WSJ and TrueUp layoff trackers?',
+            'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it — a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but as a separately labeled tier that is never mixed into the verified totals.'),
+        array('Can journalists and researchers use this data?',
+            'Yes — free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
+        array('How do I report an error?',
+            'Use the contact page or email info@asktherecruiter.com — corrections get priority. Every entry links to its primary source so you can check any number against the underlying document.'),
+    );
+}
 
 /**
  * Render single layoff entries (/blog/layoff/{company}-{date}) with the plugin's

@@ -884,6 +884,15 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-methodology > summary::-webkit-details-marker { display: none; }
 .alt-methodology > summary::before { content: "▸ "; color: var(--alt-muted); }
 .alt-methodology[open] > summary::before { content: "▾ "; }
+/* FAQ: same card, one details row per question */
+.alt-faq { padding: 14px 16px 16px; }
+.alt-faq-item { border: 0; border-top: 1px solid var(--alt-border); border-radius: 0; margin: 0; background: none; }
+.alt-faq-item:first-of-type { border-top: 0; }
+.alt-faq-item > summary { cursor: pointer; padding: 11px 2px; font-size: 14px; font-weight: 600; color: var(--alt-ink); list-style: none; }
+.alt-faq-item > summary::-webkit-details-marker { display: none; }
+.alt-faq-item > summary::before { content: "▸ "; color: var(--alt-muted); }
+.alt-faq-item[open] > summary::before { content: "▾ "; }
+.alt-faq-item .alt-method-body { padding: 0 2px 12px; }
 .alt-methodology[open] > summary { border-bottom: 1px solid var(--alt-grid); }
 .alt-method-body { padding: 14px 18px; font-size: 13px; line-height: 1.6; color: var(--alt-ink-2); }
 .alt-method-body p { margin: 0 0 10px; }

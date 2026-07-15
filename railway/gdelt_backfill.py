@@ -24,12 +24,14 @@ def _parse(value, default):
     return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
 
-def month_windows(start, end):
-    cur = datetime(start.year, start.month, 1, tzinfo=timezone.utc)
+def week_windows(start, end):
+    # Weekly (was monthly): GDELT caps each call at 250 articles sorted
+    # newest-first, and the general layoffs query (no AI clause) fills a busy
+    # MONTH past the cap — which silently dropped the early weeks.
+    cur = start
     while cur <= end:
-        nxt = (datetime(cur.year + 1, 1, 1, tzinfo=timezone.utc) if cur.month == 12
-               else datetime(cur.year, cur.month + 1, 1, tzinfo=timezone.utc))
-        yield max(cur, start), min(nxt - timedelta(seconds=1), end)
+        nxt = cur + timedelta(days=7)
+        yield cur, min(nxt - timedelta(seconds=1), end)
         cur = nxt
 
 
@@ -42,8 +44,8 @@ def run():
           + (f" (limit {limit})" if limit else ""))
 
     posted = dupes = skipped = failed = ai = 0
-    for w_start, w_end in month_windows(start, end):
-        label = w_start.strftime("%Y-%m")
+    for w_start, w_end in week_windows(start, end):
+        label = w_start.strftime("%Y-%m-%d")
         entries = pull_gdelt_between(w_start, w_end)
         print(f"[{label}] {len(entries)} articles")
         for raw in entries:

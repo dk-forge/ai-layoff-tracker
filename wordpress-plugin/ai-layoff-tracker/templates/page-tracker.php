@@ -289,6 +289,23 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     </details>
 
     <details class="alt-methodology">
+        <summary>Which countries are in which region tab?</summary>
+        <div class="alt-method-body" id="alt-region-defs">
+            <p>The region tabs are documented lenses over the worldwide data — the full country list per tab loads here.</p>
+        </div>
+    </details>
+
+    <section class="alt-methodology alt-faq" itemscope>
+        <h2 class="alt-detail-h" style="font-size:19px;margin:0 0 10px">Frequently asked questions</h2>
+        <?php foreach (alt_faq_items() as $qa) : ?>
+        <details class="alt-faq-item">
+            <summary><?php echo esc_html($qa[0]); ?></summary>
+            <div class="alt-method-body"><p><?php echo esc_html($qa[1]); ?></p></div>
+        </details>
+        <?php endforeach; ?>
+    </section>
+
+    <details class="alt-methodology">
         <summary>How our numbers compare to other trackers</summary>
         <div class="alt-method-body">
             <p>Different trackers measure different things — check them all, then check ours against the receipts:</p>

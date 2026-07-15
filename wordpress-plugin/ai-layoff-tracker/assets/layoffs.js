@@ -1104,13 +1104,15 @@
         world:  { label: 'worldwide', countries: [] },
         usa:    { label: 'in the United States', countries: ['United States'] },
         canada: { label: 'in Canada', countries: ['Canada'] },
-        latam:  { label: 'in Latin America', countries: ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Uruguay', 'Paraguay', 'Bolivia', 'Ecuador', 'Venezuela', 'Costa Rica', 'Panama', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua', 'Dominican Republic', 'Cuba'] },
-        europe: { label: 'in Europe', countries: ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Portugal', 'Italy', 'Netherlands', 'Belgium', 'Luxembourg', 'Switzerland', 'Austria', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Iceland', 'Poland', 'Czech Republic', 'Slovakia', 'Hungary', 'Romania', 'Bulgaria', 'Greece', 'Croatia', 'Slovenia', 'Serbia', 'Ukraine', 'Estonia', 'Latvia', 'Lithuania'] },
+        latam:  { label: 'in Latin America', countries: ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Uruguay', 'Paraguay', 'Bolivia', 'Ecuador', 'Venezuela', 'Costa Rica', 'Panama', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua', 'Belize', 'Dominican Republic', 'Cuba', 'Jamaica', 'Haiti', 'Trinidad and Tobago', 'Guyana', 'Suriname'] },
+        // Russia + Greenland ride with Europe (Moscow-centric coverage and
+        // the Danish realm respectively); Turkey sits in the Middle East.
+        europe: { label: 'in Europe', countries: ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Portugal', 'Italy', 'Netherlands', 'Belgium', 'Luxembourg', 'Switzerland', 'Austria', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Iceland', 'Greenland', 'Poland', 'Czech Republic', 'Slovakia', 'Hungary', 'Romania', 'Bulgaria', 'Greece', 'Croatia', 'Slovenia', 'Serbia', 'Bosnia and Herzegovina', 'Albania', 'North Macedonia', 'Montenegro', 'Kosovo', 'Ukraine', 'Belarus', 'Moldova', 'Russia', 'Estonia', 'Latvia', 'Lithuania', 'Cyprus', 'Malta', 'Georgia', 'Armenia', 'Azerbaijan'] },
         uk:     { label: 'in the United Kingdom', countries: ['United Kingdom'] },
-        mideast:{ label: 'in the Middle East', countries: ['Israel', 'UAE', 'Saudi Arabia', 'Qatar', 'Kuwait', 'Bahrain', 'Oman', 'Turkey', 'Jordan', 'Lebanon', 'Iraq', 'Iran'] },
-        africa: { label: 'in Africa', countries: ['South Africa', 'Nigeria', 'Kenya', 'Egypt', 'Morocco', 'Ghana', 'Ethiopia', 'Tanzania', 'Uganda', 'Tunisia', 'Algeria', 'Zimbabwe', 'Zambia', 'Senegal', 'Ivory Coast', 'Botswana', 'Namibia', 'Rwanda'] },
-        asia:   { label: 'in Asia', countries: ['China', 'India', 'Japan', 'South Korea', 'Taiwan', 'Hong Kong', 'Singapore', 'Malaysia', 'Indonesia', 'Thailand', 'Vietnam', 'Philippines', 'Cambodia', 'Bangladesh', 'Pakistan', 'Sri Lanka', 'Nepal', 'Myanmar', 'Mongolia', 'Kazakhstan'] },
-        aus:    { label: 'in Australia & NZ', countries: ['Australia', 'New Zealand'] }
+        mideast:{ label: 'in the Middle East', countries: ['Israel', 'UAE', 'Saudi Arabia', 'Qatar', 'Kuwait', 'Bahrain', 'Oman', 'Turkey', 'Jordan', 'Lebanon', 'Iraq', 'Iran', 'Syria', 'Yemen'] },
+        africa: { label: 'in Africa', countries: ['South Africa', 'Nigeria', 'Kenya', 'Egypt', 'Morocco', 'Ghana', 'Ethiopia', 'Tanzania', 'Uganda', 'Tunisia', 'Algeria', 'Libya', 'Sudan', 'Zimbabwe', 'Zambia', 'Senegal', 'Ivory Coast', 'Cameroon', 'Angola', 'Mozambique', 'Democratic Republic of the Congo', 'Botswana', 'Namibia', 'Rwanda', 'Mauritius', 'Madagascar'] },
+        asia:   { label: 'in Asia', countries: ['China', 'India', 'Japan', 'South Korea', 'Taiwan', 'Hong Kong', 'Singapore', 'Malaysia', 'Indonesia', 'Thailand', 'Vietnam', 'Philippines', 'Cambodia', 'Bangladesh', 'Pakistan', 'Sri Lanka', 'Nepal', 'Myanmar', 'Laos', 'Brunei', 'Mongolia', 'Kazakhstan', 'Uzbekistan', 'Kyrgyzstan', 'Turkmenistan', 'Tajikistan', 'Afghanistan', 'Bhutan', 'Maldives'] },
+        aus:    { label: 'in Australia & Oceania', countries: ['Australia', 'New Zealand', 'Fiji', 'Papua New Guinea'] }
     };
     var ACTIVE_TAB = 'world';
 
@@ -1173,6 +1175,21 @@
             }
             el.innerHTML = txt;
         }).catch(function () { el.textContent = ''; });
+    }
+
+    // "Which countries are in which tab?" — rendered from REGION_TABS itself
+    // so the on-page documentation can never drift from the actual behavior.
+    function renderRegionDefs() {
+        var el = document.getElementById('alt-region-defs');
+        if (!el) return;
+        var names = { usa: 'USA', canada: 'Canada', latam: 'Latin America', europe: 'Europe',
+            uk: 'UK', mideast: 'Middle East', africa: 'Africa', asia: 'Asia', aus: 'Australia' };
+        var html = '';
+        Object.keys(names).forEach(function (k) {
+            html += '<p><b>' + names[k] + ':</b> ' + REGION_TABS[k].countries.join(', ') + '</p>';
+        });
+        html += '<p><b>World</b> is the unfiltered total — it includes every entry, even ones whose country has no regional tab (and the honest "Multiple countries" bucket for cuts spanning several countries, which no single region can claim without double counting).</p>';
+        el.innerHTML = html;
     }
 
     // The methodology's worked example quotes our own H1 figure — keep it
@@ -1441,6 +1458,7 @@
             initTracker();            // builds the server-side table (reads restored filters)
             initChrome();             // search / sort / quick views / expanders
             initTabs();               // region tabs + narrative (respects saved filters)
+            renderRegionDefs();       // on-page region → country documentation
             updateWorkedExample();    // live H1 figure in the methodology example
             updateActiveFilterBar();
             updateDropdownSummaries();
