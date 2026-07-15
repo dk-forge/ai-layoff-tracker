@@ -571,18 +571,37 @@
     }
 
     // The API only returns months that have events; fill the gaps with zeros
-    // so e.g. a January with no cuts shows as 0 instead of vanishing. Bounds:
-    // the selected From/To when set (else the data's own range), capped at the
-    // current month so future months of a selected year don't render as fake
-    // zeros.
+    // so e.g. a January with no cuts shows as 0 instead of vanishing. The
+    // window honors the whole period selection (From/To, years, quarters,
+    // months) and only fills months the filters actually include — a month
+    // excluded by the filter must not render as a misleading zero. Capped at
+    // the current month so future months don't show as fake zeros.
+    function periodAllowsMonth(y, m) {
+        var years = readControl('alt-f-years') || [];
+        var quarters = readControl('alt-f-quarters') || [];
+        var months = readControl('alt-f-months') || [];
+        if (years.length && years.indexOf(String(y)) === -1) return false;
+        if (quarters.length && quarters.indexOf(String(Math.floor((m - 1) / 3) + 1)) === -1) return false;
+        if (months.length && months.indexOf(String(m)) === -1) return false;
+        return true;
+    }
+
     function fillMonths(series) {
         if (!series || !series.length) return [];
         var map = {};
         series.forEach(function (s) { map[s.month] = s; });
+
         var from = readControl('alt-f-from');
         var to = readControl('alt-f-to');
-        var start = (from && /^\d{4}-\d{2}/.test(from)) ? from.slice(0, 7) : series[0].month;
-        var end = (to && /^\d{4}-\d{2}/.test(to)) ? to.slice(0, 7) : series[series.length - 1].month;
+        var years = (readControl('alt-f-years') || []).slice().sort();
+        var start, end;
+        if (from && /^\d{4}-\d{2}/.test(from)) start = from.slice(0, 7);
+        else if (years.length) start = years[0] + '-01';
+        else start = series[0].month;
+        if (to && /^\d{4}-\d{2}/.test(to)) end = to.slice(0, 7);
+        else if (years.length) end = years[years.length - 1] + '-12';
+        else end = series[series.length - 1].month;
+
         var now = new Date();
         var nowKey = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
         if (end > nowKey) end = nowKey;
@@ -593,11 +612,13 @@
         var ey = parseInt(end.slice(0, 4), 10), em = parseInt(end.slice(5, 7), 10);
         var guard = 0;
         while ((y < ey || (y === ey && m <= em)) && guard++ < 600) {
-            var k = y + '-' + pad2(m);
-            out.push(map[k] || { month: k, jobs: 0, ai_jobs: 0 });
+            if (periodAllowsMonth(y, m)) {
+                var k = y + '-' + pad2(m);
+                out.push(map[k] || { month: k, jobs: 0, ai_jobs: 0 });
+            }
             m++; if (m > 12) { m = 1; y++; }
         }
-        return out;
+        return out.length ? out : series;
     }
 
     function renderTrend(series) {
