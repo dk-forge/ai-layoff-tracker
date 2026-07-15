@@ -338,6 +338,9 @@ function alt_db_row_to_array($row) {
         'source_url'         => $row->source_url,
         'ai_explicit'        => (bool) $row->ai_explicit,
         'announced'          => (bool) $row->announced,
+        // Transparency: editorially corrected rows are visibly flagged (the
+        // correction reason is in the site's public corrections log).
+        'edited'             => !empty($row->edited),
         'ai_language'        => $row->ai_language !== '' ? $row->ai_language : null,
         'reason_tags'        => alt_db_unpack_tags($row->reason_tags),
         'roles'              => $row->roles,
@@ -521,7 +524,7 @@ function alt_api_edit(WP_REST_Request $r) {
         }
         if (!$data) { $out['rejected'][] = $id; continue; }
 
-        if (!empty($row['dedup_hash']) && !$row['edited']) {
+        if (!empty($row['dedup_hash']) && empty($row['edited'])) {
             alt_suppress_hash($row['dedup_hash'], 'edited: ' . $reason);
             $data['dedup_hash'] = md5('edited:' . $row['dedup_hash']);
         }
@@ -529,7 +532,13 @@ function alt_api_edit(WP_REST_Request $r) {
         if (isset($data['company'])) {
             $data['company_key'] = substr(function_exists('alt_company_key') ? alt_company_key($data['company']) : '', 0, 255);
         }
-        $wpdb->update($table, $data, array('id' => $id));
+        // FAIL LOUDLY (iron rule): a silent false from $wpdb->update (e.g. a
+        // missing column after a failed migration) must not report success.
+        $updated = $wpdb->update($table, $data, array('id' => $id));
+        if ($updated === false) {
+            return new WP_Error('alt_db_error', 'Update failed on id ' . $id . ': ' . $wpdb->last_error,
+                array('status' => 500, 'edited_so_far' => $out['edited']));
+        }
 
         // Keep the CPT mirror consistent for rich entries.
         if (!empty($row['post_id'])) {
