@@ -98,13 +98,24 @@ def _count(s):
     return int(digits) if digits else 0
 
 
+# States warn-scraper supports (used for the "all" sweep).
+ALL_STATES = [
+    "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "IA", "ID", "IN",
+    "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "NE", "NJ", "NM", "NY", "OH",
+    "OK", "OR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI",
+]
+
+
 def _run_scraper(states, workdir):
-    cmd = ["warn-scraper", "--data-dir", workdir,
-           "--cache-dir", os.path.join(workdir, "cache"), "-l", "error"] + states
-    try:
-        subprocess.run(cmd, check=False, timeout=1800)
-    except Exception as e:
-        print(f"warn-scraper error: {e}")
+    """Scrape each state as its own subprocess with a per-state timeout, so a
+    single slow or broken state site can't kill the whole sweep."""
+    for st in states:
+        cmd = ["warn-scraper", "--data-dir", workdir,
+               "--cache-dir", os.path.join(workdir, "cache"), "-l", "error", st]
+        try:
+            subprocess.run(cmd, check=False, timeout=420)
+        except Exception as e:
+            print(f"warn-scraper {st} error/timeout: {e}")
 
 
 def pull_warn(states, min_employees=0, start_date=""):
@@ -116,17 +127,14 @@ def pull_warn(states, min_employees=0, start_date=""):
     start_date     'YYYY-MM-DD'; drop notices with an earlier effective date
     """
     scrape_all = len(states) == 1 and states[0].lower() == "all"
+    to_scrape = ALL_STATES if scrape_all else [s.upper() for s in states]
     workdir = tempfile.mkdtemp(prefix="warn_")
-    _run_scraper(["all"] if scrape_all else [s.upper() for s in states], workdir)
+    _run_scraper(to_scrape, workdir)
 
-    if scrape_all:
-        # warn-scraper writes one CSV per state it scraped; derive the code from
-        # the filename (ca.csv -> CA), skipping the cache dir.
-        import glob
-        files = sorted(glob.glob(os.path.join(workdir, "*.csv")))
-        state_files = [(os.path.splitext(os.path.basename(f))[0].upper(), f) for f in files]
-    else:
-        state_files = [(s.upper(), os.path.join(workdir, f"{s.lower()}.csv")) for s in states]
+    # Read whatever CSVs actually got written (one per state, code from filename).
+    import glob
+    files = sorted(glob.glob(os.path.join(workdir, "*.csv")))
+    state_files = [(os.path.splitext(os.path.basename(f))[0].upper(), f) for f in files]
 
     results = []
     for st, path in state_files:
