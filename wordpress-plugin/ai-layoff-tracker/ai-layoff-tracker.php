@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.0.3
+ * Version: 2.1.0
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.0.3');
+define('ALT_VERSION', '2.1.0');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -19,6 +19,7 @@ require_once ALT_PLUGIN_DIR . 'includes/api.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';
 require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
+require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 
 /**
  * Activation: register the CPT + custom feed before flushing rewrite rules,
@@ -60,6 +61,10 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('alt_db_install')) {
         alt_db_install();
     }
+    // Ensure the /contact page exists (FTP deploys can't create WP pages).
+    if (function_exists('alt_ensure_contact_page')) {
+        alt_ensure_contact_page();
+    }
 
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');
@@ -85,6 +90,7 @@ function alt_page_needs_assets() {
     $shortcodes = array(
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_company_history', 'alt_export_buttons',
+        'alt_contact',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;

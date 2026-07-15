@@ -867,3 +867,26 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-cite code { display: block; background: var(--alt-surface-2); border: 1px solid var(--alt-grid); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink); margin-top: 4px; }
 
 .alt-error { color: var(--alt-red); }
+
+/* ---------------- Contact form ---------------- */
+
+.alt-contact-wrap { max-width: 760px !important; }
+.alt-contact-form {
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 12px; box-shadow: var(--alt-shadow); padding: 20px;
+}
+.alt-contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.alt-contact-full { grid-column: 1 / -1; }
+.alt-contact-form textarea {
+    font-size: 14px; padding: 10px 12px; border: 1px solid var(--alt-grid);
+    border-radius: 8px; width: 100%; box-sizing: border-box; resize: vertical;
+    font-family: inherit; color: var(--alt-ink);
+}
+.alt-contact-form textarea:focus { outline: none; border-color: var(--alt-blue); box-shadow: 0 0 0 3px var(--alt-blue-tint); }
+.alt-contact-submit { display: flex; flex-direction: column; justify-content: end; }
+.alt-contact-submit .alt-btn { justify-content: center; }
+.alt-contact-note { margin: 14px 2px 0; font-size: 13px; color: var(--alt-muted); line-height: 1.5; }
+.alt-contact-ok { border-color: #b7e0c6; background: #e8f6ee; color: #1f7a44; }
+/* honeypot: visually gone, still in the DOM for bots to fill */
+.alt-hp { position: absolute; left: -9999px; top: -9999px; height: 1px; width: 1px; overflow: hidden; }
+@media (max-width: 620px) { .alt-contact-grid { grid-template-columns: 1fr; } }
