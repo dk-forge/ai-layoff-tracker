@@ -28,6 +28,7 @@ STATE_WARN_URL = {
     "DE": "https://joblink.delaware.gov/search/warn_lookups",
     "FL": "https://floridajobs.org/office-directory/division-of-workforce-services/workforce-programs/reemployment-and-emergency-assistance-coordination-team-react/warn-notices",
     "GA": "https://www.dol.state.ga.us/public/es/warn/searchwarns/list",
+    "HI": "https://labor.hawaii.gov/wdc/warn-notices/",
     "IA": "https://www.iowaworkforcedevelopment.gov/worker-adjustment-and-retraining-notification-act",
     "ID": "https://www.labor.idaho.gov/businesss/layoff-assistance/",
     "IL": "https://dceo.illinois.gov/aboutdceo/reportsrequiredbystatute/warnreports.html",
@@ -140,11 +141,14 @@ def _count(s):
     return int(m.group(0).replace(",", "")) if m else 0
 
 
-# States warn-scraper supports (used for the "all" sweep).
+# States warn-scraper supports (used for the "all" sweep). Keep in sync with
+# site-packages/warn/scrapers/ — an audit found HI, IL, PA missing from an
+# earlier version of this list (IL and PA are top-5 layoff states!).
 ALL_STATES = [
-    "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "IA", "ID", "IN",
-    "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "NE", "NJ", "NM", "NY", "OH",
-    "OK", "OR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI",
+    "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
+    "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "NE", "NJ", "NM",
+    "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT",
+    "WA", "WI",
 ]
 
 

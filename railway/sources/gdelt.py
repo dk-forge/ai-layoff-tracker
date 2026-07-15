@@ -37,12 +37,22 @@ TRUSTED_DOMAINS = {
     # regional US
     "sfgate.com", "sfchronicle.com", "mercurynews.com", "seattletimes.com",
     "chicagotribune.com", "bostonglobe.com", "dallasnews.com", "denverpost.com",
-    # international
+    # international (English)
     "dw.com", "france24.com", "scmp.com", "japantimes.co.jp", "straitstimes.com",
     "cbc.ca", "globalnews.ca", "smh.com.au", "abc.net.au", "irishtimes.com",
     "business-standard.com", "moneycontrol.com", "ndtv.com", "ndtvprofit.com",
     "livemint.com", "hindustantimes.com", "thehindu.com",
     "timesofindia.indiatimes.com", "economictimes.indiatimes.com",
+    # international (non-English majors — the extractor reads any language)
+    "lemonde.fr", "lesechos.fr", "lefigaro.fr",              # France
+    "handelsblatt.com", "spiegel.de", "faz.net", "zeit.de",  # Germany
+    "elpais.com", "expansion.com",                            # Spain
+    "corriere.it", "ilsole24ore.com",                         # Italy
+    "nikkei.com", "asahi.com",                                # Japan
+    "chosun.com", "hankyung.com",                             # South Korea
+    "globo.com", "estadao.com.br", "folha.uol.com.br",       # Brazil
+    "eleconomista.com.mx", "clarin.com",                      # Mexico / Argentina
+    "nrc.nl", "volkskrant.nl",                                # Netherlands
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -95,7 +105,9 @@ def pull_gdelt_between(start, end, max_records=250):
         "format": "json",
         "maxrecords": max_records,
         "sortby": "datedesc",
-        "sourcelang": "eng",
+        # No sourcelang restriction: the trusted-domain list is the quality
+        # gate, and it now includes major non-English outlets (Le Monde,
+        # Handelsblatt, Nikkei, Globo...). The extractor reads any language.
         "startdatetime": start.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "enddatetime": end.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
     }
