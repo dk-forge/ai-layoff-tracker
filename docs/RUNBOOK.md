@@ -126,3 +126,7 @@ Mitigations, in order: (1) Cloudflare cache rule serving the API from edge (chec
   if the table grows 10×.
 - `is_user_logged_in`-gated REST nocache suppression means logged-in admins always see
   fresh (uncached) API data; anonymous visitors may be ≤60s behind.
+- FTP deploys upload files in place (no atomic swap on Bluehost), so each deploy has a
+  ~30–60s window where a PHP-hitting request can 500 on a truncated file. Supercached
+  HTML shields most anonymous traffic; a 500 observed right after a push is this window,
+  not an outage — re-check after the deploy run goes green before reverting anything.
