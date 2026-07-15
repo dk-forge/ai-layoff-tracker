@@ -1106,9 +1106,9 @@
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var perDay = p.jobs ? Math.round(p.jobs / 365) : 0;
             var txt = 'Today, ' + today + ': so far in ' + y + ', ' + fmt(t.entries) +
-                ' verified ' + plural(t.entries, 'layoff') + ' ' + tab.label + ' with ' + fmt(t.jobs) + ' people impacted';
+                ' verified layoff' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' with ' + fmt(t.jobs) + ' people impacted';
             if (t.ai_jobs) txt += ', ' + fmt(t.ai_jobs) + ' of them in cuts companies attribute to AI';
-            txt += '. In ' + (y - 1) + ', ' + fmt(p.entries) + ' ' + plural(p.entries, 'layoff') + ' with ' + fmt(p.jobs) +
+            txt += '. In ' + (y - 1) + ', ' + fmt(p.entries) + ' layoff' + (p.entries === 1 ? '' : 's') + ' with ' + fmt(p.jobs) +
                 ' people impacted' + (perDay ? ' (' + fmt(perDay) + ' people per day)' : '') + '.';
             if (!t.entries && !p.entries && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still back-filling from the worldwide press index — pick "All time" in the Years filter to see earlier verified events.';
