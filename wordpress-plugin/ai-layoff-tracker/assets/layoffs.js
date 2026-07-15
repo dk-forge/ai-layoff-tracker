@@ -1165,11 +1165,15 @@
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var perDay = p.jobs ? Math.round(p.jobs / 365) : 0;
             var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt()/config output
-            var txt = 'Today, ' + b(today) + ': so far in ' + b(y) + ', ' + b(fmt(t.entries)) +
-                ' verified layoff' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' with ' + b(fmt(t.jobs)) + ' people impacted';
-            if (t.ai_jobs) txt += ', ' + b(fmt(t.ai_jobs)) + ' of them in cuts companies attribute to AI';
-            txt += '. In ' + b(y - 1) + ', ' + b(fmt(p.entries)) + ' layoff' + (p.entries === 1 ? '' : 's') + ' with ' + b(fmt(p.jobs)) +
-                ' people impacted' + (perDay ? ' (' + b(fmt(perDay)) + ' people per day)' : '') + '.';
+            // Plain human language: "layoff events affecting N workers", not
+            // "layoffs with N people impacted" (readers mistook event counts
+            // for people counts).
+            var txt = 'Today, ' + b(today) + ': so far in ' + b(y) + ' we’ve verified ' + b(fmt(t.entries)) +
+                ' layoff event' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' affecting ' + b(fmt(t.jobs)) + ' workers';
+            if (t.ai_jobs) txt += ' — companies explicitly blamed AI for ' + b(fmt(t.ai_jobs)) + ' of those job cuts';
+            txt += '. In ' + b(y - 1) + ', ' + b(fmt(p.entries)) + ' verified event' + (p.entries === 1 ? '' : 's') +
+                ' affected ' + b(fmt(p.jobs)) + ' workers' +
+                (perDay ? ' — an average of ' + b(fmt(perDay)) + ' people losing their jobs every day' : '') + '.';
             if (!t.entries && !p.entries && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still back-filling from the worldwide press index — pick "All time" in the Years filter to see earlier verified events.';
             }
