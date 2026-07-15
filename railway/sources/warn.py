@@ -15,18 +15,49 @@ import re
 import subprocess
 import tempfile
 
-# Landing page for each state's WARN program (individual notices have no URL).
+# Official WARN program page per state — the fallback link when a notice has
+# no per-row detail URL of its own.
 STATE_WARN_URL = {
+    "AK": "https://jobs.alaska.gov/RR/WARN_notices.htm",
+    "AL": "https://www.madeinalabama.com/warn-list/",
+    "AZ": "https://www.azcommerce.com/arizona-warn-notices",
     "CA": "https://edd.ca.gov/en/jobs_and_training/layoff_services_warn/",
-    "NY": "https://dol.ny.gov/warn-notices",
-    "TX": "https://www.twc.texas.gov/programs/rapid-response-program",
-    "WA": "https://esd.wa.gov/about-employees/WARN",
-    "IL": "https://dceo.illinois.gov/aboutdceo/reportsrequiredbystatute/warnreports.html",
-    "NJ": "https://www.nj.gov/labor/employer-services/warn/",
-    "OH": "https://jfs.ohio.gov/warn/index.stm",
+    "CO": "https://cdle.colorado.gov/employers/layoff-separations/layoff-warn-list",
+    "CT": "https://www.ctdol.state.ct.us/progsupt/bussrvce/warnreports/warnreports.htm",
+    "DC": "https://does.dc.gov/page/industry-closings-and-layoffs-warn-notifications",
+    "DE": "https://joblink.delaware.gov/search/warn_lookups",
     "FL": "https://floridajobs.org/office-directory/division-of-workforce-services/workforce-programs/reemployment-and-emergency-assistance-coordination-team-react/warn-notices",
-    "PA": "https://www.pa.gov/en/agencies/dli/programs-services/workforce-development/warn.html",
     "GA": "https://www.dol.state.ga.us/public/es/warn/searchwarns/list",
+    "IA": "https://www.iowaworkforcedevelopment.gov/worker-adjustment-and-retraining-notification-act",
+    "ID": "https://www.labor.idaho.gov/businesss/layoff-assistance/",
+    "IL": "https://dceo.illinois.gov/aboutdceo/reportsrequiredbystatute/warnreports.html",
+    "IN": "https://www.in.gov/dwd/warn-notices/",
+    "KS": "https://www.kansasworks.com/search/warn_lookups",
+    "KY": "https://kcc.ky.gov/employer/Pages/Business-Downsizing-Assistance---WARN.aspx",
+    "LA": "https://www.laworks.net/Downloads/Downloads_WFD.asp",
+    "MD": "https://www.dllr.state.md.us/employment/warn.shtml",
+    "ME": "https://joblink.maine.gov/search/warn_lookups",
+    "MI": "https://milmi.org/warn/",
+    "MO": "https://jobs.mo.gov/warn",
+    "MT": "https://wsd.dli.mt.gov/wioa/related-links/warn-notice-page",
+    "NE": "https://dol.nebraska.gov/ReemploymentServices/LayoffServices/LayoffsAndDownsizingWARN",
+    "NJ": "https://www.nj.gov/labor/employer-services/warn/",
+    "NM": "https://www.dws.state.nm.us/Rapid-Response",
+    "NY": "https://dol.ny.gov/warn-notices",
+    "OH": "https://jfs.ohio.gov/warn/index.stm",
+    "OK": "https://oklahoma.gov/oesc/businesses/warn-notices.html",
+    "OR": "https://ccwd.hecc.oregon.gov/Layoff/WARN",
+    "PA": "https://www.pa.gov/en/agencies/dli/programs-services/workforce-development/warn.html",
+    "RI": "https://dlt.ri.gov/employers/worker-adjustment-and-retraining-notification-warn",
+    "SC": "https://scworks.org/employer/employer-programs/at-risk-of-closing/layoff-notification-reports",
+    "SD": "https://dlr.sd.gov/workforce_services/businesses/warn_notices.aspx",
+    "TN": "https://www.tn.gov/workforce/general-resources/major-publications0/major-publications-redirect/reports.html",
+    "TX": "https://www.twc.texas.gov/programs/rapid-response-program",
+    "UT": "https://jobs.utah.gov/employer/business/warnnotices.html",
+    "VA": "https://www.vec.virginia.gov/warn-notices",
+    "VT": "https://www.vermontjoblink.com/search/warn_lookups",
+    "WA": "https://esd.wa.gov/about-employees/WARN",
+    "WI": "https://dwd.wisconsin.gov/dislocatedworker/warn/",
 }
 
 
@@ -157,6 +188,11 @@ def pull_warn(states, min_employees=0, start_date=""):
                     ["date"]))                        # any remaining date column
                 city = _match(rl, ["city"], ["location"])
                 kind = _match(rl, ["closure", "warn_type", "type of layoff", "layoff or closure"])
+                # Some states publish a per-notice detail link (e.g. VT's
+                # detail_page_url) — prefer it over the program landing page.
+                detail = _match(rl, ["detail_page_url", "detail page", "notice_url", "url", "link"])
+                if not detail.lower().startswith("http"):
+                    detail = ""
 
                 # jobs cap rejects parse errors (no real single WARN notice is
                 # anywhere near 100K workers).
@@ -171,10 +207,12 @@ def pull_warn(states, min_employees=0, start_date=""):
                 if start_date and date < start_date:
                     continue
 
-                where = f"{city}, {st}" if city else st
-                excerpt = (f"{kind or 'Layoff'} at {company} in {where}. "
-                           f"{jobs:,} employees affected, effective {date} "
-                           f"(state WARN Act notice).")
+                # `city` sometimes already contains a state ("Minneapolis, MN"),
+                # so never glue the filing state onto it.
+                loc = f" in {city}" if city else ""
+                excerpt = (f"{kind or 'Layoff'} at {company}{loc}. "
+                           f"{jobs:,} employees affected, effective {date}. "
+                           f"Filed under the {st} WARN Act.")
                 hash_input = (f"warn{company.lower().strip()}{date}{jobs}"
                               f"{city.lower().strip()}{st}")
 
@@ -194,7 +232,7 @@ def pull_warn(states, min_employees=0, start_date=""):
                     "reason_tags": [],
                     "ai_explicit": False,
                     "ai_language": None,
-                    "source_url": STATE_WARN_URL.get(st, ""),
+                    "source_url": detail or STATE_WARN_URL.get(st, ""),
                     "dedup_hash": hashlib.md5(hash_input.encode("utf-8")).hexdigest(),
                     "is_layoff_event": True,
                 })
