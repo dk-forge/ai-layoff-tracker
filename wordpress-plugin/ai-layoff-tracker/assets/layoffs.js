@@ -175,8 +175,10 @@
         if ((v = readControl('alt-f-state'))) p.state = v;
         var reasons = readControl('alt-f-reasons') || [];
         if (reasons.length) p.reasons = reasons.join(',');
-        var sources = readControl('alt-f-verification') || [];
-        if (sources.length) p.sources = sources.join(',');
+        // Source select may be single (tracker) or multi (legacy pages).
+        var sources = readControl('alt-f-verification');
+        if (Array.isArray(sources)) { if (sources.length) p.sources = sources.join(','); }
+        else if (sources) { p.sources = sources; }
         if ((v = (readControl('alt-search') || '').trim())) p.q = v;
         if ((v = (readControl('alt-f-company') || '').trim())) p.company = v;
         if ((v = (readControl('alt-f-keyword') || '').trim())) p.keyword = v;
@@ -208,13 +210,6 @@
     var DASH_PRESENT = false;
     var LAST_AGG = null;
 
-    // Charts live inside a collapsed <details>; only draw them when it's open
-    // (Chart.js can't size a canvas that's display:none).
-    function overviewOpen() {
-        var d = document.querySelector('.alt-overview-collapse');
-        return !d || d.open;
-    }
-
     function refreshAll() {
         saveFilters();
         if (TABLE) TABLE.ajax.reload(null, true);
@@ -229,7 +224,7 @@
             .then(function (agg) {
                 LAST_AGG = agg;
                 renderStats(agg.totals);
-                if (overviewOpen()) renderCharts(agg);
+                renderCharts(agg);
             })
             .catch(function () { setStatus('alt-dashboard-status', 'Could not load chart data.', true); });
     }
@@ -253,8 +248,11 @@
             var val = readControl(def.id);
             if (def.kind === 'bool') { if (val) chips.push({ id: def.id, text: def.on, value: true, kind: 'bool' }); }
             else if (def.kind === 'multi') {
-                (val || []).forEach(function (v) {
-                    chips.push({ id: def.id, text: def.label + ': ' + ((def.map && def.map[v]) || v), value: v, kind: 'multi' });
+                // A "multi" control may actually be a single select on some pages.
+                var vals = Array.isArray(val) ? val : (val ? [val] : []);
+                var kind = Array.isArray(val) ? 'multi' : 'single';
+                vals.forEach(function (v) {
+                    chips.push({ id: def.id, text: def.label + ': ' + ((def.map && def.map[v]) || v), value: v, kind: kind });
                 });
             } else if (val) { chips.push({ id: def.id, text: def.label + ': ' + val, value: val, kind: 'single' }); }
         });
@@ -410,7 +408,11 @@
     function renderBarList(containerId, entries, filterId, activeValue) {
         var box = document.getElementById(containerId);
         if (!box) return;
-        entries = (entries || []).slice(0, 7);
+        // Compact cards show a top-4 preview; expanded (or full-size dashboard
+        // cards) show up to 12.
+        var mini = box.closest('.alt-mini');
+        var limit = (mini && !mini.classList.contains('alt-expanded')) ? 4 : 12;
+        entries = (entries || []).slice(0, limit);
         if (!entries.length) {
             box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
             return;
@@ -812,9 +814,19 @@
             active: function () { return currentSort() === 'largest'; }
         },
         sec: {
-            apply: function () { writeControl('alt-f-verification', ['gold']); },
-            clear: function () { writeControl('alt-f-verification', []); },
-            active: function () { var v = readControl('alt-f-verification') || []; return v.length === 1 && v[0] === 'gold'; }
+            apply: function () {
+                var el = document.getElementById('alt-f-verification');
+                if (el) { if (el.multiple) writeControl('alt-f-verification', ['gold']); else el.value = 'gold'; }
+            },
+            clear: function () {
+                var el = document.getElementById('alt-f-verification');
+                if (el) { if (el.multiple) writeControl('alt-f-verification', []); else el.value = ''; }
+            },
+            active: function () {
+                var v = readControl('alt-f-verification');
+                if (Array.isArray(v)) return v.length === 1 && v[0] === 'gold';
+                return v === 'gold';
+            }
         },
         tech: {
             apply: function () { writeControl('alt-f-industry', 'Technology'); },
@@ -859,8 +871,18 @@
             });
         });
 
-        var ov = document.querySelector('.alt-overview-collapse');
-        if (ov) ov.addEventListener('toggle', function () { if (ov.open && LAST_AGG) renderCharts(LAST_AGG); });
+        // Mini-chart expand: toggle the card to full width/height, then
+        // re-render so bar lists show more rows and canvases re-measure.
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-mini .alt-expand'), function (btn) {
+            btn.addEventListener('click', function () {
+                var card = btn.closest('.alt-mini');
+                if (!card) return;
+                var on = card.classList.toggle('alt-expanded');
+                btn.setAttribute('aria-label', on ? 'Collapse chart' : 'Expand chart');
+                btn.title = on ? 'Collapse' : 'Expand';
+                if (LAST_AGG) renderCharts(LAST_AGG);
+            });
+        });
 
         updateQuickViewStates();
     }

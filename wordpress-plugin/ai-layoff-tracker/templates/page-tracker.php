@@ -7,7 +7,83 @@ $alt_json = admin_url('admin-post.php?action=alt_export_json');
 $alt_api  = rest_url('layoffs/v1/query');
 $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>';
 ?>
-<div class="alt-wrap alt-tracker-wrap">
+<div class="alt-wrap alt-tracker-wrap alt-dashboard">
+
+    <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
+
+    <div class="alt-stats-bar" id="alt-stats-bar">
+        <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-total">—</span>
+            <span class="alt-stat-label">Jobs cut (tracked)</span>
+            <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
+        </div>
+        <div class="alt-stat-card alt-stat-card-ai">
+            <span class="alt-stat-value" id="alt-stat-ai">—</span>
+            <span class="alt-stat-label">Explicitly AI-attributed</span>
+            <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
+        </div>
+        <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-companies">—</span>
+            <span class="alt-stat-label">Companies</span>
+            <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
+        </div>
+        <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-industries">—</span>
+            <span class="alt-stat-label">Industries</span>
+            <span class="alt-stat-sub"></span>
+        </div>
+        <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-countries">—</span>
+            <span class="alt-stat-label">Countries</span>
+            <span class="alt-stat-sub"></span>
+        </div>
+    </div>
+
+    <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
+    <div class="alt-minigrid">
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Jobs cut per month</div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-barlist" id="alt-bars-industries"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By US state <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-barlist" id="alt-bars-states"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-barlist" id="alt-bars-countries"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Cumulative AI-attributed cuts</div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
+        </div>
+    </div>
 
     <div class="alt-toolbar2">
         <div class="alt-search-wrap">
@@ -16,7 +92,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         </div>
         <button type="button" id="alt-filters-toggle" class="alt-btn" aria-expanded="false">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-            Filters
+            More filters
         </button>
         <label class="alt-sort"><span>Sort</span>
             <select id="alt-sort">
@@ -37,16 +113,8 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         <button type="button" class="alt-qv" data-qv="tech">Tech industry</button>
     </div>
 
-    <div class="alt-filters-panel" id="alt-filters-panel" hidden>
-        <div class="alt-filters">
-            <div class="alt-filter">
-                <label for="alt-f-from">From</label>
-                <input type="date" id="alt-f-from">
-            </div>
-            <div class="alt-filter">
-                <label for="alt-f-to">To</label>
-                <input type="date" id="alt-f-to">
-            </div>
+    <div class="alt-filterbar">
+        <div class="alt-filterbar-row">
             <div class="alt-filter">
                 <label for="alt-f-industry">Industry</label>
                 <select id="alt-f-industry"><option value="">All industries</option></select>
@@ -60,45 +128,20 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <select id="alt-f-state"><option value="">All states</option></select>
             </div>
             <div class="alt-filter">
-                <label for="alt-f-reasons">Reason tags</label>
-                <select id="alt-f-reasons" multiple size="4">
-                    <option value="ai_automation">AI / automation</option>
-                    <option value="possible_ai">Possible AI</option>
-                    <option value="revenue_decline">Revenue decline</option>
-                    <option value="restructuring">Restructuring</option>
-                    <option value="merger_acquisition">Merger / acquisition</option>
-                    <option value="offshoring">Offshoring</option>
-                    <option value="product_discontinuation">Product discontinued</option>
-                    <option value="cost_reduction">Cost reduction</option>
-                    <option value="macroeconomic">Macroeconomic</option>
-                </select>
-            </div>
-            <div class="alt-filter">
                 <label for="alt-f-verification">Source type</label>
-                <select id="alt-f-verification" multiple size="4">
+                <select id="alt-f-verification">
+                    <option value="">All sources</option>
                     <option value="gold">SEC filing (8-K)</option>
                     <option value="warn">WARN notice</option>
                     <option value="silver">Press release</option>
                     <option value="bronze">News</option>
                 </select>
             </div>
-            <div class="alt-filter">
-                <label for="alt-f-company">Company</label>
-                <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
-            </div>
-            <div class="alt-filter">
-                <label for="alt-f-keyword">Keyword in excerpt</label>
-                <input type="text" id="alt-f-keyword" placeholder="Search excerpts">
-            </div>
-            <div class="alt-filter">
-                <label for="alt-f-minjobs">Min job count</label>
-                <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
-            </div>
             <div class="alt-filter alt-filter-toggle">
                 <label><input type="checkbox" id="alt-f-ai"> AI-attributed only</label>
             </div>
         </div>
-        <div class="alt-filters-foot">
+        <div class="alt-filterbar-row alt-filterbar-period">
             <div class="alt-period" id="alt-period" role="group" aria-label="Time period">
                 <span class="alt-period-lbl">Period:</span>
                 <div class="alt-period-years" id="alt-period-years"></div>
@@ -119,7 +162,45 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                     <option value="11">November</option><option value="12">December</option>
                 </select>
             </div>
-            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-sm">Reset all filters</button>
+            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-sm">Reset all</button>
+        </div>
+        <div class="alt-filters-more" id="alt-filters-panel" hidden>
+            <div class="alt-filters">
+                <div class="alt-filter">
+                    <label for="alt-f-from">From</label>
+                    <input type="date" id="alt-f-from">
+                </div>
+                <div class="alt-filter">
+                    <label for="alt-f-to">To</label>
+                    <input type="date" id="alt-f-to">
+                </div>
+                <div class="alt-filter">
+                    <label for="alt-f-reasons">Reason tags</label>
+                    <select id="alt-f-reasons" multiple size="4">
+                        <option value="ai_automation">AI / automation</option>
+                        <option value="possible_ai">Possible AI</option>
+                        <option value="revenue_decline">Revenue decline</option>
+                        <option value="restructuring">Restructuring</option>
+                        <option value="merger_acquisition">Merger / acquisition</option>
+                        <option value="offshoring">Offshoring</option>
+                        <option value="product_discontinuation">Product discontinued</option>
+                        <option value="cost_reduction">Cost reduction</option>
+                        <option value="macroeconomic">Macroeconomic</option>
+                    </select>
+                </div>
+                <div class="alt-filter">
+                    <label for="alt-f-company">Company</label>
+                    <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
+                </div>
+                <div class="alt-filter">
+                    <label for="alt-f-keyword">Keyword in excerpt</label>
+                    <input type="text" id="alt-f-keyword" placeholder="Search excerpts">
+                </div>
+                <div class="alt-filter">
+                    <label for="alt-f-minjobs">Min job count</label>
+                    <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -153,78 +234,6 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             </thead>
         </table>
     </div>
-
-    <details class="alt-overview-collapse">
-        <summary>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-            Charts &amp; overview
-        </summary>
-        <div class="alt-dashboard alt-overview">
-            <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
-            <div class="alt-stats-bar" id="alt-stats-bar">
-                <div class="alt-stat-card">
-                    <span class="alt-stat-value" id="alt-stat-total">—</span>
-                    <span class="alt-stat-label">Jobs cut (tracked)</span>
-                    <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
-                </div>
-                <div class="alt-stat-card alt-stat-card-ai">
-                    <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                    <span class="alt-stat-label">Explicitly AI-attributed</span>
-                    <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
-                </div>
-                <div class="alt-stat-card">
-                    <span class="alt-stat-value" id="alt-stat-companies">—</span>
-                    <span class="alt-stat-label">Companies</span>
-                    <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
-                </div>
-                <div class="alt-stat-card">
-                    <span class="alt-stat-value" id="alt-stat-industries">—</span>
-                    <span class="alt-stat-label">Industries</span>
-                    <span class="alt-stat-sub"></span>
-                </div>
-                <div class="alt-stat-card">
-                    <span class="alt-stat-value" id="alt-stat-countries">—</span>
-                    <span class="alt-stat-label">Countries</span>
-                    <span class="alt-stat-sub"></span>
-                </div>
-            </div>
-            <div class="alt-chart-grid">
-                <div class="alt-chart-card alt-chart-card-wide">
-                    <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub">full history</span></div>
-                    <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
-                </div>
-                <div class="alt-chart-card">
-                    <div class="alt-chart-head">
-                        <div class="alt-chart-h">Where the cuts are <span class="alt-chart-sub">by industry · <span class="alt-ai-key"></span> AI-attributed share</span></div>
-                        <span class="alt-tap-hint">tap to filter →</span>
-                    </div>
-                    <div class="alt-barlist" id="alt-bars-industries"></div>
-                </div>
-                <div class="alt-chart-card">
-                    <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">jobs by reason tag</span></div>
-                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-reasons"></canvas></div>
-                </div>
-                <div class="alt-chart-card">
-                    <div class="alt-chart-head">
-                        <div class="alt-chart-h">Where the cuts are <span class="alt-chart-sub">by US state · <span class="alt-ai-key"></span> AI-attributed share</span></div>
-                        <span class="alt-tap-hint">tap to filter →</span>
-                    </div>
-                    <div class="alt-barlist" id="alt-bars-states"></div>
-                </div>
-                <div class="alt-chart-card">
-                    <div class="alt-chart-head">
-                        <div class="alt-chart-h">Where the cuts are <span class="alt-chart-sub">by country · <span class="alt-ai-key"></span> AI-attributed share</span></div>
-                        <span class="alt-tap-hint">tap to filter →</span>
-                    </div>
-                    <div class="alt-barlist" id="alt-bars-countries"></div>
-                </div>
-                <div class="alt-chart-card alt-chart-card-wide">
-                    <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub">acceleration curve</span></div>
-                    <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-cumulative"></canvas></div>
-                </div>
-            </div>
-        </div>
-    </details>
 
     <details class="alt-methodology">
         <summary>Methodology &amp; sources</summary>

@@ -191,13 +191,44 @@ body:has(.alt-tracker-wrap) .entry-content { margin-top: 12px; }
 .alt-qv:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
 .alt-qv-on, .alt-qv-on:hover { background: var(--alt-ink); border-color: var(--alt-ink); color: #fff; }
 
-.alt-filters-panel {
-    background: var(--alt-surface); border: 1px solid var(--alt-border);
-    border-radius: 12px; box-shadow: var(--alt-shadow); padding: 18px; margin: 0 0 18px;
+/* Compact chart grid at the top; the ⤢ button expands a card full-width */
+.alt-minigrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+@media (max-width: 900px) { .alt-minigrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .alt-minigrid { grid-template-columns: 1fr; } }
+.alt-mini { padding: 13px 15px; }
+.alt-mini .alt-chart-h { font-size: 13.5px; }
+.alt-mini .alt-chart-sub { display: block; margin-left: 0; margin-top: 2px; font-size: 11px; }
+.alt-mini .alt-chart-box { height: 150px; }
+.alt-mini.alt-expanded { grid-column: 1 / -1; }
+.alt-mini.alt-expanded .alt-chart-box { height: 320px; }
+.alt-mini .alt-barlist { gap: 5px; }
+.alt-mini .alt-barrow { padding: 5px 7px; }
+.alt-mini .alt-barrow-top { margin-bottom: 4px; }
+.alt-mini .alt-barrow-name { font-size: 13px; }
+.alt-mini .alt-barrow-val { font-size: 12.5px; }
+.alt-mini .alt-bartrack { height: 7px; }
+.alt-expand {
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+    background: var(--alt-surface-2); border: 1px solid var(--alt-grid); color: var(--alt-ink-2);
+    transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
-.alt-filters-panel[hidden] { display: none; }
-.alt-filters-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--alt-grid); }
-.alt-filters-foot .alt-period { margin: 0; flex: 1 1 auto; }
+.alt-expand:hover { border-color: #2a78d6; color: #2a78d6; }
+.alt-expanded .alt-expand { background: #2a78d6; border-color: #2a78d6; color: #fff; }
+
+/* Always-visible filter bar (primary controls) + "More filters" drawer */
+.alt-filterbar {
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 12px; box-shadow: var(--alt-shadow); padding: 14px 16px; margin: 0 0 16px;
+}
+.alt-filterbar-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 14px; align-items: end; }
+.alt-filterbar-period {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--alt-grid);
+}
+.alt-filterbar .alt-period { margin: 0; flex: 1 1 auto; }
+.alt-filters-more { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--alt-grid); }
+.alt-filters-more[hidden] { display: none; }
 .alt-period-lbl { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); margin-right: 4px; }
 
 /* Count row is sticky so the active filters + counts stay visible while

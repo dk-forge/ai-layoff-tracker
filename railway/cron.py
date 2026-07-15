@@ -2,7 +2,10 @@
 AI Layoff Tracker — Main Cron Script
 Runs 2x daily: 9 AM ET + 5 PM ET (see railway.toml for the schedule)
 """
+from datetime import datetime, timedelta, timezone
+
 from sources.edgar import pull_edgar_filings
+from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
 from extractor import extract_layoff_data
 from deduplicator import is_duplicate
@@ -21,6 +24,13 @@ def run():
         entries += pull_news_articles()
     except Exception as e:
         print(f"NewsAPI source failed: {e}")
+    try:
+        # Worldwide press coverage (Europe/Asia/everywhere) via GDELT. 36h
+        # window overlaps the twice-daily runs; dedup drops the repeats.
+        now = datetime.now(timezone.utc)
+        entries += pull_gdelt_between(now - timedelta(hours=36), now)
+    except Exception as e:
+        print(f"GDELT source failed: {e}")
 
     print(f"Pulled {len(entries)} raw entries")
 
