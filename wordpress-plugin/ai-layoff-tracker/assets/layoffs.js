@@ -759,7 +759,14 @@
                 el.textContent = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' layoffs';
             },
             columns: [
-                { data: 'layoff_date', render: function (d, t) { return t === 'display' ? (d ? escapeHtml(d) : '<span class="alt-muted">unknown</span>') : (d || ''); } },
+                { data: 'layoff_date', render: function (d, t) {
+                    if (t !== 'display') return d || '';
+                    if (!d) return '<span class="alt-muted">unknown</span>';
+                    // WARN filings are legally filed 60+ days ahead — flag cuts
+                    // whose effective date hasn't arrived yet as planned, not done.
+                    var today = new Date().toISOString().slice(0, 10);
+                    return escapeHtml(d) + (d > today ? ' <span class="alt-upcoming" title="Filed in advance — effective date has not arrived yet">upcoming</span>' : '');
+                } },
                 { data: 'company_name', render: function (d, t, row) {
                     if (t !== 'display') return d || '';
                     var h = '<strong>' + escapeHtml(d) + '</strong>';

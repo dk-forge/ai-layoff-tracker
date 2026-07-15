@@ -517,6 +517,14 @@ body.admin-bar .alt-count-row { top: 32px; }
     vertical-align: middle;
 }
 
+/* Future-effective WARN filings: planned, not yet happened */
+.alt-upcoming {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: #7a5600; background: #fdf3d7;
+    border: 1px solid #e9c65a; border-radius: 4px; padding: 0 5px; margin-left: 5px;
+    vertical-align: middle;
+}
+
 .alt-ai-yes {
     display: inline-block;
     font-size: 10px;

@@ -14,7 +14,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
     <div class="alt-stats-bar" id="alt-stats-bar">
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-total">—</span>
-            <span class="alt-stat-label">Jobs cut (tracked)</span>
+            <span class="alt-stat-label">Jobs cut (all causes)</span>
             <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
         </div>
         <div class="alt-stat-card alt-stat-card-ai">
@@ -250,6 +250,17 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <p><b>Coverage.</b> US WARN notices cover ~22 states that publish machine-readable data. There is <em>no international equivalent of WARN or EDGAR</em>, so non-US layoffs come from news and top out at Press release or News verification. We label every entry's source so you always know the strength of the evidence.</p>
             <p><b>What WARN notices do and don't contain.</b> A WARN filing states the employer, headcount, dates, and location, but <em>not</em> the industry or the reason, so industry and reason charts mostly reflect SEC- and news-sourced entries. Employers with remote or multi-state workforces sometimes file the same restructuring in several states, each with its own official count, so state-level figures can overlap for those companies. Counts are shown exactly as each state published them.</p>
             <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; and "AI" claims that are forward-looking plans rather than executed cuts.</p>
+            <p><b>Filed vs. happened.</b> WARN law requires employers to file 60+ days before cuts take effect, so entries dated in the future are <em>planned and legally filed</em>, not yet executed. They carry an <span class="alt-upcoming">upcoming</span> tag in the table until their effective date arrives.</p>
+        </div>
+    </details>
+
+    <details class="alt-methodology">
+        <summary>Data notes &amp; corrections log</summary>
+        <div class="alt-method-body">
+            <p>Errors are corrected openly, not silently. Recent corrections:</p>
+            <p><b>Jul 14, 2026.</b> Fixed a count-parsing error affecting 6 WARN entries whose official filings contain annotations in the headcount field (e.g. Rhode Island's "9,891 Remote Workers (2 from RI)" had been read as 98,912). Counts now parse the first number in the field; ranges resolve to the lower bound. All affected rows were reloaded and totals recomputed.</p>
+            <p><b>Jul 14, 2026.</b> Country names normalized ("US"/"USA" → United States) and multi-country phrases ("India and US", "Global") consolidated into a single "Multiple countries" bucket to prevent double counting.</p>
+            <p>Spotted something off? Every entry links to its primary source so you can check us — corrections are welcome via the contact page.</p>
         </div>
     </details>
 
