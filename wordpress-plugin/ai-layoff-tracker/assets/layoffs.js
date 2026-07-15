@@ -299,6 +299,12 @@
                 // A "multi" control may actually be a single select on some pages.
                 var vals = Array.isArray(val) ? val : (val ? [val] : []);
                 var kind = Array.isArray(val) ? 'multi' : 'single';
+                // A region tab's whole country set collapses to ONE chip
+                // ("Region: Europe") — 31 per-country chips helped no one.
+                if (def.id === 'alt-f-country' && vals.length > 1) {
+                    var region = regionNameFor(vals);
+                    if (region) { chips.push({ id: def.id, text: 'Region: ' + region, kind: 'region', color: def.color }); return; }
+                }
                 vals.forEach(function (v) {
                     chips.push({ id: def.id, text: def.label + ': ' + ((def.map && def.map[v]) || v), value: v, kind: kind, color: def.color });
                 });
@@ -316,6 +322,7 @@
             btn.addEventListener('click', function () {
                 var c = chips[parseInt(btn.getAttribute('data-i'), 10)];
                 if (c.kind === 'bool') { var el = document.getElementById(c.id); if (el) el.checked = false; }
+                else if (c.kind === 'region') writeControl(c.id, []); // ✕ on a region chip = back to world
                 else if (c.kind === 'multi') toggleMultiFilter(c.id, c.value);
                 else toggleSingleFilter(c.id, '');
                 refreshAll();
@@ -1111,8 +1118,20 @@
         var tab = REGION_TABS[key];
         if (!tab) return;
         ACTIVE_TAB = key;
-        // The tab drives the Countries filter; existing options limit what
-        // actually selects (a region country with no data yet just no-ops).
+        // The tab drives the Countries filter. The dropdown only lists
+        // countries WITH data, so a region whose countries all lack rows
+        // would select nothing — and an empty selection means "world",
+        // silently showing global rows under an "Africa" tab. Inject the
+        // missing options so the filter genuinely scopes (to 0 rows if the
+        // region is empty; the API filters by value, not by vocabulary).
+        var sel = document.getElementById('alt-f-country');
+        if (sel) {
+            var have = {};
+            Array.prototype.forEach.call(sel.options, function (o) { have[o.value] = 1; });
+            tab.countries.forEach(function (c) {
+                if (!have[c]) sel.appendChild(new Option(c, c));
+            });
+        }
         writeControl('alt-f-country', tab.countries.slice());
         if (key !== 'usa' && key !== 'world') writeControl('alt-f-state', []);
         document.querySelectorAll('.alt-tab').forEach(function (b) {
