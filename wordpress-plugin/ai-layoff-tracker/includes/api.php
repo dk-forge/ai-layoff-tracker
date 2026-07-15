@@ -101,12 +101,16 @@ function alt_company_key($name) {
  * True if a published entry already exists for the same company (normalized)
  * within ~30 days of $date — i.e. probably the same event from another outlet.
  */
+/**
+ * Same-event fuzzy match: returns the matching post ID (truthy) when the same
+ * company already has a published entry within ±30 days, else 0.
+ */
 function alt_fuzzy_dupe_exists($company, $date) {
     if ($company === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        return false;
+        return 0;
     }
     $key = alt_company_key($company);
-    if ($key === '') return false;
+    if ($key === '') return 0;
 
     $lo = gmdate('Y-m-d', strtotime($date . ' 00:00:00 UTC') - 30 * DAY_IN_SECONDS);
     $hi = gmdate('Y-m-d', strtotime($date . ' 00:00:00 UTC') + 30 * DAY_IN_SECONDS);
@@ -120,10 +124,10 @@ function alt_fuzzy_dupe_exists($company, $date) {
     ));
     foreach ($ids as $id) {
         if (alt_company_key((string) get_post_meta($id, 'company_name', true)) === $key) {
-            return true;
+            return (int) $id;
         }
     }
-    return false;
+    return 0;
 }
 
 /**
@@ -398,7 +402,26 @@ function alt_api_add($request) {
     // WARN notices are exempt: one company can legitimately file several within
     // 30 days (e.g. separate store closures), so they rely on the exact hash.
     $incoming_source = sanitize_text_field($meta_in['source_type'] ?? '');
-    if ($incoming_source !== 'warn' && alt_fuzzy_dupe_exists($company, $layoff_date)) {
+    if ($incoming_source !== 'warn' && ($match_id = alt_fuzzy_dupe_exists($company, $layoff_date))) {
+        // Don't discard information with the duplicate: if the incoming report
+        // carries an explicit AI attribution the existing entry lacks (common
+        // when a WARN filing landed first and the news explains WHY), graft the
+        // AI flag + exact quote onto the existing entry before rejecting.
+        if (!empty($meta_in['ai_explicit']) && !get_post_meta($match_id, 'ai_explicit', true)) {
+            update_post_meta($match_id, 'ai_explicit', true);
+            $quote = sanitize_text_field($meta_in['ai_language'] ?? '');
+            if ($quote !== '' && (string) get_post_meta($match_id, 'ai_language', true) === '') {
+                update_post_meta($match_id, 'ai_language', $quote);
+            }
+            $tags = (array) get_post_meta($match_id, 'reason_tags', true);
+            if (!in_array('ai_automation', $tags, true)) {
+                $tags[] = 'ai_automation';
+                update_post_meta($match_id, 'reason_tags', array_values(array_filter($tags)));
+            }
+            if (function_exists('alt_db_sync_post')) alt_db_sync_post($match_id);
+            alt_flush_caches();
+            return new WP_Error('alt_duplicate', 'Same-company entry exists; AI attribution merged into it.', array('status' => 409));
+        }
         return new WP_Error('alt_duplicate', 'A same-company entry within ~30 days already exists.', array('status' => 409));
     }
 
