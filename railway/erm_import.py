@@ -101,6 +101,12 @@ def to_entry(r):
         "source_type": "erm",
         "source_name": "European Restructuring Monitor (Eurofound)",
         "verification_level": "silver",
+        # ERM figures are "as originally announced" — announcement-stage by
+        # definition (Cineworld's 45K/Lufthansa's 39K COVID-era announcements
+        # would otherwise pollute the verified floor exactly the way we
+        # criticize announcement surveys for). The Announced tier shows them
+        # separately, each linked to its official factsheet.
+        "announced": True,
         "company_name": company,
         "ticker": None,
         "job_count": jobs,
