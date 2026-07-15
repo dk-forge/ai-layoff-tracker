@@ -160,6 +160,34 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 .alt-btn-sm { padding: 6px 12px; font-size: 13px; }
 .alt-btn-active, .alt-btn-active:hover { background: var(--alt-blue); border-color: var(--alt-blue); color: #fff; }
 
+/* ---------------- Region tabs + narrative ---------------- */
+
+.alt-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.alt-tab {
+    --tabc: #52607a;
+    font-size: 14px; font-weight: 700; cursor: pointer; line-height: 1.2;
+    padding: 8px 16px; border-radius: 22px;
+    background: #fff; color: var(--tabc); border: 2px solid var(--tabc);
+    transition: background .12s ease, color .12s ease, transform .12s ease;
+}
+.alt-tab:hover { transform: translateY(-1px); }
+.alt-tab-on { background: var(--tabc); color: #fff; }
+.alt-tab-world  { --tabc: #52607a; }
+.alt-tab-usa    { --tabc: #2a78d6; }
+.alt-tab-europe { --tabc: #6b4bd6; }
+.alt-tab-uk     { --tabc: #c62f2e; }
+.alt-tab-asia   { --tabc: #d2691e; }
+.alt-tab-aus    { --tabc: #0f8a7d; }
+.alt-tab-canada { --tabc: #c2417e; }
+
+.alt-narrative {
+    font-size: 15.5px; line-height: 1.6; color: var(--alt-ink);
+    background: #fbf7ec; border: 1px solid #ead9ac; border-left: 4px solid #d9a514;
+    border-radius: 10px; padding: 12px 16px; margin: 0 0 18px;
+    font-variant-numeric: tabular-nums;
+}
+.alt-narrative:empty { display: none; }
+
 /* ---------------- Redesign: header, toolbar, quick views ---------------- */
 
 .alt-header { margin: 0 0 20px; }

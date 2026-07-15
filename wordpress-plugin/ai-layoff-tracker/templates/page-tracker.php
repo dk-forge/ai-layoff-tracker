@@ -9,6 +9,17 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
+    <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
+        <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌍 World</button>
+        <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
+        <button type="button" class="alt-tab alt-tab-europe" data-tab="europe">🇪🇺 Europe</button>
+        <button type="button" class="alt-tab alt-tab-uk" data-tab="uk">🇬🇧 UK</button>
+        <button type="button" class="alt-tab alt-tab-asia" data-tab="asia">🌏 Asia</button>
+        <button type="button" class="alt-tab alt-tab-aus" data-tab="aus">🇦🇺 Australia</button>
+        <button type="button" class="alt-tab alt-tab-canada" data-tab="canada">🇨🇦 Canada</button>
+    </div>
+    <p class="alt-narrative" id="alt-narrative"></p>
+
     <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
 
     <div class="alt-stats-bar" id="alt-stats-bar">
@@ -272,6 +283,18 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <p><b>Why our totals differ from other headline numbers.</b> Three kinds of trackers measure three different things. Government statistics (BLS) count <em>every</em> separation in the economy, millions per month, with no event-level detail. Announcement surveys (Challenger, Gray &amp; Christmas; the WSJ and TrueUp trackers) count corporate <em>intentions</em>: when a CEO announces "20,000 cuts over the next two years," the full 20,000 lands in their total that day, even though much of it may come through attrition, get scaled back, or never produce a single filing. This tracker counts only what has a <em>verifiable document or quoted primary source behind it</em>: the WARN notices and SEC filings that appear as those 20,000 cuts actually execute, plus reported cuts with a named-outlet source. A worked example: in the first half of 2026, announcement surveys reported roughly 443,600 US job cuts; verified filings and sourced reports here totaled about 96,000 for the same period, both correct answers to different questions. Theirs answers "what are companies saying?" Ours answers "what can you prove?" Treat our verified figure as a documented floor: smaller than the estimates, but every single number is clickable back to a legal filing or named outlet. Since July 2026 we also track <em>announcement-stage</em> cuts as their own labeled tier ("Announced", tagged in the table and shown as a separate headline number) so both questions are answered on one page, and unlike the announcement surveys, every announcement here links to its source too.</p>
 
             <p><b>Using the data.</b> Free with attribution to <b>asktherecruiter.com</b>. The CSV and JSON buttons download exactly what your current filters show (or the full dataset when unfiltered); each chart offers its own image or data download. Programmatic access: <code>GET /blog/wp-json/layoffs/v1/query</code> (paginated; filter params match the page: years, quarters, months, industry, country, state, sources, reasons, q, from, to) and <code>GET /blog/wp-json/layoffs/v1/aggregate</code> for totals and breakdowns. Corrections get priority via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or info@asktherecruiter.com, and every fix is disclosed in the corrections log below.</p>
+        </div>
+    </details>
+
+    <details class="alt-methodology">
+        <summary>How our numbers compare to other trackers</summary>
+        <div class="alt-method-body">
+            <p>Different trackers measure different things — check them all, then check ours against the receipts:</p>
+            <p><b><a href="https://www.challengergray.com/press/press-releases/" target="_blank" rel="noopener">Challenger, Gray &amp; Christmas</a></b> — monthly totals of <em>announced</em> US cuts (includes estimates, attrition, multi-year plans). No per-event public database. Expect their totals to run well above ours; see the worked example in the methodology.</p>
+            <p><b><a href="https://www.wsj.com/economy/jobs" target="_blank" rel="noopener">WSJ layoffs coverage</a></b> — editorially curated big-name announcements. Authoritative but selective, and no downloadable data.</p>
+            <p><b><a href="https://www.trueup.io/layoffs" target="_blank" rel="noopener">TrueUp</a></b> and <b><a href="https://layoffs.fyi" target="_blank" rel="noopener">Layoffs.fyi</a></b> — tech-only trackers built from announcements and crowdsourced reports. Compare them to our <em>Technology industry</em> filter, not our all-industry total.</p>
+            <p><b>Official statistics</b> — <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a> (all separations, millions/month), <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS redundancies</a>, <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> — economy-wide survey aggregates with no company-level detail. No event tracker, including this one, should be expected to match them.</p>
+            <p><b>Why cite ours:</b> it is the only tracker where every figure — US or international, verified or announced — links to a legal filing or named primary source you can open yourself. When our number differs from a tracker above, the difference is the definition, and both definitions are printed here.</p>
         </div>
     </details>
 

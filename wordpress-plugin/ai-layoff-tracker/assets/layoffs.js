@@ -1055,6 +1055,94 @@
     }
 
     /* ------------------------------------------------------------------ */
+    /* Region tabs + auto-updating narrative                               */
+    /* ------------------------------------------------------------------ */
+
+    var REGION_TABS = {
+        world:  { label: 'worldwide', countries: [] },
+        usa:    { label: 'in the United States', countries: ['United States'] },
+        europe: { label: 'in Europe', countries: ['United Kingdom', 'Germany', 'France', 'Spain', 'Sweden', 'Netherlands', 'Italy', 'Ireland'] },
+        uk:     { label: 'in the United Kingdom', countries: ['United Kingdom'] },
+        asia:   { label: 'in Asia', countries: ['India', 'Japan', 'China', 'Singapore', 'Malaysia', 'Philippines', 'Cambodia', 'South Korea'] },
+        aus:    { label: 'in Australia', countries: ['Australia'] },
+        canada: { label: 'in Canada', countries: ['Canada'] }
+    };
+    var ACTIVE_TAB = 'world';
+
+    function applyTab(key, skipHash) {
+        var tab = REGION_TABS[key];
+        if (!tab) return;
+        ACTIVE_TAB = key;
+        // The tab drives the Countries filter; existing options limit what
+        // actually selects (a region country with no data yet just no-ops).
+        writeControl('alt-f-country', tab.countries.slice());
+        if (key !== 'usa' && key !== 'world') writeControl('alt-f-state', []);
+        document.querySelectorAll('.alt-tab').forEach(function (b) {
+            b.classList.toggle('alt-tab-on', b.getAttribute('data-tab') === key);
+        });
+        // The US-states chart only makes sense on World/USA views
+        var statesCard = document.getElementById('alt-bars-states');
+        if (statesCard) {
+            var card = statesCard.closest('.alt-mini') || statesCard.closest('.alt-chart-card');
+            if (card) card.style.display = (key === 'usa' || key === 'world') ? '' : 'none';
+        }
+        if (!skipHash) { try { history.replaceState(null, '', '#' + key); } catch (e) { /* noop */ } }
+        refreshAll();
+        updateNarrative();
+    }
+
+    // "Today July 15: so far in 2026, N layoffs with J people impacted..."
+    function updateNarrative() {
+        var el = document.getElementById('alt-narrative');
+        if (!el) return;
+        var tab = REGION_TABS[ACTIVE_TAB] || REGION_TABS.world;
+        var now = new Date();
+        var y = now.getFullYear();
+        var base = tab.countries.length ? { country: tab.countries.join(',') } : {};
+        var pThis = Object.assign({ years: String(y) }, base);
+        var pPrev = Object.assign({ years: String(y - 1) }, base);
+        Promise.all([apiGet('aggregate', pThis), apiGet('aggregate', pPrev)]).then(function (r) {
+            var t = r[0].totals, p = r[1].totals;
+            var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
+            var perDay = p.jobs ? Math.round(p.jobs / 365) : 0;
+            var txt = 'Today, ' + today + ': so far in ' + y + ', ' + fmt(t.entries) +
+                ' verified layoffs ' + tab.label + ' with ' + fmt(t.jobs) + ' people impacted';
+            if (t.ai_jobs) txt += ', ' + fmt(t.ai_jobs) + ' of them in cuts companies attribute to AI';
+            txt += '. In ' + (y - 1) + ', ' + fmt(p.entries) + ' layoffs with ' + fmt(p.jobs) +
+                ' people impacted' + (perDay ? ' (' + fmt(perDay) + ' people per day)' : '') + '.';
+            el.textContent = txt;
+        }).catch(function () { el.textContent = ''; });
+    }
+
+    // Light the tab matching the current country selection WITHOUT overwriting
+    // filters (used at boot so saved selections survive page loads).
+    function syncTabVisual() {
+        var sel = selectedList('alt-f-country').slice().sort().join('|');
+        ACTIVE_TAB = 'world';
+        Object.keys(REGION_TABS).forEach(function (k) {
+            if (k !== 'world' && REGION_TABS[k].countries.slice().sort().join('|') === sel) ACTIVE_TAB = k;
+        });
+        document.querySelectorAll('.alt-tab').forEach(function (b) {
+            b.classList.toggle('alt-tab-on', b.getAttribute('data-tab') === ACTIVE_TAB);
+        });
+    }
+
+    function initTabs() {
+        var bar = document.getElementById('alt-tabs');
+        if (!bar) return;
+        bar.querySelectorAll('.alt-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () { applyTab(btn.getAttribute('data-tab')); });
+        });
+        var fromHash = (location.hash || '').replace('#', '');
+        if (REGION_TABS[fromHash]) {
+            applyTab(fromHash, true);   // explicit deep link wins
+        } else {
+            syncTabVisual();            // respect restored filters
+            updateNarrative();
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Toolbar chrome: search, sort, Filters panel, quick views            */
     /* ------------------------------------------------------------------ */
 
@@ -1274,6 +1362,7 @@
             initRangeControl();
             initTracker();            // builds the server-side table (reads restored filters)
             initChrome();             // search / sort / quick views / expanders
+            initTabs();               // region tabs + narrative (respects saved filters)
             updateActiveFilterBar();
             updateDropdownSummaries();
             updateRangeLabel();
