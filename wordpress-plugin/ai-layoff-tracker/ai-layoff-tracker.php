@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.1.0
+ * Version: 2.1.1
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.1.0');
+define('ALT_VERSION', '2.1.1');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -61,11 +61,6 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('alt_db_install')) {
         alt_db_install();
     }
-    // Ensure the /contact page exists (FTP deploys can't create WP pages).
-    if (function_exists('alt_ensure_contact_page')) {
-        alt_ensure_contact_page();
-    }
-
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');
     if (function_exists('wp_cache_clear_cache')) {
@@ -76,6 +71,21 @@ function alt_flush_caches_on_deploy() {
     }
 }
 add_action('init', 'alt_flush_caches_on_deploy');
+
+/**
+ * Ensure the /contact page exists. Separate from the version-gated flush hook
+ * (which can fire mid-FTP-upload before contact.php has landed and then never
+ * retry) — this one keeps trying until the page actually exists.
+ */
+function alt_ensure_contact_page_once() {
+    if (get_option('alt_contact_page_done')) return;
+    if (!function_exists('alt_ensure_contact_page')) return;
+    alt_ensure_contact_page();
+    if (get_page_by_path('contact')) {
+        update_option('alt_contact_page_done', 1, false);
+    }
+}
+add_action('init', 'alt_ensure_contact_page_once');
 
 /**
  * Only load DataTables/Chart.js on pages that actually use a plugin shortcode
