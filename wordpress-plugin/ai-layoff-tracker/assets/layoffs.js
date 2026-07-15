@@ -36,6 +36,16 @@
     var VERIF_LABELS = { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' };
     var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+    // A WARN link is either the EXACT notice (states like VT publish per-notice
+    // pages) or the state's official WARN list page (the notice is a row in
+    // it). Label the difference honestly instead of implying precision.
+    function warnLinkIsExact(row) {
+        if (row.source_type !== 'warn') return true;
+        var url = String(row.source_url || '');
+        // Per-notice URLs carry a record id / document path; landing pages don't.
+        return /\/\d+\/?$|\.pdf($|\?)|record|lookups\/\d/i.test(url);
+    }
+
     /* ------------------------------------------------------------------ */
     /* Helpers                                                             */
     /* ------------------------------------------------------------------ */
@@ -795,7 +805,11 @@
                     if (t !== 'display') return row.source_name || '';
                     var url = safeUrl(d);
                     if (!url) return escapeHtml(row.source_name || '—');
-                    return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(row.source_name || 'source') + '</a>';
+                    var exact = warnLinkIsExact(row);
+                    var title = exact ? 'Opens the primary source'
+                        : 'Opens the state’s official WARN list — this notice is a row in it';
+                    var suffix = exact ? '' : ' <span class="alt-muted" title="' + title + '">(list)</span>';
+                    return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="' + escapeHtml(title) + '">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix;
                 } }
             ]
         });
@@ -832,7 +846,10 @@
         if (tags) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Reasons cited</span><div>' + tags + '</div></div>');
         var url = safeUrl(row.source_url);
         var verif = row.verification_level ? ' · <span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(VERIF_LABELS[row.verification_level] || 'News') + '</span>' : '';
-        var src = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">View primary source (' + escapeHtml(row.source_name || 'source') + ') ↗</a>' : escapeHtml(row.source_name || '—');
+        var linkText = warnLinkIsExact(row)
+            ? 'View primary source (' + (row.source_name || 'source') + ') ↗'
+            : 'View the state’s official WARN list (this notice is a row in it) ↗';
+        var src = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(linkText) + '</a>' : escapeHtml(row.source_name || '—');
         parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div>' + src + verif + '</div></div>');
         return '<div class="alt-detail">' + (parts.join('') || 'No additional detail recorded.') + '</div>';
     }

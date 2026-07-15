@@ -1,0 +1,53 @@
+name: Data quality report (anomaly flags)
+
+# Surfaces entries worth a human look BEFORE a journalist finds them:
+#   - single WARN notices with unusually large headcounts (>= 5,000)
+#   - the same company filing in several states within 60 days (possible
+#     overlapping multi-state counts, like remote-workforce filings)
+#   - huge notices that only link to a state list page (no exact document)
+# Runs weekly and on demand; read the output in the Actions log.
+
+on:
+  schedule:
+    - cron: '0 16 * * 1'   # Mondays, noon ET
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Build report
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, collections
+
+          API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
+          def get(path):
+              req = urllib.request.Request(API + path, headers={
+                  "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+              return json.load(urllib.request.urlopen(req, timeout=60))
+
+          big = get("query?sources=warn&sort=job_count&dir=desc&per_page=100")["data"]
+          flags = [r for r in big if r["job_count"] >= 5000]
+          print(f"=== WARN notices >= 5,000 workers ({len(flags)}) — verify each against its filing ===")
+          for r in flags:
+              exact = "exact-link" if any(t in (r.get("source_url") or "")
+                       for t in (".pdf", "record")) or (r.get("source_url") or "").rstrip("/").split("/")[-1].isdigit() else "LIST-PAGE-ONLY"
+              print(f"  {r['layoff_date']}  {r['job_count']:>7,}  {r['state']:2}  {r['company_name'][:44]:45} [{exact}]")
+
+          # same company filing in multiple states (overlap risk)
+          seen = collections.defaultdict(set)
+          for r in big:
+              key = (r["company_name"].lower().strip(), (r["layoff_date"] or "")[:7])
+              seen[key].add(r["state"])
+          multi = {k: v for k, v in seen.items() if len(v) > 1}
+          print(f"\n=== same company, same month, multiple states ({len(multi)}) — counts may overlap ===")
+          for (name, month), states in sorted(multi.items()):
+              print(f"  {month}  {name[:50]:51} states: {', '.join(sorted(states))}")
+
+          if flags or multi:
+              print("\nReview these before citing state-level totals.")
+          else:
+              print("\nNo anomalies flagged this week.")
+          PY
