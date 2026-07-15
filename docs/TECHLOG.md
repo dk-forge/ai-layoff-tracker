@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| 2.6.0+ (Jul 15) | **The coverage marathon**: Announced tier live (announcement-stage cuts as a separate source-linked headline — the Challenger-comparable number with receipts). Custom collectors for ALL 8 broken states (TX Socrata JSON, FL REACT export, GA TCSG ajax, OH DAM CSV, MI Sitecore JSON, CO Google Sheets, ID/LA text PDFs) = +5,719 notices/~682K jobs. Parser unlocks for IL/PA (+1,841) and IA/MD/OR/SC/WI (+3,272) — all were schema quirks, not empty states. Non-English world outlets added (Le Monde, Nikkei, Globo...), English-only restriction dropped. Worked disclaimer example on-page (443,600 announced vs ~96,000 verified, H1-26). **37 WARN states / 42 states overall / 34,424 layoffs / 4.8M jobs.** HI+OK publish no counts (excluded per methodology); MO/NM publish nothing. |
 | 2.2.2 | `/trash` resolves public API entry ids; executed the three editorial removals (posts 6499/6179/6516) — totals recomputed to 22,688 layoffs / 2.97M jobs |
 | 2.2.1 | Ingest-safety HIGHs from 2nd audit: purge only after successful scrape + only with states=all + ≥5K threshold; date-shaped count values rejected; future WARN data no longer dropped from trend charts; REST nocache headers suppressed on public GETs (unblocks CF edge cache); `/trash` editorial endpoint + workflow; contact-page creation lock; JS races/popover/timezone fixes; docs/ created |
 | 2.2.0 | API micro-cache (5-min transients keyed by params + `alt_data_ver`); journalist card light restyle; corrections log reset to launch state |
@@ -27,7 +28,8 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 | ≤1.3 | Initial: Railway pipeline (EDGAR+NewsAPI → DeepSeek → WP), CPT + REST + DataTables/Chart.js front-end, exports, RSS, SEO JSON-LD, FTPS auto-deploy |
 
 ## Data milestones
-- 2026-07-15: **~22,700 layoffs · ~3.1M jobs · 25 US states · 13 countries · 2015→present**
+- 2026-07-15 (end of day): **34,424 layoffs · 4.8M jobs · 42 US states (37 WARN) · 18 countries**
+- 2026-07-15 (morning): **~22,700 layoffs · ~3.1M jobs · 25 US states · 13 countries · 2015→present**
 - Worldwide GDELT backfill (2023→now): +53 verified (23 AI-cited); India 106K jobs, UK 73K, +Spain/China
 - Nationwide WARN: 25 states via warn-scraper; TX/FL/GA/OH/MI/CO/ID/LA unobtainable (upstream scraper breakage / state sites), IA/MD/MO/NM/OK/OR/SC/WI return no data
 - Editorial removals 2026-07-15 (via `/trash`, pre-launch): post 23083 "Coal India 73,800" (a *by-2050 projection*, violates methodology), posts 274 & 23100 (Amazon retrospective summary articles double-counting the Oct-2025 30K and 2022-23 27K cuts)
