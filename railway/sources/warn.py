@@ -105,7 +105,7 @@ def _date_from(rl, *groups):
 # reason/id column (those hold digits that look like counts).
 _COUNT_TIERS = [
     ["affected", "laid off", "expected layoff", "revised layoff", "total_layoff", "layoff_number", "workforce"],
-    ["worker", "headcount", "jobs", "job "],
+    ["worker", "headcount", "jobs", "job ", "emp #"],
     ["employee"],
 ]
 _COUNT_EXCL = ["address", "site", "county", "zip", "postal", "code", "reason", "index",
@@ -207,6 +207,13 @@ def pull_warn(states, min_employees=0, start_date=""):
     files = sorted(glob.glob(os.path.join(workdir, "*.csv")))
     state_files = [(os.path.splitext(os.path.basename(f))[0].upper(), f) for f in files]
 
+    # States whose CSVs ship with NO header row (Maryland writes data from
+    # line 1); supply the column names so DictReader doesn't eat row 1.
+    headerless = {
+        "MD": ["notice_date", "naics", "company", "address", "county",
+               "affected", "effective_date", "layoff_type"],
+    }
+
     results = []
     for st, path in state_files:
         if not os.path.exists(path):
@@ -215,15 +222,16 @@ def pull_warn(states, min_employees=0, start_date=""):
 
         kept = 0
         with open(path, newline="", encoding="utf-8", errors="replace") as fh:
-            for row in csv.DictReader(fh):
+            for row in csv.DictReader(fh, fieldnames=headerless.get(st)):
                 rl = _row_lower(row)
                 company = _match(rl, ["company", "employer", "business", "job_site",
                                       "job site", "organization", "establishment", "firm",
                                       "location name"])  # Illinois names it "Location Name"
                 jobs = _count(_count_col(rl))
                 date = _date_from(rl,
-                    ["effective", "layoff start", "layoff_date", "closure start",
-                     "starts", "layoff/closure", "impact date"],  # preferred: effective/impact
+                    ["effective", "layoff start", "layoff_date", "layoff date",
+                     "layoff begin", "closure start", "starts", "layoff/closure",
+                     "impact date"],                  # preferred: effective/impact
                     ["notice"],                       # then notice date
                     ["received"],                     # then received date
                     ["date"])                         # any remaining date column
