@@ -2,6 +2,9 @@
 /**
  * CSV + JSON export downloads via admin-post.php (works for logged-out
  * visitors through the nopriv hooks).
+ *
+ * Exports read from the fast-query table (the complete dataset, including
+ * bulk WARN notices) and stream in chunks so 100K+ rows never sit in memory.
  */
 
 if (!defined('ABSPATH')) exit;
@@ -23,9 +26,24 @@ function alt_csv_guard($value) {
     return $value;
 }
 
-function alt_export_csv() {
-    $entries = alt_get_all_entries();
+/** Iterate the fast table in id-keyed chunks, calling $cb($row) per row. */
+function alt_export_walk($cb) {
+    global $wpdb;
+    $table = alt_db_table();
+    $last = 0;
+    while (true) {
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table WHERE id > %d ORDER BY id ASC LIMIT 2000", $last));
+        if (!$rows) break;
+        foreach ($rows as $row) {
+            $last = (int) $row->id;
+            $cb($row);
+        }
+        if (count($rows) < 2000) break;
+    }
+}
 
+function alt_export_csv() {
     nocache_headers();
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . gmdate('Y-m-d') . '.csv"');
@@ -37,56 +55,59 @@ function alt_export_csv() {
 
     fputcsv($out, array(
         'company_name', 'ticker', 'job_count', 'layoff_date', 'industry',
-        'country', 'roles', 'source_type', 'verification_level', 'source_url',
+        'country', 'state', 'roles', 'source_type', 'verification_level', 'source_url',
         'ai_explicit', 'ai_language', 'reason_tags', 'excerpt', 'source_attribution',
     ));
 
-    foreach ($entries as $entry) {
+    alt_export_walk(function ($row) use ($out) {
         fputcsv($out, array(
-            alt_csv_guard($entry['company_name']),
-            alt_csv_guard((string) $entry['ticker']),
-            $entry['job_count'],
-            $entry['layoff_date'],
-            alt_csv_guard($entry['industry']),
-            alt_csv_guard($entry['country']),
-            alt_csv_guard((string) $entry['roles']),
-            $entry['source_type'],
-            $entry['verification_level'],
-            alt_csv_guard($entry['source_url']),
-            $entry['ai_explicit'] ? 'true' : 'false',
-            alt_csv_guard((string) $entry['ai_language']),
-            implode('|', $entry['reason_tags']),
-            alt_csv_guard($entry['excerpt']),
-            'AI Layoff Tracker — asktherecruiter.com',
+            alt_csv_guard($row->company),
+            alt_csv_guard((string) $row->ticker),
+            (int) $row->job_count,
+            $row->layoff_date ?: '',
+            alt_csv_guard($row->industry),
+            alt_csv_guard($row->country),
+            $row->state,
+            alt_csv_guard((string) $row->roles),
+            $row->source_type,
+            $row->verification_level,
+            alt_csv_guard((string) $row->source_url),
+            $row->ai_explicit ? 'true' : 'false',
+            alt_csv_guard((string) $row->ai_language),
+            implode('|', alt_db_unpack_tags($row->reason_tags)),
+            alt_csv_guard((string) $row->excerpt),
+            'AI Layoff Tracker - asktherecruiter.com',
         ));
-    }
+    });
 
     fclose($out);
     exit;
 }
 
 function alt_export_json() {
-    $entries = alt_get_all_entries();
-
-    // Match the spec's published JSON schema (no internal post ID)
-    $data = array();
-    foreach ($entries as $entry) {
-        unset($entry['id']);
-        $data[] = $entry;
-    }
+    global $wpdb;
+    $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
 
     nocache_headers();
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . gmdate('Y-m-d') . '.json"');
 
-    echo wp_json_encode(array(
-        'source'        => 'AI Layoff Tracker — asktherecruiter.com',
-        'license'       => 'Free to use with attribution to asktherecruiter.com.',
-        'source_url'    => home_url('/ai-layoff-tracker/'),
-        'generated'     => gmdate('Y-m-d\TH:i:s\Z'),
-        'total_records' => count($data),
-        'data'          => $data,
-    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    echo '{';
+    echo '"source":"AI Layoff Tracker - asktherecruiter.com",';
+    echo '"license":"Free to use with attribution to asktherecruiter.com.",';
+    echo '"source_url":' . wp_json_encode(home_url('/ai-layoff-tracker/')) . ',';
+    echo '"generated":"' . gmdate('Y-m-d\TH:i:s\Z') . '",';
+    echo '"total_records":' . $total . ',';
+    echo '"data":[';
 
+    $first = true;
+    alt_export_walk(function ($row) use (&$first) {
+        $entry = alt_db_row_to_array($row);
+        unset($entry['id']);
+        echo ($first ? '' : ',') . wp_json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $first = false;
+    });
+
+    echo ']}';
     exit;
 }

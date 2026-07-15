@@ -289,6 +289,12 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_bulk',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: re-normalize country/industry across table + posts.
+    register_rest_route('layoffs/v1', '/cleanup', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_cleanup',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
 }
 
 function alt_api_bulk(WP_REST_Request $r) {
@@ -309,7 +315,7 @@ function alt_api_bulk(WP_REST_Request $r) {
             'ticker'             => $e['ticker'] ?? '',
             'job_count'          => $e['job_count'] ?? 0,
             'layoff_date'        => $e['layoff_date'] ?? '',
-            'industry'           => $e['industry'] ?? '',
+            'industry'           => function_exists('alt_normalize_industry') ? alt_normalize_industry((string) ($e['industry'] ?? '')) : ($e['industry'] ?? ''),
             'country'            => function_exists('alt_normalize_country') ? alt_normalize_country((string) ($e['country'] ?? '')) : ($e['country'] ?? ''),
             'state'              => function_exists('alt_normalize_state') ? alt_normalize_state((string) ($e['state'] ?? '')) : ($e['state'] ?? ''),
             'source_type'        => $e['source_type'] ?? '',
@@ -347,6 +353,51 @@ function alt_api_migrate(WP_REST_Request $r) {
     global $wpdb;
     $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
     return rest_ensure_response(array('synced' => $synced, 'table_rows' => $count));
+}
+
+/**
+ * Key-protected data hygiene: re-normalize country + industry across the fast
+ * table (one UPDATE per distinct value, so 100K rows is still fast) and across
+ * CPT post meta. Idempotent; run after normalizer rules change.
+ */
+function alt_api_cleanup(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    $changed = array('country' => 0, 'industry' => 0, 'posts' => 0);
+
+    foreach (array('country' => 'alt_normalize_country', 'industry' => 'alt_normalize_industry') as $col => $fn) {
+        if (!function_exists($fn)) continue;
+        $values = $wpdb->get_col("SELECT DISTINCT $col FROM $table WHERE $col <> ''");
+        foreach ($values ?: array() as $old) {
+            $new = call_user_func($fn, $old);
+            if ($new !== $old) {
+                $changed[$col] += (int) $wpdb->query($wpdb->prepare(
+                    "UPDATE $table SET $col = %s WHERE $col = %s", $new, $old));
+            }
+        }
+    }
+
+    // CPT posts (a few hundred, not the bulk rows) — keep meta consistent.
+    $ids = get_posts(array(
+        'post_type' => 'layoffs', 'post_status' => 'publish',
+        'posts_per_page' => -1, 'fields' => 'ids', 'no_found_rows' => true,
+    ));
+    foreach ($ids as $id) {
+        $dirty = false;
+        foreach (array('country' => 'alt_normalize_country', 'industry' => 'alt_normalize_industry') as $key => $fn) {
+            if (!function_exists($fn)) continue;
+            $old = (string) get_post_meta($id, $key, true);
+            $new = call_user_func($fn, $old);
+            if ($key === 'country' && $new === '' && get_post_meta($id, 'verification_level', true) === 'gold') {
+                $new = 'United States';
+            }
+            if ($new !== $old) { update_post_meta($id, $key, $new); $dirty = true; }
+        }
+        if ($dirty) { alt_db_sync_post($id); $changed['posts']++; }
+    }
+
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($changed);
 }
 
 function alt_api_query(WP_REST_Request $r) {
@@ -393,14 +444,17 @@ function alt_api_aggregate(WP_REST_Request $r) {
                 MIN(layoff_date) min_date, MAX(layoff_date) max_date
          FROM $table WHERE $where", $params));
 
-    // Top-N helpers (each slicer ignores its own dimension)
+    // Top-N helpers (each slicer ignores its own dimension). Each entry is
+    // [label, total jobs, AI-attributed jobs] so bars can show the AI share.
     $topN = function ($col, $except) use ($wpdb, $table, $r) {
         list($w, $p) = alt_db_where($r, $except);
-        $sql = "SELECT $col k, SUM(job_count) v FROM $table
+        $sql = "SELECT $col k, SUM(job_count) v,
+                       COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
+                FROM $table
                 WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT 12";
         $rows = $wpdb->get_results(alt_db_prep($sql, $p));
         $out = array();
-        foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v); }
+        foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v, (int) $row->a); }
         return $out;
     };
 

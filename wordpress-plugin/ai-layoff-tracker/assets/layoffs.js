@@ -390,16 +390,61 @@
     /* ------------------------------------------------------------------ */
 
     function renderCharts(agg) {
-        if (!DASH_PRESENT || !chartsAvailable()) return;
+        if (!DASH_PRESENT) return;
         setStatus('alt-dashboard-status', agg.totals.entries ? null : 'No entries match the current filters.');
-        renderTrend(agg.series);
-        renderAiCumulative(agg.series);
+        if (chartsAvailable()) {
+            renderTrend(agg.series);
+            renderAiCumulative(agg.series);
+            renderReasons(agg.reasons, document.getElementById('alt-f-reasons') ? 'alt-f-reasons' : null, readControl('alt-f-reasons'));
+        }
         renderLeaderboard(agg.leaders);
         var wired = !!document.getElementById('alt-f-industry');
-        renderBar('alt-chart-industries', agg.top_industries, wired ? 'alt-f-industry' : null, readControl('alt-f-industry'), 'Jobs: ');
-        renderBar('alt-chart-states', agg.top_states, wired ? 'alt-f-state' : null, readControl('alt-f-state'), 'Jobs: ');
-        renderBar('alt-chart-countries', agg.top_countries, wired ? 'alt-f-country' : null, readControl('alt-f-country'), 'Jobs: ');
-        renderReasons(agg.reasons, wired ? 'alt-f-reasons' : null, readControl('alt-f-reasons'));
+        renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, readControl('alt-f-industry'));
+        renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, readControl('alt-f-state'));
+        renderBarList('alt-bars-countries', agg.top_countries, wired ? 'alt-f-country' : null, readControl('alt-f-country'));
+    }
+
+    // "Where the cuts are" bars: name left, value right, a track whose blue
+    // fill is scaled to the top bar, with an orange leading segment showing the
+    // AI-attributed share. Rows are buttons that toggle the matching filter.
+    function renderBarList(containerId, entries, filterId, activeValue) {
+        var box = document.getElementById(containerId);
+        if (!box) return;
+        entries = (entries || []).slice(0, 7);
+        if (!entries.length) {
+            box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
+            return;
+        }
+        var max = entries[0][1] || 1;
+        entries.forEach(function (e) { if (e[1] > max) max = e[1]; });
+
+        var html = '';
+        entries.forEach(function (e) {
+            var label = e[0], jobs = e[1], ai = e[2] || 0;
+            var w = Math.max(2, Math.round(jobs / max * 100));
+            var aiW = jobs > 0 ? (ai / jobs * w) : 0;
+            var isActive = activeValue && label === activeValue;
+            var dim = activeValue && !isActive;
+            html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
+                + (filterId ? '' : ' disabled')
+                + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
+                + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(label) + '</span>'
+                + '<span class="alt-barrow-val">' + fmt(jobs) + '</span></span>'
+                + '<span class="alt-bartrack">'
+                + (aiW > 0.4 ? '<span class="alt-barfill-ai" style="width:' + aiW.toFixed(1) + '%"></span>' : '')
+                + '<span class="alt-barfill" style="left:' + aiW.toFixed(1) + '%;width:' + Math.max(0, w - aiW).toFixed(1) + '%"></span>'
+                + '</span></button>';
+        });
+        box.innerHTML = html;
+
+        if (filterId) {
+            box.querySelectorAll('.alt-barrow').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    toggleSingleFilter(filterId, btn.getAttribute('data-val'));
+                    refreshAll();
+                });
+            });
+        }
     }
 
     function renderTrend(series) {

@@ -127,20 +127,77 @@ function alt_fuzzy_dupe_exists($company, $date) {
 }
 
 /**
- * Canonicalize country names so "US", "USA", and "United States" collapse to
- * one value. Unknown countries are returned unchanged (never lose data).
+ * Canonicalize country names: "US"/"USA" -> "United States", "UK" -> "United
+ * Kingdom", and vague regions or multi-country phrases ("Global", "Europe",
+ * "North America", "India and US") -> "Multiple countries", because splitting
+ * one event across countries would double-count the jobs. Unknown single
+ * countries are returned unchanged (never lose data).
  */
 function alt_normalize_country($name) {
     $raw = trim((string) $name);
     if ($raw === '') return '';
     $k = strtolower(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z ]/i', '', $raw))));
     $map = array(
-        'us' => 'US', 'usa' => 'US', 'united states' => 'US',
-        'united states of america' => 'US', 'america' => 'US', 'u s' => 'US', 'u s a' => 'US',
-        'uk' => 'UK', 'united kingdom' => 'UK', 'britain' => 'UK', 'great britain' => 'UK', 'england' => 'UK',
+        'us' => 'United States', 'usa' => 'United States', 'united states' => 'United States',
+        'united states of america' => 'United States', 'america' => 'United States',
+        'u s' => 'United States', 'u s a' => 'United States',
+        'uk' => 'United Kingdom', 'united kingdom' => 'United Kingdom', 'britain' => 'United Kingdom',
+        'great britain' => 'United Kingdom', 'england' => 'United Kingdom',
         'uae' => 'UAE', 'united arab emirates' => 'UAE', 'deutschland' => 'Germany',
+        // Regions / multi-country phrases: one honest bucket, no double counting
+        'global' => 'Multiple countries', 'worldwide' => 'Multiple countries',
+        'international' => 'Multiple countries', 'europe' => 'Multiple countries',
+        'north america' => 'Multiple countries', 'south america' => 'Multiple countries',
+        'latin america' => 'Multiple countries', 'asia' => 'Multiple countries',
+        'asia pacific' => 'Multiple countries', 'apac' => 'Multiple countries',
+        'emea' => 'Multiple countries', 'multiple' => 'Multiple countries',
+        'multiple countries' => 'Multiple countries', 'various' => 'Multiple countries',
     );
-    return $map[$k] ?? $raw;
+    if (isset($map[$k])) return $map[$k];
+    // "India and US", "US, UK and Canada", "UK/Germany" — multi-country lists
+    if (preg_match('/(\band\b|,|\/|&)/', $k)) return 'Multiple countries';
+    return $raw;
+}
+
+/**
+ * Map freeform extracted industry strings onto a fixed taxonomy so the filter
+ * dropdown doesn't fill with near-duplicates ("IT" vs "Information Technology",
+ * "Airline" vs "Airlines", lowercase variants...). Keyword rules, checked in
+ * order; unmatched values fall back to Title Case of the original.
+ */
+function alt_normalize_industry($value) {
+    $raw = trim((string) $value);
+    if ($raw === '') return '';
+    $k = strtolower($raw);
+
+    $rules = array(
+        'Aerospace & Defense'    => array('aerospace', 'defense', 'aviation product'),
+        'Airlines & Travel'      => array('airline', 'air travel', 'travel', 'cruise'),
+        'Automotive'             => array('automotive', 'auto ', 'electric vehicle', ' ev '),
+        'Technology'             => array('artificial intelligence', 'ai/', 'robotic', 'software', 'cloud', 'cyber', 'saas', 'semiconductor', 'chip', 'information technology', 'tech', 'internet', 'computing', 'data center', 'it services'),
+        'Telecom'                => array('telecom', 'broadband', 'connectivity', 'wireless'),
+        'Media & Entertainment'  => array('media', 'broadcast', 'radio', 'news', 'entertainment', 'gaming', 'game', 'streaming', 'publishing', 'film'),
+        'Finance & Insurance'    => array('bank', 'fintech', 'financ', 'insurance', 'investment', 'crypto', 'payments', 'lending', 'mortgage'),
+        'Healthcare & Pharma'    => array('pharma', 'biotech', 'health', 'medical', 'genomic', 'dermatolog', 'biopharma', 'life science', 'regenerative'),
+        'Retail & E-commerce'    => array('retail', 'e-commerce', 'ecommerce', 'grocery', 'apparel', 'fashion'),
+        'Food & Hospitality'     => array('hospitality', 'hotel', 'restaurant', 'food', 'beverage'),
+        'Energy'                 => array('energy', 'oil', 'gas', 'coal', 'solar', 'nuclear', 'renewable', 'utilit'),
+        'Logistics & Transport'  => array('logistic', 'transport', 'trucking', 'shipping', 'freight', 'rail', 'delivery', 'supply chain'),
+        'Real Estate & Construction' => array('real estate', 'construction', 'reit', 'housing', 'property'),
+        'Manufacturing'          => array('manufactur', 'industrial', 'paper', 'containerboard', 'steel', 'chemical', 'machinery', 'production'),
+        'Consumer Goods'         => array('consumer', 'cannabis', 'cbd', 'household', 'cosmetic', 'toy'),
+        'Education'              => array('education', 'university', 'school', 'edtech', 'learning'),
+        'Professional Services'  => array('consult', 'professional', 'legal', 'accounting', 'staffing', 'recruit', 'hr ', 'scientific and technical'),
+        'Agriculture'            => array('agricultur', 'farm'),
+        'Government & Nonprofit' => array('government', 'public sector', 'nonprofit', 'non-profit'),
+    );
+
+    foreach ($rules as $canonical => $keywords) {
+        foreach ($keywords as $kw) {
+            if (strpos($k, $kw) !== false) return $canonical;
+        }
+    }
+    return ucwords($k);
 }
 
 /**
@@ -349,7 +406,7 @@ function alt_api_add($request) {
         'ticker'             => sanitize_text_field($meta_in['ticker'] ?? ''),
         'job_count'          => $job_count,
         'layoff_date'        => $layoff_date,
-        'industry'           => sanitize_text_field($meta_in['industry'] ?? ''),
+        'industry'           => alt_normalize_industry(sanitize_text_field($meta_in['industry'] ?? '')),
         'country'            => alt_normalize_country(sanitize_text_field($meta_in['country'] ?? '')),
         'state'              => alt_normalize_state(sanitize_text_field($meta_in['state'] ?? '')),
         'roles'              => sanitize_text_field($meta_in['roles'] ?? ''),
@@ -550,7 +607,7 @@ function alt_api_dedupe($request) {
         $c = (string) get_post_meta($id, 'country', true);
         $n = alt_normalize_country($c);
         if ($n === '' && get_post_meta($id, 'verification_level', true) === 'gold') {
-            $n = 'US';
+            $n = 'United States';
         }
         if ($n !== $c) {
             update_post_meta($id, 'country', $n);

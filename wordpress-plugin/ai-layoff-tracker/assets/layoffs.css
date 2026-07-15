@@ -29,6 +29,7 @@
     .alt-intro,
     .alt-stats-bar,
     .alt-stats-meta,
+    .alt-header,
     .alt-wrap {
         /* Block themes cap content children at ~645px via max-width; override it
            so the wide table fits. Verified against the live theme. */
@@ -40,6 +41,20 @@
     }
     .alt-wrap { margin-bottom: 40px; }
 }
+
+/* Whitespace + alignment: on pages with the tracker, pull the theme's huge
+   centered title into the same 1180px column, left-aligned, with tighter
+   spacing. Scoped with :has() so no other page is affected. */
+body:has(.alt-tracker-wrap) h1.wp-block-post-title,
+body:has(.alt-tracker-wrap) .entry-title {
+    text-align: left;
+    max-width: 1180px;
+    margin: 0 auto 6px;
+    padding-top: 0;
+    font-size: clamp(34px, 4.5vw, 46px);
+}
+body:has(.alt-tracker-wrap) .entry-content { margin-top: 12px; }
+.alt-header { margin: 0 0 18px; }
 
 .alt-muted { color: var(--alt-muted); }
 .alt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -61,16 +76,16 @@
 
 .alt-stats-bar {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 14px;
-    margin: 8px 0 26px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin: 0 0 18px;
 }
 .alt-stat-card {
     position: relative;
     background: var(--alt-surface);
     border: 1px solid var(--alt-border);
     border-radius: 12px;
-    padding: 18px 20px 16px;
+    padding: 14px 16px 12px;
     box-shadow: var(--alt-shadow);
     display: flex;
     flex-direction: column;
@@ -89,7 +104,7 @@
 .alt-stat-card-ai { background: linear-gradient(180deg, var(--alt-red-tint), var(--alt-surface) 60%); }
 .alt-stat-card-ai::before { background: var(--alt-red); }
 .alt-stat-value {
-    font-size: 34px;
+    font-size: 28px;
     font-weight: 800;
     line-height: 1.08;
     letter-spacing: -0.02em;
@@ -185,8 +200,43 @@
 .alt-filters-foot .alt-period { margin: 0; flex: 1 1 auto; }
 .alt-period-lbl { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); margin-right: 4px; }
 
-.alt-count-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 10px; }
-.alt-count-strong { font-size: 14px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; }
+/* Count row is sticky so the active filters + counts stay visible while
+   scrolling a long table (works with the WP admin bar offset too). */
+.alt-count-row {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 10px; margin: 0 0 10px; padding: 10px 12px;
+    background: rgba(252, 252, 251, 0.92);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--alt-border); border-radius: 10px;
+}
+body.admin-bar .alt-count-row { top: 32px; }
+.alt-count-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.alt-count-left .alt-active-filters { margin: 0; }
+.alt-count-strong { font-size: 14px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* "Where the cuts are" bar lists */
+.alt-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.alt-chart-head .alt-chart-h { margin-bottom: 0; }
+.alt-tap-hint { font-size: 12px; color: var(--alt-muted); white-space: nowrap; }
+.alt-ai-key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #eb6834; vertical-align: baseline; }
+.alt-barlist { display: flex; flex-direction: column; gap: 10px; }
+.alt-barrow {
+    display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent;
+    border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; color: inherit;
+    transition: background .12s ease, border-color .12s ease, opacity .12s ease;
+}
+.alt-barrow:hover { background: var(--alt-surface-2); }
+.alt-barrow:disabled { cursor: default; }
+.alt-barrow:disabled:hover { background: none; }
+.alt-barrow-on { border-color: var(--alt-blue, #2a78d6); background: var(--alt-blue-tint, #eef4fc); }
+.alt-barrow-dim { opacity: 0.45; }
+.alt-barrow-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.alt-barrow-name { font-size: 14px; font-weight: 700; color: var(--alt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alt-barrow-val { font-size: 13.5px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alt-bartrack { position: relative; display: block; height: 9px; border-radius: 6px; background: #e8ebf3; overflow: hidden; }
+.alt-barfill { position: absolute; top: 0; bottom: 0; background: #2a78d6; border-radius: 6px; }
+.alt-barfill-ai { position: absolute; top: 0; bottom: 0; left: 0; background: #eb6834; border-radius: 6px 0 0 6px; }
 
 .alt-overview-collapse { margin: 22px 0 0; border: 1px solid var(--alt-border); border-radius: 12px; overflow: hidden; background: var(--alt-surface); }
 .alt-overview-collapse > summary {
@@ -552,24 +602,28 @@
 }
 .alt-af-clear:hover { color: var(--alt-blue-dark); }
 
-/* Period selector (All time / year / quarter / month) */
-.alt-period { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
+/* Period selector (All time / year / quarter / month). Literal color values,
+   not vars, so the selected pill can never render white-on-white if the CSS
+   custom properties are missing (e.g. a stale optimized stylesheet). */
+.alt-period { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
 .alt-period-years { display: flex; flex-wrap: wrap; gap: 6px; }
 .alt-period-btn {
-    font-size: 13px; font-weight: 600; color: var(--alt-ink-2);
-    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    font-size: 13px; font-weight: 600; color: #4a4d55;
+    background: #ffffff; border: 1px solid #e2e3e8;
     border-radius: 20px; padding: 6px 14px; cursor: pointer; line-height: 1.2;
     font-variant-numeric: tabular-nums;
-    transition: background .15s ease, color .15s ease, border-color .15s ease;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.alt-period-btn:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
-.alt-period-on, .alt-period-on:hover { background: var(--alt-blue); border-color: var(--alt-blue); color: #fff; }
-.alt-period-refine { display: flex; gap: 8px; }
-.alt-period-refine select {
-    font-size: 13px; padding: 6px 10px; border: 1px solid var(--alt-grid);
-    border-radius: 8px; background: #fff; color: var(--alt-ink); cursor: pointer;
+.alt-period-btn:hover { border-color: #2a78d6; color: #2a78d6; }
+.alt-period-on, .alt-period-on:hover {
+    background: #2a78d6; border-color: #2a78d6; color: #ffffff;
+    box-shadow: 0 1px 3px rgba(42, 120, 214, .35);
 }
-.alt-period-refine select:disabled { opacity: .45; cursor: not-allowed; }
+.alt-period select {
+    font-size: 13px; padding: 6px 10px; border: 1px solid #e7e8ec;
+    border-radius: 8px; background: #fff; color: #16181d; cursor: pointer;
+}
+.alt-period select:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Count line above the table */
 .alt-table-count { font-size: 13px; color: var(--alt-muted); margin: 0 2px 8px; font-variant-numeric: tabular-nums; }

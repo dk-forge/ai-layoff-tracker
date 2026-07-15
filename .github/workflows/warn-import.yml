@@ -1,10 +1,13 @@
 name: WARN notice import (US states)
 
-# Manually triggered. Pulls state WARN Act notices (via the open warn-scraper),
-# maps them to the tracker schema, and posts them directly (no LLM). Idempotent.
+# Pulls state WARN Act notices (via the open warn-scraper), maps them to the
+# tracker schema, and posts them directly (no LLM, so no API cost). Idempotent.
+# Runs daily at 15:00 UTC (11 AM ET during EDT) and on manual dispatch.
 # Required secret: WP_API_KEY.
 
 on:
+  schedule:
+    - cron: '0 15 * * *'
   workflow_dispatch:
     inputs:
       states:
@@ -46,8 +49,9 @@ jobs:
         env:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
-          WARN_STATES: ${{ github.event.inputs.states }}
-          WARN_MIN_EMPLOYEES: ${{ github.event.inputs.min_employees }}
-          WARN_START: ${{ github.event.inputs.start }}
-          WARN_LIMIT: ${{ github.event.inputs.limit }}
+          # Scheduled runs have no inputs — default to a full nationwide sweep.
+          WARN_STATES: ${{ github.event.inputs.states || 'all' }}
+          WARN_MIN_EMPLOYEES: ${{ github.event.inputs.min_employees || '0' }}
+          WARN_START: ${{ github.event.inputs.start || '' }}
+          WARN_LIMIT: ${{ github.event.inputs.limit || '' }}
         run: python warn_import.py

@@ -58,8 +58,8 @@ Response format:
   "ticker": "string or null",
   "job_count": "integer or null",
   "layoff_date": "YYYY-MM-DD or null",
-  "industry": "string or null",
-  "country": "string or null",
+  "industry": "one of: Technology, Media & Entertainment, Finance & Insurance, Healthcare & Pharma, Retail & E-commerce, Manufacturing, Automotive, Aerospace & Defense, Airlines & Travel, Energy, Telecom, Education, Logistics & Transport, Food & Hospitality, Real Estate & Construction, Consumer Goods, Professional Services, Agriculture, Government & Nonprofit — or null if unclear",
+  "country": "the single country where the cuts happen (or where most of them happen if the source gives a breakdown). If the cuts span several countries with no clear majority, use exactly 'Multiple countries'. Use 'United States' and 'United Kingdom' (never US/USA/UK). Null if not stated.",
   "state": "2-letter US state abbreviation (e.g. CA, TX, NY) if the source states a US location for the cuts, otherwise null",
   "roles": "the specific roles, teams, or departments affected, exactly as stated in the source (e.g. 'customer service and engineering'), or null if not stated",
   "excerpt": "2-3 sentence excerpt from the source that confirms the layoff. Exact text from source.",
@@ -258,9 +258,9 @@ TEXT:
         extracted["roles"] = None
 
     extracted["state"] = _normalize_state(extracted.get("state"))
-    # A stated US state implies the country, even when the source doesn't say "US".
+    # A stated US state implies the country, even when the source doesn't say so.
     if extracted["state"] and not (isinstance(extracted.get("country"), str) and extracted["country"].strip()):
-        extracted["country"] = "US"
+        extracted["country"] = "United States"
 
     # Add source metadata
     extracted["source_url"] = raw_entry.get("source_url")

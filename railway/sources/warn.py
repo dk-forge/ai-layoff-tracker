@@ -187,7 +187,7 @@ def pull_warn(states, min_employees=0, start_date=""):
                     "job_count": jobs,
                     "layoff_date": date,
                     "industry": None,
-                    "country": "US",
+                    "country": "United States",
                     "state": st,
                     "roles": None,
                     "excerpt": excerpt,

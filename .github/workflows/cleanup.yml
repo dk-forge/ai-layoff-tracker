@@ -1,0 +1,23 @@
+name: Normalize data (country + industry)
+
+# Re-runs the country/industry normalizers across the fast table and CPT posts.
+# Idempotent. Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run cleanup
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/cleanup" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -w "\nHTTP %{http_code}\n"
