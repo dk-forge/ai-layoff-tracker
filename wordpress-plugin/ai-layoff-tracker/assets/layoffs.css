@@ -242,6 +242,15 @@ body:has(.alt-tracker-wrap) .entry-content { margin-top: 12px; }
     border: 1px solid var(--alt-border); border-radius: 10px;
 }
 body.admin-bar .alt-count-row { top: 32px; }
+@media (max-width: 782px) { body.admin-bar .alt-count-row { top: 46px; } }
+@media (max-width: 600px) {
+    /* WP's admin bar is absolute (scrolls away) below 600px */
+    body.admin-bar .alt-count-row { top: 0; }
+    /* Chips scroll sideways instead of stacking the pinned bar several rows tall */
+    .alt-count-left { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .alt-count-left .alt-active-filters { flex-wrap: nowrap; }
+    .alt-af-chip { white-space: nowrap; }
+}
 .alt-count-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
 .alt-count-left .alt-active-filters { margin: 0; }
 .alt-count-strong { font-size: 14px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }

@@ -28,11 +28,17 @@ function alt_template($file, $vars = array()) {
 }
 
 function alt_shortcode_tracker() {
+    $GLOBALS['alt_tracker_rendered'] = true;
     return alt_template('page-tracker.php');
 }
 add_shortcode('alt_tracker', 'alt_shortcode_tracker');
 
 function alt_shortcode_dashboard() {
+    // The tracker embeds the same charts (same element IDs); rendering both on
+    // one page would duplicate IDs and leave the second set dead.
+    if (!empty($GLOBALS['alt_tracker_rendered'])) {
+        return '<!-- alt_dashboard skipped: alt_tracker already renders these charts on this page -->';
+    }
     return alt_template('page-dashboard.php');
 }
 add_shortcode('alt_dashboard', 'alt_shortcode_dashboard');

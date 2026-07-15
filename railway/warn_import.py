@@ -14,19 +14,23 @@ Env:
   WP_SITE_URL, WP_API_KEY
 """
 import os
+import sys
 
 import requests
 
 from sources.warn import pull_warn
 
 BATCH = 1000
+FAILED_BATCHES = 0
 
 
 def post_bulk(entries):
+    global FAILED_BATCHES
     wp = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
     key = os.environ.get("WP_API_KEY")
     if not wp or not key:
         print("post_bulk error: WP_SITE_URL or WP_API_KEY not set")
+        FAILED_BATCHES += 1
         return 0
     headers = {
         "X-Layoff-API-Key": key,
@@ -46,8 +50,10 @@ def post_bulk(entries):
                 upserted += got
                 print(f"  batch {n}/{total_batches}: upserted {got}")
             else:
+                FAILED_BATCHES += 1
                 print(f"  batch {n}/{total_batches} FAILED: {resp.status_code} {resp.text[:200]}")
         except Exception as e:
+            FAILED_BATCHES += 1
             print(f"  batch {n}/{total_batches} error: {e}")
     return upserted
 
@@ -69,6 +75,12 @@ def main():
 
     upserted = post_bulk(entries)
     print(f"WARN import done: {upserted} upserted from {len(entries)} notices")
+
+    # A green run must mean the data actually landed — fail loudly if any
+    # batch was rejected so the scheduled workflow shows red.
+    if FAILED_BATCHES:
+        print(f"ERROR: {FAILED_BATCHES} batch(es) failed to post")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

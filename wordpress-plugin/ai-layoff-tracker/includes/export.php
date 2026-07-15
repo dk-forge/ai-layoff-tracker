@@ -67,14 +67,14 @@ function alt_export_csv() {
             $row->layoff_date ?: '',
             alt_csv_guard($row->industry),
             alt_csv_guard($row->country),
-            $row->state,
+            alt_csv_guard($row->state),
             alt_csv_guard((string) $row->roles),
-            $row->source_type,
-            $row->verification_level,
+            alt_csv_guard($row->source_type),
+            alt_csv_guard($row->verification_level),
             alt_csv_guard((string) $row->source_url),
             $row->ai_explicit ? 'true' : 'false',
             alt_csv_guard((string) $row->ai_language),
-            implode('|', alt_db_unpack_tags($row->reason_tags)),
+            alt_csv_guard(implode('|', alt_db_unpack_tags($row->reason_tags))),
             alt_csv_guard((string) $row->excerpt),
             'AI Layoff Tracker - asktherecruiter.com',
         ));
@@ -85,9 +85,6 @@ function alt_export_csv() {
 }
 
 function alt_export_json() {
-    global $wpdb;
-    $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
-
     nocache_headers();
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . gmdate('Y-m-d') . '.json"');
@@ -97,17 +94,18 @@ function alt_export_json() {
     echo '"license":"Free to use with attribution to asktherecruiter.com.",';
     echo '"source_url":' . wp_json_encode(home_url('/ai-layoff-tracker/')) . ',';
     echo '"generated":"' . gmdate('Y-m-d\TH:i:s\Z') . '",';
-    echo '"total_records":' . $total . ',';
     echo '"data":[';
 
-    $first = true;
-    alt_export_walk(function ($row) use (&$first) {
+    // Count while streaming (rather than a COUNT(*) up front) so total_records
+    // always equals the rows actually emitted, even if writes land mid-export.
+    $count = 0;
+    alt_export_walk(function ($row) use (&$count) {
         $entry = alt_db_row_to_array($row);
         unset($entry['id']);
-        echo ($first ? '' : ',') . wp_json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $first = false;
+        echo ($count ? ',' : '') . wp_json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $count++;
     });
 
-    echo ']}';
+    echo '],"total_records":' . $count . '}';
     exit;
 }

@@ -16,7 +16,7 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
         run: |
           [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
-          curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/cleanup" \
+          curl -sS --fail-with-body -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/cleanup" \
             -H "X-Layoff-API-Key: $WP_API_KEY" \
             -H "Content-Type: application/json" \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \

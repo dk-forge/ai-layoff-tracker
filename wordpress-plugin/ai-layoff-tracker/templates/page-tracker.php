@@ -38,52 +38,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <span class="alt-stat-sub"></span>
         </div>
     </div>
-
-    <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
-    <div class="alt-minigrid">
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">Jobs cut per month</div>
-                <?php echo $alt_expand; ?>
-            </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <?php echo $alt_expand; ?>
-            </div>
-            <div class="alt-barlist" id="alt-bars-industries"></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
-                <?php echo $alt_expand; ?>
-            </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">By US state <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <?php echo $alt_expand; ?>
-            </div>
-            <div class="alt-barlist" id="alt-bars-states"></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <?php echo $alt_expand; ?>
-            </div>
-            <div class="alt-barlist" id="alt-bars-countries"></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">Cumulative AI-attributed cuts</div>
-                <?php echo $alt_expand; ?>
-            </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
-        </div>
-    </div>
+    <div class="alt-range-note" id="alt-range-note"></div>
 
     <div class="alt-toolbar2">
         <div class="alt-search-wrap">
@@ -201,6 +156,52 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                     <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
                 </div>
             </div>
+        </div>
+    </div>
+
+    <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
+    <div class="alt-minigrid">
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub" id="alt-trend-range"></span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-barlist" id="alt-bars-industries"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By US state <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-barlist" id="alt-bars-states"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-barlist" id="alt-bars-countries"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub" id="alt-cum-range"></span></div>
+                <?php echo $alt_expand; ?>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
         </div>
     </div>
 

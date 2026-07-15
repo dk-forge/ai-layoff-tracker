@@ -137,6 +137,22 @@ function alt_normalize_country($name) {
     $raw = trim((string) $name);
     if ($raw === '') return '';
     $k = strtolower(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z ]/i', '', $raw))));
+
+    // Real single countries whose names contain "and" (or "&") — must be
+    // recognized BEFORE the multi-country heuristics below.
+    $and_countries = array(
+        'trinidad and tobago' => 'Trinidad and Tobago',
+        'bosnia and herzegovina' => 'Bosnia and Herzegovina',
+        'antigua and barbuda' => 'Antigua and Barbuda',
+        'saint kitts and nevis' => 'Saint Kitts and Nevis',
+        'st kitts and nevis' => 'Saint Kitts and Nevis',
+        'saint vincent and the grenadines' => 'Saint Vincent and the Grenadines',
+        'sao tome and principe' => 'Sao Tome and Principe',
+        'turks and caicos islands' => 'Turks and Caicos Islands',
+        'turks and caicos' => 'Turks and Caicos Islands',
+    );
+    if (isset($and_countries[$k])) return $and_countries[$k];
+
     $map = array(
         'us' => 'United States', 'usa' => 'United States', 'united states' => 'United States',
         'united states of america' => 'United States', 'america' => 'United States',
@@ -154,8 +170,12 @@ function alt_normalize_country($name) {
         'multiple countries' => 'Multiple countries', 'various' => 'Multiple countries',
     );
     if (isset($map[$k])) return $map[$k];
-    // "India and US", "US, UK and Canada", "UK/Germany" — multi-country lists
-    if (preg_match('/(\band\b|,|\/|&)/', $k)) return 'Multiple countries';
+    // "India and US", "US, UK and Canada", "UK/Germany" — multi-country lists.
+    // Delimiters are tested against the RAW value ($k already had punctuation
+    // stripped, which would make the , / & checks dead code).
+    if (preg_match('/(,|\/|&|\+|\bplus\b)/i', $raw) || preg_match('/\band\b/', $k)) {
+        return 'Multiple countries';
+    }
     return $raw;
 }
 
@@ -175,15 +195,19 @@ function alt_normalize_industry($value) {
     $exact = array('it' => 'Technology', 'ai' => 'Technology', 'ml' => 'Technology');
     if (isset($exact[$k])) return $exact[$k];
 
+    // Order matters: specific compound sectors (biotech, fintech, edtech) must
+    // be matched BEFORE the generic Technology rule, whose 'tech' keyword would
+    // otherwise swallow them.
     $rules = array(
+        'Healthcare & Pharma'    => array('pharma', 'biotech', 'bio-tech', 'health', 'medical', 'genomic', 'dermatolog', 'biopharma', 'life science', 'regenerative'),
+        'Finance & Insurance'    => array('bank', 'fintech', 'fin-tech', 'insurtech', 'financ', 'insurance', 'investment', 'crypto', 'payments', 'lending', 'mortgage'),
+        'Education'              => array('education', 'university', 'school', 'edtech', 'ed-tech', 'learning'),
         'Aerospace & Defense'    => array('aerospace', 'defense', 'aviation product'),
         'Airlines & Travel'      => array('airline', 'air travel', 'travel', 'cruise'),
-        'Automotive'             => array('automotive', 'auto ', 'electric vehicle', ' ev ', 'used car', 'car marketplace', 'car dealer'),
+        'Automotive'             => array('automotive', 'auto', 'electric vehicle', 'ev', 'used car', 'car marketplace', 'car dealer'),
         'Technology'             => array('artificial intelligence', 'ai/', 'robotic', 'software', 'cloud', 'cyber', 'saas', 'semiconductor', 'chip', 'information technology', 'tech', 'internet', 'computing', 'data center', 'it services'),
         'Telecom'                => array('telecom', 'broadband', 'connectivity', 'wireless'),
         'Media & Entertainment'  => array('media', 'broadcast', 'radio', 'news', 'entertainment', 'gaming', 'game', 'streaming', 'publishing', 'film'),
-        'Finance & Insurance'    => array('bank', 'fintech', 'financ', 'insurance', 'investment', 'crypto', 'payments', 'lending', 'mortgage'),
-        'Healthcare & Pharma'    => array('pharma', 'biotech', 'health', 'medical', 'genomic', 'dermatolog', 'biopharma', 'life science', 'regenerative'),
         'Retail & E-commerce'    => array('retail', 'e-commerce', 'ecommerce', 'grocery', 'apparel', 'fashion'),
         'Food & Hospitality'     => array('hospitality', 'hotel', 'restaurant', 'food', 'beverage'),
         'Energy'                 => array('energy', 'oil', 'gas', 'coal', 'solar', 'nuclear', 'renewable', 'utilit'),
@@ -191,15 +215,20 @@ function alt_normalize_industry($value) {
         'Real Estate & Construction' => array('real estate', 'construction', 'reit', 'housing', 'property'),
         'Manufacturing'          => array('manufactur', 'industrial', 'paper', 'containerboard', 'steel', 'chemical', 'machinery', 'production'),
         'Consumer Goods'         => array('consumer', 'cannabis', 'cbd', 'household', 'cosmetic', 'toy'),
-        'Education'              => array('education', 'university', 'school', 'edtech', 'learning'),
-        'Professional Services'  => array('consult', 'professional', 'legal', 'accounting', 'staffing', 'recruit', 'hr ', 'scientific and technical'),
+        'Professional Services'  => array('consult', 'professional', 'legal', 'accounting', 'staffing', 'recruit', 'hr', 'scientific and technical'),
         'Agriculture'            => array('agricultur', 'farm'),
         'Government & Nonprofit' => array('government', 'public sector', 'nonprofit', 'non-profit'),
     );
 
     foreach ($rules as $canonical => $keywords) {
         foreach ($keywords as $kw) {
-            if (strpos($k, $kw) !== false) return $canonical;
+            // Short keywords match on word boundaries only, so 'oil' can't hit
+            // 'Boiler', 'gas' can't hit 'Gastroenterology', 'rail' 'Trailer'...
+            if (strlen($kw) <= 4) {
+                if (preg_match('/\b' . preg_quote($kw, '/') . '\b/', $k)) return $canonical;
+            } elseif (strpos($k, $kw) !== false) {
+                return $canonical;
+            }
         }
     }
     return ucwords($k);
@@ -605,9 +634,9 @@ function alt_api_dedupe($request) {
         'fields' => 'ids', 'no_found_rows' => true,
     ));
 
-    // Canonicalize country variants (US / USA / United States → US) across all
-    // entries. SEC 8-K filers are US registrants by definition, so a gold entry
-    // with no stated country is US.
+    // Canonicalize country variants (US / USA → "United States", etc.) across
+    // all entries. SEC 8-K filers are US registrants by definition, so a gold
+    // entry with no stated country is United States.
     foreach ($ids as $id) {
         $c = (string) get_post_meta($id, 'country', true);
         $n = alt_normalize_country($c);

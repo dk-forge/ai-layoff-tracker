@@ -118,7 +118,7 @@
     /* ------------------------------------------------------------------ */
 
     var FILTER_STORAGE_KEY = 'altTrackerFilters:v2';
-    var FILTER_IDS = ['alt-f-from', 'alt-f-to', 'alt-f-industry', 'alt-f-country',
+    var FILTER_IDS = ['alt-search', 'alt-f-from', 'alt-f-to', 'alt-f-industry', 'alt-f-country',
         'alt-f-state', 'alt-f-reasons', 'alt-f-verification', 'alt-f-company',
         'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai'];
 
@@ -232,6 +232,7 @@
     /* Active-filter chip bar ------------------------------------------- */
 
     var ACTIVE_FILTER_DEFS = [
+        { id: 'alt-search', label: 'Search', kind: 'single' },
         { id: 'alt-f-industry', label: 'Industry', kind: 'single' },
         { id: 'alt-f-country', label: 'Country', kind: 'single' },
         { id: 'alt-f-state', label: 'State', kind: 'single' },
@@ -297,6 +298,12 @@
         }).catch(function () { /* leave the fallback text */ });
     }
 
+    function fmtDate(iso) {
+        if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return '';
+        var p = iso.split('-');
+        return MONTHS[parseInt(p[1], 10) - 1] + ' ' + parseInt(p[2], 10) + ', ' + p[0];
+    }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         setText('alt-stat-total', fmt(t.jobs));
@@ -307,7 +314,19 @@
         setText('alt-stat-industries', fmt(t.industries));
         setText('alt-stat-countries', fmt(t.countries));
         var sub = document.getElementById('alt-stat-companies-sub');
-        if (sub) sub.textContent = fmt(t.states) + ' US states';
+        if (sub) sub.textContent = t.states > 0 ? fmt(t.states) + ' US states' : '';
+
+        // Answer "what date range am I looking at?" explicitly: the earliest
+        // and latest event dates within the current filters.
+        var note = document.getElementById('alt-range-note');
+        if (note) {
+            if (t.entries && t.min_date) {
+                note.textContent = 'Data in view: ' + fmtDate(t.min_date)
+                    + (t.max_date && t.max_date !== t.min_date ? ' – ' + fmtDate(t.max_date) : '') + '.';
+            } else {
+                note.textContent = 'No events match the current filters.';
+            }
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -449,8 +468,42 @@
         }
     }
 
+    // The API only returns months that have events; fill the gaps with zeros
+    // so e.g. a January with no cuts shows as 0 instead of vanishing. Bounds:
+    // the selected From/To when set (else the data's own range), capped at the
+    // current month so future months of a selected year don't render as fake
+    // zeros.
+    function fillMonths(series) {
+        if (!series || !series.length) return [];
+        var map = {};
+        series.forEach(function (s) { map[s.month] = s; });
+        var from = readControl('alt-f-from');
+        var to = readControl('alt-f-to');
+        var start = (from && /^\d{4}-\d{2}/.test(from)) ? from.slice(0, 7) : series[0].month;
+        var end = (to && /^\d{4}-\d{2}/.test(to)) ? to.slice(0, 7) : series[series.length - 1].month;
+        var now = new Date();
+        var nowKey = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
+        if (end > nowKey) end = nowKey;
+        if (end < start) return series;
+
+        var out = [];
+        var y = parseInt(start.slice(0, 4), 10), m = parseInt(start.slice(5, 7), 10);
+        var ey = parseInt(end.slice(0, 4), 10), em = parseInt(end.slice(5, 7), 10);
+        var guard = 0;
+        while ((y < ey || (y === ey && m <= em)) && guard++ < 600) {
+            var k = y + '-' + pad2(m);
+            out.push(map[k] || { month: k, jobs: 0, ai_jobs: 0 });
+            m++; if (m > 12) { m = 1; y++; }
+        }
+        return out;
+    }
+
     function renderTrend(series) {
         if (!document.getElementById('alt-chart-weekly')) return;
+        series = fillMonths(series);
+        var range = document.getElementById('alt-trend-range');
+        if (range) range.textContent = series.length
+            ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '';
         if (!series || !series.length) { clearChart('alt-chart-weekly'); return; }
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Jobs cut: ' + fmt(ctx.parsed.y); } };
@@ -466,7 +519,11 @@
 
     function renderAiCumulative(series) {
         if (!document.getElementById('alt-chart-ai-cumulative')) return;
+        series = fillMonths(series);
         var ai = (series || []).filter(function (s) { return s.ai_jobs > 0; });
+        var range = document.getElementById('alt-cum-range');
+        if (range) range.textContent = ai.length
+            ? 'since ' + monthLabel(ai[0].month) : '';
         if (!ai.length) { clearChart('alt-chart-ai-cumulative'); return; }
         var running = 0;
         var cum = (series || []).map(function (s) { running += s.ai_jobs; return { month: s.month, v: running }; })
