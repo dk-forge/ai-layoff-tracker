@@ -868,25 +868,59 @@ body.admin-bar .alt-count-row { top: 32px; }
 
 .alt-error { color: var(--alt-red); }
 
-/* ---------------- Contact form ---------------- */
+/* ---------------- Contact form ----------------
+   Styled to match the main AskTheRecruiter app's /contact: warm cream
+   background, tan borders, 10px radii, olive-green button, small labels,
+   single calm column — no card chrome. */
 
-.alt-contact-wrap { max-width: 760px !important; }
-.alt-contact-form {
-    background: var(--alt-surface); border: 1px solid var(--alt-border);
-    border-radius: 12px; box-shadow: var(--alt-shadow); padding: 20px;
+.alt-contact-wrap {
+    --atr-bg: #fafaf8;       /* rgb(250,250,248) */
+    --atr-ink: #20283a;      /* rgb(32,40,58)    */
+    --atr-muted: #5e6675;    /* rgb(94,102,117)  */
+    --atr-border: #b89f70;   /* rgb(184,159,112) */
+    --atr-green: #537a5c;    /* rgb(83,122,92)   */
+    --atr-green-dark: #47694f;
+    max-width: 640px !important;
+    margin-left: 0 !important;
+    font-family: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--atr-ink);
 }
-.alt-contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
-.alt-contact-full { grid-column: 1 / -1; }
+.alt-contact-form { background: none; border: 0; box-shadow: none; padding: 0; }
+.alt-contact-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.alt-contact-full { grid-column: auto; }
+.alt-contact-wrap .alt-filter > label {
+    font-size: 12px; font-weight: 500; color: var(--atr-ink);
+    text-transform: none; letter-spacing: 0; margin-bottom: 2px;
+}
+.alt-contact-form input[type="text"],
+.alt-contact-form input[type="email"],
+.alt-contact-form input[type="url"],
+.alt-contact-form input[type="number"],
+.alt-contact-form select,
 .alt-contact-form textarea {
-    font-size: 14px; padding: 10px 12px; border: 1px solid var(--alt-grid);
-    border-radius: 8px; width: 100%; box-sizing: border-box; resize: vertical;
-    font-family: inherit; color: var(--alt-ink);
+    font-size: 14px; padding: 8px 12px;
+    border: 1px solid var(--atr-border); border-radius: 10px;
+    background: var(--atr-bg); color: var(--atr-ink);
+    width: 100%; box-sizing: border-box; font-family: inherit;
 }
-.alt-contact-form textarea:focus { outline: none; border-color: var(--alt-blue); box-shadow: 0 0 0 3px var(--alt-blue-tint); }
-.alt-contact-submit { display: flex; flex-direction: column; justify-content: end; }
-.alt-contact-submit .alt-btn { justify-content: center; }
-.alt-contact-note { margin: 14px 2px 0; font-size: 13px; color: var(--alt-muted); line-height: 1.5; }
-.alt-contact-ok { border-color: #b7e0c6; background: #e8f6ee; color: #1f7a44; }
+.alt-contact-form textarea { resize: vertical; min-height: 150px; }
+.alt-contact-form input:focus,
+.alt-contact-form select:focus,
+.alt-contact-form textarea:focus {
+    outline: none; border-color: var(--atr-green);
+    box-shadow: 0 0 0 3px rgba(83, 122, 92, 0.15);
+}
+.alt-contact-submit { display: flex; flex-direction: column; align-items: flex-start; }
+.alt-contact-submit label { display: none; }
+.alt-contact-wrap .alt-btn-primary {
+    background: var(--atr-green); border-color: var(--atr-green);
+    color: #fafaf8; border-radius: 10px; padding: 8px 20px;
+    font-size: 14px; font-weight: 600; box-shadow: none;
+}
+.alt-contact-wrap .alt-btn-primary:hover { background: var(--atr-green-dark); border-color: var(--atr-green-dark); }
+.alt-contact-note { margin: 16px 0 0; font-size: 11px; color: var(--atr-muted); line-height: 1.6; }
+.alt-contact-note a { color: var(--atr-green); }
+.alt-contact-ok { border-color: #b7d3bd; background: #eef4ef; color: #3c5a44; border-radius: 10px; }
+.alt-contact-wrap .alt-status-error { border-radius: 10px; }
 /* honeypot: visually gone, still in the DOM for bots to fill */
 .alt-hp { position: absolute; left: -9999px; top: -9999px; height: 1px; width: 1px; overflow: hidden; }
-@media (max-width: 620px) { .alt-contact-grid { grid-template-columns: 1fr; } }

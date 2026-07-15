@@ -62,7 +62,7 @@ function alt_shortcode_contact() {
 
             <div class="alt-contact-grid">
                 <div class="alt-filter">
-                    <label for="alt-c-topic">What is this about?</label>
+                    <label for="alt-c-topic">Subject</label>
                     <select id="alt-c-topic" name="alt_topic" required>
                         <?php foreach (alt_contact_topics() as $key => $label) : ?>
                             <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
@@ -75,30 +75,31 @@ function alt_shortcode_contact() {
                 </div>
                 <div class="alt-filter">
                     <label for="alt-c-email">Your email</label>
-                    <input type="email" id="alt-c-email" name="alt_email" required maxlength="200" autocomplete="email">
+                    <input type="email" id="alt-c-email" name="alt_email" required maxlength="200" autocomplete="email" placeholder="you@example.com">
+                    <span class="alt-contact-note">So we can reply. We never share this.</span>
                 </div>
                 <div class="alt-filter">
-                    <label for="alt-c-org">Outlet / company <span class="alt-muted">(optional)</span></label>
+                    <label for="alt-c-org">Outlet / company (optional)</label>
                     <input type="text" id="alt-c-org" name="alt_org" maxlength="160" autocomplete="organization">
                 </div>
-                <div class="alt-filter alt-contact-full">
-                    <label for="alt-c-link">Link to the entry or source <span class="alt-muted">(optional, helps corrections)</span></label>
+                <div class="alt-filter">
+                    <label for="alt-c-link">Link to the tracker entry or source (optional)</label>
                     <input type="url" id="alt-c-link" name="alt_link" maxlength="500" placeholder="https://">
+                    <span class="alt-contact-note">For corrections, paste the entry you're flagging so we can locate it fast.</span>
                 </div>
-                <div class="alt-filter alt-contact-full">
+                <div class="alt-filter">
                     <label for="alt-c-msg">Message</label>
-                    <textarea id="alt-c-msg" name="alt_message" required rows="6" maxlength="5000"></textarea>
+                    <textarea id="alt-c-msg" name="alt_message" required rows="6" maxlength="5000" placeholder="Tell us what you need. For corrections, include what the figure should be and the source it comes from."></textarea>
                 </div>
                 <div class="alt-filter">
                     <label for="alt-c-captcha">Spam check: what is <?php echo (int) $a; ?> + <?php echo (int) $b; ?>?</label>
                     <input type="number" id="alt-c-captcha" name="alt_captcha" required inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="alt-filter alt-contact-submit">
-                    <label>&nbsp;</label>
                     <button type="submit" class="alt-btn alt-btn-primary">Send message</button>
                 </div>
             </div>
-            <p class="alt-contact-note">Corrections get priority — every tracker entry links to its primary source, and we log fixes publicly. You can also email <a href="mailto:<?php echo esc_attr(ALT_CONTACT_TO); ?>"><?php echo esc_html(ALT_CONTACT_TO); ?></a> directly.</p>
+            <p class="alt-contact-note">We reply within 3 business days — corrections get priority, and fixes are logged publicly on the tracker. You can also email <a href="mailto:<?php echo esc_attr(ALT_CONTACT_TO); ?>"><?php echo esc_html(ALT_CONTACT_TO); ?></a> directly.</p>
         </form>
     </div>
     <?php
