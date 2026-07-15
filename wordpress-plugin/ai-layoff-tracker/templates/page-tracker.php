@@ -48,11 +48,11 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         <div class="alt-range-pop" id="alt-range-pop" hidden>
             <div class="alt-filter">
                 <label for="alt-f-from">From</label>
-                <input type="date" id="alt-f-from" max="2026-12-31">
+                <input type="date" id="alt-f-from">
             </div>
             <div class="alt-filter">
                 <label for="alt-f-to">To</label>
-                <input type="date" id="alt-f-to" max="2026-12-31">
+                <input type="date" id="alt-f-to">
             </div>
             <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear dates</button>
         </div>
@@ -169,42 +169,42 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub" id="alt-trend-range"></span></div>
-                <?php echo $alt_expand; ?>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-weekly" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <?php echo $alt_expand; ?>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-industries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-industries"></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
-                <?php echo $alt_expand; ?>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-reasons" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">By US state <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <?php echo $alt_expand; ?>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-states" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-states"></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <?php echo $alt_expand; ?>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-countries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-countries"></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub" id="alt-cum-range"></span></div>
-                <?php echo $alt_expand; ?>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-cumulative" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
         </div>
@@ -216,8 +216,8 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <div id="alt-active-filters" class="alt-active-filters" style="display:none"></div>
         </div>
         <div class="alt-toolbar-actions">
-            <a class="alt-btn alt-btn-sm" href="<?php echo esc_url($alt_csv); ?>"><?php echo $alt_dl; ?> CSV</a>
-            <a class="alt-btn alt-btn-sm" href="<?php echo esc_url($alt_json); ?>"><?php echo $alt_dl; ?> JSON</a>
+            <a class="alt-btn alt-btn-sm" id="alt-export-csv" href="<?php echo esc_url($alt_csv); ?>"><?php echo $alt_dl; ?> <span id="alt-export-csv-label">CSV</span></a>
+            <a class="alt-btn alt-btn-sm" id="alt-export-json" href="<?php echo esc_url($alt_json); ?>"><?php echo $alt_dl; ?> <span id="alt-export-json-label">JSON</span></a>
         </div>
     </div>
 

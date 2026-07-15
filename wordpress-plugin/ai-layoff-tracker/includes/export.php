@@ -26,14 +26,36 @@ function alt_csv_guard($value) {
     return $value;
 }
 
-/** Iterate the fast table in id-keyed chunks, calling $cb($row) per row. */
+/**
+ * Exports honor the same filter params as /query (years, industry, state, q…)
+ * so "download what I'm looking at" works. No params = the full dataset.
+ */
+function alt_export_filters() {
+    $req = new WP_REST_Request('GET');
+    $params = wp_unslash($_GET);
+    unset($params['action']);
+    $req->set_query_params($params);
+    return alt_db_where($req); // array($where_sql, $params)
+}
+
+function alt_export_is_filtered() {
+    $keys = array('years', 'quarters', 'months', 'industry', 'country', 'state',
+        'sources', 'reasons', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs', 'ai');
+    foreach ($keys as $k) {
+        if (!empty($_GET[$k])) return true;
+    }
+    return false;
+}
+
+/** Iterate matching rows in id-keyed chunks, calling $cb($row) per row. */
 function alt_export_walk($cb) {
     global $wpdb;
     $table = alt_db_table();
+    list($where, $params) = alt_export_filters();
     $last = 0;
     while (true) {
-        $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE id > %d ORDER BY id ASC LIMIT 2000", $last));
+        $sql = "SELECT * FROM $table WHERE ($where) AND id > %d ORDER BY id ASC LIMIT 2000";
+        $rows = $wpdb->get_results($wpdb->prepare($sql, array_merge($params, array($last))));
         if (!$rows) break;
         foreach ($rows as $row) {
             $last = (int) $row->id;
@@ -46,7 +68,7 @@ function alt_export_walk($cb) {
 function alt_export_csv() {
     nocache_headers();
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . gmdate('Y-m-d') . '.csv"');
+    header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . (alt_export_is_filtered() ? 'filtered-' : '') . gmdate('Y-m-d') . '.csv"');
 
     $out = fopen('php://output', 'w');
 
@@ -87,7 +109,7 @@ function alt_export_csv() {
 function alt_export_json() {
     nocache_headers();
     header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . gmdate('Y-m-d') . '.json"');
+    header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . (alt_export_is_filtered() ? 'filtered-' : '') . gmdate('Y-m-d') . '.json"');
 
     echo '{';
     echo '"source":"AI Layoff Tracker - asktherecruiter.com",';

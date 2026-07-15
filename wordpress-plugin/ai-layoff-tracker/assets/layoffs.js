@@ -233,6 +233,22 @@
         updateQuickViewStates();
         updateDropdownSummaries();
         updateRangeLabel();
+        updateExportLinks();
+    }
+
+    // The CSV/JSON buttons download exactly what's on screen: the current
+    // filters ride along as query params and the label says which it is.
+    function updateExportLinks() {
+        if (!window.altData) return;
+        var qsStr = qs(currentParams());
+        [['alt-export-csv', window.altData.exportCsv, 'CSV'],
+         ['alt-export-json', window.altData.exportJson, 'JSON']].forEach(function (p) {
+            var a = document.getElementById(p[0]);
+            if (!a) return;
+            a.href = p[1] + (qsStr ? '&' + qsStr : '');
+            var lbl = document.getElementById(p[0] + '-label');
+            if (lbl) lbl.textContent = p[2] + (qsStr ? ' · filtered' : ' · all');
+        });
     }
 
     var AGG_SEQ = 0;
@@ -1107,6 +1123,49 @@
             });
         });
 
+        // Per-chart downloads: canvas charts save as PNG (white background);
+        // HTML bar lists save their current data as a small CSV.
+        var BAR_AGG_KEY = {
+            'alt-bars-industries': ['top_industries', 'by-industry'],
+            'alt-bars-states': ['top_states', 'by-us-state'],
+            'alt-bars-countries': ['top_countries', 'by-country']
+        };
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-chart-dl'), function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var t = btn.getAttribute('data-dl');
+                var kind = btn.getAttribute('data-kind');
+                if (kind === 'png') {
+                    var ch = CHARTS[t];
+                    if (!ch) return;
+                    var src = ch.canvas;
+                    var c = document.createElement('canvas');
+                    c.width = src.width; c.height = src.height;
+                    var ctx = c.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.drawImage(src, 0, 0);
+                    var a = document.createElement('a');
+                    a.href = c.toDataURL('image/png');
+                    a.download = 'ai-layoff-tracker-' + t.replace('alt-chart-', '') + '.png';
+                    a.click();
+                } else {
+                    var meta = BAR_AGG_KEY[t];
+                    var rows = (meta && LAST_AGG && LAST_AGG[meta[0]]) || [];
+                    if (!rows.length) return;
+                    var csv = 'label,jobs,ai_attributed_jobs\n' + rows.map(function (r) {
+                        return '"' + String(r[0]).replace(/"/g, '""') + '",' + r[1] + ',' + (r[2] || 0);
+                    }).join('\n');
+                    var blob = new Blob([csv], { type: 'text/csv' });
+                    var a2 = document.createElement('a');
+                    a2.href = URL.createObjectURL(blob);
+                    a2.download = 'ai-layoff-tracker-' + (meta ? meta[1] : t) + '.csv';
+                    a2.click();
+                    URL.revokeObjectURL(a2.href);
+                }
+            });
+        });
+
         // Mini-chart expand: toggle the card to full width/height, then
         // re-render so bar lists show more rows and canvases re-measure.
         Array.prototype.forEach.call(document.querySelectorAll('.alt-mini .alt-expand'), function (btn) {
@@ -1191,6 +1250,7 @@
             updateActiveFilterBar();
             updateDropdownSummaries();
             updateRangeLabel();
+            updateExportLinks();
             fetchAndRenderAggregate(); // charts + stats
         }).catch(function () {
             setStatus('alt-table-status', 'Could not load filters.', true);
