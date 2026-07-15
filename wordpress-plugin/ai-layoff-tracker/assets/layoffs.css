@@ -424,6 +424,9 @@ body.admin-bar .alt-count-row { top: 32px; }
 
 @media (max-width: 640px) {
     .alt-toolbar2 { flex-direction: column; align-items: stretch; }
+    /* In the column layout the 320px flex-BASIS becomes height — a 320px-tall
+       search box (found in the v2.9.1 mobile pass). */
+    .alt-search-wrap { flex: none; }
     .alt-sort { justify-content: space-between; }
     .alt-journalist { flex-direction: column; align-items: flex-start; }
     .alt-journalist-api { width: 100%; box-sizing: border-box; overflow-x: auto; }
