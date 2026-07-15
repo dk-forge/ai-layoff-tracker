@@ -170,10 +170,15 @@ function alt_normalize_industry($value) {
     if ($raw === '') return '';
     $k = strtolower($raw);
 
+    // Exact-value shortcuts that keyword rules can't safely catch
+    // (a bare "it" substring would match half the alphabet).
+    $exact = array('it' => 'Technology', 'ai' => 'Technology', 'ml' => 'Technology');
+    if (isset($exact[$k])) return $exact[$k];
+
     $rules = array(
         'Aerospace & Defense'    => array('aerospace', 'defense', 'aviation product'),
         'Airlines & Travel'      => array('airline', 'air travel', 'travel', 'cruise'),
-        'Automotive'             => array('automotive', 'auto ', 'electric vehicle', ' ev '),
+        'Automotive'             => array('automotive', 'auto ', 'electric vehicle', ' ev ', 'used car', 'car marketplace', 'car dealer'),
         'Technology'             => array('artificial intelligence', 'ai/', 'robotic', 'software', 'cloud', 'cyber', 'saas', 'semiconductor', 'chip', 'information technology', 'tech', 'internet', 'computing', 'data center', 'it services'),
         'Telecom'                => array('telecom', 'broadband', 'connectivity', 'wireless'),
         'Media & Entertainment'  => array('media', 'broadcast', 'radio', 'news', 'entertainment', 'gaming', 'game', 'streaming', 'publishing', 'film'),
