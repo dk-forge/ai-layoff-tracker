@@ -535,15 +535,13 @@ function alt_is_public_read_request() {
 add_filter('rest_send_nocache_headers', function ($send) {
     return alt_is_public_read_request() ? false : $send;
 });
-// Last write wins: replace whatever Cache-Control anyone else emitted just
-// before the body is served (header() with replace=true collapses duplicates).
-add_filter('rest_pre_serve_request', function ($served) {
-    if (alt_is_public_read_request() && !headers_sent()) {
-        header('Cache-Control: public, max-age=60', true);
-        header_remove('Expires');
-        header_remove('Pragma');
+// Anything that calls WP's nocache_headers() (core, host cache plugins) goes
+// through this filter — swap the no-store set for our cacheable one.
+add_filter('nocache_headers', function ($headers) {
+    if (alt_is_public_read_request()) {
+        return array('Cache-Control' => 'public, max-age=60');
     }
-    return $served;
+    return $headers;
 }, 999);
 
 /**
