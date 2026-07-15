@@ -5,11 +5,12 @@ name: Data quality report (anomaly flags)
 #   - the same company filing in several states within 60 days (possible
 #     overlapping multi-state counts, like remote-workforce filings)
 #   - huge notices that only link to a state list page (no exact document)
-# Runs weekly and on demand; read the output in the Actions log.
+# Runs DAILY (an hour after the daily WARN import) and on demand; read the
+# output in the Actions log.
 
 on:
   schedule:
-    - cron: '0 16 * * 1'   # Mondays, noon ET
+    - cron: '0 16 * * *'   # daily, noon ET (WARN import runs 15:00 UTC)
   workflow_dispatch:
 
 jobs:
