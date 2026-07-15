@@ -35,7 +35,8 @@ Railway env: `OPENROUTER_API_KEY`, `WP_API_KEY`, `WP_SITE_URL=https://asktherecr
 1. It's almost always cache. Hard-refresh (Cmd+Shift+R). 2. Confirm what the server
 sends: `curl -s "https://asktherecruiter.com/blog/ai-layoff-tracker/?cb=$RANDOM" | grep -o 'ver=[0-9.]*' | head`.
 3. If server is stale, trip the flush URL above (works only if the version was bumped).
-4. Autoptimize can hold CSS: the flush clears it too; verify with a cache-busted asset URL.
+4. Autoptimize is NOT flushed on deploy (by design since v2.7.3 — content-hashed
+filenames self-invalidate). If an AO asset looks stale, the version bump alone fixes it.
 
 **White screen / HTTP 500 anywhere**
 A PHP fatal from the latest deploy. `git revert` the last plugin commit, push, trip flush.
@@ -52,6 +53,25 @@ Check the three endpoints directly (`/facets`, `/aggregate`, `/query?per_page=1`
 `assets/layoffs.js` (single file, no build step). DataTables/Chart.js load from cdnjs —
 a CDN block kills the table (status message says so).
 
+**Table says "No layoffs match" but the API returns rows** (the v2.7.1 crash class)
+A render-callback exception is swallowed by the ajax `.catch` and shown as a data
+problem. Capture the real stack in the console before touching anything:
+```js
+var dt = jQuery('#alt-table').DataTable().settings()[0];
+var orig = dt.ajax; dt.ajax = function(d, cb, s) {
+  return orig(d, function(json){ try { cb(json); } catch(e) { console.error('RENDER CRASH', e); } }, s);
+};
+jQuery('#alt-table').DataTable().ajax.reload();
+```
+
+**Page loads but nothing boots — 0 API requests, table stuck "Loading…"**
+The aggregated JS itself is dead. Find the `autoptimize_single_*.js` URL in the page
+source and curl it: a 410/404 with `cf-cache-status: HIT` means Cloudflare cached a
+missing-file response (24h `max-age`). Origin is usually fine (verify with an extra
+`&cfbust=$RANDOM` param, which changes the CF cache key). **Recovery: bump ALT_VERSION
+and deploy** — the new `?ver=` is a new CF cache key; never wait out the TTL. Root cause
+was deleting AO caches on deploy — removed in v2.7.3, do not reintroduce.
+
 **Import workflow red**
 Read the run log. `batch N FAILED: 500` = transient host error → re-run without purge
 (idempotent upsert fills gaps). `purge refused` = scrape came back too small — the guard
@@ -59,10 +79,14 @@ protecting the table; investigate the states, don't override. Repeated 401 = WP_
 rotated (wp-admin Tools page ↔ GitHub secret must match).
 
 **A state stopped importing / "no output file for XX"**
-`warn-scraper` upstream broke for that state (their site changed). Check
+Two collector families: `warn-scraper` states (upstream lib — check
 https://github.com/biglocalnews/warn-scraper/issues , bump the pin in
-`railway/requirements.txt` when fixed. Known-dead upstream (2026-07): TX, FL, GA, OH,
-MI, CO, ID, LA; empty-data states: IA, MD, MO, NM, OK, OR, SC, WI.
+`railway/requirements.txt`) and OUR custom collectors in
+`railway/sources/warn_custom.py` for TX/FL/GA/OH/MI/CO/ID/LA (state sites change;
+fix the collector — each has its endpoint documented inline; GA needs a fresh nonce
+per run, CO discovers per-year Google Sheets, ID/LA parse text PDFs).
+No-data states (2026-07, not bugs): HI + OK publish no usable counts; MO/NM publish
+nothing; MA/MN/NC/NV need custom scrapers nobody has written yet.
 
 **A published number is wrong**
 1. Verify against the primary source link. 2. Fix the CAUSE first (parser/normalizer —

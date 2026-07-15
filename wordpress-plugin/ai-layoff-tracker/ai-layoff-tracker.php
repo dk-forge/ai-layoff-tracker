@@ -70,7 +70,7 @@ function alt_flush_caches_on_deploy() {
     // hashes, so a changed asset gets a NEW aggregate automatically — deleting
     // the old files only opens a window where in-flight HTML references a file
     // that 410s, and Cloudflare then caches that 410 for 24h (incident
-    // 2026-07-15, v2.7.3). Old aggregates are harmless; AO prunes its own cache.
+    // 2026-07-15, v2.7.2). Old aggregates are harmless; AO prunes its own cache.
 }
 add_action('init', 'alt_flush_caches_on_deploy');
 
