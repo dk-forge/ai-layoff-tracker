@@ -46,7 +46,9 @@ function alt_allowed_verification_levels() {
 }
 
 function alt_allowed_source_types() {
-    return array('8K', 'warn', 'press_release', 'news');
+    // 'erm' = Eurofound's European Restructuring Monitor (EU27+Norway,
+    // announced restructuring events curated by national correspondents)
+    return array('8K', 'warn', 'press_release', 'news', 'erm');
 }
 
 function alt_register_cpt() {

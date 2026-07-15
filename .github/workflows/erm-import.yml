@@ -1,0 +1,36 @@
+name: ERM import (Eurofound, EU27+Norway)
+
+# Europe's WARN-equivalent: per-company restructuring announcements curated by
+# Eurofound's European Restructuring Monitor. Daily window import (14 days,
+# idempotent by factsheet id) + on-demand full backfill since 2015.
+# License: Eurofound authorizes reuse with attribution; every entry credits
+# the ERM and links its factsheet.
+
+on:
+  schedule:
+    - cron: '30 12 * * *'   # daily, after ERM correspondents' morning updates
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'daily (14-day window) or full (entire history since 2015)'
+        required: false
+        default: 'daily'
+
+jobs:
+  erm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Import ERM events
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          ERM_MODE: ${{ github.event.inputs.mode || 'daily' }}
+        run: |
+          cd railway
+          python erm_import.py

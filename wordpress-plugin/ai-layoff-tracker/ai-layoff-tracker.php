@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.10.0
+ * Version: 2.10.1
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.10.0');
+define('ALT_VERSION', '2.10.1');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -267,7 +267,7 @@ function alt_faq_items() {
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide, ' . $f($n['ai_jobs']) . ' of them in cuts companies explicitly attribute to AI. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Three source families: SEC 8-K filings (searched twice daily), official WARN notices from ' . $f($n['states']) . ' US states (imported daily, no AI processing), and worldwide press coverage in 65+ languages via the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+            'Four source families: SEC 8-K filings (searched twice daily), official WARN notices from ' . $f($n['states']) . ' US states (imported daily, no AI processing), the European Restructuring Monitor — Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily, reused with attribution) — and worldwide press coverage in 65+ languages via the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
         array('How is this different from the Challenger report or the WSJ and TrueUp layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it — a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but as a separately labeled tier that is never mixed into the verified totals.'),
         array('Can journalists and researchers use this data?',

@@ -331,9 +331,253 @@ def fetch_la():
     return out
 
 
+def fetch_nc():
+    """NC Commerce Drupal year page -> rotating date-stamped CSV on files.nc.gov."""
+    from datetime import date as _date
+    out = []
+    for y in (_date.today().year, _date.today().year - 1):  # Jan rollover safety
+        page = requests.get(
+            "https://www.commerce.nc.gov/data-tools-reports/labor-market-data-tools/"
+            f"workforce-warn-reports/report-workforce-warn-summary-list-{y}",
+            headers=UA, timeout=TIMEOUT)
+        if page.status_code != 200:
+            continue
+        m = re.search(r'href="(https://files\.nc\.gov/[^"]+\.csv[^"]*)"', page.text)
+        if not m:
+            continue
+        text = requests.get(_html.unescape(m.group(1)), headers=UA, timeout=TIMEOUT).text
+        import csv as _csv
+        for r in _csv.DictReader(io.StringIO(text)):
+            jobs = _count(r.get("Number affected at this location") or "")
+            date = (_to_iso_date(r.get("Effective Date") or "")
+                    or _to_iso_date(r.get("Date of Notice") or ""))
+            e = _entry("NC", r.get("WARN Notice: WARN Notice Name"), jobs, date,
+                       r.get("City") or "", kind=r.get("WARN notice type") or "",
+                       detail_url=page.url)
+            if e:
+                out.append(e)
+    return out
+
+
+# Nevada's master PDF glues tokens ("209SK Food Group"), so rows are parsed
+# from text lines; the trailing County token is stripped via this vocabulary.
+_NV_COUNTIES = (
+    "Carson City|Churchill|Clark|Douglas|Elko|Esmeralda|Eureka|Humboldt|Lander|"
+    "Lincoln|Lyon|Mineral|Nye|Pershing|Storey|Washoe|White Pine|Statewide|Remote|Various"
+)
+_NV_ROW = re.compile(
+    r"^(?:(?P<recv>\d{1,2}/\d{1,2}/\d{2,4})|Unknown|Multiple)?\s*"
+    r"(?:(?P<eff>\d{1,2}/\d{1,2}/\d{2,4})|Unknown|Multiple)?\s*"
+    r"(?P<kind>Layoffs?|Closures?)\s*"
+    r"(?P<jobs>[\d,]+|Unknown|NR)\s*"
+    r"(?P<rest>.+?)\s*"
+    r"(?P<warn>Non-?WARN|WARN)?$")
+
+# Known NV municipalities, longest first — the text line is
+# "<company> <city> <county>" with no delimiters, so the split must be
+# vocabulary-driven ("Spirit Airlines Las Vegas Clark" is genuinely ambiguous
+# to a regex: company names may end in place-like words).
+_NV_CITIES = [
+    "North Las Vegas", "Incline Village", "Boulder City", "Carson City", "Sun Valley",
+    "Battle Mountain", "West Wendover", "Spring Creek", "Indian Springs", "Mound House",
+    "Las Vegas", "Henderson", "Reno", "Sparks", "Stateline", "Primm", "Elko",
+    "Mesquite", "Fernley", "Minden", "Gardnerville", "Winnemucca", "Fallon",
+    "Pahrump", "Laughlin", "Verdi", "Sloan", "Jean", "McCarran", "Ely", "Yerington",
+    "Lovelock", "Tonopah", "Hawthorne", "Caliente", "Wells", "Jackpot", "Dayton",
+    "Silver Springs", "Moapa", "Overton", "Amargosa Valley", "Crystal Bay", "Genoa",
+    "Zephyr Cove", "Round Mountain", "Eureka", "Remote", "Statewide", "Various",
+]
+
+def fetch_nv():
+    """Nevada DETR: one cumulative print-to-PDF master per year, filename rotates."""
+    import pdfplumber
+    landing = requests.get("https://detr.nv.gov/Page/WARN", headers=UA, timeout=TIMEOUT)
+    pdfs = re.findall(
+        r'href="(/[Cc]ontent/[Mm]edia/[^"]+\.pdf|https://detr\.nv\.gov/[Cc]ontent/[Mm]edia/[^"]+\.pdf)"[^>]*>\s*(20\d\d)\s*WARN',
+        landing.text)
+    county_re = re.compile(r"\s+(?:%s)(?:\s*/\s*(?:%s))*$" % (_NV_COUNTIES, _NV_COUNTIES))
+    out = []
+    for href, year in pdfs:
+        if int(year) < 2022:
+            continue
+        url = href if href.startswith("http") else "https://detr.nv.gov" + href
+        resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+        if resp.status_code != 200:
+            continue
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                for line in (page.extract_text() or "").splitlines():
+                    line = line.strip()
+                    if "Employer" in line or not re.search(r"Layoffs?|Closures?", line):
+                        continue
+                    m = _NV_ROW.match(line)
+                    if not m:
+                        continue
+                    rest = county_re.sub("", m.group("rest").strip()).strip()
+                    city = ""
+                    for c in _NV_CITIES:
+                        if rest.endswith(" " + c) or rest == c:
+                            city, rest = c, rest[: -len(c)].strip() if rest != c else ""
+                            break
+                    e = _entry("NV", rest, _count(m.group("jobs")),
+                               _to_iso_date(m.group("eff") or "") or _to_iso_date(m.group("recv") or ""),
+                               city, kind=m.group("kind"), detail_url=url)
+                    if e:
+                        out.append(e)
+    return out
+
+
+# Radware bot-walls mn.gov HTML pages but NOT /deed/assets/*.pdf — discovery
+# of the unpredictable tcm1045 ids falls back to the Wayback CDX index, and a
+# seed list keeps known history importable through a total discovery outage.
+_MN_SEED_PDFS = [  # verified-live 2026-07-15; CDX discovery adds the rest
+    "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-report-2023_tcm1045-663809.pdf",
+    "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-october-2025_tcm1045-712065.pdf",
+    "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-january_tcm1045-722872.pdf",
+]
+
+def fetch_mn():
+    """MN DEED monthly/annual report PDFs (assets bypass the bot wall)."""
+    import pdfplumber
+    urls = set(_MN_SEED_PDFS)
+    for attempt in range(2):  # Wayback CDX is slow and flaky — retry once
+        try:
+            cdx = requests.get(
+                "https://web.archive.org/cdx/search/cdx",
+                params={"url": "mn.gov/deed/assets/plant-closing*",
+                        "collapse": "urlkey", "fl": "original", "limit": "500"},
+                headers=UA, timeout=90)
+            for u in cdx.text.split():
+                if re.search(r"/deed/assets/plant-closing[^\s]*_tcm1045-\d+\.pdf$", u):
+                    urls.add(u.replace("http://", "https://"))
+            break
+        except Exception as exc:  # discovery outage -> seeds still import
+            print(f"    MN: CDX discovery failed ({exc}); "
+                  + ("retrying" if attempt == 0 else "using seed list"))
+    out = []
+    for url in sorted(urls):
+        try:
+            resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+        except Exception:
+            continue
+        if resp.status_code != 200 or b"%PDF" not in resp.content[:1024]:
+            continue
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                for table in page.extract_tables() or []:
+                    idx = None
+                    for row in table:
+                        # header cells wrap ('Affected\nWorkers') — normalize
+                        cells = [re.sub(r"\s+", " ", (c or "")).strip() for c in row]
+                        if idx is None:
+                            if any("Layoff Name" in c for c in cells):
+                                idx = {name: i for i, c in enumerate(cells)
+                                       for name in ("Layoff Name", "Account: City", "Layoff Start",
+                                                    "WARN Received", "Affected Workers") if name in c}
+                            continue
+                        if len(idx) < 3 or not cells[0] or cells[0].startswith(("RR Start", "Count")):
+                            continue
+                        get = lambda k: cells[idx[k]] if k in idx and idx[k] < len(cells) else ""
+                        company = re.sub(r"\s+20\d\d$", "", get("Layoff Name"))
+                        e = _entry("MN", company, _count(get("Affected Workers")),
+                                   _to_iso_date(get("Layoff Start")) or _to_iso_date(get("WARN Received")),
+                                   get("Account: City"), detail_url=url)
+                        if e:
+                            out.append(e)
+    return out
+
+
+# mass.gov (Akamai) rejects HTTP/1.1 outright and demands a full Chrome header
+# fingerprint — hence httpx with http2 rather than requests (recon-verified:
+# same headers 403 over HTTP/1.1, 200 over HTTP/2).
+_MA_HEADERS = {
+    "User-Agent": UA["User-Agent"],
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none", "Sec-Fetch-User": "?1",
+    "sec-ch-ua": '"Chromium";v="126", "Not/A)Brand";v="8"',
+    "sec-ch-ua-mobile": "?0", "sec-ch-ua-platform": '"macOS"',
+    "Upgrade-Insecure-Requests": "1",
+}
+_MA_LANDING = ("https://www.mass.gov/info-details/worker-adjustment-and-retraining-"
+               "notification-act-warn-layoff-and-closure-updates")
+
+def _ma_first_date(value):
+    """First parseable date from free text ('8/15/26 & 11/30/26', ranges, serials)."""
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d")
+    for token in re.split(r"\s*(?:-|&|,|\band\b|\bending\b|\bthrough\b)\s*", str(value or "")):
+        d = _to_iso_date(token)
+        if d:
+            return d
+    return None
+
+def fetch_ma():
+    """Massachusetts: weekly CSV (current FY) + one XLSX per archived FY."""
+    import httpx
+    from openpyxl import load_workbook
+    client = httpx.Client(http2=True, headers=_MA_HEADERS, follow_redirects=True, timeout=TIMEOUT)
+    landing = client.get(_MA_LANDING)
+    out = []
+
+    def add(company, jobs_raw, date_raw, fallback_date, city):
+        company = re.sub(r"^\*Updated\*\s*", "", str(company or ""))
+        city = re.sub(r",\s*MA$", "", str(city or "")).strip()
+        date = _ma_first_date(date_raw) or _ma_first_date(fallback_date)
+        e = _entry("MA", company, _count(str(jobs_raw or "")), date, city, detail_url=_MA_LANDING)
+        if e:
+            out.append(e)
+
+    csv_urls = re.findall(r'href="(https://www\.mass\.gov/files/csv/[^"]+\.csv)"', landing.text)
+    import csv as _csv
+    for url in csv_urls[:1]:
+        r = client.get(_html.unescape(url))
+        if r.status_code == 200:
+            try:  # the CSV mixes encodings ("Labouré College" is cp1252)
+                text = r.content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                text = r.content.decode("cp1252", errors="replace")
+            for row in _csv.DictReader(io.StringIO(text)):
+                add(row.get("EMPLOYER"), row.get("# EMPLOYEES IMPACTED"),
+                    row.get("DATE(S) OF LAYOFFS"), row.get("RECEIVED"), row.get("CITY/TOWN"))
+
+    fy_urls = re.findall(r'href="(https://www\.mass\.gov/doc/fy\d\d-warn-report[^"]*/download)"', landing.text)
+    for url in sorted(set(fy_urls)):
+        r = client.get(_html.unescape(url))
+        if r.status_code != 200:
+            continue
+        wb = load_workbook(io.BytesIO(r.content), read_only=True, data_only=True)
+        for ws in wb.worksheets:
+            header, cols = None, {}
+            for row in ws.iter_rows(values_only=True):
+                cells = ["" if c is None else c for c in row]
+                if header is None:
+                    joined = " ".join(str(c).upper() for c in cells)
+                    if "EMPLOYER" in joined or "COMPANY NAME" in joined:
+                        header = [str(c).strip().upper() for c in cells]
+                        for i, h in enumerate(header):
+                            if "EMPLOYER" in h or "COMPANY" in h: cols["company"] = i
+                            elif "IMPACT" in h or "AFFECT" in h:  cols["jobs"] = i
+                            elif "LAYOFF" in h and "DATE" in h.replace("(S)", "S"): cols["date"] = i
+                            elif h in ("RECEIVED", "DATE RECEIVED"): cols["recv"] = i
+                            elif "CITY" in h:                     cols["city"] = i
+                    continue
+                if "company" not in cols or "jobs" not in cols:
+                    continue
+                get = lambda k: cells[cols[k]] if k in cols and cols[k] < len(cells) else ""
+                if not str(get("company")).strip():
+                    continue
+                add(get("company"), get("jobs"), get("date"), get("recv"), get("city"))
+    client.close()
+    return out
+
+
 CUSTOM_STATES = {
     "TX": fetch_tx, "FL": fetch_fl, "GA": fetch_ga, "OH": fetch_oh,
     "MI": fetch_mi, "CO": fetch_co, "ID": fetch_id, "LA": fetch_la,
+    "NC": fetch_nc, "NV": fetch_nv, "MN": fetch_mn, "MA": fetch_ma,
 }
 
 

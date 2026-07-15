@@ -23,12 +23,20 @@ import requests
 EDGAR_FTS_URL = "https://efts.sec.gov/LATEST/search-index"
 SEC_ARCHIVES_BASE = "https://www.sec.gov/Archives/edgar/data"
 
+# EDGAR full-text search is EXACT-match on quoted phrases (no stemming) —
+# the singular forms alone missed ~90-130 filings per 90 days (term audit
+# 2026-07-15). Keep phrases precise; the extractor discards non-events.
 KEYWORDS = [
     "workforce reduction",
+    "workforce reductions",
     "reduction in force",
+    "reductions in force",
     "layoff",
+    "layoffs",
     "headcount reduction",
     "elimination of positions",
+    "position eliminations",
+    "reduce its workforce",
     "job cuts",
     "involuntary separation",
 ]
