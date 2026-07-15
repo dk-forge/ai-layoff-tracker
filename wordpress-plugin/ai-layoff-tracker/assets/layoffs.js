@@ -333,13 +333,26 @@
         return MONTHS[parseInt(p[1], 10) - 1] + ' ' + parseInt(p[2], 10) + ', ' + p[0];
     }
 
+    // "in 2026" is technically right but slow to parse — when the selection is
+    // exactly the current year, say "2026 YTD" instead.
+    function statPeriodLabel() {
+        var years = readControl('alt-f-years') || [];
+        var bare = years.length === 1
+            && !(readControl('alt-f-quarters') || []).length
+            && !(readControl('alt-f-months') || []).length
+            && !readControl('alt-f-from') && !readControl('alt-f-to');
+        if (bare && years[0] === String(new Date().getFullYear())) return years[0] + ' YTD';
+        var period = currentPeriodLabel();
+        return period === 'all time' ? 'all time' : period.replace(/^in /, '');
+    }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
-        var period = currentPeriodLabel();
+        var period = statPeriodLabel();
         setText('alt-stat-total', fmt(t.jobs));
-        setText('alt-stat-total-entries', fmt(t.entries) + ' layoffs' + (period === 'all time' ? ' · all time' : ' ' + period));
+        setText('alt-stat-total-entries', fmt(t.entries) + ' layoffs · ' + period);
         setText('alt-stat-ai', fmt(t.ai_jobs));
-        setText('alt-stat-ai-entries', fmt(t.ai_entries) + ' layoffs');
+        setText('alt-stat-ai-entries', fmt(t.ai_entries) + ' layoffs · ' + period);
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));
         setText('alt-stat-countries', fmt(t.countries));
@@ -532,7 +545,9 @@
         // Compact cards show a top-4 preview; expanded (or full-size dashboard
         // cards) show up to 12.
         var mini = box.closest('.alt-mini');
-        var limit = (mini && !mini.classList.contains('alt-expanded')) ? 4 : 12;
+        var compact = mini && !mini.classList.contains('alt-expanded');
+        var fullCount = (entries || []).length;
+        var limit = compact ? 4 : 12;
         entries = (entries || []).slice(0, limit);
         if (!entries.length) {
             box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
@@ -559,6 +574,10 @@
                 + '<span class="alt-barfill" style="left:' + aiW.toFixed(1) + '%;width:' + Math.max(0, w - aiW).toFixed(1) + '%"></span>'
                 + '</span></button>';
         });
+        // Compact preview showing only part of the list: offer the rest.
+        if (compact && fullCount > limit) {
+            html += '<button type="button" class="alt-bar-more">Show all ' + fullCount + ' →</button>';
+        }
         box.innerHTML = html;
 
         if (filterId) {
@@ -569,6 +588,15 @@
                     toggleMultiFilter(filterId, btn.getAttribute('data-val'));
                     refreshAll();
                 });
+            });
+        }
+        var more = box.querySelector('.alt-bar-more');
+        if (more && mini) {
+            more.addEventListener('click', function () {
+                mini.classList.add('alt-expanded');
+                var xp = mini.querySelector('.alt-expand');
+                if (xp) { xp.setAttribute('aria-label', 'Collapse chart'); xp.title = 'Collapse'; }
+                if (LAST_AGG) renderCharts(LAST_AGG);
             });
         }
     }
@@ -710,7 +738,12 @@
         var options = {
             responsive: true, maintainAspectRatio: false, cutout: '62%',
             plugins: {
-                legend: { position: 'right', labels: { color: INK.secondary, boxWidth: 12, boxHeight: 12 } },
+                // Bottom legend: items flow in rows, each label stays on one
+                // line instead of truncating against the donut.
+                legend: {
+                    position: 'bottom', align: 'start',
+                    labels: { color: INK.secondary, boxWidth: 9, boxHeight: 9, padding: 7, font: { size: 10.5 } }
+                },
                 tooltip: { callbacks: { label: function (ctx) { return ctx.label + ': ' + fmt(ctx.parsed) + ' jobs'; } } }
             }
         };
@@ -1139,12 +1172,15 @@
             fillSelect('alt-f-state', facets.states);
             initYears(facets);
 
-            // Restore saved filters; first-time visitors default to the
-            // current year so every number on the page is explicitly scoped.
-            var hadSaved = false;
-            try { hadSaved = !!window.localStorage.getItem(FILTER_STORAGE_KEY); } catch (e) { /* noop */ }
+            // Restore saved filters, then default the PERIOD to the current
+            // year whenever no period is actively selected — every page load
+            // starts scoped to this year; "All time" is one click away.
             restoreFilters();
-            if (!hadSaved && document.getElementById('alt-f-years')) {
+            var noPeriod = !(readControl('alt-f-years') || []).length
+                && !(readControl('alt-f-quarters') || []).length
+                && !(readControl('alt-f-months') || []).length
+                && !readControl('alt-f-from') && !readControl('alt-f-to');
+            if (noPeriod && document.getElementById('alt-f-years')) {
                 writeControl('alt-f-years', [String(new Date().getFullYear())]);
             }
 

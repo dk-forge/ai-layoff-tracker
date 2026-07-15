@@ -262,7 +262,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
     padding: 7px 12px; cursor: pointer;
 }
 .alt-range-btn:hover { border-style: solid; border-color: #2a78d6; }
-.alt-range-note-data { font-size: 12.5px; color: var(--alt-muted); }
+.alt-range-note-data { font-size: 13.5px; color: var(--alt-ink-2); font-weight: 500; }
 .alt-range-pop {
     position: absolute; z-index: 60; top: calc(100% + 6px); left: 0;
     display: flex; align-items: end; gap: 12px; padding: 14px;
@@ -345,6 +345,15 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-bartrack { position: relative; display: block; height: 9px; border-radius: 6px; background: #e8ebf3; overflow: hidden; }
 .alt-barfill { position: absolute; top: 0; bottom: 0; background: #2a78d6; border-radius: 6px; }
 .alt-barfill-ai { position: absolute; top: 0; bottom: 0; left: 0; background: #eb6834; border-radius: 6px 0 0 6px; }
+.alt-bar-more {
+    display: block; width: 100%; text-align: left; margin-top: 2px;
+    font-size: 12.5px; font-weight: 600; color: #2a78d6;
+    background: none; border: none; cursor: pointer; padding: 6px 10px;
+    border-radius: 8px;
+}
+.alt-bar-more:hover { background: var(--alt-blue-tint, #eef4fc); color: #1c5cab; }
+/* Bottom legend needs breathing room in the compact reasons card */
+.alt-mini .alt-chart-box:has(#alt-chart-reasons) { height: 190px; }
 
 .alt-overview-collapse { margin: 22px 0 0; border: 1px solid var(--alt-border); border-radius: 12px; overflow: hidden; background: var(--alt-surface); }
 .alt-overview-collapse > summary {
