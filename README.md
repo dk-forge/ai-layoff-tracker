@@ -1,168 +1,116 @@
 # AI Layoff Tracker
 
-Tracks verified AI-related and general layoffs from SEC 8-K filings and credible
-news sources, and publishes them on `asktherecruiter.com` as a filterable table,
-charts, a dedicated AI-displacement page, CSV/JSON exports, and an RSS feed.
+A continuously updated, source-linked tracker of verified layoffs worldwide —
+flagging the ones companies explicitly attribute to AI. Every entry links to a
+primary source: a SEC 8-K filing, a US state WARN notice, or a named news
+outlet with the exact quote.
 
-**WordPress is the database** — there is no Supabase or external DB.
+**Live:** https://asktherecruiter.com/blog/ai-layoff-tracker/
+**API:** `https://asktherecruiter.com/blog/wp-json/layoffs/v1/` (public, no key needed for reads)
+**Corrections:** https://asktherecruiter.com/blog/contact/ → info@asktherecruiter.com
+
+Current scale: ~34,500 verified events · ~4.8M jobs · 42 US states (37 with
+WARN coverage) · 22 countries · 2015→present, refreshed daily.
+
+## Why another layoff tracker
+
+Three kinds of trackers measure three different things. Government statistics
+(BLS JOLTS) count every separation with no event detail. Announcement surveys
+(Challenger; the WSJ and TrueUp trackers) count corporate *intentions* the day
+they're announced. This tracker counts what has a **verifiable document or
+quoted primary source behind it** — a documented floor, where every number is
+clickable back to a filing or named outlet. Announcement-stage cuts are also
+tracked, but as their own labeled tier ("Announced"), never mixed into the
+verified totals. Full methodology, a worked example computed live from the
+API, and links to every comparable tracker are on the live page.
+
+**Editorial integrity is enforced in code:** corrections are applied through
+audited workflows, corrected rows carry a public `edited: true` flag, removed
+entries are hash-suppressed so daily re-imports cannot resurrect them, and
+every correction to published figures is disclosed in the on-page corrections
+log.
+
+## Architecture
 
 ```
-Railway Cron (2x daily)
-  → Pull: SEC EDGAR 8-K full-text search + NewsAPI.org
-  → DeepSeek-V3 via OpenRouter (deepseek/deepseek-chat): extract + classify + tag
-  → Deduplication check (Railway pre-check + authoritative server-side re-check)
-  → POST to WordPress REST API → Custom Post Type "layoffs"
-  → WordPress displays: filterable table + charts + dedicated pages
+┌─ Railway cron (2×/day) ── SEC EDGAR 8-K search + NewsAPI + GDELT (worldwide,
+│                           multilingual) → DeepSeek-V3 extraction via
+│                           OpenRouter → dedup checks → POST /add
+├─ GitHub Actions (daily) ─ WARN notices, all obtainable states: warn-scraper
+│                           (Big Local News) + custom collectors for TX/FL/GA/
+│                           OH/MI/CO/ID/LA → no LLM → POST /bulk (purge+reload)
+└─ WordPress plugin ─────── custom indexed table wp_alt_layoffs (100K+ rows);
+                            server-side /query /aggregate /facets; region tabs,
+                            charts, exports; 5-min micro-cache + Cloudflare edge
 ```
+
+WordPress is the database — there is no external DB. Rich entries also exist
+as `layoffs` CPT posts for permalink pages; bulk WARN rows live only in the
+table.
 
 ## Repository layout
 
 ```
-railway/                      Python pipeline deployed to Railway
-  cron.py                     entry point (also runnable locally)
-  sources/edgar.py            SEC EDGAR 8-K puller (gold verification)
-  sources/newsapi.py          NewsAPI puller (bronze verification)
-  extractor.py                DeepSeek-V3 (OpenRouter) extraction + classification
-  deduplicator.py             pre-check against WP before posting
-  wp_poster.py                POSTs entries to the WP REST API
-  railway.toml                cron schedule (single service, "0 14,22 * * *" UTC)
-wordpress-plugin/ai-layoff-tracker/
-  ai-layoff-tracker.php       main plugin file (activation, assets, admin page)
-  includes/cpt.php            "layoffs" CPT + meta fields
-  includes/api.php            layoffs/v1 REST endpoints
-  includes/shortcodes.php     all shortcodes
-  includes/export.php         CSV + JSON downloads
-  includes/rss.php            /feed/layoffs RSS feed
-  assets/layoffs.css|js       DataTables + Chart.js front-end
-  templates/                  markup rendered by the shortcodes
+wordpress-plugin/ai-layoff-tracker/   the site (deployed by FTPS on push to main)
+  includes/db.php                     fast table + /query /aggregate /facets + keyed endpoints
+  includes/api.php                    /add + normalizers (country/industry/state vocabularies)
+  assets/layoffs.js                   entire front-end (no build step)
+  templates/page-tracker.php          the tracker page incl. methodology + corrections log
+railway/                              Python ingest
+  cron.py                             news pipeline entry point (Railway, 2×/day)
+  warn_import.py                      WARN pipeline entry point (GitHub Actions, daily)
+  sources/                            edgar, newsapi, gdelt, warn, warn_custom (8 custom state collectors)
+  extractor.py                        DeepSeek-V3 extraction + classification + guardrails
+.github/workflows/                    deploy + all data jobs + editorial tools (trash/edit, audited)
+docs/ARCHITECTURE.md                  system map: components, data flow, schema, filter semantics
+docs/TECHLOG.md                       every change + every incident and its root cause
+docs/RUNBOOK.md                       ops playbooks: deploy, caches, imports, "X broke → do Y"
 ```
 
-## Deployment
+## Public API
 
-### 1. WordPress plugin
-
-```bash
-cd wordpress-plugin
-zip -r ai-layoff-tracker.zip ai-layoff-tracker/
-```
-
-Upload via Bluehost cPanel File Manager to `/public_html/wp-content/plugins/`
-(or wp-admin → Plugins → Add New → Upload), then **activate**.
-
-Activation automatically:
-
-- registers the `layoffs` custom post type and flushes rewrite rules
-- registers the `/feed/layoffs` RSS feed
-- **generates the pipeline API key** — no theme-editor code needed
-
-### 2. Get the API key
-
-wp-admin → **Tools → AI Layoff Tracker** shows the key (and a regenerate
-button). Alternatively define `AI_LAYOFF_API_KEY` in `wp-config.php`; the
-constant overrides the stored option.
-
-### 3. Railway environment variables
-
-Railway dashboard → Project → Variables (see `.env.example`):
-
-```
-OPENROUTER_API_KEY=   OpenRouter API key (extraction runs on DeepSeek-V3)
-NEWSAPI_KEY=          NewsAPI.org key
-WP_SITE_URL=https://asktherecruiter.com
-WP_API_KEY=           ← paste from step 2
-EDGAR_USER_AGENT=AiLayoffTracker contact@asktherecruiter.com
-```
-
-`EDGAR_USER_AGENT` is not optional — SEC rejects requests without a
-descriptive User-Agent containing contact info.
-
-### 4. Deploy Railway
-
-```bash
-cd railway/
-railway up
-```
-
-`railway.toml` schedules one cron service at `0 14,22 * * *` UTC
-(9 AM + 5 PM Eastern **during EST**; during daylight saving these fire at
-10 AM / 6 PM local — switch to `0 13,21 * * *` if you prefer the reverse
-trade-off).
-
-### 5. Create WordPress pages
-
-wp-admin → Pages → Add New:
-
-| Page Title | Slug | Shortcodes |
-|---|---|---|
-| AI Layoff Tracker | `/ai-layoffs` | `[alt_stats_bar]` `[alt_tracker]` |
-| Dashboard | `/ai-layoffs/dashboard` | `[alt_dashboard]` |
-| AI Displacement | `/ai-layoffs/ai-tracker` | `[alt_stats_bar]` `[alt_ai_tracker]` |
-| Data Export | `/ai-layoffs/data` | `[alt_export_buttons]` |
-
-Per-company pages: `[alt_company_history company="amazon"]`.
-
-### 6. Test the pipeline
-
-```bash
-cd railway/
-OPENROUTER_API_KEY=... NEWSAPI_KEY=... WP_SITE_URL=... WP_API_KEY=... \
-EDGAR_USER_AGENT="AiLayoffTracker you@example.com" python cron.py
-```
-
-Then verify:
-
-- `GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/stats` returns counts
-- `GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query` returns the full dataset (paginated, filterable)
-- the `/ai-layoffs` page renders the table
-
-## REST API
-
-| Method | Endpoint | Auth | Purpose |
-|---|---|---|---|
-| POST | `/wp-json/layoffs/v1/add` | `X-Layoff-API-Key` header | Railway posts new entries (201 created, 409 duplicate) |
-| GET | `/wp-json/layoffs/v1/check-duplicate?hash=` | `X-Layoff-API-Key` header | Dedup pre-check |
-| GET | `/wp-json/layoffs/v1/all` | Public | Full dataset for journalists + the front-end |
-| GET | `/wp-json/layoffs/v1/stats` | Public | Aggregates (cached 5 min) |
-| GET | `/wp-json/layoffs/v1/company/{name}` | Public | Company history |
-
-Auth fails **closed**: if no key is configured server-side, authenticated
-routes return 503 rather than accepting empty keys.
-
-## Verification levels & reason tags
-
-- `gold` = SEC 8-K filing · `silver` = official press release · `bronze` = credible news outlet
-- Reason tags (model-assigned from source text only): `ai_automation`,
-  `possible_ai`, `revenue_decline`, `restructuring`, `merger_acquisition`,
-  `offshoring`, `product_discontinuation`, `cost_reduction`, `macroeconomic`
-- `ai_explicit` is true **only** when the source explicitly names
-  AI/automation/robotics as a reason; `ai_language` stores the exact phrase.
-
-## Deduplication
-
-`dedup_hash = md5(lowercase(company_name) + layoff_date + job_count)`,
-computed in `extractor.py`. Railway pre-checks `/check-duplicate` (fails open
-by design — better a duplicate than a missed entry) and `/add` re-checks
-server-side (fails closed with 409), so the pair is race-safe.
-
-Known limitation: the same event reported with a *different* job count (e.g.
-"about 9,000" vs "9,150", or a company revising a number) produces a different
-hash and a second entry. Periodic manual review of near-duplicates in wp-admin
-is recommended.
-
-## Troubleshooting
-
-| Symptom | Likely cause |
+| Endpoint | Purpose |
 |---|---|
-| Every `/add` returns 403 | `WP_API_KEY` doesn't match wp-admin key — or the host strips the `X-Layoff-API-Key` header (some Apache/mod_security setups do). Test with `curl -H "X-Layoff-API-Key: ..."` directly against the site. |
-| Every `/add` returns 503 | No key configured — reactivate the plugin or set `AI_LAYOFF_API_KEY` in wp-config.php. |
-| EDGAR returns nothing | Missing/blank `EDGAR_USER_AGENT`, or genuinely no matching 8-Ks in the window. |
-| NewsAPI returns nothing | Free tier delays articles ~24h; the puller looks back 2 days to compensate. 429 = daily quota exhausted. |
-| Charts/table blank, "CDN blocked" | DataTables/Chart.js load from cdnjs; a CSP or ad-blocker can block them. Self-host the two libraries in `assets/` if needed. |
-| `/feed/layoffs` is 404 | Rewrite rules stale — deactivate/reactivate the plugin or re-save Settings → Permalinks. |
-| Cron ran but nothing posted | Check Railway logs: every skip/failure is logged with a reason (non-event, no job count, duplicate, HTTP status from WP). |
+| `GET /query` | Paginated rows. Filters: `years, quarters, months, industry, country, state, sources, reasons, stage, ai, company, keyword, q, from, to, min_jobs`; `sort`, `dir`, `page`, `per_page` |
+| `GET /aggregate` | Filtered totals + monthly series + top industries/countries/states + reason breakdown + largest events |
+| `GET /facets` | Distinct filter values + date range (for building UIs) |
 
-## Costs
+Same filters power the CSV/JSON export buttons on the page. Data is free to
+use with attribution to **asktherecruiter.com** (CC BY 4.0).
 
-- OpenRouter: ~100–200 extraction calls/day on deepseek/deepseek-chat — very small
-- NewsAPI: free tier OK to start; $449/mo for real-time global coverage
-- Railway: hobby plan is sufficient (two short cron runs/day)
+Write endpoints (`/add /bulk /edit /trash /cleanup /dedupe /bulk-purge
+/migrate`) require the `X-Layoff-API-Key` header and fail closed; they are
+called only from the audited GitHub workflows.
+
+## Data guardrails (learned the hard way — details in docs/TECHLOG.md)
+
+- Countries/industries normalize through fixed vocabularies; freeform LLM
+  values are never trusted.
+- Counts parse the FIRST number only (a fused "9,891 … (2 from RI)" once
+  became 98,912); dates must be real calendar dates in 2015→today+18mo.
+- WARN entries are exempt from fuzzy dedup (companies legally file several
+  notices close together); news entries get exact-hash + same-company ±30d
+  fuzzy guards + cross-outlet cluster collapse.
+- State WARN feeds are not trusted blindly: Florida's official export
+  contained staff *test rows* (a fake 78,788-worker notice); the collector
+  skips them and the removal is suppression-listed.
+- Data jobs FAIL LOUDLY: non-zero exit on any failed batch, `--fail-with-body`
+  on maintenance curls.
+- A daily data-quality workflow flags anomalies (≥5K-worker notices,
+  multi-state same-company filings) and posts a daily numbers snapshot.
+
+## Running your own
+
+See `docs/RUNBOOK.md` for operations and `.env.example` for configuration.
+Short version: install the WordPress plugin (activation creates the table and
+API key), set the Railway/Actions env vars (`OPENROUTER_API_KEY`,
+`NEWSAPI_KEY`, `WP_SITE_URL`, `WP_API_KEY`, `EDGAR_USER_AGENT` — the SEC
+requires a descriptive User-Agent with contact info), and the crons do the
+rest. Steady-state cost is a few dollars a month: the data sources (EDGAR,
+WARN, GDELT) are free; only news extraction touches a paid LLM
+(deepseek/deepseek-chat, ~100–200 calls/day).
+
+## License
+
+Code: [MIT](LICENSE). Data published by the live tracker: CC BY 4.0 with
+attribution to asktherecruiter.com.
