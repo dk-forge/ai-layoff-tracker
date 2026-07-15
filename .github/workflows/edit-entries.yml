@@ -1,0 +1,45 @@
+name: Edit entries (editorial correction)
+
+# Corrects specific fields on specific entries (country, count, date, state...).
+# The API pins the row (edited=1) and suppresses the original source hash, so
+# the daily imports can neither overwrite nor resurrect the bad value.
+# Log every use in docs/TECHLOG.md and, if figures were public, in the site's
+# corrections log. Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      edits:
+        description: 'JSON array: [{"id": 123, "fields": {"country": "United States"}}, ...]'
+        required: true
+      reason:
+        description: 'Why (stored in the suppression list + this run log)'
+        required: true
+
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Edit
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          EDITS: ${{ github.event.inputs.edits }}
+          REASON: ${{ github.event.inputs.reason }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          echo "Reason: $REASON"
+          BODY=$(python3 - <<'PY'
+          import os, json
+          edits = json.loads(os.environ['EDITS'])   # validates the input JSON
+          assert isinstance(edits, list) and all('id' in e and 'fields' in e for e in edits), \
+              'edits must be [{"id":..., "fields": {...}}, ...]'
+          print(json.dumps({"edits": edits, "reason": os.environ.get('REASON', '')}))
+          PY
+          )
+          curl -sS --fail-with-body -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/edit" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -d "$BODY" \
+            -w "\nHTTP %{http_code}\n"

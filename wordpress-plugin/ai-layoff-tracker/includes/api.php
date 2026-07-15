@@ -397,6 +397,12 @@ function alt_api_add($request) {
         return new WP_Error('alt_duplicate', 'An entry with this dedup_hash already exists.', array('status' => 409));
     }
 
+    // Editorially removed/corrected entries stay removed: reject before a CPT
+    // post is created (the table-level guard alone would leave an orphan post).
+    if (function_exists('alt_is_suppressed') && alt_is_suppressed($dedup_hash)) {
+        return new WP_Error('alt_suppressed', 'This entry was editorially removed or corrected; the import must not re-create it.', array('status' => 409));
+    }
+
     // Fuzzy same-event guard: a different outlet reporting the same company's
     // layoff with a slightly different count/date shouldn't create a 2nd entry.
     // WARN notices are exempt: one company can legitimately file several within

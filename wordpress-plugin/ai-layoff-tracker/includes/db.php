@@ -43,6 +43,7 @@ function alt_db_install() {
         source_url TEXT NULL,
         ai_explicit TINYINT(1) NOT NULL DEFAULT 0,
         announced TINYINT(1) NOT NULL DEFAULT 0,
+        edited TINYINT(1) NOT NULL DEFAULT 0,
         ai_language TEXT NULL,
         reason_tags VARCHAR(255) NOT NULL DEFAULT '',
         roles TEXT NULL,
@@ -72,6 +73,42 @@ function alt_db_unpack_tags($packed) {
 }
 
 /**
+ * Editorial suppression list: dedup hashes of entries an editor removed or
+ * corrected. Imports re-run daily against the same source data, so a plain
+ * delete would be undone on the next run — a suppressed hash is skipped by
+ * every ingest path instead. Stored as hash => reason in one option (the
+ * list is editorial-scale: dozens, not thousands).
+ */
+function alt_suppressed_hashes() {
+    $v = get_option('alt_suppressed_hashes');
+    return is_array($v) ? $v : array();
+}
+function alt_suppress_hash($hash, $reason) {
+    $hash = substr((string) $hash, 0, 32);
+    if ($hash === '') return;
+    $list = alt_suppressed_hashes();
+    $list[$hash] = substr((string) $reason, 0, 500);
+    update_option('alt_suppressed_hashes', $list, false);
+}
+function alt_is_suppressed($hash) {
+    $hash = substr((string) $hash, 0, 32);
+    return $hash !== '' && array_key_exists($hash, alt_suppressed_hashes());
+}
+
+/**
+ * A layoff date is stored only if it is a real calendar date. A bare
+ * format regex let "2026-03-32" through, which MySQL coerced to the zero
+ * date '0000-00-00' — that then sorted FIRST on ascending sorts, became
+ * totals.min_date, and emitted a "0-00" series bucket (super test 2026-07-15).
+ */
+function alt_db_valid_date($d) {
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $d, $m)) return null;
+    if (!checkdate((int) $m[2], (int) $m[3], (int) $m[1])) return null;
+    if ((int) $m[1] < 2000) return null; // zero dates & obvious garbage
+    return $d;
+}
+
+/**
  * Insert or update one row, keyed by dedup_hash (falling back to post_id).
  * $row is an associative array of column => value.
  */
@@ -86,7 +123,7 @@ function alt_db_upsert(array $row) {
         'company_key'        => substr(function_exists('alt_company_key') ? alt_company_key((string) ($row['company'] ?? '')) : '', 0, 255),
         'ticker'             => substr((string) ($row['ticker'] ?? ''), 0, 32),
         'job_count'          => max(0, (int) ($row['job_count'] ?? 0)),
-        'layoff_date'        => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($row['layoff_date'] ?? '')) ? $row['layoff_date'] : null,
+        'layoff_date'        => alt_db_valid_date((string) ($row['layoff_date'] ?? '')),
         'industry'           => substr((string) ($row['industry'] ?? ''), 0, 120),
         'country'            => substr((string) ($row['country'] ?? ''), 0, 64),
         'state'              => substr((string) ($row['state'] ?? ''), 0, 2),
@@ -102,20 +139,30 @@ function alt_db_upsert(array $row) {
         'excerpt'            => (string) ($row['excerpt'] ?? ''),
     );
 
-    // Find an existing row by dedup_hash first, then post_id.
-    $existing_id = 0;
-    if ($data['dedup_hash'] !== '') {
-        $existing_id = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM $table WHERE dedup_hash = %s", $data['dedup_hash']));
-    }
-    if (!$existing_id && $data['post_id']) {
-        $existing_id = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM $table WHERE post_id = %d", $data['post_id']));
+    // Editorially suppressed entries never come back through an import.
+    if (alt_is_suppressed($data['dedup_hash'])) {
+        return 0;
     }
 
-    if ($existing_id) {
-        $wpdb->update($table, $data, array('id' => $existing_id));
-        return $existing_id;
+    // Find an existing row by dedup_hash first, then post_id.
+    $existing = null;
+    if ($data['dedup_hash'] !== '') {
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, edited FROM $table WHERE dedup_hash = %s", $data['dedup_hash']));
+    }
+    if (!$existing && $data['post_id']) {
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, edited FROM $table WHERE post_id = %d", $data['post_id']));
+    }
+
+    if ($existing) {
+        // Editor-corrected rows are pinned: a re-import of the same source
+        // row must not overwrite the correction (imports run daily).
+        if (!empty($existing->edited)) {
+            return (int) $existing->id;
+        }
+        $wpdb->update($table, $data, array('id' => (int) $existing->id));
+        return (int) $existing->id;
     }
     $wpdb->insert($table, $data);
     return (int) $wpdb->insert_id;
@@ -240,10 +287,16 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
             $where[] = '(' . implode(' OR ', $ors) . ')';
         }
     }
+    // `sources` accepts BOTH vocabularies a consumer can see: verification
+    // tiers (gold/silver/bronze/warn — what the UI dropdown sends) AND the
+    // source_type values every /query row exposes (news/8K/warn/press_release).
+    // Matching only the tier column made sources=news silently return 0 rows
+    // (super test 2026-07-15).
     $sources = array_filter(array_map('sanitize_text_field', explode(',', (string) $r->get_param('sources'))));
     if ($sources) {
         $ph = implode(',', array_fill(0, count($sources), '%s'));
-        $where[] = "verification_level IN ($ph)";
+        $where[] = "(verification_level IN ($ph) OR source_type IN ($ph))";
+        foreach ($sources as $s) { $params[] = $s; }
         foreach ($sources as $s) { $params[] = $s; }
     }
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
@@ -350,23 +403,39 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_bulk_purge',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: editorial field corrections (pins the row + suppresses
+    // the original source hash so imports can't revert it). Requires `reason`.
+    register_rest_route('layoffs/v1', '/edit', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_edit',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
 }
 
 function alt_api_trash(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
-    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'not_found' => array());
+    $reason = (string) $r->get_param('reason');
+    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'not_found' => array(), 'suppressed' => 0);
 
     // `ids` are TABLE row ids — the `id` field the public /query API returns.
     // Rows mirrored from a CPT post get the post trashed (hooks remove the
-    // row); table-only rows (bulk WARN) are deleted directly.
+    // row); table-only rows (bulk WARN) are deleted directly. Either way the
+    // dedup hash goes on the suppression list so the daily imports (which
+    // re-scrape the same source data) cannot resurrect the entry.
     foreach ((array) $r->get_param('ids') as $tid) {
         $tid = (int) $tid;
         $row = $tid ? $wpdb->get_row($wpdb->prepare(
-            "SELECT id, post_id FROM $table WHERE id = %d", $tid)) : null;
+            "SELECT id, post_id, dedup_hash FROM $table WHERE id = %d", $tid)) : null;
         if (!$row) {
             $out['not_found'][] = $tid;
-        } elseif ($row->post_id) {
+            continue;
+        }
+        if ($row->dedup_hash) {
+            alt_suppress_hash($row->dedup_hash, 'trashed: ' . $reason);
+            $out['suppressed']++;
+        }
+        if ($row->post_id) {
             wp_trash_post((int) $row->post_id);
             $wpdb->delete($table, array('id' => (int) $row->id)); // belt & braces
             $out['trashed_posts'][] = (int) $row->post_id;
@@ -398,10 +467,84 @@ function alt_api_trash(WP_REST_Request $r) {
 
 function alt_api_bulk_purge(WP_REST_Request $r) {
     global $wpdb;
+    // `edited = 0`: editor-corrected rows are pinned — the purge+reimport
+    // cycle must not throw a correction away (the original bad source row is
+    // separately blocked by the suppression list).
     $deleted = (int) $wpdb->query(
-        "DELETE FROM " . alt_db_table() . " WHERE source_type = 'warn' AND post_id IS NULL");
+        "DELETE FROM " . alt_db_table() . " WHERE source_type = 'warn' AND post_id IS NULL AND edited = 0");
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response(array('deleted' => $deleted));
+}
+
+/**
+ * Key-protected editorial correction of specific fields on specific rows.
+ * Every edit: (1) suppresses the row's ORIGINAL dedup hash — so the daily
+ * import of the same (wrong) source data can't re-create it, (2) re-hashes
+ * the row to a derived value, (3) pins the row with edited=1 — so purge and
+ * upsert leave it alone. `reason` is required (goes in the suppression list
+ * and the workflow audit log).
+ */
+function alt_api_edit(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    $reason = trim((string) $r->get_param('reason'));
+    if ($reason === '') {
+        return new WP_Error('alt_bad_request', 'reason is required.', array('status' => 400));
+    }
+    $edits = $r->get_param('edits');
+    if (!is_array($edits)) {
+        return new WP_Error('alt_bad_request', 'edits must be an array of {id, fields}.', array('status' => 400));
+    }
+
+    $allowed = array('company', 'job_count', 'layoff_date', 'industry', 'country', 'state', 'ai_explicit', 'announced', 'source_url', 'excerpt');
+    $out = array('edited' => array(), 'not_found' => array(), 'rejected' => array());
+
+    foreach ($edits as $e) {
+        $id = (int) ($e['id'] ?? 0);
+        $fields = is_array($e['fields'] ?? null) ? $e['fields'] : array();
+        $row = $id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $id), ARRAY_A) : null;
+        if (!$row) { $out['not_found'][] = $id; continue; }
+
+        $data = array();
+        foreach ($fields as $k => $v) {
+            if (!in_array($k, $allowed, true)) { continue; }
+            switch ($k) {
+                case 'job_count':   $data[$k] = max(0, (int) $v); break;
+                case 'layoff_date': $data[$k] = alt_db_valid_date((string) $v); break;
+                case 'country':     $data[$k] = function_exists('alt_normalize_country') ? alt_normalize_country((string) $v) : (string) $v; break;
+                case 'industry':    $data[$k] = function_exists('alt_normalize_industry') ? alt_normalize_industry((string) $v) : (string) $v; break;
+                case 'state':       $data[$k] = substr(strtoupper((string) $v), 0, 2); break;
+                case 'ai_explicit':
+                case 'announced':   $data[$k] = !empty($v) ? 1 : 0; break;
+                default:            $data[$k] = (string) $v;
+            }
+        }
+        if (!$data) { $out['rejected'][] = $id; continue; }
+
+        if (!empty($row['dedup_hash']) && !$row['edited']) {
+            alt_suppress_hash($row['dedup_hash'], 'edited: ' . $reason);
+            $data['dedup_hash'] = md5('edited:' . $row['dedup_hash']);
+        }
+        $data['edited'] = 1;
+        if (isset($data['company'])) {
+            $data['company_key'] = substr(function_exists('alt_company_key') ? alt_company_key($data['company']) : '', 0, 255);
+        }
+        $wpdb->update($table, $data, array('id' => $id));
+
+        // Keep the CPT mirror consistent for rich entries.
+        if (!empty($row['post_id'])) {
+            $meta_map = array('company' => 'company_name', 'job_count' => 'job_count', 'layoff_date' => 'layoff_date',
+                'industry' => 'industry', 'country' => 'country', 'state' => 'state',
+                'ai_explicit' => 'ai_explicit', 'source_url' => 'source_url');
+            foreach ($meta_map as $col => $meta) {
+                if (array_key_exists($col, $data)) { update_post_meta((int) $row['post_id'], $meta, $data[$col]); }
+            }
+        }
+        $out['edited'][] = $id;
+    }
+
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
 }
 
 function alt_api_bulk(WP_REST_Request $r) {
@@ -446,11 +589,15 @@ function alt_api_facets(WP_REST_Request $r) {
     return alt_api_cached('facets', $r, function () {
         global $wpdb;
         $t = alt_db_table();
-        $range = $wpdb->get_row("SELECT MIN(layoff_date) mn, MAX(layoff_date) mx FROM $t WHERE layoff_date IS NOT NULL");
+        $range = $wpdb->get_row("SELECT MIN(layoff_date) mn, MAX(layoff_date) mx FROM $t WHERE layoff_date > '2000-01-01'");
         return array(
             'industries' => $wpdb->get_col("SELECT DISTINCT industry FROM $t WHERE industry <> '' ORDER BY industry") ?: array(),
             'countries'  => $wpdb->get_col("SELECT DISTINCT country FROM $t WHERE country <> '' ORDER BY country") ?: array(),
             'states'     => $wpdb->get_col("SELECT DISTINCT state FROM $t WHERE state <> '' ORDER BY state") ?: array(),
+            'sources'    => array_values(array_unique(array_merge(
+                $wpdb->get_col("SELECT DISTINCT verification_level FROM $t WHERE verification_level <> ''") ?: array(),
+                $wpdb->get_col("SELECT DISTINCT source_type FROM $t WHERE source_type <> ''") ?: array()
+            ))),
             'min_date'   => $range ? $range->mn : null,
             'max_date'   => $range ? $range->mx : null,
         );
@@ -635,7 +782,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COUNT(DISTINCT NULLIF(industry,'')) industries,
                 COUNT(DISTINCT NULLIF(country,'')) countries,
                 COUNT(DISTINCT NULLIF(state,'')) states,
-                MIN(layoff_date) min_date, MAX(layoff_date) max_date
+                MIN(CASE WHEN layoff_date > '2000-01-01' THEN layoff_date END) min_date,
+                MAX(layoff_date) max_date
          FROM $table WHERE $where", $params));
 
     // Top-N helpers (each slicer ignores its own dimension). Each entry is
@@ -671,7 +819,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         "SELECT CONCAT(YEAR(layoff_date),'-',LPAD(MONTH(layoff_date),2,'0')) m,
                 SUM(job_count) jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
-         FROM $table WHERE $where AND layoff_date IS NOT NULL
+         FROM $table WHERE $where AND layoff_date > '2000-01-01'
          GROUP BY m ORDER BY m ASC", $params));
     $series = array();
     foreach ($months ?: array() as $row) {

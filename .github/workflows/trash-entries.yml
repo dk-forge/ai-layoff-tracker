@@ -42,9 +42,10 @@ jobs:
           IDS_J=$(python3 -c "import os,json;print(json.dumps([int(x) for x in os.environ.get('IDS','').split(',') if x.strip()]))")
           PIDS=$(python3 -c "import os,json;print(json.dumps([int(x) for x in os.environ.get('POST_IDS','').split(',') if x.strip()]))")
           RIDS=$(python3 -c "import os,json;print(json.dumps([int(x) for x in os.environ.get('ROW_IDS','').split(',') if x.strip()]))")
+          REASON_J=$(python3 -c "import os,json;print(json.dumps(os.environ.get('REASON','')))")
           curl -sS --fail-with-body -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/trash" \
             -H "X-Layoff-API-Key: $WP_API_KEY" \
             -H "Content-Type: application/json" \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
-            -d "{\"ids\": $IDS_J, \"post_ids\": $PIDS, \"row_ids\": $RIDS}" \
+            -d "{\"ids\": $IDS_J, \"post_ids\": $PIDS, \"row_ids\": $RIDS, \"reason\": $REASON_J}" \
             -w "\nHTTP %{http_code}\n"

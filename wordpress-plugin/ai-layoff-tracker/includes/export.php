@@ -40,7 +40,7 @@ function alt_export_filters() {
 
 function alt_export_is_filtered() {
     $keys = array('years', 'quarters', 'months', 'industry', 'country', 'state',
-        'sources', 'reasons', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs', 'ai');
+        'sources', 'reasons', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs', 'ai', 'stage');
     foreach ($keys as $k) {
         if (!empty($_GET[$k])) return true;
     }

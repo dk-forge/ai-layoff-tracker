@@ -1117,6 +1117,21 @@
         }).catch(function () { el.textContent = ''; });
     }
 
+    // The methodology's worked example quotes our own H1 figure — keep it
+    // live from the API so it can never drift stale again (it had drifted
+    // 83% behind after the nationwide WARN backfill; super test 2026-07-15).
+    function updateWorkedExample() {
+        var el = document.getElementById('alt-worked-ours');
+        if (!el) return;
+        apiGet('aggregate', { years: '2026', country: 'United States', stage: 'verified' }).then(function (r) {
+            var h1 = 0;
+            (r.series || []).forEach(function (m) {
+                if (m.month >= '2026-01' && m.month <= '2026-06') h1 += m.jobs;
+            });
+            if (h1 > 0) el.textContent = 'about ' + fmt(Math.round(h1 / 1000) * 1000);
+        }).catch(function () { /* keep the server-rendered fallback text */ });
+    }
+
     // Light the tab matching the current country selection WITHOUT overwriting
     // filters (used at boot so saved selections survive page loads).
     function syncTabVisual() {
@@ -1366,6 +1381,7 @@
             initTracker();            // builds the server-side table (reads restored filters)
             initChrome();             // search / sort / quick views / expanders
             initTabs();               // region tabs + narrative (respects saved filters)
+            updateWorkedExample();    // live H1 figure in the methodology example
             updateActiveFilterBar();
             updateDropdownSummaries();
             updateRangeLabel();
