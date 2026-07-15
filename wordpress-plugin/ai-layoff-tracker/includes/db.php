@@ -144,6 +144,12 @@ function alt_db_upsert(array $row) {
         return 0;
     }
 
+    // Curated company-level industry overrides beat source sector labels.
+    if (function_exists('alt_industry_override')) {
+        $ovr = alt_industry_override($data['company']);
+        if ($ovr !== '') $data['industry'] = $ovr;
+    }
+
     // Find an existing row by dedup_hash first, then post_id.
     $existing = null;
     if ($data['dedup_hash'] !== '') {
@@ -640,6 +646,21 @@ function alt_api_cleanup(WP_REST_Request $r) {
             if ($new !== $old) {
                 $changed[$col] += (int) $wpdb->query($wpdb->prepare(
                     "UPDATE $table SET $col = %s WHERE $col = %s", $new, $old));
+            }
+        }
+    }
+
+    // Curated company-level industry overrides (Booking.com et al) — applied
+    // to already-imported rows; new rows get them at upsert time.
+    if (function_exists('alt_industry_override')) {
+        $ovr_companies = $wpdb->get_col("SELECT DISTINCT company FROM $table");
+        $changed['industry_overrides'] = 0;
+        foreach ($ovr_companies ?: array() as $co) {
+            $ovr = alt_industry_override($co);
+            if ($ovr !== '') {
+                $changed['industry_overrides'] += (int) $wpdb->query($wpdb->prepare(
+                    "UPDATE $table SET industry = %s WHERE company = %s AND industry <> %s AND edited = 0",
+                    $ovr, $co, $ovr));
             }
         }
     }

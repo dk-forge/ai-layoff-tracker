@@ -184,6 +184,30 @@ function alt_normalize_country($name) {
 }
 
 /**
+ * Curated company-level industry overrides — they beat whatever sector label
+ * a source supplies. Sources classify by economic activity codes and disagree
+ * with common usage (Eurofound filed Booking.com under "Hotel/Restaurant" in
+ * 2020/2025 but "Information/Computing" in 2018); readers expect the press
+ * classification. Keys are matched as substrings of the lowercased company
+ * name. Keep this list SMALL and obvious — anything debatable goes through
+ * the corrections process instead.
+ */
+function alt_industry_override($company) {
+    $overrides = apply_filters('alt_industry_overrides', array(
+        'booking.com'  => 'Technology',
+        'bookings.com' => 'Technology',
+        'expedia'      => 'Technology',
+        'airbnb'       => 'Technology',
+        'tripadvisor'  => 'Technology',
+    ));
+    $c = strtolower((string) $company);
+    foreach ($overrides as $needle => $industry) {
+        if ($needle !== '' && strpos($c, $needle) !== false) return $industry;
+    }
+    return '';
+}
+
+/**
  * Map freeform extracted industry strings onto a fixed taxonomy so the filter
  * dropdown doesn't fill with near-duplicates ("IT" vs "Information Technology",
  * "Airline" vs "Airlines", lowercase variants...). Keyword rules, checked in

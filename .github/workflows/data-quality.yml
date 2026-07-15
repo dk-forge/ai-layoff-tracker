@@ -70,8 +70,64 @@ jobs:
           for (name, month), states in sorted(multi.items()):
               print(f"  {month}  {name[:50]:51} states: {', '.join(sorted(states))}")
 
+          # ERM records the same restructuring wave globally AND per country
+          # ("Multiple countries" 1,000 + Netherlands 200 for one Booking.com
+          # event) — flag same-company pairs so totals aren't double-cited.
+          erm = get("query?sources=erm&sort=layoff_date&dir=desc&per_page=100")["data"]
+          by_co = collections.defaultdict(list)
+          for r in erm:
+              by_co[r["company_name"].lower().strip()].append(r)
+          pairs = []
+          for name, rows in by_co.items():
+              buckets = {r["country"] for r in rows}
+              if len(rows) > 1 and "Multiple countries" in buckets and len(buckets) > 1:
+                  pairs.append((name, [(r["country"], r["job_count"], r["layoff_date"]) for r in rows]))
+          print(f"\n=== ERM global + per-country records for one company ({len(pairs)}) — counts may overlap ===")
+          for name, rows in pairs:
+              print(f"  {name[:44]:45} " + "; ".join(f"{c} {j:,} ({d})" for c, j, d in rows))
+
           if flags or multi:
               print("\nReview these before citing state-level totals.")
           else:
               print("\nNo anomalies flagged this week.")
+          PY
+
+      - name: Classification spot-check (LLM second opinion)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os, urllib.request, random
+          API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
+          def get(path):
+              req = urllib.request.Request(API + path, headers={
+                  "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+              return json.load(urllib.request.urlopen(req, timeout=60))
+          # sample: the 15 newest entries + 15 biggest with an industry set
+          rows = get("query?sort=layoff_date&dir=desc&per_page=15")["data"] \
+               + get("query?sort=job_count&dir=desc&per_page=15")["data"]
+          sample = [{ "id": r["id"], "company": r["company_name"], "industry": r["industry"],
+                      "country": r["country"], "jobs": r["job_count"], "excerpt": (r["excerpt"] or "")[:200] }
+                    for r in rows if r.get("industry")]
+          if not sample:
+              print("## Classification spot-check\nNo classified entries in sample."); raise SystemExit
+          prompt = ("You are auditing a layoff tracker's classifications. For each entry, judge whether "
+                    "the industry and country labels match the company and excerpt. Reply STRICT JSON: "
+                    '{"flags":[{"id":<id>,"field":"industry|country","current":"...","suggested":"...","why":"..."}]} '
+                    "— empty flags list if everything is reasonable. Only flag CLEAR mismatches, not debatable ones.\n\n"
+                    + json.dumps(sample, ensure_ascii=False))
+          req = urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
+              data=json.dumps({"model": "deepseek/deepseek-chat",
+                               "messages": [{"role": "user", "content": prompt}],
+                               "response_format": {"type": "json_object"}}).encode(),
+              headers={"Authorization": "Bearer " + os.environ["OPENROUTER_API_KEY"],
+                       "Content-Type": "application/json",
+                       "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+          out = json.load(urllib.request.urlopen(req, timeout=120))
+          flags = json.loads(out["choices"][0]["message"]["content"]).get("flags", [])
+          print(f"## Classification spot-check — {len(flags)} flag(s) from {len(sample)} sampled entries")
+          for f in flags:
+              print(f"- id {f.get('id')}: {f.get('field')} \"{f.get('current')}\" -> \"{f.get('suggested')}\" — {f.get('why')}")
+          if flags:
+              print("\nApply fixes via the edit-entries workflow (each edit is pinned + disclosed).")
           PY
