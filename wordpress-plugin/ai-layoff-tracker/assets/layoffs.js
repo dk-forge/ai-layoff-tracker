@@ -374,21 +374,25 @@
         if (nextEl) { var np = nextPullET(); nextEl.textContent = np ? ('Next update ' + np) : ''; }
         if (!liveEl || !workEl) return;
         var phase = stats && stats.pipeline_phase;
+        var roo = document.getElementById('alt-roo');
+        var wrap = document.getElementById('alt-roo-wrap');
         if (phase === 'refreshing' || phase === 'cleaning') {
-            // Green "Live" greys out; the amber working pill blinks alongside it.
-            liveEl.classList.add('alt-status-dim');
+            // Roo wakes and works; the compact amber pill sits at the far left,
+            // the green "Live" pill steps aside until he's done.
             var txt = document.getElementById('alt-work-text');
-            var wt = document.getElementById('alt-work-time');
             if (txt) txt.textContent = (phase === 'cleaning')
                 ? 'Roo is checking & de-duplicating the data'
                 : 'Roo is pulling in new filings, notices & news';
-            var roo = document.getElementById('alt-roo');
-            if (roo) roo.className = 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working');
-            if (wt && stats.pipeline_since) wt.textContent = '· ' + fmtET(stats.pipeline_since);
             workEl.hidden = false;
+            liveEl.hidden = true;
+            if (roo) roo.className = 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working');
+            if (wrap) wrap.className = 'alt-roo-wrap is-working';
         } else {
-            liveEl.classList.remove('alt-status-dim');
+            // All caught up: Roo falls asleep (greyscale + zzz), "Live" shows.
             workEl.hidden = true;
+            liveEl.hidden = false;
+            if (roo) roo.className = 'alt-roo roo-sleeping';
+            if (wrap) wrap.className = 'alt-roo-wrap is-sleeping';
         }
     }
 
