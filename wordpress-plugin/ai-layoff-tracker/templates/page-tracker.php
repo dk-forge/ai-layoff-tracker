@@ -326,6 +326,13 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 <li><b>2026-07-15 — Country assigned to 88 news/SEC entries.</b> These rows had no country recorded, hiding them from the regional views and country charts (they were always in the worldwide totals). Each was resolved from its own source article — the largest: Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay → "Multiple countries") and BBC (2,000 → United Kingdom).</li>
                 <li><b>2026-07-15 — Ideal US Talent Systems RI corrected 9,891 → 2.</b> The Rhode Island notice states the company-wide figure with only 2 RI employees affected; the per-state filings (DC, GA, IL, VA) are already separate entries. Counting the company-wide total under RI double-counted the event.</li>
                 <li><b>2026-07-15 — Ten non-events removed.</b> SEC-filing extraction artifacts: severance dollar figures and workforce-reduction percentages misread as headcounts, WARN-Act boilerplate clauses from acquisition agreements, and three duplicate rows of one Meta story carrying wrong dates.</li>
+                <?php
+                // Every use of the edit/remove tooling discloses itself here
+                // automatically — the log renders from the actual audit trail.
+                $alt_corr = get_option('alt_corrections_log');
+                foreach (is_array($alt_corr) ? array_reverse($alt_corr) : array() as $c) : ?>
+                <li><b><?php echo esc_html($c['date']); ?> — <?php echo (int) $c['count']; ?> entr<?php echo ((int) $c['count'] === 1) ? 'y' : 'ies'; ?> <?php echo esc_html($c['action']); ?><?php echo $c['detail'] ? ' (' . esc_html($c['detail']) . ')' : ''; ?>.</b> <?php echo esc_html($c['reason']); ?></li>
+                <?php endforeach; ?>
             </ul>
             <p>Spotted something off? Every entry links to its primary source so you can check us — send corrections via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>. Corrections get priority.</p>
         </div>

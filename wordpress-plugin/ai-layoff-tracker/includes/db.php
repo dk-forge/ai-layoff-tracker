@@ -83,6 +83,25 @@ function alt_suppressed_hashes() {
     $v = get_option('alt_suppressed_hashes');
     return is_array($v) ? $v : array();
 }
+
+/**
+ * Public corrections trail: every /edit and /trash appends here, and the
+ * on-page "Data notes & corrections log" renders from it — disclosure is
+ * structural, not a manual habit.
+ */
+function alt_log_correction($action, $ids, $reason, $detail = '') {
+    $log = get_option('alt_corrections_log');
+    if (!is_array($log)) $log = array();
+    $log[] = array(
+        'date'   => gmdate('Y-m-d'),
+        'action' => $action,
+        'count'  => count((array) $ids),
+        'reason' => substr((string) $reason, 0, 400),
+        'detail' => substr((string) $detail, 0, 200),
+    );
+    if (count($log) > 200) $log = array_slice($log, -200);
+    update_option('alt_corrections_log', $log, false);
+}
 function alt_suppress_hash($hash, $reason) {
     $hash = substr((string) $hash, 0, 32);
     if ($hash === '') return;
@@ -470,6 +489,9 @@ function alt_api_trash(WP_REST_Request $r) {
         if ($deleted) { $out['deleted_rows'][] = $rid; } elseif ($rid) { $out['not_found'][] = $rid; }
     }
 
+    if (!empty($out['trashed_posts']) || !empty($out['deleted_rows'])) {
+        alt_log_correction('removed', array_merge($out['trashed_posts'], $out['deleted_rows']), $reason);
+    }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
 }
@@ -556,8 +578,13 @@ function alt_api_edit(WP_REST_Request $r) {
             }
         }
         $out['edited'][] = $id;
+        $edited_fields = array_unique(array_merge($edited_fields ?? array(), array_keys($data)));
     }
 
+    if (!empty($out['edited'])) {
+        alt_log_correction('corrected', $out['edited'], $reason,
+            'fields: ' . implode(', ', array_diff($edited_fields ?? array(), array('edited', 'dedup_hash', 'company_key'))));
+    }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
 }

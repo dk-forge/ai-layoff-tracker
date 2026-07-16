@@ -95,6 +95,7 @@ jobs:
       - name: Classification spot-check (LLM second opinion)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
         run: |
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json, os, urllib.request, random
@@ -131,6 +132,42 @@ jobs:
           print(f"## Classification spot-check — {len(flags)} flag(s) from {len(sample)} sampled entries")
           for f in flags:
               print(f"- id {f.get('id')}: {f.get('field')} \"{f.get('current')}\" -> \"{f.get('suggested')}\" — {f.get('why')}")
-          if flags:
-              print("\nApply fixes via the edit-entries workflow (each edit is pinned + disclosed).")
+
+          # AUTO-APPLY, narrowly: only industry/country label fixes (never job
+          # counts or removals — those stay human-approved), and only when an
+          # INDEPENDENT second LLM pass confirms the same suggestion. Applied
+          # through /edit, which pins the row and self-discloses in the
+          # public corrections log.
+          label_flags = [f for f in flags if f.get("field") in ("industry", "country") and f.get("id") and f.get("suggested")]
+          applied = []
+          if label_flags:
+              confirm_prompt = ("Independently verify these proposed label corrections for a layoff tracker. "
+                                "For each, answer whether the SUGGESTED value is clearly more accurate than CURRENT. "
+                                'Reply STRICT JSON {"confirm":[{"id":..,"agree":true|false}]}.\n\n'
+                                + json.dumps(label_flags, ensure_ascii=False))
+              req2 = urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
+                  data=json.dumps({"model": "deepseek/deepseek-chat",
+                                   "messages": [{"role": "user", "content": confirm_prompt}],
+                                   "response_format": {"type": "json_object"}}).encode(),
+                  headers={"Authorization": "Bearer " + os.environ["OPENROUTER_API_KEY"],
+                           "Content-Type": "application/json",
+                           "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+              c2 = json.load(urllib.request.urlopen(req2, timeout=120))["choices"][0]["message"]["content"]
+              c2 = c2[c2.find("{"): c2.rfind("}") + 1]
+              agreed = {c["id"] for c in json.loads(c2).get("confirm", []) if c.get("agree")}
+              edits = [{"id": f["id"], "fields": {f["field"]: f["suggested"]}} for f in label_flags if f["id"] in agreed]
+              if edits:
+                  body = json.dumps({"edits": edits,
+                      "reason": "Automated classification audit: label mismatch flagged and independently confirmed by two LLM passes (DeepSeek)"}).encode()
+                  req3 = urllib.request.Request(API.replace("/wp-json/layoffs/v1/", "") + "/wp-json/layoffs/v1/edit",
+                      data=body, method="POST",
+                      headers={"X-Layoff-API-Key": os.environ["WP_API_KEY"],
+                               "Content-Type": "application/json",
+                               "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+                  res = json.load(urllib.request.urlopen(req3, timeout=60))
+                  applied = res.get("edited", [])
+          if applied:
+              print(f"\n**Auto-applied {len(applied)} double-confirmed label fix(es)** (ids {applied}) — disclosed in the on-page corrections log.")
+          elif flags:
+              print("\nRemaining flags (counts/removals or unconfirmed) need the edit-entries workflow.")
           PY
