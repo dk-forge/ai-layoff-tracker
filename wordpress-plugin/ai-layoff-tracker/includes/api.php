@@ -378,6 +378,7 @@ function alt_flush_caches() {
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');
     delete_transient('alt_faq_numbers'); // server-rendered FAQ figures
+    delete_transient('alt_coverage_counts'); // intro line country/state counts
     // Invalidate every cached /query and /aggregate response at once: their
     // cache keys embed this version, so bumping it orphans the old entries.
     update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);

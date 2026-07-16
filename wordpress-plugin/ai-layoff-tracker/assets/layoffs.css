@@ -898,6 +898,10 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-method-body p { margin: 0 0 10px; }
 .alt-method-body p:last-child { margin-bottom: 0; }
 .alt-method-body .alt-badge { margin: 0 1px; }
+.alt-lead {
+    font-size: 16px; line-height: 1.65; color: var(--alt-ink);
+    margin: 0 0 18px; max-width: none;
+}
 .alt-stats-note {
     margin: 10px 0 16px; padding: 9px 13px; font-size: 12.5px; line-height: 1.5;
     color: var(--alt-ink-2); background: var(--alt-surface-2);

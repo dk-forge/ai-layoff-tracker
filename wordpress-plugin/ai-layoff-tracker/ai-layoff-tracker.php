@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.11.0
+ * Version: 2.11.1
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.11.0');
+define('ALT_VERSION', '2.11.1');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -301,6 +301,24 @@ function alt_faq_items() {
         array('How do I report an error?',
             'Use the contact page or email info@asktherecruiter.com and corrections get priority. Every entry links to its primary source, so you can check any number against the underlying document.'),
     );
+}
+
+/**
+ * Live coverage counts for the intro line: real countries (excluding the
+ * "Multiple countries" bucket) and US states with WARN data. Cached an hour.
+ */
+function alt_coverage_counts() {
+    $c = get_transient('alt_coverage_counts');
+    if (is_array($c)) return $c;
+    global $wpdb;
+    $t = alt_db_table();
+    $countries = (int) $wpdb->get_var(
+        "SELECT COUNT(DISTINCT country) FROM $t WHERE country <> '' AND country <> 'Multiple countries'");
+    $states = (int) $wpdb->get_var(
+        "SELECT COUNT(DISTINCT state) FROM $t WHERE source_type = 'warn' AND state <> ''");
+    $c = array('countries' => $countries, 'states' => $states);
+    set_transient('alt_coverage_counts', $c, HOUR_IN_SECONDS);
+    return $c;
 }
 
 /**

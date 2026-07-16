@@ -9,6 +9,9 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
+    <?php $alt_cov = alt_coverage_counts(); ?>
+    <p class="alt-lead">Verified layoffs worldwide, across all industries and causes, with the ones companies explicitly blame on AI flagged and quoted. Every entry links to its primary source: SEC 8-K filings, official WARN notices from <b><?php echo (int) $alt_cov['states']; ?> US states</b>, the EU's official restructuring database, and credible news from outlets across five continents and <b><?php echo (int) $alt_cov['countries']; ?> countries</b>. Use the country, US-state, industry and date filters to scope the data to your region.</p>
+
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
         <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>

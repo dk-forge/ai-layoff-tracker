@@ -7,9 +7,9 @@ name: Classification audit (full dataset, LLM)
 # fixes via the edit-entries workflow (pinned + publicly disclosed).
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 3 1 * *'   # monthly full sweep; the daily spot-check covers new rows
+  workflow_dispatch:   # on-demand only; the daily spot-check + daily dedup
+                       # cover quality continuously, so the expensive full
+                       # sweep runs only when you ask for it
 
 jobs:
   audit:
