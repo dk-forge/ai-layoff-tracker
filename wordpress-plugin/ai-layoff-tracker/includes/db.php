@@ -36,12 +36,16 @@ function alt_db_install() {
         layoff_date DATE NULL,
         industry VARCHAR(120) NOT NULL DEFAULT '',
         country VARCHAR(64) NOT NULL DEFAULT '',
+        employer_country VARCHAR(64) NOT NULL DEFAULT '',
         state CHAR(2) NOT NULL DEFAULT '',
         source_type VARCHAR(32) NOT NULL DEFAULT '',
         verification_level VARCHAR(16) NOT NULL DEFAULT '',
         source_name VARCHAR(191) NOT NULL DEFAULT '',
         source_url TEXT NULL,
         ai_explicit TINYINT(1) NOT NULL DEFAULT 0,
+        ai_causation VARCHAR(32) NOT NULL DEFAULT 'unknown',
+        confidence TINYINT UNSIGNED NOT NULL DEFAULT 0,
+        review_status VARCHAR(32) NOT NULL DEFAULT 'legacy_unreviewed',
         announced TINYINT(1) NOT NULL DEFAULT 0,
         edited TINYINT(1) NOT NULL DEFAULT 0,
         ai_language TEXT NULL,
@@ -56,6 +60,8 @@ function alt_db_install() {
         KEY industry (industry),
         KEY source_type (source_type),
         KEY ai_explicit (ai_explicit),
+        KEY ai_causation (ai_causation),
+        KEY review_status (review_status),
         KEY company_key (company_key),
         KEY post_id (post_id)
     ) $charset;";
@@ -145,12 +151,16 @@ function alt_db_upsert(array $row) {
         'layoff_date'        => alt_db_valid_date((string) ($row['layoff_date'] ?? '')),
         'industry'           => substr((string) ($row['industry'] ?? ''), 0, 120),
         'country'            => substr((string) ($row['country'] ?? ''), 0, 64),
+        'employer_country'   => substr((string) ($row['employer_country'] ?? ''), 0, 64),
         'state'              => substr((string) ($row['state'] ?? ''), 0, 2),
         'source_type'        => substr((string) ($row['source_type'] ?? ''), 0, 32),
         'verification_level' => substr((string) ($row['verification_level'] ?? ''), 0, 16),
         'source_name'        => substr((string) ($row['source_name'] ?? ''), 0, 191),
         'source_url'         => (string) ($row['source_url'] ?? ''),
         'ai_explicit'        => !empty($row['ai_explicit']) ? 1 : 0,
+        'ai_causation'       => function_exists('alt_normalize_ai_causation') ? alt_normalize_ai_causation($row['ai_causation'] ?? 'unknown') : 'unknown',
+        'confidence'         => min(100, max(0, (int) ($row['confidence'] ?? 0))),
+        'review_status'      => function_exists('alt_normalize_review_status') ? alt_normalize_review_status($row['review_status'] ?? 'legacy_unreviewed') : 'legacy_unreviewed',
         'announced'          => !empty($row['announced']) ? 1 : 0,
         'ai_language'        => (string) ($row['ai_language'] ?? ''),
         'reason_tags'        => alt_db_pack_tags($row['reason_tags'] ?? array()),
@@ -209,12 +219,16 @@ function alt_db_sync_post($post_id) {
         'layoff_date'        => get_post_meta($post_id, 'layoff_date', true),
         'industry'           => get_post_meta($post_id, 'industry', true),
         'country'            => get_post_meta($post_id, 'country', true),
+        'employer_country'   => get_post_meta($post_id, 'employer_country', true),
         'state'              => get_post_meta($post_id, 'state', true),
         'source_type'        => get_post_meta($post_id, 'source_type', true),
         'verification_level' => get_post_meta($post_id, 'verification_level', true),
         'source_name'        => get_post_meta($post_id, 'source_name', true),
         'source_url'         => get_post_meta($post_id, 'source_url', true),
         'ai_explicit'        => get_post_meta($post_id, 'ai_explicit', true),
+        'ai_causation'       => get_post_meta($post_id, 'ai_causation', true),
+        'confidence'         => get_post_meta($post_id, 'confidence', true),
+        'review_status'      => get_post_meta($post_id, 'review_status', true),
         'announced'          => get_post_meta($post_id, 'announced', true),
         'ai_language'        => get_post_meta($post_id, 'ai_language', true),
         'reason_tags'        => get_post_meta($post_id, 'reason_tags', true),
@@ -303,6 +317,7 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     };
     $str_in('industry', 'industry', 'industry');
     $str_in('country', 'country', 'country');
+    $str_in('employer_country', 'employer_country', 'employer_country');
     $str_in('state', 'state', 'state');
     if ($except !== 'reasons') {
         $reasons = array_filter(array_map('sanitize_key', explode(',', (string) $r->get_param('reasons'))));
@@ -325,6 +340,8 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
         foreach ($sources as $s) { $params[] = $s; }
     }
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
+    if ($r->get_param('ai_primary') === '1' || $r->get_param('ai_primary') === 'true') { $where[] = "ai_causation = 'primary_cause'"; }
+    if (($status = sanitize_key((string) $r->get_param('review_status'))) !== '') { $where[] = "review_status = %s"; $params[] = $status; }
     // stage=announced -> announcement-stage only; stage=verified -> filed/reported only
     $stage = (string) $r->get_param('stage');
     if ($stage === 'announced') { $where[] = "announced = 1"; }
@@ -356,12 +373,16 @@ function alt_db_row_to_array($row) {
         'layoff_date'        => $row->layoff_date ?: '',
         'industry'           => $row->industry,
         'country'            => $row->country,
+        'employer_country'   => $row->employer_country,
         'state'              => $row->state,
         'source_type'        => $row->source_type,
         'source_name'        => $row->source_name,
         'verification_level' => $row->verification_level,
         'source_url'         => $row->source_url,
         'ai_explicit'        => (bool) $row->ai_explicit,
+        'ai_causation'       => $row->ai_causation,
+        'confidence'         => (int) $row->confidence,
+        'review_status'      => $row->review_status,
         'announced'          => (bool) $row->announced,
         // Transparency: editorially corrected rows are visibly flagged (the
         // correction reason is in the site's public corrections log).
@@ -527,7 +548,7 @@ function alt_api_edit(WP_REST_Request $r) {
         return new WP_Error('alt_bad_request', 'edits must be an array of {id, fields}.', array('status' => 400));
     }
 
-    $allowed = array('company', 'job_count', 'layoff_date', 'industry', 'country', 'state', 'ai_explicit', 'announced', 'source_url', 'excerpt');
+    $allowed = array('company', 'job_count', 'layoff_date', 'industry', 'country', 'employer_country', 'state', 'ai_explicit', 'ai_causation', 'confidence', 'review_status', 'announced', 'source_url', 'excerpt');
     $out = array('edited' => array(), 'not_found' => array(), 'rejected' => array());
 
     foreach ($edits as $e) {
@@ -543,10 +564,14 @@ function alt_api_edit(WP_REST_Request $r) {
                 case 'job_count':   $data[$k] = max(0, (int) $v); break;
                 case 'layoff_date': $data[$k] = alt_db_valid_date((string) $v); break;
                 case 'country':     $data[$k] = function_exists('alt_normalize_country') ? alt_normalize_country((string) $v) : (string) $v; break;
+                case 'employer_country': $data[$k] = function_exists('alt_normalize_country') ? alt_normalize_country((string) $v) : (string) $v; break;
                 case 'industry':    $data[$k] = function_exists('alt_normalize_industry') ? alt_normalize_industry((string) $v) : (string) $v; break;
                 case 'state':       $data[$k] = substr(strtoupper((string) $v), 0, 2); break;
                 case 'ai_explicit':
                 case 'announced':   $data[$k] = !empty($v) ? 1 : 0; break;
+                case 'confidence':  $data[$k] = min(100, max(0, (int) $v)); break;
+                case 'ai_causation': $data[$k] = alt_normalize_ai_causation($v); break;
+                case 'review_status': $data[$k] = alt_normalize_review_status($v); break;
                 default:            $data[$k] = (string) $v;
             }
         }
@@ -571,8 +596,8 @@ function alt_api_edit(WP_REST_Request $r) {
         // Keep the CPT mirror consistent for rich entries.
         if (!empty($row['post_id'])) {
             $meta_map = array('company' => 'company_name', 'job_count' => 'job_count', 'layoff_date' => 'layoff_date',
-                'industry' => 'industry', 'country' => 'country', 'state' => 'state',
-                'ai_explicit' => 'ai_explicit', 'source_url' => 'source_url');
+                'industry' => 'industry', 'country' => 'country', 'employer_country' => 'employer_country', 'state' => 'state',
+                'ai_explicit' => 'ai_explicit', 'ai_causation' => 'ai_causation', 'confidence' => 'confidence', 'review_status' => 'review_status', 'source_url' => 'source_url');
             foreach ($meta_map as $col => $meta) {
                 if (array_key_exists($col, $data)) { update_post_meta((int) $row['post_id'], $meta, $data[$col]); }
             }
@@ -609,12 +634,16 @@ function alt_api_bulk(WP_REST_Request $r) {
             'layoff_date'        => $e['layoff_date'] ?? '',
             'industry'           => function_exists('alt_normalize_industry') ? alt_normalize_industry((string) ($e['industry'] ?? '')) : ($e['industry'] ?? ''),
             'country'            => function_exists('alt_normalize_country') ? alt_normalize_country((string) ($e['country'] ?? '')) : ($e['country'] ?? ''),
+            'employer_country'   => function_exists('alt_normalize_country') ? alt_normalize_country((string) ($e['employer_country'] ?? '')) : ($e['employer_country'] ?? ''),
             'state'              => function_exists('alt_normalize_state') ? alt_normalize_state((string) ($e['state'] ?? '')) : ($e['state'] ?? ''),
             'source_type'        => in_array($e['source_type'] ?? '', alt_allowed_source_types(), true) ? $e['source_type'] : 'news',
             'verification_level' => in_array($e['verification_level'] ?? '', alt_allowed_verification_levels(), true) ? $e['verification_level'] : 'bronze',
             'source_name'        => $e['source_name'] ?? '',
             'source_url'         => $e['source_url'] ?? '',
             'ai_explicit'        => !empty($e['ai_explicit']),
+            'ai_causation'       => alt_normalize_ai_causation($e['ai_causation'] ?? 'unknown'),
+            'confidence'         => min(100, max(0, (int) ($e['confidence'] ?? 0))),
+            'review_status'      => alt_normalize_review_status($e['review_status'] ?? 'legacy_unreviewed'),
             'announced'          => !empty($e['announced']),
             'ai_language'        => $e['ai_language'] ?? '',
             'reason_tags'        => $e['reason_tags'] ?? array(),
@@ -833,6 +862,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                 SUM(ai_explicit) ai_entries,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
+                SUM(CASE WHEN ai_causation='primary_cause' THEN 1 ELSE 0 END) ai_primary_entries,
+                COALESCE(SUM(CASE WHEN ai_causation='primary_cause' THEN job_count END),0) ai_primary_jobs,
                 SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN 1 ELSE 0 END) ai_verified_entries,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
                 SUM(announced) announced_entries,
@@ -904,6 +935,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'jobs'       => (int) $totals->jobs,
             'entries'    => (int) $totals->entries,
             'ai_jobs'    => (int) $totals->ai_jobs,
+            'ai_primary_entries' => (int) $totals->ai_primary_entries,
+            'ai_primary_jobs' => (int) $totals->ai_primary_jobs,
             'ai_verified_jobs'    => (int) $totals->ai_verified_jobs,
             'ai_verified_entries' => (int) $totals->ai_verified_entries,
             'announced_entries' => (int) $totals->announced_entries,

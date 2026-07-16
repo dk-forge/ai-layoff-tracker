@@ -341,6 +341,7 @@ function alt_entry_to_array($post_id) {
         'layoff_date'        => (string) get_post_meta($post_id, 'layoff_date', true),
         'industry'           => (string) get_post_meta($post_id, 'industry', true),
         'country'            => (string) get_post_meta($post_id, 'country', true),
+        'employer_country'   => (string) get_post_meta($post_id, 'employer_country', true),
         'state'              => (string) get_post_meta($post_id, 'state', true),
         'roles'              => (string) get_post_meta($post_id, 'roles', true),
         'source_type'        => (string) get_post_meta($post_id, 'source_type', true),
@@ -348,6 +349,9 @@ function alt_entry_to_array($post_id) {
         'verification_level' => (string) get_post_meta($post_id, 'verification_level', true),
         'source_url'         => (string) get_post_meta($post_id, 'source_url', true),
         'ai_explicit'        => (bool) get_post_meta($post_id, 'ai_explicit', true),
+        'ai_causation'       => alt_normalize_ai_causation(get_post_meta($post_id, 'ai_causation', true)),
+        'confidence'         => min(100, max(0, (int) get_post_meta($post_id, 'confidence', true))),
+        'review_status'      => alt_normalize_review_status(get_post_meta($post_id, 'review_status', true)),
         'ai_language'        => $ai_language !== '' ? $ai_language : null,
         'reason_tags'        => array_values(array_map('strval', $tags)),
         'excerpt'            => (string) get_post_meta($post_id, 'excerpt', true),
@@ -543,6 +547,13 @@ function alt_api_add($request) {
         return new WP_Error('alt_insert_failed', $post_id->get_error_message(), array('status' => 500));
     }
 
+    $ai_causation = alt_normalize_ai_causation($meta_in['ai_causation'] ?? 'unknown');
+    $ai_quote = sanitize_text_field($meta_in['ai_language'] ?? '');
+    // Third-party writers can call /add, so retain the same minimum invariant
+    // as the Python extractor: no causal AI claim without evidence text.
+    if (in_array($ai_causation, array('primary_cause', 'contributing_cause'), true) && $ai_quote === '') {
+        $ai_causation = 'unknown';
+    }
     $meta_values = array(
         'company_name'       => $company,
         'ticker'             => sanitize_text_field($meta_in['ticker'] ?? ''),
@@ -550,6 +561,7 @@ function alt_api_add($request) {
         'layoff_date'        => $layoff_date,
         'industry'           => alt_normalize_industry(sanitize_text_field($meta_in['industry'] ?? '')),
         'country'            => alt_normalize_country(sanitize_text_field($meta_in['country'] ?? '')),
+        'employer_country'   => alt_normalize_country(sanitize_text_field($meta_in['employer_country'] ?? '')),
         'state'              => alt_normalize_state(sanitize_text_field($meta_in['state'] ?? '')),
         'roles'              => sanitize_text_field($meta_in['roles'] ?? ''),
         'source_url'         => esc_url_raw($meta_in['source_url'] ?? ''),
@@ -558,9 +570,12 @@ function alt_api_add($request) {
         'verification_level' => $verification,
         'excerpt'            => sanitize_textarea_field($meta_in['excerpt'] ?? ''),
         'reason_tags'        => $tags,
-        'ai_explicit'        => !empty($meta_in['ai_explicit']),
+        'ai_explicit'        => in_array($ai_causation, array('primary_cause', 'contributing_cause'), true),
+        'ai_causation'       => $ai_causation,
+        'confidence'         => min(100, max(0, (int) ($meta_in['confidence'] ?? 0))),
+        'review_status'      => alt_normalize_review_status($meta_in['review_status'] ?? 'provisional'),
         'announced'          => !empty($meta_in['announced']),
-        'ai_language'        => sanitize_text_field($meta_in['ai_language'] ?? ''),
+        'ai_language'        => $ai_quote,
         'dedup_hash'         => $dedup_hash,
     );
     foreach ($meta_values as $key => $value) {

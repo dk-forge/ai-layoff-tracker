@@ -7,6 +7,7 @@
   SEC EDGAR 8-K ────────►│ cron.py (Railway cron 12:00 & 22:00 UTC)       │
   NewsAPI ──────────────►│   EDGAR + NewsAPI + GDELT(36h worldwide)       │
   GDELT (worldwide press)│   → extractor.py (DeepSeek-V3 via OpenRouter)  │──POST /add──┐
+  Company IR/newsroom RSS│   → evidence quote + causal AI class           │             │
                          │                                                │             │
   State WARN sites ─────►│ warn_import.py (GH cron daily 15:00 UTC)       │──POST /bulk─┤
   (~25 states via        │   warn-scraper → keyword column parsing        │             │
@@ -46,7 +47,10 @@ wordpress-plugin/ai-layoff-tracker/
   assets/layoffs.js|css      the entire front-end
 railway/
   cron.py                    2×daily ingest (EDGAR + NewsAPI + GDELT 36h)
-  extractor.py               DeepSeek prompt + post-processing (taxonomies, state/country rules)
+  extractor.py               DeepSeek prompt + post-processing; source-quote guard and AI causal taxonomy
+  source_registry.py         Market status, discovery vocabulary, intended source coverage (not a completeness claim)
+  sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
+  challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
   sources/{edgar,gdelt,newsapi,warn}.py
   warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
   backfill.py gdelt_backfill.py news_catchup.py seed_ai.py   one-off runners
@@ -71,6 +75,10 @@ docs/                        this documentation
 - **WARN quirks:** filings carry NO industry/reason (industry charts reflect SEC/news entries);
   remote/multi-state employers file in several states with overlapping counts (shown as-filed,
   disclosed in methodology; the weekly data-quality report flags them).
+- **AI attribution:** AI-primary, contributing, operational/selection, context-only, explicit-denial and
+  unknown are distinct classifications. A primary/contributing classification is accepted only when the
+  claimed exact quote exists in the supplied source passage. `country` is job location; `employer_country`
+  is employer domicile/HQ when stated.
 - **Link precision:** most states publish one list page, not per-notice URLs. UI labels list-page
   links "(list)"; exact per-notice links (VT etc.) display plain.
 

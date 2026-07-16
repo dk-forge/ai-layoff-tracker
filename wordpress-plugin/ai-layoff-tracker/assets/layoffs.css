@@ -192,6 +192,27 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 @media (max-width: 640px) {
     .alt-tabs { gap: 6px; }
     .alt-tab { font-size: 12.5px; padding: 6px 11px; border-width: 1.5px; }
+    /* The theme's content wrappers occasionally retain desktop sizing on
+       phones. Keep overflow contained at the tracker boundary, while the
+       table retains its own deliberate horizontal scroll region. */
+    body:has(.alt-tracker-wrap) .entry-content,
+    body:has(.alt-tracker-wrap) main,
+    .alt-tracker-wrap {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .alt-tracker-wrap { box-sizing: border-box; overflow-x: clip; }
+    .alt-search-wrap { min-width: 0; width: 100%; }
+    .alt-range-pop {
+        left: auto;
+        right: 0;
+        width: min(320px, calc(100vw - 28px));
+        max-width: calc(100vw - 28px);
+        box-sizing: border-box;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .alt-range-pop .alt-filter { min-width: 0; }
 }
 
 .alt-narrative {
@@ -584,7 +605,8 @@ body.admin-bar .alt-count-row { top: 32px; }
 
 /* ---------------- Table ---------------- */
 
-.alt-table-scroll { overflow-x: auto; border-radius: 12px; }
+.alt-table-scroll { overflow-x: auto; max-width: 100%; border-radius: 12px; -webkit-overflow-scrolling: touch; }
+.alt-tracker-wrap .dataTables_wrapper { max-width: 100%; min-width: 0; }
 .alt-tracker-wrap table.dataTable {
     font-size: 14px;
     border-collapse: separate;

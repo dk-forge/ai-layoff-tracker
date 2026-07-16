@@ -10,6 +10,7 @@ import requests
 from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
+from sources.press_releases import pull_press_releases
 from extractor import extract_layoff_data
 from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
@@ -44,6 +45,10 @@ def run():
         entries += pull_news_articles()
     except Exception as e:
         print(f"NewsAPI source failed: {e}")
+    try:
+        entries += pull_press_releases()
+    except Exception as e:
+        print(f"Press-release source failed: {e}")
     try:
         # Worldwide press coverage (Europe/Asia/everywhere) via GDELT. 36h
         # window overlaps the twice-daily runs; dedup drops the repeats.

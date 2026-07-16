@@ -34,6 +34,11 @@
         macroeconomic: 'Macroeconomic'
     };
     var VERIF_LABELS = { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' };
+    var AI_CAUSATION_LABELS = {
+        primary_cause: 'AI primary cause', contributing_cause: 'AI contributing cause',
+        selection_or_operations: 'AI used in selection / operations', context_only: 'AI context only',
+        explicitly_denied: 'AI explicitly denied', unknown: 'AI classification pending'
+    };
     var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     // A WARN link is either the EXACT notice (states like VT publish per-notice
@@ -1038,6 +1043,13 @@
 
     function formatDetail(row) {
         var parts = [];
+        if (row.ai_causation) {
+            var aiDetail = AI_CAUSATION_LABELS[row.ai_causation] || row.ai_causation;
+            if (row.confidence != null && Number(row.confidence) > 0) aiDetail += ' · evidence confidence ' + fmt(row.confidence) + '/100';
+            if (row.review_status) aiDetail += ' · ' + String(row.review_status).replace(/_/g, ' ');
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">AI attribution status</span><p>' + escapeHtml(aiDetail) + '</p></div>');
+        }
+        if (row.employer_country) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Employer country</span><p>' + escapeHtml(row.employer_country) + '</p></div>');
         if (row.ai_language) parts.push('<div class="alt-detail-block alt-detail-quote"><span class="alt-detail-h">Exact AI / automation quote</span><blockquote>“' + escapeHtml(row.ai_language) + '”</blockquote></div>');
         if (row.excerpt) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">From the source</span><p>' + escapeHtml(row.excerpt) + '</p></div>');
         if (row.roles) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Roles affected</span><p>' + escapeHtml(row.roles) + '</p></div>');

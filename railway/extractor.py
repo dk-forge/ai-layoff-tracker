@@ -31,18 +31,28 @@ ALLOWED_REASON_TAGS = {
     "possible_ai",
 }
 
+AI_CAUSATION = {
+    "primary_cause",
+    "contributing_cause",
+    "selection_or_operations",
+    "context_only",
+    "explicitly_denied",
+    "unknown",
+}
+
 SYSTEM_PROMPT = """You are a data extraction specialist for a verified AI layoff tracker.
 
 Your job is to extract structured layoff data from news articles and SEC filings.
 
 CRITICAL RULES:
 1. Only extract data that is EXPLICITLY STATED in the source text. Never infer.
-2. For ai_explicit: set true ONLY if the source text explicitly names AI, artificial intelligence, machine learning, automation, or robots as a reason for the layoffs. Not implied. Explicitly named.
-3. For ai_language: copy the EXACT phrase from the source that mentions AI/automation. If none, return null.
-4. For job_count: use the exact number stated. If a range is given, use the lower bound.
-5. For reason_tags: only assign tags that are supported by explicit language in the source.
-6. If you cannot determine a required field with confidence, return null for that field.
-7. Return ONLY valid JSON. No preamble. No explanation. No markdown.
+2. Classify AI causation carefully. `primary_cause` means the company/source says AI, automation, machine learning or robots caused the reduction. `contributing_cause` means it is one stated cause. `selection_or_operations` means AI was used to select, monitor or manage workers; this is NOT a cause. `context_only` means AI investment, strategy or a passing mention is not stated as a cause. `explicitly_denied` means the source says the cuts were not because of AI. Use `unknown` if the source is unclear.
+3. For ai_explicit: true ONLY for `primary_cause` or `contributing_cause`, and only with an exact supporting phrase. Never infer it from a company's AI investment, a future automation projection, or AI use during selection.
+4. For ai_language: copy the EXACT supporting phrase from the source. If none, return null.
+5. For job_count: use the exact number stated. If a range is given, use the lower bound. Never turn a percentage, dollar figure, future work-equivalence, or projected automation number into a layoff count.
+6. For reason_tags: only assign tags that are supported by explicit language in the source.
+7. If you cannot determine a required field with confidence, return null for that field.
+8. Return ONLY valid JSON. No preamble. No explanation. No markdown.
 
 Reason tag definitions (only assign if explicitly supported):
 - ai_automation: source explicitly names AI, automation, robots, machine learning as reason
@@ -63,13 +73,16 @@ Response format:
   "layoff_date": "YYYY-MM-DD or null",
   "industry": "one of: Technology, Media & Entertainment, Finance & Insurance, Healthcare & Pharma, Retail & E-commerce, Manufacturing, Automotive, Aerospace & Defense, Airlines & Travel, Energy, Telecom, Education, Logistics & Transport, Food & Hospitality, Real Estate & Construction, Consumer Goods, Professional Services, Agriculture, Government & Nonprofit — or null if unclear",
   "country": "the single country where the cuts happen (or where most of them happen if the source gives a breakdown). If the cuts span several countries with no clear majority, use exactly 'Multiple countries'. Use 'United States' and 'United Kingdom' (never US/USA/UK). Null if not stated.",
+  "employer_country": "country where the employer is headquartered or domiciled, only if stated or unambiguous from the source. Use canonical names; null if unknown. This is NOT the job-location country.",
   "state": "2-letter US state abbreviation (e.g. CA, TX, NY) if the source states a US location for the cuts, otherwise null",
   "roles": "the specific roles, teams, or departments affected, exactly as stated in the source (e.g. 'customer service and engineering'), or null if not stated",
   "excerpt": "2-3 sentence excerpt from the source that confirms the layoff. Exact text from source.",
   "reason_tags": ["array", "of", "tags"],
+  "ai_causation": "primary_cause|contributing_cause|selection_or_operations|context_only|explicitly_denied|unknown",
   "ai_explicit": true or false,
   "ai_language": "exact phrase from source or null",
   "announced": "true if this is an ANNOUNCEMENT of planned future cuts that have not yet begun (e.g. 'will cut 5,000 over the next year', 'plans to reduce'); false if the cuts are already executed, underway, or legally filed",
+  "confidence": "integer 0-100 for the event identity, count and causation together",
   "is_layoff_event": true or false
 }"""
 
@@ -131,6 +144,15 @@ def _normalize_date(value):
         if re.match(r"^\d{4}-\d{2}-\d{2}$", candidate):
             return candidate
     return None
+
+
+def _quote_is_supported(quote, raw_text):
+    """Reject invented evidence quotes before they can affect public totals."""
+    if not isinstance(quote, str) or not isinstance(raw_text, str):
+        return False
+    q = re.sub(r"\s+", " ", quote).strip().lower()
+    source = re.sub(r"\s+", " ", raw_text).strip().lower()
+    return len(q) >= 12 and q in source
 
 
 _US_STATE_ABBR = {
@@ -268,15 +290,37 @@ TEXT:
         tags = []
     extracted["reason_tags"] = [t for t in tags if t in ALLOWED_REASON_TAGS]
 
-    extracted["ai_explicit"] = bool(extracted.get("ai_explicit"))
+    causation = extracted.get("ai_causation")
+    causation = causation if causation in AI_CAUSATION else "unknown"
+    quote = extracted.get("ai_language")
+    # A model-provided classification is only admissible if its claimed quote
+    # actually appears in the supplied source passage.  This stops context-only
+    # mentions (and fabricated quotes) inflating the AI headline metric.
+    quote_supported = _quote_is_supported(quote, raw_text)
+    if causation in {"primary_cause", "contributing_cause"} and not quote_supported:
+        causation = "unknown"
+    extracted["ai_causation"] = causation
+    extracted["ai_explicit"] = causation in {"primary_cause", "contributing_cause"}
     # Announcement-stage vs executed/filed: SEC filings and WARN notices are by
     # definition filed events, so only news can carry the announced flag.
     extracted["announced"] = (
         bool(extracted.get("announced"))
         and raw_entry.get("source_type") == "news"
     )
-    if not isinstance(extracted.get("ai_language"), str) or not extracted["ai_language"].strip():
+    if not quote_supported:
         extracted["ai_language"] = None
+    else:
+        extracted["ai_language"] = quote.strip()
+
+    try:
+        extracted["confidence"] = max(0, min(100, int(extracted.get("confidence") or 0)))
+    except (TypeError, ValueError):
+        extracted["confidence"] = 0
+    # A source-backed event with a precise count should never enter as an
+    # unlabelled high-confidence claim.  This score controls future automated
+    # review/reporting; it does not replace the visible source evidence.
+    if extracted["confidence"] == 0:
+        extracted["confidence"] = 85 if raw_entry.get("verification_level") in {"gold", "silver"} else 65
 
     if not isinstance(extracted.get("roles"), str) or not extracted["roles"].strip():
         extracted["roles"] = None

@@ -1,0 +1,44 @@
+name: Reconcile US AI announcements with Challenger
+
+# Challenger publishes a monthly public report but not its per-event database.
+# This workflow measures the gap; it never changes data merely to match a
+# benchmark. A threshold miss fails loudly so the autonomous backfill and
+# classification jobs can be investigated.
+on:
+  schedule:
+    - cron: '0 17 7 * *' # 1 PM ET on the 7th; after the usual monthly report window
+  workflow_dispatch:
+    inputs:
+      year:
+        description: 'Calendar year to reconcile'
+        required: false
+        default: '2026'
+      allowed_variance:
+        description: 'Absolute allowed variance, e.g. 0.10 for 10%'
+        required: false
+        default: '0.10'
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Compare like-for-like published totals
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          BENCHMARK_YEAR: ${{ github.event.inputs.year || '2026' }}
+          CHALLENGER_ALLOWED_VARIANCE: ${{ github.event.inputs.allowed_variance || '0.10' }}
+        run: |
+          cd railway
+          python challenger_reconcile.py | tee challenger-reconciliation.json
+          cp challenger-reconciliation.json "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: challenger-reconciliation
+          path: railway/challenger-reconciliation.json

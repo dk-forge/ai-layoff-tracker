@@ -13,6 +13,8 @@ from datetime import timezone
 
 import requests
 
+from source_registry import discovery_terms
+
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
 # GDELT space = AND, OR must be explicit. ALL layoffs, not only AI-related —
@@ -21,7 +23,11 @@ GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 # "redundancies" catches UK/Commonwealth English. GDELT Translingual machine-
 # translates 65 languages into English before indexing, so these English
 # keywords match Le Monde / Handelsblatt / NRC / Gazeta coverage too.
-QUERY = '(layoffs OR "job cuts" OR "cutting jobs" OR "lays off" OR redundancies OR "job losses" OR "workforce reduction")'
+# Keep the retrieval vocabulary in the source registry rather than in an LLM
+# prompt.  This makes coverage reviewable, testable, and expandable by market.
+QUERY = "(" + " OR ".join(
+    f'"{term}"' if " " in term else term for term in discovery_terms()
+) + ")"
 
 TRUSTED_DOMAINS = {
     # wires / national general
@@ -149,7 +155,7 @@ def _fetch_article(url):
     resp.raise_for_status()
     text = _strip_html(resp.text[:MAX_DOC_BYTES])
     lowered = text.lower()
-    for kw in ("laid off", "layoff", "job cuts", "cutting jobs", "reduction in force"):
+    for kw in discovery_terms():
         idx = lowered.find(kw)
         if idx != -1:
             start = max(0, idx - 400)

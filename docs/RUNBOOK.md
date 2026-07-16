@@ -24,10 +24,12 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | migrate | manual | Re-mirror all CPT posts into the fast table |
 | trash-entries | manual | **Editorial removal** (post_ids/row_ids + required reason). Log it in TECHLOG + site corrections log |
 | data-quality | Mondays 16:00 UTC + manual | Anomaly report: WARN notices ≥5K, same-company multi-state filings, weak links — READ THIS WEEKLY |
+| challenger-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official Challenger report; fails if variance exceeds 10% |
 
 Secrets (repo → Settings → Actions): `WP_API_KEY` (from wp-admin → Tools → AI Layoff
 Tracker), `OPENROUTER_API_KEY`, `FTP_USER`/`FTP_PASSWORD`/`FTP_HOST`.
 Railway env: `OPENROUTER_API_KEY`, `WP_API_KEY`, `WP_SITE_URL=https://asktherecruiter.com/blog`.
+Optional Railway env: `PRESS_RELEASE_FEEDS` (JSON array of reviewed official company RSS/Atom feeds; see `.env.example`).
 
 ## "X is broken" playbooks
 
@@ -95,6 +97,16 @@ else the next import re-creates it). 3. Remove/correct data: single entries →
 `states=all, purge=true`; normalization issue → `cleanup`. 4. **Disclose**: dated entry
 in the site's corrections log (templates/page-tracker.php) + TECHLOG. Counts are part of
 the dedup hash — corrected counts need the purge path, plain re-import duplicates.
+
+**Challenger reconciliation fails**
+1. Do not change the tracker total to match the benchmark. The comparison is only valid for US-based employers,
+   announced cuts, AI-primary cause and canonical events.
+2. Open the uploaded `challenger-reconciliation` artifact. Record the Challenger report URL, tracker query and
+   variance in the monthly reconciliation log.
+3. Re-run recent GDELT/news/IR overlapping windows, then classification/dedup audits. Missing, duplicate,
+   date/count and definition differences must remain separately identifiable.
+4. If the official Challenger site changes its markup, update `railway/challenger_reconcile.py` with a regression
+   fixture; do not replace it with a guessed hard-coded total.
 
 **Contact form not delivering**
 Mails go via `wp_mail()` to info@asktherecruiter.com — confirm the mailbox exists in

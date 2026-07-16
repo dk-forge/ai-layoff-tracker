@@ -48,6 +48,20 @@ WordPress is the database — there is no external DB. Rich entries also exist
 as `layoffs` CPT posts for permalink pages; bulk WARN rows live only in the
 table.
 
+## Data quality and coverage
+
+The tracker is source-linked, not a claim of complete worldwide coverage.
+New model-extracted records carry an evidence quote, causal AI classification,
+confidence and publication status; a claimed AI cause is rejected unless its
+quote appears in the supplied source passage. `country` records job location
+and `employer_country` records employer domicile when stated. The country
+source registry, autonomous publication policy, reconciliation definition and
+Claude handoff are in [docs/AUTONOMOUS_DATA_QUALITY.md](docs/AUTONOMOUS_DATA_QUALITY.md).
+
+The U.S. AI-primary announcement metric is reconciled monthly against the
+latest public Challenger report. It is a diagnostic for missing or duplicated
+events, never a reason to force the tracker total to match a benchmark.
+
 ## Repository layout
 
 ```

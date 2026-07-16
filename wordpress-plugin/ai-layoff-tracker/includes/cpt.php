@@ -13,6 +13,7 @@ function alt_meta_fields() {
         'layoff_date'        => 'string',   // "2025-01-15" ISO format
         'industry'           => 'string',
         'country'            => 'string',
+        'employer_country'   => 'string',   // employer HQ/domicile when stated
         'roles'              => 'string',   // roles/departments affected, when stated
         'source_url'         => 'string',
         'source_type'        => 'string',   // "8K" | "press_release" | "news"
@@ -20,6 +21,9 @@ function alt_meta_fields() {
         'excerpt'            => 'string',
         'reason_tags'        => 'array',
         'ai_explicit'        => 'boolean',
+        'ai_causation'       => 'string',   // primary|contributing|selection|context|denied|unknown
+        'confidence'         => 'integer',  // autonomous evidence score, 0-100
+        'review_status'      => 'string',   // verified|provisional|legacy_unreviewed
         'ai_language'        => 'string',
         'source_name'        => 'string',
         'dedup_hash'         => 'string',
@@ -38,6 +42,25 @@ function alt_allowed_reason_tags() {
         'macroeconomic',
         'possible_ai',
     );
+}
+
+function alt_allowed_ai_causation() {
+    return array('primary_cause', 'contributing_cause', 'selection_or_operations',
+        'context_only', 'explicitly_denied', 'unknown');
+}
+
+function alt_normalize_ai_causation($value) {
+    $value = sanitize_key((string) $value);
+    return in_array($value, alt_allowed_ai_causation(), true) ? $value : 'unknown';
+}
+
+function alt_allowed_review_statuses() {
+    return array('verified', 'provisional', 'legacy_unreviewed');
+}
+
+function alt_normalize_review_status($value) {
+    $value = sanitize_key((string) $value);
+    return in_array($value, alt_allowed_review_statuses(), true) ? $value : 'legacy_unreviewed';
 }
 
 function alt_allowed_verification_levels() {
