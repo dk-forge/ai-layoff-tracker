@@ -214,6 +214,9 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
     border-radius: 20px; padding: 4px 12px; margin-right: 8px;
     transition: opacity .2s ease;
 }
+/* display:inline-flex would otherwise override the [hidden] attribute's
+   display:none, leaving the working pill visible before JS runs. */
+.alt-status[hidden] { display: none; }
 .alt-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22a45d; box-shadow: 0 0 0 3px rgba(34,164,93,.18); }
 /* While the pipeline is refreshing/cleaning, the green pill dims and the
    amber pill blinks alongside it, so visitors can see the data is being
