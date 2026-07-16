@@ -25,6 +25,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | trash-entries | manual | **Editorial removal** (post_ids/row_ids + required reason). Log it in TECHLOG + site corrections log |
 | data-quality | Mondays 16:00 UTC + manual | Anomaly report: WARN notices ≥5K, same-company multi-state filings, weak links — READ THIS WEEKLY |
 | challenger-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official Challenger report; fails if variance exceeds 10% |
+| reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
 
 Secrets (repo → Settings → Actions): `WP_API_KEY` (from wp-admin → Tools → AI Layoff
 Tracker), `OPENROUTER_API_KEY`, `FTP_USER`/`FTP_PASSWORD`/`FTP_HOST`.

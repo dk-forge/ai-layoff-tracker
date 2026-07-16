@@ -155,6 +155,49 @@ def _quote_is_supported(quote, raw_text):
     return len(q) >= 12 and q in source
 
 
+def classify_ai_evidence(raw_text):
+    """Reassess only AI causation for an already-recorded event.
+
+    Historical rows keep their source, count and date. This deliberately
+    narrow call avoids an LLM "correcting" unrelated fields while allowing a
+    fresh read of the linked document to replace an old keyword-based AI flag.
+    """
+    raw_text = (raw_text or "")[:6000]
+    if not raw_text.strip():
+        return None
+    prompt = """Classify AI causation in this layoff source. Return STRICT JSON only:
+{"ai_causation":"primary_cause|contributing_cause|selection_or_operations|context_only|explicitly_denied|unknown","ai_language":"exact source phrase or null","confidence":0-100}
+
+AI is primary/contributing only if this text explicitly says AI, automation,
+machine learning or robots caused the cuts. A general AI strategy, investment,
+or use of AI in operations is not causal. Never infer. The phrase must be an
+exact quote from the supplied text.
+
+TEXT:\n""" + raw_text
+    try:
+        response = _get_client().chat.completions.create(
+            model=MODEL, max_tokens=250,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content if response.choices else ""
+        result = _parse_json_response(content or "")
+    except Exception as exc:
+        print(f"AI evidence reassessment failed: {exc}")
+        return None
+    if not isinstance(result, dict):
+        return None
+    cause = result.get("ai_causation")
+    cause = cause if cause in AI_CAUSATION else "unknown"
+    quote = result.get("ai_language")
+    if cause in {"primary_cause", "contributing_cause"} and not _quote_is_supported(quote, raw_text):
+        cause, quote = "unknown", None
+    try:
+        confidence = max(0, min(100, int(result.get("confidence") or 0)))
+    except (TypeError, ValueError):
+        confidence = 0
+    return {"ai_causation": cause, "ai_language": quote.strip() if isinstance(quote, str) else "", "confidence": confidence}
+
+
 _US_STATE_ABBR = {
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
     "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",

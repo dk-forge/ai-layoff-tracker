@@ -14,6 +14,7 @@ from sources.press_releases import pull_press_releases
 from extractor import extract_layoff_data
 from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
+from source_health import report_source_health
 
 
 def _mark_phase(phase):
@@ -37,24 +38,27 @@ def run():
     entries = []
 
     # Pull from sources — one source failing must not kill the run
-    try:
-        entries += pull_edgar_filings()
-    except Exception as e:
-        print(f"EDGAR source failed: {e}")
-    try:
-        entries += pull_news_articles()
-    except Exception as e:
-        print(f"NewsAPI source failed: {e}")
-    try:
-        entries += pull_press_releases()
-    except Exception as e:
-        print(f"Press-release source failed: {e}")
+    for source, collector in (
+        ("edgar", pull_edgar_filings),
+        ("newsapi", pull_news_articles),
+        ("press_releases", pull_press_releases),
+    ):
+        try:
+            pulled = collector()
+            entries += pulled
+            report_source_health(source, "ok", len(pulled))
+        except Exception as e:
+            report_source_health(source, "degraded", 0, str(e))
+            print(f"{source} source failed: {e}")
     try:
         # Worldwide press coverage (Europe/Asia/everywhere) via GDELT. 36h
         # window overlaps the twice-daily runs; dedup drops the repeats.
         now = datetime.now(timezone.utc)
-        entries += pull_gdelt_between(now - timedelta(hours=36), now)
+        pulled = pull_gdelt_between(now - timedelta(hours=36), now)
+        entries += pulled
+        report_source_health("gdelt", "ok", len(pulled))
     except Exception as e:
+        report_source_health("gdelt", "degraded", 0, str(e))
         print(f"GDELT source failed: {e}")
 
     print(f"Pulled {len(entries)} raw entries")

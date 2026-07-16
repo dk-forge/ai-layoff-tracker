@@ -1,0 +1,33 @@
+name: Reclassify legacy AI evidence
+
+# Small, repeatable batches keep costs bounded and revisit records whose source
+# pages were temporarily unavailable. It never deletes rows or forces totals.
+on:
+  schedule:
+    - cron: '22 3 * * *'
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Rows to reassess (1-100)'
+        required: false
+        default: '25'
+
+jobs:
+  reclassify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openai requests
+      - name: Reassess linked source evidence
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          RECLASSIFY_BATCH: ${{ github.event.inputs.batch || '25' }}
+        run: |
+          cd railway
+          python reclassify_legacy_ai.py

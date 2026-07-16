@@ -43,6 +43,13 @@ The system—not a human queue—runs the daily operation.
 6. Re-run recent overlapping windows daily and historical windows weekly.
 7. Record every automatic correction and preserve source links.
 
+The legacy AI worker runs a small daily batch. It fetches the original linked
+source, re-runs only the AI-causation classification, and updates the row only
+when an evidence quote can be checked against that fetched text. It does not
+delete the row, alter its count/date, suppress its source, or convert a failed
+fetch into a negative finding. Unreadable links remain `legacy_unreviewed` and
+are retried on a future run.
+
 Humans may improve rules or source connectors, but do not need to adjudicate
 routine events. A connector that breaks must fail loudly and be marked degraded
 rather than silently creating a coverage hole.
@@ -114,6 +121,15 @@ with a cache-buster after deployment. Test the tracker at 320, 375, 390, 414,
 768 and desktop widths. Page-level horizontal overflow is a release blocker;
 the table may scroll only inside its own scroll container.
 
+### Source health
+
+Every cron collector reports `ok` or `degraded`, its raw-entry count, a short
+error detail and timestamp to the public `GET /source-health` endpoint. This
+is a coverage-status signal, not a claim that a source returned every event.
+An empty successful response is explicitly represented as `ok` with zero
+entries; an exception is `degraded`. The visible status must be monitored by
+the operations workflow before any market is described as continuously covered.
+
 ## Public methodology requirements
 
 The site must always say:
@@ -130,8 +146,8 @@ The site must always say:
 ## Remaining implementation roadmap
 
 The current rollout adds evidence fields, safe AI guards, the source registry,
-and an opt-in company-feed collector. The next commits should add a separate
-canonical-event/source-report table, a scheduled reconciliation job, source
-health snapshots, historic reclassification of legacy AI rows, and per-market
-connectors from the priority list above. Do not relabel legacy rows as
-`primary_cause` merely from an old boolean; re-run them against source evidence.
+an opt-in company-feed collector, per-collector health snapshots, and a daily
+historical AI-evidence reassessment worker. The next architectural milestone is
+a separate canonical-event/source-report table, then per-market connectors from
+the priority list above. Do not relabel legacy rows as `primary_cause` merely
+from an old boolean; re-run them against source evidence.

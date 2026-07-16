@@ -459,6 +459,83 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_edit',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected automated evidence refresh. Unlike /edit this does not
+    // suppress a source hash or pin the row: it only replaces the derived AI
+    // classification after the worker has re-read the linked source.
+    register_rest_route('layoffs/v1', '/reclassify', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_reclassify',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    // Read-only public operational transparency, plus a key-protected writer
+    // used by the autonomous collectors after each source attempt.
+    register_rest_route('layoffs/v1', '/source-health', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_source_health_get', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_source_health_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
+}
+
+/**
+ * Apply evidence-derived fields to existing records without treating an
+ * automated reassessment as an editorial correction. Primary/contributing AI
+ * claims require a non-trivial exact quote supplied by the worker; workers
+ * independently verify that quote against newly fetched source text.
+ */
+function alt_api_reclassify(WP_REST_Request $r) {
+    global $wpdb;
+    $items = $r->get_param('items');
+    if (!is_array($items)) return new WP_Error('alt_bad_request', 'items must be an array.', array('status' => 400));
+    $table = alt_db_table();
+    $out = array('updated' => array(), 'not_found' => array(), 'rejected' => array());
+    foreach ($items as $item) {
+        $id = (int) ($item['id'] ?? 0);
+        $row = $id ? $wpdb->get_row($wpdb->prepare("SELECT id, post_id FROM $table WHERE id = %d", $id)) : null;
+        if (!$row) { $out['not_found'][] = $id; continue; }
+        $cause = alt_normalize_ai_causation($item['ai_causation'] ?? 'unknown');
+        $quote = trim((string) ($item['ai_language'] ?? ''));
+        if (in_array($cause, array('primary_cause', 'contributing_cause'), true) && strlen($quote) < 12) {
+            $out['rejected'][] = $id;
+            continue;
+        }
+        $data = array(
+            'ai_causation' => $cause,
+            'ai_explicit' => in_array($cause, array('primary_cause', 'contributing_cause'), true) ? 1 : 0,
+            'ai_language' => $quote,
+            'confidence' => min(100, max(0, (int) ($item['confidence'] ?? 0))),
+            'review_status' => 'verified',
+        );
+        if ($wpdb->update($table, $data, array('id' => $id)) === false) {
+            return new WP_Error('alt_db_error', 'Reclassification update failed: ' . $wpdb->last_error, array('status' => 500));
+        }
+        if (!empty($row->post_id)) {
+            foreach ($data as $key => $value) update_post_meta((int) $row->post_id, $key, $value);
+        }
+        $out['updated'][] = $id;
+    }
+    if (!empty($out['updated'])) alt_log_correction('reclassified', $out['updated'], 'Automated source-evidence reassessment');
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
+}
+
+function alt_api_source_health_get() {
+    $health = get_option('alt_source_health');
+    return rest_ensure_response(is_array($health) ? $health : array());
+}
+
+function alt_api_source_health_post(WP_REST_Request $r) {
+    $source = sanitize_key((string) $r->get_param('source'));
+    if ($source === '') return new WP_Error('alt_bad_request', 'source is required.', array('status' => 400));
+    $health = get_option('alt_source_health');
+    if (!is_array($health)) $health = array();
+    $health[$source] = array(
+        'status' => $r->get_param('status') === 'ok' ? 'ok' : 'degraded',
+        'entries' => max(0, (int) $r->get_param('entries')),
+        'checked_at' => gmdate('c'),
+        'detail' => substr(sanitize_text_field((string) $r->get_param('detail')), 0, 240),
+    );
+    update_option('alt_source_health', $health, false);
+    return rest_ensure_response(array($source => $health[$source]));
 }
 
 function alt_api_trash(WP_REST_Request $r) {

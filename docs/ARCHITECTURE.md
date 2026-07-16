@@ -25,6 +25,7 @@
   │   PUBLIC  /query /aggregate /facets   ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
+  │           /reclassify /source-health                                                   │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
   │                                                                                      │
   │  Front-end (assets/layoffs.js): DataTables serverSide → /query; charts+stats →       │
@@ -46,11 +47,12 @@ wordpress-plugin/ai-layoff-tracker/
   templates/page-tracker.php the main page markup (stats → filters → charts → table)
   assets/layoffs.js|css      the entire front-end
 railway/
-  cron.py                    2×daily ingest (EDGAR + NewsAPI + GDELT 36h)
+  cron.py                    2×daily ingest (EDGAR + NewsAPI + GDELT 36h) + source health
   extractor.py               DeepSeek prompt + post-processing; source-quote guard and AI causal taxonomy
   source_registry.py         Market status, discovery vocabulary, intended source coverage (not a completeness claim)
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
+  reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
   sources/{edgar,gdelt,newsapi,warn}.py
   warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
   backfill.py gdelt_backfill.py news_catchup.py seed_ai.py   one-off runners
