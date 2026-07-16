@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.10.8
+ * Version: 2.10.9
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.10.8');
+define('ALT_VERSION', '2.10.9');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -182,6 +182,18 @@ function alt_title_no_emdash($parts) {
     return $parts;
 }
 add_filter('document_title_parts', 'alt_title_no_emdash');
+
+// This site runs Yoast, which renders <title> through its own filter and
+// bypasses document_title_parts. Catch the final title string on tracker
+// pages there too (and RankMath, defensively).
+function alt_title_string_no_emdash($title) {
+    if (alt_page_needs_assets()) {
+        $title = trim(preg_replace('/\s*[\x{2013}\x{2014}]\s*/u', ': ', (string) $title));
+    }
+    return $title;
+}
+add_filter('wpseo_title', 'alt_title_string_no_emdash', 99);
+add_filter('rank_math/frontend/title', 'alt_title_string_no_emdash', 99);
 
 function alt_seo_head() {
     if (!alt_page_needs_assets()) return;
