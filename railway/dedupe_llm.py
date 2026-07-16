@@ -41,9 +41,17 @@ SRC_RANK = {"8K": 3, "warn": 3, "press_release": 2, "erm": 2, "news": 1}
 
 
 def api(path):
-    req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/{path}",
-                                 headers={"User-Agent": UA})
-    return json.load(urllib.request.urlopen(req, timeout=90))
+    # shared hosting throws transient 5xx under sustained paging; retry
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/{path}",
+                                         headers={"User-Agent": UA})
+            return json.load(urllib.request.urlopen(req, timeout=90))
+        except Exception as e:
+            if attempt == 3:
+                raise
+            print(f"  api retry {attempt+1}: {e}")
+            time.sleep(15 * (attempt + 1))
 
 
 def norm_company(name):
