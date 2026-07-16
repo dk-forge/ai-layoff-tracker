@@ -72,6 +72,13 @@ function alt_register_routes() {
         'permission_callback' => '__return_true',
     ));
 
+    // Key-protected: data jobs report their pipeline phase for the live badge.
+    register_rest_route('layoffs/v1', '/status', array(
+        'methods'             => 'POST',
+        'callback'            => 'alt_api_status',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+
     register_rest_route('layoffs/v1', '/company/(?P<name>[^/]+)', array(
         'methods'             => 'GET',
         'callback'            => 'alt_api_company',
@@ -379,6 +386,8 @@ function alt_flush_caches() {
     delete_transient('alt_stats_cache');
     delete_transient('alt_faq_numbers'); // server-rendered FAQ figures
     delete_transient('alt_coverage_counts'); // intro line country/state counts
+    // Real "last data changed" timestamp, for the live badge.
+    update_option('alt_last_write', time(), false);
     // Invalidate every cached /query and /aggregate response at once: their
     // cache keys embed this version, so bumping it orphans the old entries.
     update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);
@@ -386,6 +395,28 @@ function alt_flush_caches() {
 // Manual edits/deletes in wp-admin must also invalidate the caches
 add_action('save_post_layoffs', 'alt_flush_caches');
 add_action('deleted_post', 'alt_flush_caches');
+
+/**
+ * Pipeline status for the live badge. Data jobs POST their phase when they
+ * start; the phase auto-expires to "live" after 50 minutes so a missed
+ * end-call never leaves the badge stuck. Phases: "refreshing" (pulling new
+ * filings/notices/news) and "cleaning" (dedup + fact-check).
+ */
+function alt_pipeline_phase() {
+    $s = get_option('alt_pipeline_status');
+    if (!is_array($s) || empty($s['at']) || (time() - (int) $s['at']) > 50 * MINUTE_IN_SECONDS) {
+        return array('phase' => 'live', 'at' => (int) get_option('alt_last_write', 0));
+    }
+    return array('phase' => $s['phase'], 'at' => (int) $s['at']);
+}
+function alt_api_status(WP_REST_Request $r) {
+    $phase = sanitize_key((string) $r->get_param('phase'));
+    if (!in_array($phase, array('refreshing', 'cleaning', 'live'), true)) {
+        return new WP_Error('alt_bad_request', 'phase must be refreshing|cleaning|live', array('status' => 400));
+    }
+    update_option('alt_pipeline_status', array('phase' => $phase, 'at' => time()), false);
+    return rest_ensure_response(array('phase' => $phase));
+}
 
 /* ------------------------------------------------------------------ */
 /* Route callbacks                                                     */
@@ -634,7 +665,14 @@ function alt_api_stats() {
         'post_type' => 'layoffs', 'post_status' => 'publish', 'posts_per_page' => 1,
         'orderby' => 'date', 'order' => 'DESC', 'fields' => 'ids', 'no_found_rows' => true,
     ));
-    $stats['last_updated'] = $latest ? get_post_time('c', true, $latest[0]) : '';
+    $post_time = $latest ? get_post_time('U', true, $latest[0]) : 0;
+    // Prefer the real last-write timestamp (covers bulk WARN/ERM imports that
+    // never create a CPT post); fall back to the newest post.
+    $last = max((int) get_option('alt_last_write', 0), (int) $post_time);
+    $stats['last_updated'] = $last ? gmdate('c', $last) : '';
+    $ph = alt_pipeline_phase();
+    $stats['pipeline_phase'] = $ph['phase'];      // live | refreshing | cleaning
+    $stats['pipeline_since'] = $ph['at'] ? gmdate('c', $ph['at']) : '';
 
     set_transient('alt_stats_cache', $stats, 5 * MINUTE_IN_SECONDS);
     return rest_ensure_response($stats);

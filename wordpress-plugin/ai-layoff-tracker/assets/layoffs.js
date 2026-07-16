@@ -336,20 +336,50 @@
     /* Stats bar                                                           */
     /* ------------------------------------------------------------------ */
 
+    // Always render in Eastern Time (the site's standard) with a live dynamic
+    // date, e.g. "Jul 16, 9:32 AM EDT".
+    function fmtET(iso) {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('en-US', {
+            timeZone: 'America/New_York', month: 'short', day: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+        });
+    }
+
+    function renderStatus(stats) {
+        var liveEl = document.getElementById('alt-status-live');
+        var workEl = document.getElementById('alt-status-working');
+        var timeEl = document.getElementById('alt-live-time') || document.getElementById('alt-last-updated');
+        if (timeEl && stats && stats.last_updated) {
+            var when = fmtET(stats.last_updated);
+            if (when) timeEl.textContent = (timeEl.id === 'alt-live-time') ? when : ('Updated ' + when);
+        }
+        if (!liveEl || !workEl) return;
+        var phase = stats && stats.pipeline_phase;
+        if (phase === 'refreshing' || phase === 'cleaning') {
+            // Green "Live" greys out; the amber working pill blinks alongside it.
+            liveEl.classList.add('alt-status-dim');
+            var txt = document.getElementById('alt-work-text');
+            var wt = document.getElementById('alt-work-time');
+            if (txt) txt.textContent = (phase === 'cleaning')
+                ? 'AI is checking & de-duplicating the data'
+                : 'Refreshing data — pulling new filings, notices & news';
+            if (wt && stats.pipeline_since) wt.textContent = '· ' + fmtET(stats.pipeline_since);
+            workEl.hidden = false;
+        } else {
+            liveEl.classList.remove('alt-status-dim');
+            workEl.hidden = true;
+        }
+    }
+
     function initStatsMeta() {
-        var target = document.getElementById('alt-live-time') || document.getElementById('alt-last-updated');
-        if (!target) return;
-        apiGet('stats', {}).then(function (stats) {
-            if (!stats || !stats.last_updated) return;
-            var lu = new Date(stats.last_updated);
-            if (isNaN(lu.getTime())) return;
-            var when = lu.toLocaleString('en-US', {
-                timeZone: 'America/New_York', month: 'short', day: 'numeric',
-                hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
-            });
-            // The Live pill already says "updated"; the meta line wants the verb.
-            target.textContent = (target.id === 'alt-live-time') ? when : ('Updated ' + when);
-        }).catch(function () { /* leave the fallback text */ });
+        if (!document.getElementById('alt-live-time') && !document.getElementById('alt-last-updated')) return;
+        var poll = function () { apiGet('stats', {}).then(renderStatus).catch(function () {}); };
+        poll();
+        // Refresh while someone is on the page so the badge flips to
+        // "refreshing/cleaning" and back on its own during the morning window.
+        setInterval(poll, 60000);
     }
 
     function fmtDate(iso) {

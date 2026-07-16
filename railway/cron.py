@@ -2,7 +2,10 @@
 AI Layoff Tracker — Main Cron Script
 Runs 2x daily: 9 AM ET + 5 PM ET (see railway.toml for the schedule)
 """
+import os
 from datetime import datetime, timedelta, timezone
+
+import requests
 
 from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
@@ -12,7 +15,24 @@ from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
 
 
+def _mark_phase(phase):
+    """Tell the live badge the pipeline is working (best-effort)."""
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return
+    try:
+        requests.post(f"{site}/wp-json/layoffs/v1/status",
+                      json={"phase": phase},
+                      headers={"X-Layoff-API-Key": key,
+                               "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"},
+                      timeout=20)
+    except Exception as e:
+        print(f"phase ping failed: {e}")
+
+
 def run():
+    _mark_phase("refreshing")
     entries = []
 
     # Pull from sources — one source failing must not kill the run

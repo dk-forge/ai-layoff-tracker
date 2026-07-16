@@ -48,6 +48,12 @@ jobs:
       - name: Install deps
         working-directory: railway
         run: pip install -r requirements.txt
+      - name: Mark pipeline refreshing
+        run: |
+          curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \
+            -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -d '{"phase":"refreshing"}' || true
       - name: Run WARN import
         working-directory: railway
         env:

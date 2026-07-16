@@ -26,6 +26,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install requests
+      - name: Mark pipeline refreshing
+        run: |
+          curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \
+            -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -d '{"phase":"refreshing"}' || true
       - name: Import ERM events
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog

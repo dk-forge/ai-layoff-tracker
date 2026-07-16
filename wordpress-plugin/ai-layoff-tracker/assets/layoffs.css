@@ -198,13 +198,23 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 /* ---------------- Redesign: header, toolbar, quick views ---------------- */
 
 .alt-header { margin: 0 0 20px; }
-.alt-live {
+.alt-status, .alt-live {
     display: inline-flex; align-items: center; gap: 7px;
     font-size: 12.5px; font-weight: 600; color: #1f7a44;
     background: #e8f6ee; border: 1px solid #b7e0c6;
-    border-radius: 20px; padding: 4px 12px;
+    border-radius: 20px; padding: 4px 12px; margin-right: 8px;
+    transition: opacity .2s ease;
 }
 .alt-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22a45d; box-shadow: 0 0 0 3px rgba(34,164,93,.18); }
+/* While the pipeline is refreshing/cleaning, the green pill dims and the
+   amber pill blinks alongside it, so visitors can see the data is being
+   updated in real time. */
+.alt-status-dim { opacity: .45; }
+.alt-status-working { color: #9a6b00; background: #fdf4e3; border-color: #e9cd8f; }
+.alt-work-dot { width: 8px; height: 8px; border-radius: 50%; background: #e0a417;
+    box-shadow: 0 0 0 3px rgba(224,164,23,.2); animation: alt-blink 1.1s ease-in-out infinite; }
+@keyframes alt-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .alt-work-dot { animation: none; } }
 .alt-subtitle { margin: 14px 0 0; font-size: 16px; line-height: 1.5; color: var(--alt-ink-2); max-width: 680px; }
 
 .alt-toolbar2 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
