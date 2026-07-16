@@ -1210,17 +1210,27 @@
         Promise.all([apiGet('aggregate', pThis), apiGet('aggregate', pPrev)]).then(function (r) {
             var t = r[0].totals, p = r[1].totals;
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
-            var perDay = p.jobs ? Math.round(p.jobs / 365) : 0;
-            var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt()/config output
-            // Plain human language: "layoff events affecting N workers", not
-            // "layoffs with N people impacted" (readers mistook event counts
-            // for people counts).
+            // Current-year averages are per day ELAPSED (year-to-date), not /365.
+            var startOfYear = new Date(y, 0, 1);
+            var daysElapsed = Math.max(1, Math.round((now - startOfYear) / 86400000) + 1);
+            var perDayNow = t.jobs ? Math.round(t.jobs / daysElapsed) : 0;
+            var perDayAI = t.ai_jobs ? Math.round(t.ai_jobs / daysElapsed) : 0;
+            var perDayPrev = p.jobs ? Math.round(p.jobs / 365) : 0;
+            var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt() output
+            var perDay = function (n) { return n ? ' (about ' + b(fmt(n)) + ' a day)' : ''; };
+            // "layoff events affecting N workers", never "layoffs with N people"
+            // (readers mistook event counts for people counts). Every number
+            // here is scoped to the active tab's countries, so it is dynamic
+            // on every region tab.
             var txt = 'Today, ' + b(today) + ': so far in ' + b(y) + ' we’ve verified ' + b(fmt(t.entries)) +
-                ' layoff event' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' affecting ' + b(fmt(t.jobs)) + ' workers';
-            if (t.ai_jobs) txt += '. Companies explicitly blamed AI for ' + b(fmt(t.ai_jobs)) + ' of those job cuts';
-            txt += '. In ' + b(y - 1) + ', ' + b(fmt(p.entries)) + ' verified event' + (p.entries === 1 ? '' : 's') +
-                ' affected ' + b(fmt(p.jobs)) + ' workers' +
-                (perDay ? ', an average of ' + b(fmt(perDay)) + ' people losing their jobs every day' : '') + '.';
+                ' layoff event' + (t.entries === 1 ? '' : 's') + ' ' + tab.label +
+                ', affecting ' + b(fmt(t.jobs)) + ' workers' + perDay(perDayNow);
+            if (t.ai_jobs) {
+                txt += '. Companies explicitly blamed AI for ' + b(fmt(t.ai_jobs)) +
+                    ' of those job cuts' + perDay(perDayAI);
+            }
+            txt += '. Across all of ' + b(y - 1) + ', ' + b(fmt(p.entries)) + ' verified event' +
+                (p.entries === 1 ? '' : 's') + ' affected ' + b(fmt(p.jobs)) + ' workers' + perDay(perDayPrev) + '.';
             if (!t.entries && !p.entries && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still filling in from the worldwide press index. Pick "All time" in the Years filter to see earlier verified events.';
             }
