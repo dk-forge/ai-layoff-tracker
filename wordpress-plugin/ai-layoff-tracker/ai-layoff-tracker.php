@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.10.7
+ * Version: 2.10.8
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.10.7');
+define('ALT_VERSION', '2.10.8');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -169,6 +169,20 @@ add_action('wp_enqueue_scripts', 'alt_enqueue_assets');
  * Twitter tags for shareable link previews. The OG block is filterable off via
  * `alt_output_og_tags` if an SEO plugin (Yoast/RankMath) already emits them.
  */
+/**
+ * The <title> tag comes from the WordPress page title, which may contain an
+ * em dash. Replace em/en dashes with a colon on tracker pages so the browser
+ * tab and search snippet read in plain punctuation (house style: no em dashes
+ * in reader-facing copy).
+ */
+function alt_title_no_emdash($parts) {
+    if (alt_page_needs_assets() && !empty($parts['title'])) {
+        $parts['title'] = trim(preg_replace('/\s*[\x{2013}\x{2014}]\s*/u', ': ', $parts['title']));
+    }
+    return $parts;
+}
+add_filter('document_title_parts', 'alt_title_no_emdash');
+
 function alt_seo_head() {
     if (!alt_page_needs_assets()) return;
 
