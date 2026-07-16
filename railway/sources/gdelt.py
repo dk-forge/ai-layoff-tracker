@@ -44,7 +44,13 @@ TRUSTED_DOMAINS = {
     "chicagotribune.com", "bostonglobe.com", "dallasnews.com", "denverpost.com",
     # international (English)
     "dw.com", "france24.com", "scmp.com", "japantimes.co.jp", "straitstimes.com",
-    "cbc.ca", "globalnews.ca", "smh.com.au", "abc.net.au", "irishtimes.com",
+    "cbc.ca", "globalnews.ca",
+    # Canada — was thin (only CBC + Global News + Financial Post), which
+    # under-covered a country with no WARN/SEC/ERM equivalent. Added the
+    # papers of record + national business/tech outlets.
+    "theglobeandmail.com", "nationalpost.com", "thestar.com", "ctvnews.ca",
+    "bnnbloomberg.ca", "montrealgazette.com", "torontosun.com", "betakit.com",
+    "smh.com.au", "abc.net.au", "irishtimes.com",
     "business-standard.com", "moneycontrol.com", "ndtv.com", "ndtvprofit.com",
     "livemint.com", "hindustantimes.com", "thehindu.com",
     "timesofindia.indiatimes.com", "economictimes.indiatimes.com",
