@@ -91,6 +91,28 @@ TRUSTED_DOMAINS = {
     "eltiempo.com", "portafolio.co",                          # Colombia
     "df.cl",                                                   # Chile
     "elcomercio.pe",                                          # Peru
+    # --- Deep coverage for the markets most likely to cite this tracker:
+    # USA, Canada, UK/Europe, Australia. Papers of record + national business.
+    "afr.com", "theaustralian.com.au", "news.com.au", "theage.com.au",  # Australia
+    "9news.com.au", "skynews.com.au", "watoday.com.au", "brisbanetimes.com.au",
+    "thetimes.co.uk", "news.sky.com", "standard.co.uk", "cityam.com",   # UK
+    "euronews.com", "politico.eu", "euractiv.com",            # EU-wide
+    "liberation.fr", "lexpress.fr",                           # France
+    "sueddeutsche.de", "welt.de", "tagesschau.de",            # Germany
+    "elmundo.es", "lavanguardia.com",                         # Spain
+    "repubblica.it", "lastampa.it",                           # Italy
+    "fd.nl",                                                   # Netherlands (business)
+    "lesoir.be", "standaard.be",                              # Belgium
+    "dn.se", "svd.se",                                        # Sweden
+    "aftenposten.no", "e24.no",                              # Norway
+    "politiken.dk", "borsen.dk",                             # Denmark
+    "hs.fi",                                                  # Finland
+    "nzz.ch", "letemps.ch",                                  # Switzerland
+    "derstandard.at", "diepresse.com",                       # Austria
+    "independent.ie", "rte.ie", "thejournal.ie",             # Ireland
+    "expresso.pt", "publico.pt",                             # Portugal
+    "startribune.com", "chron.com", "miamiherald.com",       # more US regionals
+    "cnbc.com", "thehill.com",                               # (dupes are harmless; set dedups)
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "

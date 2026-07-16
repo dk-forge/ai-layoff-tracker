@@ -380,8 +380,8 @@
             var txt = document.getElementById('alt-work-text');
             var wt = document.getElementById('alt-work-time');
             if (txt) txt.textContent = (phase === 'cleaning')
-                ? 'AI is checking & de-duplicating the data'
-                : 'Refreshing data — pulling new filings, notices & news';
+                ? 'Roo is checking & de-duplicating the data'
+                : 'Roo is pulling in new filings, notices & news';
             if (wt && stats.pipeline_since) wt.textContent = '· ' + fmtET(stats.pipeline_since);
             workEl.hidden = false;
         } else {

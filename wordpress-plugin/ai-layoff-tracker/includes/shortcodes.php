@@ -63,7 +63,7 @@ function alt_shortcode_stats_bar() {
     ?>
     <div class="alt-header">
         <span class="alt-status" id="alt-status-live"><span class="alt-live-dot" aria-hidden="true"></span> Live · updated <span id="alt-live-time">twice daily (ET)</span></span>
-        <span class="alt-status alt-status-working" id="alt-status-working" hidden><span class="alt-work-dot" aria-hidden="true"></span> <span id="alt-work-text">Refreshing data</span> <span id="alt-work-time"></span></span>
+        <span class="alt-status alt-status-working" id="alt-status-working" hidden><svg class="alt-roo" viewBox="0 0 40 46" width="20" height="23" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="5" x2="20" y2="13"/><circle cx="20" cy="4" r="2.6" fill="#c79f6a" stroke="none"/><rect x="6" y="13" width="28" height="20" rx="9" fill="#fff"/><g class="alt-roo-arm-l"><rect x="1.5" y="35" width="6" height="9" rx="3" fill="#fff"/></g><g class="alt-roo-arm-r"><rect x="32.5" y="35" width="6" height="9" rx="3" fill="#fff"/></g></g><circle class="alt-roo-eye" cx="15" cy="23" r="3" fill="currentColor"/><circle class="alt-roo-eye" cx="25" cy="23" r="3" fill="currentColor"/><path d="M15.5 28 Q20 31 24.5 28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg> <span id="alt-work-text">Roo is refreshing the data</span> <span id="alt-work-time"></span></span>
         <span class="alt-next" id="alt-next-pull"></span>
         <span class="alt-brand">by <strong>AskTheRecruiter.com</strong></span>
     </div>
