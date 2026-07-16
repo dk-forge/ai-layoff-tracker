@@ -385,13 +385,14 @@
                 : 'Roo is pulling in new filings, notices & news';
             workEl.hidden = false;
             liveEl.hidden = true;
-            if (roo) roo.className = 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working');
+            // SVG className is a read-only object — must use setAttribute.
+            if (roo) roo.setAttribute('class', 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working'));
             if (wrap) wrap.className = 'alt-roo-wrap is-working';
         } else {
             // All caught up: Roo falls asleep (greyscale + zzz), "Live" shows.
             workEl.hidden = true;
             liveEl.hidden = false;
-            if (roo) roo.className = 'alt-roo roo-sleeping';
+            if (roo) roo.setAttribute('class', 'alt-roo roo-sleeping');
             if (wrap) wrap.className = 'alt-roo-wrap is-sleeping';
         }
     }
