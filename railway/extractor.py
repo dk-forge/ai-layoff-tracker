@@ -13,7 +13,10 @@ import re
 
 import openai
 
-MODEL = "deepseek/deepseek-chat"
+# Swap models without a code change: set OPENROUTER_MODEL in the environment
+# (e.g. "google/gemini-2.0-flash-001" for an even cheaper option). DeepSeek-V3
+# is the default — near the price floor while staying strong at extraction.
+MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 ALLOWED_REASON_TAGS = {

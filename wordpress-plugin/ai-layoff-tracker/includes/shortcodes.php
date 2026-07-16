@@ -64,6 +64,7 @@ function alt_shortcode_stats_bar() {
     <div class="alt-header">
         <span class="alt-status" id="alt-status-live"><span class="alt-live-dot" aria-hidden="true"></span> Live · updated <span id="alt-live-time">twice daily (ET)</span></span>
         <span class="alt-status alt-status-working" id="alt-status-working" hidden><span class="alt-work-dot" aria-hidden="true"></span> <span id="alt-work-text">Refreshing data</span> <span id="alt-work-time"></span></span>
+        <span class="alt-next" id="alt-next-pull"></span>
         <span class="alt-brand">by <strong>AskTheRecruiter.com</strong></span>
     </div>
     <?php

@@ -130,7 +130,7 @@ def ask_llm(group):
               '{"events":[[id,id,...],[id,...]]} covering every id exactly once.\n\n'
               + json.dumps(payload, ensure_ascii=False))
     req = urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
-        data=json.dumps({"model": "deepseek/deepseek-chat",
+        data=json.dumps({"model": os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat"),
                          "messages": [{"role": "user", "content": prompt}],
                          "response_format": {"type": "json_object"}}).encode(),
         headers={"Authorization": "Bearer " + OR_KEY, "Content-Type": "application/json", "User-Agent": UA})

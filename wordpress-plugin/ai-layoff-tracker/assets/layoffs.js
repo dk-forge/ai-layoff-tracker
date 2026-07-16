@@ -347,6 +347,21 @@
         });
     }
 
+    // Next scheduled data pull. Ingest runs at fixed UTC times (13:00 and
+    // 22:00 = 9 AM & 6 PM ET); show the next one so "updated" always has a
+    // forward-looking companion.
+    function nextPullET() {
+        var now = new Date(), cands = [];
+        for (var d = 0; d <= 1; d++) {
+            [13, 22].forEach(function (h) {
+                var t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, h, 0, 0));
+                if (t > now) cands.push(t);
+            });
+        }
+        cands.sort(function (a, b) { return a - b; });
+        return cands.length ? fmtET(cands[0].toISOString()) : '';
+    }
+
     function renderStatus(stats) {
         var liveEl = document.getElementById('alt-status-live');
         var workEl = document.getElementById('alt-status-working');
@@ -355,6 +370,8 @@
             var when = fmtET(stats.last_updated);
             if (when) timeEl.textContent = (timeEl.id === 'alt-live-time') ? when : ('Updated ' + when);
         }
+        var nextEl = document.getElementById('alt-next-pull');
+        if (nextEl) { var np = nextPullET(); nextEl.textContent = np ? ('Next update ' + np) : ''; }
         if (!liveEl || !workEl) return;
         var phase = stats && stats.pipeline_phase;
         if (phase === 'refreshing' || phase === 'cleaning') {
