@@ -48,7 +48,9 @@ def ask_model(prompt):
         "https://openrouter.ai/api/v1/chat/completions",
         {"model": "deepseek/deepseek-chat", "messages": [{"role": "user", "content": prompt}],
          "response_format": {"type": "json_object"}},
-        {"Authorization": "Bearer " + key}, attempts=3, timeout=150,
+        # This is an advisory daily sample, not a batch job. Keep its outage
+        # budget bounded so a slow provider cannot hold the whole report open.
+        {"Authorization": "Bearer " + key}, attempts=2, timeout=45,
     )
     try:
         content = response["choices"][0]["message"]["content"]
