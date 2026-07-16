@@ -27,6 +27,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | challenger-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official Challenger report; fails if variance exceeds 10% |
 | reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
 | historical-news-sweep | daily + manual | Rotates through one 14-day global GDELT history window per day; dedup makes retries safe |
+| canonical-event-migrate | daily + manual | Resumable no-LLM conversion of legacy rows into canonical events with retained source reports |
 
 Secrets (repo → Settings → Actions): `WP_API_KEY` (from wp-admin → Tools → AI Layoff
 Tracker), `OPENROUTER_API_KEY`, `FTP_USER`/`FTP_PASSWORD`/`FTP_HOST`.

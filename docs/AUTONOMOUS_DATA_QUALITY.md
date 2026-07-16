@@ -10,6 +10,12 @@ An **event** is one identifiable layoff announcement, filing, or execution.
 A **source report** is a document describing that event. One event may have
 many reports; totals must count the canonical event once, not every report.
 
+The event/source-report store enforces this distinction prospectively: an exact
+or fuzzy duplicate joins the existing canonical event as a retained source
+report rather than becoming a second counted row or being discarded. Legacy
+rows are migrated in resumable batches; source reports removed before this
+store existed cannot be reconstructed without re-discovering them.
+
 `country` means where the affected jobs are located. `employer_country` means
 the employer’s HQ/domicile when evidence supports it. Never use one as a proxy
 for the other.

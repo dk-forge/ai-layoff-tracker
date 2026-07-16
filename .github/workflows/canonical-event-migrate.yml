@@ -1,0 +1,27 @@
+name: Canonical event migration
+
+# Builds the event/source-report evidence graph for legacy rows in resumable
+# batches. It does not call a model and does not alter visible totals.
+on:
+  schedule:
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Build canonical events and retained source reports
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          EVENT_MIGRATE_BATCH: '500'
+          EVENT_MIGRATE_MAX_BATCHES: '20'
+        run: python canonical_event_migrate.py

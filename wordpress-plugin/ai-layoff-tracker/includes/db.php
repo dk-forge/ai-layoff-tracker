@@ -52,6 +52,7 @@ function alt_db_install() {
         reason_tags VARCHAR(255) NOT NULL DEFAULT '',
         roles TEXT NULL,
         excerpt TEXT NULL,
+        event_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
         PRIMARY KEY (id),
         UNIQUE KEY dedup_hash (dedup_hash),
         KEY layoff_date (layoff_date),
@@ -63,9 +64,95 @@ function alt_db_install() {
         KEY ai_causation (ai_causation),
         KEY review_status (review_status),
         KEY company_key (company_key),
-        KEY post_id (post_id)
+        KEY post_id (post_id),
+        KEY event_id (event_id)
     ) $charset;";
     dbDelta($sql);
+
+    // One canonical event may have many independently preserved reports. The
+    // tracker counts the canonical row once; this evidence store keeps every
+    // corroborating source instead of throwing duplicates away.
+    $events = $wpdb->prefix . 'alt_events';
+    $reports = $wpdb->prefix . 'alt_source_reports';
+    dbDelta("CREATE TABLE $events (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        event_key CHAR(32) NOT NULL,
+        canonical_layoff_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id), UNIQUE KEY event_key (event_key), KEY canonical_layoff_id (canonical_layoff_id)
+    ) $charset;");
+    dbDelta("CREATE TABLE $reports (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        event_id BIGINT UNSIGNED NOT NULL,
+        report_key CHAR(32) NOT NULL,
+        source_name VARCHAR(191) NOT NULL DEFAULT '',
+        source_type VARCHAR(32) NOT NULL DEFAULT '',
+        verification_level VARCHAR(16) NOT NULL DEFAULT '',
+        source_url TEXT NULL,
+        excerpt TEXT NULL,
+        ai_causation VARCHAR(32) NOT NULL DEFAULT 'unknown',
+        ai_language TEXT NULL,
+        observed_at DATETIME NOT NULL,
+        PRIMARY KEY (id), UNIQUE KEY report_key (report_key), KEY event_id (event_id)
+    ) $charset;");
+}
+
+function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events'; }
+function alt_source_reports_table() { global $wpdb; return $wpdb->prefix . 'alt_source_reports'; }
+
+/** Attach a canonical row to an event, creating the event if needed. */
+function alt_event_for_layoff($layoff_id) {
+    global $wpdb;
+    $layoff_id = (int) $layoff_id;
+    $row = $wpdb->get_row($wpdb->prepare("SELECT id, event_id, dedup_hash FROM " . alt_db_table() . " WHERE id = %d", $layoff_id));
+    if (!$row) return 0;
+    if (!empty($row->event_id)) return (int) $row->event_id;
+    $key = preg_match('/^[a-f0-9]{32}$/', (string) $row->dedup_hash) ? $row->dedup_hash : md5('event:' . $layoff_id);
+    $events = alt_events_table();
+    $wpdb->query($wpdb->prepare("INSERT IGNORE INTO $events (event_key, canonical_layoff_id, created_at) VALUES (%s, %d, UTC_TIMESTAMP())", $key, $layoff_id));
+    $event_id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM $events WHERE event_key = %s", $key));
+    if ($event_id) $wpdb->update(alt_db_table(), array('event_id' => $event_id), array('id' => $layoff_id));
+    return $event_id;
+}
+
+/** Store a source report idempotently; source links are never deleted by dedup. */
+function alt_event_add_report($event_id, $source) {
+    global $wpdb;
+    $event_id = (int) $event_id;
+    $url = esc_url_raw($source['source_url'] ?? '');
+    $name = sanitize_text_field($source['source_name'] ?? '');
+    if (!$event_id || ($url === '' && $name === '')) return 0;
+    $key = md5($event_id . '|' . $url . '|' . $name);
+    $table = alt_source_reports_table();
+    $wpdb->query($wpdb->prepare(
+        "INSERT IGNORE INTO $table (event_id, report_key, source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language, observed_at) VALUES (%d, %s, %s, %s, %s, %s, %s, %s, %s, UTC_TIMESTAMP())",
+        $event_id, $key, $name, sanitize_key($source['source_type'] ?? ''), sanitize_key($source['verification_level'] ?? ''), $url,
+        sanitize_textarea_field($source['excerpt'] ?? ''), alt_normalize_ai_causation($source['ai_causation'] ?? 'unknown'),
+        sanitize_text_field($source['ai_language'] ?? '')
+    ));
+    return (int) $wpdb->insert_id;
+}
+
+function alt_event_register_report_for_layoff($layoff_id, $source) {
+    global $wpdb;
+    $event_id = alt_event_for_layoff($layoff_id);
+    if ($event_id) {
+        // Ensure the canonical row's own original source is retained even
+        // when the first event touch is an incoming duplicate, before the
+        // background legacy migration reaches that row.
+        $canonical = $wpdb->get_row($wpdb->prepare(
+            "SELECT source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language FROM " . alt_db_table() . " WHERE id = %d", (int) $layoff_id), ARRAY_A);
+        if ($canonical) alt_event_add_report($event_id, $canonical);
+        alt_event_add_report($event_id, $source);
+    }
+    return $event_id;
+}
+
+function alt_event_sources_for_layoff($layoff_id) {
+    global $wpdb;
+    $event_id = alt_event_for_layoff($layoff_id);
+    if (!$event_id) return array();
+    return $wpdb->get_results($wpdb->prepare("SELECT source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language, observed_at FROM " . alt_source_reports_table() . " WHERE event_id = %d ORDER BY id ASC", $event_id), ARRAY_A) ?: array();
 }
 
 /** Reason tags are stored as ",tag1,tag2," so a filter is a simple LIKE. */
@@ -367,6 +454,7 @@ function alt_db_prep($sql, $params) {
 function alt_db_row_to_array($row) {
     return array(
         'id'                 => (int) $row->id,
+        'event_id'           => (int) $row->event_id,
         'company_name'       => $row->company,
         'ticker'             => $row->ticker !== '' ? $row->ticker : null,
         'job_count'          => (int) $row->job_count,
@@ -421,6 +509,13 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/migrate', array(
         'methods'  => 'POST',
         'callback' => 'alt_api_migrate',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    // Key-protected, resumable migration of legacy rows into canonical events
+    // and source reports. `after_id` makes it safe to call repeatedly.
+    register_rest_route('layoffs/v1', '/event-migrate', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_event_migrate',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
     // Key-protected: bulk table-only upsert (for high-volume WARN data that
@@ -759,6 +854,23 @@ function alt_api_migrate(WP_REST_Request $r) {
     global $wpdb;
     $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
     return rest_ensure_response(array('synced' => $synced, 'table_rows' => $count));
+}
+
+function alt_api_event_migrate(WP_REST_Request $r) {
+    global $wpdb;
+    $after = max(0, (int) $r->get_param('after_id'));
+    $limit = min(1000, max(1, (int) ($r->get_param('limit') ?: 500)));
+    $table = alt_db_table();
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language FROM $table WHERE event_id = 0 AND id > %d ORDER BY id ASC LIMIT %d",
+        $after, $limit), ARRAY_A) ?: array();
+    $last = $after;
+    foreach ($rows as $row) {
+        $last = (int) $row['id'];
+        alt_event_register_report_for_layoff($last, $row);
+    }
+    $remaining = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE event_id = 0");
+    return rest_ensure_response(array('processed' => count($rows), 'last_id' => $last, 'remaining' => $remaining));
 }
 
 /**

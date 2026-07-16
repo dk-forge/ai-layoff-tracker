@@ -98,6 +98,11 @@ function alt_register_routes() {
         'callback'            => 'alt_api_dedupe',
         'permission_callback' => 'alt_api_permission',
     ));
+    // Every canonical event exposes all retained primary/corroborating source
+    // reports. `id` is the public /query row id, not a WordPress post id.
+    register_rest_route('layoffs/v1', '/event/(?P<id>\d+)/sources', array(
+        'methods' => 'GET', 'callback' => 'alt_api_event_sources', 'permission_callback' => '__return_true',
+    ));
 }
 add_action('rest_api_init', 'alt_register_routes');
 
@@ -324,6 +329,20 @@ function alt_hash_exists($hash) {
     return $query->have_posts();
 }
 
+function alt_table_layoff_id_for_hash($hash) {
+    global $wpdb;
+    if (!function_exists('alt_db_table')) return 0;
+    return (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . alt_db_table() . " WHERE dedup_hash = %s", $hash));
+}
+
+function alt_api_event_sources(WP_REST_Request $request) {
+    $id = (int) $request->get_param('id');
+    if (!$id || !function_exists('alt_event_sources_for_layoff')) {
+        return new WP_Error('alt_not_found', 'Event not found.', array('status' => 404));
+    }
+    return rest_ensure_response(array('layoff_id' => $id, 'sources' => alt_event_sources_for_layoff($id)));
+}
+
 function alt_entry_to_array($post_id) {
     $tags = get_post_meta($post_id, 'reason_tags', true);
     if (!is_array($tags)) {
@@ -474,6 +493,13 @@ function alt_api_add($request) {
     // Server-side dedup re-check — the Railway pre-check fails open, so this
     // is the authoritative guard against duplicates
     if (alt_hash_exists($dedup_hash)) {
+        // The event is already counted, but this may be a distinct article or
+        // filing. Retain that evidence on the canonical event before telling
+        // the ingest worker it is a duplicate.
+        $existing_row = alt_table_layoff_id_for_hash($dedup_hash);
+        if ($existing_row && function_exists('alt_event_register_report_for_layoff')) {
+            alt_event_register_report_for_layoff($existing_row, $meta_in);
+        }
         return new WP_Error('alt_duplicate', 'An entry with this dedup_hash already exists.', array('status' => 409));
     }
 
@@ -489,6 +515,11 @@ function alt_api_add($request) {
     // 30 days (e.g. separate store closures), so they rely on the exact hash.
     $incoming_source = sanitize_text_field($meta_in['source_type'] ?? '');
     if ($incoming_source !== 'warn' && ($match_id = alt_fuzzy_dupe_exists($company, $layoff_date))) {
+        global $wpdb;
+        $existing_row = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . alt_db_table() . " WHERE post_id = %d", $match_id));
+        if ($existing_row && function_exists('alt_event_register_report_for_layoff')) {
+            alt_event_register_report_for_layoff($existing_row, $meta_in);
+        }
         // Don't discard information with the duplicate: if the incoming report
         // carries an explicit AI attribution the existing entry lacks (common
         // when a WARN filing landed first and the news explains WHY), graft the
@@ -586,6 +617,11 @@ function alt_api_add($request) {
     // hook fires before meta exists, so sync explicitly here).
     if (function_exists('alt_db_sync_post')) {
         alt_db_sync_post($post_id);
+    }
+    if (function_exists('alt_event_register_report_for_layoff')) {
+        global $wpdb;
+        $layoff_id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . alt_db_table() . " WHERE post_id = %d", $post_id));
+        if ($layoff_id) alt_event_register_report_for_layoff($layoff_id, $meta_values);
     }
 
     alt_flush_caches();

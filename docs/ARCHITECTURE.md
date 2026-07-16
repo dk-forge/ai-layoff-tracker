@@ -25,7 +25,8 @@
   │   PUBLIC  /query /aggregate /facets   ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
-  │           /reclassify /source-health                                                   │
+  │           /reclassify /source-health /event-migrate                                    │
+  │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
   │                                                                                      │
   │  Front-end (assets/layoffs.js): DataTables serverSide → /query; charts+stats →       │
@@ -53,6 +54,7 @@ railway/
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
+  canonical_event_migrate.py Resumable legacy event/source-report migration (no LLM)
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   sources/{edgar,gdelt,newsapi,warn}.py
   warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
