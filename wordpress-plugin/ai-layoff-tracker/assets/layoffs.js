@@ -97,6 +97,38 @@
         });
     }
 
+    function renderSourceHealth() {
+        var box = document.getElementById('alt-source-health');
+        var note = document.getElementById('alt-source-health-note');
+        if (!box || !note) return;
+        apiGet('source-health', {}).then(function (health) {
+            var names = Object.keys(health || {}).sort();
+            box.textContent = '';
+            if (!names.length) {
+                note.textContent = 'No collector status has been received yet. This is a setup state, not evidence of zero layoffs.';
+                return;
+            }
+            note.textContent = 'Latest autonomous collector attempts.';
+            var table = document.createElement('table');
+            var head = document.createElement('thead');
+            head.innerHTML = '<tr><th>Source</th><th>Status</th><th>Documents</th><th>Checked</th></tr>';
+            table.appendChild(head);
+            var body = document.createElement('tbody');
+            names.forEach(function (name) {
+                var item = health[name] || {};
+                var tr = document.createElement('tr');
+                [name, item.status === 'ok' ? 'Healthy' : 'Degraded', fmt(item.entries), item.checked_at ? new Date(item.checked_at).toLocaleString() : '—'].forEach(function (value) {
+                    var td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
+                });
+                tr.className = item.status === 'ok' ? 'alt-source-ok' : 'alt-source-degraded';
+                body.appendChild(tr);
+            });
+            table.appendChild(body); box.appendChild(table);
+        }).catch(function () {
+            note.textContent = 'Live source status is temporarily unavailable; the dataset itself remains available through the tracker and API.';
+        });
+    }
+
     /* Chart registry --------------------------------------------------- */
 
     var CHARTS = {};
@@ -1507,6 +1539,7 @@
         });
 
         initStatsMeta();
+        renderSourceHealth();
 
         var needsData = document.getElementById('alt-table') || document.getElementById('alt-stats-bar')
             || document.querySelector('.alt-dashboard') || document.querySelector('.alt-ai-tracker')
