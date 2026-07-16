@@ -27,22 +27,31 @@ jobs:
           UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 
           def get(path):
-              req = urllib.request.Request(API + path, headers=UA)
-              return json.load(urllib.request.urlopen(req, timeout=60))
+              # shared hosting throws transient 5xx under sustained paging —
+              # retry with backoff instead of dying 7 minutes in
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request(API + path, headers=UA)
+                      return json.load(urllib.request.urlopen(req, timeout=60))
+                  except Exception as e:
+                      if attempt == 3:
+                          raise
+                      print(f"  page retry {attempt+1}: {e}")
+                      time.sleep(15 * (attempt + 1))
 
-          # collect every entry that has something auditable (an industry
-          # label, or a non-WARN source whose country/count came from a model)
+          # only classified sources are auditable (WARN rows carry no industry)
+          # — filter server-side so we page ~9K rows, not the whole table
           rows, page = [], 1
           while True:
-              d = get(f"query?per_page=100&page={page}&sort=id&dir=asc")
+              d = get(f"query?sources=news,8K,press_release,erm&per_page=100&page={page}&sort=id&dir=asc")
               batch = d["data"]
               if not batch:
                   break
-              rows += [r for r in batch
-                       if r.get("industry") or r.get("source_type") in ("news", "8K", "press_release", "erm")]
+              rows += batch
               if page * 100 >= d["total"]:
                   break
               page += 1
+              time.sleep(0.5)  # be polite to the shared host
           print(f"auditable entries: {len(rows)}")
 
           def ask(sample):
