@@ -18,5 +18,5 @@ builder = "NIXPACKS"
 
 [deploy]
 startCommand = "python cron.py"
-cronSchedule = "0 12,22 * * *"
+cronSchedule = "0 13,22 * * *"
 restartPolicyType = "NEVER"

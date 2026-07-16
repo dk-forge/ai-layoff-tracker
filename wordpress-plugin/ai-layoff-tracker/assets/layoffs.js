@@ -912,8 +912,8 @@
                     // flip early/late around midnight.
                     var n = new Date();
                     var today = n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate());
-                    var badges = (d > today ? ' <span class="alt-upcoming" title="Filed in advance — effective date has not arrived yet">upcoming</span>' : '');
-                    if (row.announced) badges += ' <span class="alt-upcoming" title="Announcement of planned cuts — not yet executed or filed">announced</span>';
+                    var badges = (d > today ? ' <span class="alt-upcoming" title="Filed in advance. The effective date has not arrived yet.">upcoming</span>' : '');
+                    if (row.announced) badges += ' <span class="alt-upcoming" title="Announcement of planned cuts, not yet executed or filed">announced</span>';
                     return escapeHtml(d) + badges;
                 } },
                 { data: 'company_name', render: function (d, t, row) {
@@ -946,7 +946,7 @@
                     if (!url) return escapeHtml(row.source_name || '—');
                     var exact = warnLinkIsExact(row);
                     var title = exact ? 'Opens the primary source'
-                        : 'Opens the state’s official WARN list — this notice is a row in it';
+                        : 'Opens the state’s official WARN list. This notice is a row in it.';
                     var suffix = exact ? '' : ' <span class="alt-muted" title="' + title + '">(list)</span>';
                     return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="' + escapeHtml(title) + '">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix;
                 } }
@@ -1170,12 +1170,12 @@
             // for people counts).
             var txt = 'Today, ' + b(today) + ': so far in ' + b(y) + ' we’ve verified ' + b(fmt(t.entries)) +
                 ' layoff event' + (t.entries === 1 ? '' : 's') + ' ' + tab.label + ' affecting ' + b(fmt(t.jobs)) + ' workers';
-            if (t.ai_jobs) txt += ' — companies explicitly blamed AI for ' + b(fmt(t.ai_jobs)) + ' of those job cuts';
+            if (t.ai_jobs) txt += '. Companies explicitly blamed AI for ' + b(fmt(t.ai_jobs)) + ' of those job cuts';
             txt += '. In ' + b(y - 1) + ', ' + b(fmt(p.entries)) + ' verified event' + (p.entries === 1 ? '' : 's') +
                 ' affected ' + b(fmt(p.jobs)) + ' workers' +
-                (perDay ? ' — an average of ' + b(fmt(perDay)) + ' people losing their jobs every day' : '') + '.';
+                (perDay ? ', an average of ' + b(fmt(perDay)) + ' people losing their jobs every day' : '') + '.';
             if (!t.entries && !p.entries && ACTIVE_TAB !== 'world') {
-                txt += ' Coverage for this region is still back-filling from the worldwide press index — pick "All time" in the Years filter to see earlier verified events.';
+                txt += ' Coverage for this region is still filling in from the worldwide press index. Pick "All time" in the Years filter to see earlier verified events.';
             }
             el.innerHTML = txt;
         }).catch(function () { el.textContent = ''; });
@@ -1192,7 +1192,7 @@
         Object.keys(names).forEach(function (k) {
             html += '<p><b>' + names[k] + ':</b> ' + REGION_TABS[k].countries.join(', ') + '</p>';
         });
-        html += '<p><b>World</b> is the unfiltered total — it includes every entry, even ones whose country has no regional tab (and the honest "Multiple countries" bucket for cuts spanning several countries, which no single region can claim without double counting).</p>';
+        html += '<p><b>World</b> is the unfiltered total. It includes every entry, even ones whose country has no regional tab, plus the honest "Multiple countries" bucket for cuts that span several countries and which no single region can claim without double counting.</p>';
         el.innerHTML = html;
     }
 

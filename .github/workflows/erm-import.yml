@@ -8,7 +8,7 @@ name: ERM import (Eurofound, EU27+Norway)
 
 on:
   schedule:
-    - cron: '30 12 * * *'   # daily, after ERM correspondents' morning updates
+    - cron: '0 13 * * *'   # 9 AM ET: morning ingest window (after ERM's overnight updates)
   workflow_dispatch:
     inputs:
       mode:

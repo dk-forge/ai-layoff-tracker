@@ -898,6 +898,13 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-method-body p { margin: 0 0 10px; }
 .alt-method-body p:last-child { margin-bottom: 0; }
 .alt-method-body .alt-badge { margin: 0 1px; }
+/* Corrections log grows daily, so it scrolls inside a fixed height */
+.alt-corrections-scroll {
+    max-height: 340px; overflow-y: auto; margin: 0 0 12px; padding: 4px 8px 4px 22px;
+    border: 1px solid var(--alt-grid); border-radius: 8px; background: var(--alt-surface-2);
+}
+.alt-corrections-scroll li { margin: 0 0 9px; }
+.alt-corrections-scroll li:last-child { margin-bottom: 0; }
 
 .alt-cite-box {
     display: flex;

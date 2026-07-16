@@ -7,7 +7,7 @@ name: WARN notice import (US states)
 
 on:
   schedule:
-    - cron: '0 15 * * *'
+    - cron: '0 13 * * *'   # 9 AM ET: morning ingest window
   workflow_dispatch:
     inputs:
       states:

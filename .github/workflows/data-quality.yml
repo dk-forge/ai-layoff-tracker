@@ -10,7 +10,8 @@ name: Data quality report (anomaly flags)
 
 on:
   schedule:
-    - cron: '0 16 * * *'   # daily, noon ET (WARN import runs 15:00 UTC)
+    - cron: '0 15 * * *'   # 11 AM ET: after the 9 AM ingest, corrections run and the
+                           # daily number settles a full hour before people check at noon
   workflow_dispatch:
 
 jobs:

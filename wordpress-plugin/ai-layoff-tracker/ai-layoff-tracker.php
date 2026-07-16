@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.10.6
+ * Version: 2.10.7
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.10.6');
+define('ALT_VERSION', '2.10.7');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -174,7 +174,7 @@ function alt_seo_head() {
 
     $page_url = get_permalink();
     if (!$page_url) $page_url = home_url('/');
-    $title = 'AI Layoff Tracker — Live Data on Jobs Lost to AI & Automation';
+    $title = 'AI Layoff Tracker: Live Data on Jobs Lost to AI & Automation';
     $desc  = 'A continuously updated tracker of verified layoffs worldwide, all industries and causes, flagging which ones companies attribute to AI. Filter by country, US state, industry, or period. Sourced from SEC filings, state WARN notices, and credible news globally, with the exact quote and primary source link for every entry.';
 
     $schema = array(
@@ -263,17 +263,17 @@ function alt_faq_items() {
     $f = function ($v) { return number_format((float) $v); };
     return array(
         array('What is the AI Layoff Tracker?',
-            'A free, continuously updated layoff tracker covering verified job cuts worldwide — all industries and causes — that flags which layoffs companies explicitly attribute to AI or automation. Every entry links to a primary source: a SEC 8-K filing, a US state WARN notice, or a named news outlet with the exact quote.'),
+            'A free, continuously updated layoff tracker covering verified job cuts worldwide across all industries and causes. It flags which layoffs companies explicitly attribute to AI or automation. Every entry links to a primary source: a SEC 8-K filing, a US state WARN notice, or a named news outlet with the exact quote.'),
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
-            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide, ' . $f($n['ai_jobs']) . ' of them in cuts companies explicitly attribute to AI. Totals update daily as new filings and reports are verified.'),
+            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four source families: SEC 8-K filings (searched twice daily), official WARN notices from ' . $f($n['states']) . ' US states (imported daily, no AI processing), the European Restructuring Monitor — Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily, reused with attribution; because ERM records announcement-stage figures, its entries feed the separately-labeled "Announced" tier, never the verified totals) — and worldwide press coverage in 65+ languages via the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
         array('How is this different from the Challenger report or the WSJ and TrueUp layoff trackers?',
-            'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it — a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but as a separately labeled tier that is never mixed into the verified totals.'),
+            'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Can journalists and researchers use this data?',
-            'Yes — free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
+            'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
         array('How do I report an error?',
-            'Use the contact page or email info@asktherecruiter.com — corrections get priority. Every entry links to its primary source so you can check any number against the underlying document.'),
+            'Use the contact page or email info@asktherecruiter.com and corrections get priority. Every entry links to its primary source, so you can check any number against the underlying document.'),
     );
 }
 
