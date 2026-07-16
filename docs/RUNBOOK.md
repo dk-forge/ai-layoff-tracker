@@ -29,6 +29,11 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | historical-news-sweep | daily + manual | Rotates through one 14-day global GDELT history window per day; dedup makes retries safe |
 | canonical-event-migrate | daily + manual | Resumable no-LLM conversion of legacy rows into canonical events with retained source reports |
 
+The advisory DeepSeek spot-check inside `data-quality` retries temporary
+network/model failures and writes an explicit warning to the Actions summary
+without failing the whole report. A failed attempted automatic correction still
+fails loudly, because that is a data-changing operation.
+
 Secrets (repo → Settings → Actions): `WP_API_KEY` (from wp-admin → Tools → AI Layoff
 Tracker), `OPENROUTER_API_KEY`, `FTP_USER`/`FTP_PASSWORD`/`FTP_HOST`.
 Railway env: `OPENROUTER_API_KEY`, `WP_API_KEY`, `WP_SITE_URL=https://asktherecruiter.com/blog`.
