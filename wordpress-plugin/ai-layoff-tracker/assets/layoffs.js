@@ -382,6 +382,8 @@
             if (txt) txt.textContent = (phase === 'cleaning')
                 ? 'Roo is checking & de-duplicating the data'
                 : 'Roo is pulling in new filings, notices & news';
+            var roo = document.getElementById('alt-roo');
+            if (roo) roo.className = 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working');
             if (wt && stats.pipeline_since) wt.textContent = '· ' + fmtET(stats.pipeline_since);
             workEl.hidden = false;
         } else {

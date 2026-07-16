@@ -81,10 +81,15 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 
 .alt-stats-bar {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    /* Fixed 3-up so the three explained cards (Verified / Announced / AI)
+       share one even row, and Companies / Industries / Countries share the
+       next — instead of six-across with mismatched heights. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin: 0 0 18px;
 }
+@media (max-width: 720px) { .alt-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .alt-stats-bar { grid-template-columns: 1fr; } }
 .alt-stat-card {
     position: relative;
     background: var(--alt-surface);
@@ -196,6 +201,8 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
     font-variant-numeric: tabular-nums;
 }
 .alt-narrative:empty { display: none; }
+/* Make the numbers pop: heavier + brand green so the figures carry the line. */
+.alt-narrative b { font-weight: 800; color: #3f6147; }
 
 /* ---------------- Redesign: header, toolbar, quick views ---------------- */
 
@@ -217,17 +224,48 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px
 .alt-work-dot { width: 8px; height: 8px; border-radius: 50%; background: #e0a417;
     box-shadow: 0 0 0 3px rgba(224,164,23,.2); animation: alt-blink 1.1s ease-in-out infinite; }
 @keyframes alt-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
-/* Roo, the AskTheRecruiter mascot: a green robot who blinks and waves an arm
-   while the pipeline works. Matches Roo elsewhere on the site. */
-.alt-roo { color: #4d6b52; flex: none; overflow: visible; }
-.alt-roo-eye { transform-box: fill-box; transform-origin: center; animation: alt-roo-blink 3.4s infinite; }
-@keyframes alt-roo-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
-.alt-roo-arm-l { transform-box: fill-box; transform-origin: top center; animation: alt-roo-wave-l 1.6s ease-in-out infinite; }
-.alt-roo-arm-r { transform-box: fill-box; transform-origin: top center; animation: alt-roo-wave-r 1.6s ease-in-out infinite; }
-@keyframes alt-roo-wave-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-16deg); } }
-@keyframes alt-roo-wave-r { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(16deg); } }
+/* Roo, the AskTheRecruiter mascot — the exact robot from the main app, with
+   his full animation set. He works (bobs, wiggles arms, reads, types, treads
+   roll) while the pipeline refreshes and cleans. */
+.alt-roo { --primary-deep: #4f7257; --accent: #d4a574; --surface: #fff;
+    --primary-soft: #e6ede6; --primary-tint: #f0f4f0; flex: none; overflow: visible; }
+.alt-work-body { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.roo-eyes { animation: roo-blink 4.5s ease infinite; transform-origin: center 38px; }
+.roo-working .roo-eyes { animation-duration: 5.5s; }
+.roo-working-hard .roo-eyes { animation-duration: 4.5s; }
+.roo-pupil { transform-box: fill-box; transform-origin: center; }
+.roo-working .roo-pupil { animation: roo-read 4s ease-in-out infinite; }
+.roo-working-hard .roo-pupil { animation: roo-read 2.6s ease-in-out infinite; }
+.roo-line { animation: roo-type 1.6s ease-in-out infinite; }
+.roo-working-hard .roo-line { animation-duration: .65s; }
+.roo-line:nth-of-type(2) { animation-delay: .2s; }
+.roo-line:nth-of-type(3) { animation-delay: .4s; }
+.roo-bulb { transform-box: fill-box; transform-origin: center; }
+.roo-working .roo-bulb { animation: roo-beacon 1.4s ease-in-out infinite; }
+.roo-working-hard .roo-bulb { animation: roo-beacon .8s ease-in-out infinite; }
+.roo-working .roo-body-group { animation: roo-bob 2.4s ease-in-out infinite; }
+.roo-working-hard .roo-body-group { animation: roo-bob 1.1s ease-in-out infinite; }
+.roo-arm-l, .roo-arm-r { transform-origin: center; }
+.roo-working .roo-arm-l { animation: roo-wiggle 1.3s ease-in-out infinite; }
+.roo-working .roo-arm-r { animation: roo-wiggle 1.3s ease-in-out infinite reverse; }
+.roo-working-hard .roo-arm-l { animation: roo-wiggle .5s ease-in-out infinite; }
+.roo-working-hard .roo-arm-r { animation: roo-wiggle .5s ease-in-out infinite reverse; }
+.roo-working .roo-tread-dot { animation: roo-roll 1.2s linear infinite; }
+.roo-working-hard .roo-tread-dot { animation: roo-roll .6s linear infinite; }
+.roo-tread-dot:nth-of-type(2) { animation-delay: .12s; }
+.roo-tread-dot:nth-of-type(3) { animation-delay: .24s; }
+.roo-tread-dot:nth-of-type(4) { animation-delay: .36s; }
+.roo-tread-dot:nth-of-type(5) { animation-delay: .48s; }
+@keyframes roo-blink { 0%,88%,100%{transform:scaleY(1)} 91%{transform:scaleY(.08)} 94%{transform:scaleY(1)} 96%{transform:scaleY(.08)} 98%{transform:scaleY(1)} }
+@keyframes roo-read { 0%,8%{transform:translate(0,0)} 18%{transform:translate(-2px,-1px)} 30%,35%{transform:translate(2px,-1px)} 45%{transform:translate(-2px,1px)} 57%,62%{transform:translate(2px,1px)} 74%,100%{transform:translate(0,0)} }
+@keyframes roo-type { 0%,100%{width:8px} 55%{width:30px} }
+@keyframes roo-beacon { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.35)} }
+@keyframes roo-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2.5px)} }
+@keyframes roo-wiggle { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(5deg)} }
+@keyframes roo-roll { 0%{opacity:.25} 50%{opacity:.85} 100%{opacity:.25} }
 @media (prefers-reduced-motion: reduce) {
-    .alt-work-dot, .alt-roo-eye, .alt-roo-arm-l, .alt-roo-arm-r { animation: none; }
+    .alt-work-dot, .roo-eyes, .roo-pupil, .roo-line, .roo-bulb, .roo-body-group,
+    .roo-arm-l, .roo-arm-r, .roo-tread-dot { animation: none !important; }
 }
 .alt-subtitle { margin: 14px 0 0; font-size: 16px; line-height: 1.5; color: var(--alt-ink-2); max-width: 680px; }
 
