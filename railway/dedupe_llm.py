@@ -71,14 +71,19 @@ def days_between(a, b):
 
 
 def fetch_all():
+    # Only non-WARN sources are eligible: WARN notices are deliberately exempt
+    # from fuzzy dedup (a company legally files several notices close together),
+    # and every cross-source duplicate we've seen is news/ERM/SEC. This also
+    # keeps the fetch to ~10K rows (per_page=200 is the server cap) instead of
+    # 40K+, which the shared host can't paginate without throwing 500s.
     rows, page = [], 1
     while True:
-        d = api(f"query?per_page=100&page={page}&sort=id&dir=asc")
+        d = api(f"query?sources=news,8K,press_release,erm&per_page=200&page={page}&sort=id&dir=asc")
         rows += d["data"]
-        if page * 100 >= d["total"] or not d["data"]:
+        if page * 200 >= d["total"] or not d["data"]:
             break
         page += 1
-        time.sleep(0.4)
+        time.sleep(0.5)
     return rows
 
 

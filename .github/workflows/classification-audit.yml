@@ -43,12 +43,12 @@ jobs:
           # — filter server-side so we page ~9K rows, not the whole table
           rows, page = [], 1
           while True:
-              d = get(f"query?sources=news,8K,press_release,erm&per_page=100&page={page}&sort=id&dir=asc")
+              d = get(f"query?sources=news,8K,press_release,erm&per_page=200&page={page}&sort=id&dir=asc")
               batch = d["data"]
               if not batch:
                   break
               rows += batch
-              if page * 100 >= d["total"]:
+              if page * 200 >= d["total"]:
                   break
               page += 1
               time.sleep(0.5)  # be polite to the shared host
