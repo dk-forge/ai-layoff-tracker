@@ -124,7 +124,10 @@ jobs:
                        "Content-Type": "application/json",
                        "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
           out = json.load(urllib.request.urlopen(req, timeout=120))
-          flags = json.loads(out["choices"][0]["message"]["content"]).get("flags", [])
+          content = out["choices"][0]["message"]["content"]
+          # models sometimes fence their JSON despite response_format
+          content = content[content.find("{"): content.rfind("}") + 1]
+          flags = json.loads(content).get("flags", [])
           print(f"## Classification spot-check — {len(flags)} flag(s) from {len(sample)} sampled entries")
           for f in flags:
               print(f"- id {f.get('id')}: {f.get('field')} \"{f.get('current')}\" -> \"{f.get('suggested')}\" — {f.get('why')}")

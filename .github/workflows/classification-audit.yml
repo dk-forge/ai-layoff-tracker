@@ -66,7 +66,10 @@ jobs:
               for attempt in range(3):
                   try:
                       out = json.load(urllib.request.urlopen(req, timeout=180))
-                      return json.loads(out["choices"][0]["message"]["content"]).get("flags", [])
+                      content = out["choices"][0]["message"]["content"]
+                      # models sometimes fence their JSON despite response_format
+                      content = content[content.find("{"): content.rfind("}") + 1]
+                      return json.loads(content).get("flags", [])
                   except Exception as e:
                       print(f"  batch retry {attempt+1}: {e}")
                       time.sleep(10 * (attempt + 1))
