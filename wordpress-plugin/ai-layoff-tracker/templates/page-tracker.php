@@ -32,20 +32,20 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-total">—</span>
             <span class="alt-stat-label">Verified job cuts</span>
-            <span class="alt-stat-desc">Filed or reported. This is the headline number.</span>
+            <span class="alt-stat-desc">Filed or reported. The main number.</span>
             <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
-        </div>
-        <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-announced">—</span>
-            <span class="alt-stat-label">Announced job cuts</span>
-            <span class="alt-stat-desc"><b>Separate number.</b> Cuts a company has announced but not yet filed or executed. <b>Not part of the Verified total</b> at left.</span>
-            <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
         </div>
         <div class="alt-stat-card alt-stat-card-ai">
             <span class="alt-stat-value" id="alt-stat-ai">—</span>
             <span class="alt-stat-label">Explicitly AI-attributed</span>
-            <span class="alt-stat-desc">How many of the Verified <b>and</b> Announced cuts a company blamed on AI. A lens over both, not a third bucket.</span>
+            <span class="alt-stat-desc"><b>Part of the Verified cuts</b> to the left — the ones a company openly blamed on AI.</span>
             <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
+        </div>
+        <div class="alt-stat-card">
+            <span class="alt-stat-value" id="alt-stat-announced">—</span>
+            <span class="alt-stat-label">Announced job cuts</span>
+            <span class="alt-stat-desc"><b>Separate number.</b> Announced but not yet filed or executed. <b>Not counted in Verified or AI-attributed.</b></span>
+            <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
         </div>
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-companies">—</span>
@@ -63,7 +63,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <span class="alt-stat-sub"></span>
         </div>
     </div>
-    <p class="alt-stats-note">How to read these three numbers: <b>Verified</b> and <b>Announced</b> are two stages, and they never overlap. A cut is counted in exactly one of them, so the Announced figure is <b>not</b> part of the Verified total and nothing is double-counted. <b>Explicitly AI-attributed</b> is not a third bucket. It is a lens across the other two, counting how many of those verified and announced cuts a company openly blamed on AI.</p>
+    <p class="alt-stats-note">How to read these numbers: <b>Verified job cuts</b> is the main figure — cuts with a filing or report behind them. <b>Explicitly AI-attributed</b> is a slice of that Verified number, the cuts a company openly blamed on AI. <b>Announced job cuts</b> is a separate figure for cuts a company has announced but not yet filed or executed; it is <b>not</b> counted in either of the other two, so nothing is double-counted.</p>
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
