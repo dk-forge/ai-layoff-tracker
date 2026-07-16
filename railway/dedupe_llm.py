@@ -158,37 +158,56 @@ def canonical(group):
 def main():
     if not (SITE and KEY and OR_KEY):
         print("WP_SITE_URL / WP_API_KEY / OPENROUTER_API_KEY required"); sys.exit(1)
+
+    # A total fetch failure is a real problem (exit non-zero). Everything after
+    # is resilient: each company cluster is handled on its own, and one bad
+    # cluster or trash batch is skipped, not fatal. Dedup is best-effort
+    # cleanup, so a run that clears 58 of 60 clusters is a success, not a
+    # failure email. (Chunking by letter would still fail per-chunk; per-
+    # cluster isolation is strictly better and just as free.)
     rows = fetch_all()
     by_id = {r["id"]: r for r in rows}
     clusters = candidate_clusters(rows)
     print(f"{len(rows)} entries, {len(clusters)} candidate clusters to review")
 
-    trash_ids = []
+    trash_ids, skipped = [], 0
     for group in clusters:
-        events = ask_llm(group)
-        for ev in events:
-            ev = [i for i in ev if i in by_id]
-            if len(ev) < 2:
-                continue
-            keep = canonical([by_id[i] for i in ev])
-            for i in ev:
-                if i != keep["id"]:
-                    trash_ids.append(i)
-                    print(f"  dup: id {i} ({by_id[i]['source_name'][:18]}) -> keep {keep['id']} "
-                          f"({keep['company_name']} {keep['job_count']} {keep['layoff_date']})")
+        try:
+            events = ask_llm(group)
+            for ev in events:
+                ev = [i for i in ev if i in by_id]
+                if len(ev) < 2:
+                    continue
+                keep = canonical([by_id[i] for i in ev])
+                for i in ev:
+                    if i != keep["id"]:
+                        trash_ids.append(i)
+                        print(f"  dup: id {i} ({by_id[i]['source_name'][:18]}) -> keep {keep['id']} "
+                              f"({keep['company_name']} {keep['job_count']} {keep['layoff_date']})")
+        except Exception as e:  # one company's cluster failing must not abort the run
+            skipped += 1
+            print(f"  skipped cluster {group[0]['company_name'][:24]}: {e}")
 
     trash_ids = sorted(set(trash_ids))
-    print(f"\n{len(trash_ids)} duplicate(s) to remove")
-    if not trash_ids:
-        return
-    # trash in batches; /trash suppresses hashes + logs the correction
+    print(f"\n{len(trash_ids)} duplicate(s) to remove, {skipped} cluster(s) skipped")
+    removed = fails = 0
     for i in range(0, len(trash_ids), 100):
         batch = trash_ids[i:i + 100]
-        req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/trash",
-            data=json.dumps({"ids": batch,
-                "reason": "Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by DeepSeek"}).encode(),
-            headers={"X-Layoff-API-Key": KEY, "Content-Type": "application/json", "User-Agent": UA})
-        print(json.load(urllib.request.urlopen(req, timeout=90)))
+        try:
+            req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/trash",
+                data=json.dumps({"ids": batch,
+                    "reason": "Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by DeepSeek"}).encode(),
+                headers={"X-Layoff-API-Key": KEY, "Content-Type": "application/json", "User-Agent": UA})
+            res = json.load(urllib.request.urlopen(req, timeout=90))
+            removed += len(res.get("trashed_posts", [])) + len(res.get("deleted_rows", []))
+            print(res)
+        except Exception as e:  # a failed batch is retried tomorrow, not fatal today
+            fails += 1
+            print(f"  trash batch failed (will retry next run): {e}")
+    print(f"\nDone: {removed} removed, {fails} batch(es) deferred, {skipped} cluster(s) skipped")
+    # Only fail the run if literally nothing could be processed.
+    if clusters and not trash_ids and skipped == len(clusters):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
