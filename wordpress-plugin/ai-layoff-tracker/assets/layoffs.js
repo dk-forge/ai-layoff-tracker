@@ -377,21 +377,21 @@
         var roo = document.getElementById('alt-roo');
         var wrap = document.getElementById('alt-roo-wrap');
         if (phase === 'refreshing' || phase === 'cleaning') {
-            // Roo wakes and works; the compact amber pill sits at the far left,
-            // the green "Live" pill steps aside until he's done.
+            // Roo wakes up (lights on) and the amber pill lights up beside him;
+            // the "Live · updated" pill greys out until he's finished.
             var txt = document.getElementById('alt-work-text');
             if (txt) txt.textContent = (phase === 'cleaning')
                 ? 'Roo is checking & de-duplicating the data'
                 : 'Roo is pulling in new filings, notices & news';
             workEl.hidden = false;
-            liveEl.hidden = true;
+            liveEl.classList.add('alt-status-dim');   // greyed while Roo works
             // SVG className is a read-only object — must use setAttribute.
             if (roo) roo.setAttribute('class', 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working'));
             if (wrap) wrap.className = 'alt-roo-wrap is-working';
         } else {
-            // All caught up: Roo falls asleep (greyscale + zzz), "Live" shows.
+            // All caught up: Roo falls asleep (greyscale + zzz), "Live" lights up.
             workEl.hidden = true;
-            liveEl.hidden = false;
+            liveEl.classList.remove('alt-status-dim');
             if (roo) roo.setAttribute('class', 'alt-roo roo-sleeping');
             if (wrap) wrap.className = 'alt-roo-wrap is-sleeping';
         }
