@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # The classification spot-check is now a versioned repository script
+      # rather than an inline heredoc, so it must be checked out first.
+      - uses: actions/checkout@v4
       - name: Mark pipeline cleaning
         run: |
           curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \
