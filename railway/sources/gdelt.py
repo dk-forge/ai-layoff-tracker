@@ -58,6 +58,33 @@ TRUSTED_DOMAINS = {
     "globo.com", "estadao.com.br", "folha.uol.com.br",       # Brazil
     "eleconomista.com.mx", "clarin.com",                      # Mexico / Argentina
     "nrc.nl", "volkskrant.nl",                                # Netherlands
+    # --- Regional expansion: reputable national business/news outlets, added
+    # to widen country coverage (a layoff only enters the tracker if a trusted
+    # outlet covers it, so this list IS the reach lever). English editions
+    # preferred; GDELT machine-translates the rest.
+    "haaretz.com", "timesofisrael.com", "calcalistech.com",   # Israel
+    "thenationalnews.com", "gulfnews.com", "khaleejtimes.com", "arabnews.com",  # Gulf
+    "hurriyetdailynews.com", "dailysabah.com",                # Turkey
+    "news24.com", "businesslive.co.za", "iol.co.za", "moneyweb.co.za",  # South Africa
+    "premiumtimesng.com", "punchng.com",                      # Nigeria
+    "nation.africa", "businessdailyafrica.com",               # Kenya
+    "ahram.org.eg",                                            # Egypt
+    "thejakartapost.com", "kompas.com",                       # Indonesia
+    "bangkokpost.com", "nationthailand.com",                  # Thailand
+    "vnexpress.net", "vietnamnews.vn",                        # Vietnam
+    "thestar.com.my", "nst.com.my",                           # Malaysia
+    "inquirer.net", "rappler.com", "philstar.com",            # Philippines
+    "taipeitimes.com", "focustaiwan.tw",                      # Taiwan
+    "koreaherald.com", "koreatimes.co.kr",                    # South Korea (English)
+    "themoscowtimes.com", "kyivindependent.com",              # Russia / Ukraine
+    "notesfrompoland.com",                                    # Poland (English)
+    "thelocal.se", "thelocal.de", "thelocal.fr",             # Nordics / EU (English)
+    "helsinkitimes.fi",                                       # Finland
+    "swissinfo.ch",                                           # Switzerland
+    "nzherald.co.nz", "rnz.co.nz",                            # New Zealand
+    "eltiempo.com", "portafolio.co",                          # Colombia
+    "df.cl",                                                   # Chile
+    "elcomercio.pe",                                          # Peru
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
