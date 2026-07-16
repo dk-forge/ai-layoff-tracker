@@ -1,0 +1,38 @@
+name: Cross-source dedup (daily deep scan)
+
+# Removes duplicate entries that exact-hash and 30-day fuzzy dedup miss:
+# the same layoff reported across sources (news + ERM + WARN), under name
+# variants, or more than 30 days apart. DeepSeek decides same-event vs
+# distinct-event; the winner is kept, the rest trashed (hashes suppressed,
+# removal logged in the public corrections log). Runs in the daily cleanup
+# window, after the morning ingest.
+
+on:
+  schedule:
+    - cron: '30 14 * * *'   # 10:30 AM ET: after 9 AM ingest, before the 11 AM settle
+  workflow_dispatch:
+    inputs:
+      max_clusters:
+        description: 'Max clusters to review (caps LLM cost)'
+        required: false
+        default: '60'
+
+jobs:
+  dedupe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Deduplicate across sources
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          DEDUPE_MAX_CLUSTERS: ${{ github.event.inputs.max_clusters || '60' }}
+        run: |
+          cd railway
+          python dedupe_llm.py

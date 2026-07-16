@@ -57,6 +57,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <span class="alt-stat-sub"></span>
         </div>
     </div>
+    <p class="alt-stats-note"><b>Verified</b> and <b>Announced</b> are counted separately. The Announced figure is <b>not</b> included in the verified job-cut total: it tracks cuts a company has announced but not yet filed or executed, so nothing is double-counted.</p>
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
