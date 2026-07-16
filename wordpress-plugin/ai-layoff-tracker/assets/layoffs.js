@@ -371,7 +371,7 @@
             if (when) timeEl.textContent = (timeEl.id === 'alt-live-time') ? when : ('Updated ' + when);
         }
         var nextEl = document.getElementById('alt-next-pull');
-        if (nextEl) { var np = nextPullET(); nextEl.textContent = np ? ('Next update ' + np) : ''; }
+        var np = nextPullET();
         if (!liveEl || !workEl) return;
         var phase = stats && stats.pipeline_phase;
         var roo = document.getElementById('alt-roo');
@@ -388,12 +388,14 @@
             // SVG className is a read-only object — must use setAttribute.
             if (roo) roo.setAttribute('class', 'alt-roo ' + (phase === 'cleaning' ? 'roo-working-hard' : 'roo-working'));
             if (wrap) wrap.className = 'alt-roo-wrap is-working';
+            if (nextEl) nextEl.textContent = np ? ('Next update ' + np) : '';
         } else {
             // All caught up: Roo falls asleep (greyscale + zzz), "Live" lights up.
             workEl.hidden = true;
             liveEl.classList.remove('alt-status-dim');
             if (roo) roo.setAttribute('class', 'alt-roo roo-sleeping');
             if (wrap) wrap.className = 'alt-roo-wrap is-sleeping';
+            if (nextEl) nextEl.textContent = np ? ('Roo’s resting until the next update, ' + np) : '';
         }
     }
 
