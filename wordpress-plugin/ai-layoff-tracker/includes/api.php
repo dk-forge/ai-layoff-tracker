@@ -72,11 +72,19 @@ function alt_register_routes() {
         'permission_callback' => '__return_true',
     ));
 
-    // Key-protected: data jobs report their pipeline phase for the live badge.
+    // Live badge status. GET is public + uncached (so the phase flips within
+    // the badge's 60s poll); POST is key-protected (data jobs report phase).
     register_rest_route('layoffs/v1', '/status', array(
-        'methods'             => 'POST',
-        'callback'            => 'alt_api_status',
-        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+        array(
+            'methods'             => 'GET',
+            'callback'            => 'alt_api_status_get',
+            'permission_callback' => '__return_true',
+        ),
+        array(
+            'methods'             => 'POST',
+            'callback'            => 'alt_api_status',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+        ),
     ));
 
     register_rest_route('layoffs/v1', '/company/(?P<name>[^/]+)', array(
@@ -416,6 +424,17 @@ function alt_api_status(WP_REST_Request $r) {
     }
     update_option('alt_pipeline_status', array('phase' => $phase, 'at' => time()), false);
     return rest_ensure_response(array('phase' => $phase));
+}
+function alt_api_status_get() {
+    $ph = alt_pipeline_phase();
+    $last = (int) get_option('alt_last_write', 0);
+    $resp = rest_ensure_response(array(
+        'pipeline_phase' => $ph['phase'],                        // live | refreshing | cleaning
+        'pipeline_since' => $ph['at'] ? gmdate('c', $ph['at']) : '',
+        'last_updated'   => $last ? gmdate('c', $last) : '',
+    ));
+    $resp->header('Cache-Control', 'no-store, max-age=0');
+    return $resp;
 }
 
 /* ------------------------------------------------------------------ */

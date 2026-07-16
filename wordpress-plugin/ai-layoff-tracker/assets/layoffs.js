@@ -375,10 +375,10 @@
 
     function initStatsMeta() {
         if (!document.getElementById('alt-live-time') && !document.getElementById('alt-last-updated')) return;
-        var poll = function () { apiGet('stats', {}).then(renderStatus).catch(function () {}); };
+        // /status is public + uncached, so the badge flips to refreshing/
+        // cleaning within one poll instead of waiting on the 5-min stats cache.
+        var poll = function () { apiGet('status', { _: Date.now() }).then(renderStatus).catch(function () {}); };
         poll();
-        // Refresh while someone is on the page so the badge flips to
-        // "refreshing/cleaning" and back on its own during the morning window.
         setInterval(poll, 60000);
     }
 
