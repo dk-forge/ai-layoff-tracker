@@ -1,0 +1,69 @@
+name: Historical global news sweep
+
+# One rotating 14-day window per day. This eventually covers the complete
+# GDELT-era history without repeatedly rescanning every prior year. GDELT caps
+# each seven-day request at 250 articles, so a run has a hard ceiling of 500
+# model candidates before normal extraction/dedup guards. It is intentionally
+# separate from the live feed and safe to pause by disabling this workflow.
+on:
+  schedule:
+    - cron: '40 5 * * *'
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'Optional override start date YYYY-MM-DD'
+        required: false
+        default: ''
+      end:
+        description: 'Optional override end date YYYY-MM-DD (max 14 days after start)'
+        required: false
+        default: ''
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Select a rotating historical window
+        env:
+          OVERRIDE_START: ${{ github.event.inputs.start }}
+          OVERRIDE_END: ${{ github.event.inputs.end }}
+        run: |
+          python - <<'PY' >> "$GITHUB_ENV"
+          import os
+          from datetime import date, timedelta
+
+          first = date(2015, 1, 1)
+          today = date.today()
+          chunk_days = 14
+          chunks = ((today - first).days // chunk_days) + 1
+          override_start = os.environ.get("OVERRIDE_START", "").strip()
+          override_end = os.environ.get("OVERRIDE_END", "").strip()
+          if override_start:
+              start = date.fromisoformat(override_start)
+              end = date.fromisoformat(override_end) if override_end else start + timedelta(days=13)
+          else:
+              slot = (today - first).days % chunks
+              start = first + timedelta(days=slot * chunk_days)
+              end = min(start + timedelta(days=13), today)
+          if end < start or end - start > timedelta(days=13):
+              raise SystemExit("Historical sweep must be a 1–14 day window")
+          print(f"BACKFILL_START={start.isoformat()}")
+          print(f"BACKFILL_END={end.isoformat()}")
+          PY
+      - name: Install dependencies
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Ingest and deduplicate the selected global window
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: |
+          echo "Historical global sweep: $BACKFILL_START to $BACKFILL_END"
+          python gdelt_backfill.py

@@ -53,6 +53,7 @@ railway/
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
+  historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   sources/{edgar,gdelt,newsapi,warn}.py
   warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
   backfill.py gdelt_backfill.py news_catchup.py seed_ai.py   one-off runners
