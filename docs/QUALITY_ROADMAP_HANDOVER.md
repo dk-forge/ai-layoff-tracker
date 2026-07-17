@@ -21,10 +21,9 @@ remain the publication standard.
 
 ## Live, verified foundation
 
-- Plugin version **2.17.3** is the current pending deployment (high-impact
-  review queue). The previous live version is **2.17.2**, deployed from commit
-  `36384d2`; verify the deployment run and public endpoint before recording
-  the new commit here as live.
+- Plugin version **2.17.3** is live from commit `e6e601a` (deployment run
+  `29583777901`); the public review-queue endpoint was verified after the
+  standard schema/cache initialization.
 - Public quality endpoint:
   `GET /blog/wp-json/layoffs/v1/quality-status`.
   It exposes dataset revision, disclosed corrections, source health, canonical
