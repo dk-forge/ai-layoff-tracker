@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Reports per bounded run (1-1000)'
+        description: 'Reports per bounded run (1-1000; scheduled default is 500)'
         required: false
         default: '500'
 
@@ -20,9 +20,38 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           LIMIT: ${{ github.event.inputs.limit || '500' }}
         run: |
-          curl --fail-with-body -sS -X POST \
+          case "$LIMIT" in
+            ''|*[!0-9]*) echo "LIMIT must be an integer from 1 to 1000" >&2; exit 2 ;;
+          esac
+          if [ "$LIMIT" -lt 1 ] || [ "$LIMIT" -gt 1000 ]; then
+            echo "LIMIT must be from 1 to 1000" >&2
+            exit 2
+          fi
+          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 120 -X POST \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
             -H "X-Layoff-API-Key: $WP_API_KEY" \
             -H 'Content-Type: application/json' \
             --data "{\"limit\":$LIMIT}" \
-            https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-evidence-hash-backfill
+            https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-evidence-hash-backfill)"
+          printf '%s\n' "$response"
+          python3 - "$response" <<'PY'
+          import json
+          import os
+          import sys
+
+          try:
+              result = json.loads(sys.argv[1])
+              updated = result['updated']
+              remaining = result['remaining']
+              scope = result['scope']
+          except (json.JSONDecodeError, KeyError, TypeError) as exc:
+              raise SystemExit(f"Unexpected evidence-hash response: {exc}")
+          if not isinstance(updated, int) or not isinstance(remaining, int):
+              raise SystemExit("Unexpected evidence-hash progress types")
+          print(f"Evidence hashes updated: {updated}; remaining: {remaining}")
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('## Retained evidence hash backfill\\n\\n')
+              summary.write(f'- Updated this bounded run: **{updated:,}**\\n')
+              summary.write(f'- Retained excerpts still pending: **{remaining:,}**\\n')
+              summary.write(f'- Scope: {scope}\\n')
+          PY

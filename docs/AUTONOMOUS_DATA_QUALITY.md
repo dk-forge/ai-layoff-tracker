@@ -99,6 +99,21 @@ reviewed company-controlled RSS/Atom feeds in `PRESS_RELEASE_FEEDS`; do not
 turn a generic press-release wire into a primary source without confirming
 terms and publisher identity.
 
+Each configured feed must now explicitly retain its admission review. The
+environment value is a JSON array whose entries include `name`, HTTPS `url`,
+the company/exchange `owner_domain`, HTTPS `terms_url`, and `reviewed_at`
+(`YYYY-MM-DD`). The feed URL must be on that reviewed owner domain (or its
+subdomain). Example shape, with placeholder values only:
+
+```json
+[{"name":"Example Investor Relations","url":"https://investors.example.com/releases.rss","owner_domain":"example.com","terms_url":"https://www.example.com/terms","reviewed_at":"2026-07-17","country":"United States"}]
+```
+
+An empty registry is reported publicly as `press_releases: degraded` with the
+specific "No reviewed ... feeds configured" detail. This means no direct IR
+coverage is claimed; it is not an upstream outage. Invalid or incomplete
+entries fail closed before any feed is requested.
+
 ## Challenger reconciliation (United States)
 
 The comparable metric is:

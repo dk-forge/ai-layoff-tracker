@@ -128,12 +128,13 @@ be red in Actions while retaining the public record.
      Review remains a human decision and any correction must preserve sources
      and enter the corrections trail.
    - New source reports carry SHA-256 hashes of their retained evidence excerpt.
-     Daily `evidence-hash-backfill.yml` now backfills 500 legacy hashes per run
-     from the already-retained excerpt only; progress is public in
-     `/integrity-status`. Preserve source URL,
-     retained excerpt/evidence and content hash/snapshot metadata where
-     permitted. A hash of a short excerpt is not a source-page archive; label
-     it accurately.
+     Daily `evidence-hash-backfill.yml` backfills a bounded 500 legacy hashes per
+     run from the already-retained excerpt only. The workflow validates its
+     returned progress payload and writes the updated/remaining counts to the
+     GitHub Actions summary; progress is public in `/integrity-status`.
+     Preserve source URL, retained excerpt/evidence and content hash/snapshot
+     metadata where permitted. A hash of a short excerpt is not a source-page
+     archive; label it accurately.
 
 4. **Dataset release ledger and monthly change report.**
    - Public `GET /blog/wp-json/layoffs/v1/dataset-releases` snapshots begin at
@@ -177,6 +178,12 @@ be red in Actions while retaining the public record.
    - Highest no-credential expansion is a versioned registry of reviewed,
      company-owned newsroom/IR RSS or Atom feeds. Do not treat generic wire
      feeds as official, and document terms/domain ownership before admission.
+   - The reviewed-feed collector now fails closed: each configured entry must
+     have an HTTPS feed URL on its recorded owner domain, an HTTPS terms URL,
+     and a manual review date. With no reviewed entries, `press_releases` is
+     visibly degraded with an explicit no-registry detail rather than being
+     presented as a live zero-result official feed. This is an admission gate,
+     not a new national connector or coverage claim.
 
 6. **Research/distribution products, after core data work.**
    - Build state/national embeddable widgets first. Do not begin metro widgets

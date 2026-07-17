@@ -10,7 +10,7 @@ import requests
 from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
-from sources.press_releases import pull_press_releases
+from sources.press_releases import pull_press_releases, reviewed_feed_count
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
@@ -46,7 +46,23 @@ def run():
             report_source_health(source, "running", 0, "collection in progress")
             pulled = collector()
             entries += pulled
-            report_source_health(source, "ok", len(pulled))
+            if source == "press_releases":
+                configured = reviewed_feed_count()
+                if configured:
+                    report_source_health(
+                        source, "ok", len(pulled),
+                        f"{configured} reviewed company-owned/exchange feed(s) configured",
+                    )
+                else:
+                    # This is a visible coverage limitation, not an empty
+                    # official-feed result.  Do not imply an IR collector is
+                    # live until an admission-reviewed feed is configured.
+                    report_source_health(
+                        source, "degraded", 0,
+                        "No reviewed company-owned or exchange RSS/Atom feeds configured",
+                    )
+            else:
+                report_source_health(source, "ok", len(pulled))
         except Exception as e:
             report_source_health(source, "degraded", 0, str(e))
             print(f"{source} source failed: {e}")

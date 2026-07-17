@@ -13,7 +13,7 @@ sys.modules.setdefault("requests", SimpleNamespace())
 from extractor import _quote_is_supported
 from enrich_context import query_params, rotating_page
 from source_registry import MARKETS, coverage_manifest, discovery_terms
-from sources.press_releases import _items
+from sources.press_releases import _items, _validate_feed
 from sources import gdelt
 from sources.gdelt import _retry_delay
 from historical_news_sweep import WINDOW_DAYS
@@ -34,6 +34,40 @@ class EvidenceGuardTests(unittest.TestCase):
     def test_official_feed_parser_handles_rss_link_and_summary(self):
         rss = b"""<rss><channel><item><title>Workforce reduction</title><link>https://example.test/release</link><description>Company announces job cuts.</description><pubDate>Tue, 14 Jul 2026 10:00:00 +0000</pubDate></item></channel></rss>"""
         self.assertEqual(list(_items(rss)), [("Workforce reduction", "https://example.test/release", "Company announces job cuts.", "Tue, 14 Jul 2026 10:00:00 +0000")])
+
+    def test_official_feed_requires_reviewed_owner_and_terms(self):
+        reviewed = {
+            "name": "Example Investor Relations",
+            "url": "https://investors.example.com/releases.rss",
+            "owner_domain": "example.com",
+            "terms_url": "https://www.example.com/terms",
+            "reviewed_at": "2026-07-17",
+        }
+        self.assertEqual(_validate_feed(reviewed)["owner_domain"], "example.com")
+        unreviewed = dict(reviewed)
+        del unreviewed["terms_url"]
+        with self.assertRaisesRegex(RuntimeError, "not a reviewed official feed"):
+            _validate_feed(unreviewed)
+
+    def test_official_feed_cannot_point_at_an_unrelated_host(self):
+        with self.assertRaisesRegex(RuntimeError, "owner_domain"):
+            _validate_feed({
+                "name": "Example",
+                "url": "https://wire.example.net/feed.xml",
+                "owner_domain": "example.com",
+                "terms_url": "https://www.example.com/terms",
+                "reviewed_at": "2026-07-17",
+            })
+
+    def test_official_feed_terms_cannot_be_from_an_unrelated_host(self):
+        with self.assertRaisesRegex(RuntimeError, "terms_url host"):
+            _validate_feed({
+                "name": "Example",
+                "url": "https://investors.example.com/feed.xml",
+                "owner_domain": "example.com",
+                "terms_url": "https://wire.example.net/terms",
+                "reviewed_at": "2026-07-17",
+            })
 
     def test_edgar_includes_foreign_issuer_disclosures(self):
         self.assertEqual(FORMS, ("8-K", "6-K"))

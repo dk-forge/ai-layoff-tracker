@@ -13,6 +13,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 import requests
 
@@ -29,7 +30,60 @@ def _feeds():
         raise RuntimeError("PRESS_RELEASE_FEEDS must be valid JSON")
     if not isinstance(feeds, list):
         raise RuntimeError("PRESS_RELEASE_FEEDS must be a JSON array")
-    return [f for f in feeds if isinstance(f, dict) and f.get("url") and f.get("name")]
+    accepted = []
+    for index, feed in enumerate(feeds, start=1):
+        if not isinstance(feed, dict):
+            raise RuntimeError(f"PRESS_RELEASE_FEEDS entry {index} must be an object")
+        accepted.append(_validate_feed(feed, index))
+    return accepted
+
+
+def _validate_feed(feed, index=1):
+    """Reject an unreviewed or third-party feed before any request is made.
+
+    A URL being public is not enough to make it a primary source.  The
+    configuration must record the company/exchange-owned host, a terms page,
+    and the date it was manually reviewed.  This is deliberately a gate, not
+    an attempt to infer ownership from a brand name.
+    """
+    required = ("name", "url", "owner_domain", "terms_url", "reviewed_at")
+    missing = [key for key in required if not str(feed.get(key, "")).strip()]
+    if missing:
+        raise RuntimeError(
+            f"PRESS_RELEASE_FEEDS entry {index} is not a reviewed official feed; "
+            f"missing {', '.join(missing)}"
+        )
+    url = urlparse(str(feed["url"]).strip())
+    terms = urlparse(str(feed["terms_url"]).strip())
+    owner_domain = str(feed["owner_domain"]).strip().lower().lstrip(".")
+    host = (url.hostname or "").lower()
+    terms_host = (terms.hostname or "").lower()
+    if url.scheme != "https" or not host:
+        raise RuntimeError(f"PRESS_RELEASE_FEEDS entry {index} url must be an HTTPS feed URL")
+    if terms.scheme != "https" or not terms.hostname:
+        raise RuntimeError(f"PRESS_RELEASE_FEEDS entry {index} terms_url must be an HTTPS URL")
+    if not owner_domain or (host != owner_domain and not host.endswith("." + owner_domain)):
+        raise RuntimeError(
+            f"PRESS_RELEASE_FEEDS entry {index} url host must match its reviewed owner_domain"
+        )
+    if terms_host != owner_domain and not terms_host.endswith("." + owner_domain):
+        raise RuntimeError(
+            f"PRESS_RELEASE_FEEDS entry {index} terms_url host must match its reviewed owner_domain"
+        )
+    try:
+        reviewed_at = datetime.strptime(str(feed["reviewed_at"]), "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise RuntimeError(
+            f"PRESS_RELEASE_FEEDS entry {index} reviewed_at must be YYYY-MM-DD"
+        ) from exc
+    if reviewed_at > datetime.now(timezone.utc).date():
+        raise RuntimeError(f"PRESS_RELEASE_FEEDS entry {index} reviewed_at cannot be in the future")
+    return dict(feed, owner_domain=owner_domain)
+
+
+def reviewed_feed_count():
+    """Return the count only after validating every manually reviewed feed."""
+    return len(_feeds())
 
 
 def _text(value):
