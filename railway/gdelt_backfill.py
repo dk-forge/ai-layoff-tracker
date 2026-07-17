@@ -8,6 +8,7 @@ Idempotent (dedup guard). Env:
   BACKFILL_START  YYYY-MM-DD (default 2024-01-01)
   BACKFILL_END    YYYY-MM-DD (default today, UTC)
   BACKFILL_LIMIT  int        (optional cap on posts — for a test run)
+  BACKFILL_MAX_ARTICLES int  (optional cap on model candidates; use for schedules)
 """
 import os
 from datetime import datetime, timedelta, timezone
@@ -41,10 +42,12 @@ def run():
                   datetime(2024, 1, 1, tzinfo=timezone.utc))
     end = _parse(os.environ.get("BACKFILL_END"), datetime.now(timezone.utc))
     limit = int(os.environ.get("BACKFILL_LIMIT") or 0) or None
+    max_articles = int(os.environ.get("BACKFILL_MAX_ARTICLES") or 0) or None
     print(f"GDELT backfill {start.date()} → {end.date()}"
-          + (f" (limit {limit})" if limit else ""))
+          + (f" (post limit {limit})" if limit else "")
+          + (f" (candidate cap {max_articles})" if max_articles else ""))
 
-    posted = dupes = skipped = failed = ai = 0
+    posted = dupes = skipped = failed = ai = considered = 0
     for w_start, w_end in week_windows(start, end):
         label = w_start.strftime("%Y-%m-%d")
         try:
@@ -55,9 +58,14 @@ def run():
             raise
         print(f"[{label}] {len(entries)} articles")
         for raw in entries:
+            if max_articles and considered >= max_articles:
+                print(f"Reached BACKFILL_MAX_ARTICLES={max_articles}; stopping.")
+                _summary(posted, ai, dupes, skipped, failed, considered)
+                return
+            considered += 1
             if limit and posted >= limit:
                 print(f"Reached BACKFILL_LIMIT={limit}; stopping.")
-                _summary(posted, ai, dupes, skipped, failed)
+                _summary(posted, ai, dupes, skipped, failed, considered)
                 return
             try:
                 extracted = extract_layoff_data(raw)
@@ -83,12 +91,13 @@ def run():
         print(f"[{label}] totals — posted {posted} ({ai} AI), dupes {dupes}, "
               f"non-events {skipped}, failed {failed}")
 
-    _summary(posted, ai, dupes, skipped, failed)
+    _summary(posted, ai, dupes, skipped, failed, considered)
 
 
-def _summary(posted, ai, dupes, skipped, failed):
+def _summary(posted, ai, dupes, skipped, failed, considered):
     print(f"GDELT backfill complete: {posted} posted ({ai} AI-cited), "
-          f"{dupes} duplicates, {skipped} non-events, {failed} failed")
+          f"{dupes} duplicates, {skipped} non-events, {failed} failed, "
+          f"{considered} candidates considered")
 
 
 if __name__ == "__main__":

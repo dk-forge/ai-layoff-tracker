@@ -64,6 +64,9 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
+          # Bounds DeepSeek work and wall time. Manual historical backfills
+          # remain uncapped unless their operator explicitly sets a limit.
+          BACKFILL_MAX_ARTICLES: '100'
         run: |
           echo "Historical global sweep: $BACKFILL_START to $BACKFILL_END"
           python gdelt_backfill.py

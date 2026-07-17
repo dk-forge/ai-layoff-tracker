@@ -59,8 +59,9 @@ are retried on a future run.
 The historical global-news sweep independently rotates through one 14-day
 GDELT window each day, beginning at 2015. It calls the same extraction and
 deduplication safeguards as live ingestion, so a rerun is safe. A daily window
-is deliberately bounded: it gives the system a finite, inspectable recovery
-cycle rather than an uncontrolled repeating scan of all historical news.
+is deliberately bounded to 100 model candidates: it gives the system a finite,
+inspectable recovery cycle rather than an uncontrolled repeating scan of all
+historical news.
 
 Humans may improve rules or source connectors, but do not need to adjudicate
 routine events. A connector that breaks must fail loudly and be marked degraded
