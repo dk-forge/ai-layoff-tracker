@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.17.7
+ * Version: 2.17.8
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.17.7');
+define('ALT_VERSION', '2.17.8');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -69,6 +69,7 @@ function alt_flush_caches_on_deploy() {
     // must advance it too, otherwise callers can receive a five-minute-old
     // response shape even after dbDelta has added the new columns.
     update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);
+    if (function_exists('alt_record_dataset_release')) alt_record_dataset_release(ALT_VERSION);
     if (function_exists('wp_cache_clear_cache')) {
         wp_cache_clear_cache();
     }

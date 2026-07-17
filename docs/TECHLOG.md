@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| 2.17.8 (Jul 17) | **Dataset release ledger.** Versioned deployments now retain a public snapshot of dataset revision, canonical rows/events and retained reports. The ledger starts prospectively and explicitly does not fabricate legacy addition counts; corrections remain separately disclosed. |
 | 2.17.7 (Jul 17) | **Bounded legacy evidence-hash backfill.** Added an autonomous daily 500-report backfill that computes SHA-256 only from excerpts already retained in the database. Public integrity status now discloses hashable, hashed and remaining reports. It never retrieves or claims to archive publisher pages. |
 | 2.17.6 (Jul 17) | **Immediate bulk evidence registration.** A WARN import temporarily left newly inserted bulk rows outside the canonical-event graph until the daily migration. Bulk upserts now register their canonical event and retained source report in the same request; re-imports remain idempotent. |
 | 2.17.5 (Jul 17) | **Measured-recall publication guardrails.** Added public country-period recall history and a key-protected writer that refuses a sample without a public reference-set URL, bounded numerator/denominator and explicit basis. The companion protocol makes clear that sample recall is neither country completeness nor an accuracy score; the superseded 5/35 baseline is not presented as current. |

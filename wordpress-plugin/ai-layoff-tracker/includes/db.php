@@ -621,6 +621,9 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/quality-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_quality_status', 'permission_callback' => '__return_true',
     ));
+    register_rest_route('layoffs/v1', '/dataset-releases', array(
+        'methods' => 'GET', 'callback' => 'alt_api_dataset_releases', 'permission_callback' => '__return_true',
+    ));
     // Read-only triage list. This flags records for editorial attention; it
     // never changes a count, classification, source, or publication status.
     register_rest_route('layoffs/v1', '/review-queue', array(
@@ -821,9 +824,39 @@ function alt_api_quality_status() {
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
+            array('id' => 'dataset_release_ledger', 'status' => 'active', 'scope' => 'Immutable release snapshots from this deployment forward; no invented legacy addition counts'),
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
         ),
     ));
+}
+
+/** Public release ledger. It begins at deployment because legacy rows lack immutable ingest timestamps. */
+function alt_api_dataset_releases() {
+    $releases = get_option('alt_dataset_releases');
+    return rest_ensure_response(array(
+        'methodology' => 'Release snapshots begin when this ledger is deployed. They record dataset revision and retained-record totals, while corrections remain in the public corrections trail; historical addition counts are not reconstructed.',
+        'releases' => is_array($releases) ? array_values($releases) : array(),
+        'generated_at' => gmdate('c'),
+    ));
+}
+
+/** Called only on a versioned plugin deployment after schema/cache initialization. */
+function alt_record_dataset_release($version) {
+    global $wpdb;
+    $releases = get_option('alt_dataset_releases');
+    if (!is_array($releases)) $releases = array();
+    $revision = (int) get_option('alt_data_ver', 1);
+    $key = $version . '|' . $revision;
+    if (isset($releases[$key])) return;
+    $releases[$key] = array(
+        'released_at' => gmdate('c'), 'plugin_version' => (string) $version,
+        'dataset_revision' => $revision,
+        'canonical_rows' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . alt_db_table()),
+        'canonical_events' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . alt_events_table()),
+        'source_reports' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . alt_source_reports_table()),
+        'scope' => 'Snapshot only; additions before ledger inception are not inferred.',
+    );
+    krsort($releases); update_option('alt_dataset_releases', array_slice($releases, 0, 100, true), false);
 }
 
 /**

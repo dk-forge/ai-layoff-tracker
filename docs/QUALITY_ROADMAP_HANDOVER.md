@@ -117,10 +117,10 @@ be red in Actions while retaining the public record.
      it accurately.
 
 4. **Dataset release ledger and monthly change report.**
-   - Add immutable revision records and report additions, corrections, merges
-     and removals. Current `/quality-status` exposes *disclosed corrections*
-     only; it deliberately does not invent historical addition counts because
-     legacy rows lack immutable ingest timestamps.
+   - Public `GET /blog/wp-json/layoffs/v1/dataset-releases` snapshots begin at
+     ledger inception and record revision plus canonical rows/events/reports.
+     It deliberately does not invent historical addition counts; corrections,
+     removals and merges remain disclosed through `/quality-status`.
 
 5. **Free, permitted source expansion.**
    - Maintain `docs/OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md` and
