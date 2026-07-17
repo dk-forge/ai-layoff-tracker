@@ -614,6 +614,15 @@ function alt_register_query_routes() {
         'methods' => 'POST', 'callback' => 'alt_api_source_evidence_hash_backfill',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // A keyed, success-anchored cursor for the bounded historical GDELT
+    // recovery worker. It advances only after a complete window succeeds, so
+    // an upstream rate limit is retried rather than skipped for years.
+    register_rest_route('layoffs/v1', '/historical-gdelt-cursor', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_historical_gdelt_cursor_get',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+        array('methods' => 'POST', 'callback' => 'alt_api_historical_gdelt_cursor_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
     // A compact, machine-readable view of operational health, retained-source
     // integrity and the openly scoped quality roadmap. It deliberately names
     // pending/blocked work instead of turning an absent connector into a
@@ -790,6 +799,23 @@ function alt_api_source_evidence_hash_backfill(WP_REST_Request $r) {
     }
     $remaining = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash = ''");
     return rest_ensure_response(array('updated' => $updated, 'remaining' => $remaining, 'scope' => 'Hashes are derived from already-retained excerpts only; external pages are not fetched.'));
+}
+
+function alt_api_historical_gdelt_cursor_get() {
+    $cursor = get_option('alt_historical_gdelt_cursor');
+    $cursor = is_array($cursor) ? $cursor : array();
+    return rest_ensure_response(array(
+        'next_start' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($cursor['next_start'] ?? '')) ? $cursor['next_start'] : '',
+        'updated_at' => (string) ($cursor['updated_at'] ?? ''),
+        'scope' => 'Advances only after a successful bounded GDELT historical window; failed windows remain next for retry.',
+    ));
+}
+
+function alt_api_historical_gdelt_cursor_post(WP_REST_Request $r) {
+    $next = alt_db_valid_date((string) $r->get_param('next_start'));
+    if (!$next) return new WP_Error('alt_bad_request', 'next_start must be a valid YYYY-MM-DD date.', array('status' => 400));
+    update_option('alt_historical_gdelt_cursor', array('next_start' => $next, 'updated_at' => gmdate('c')), false);
+    return alt_api_historical_gdelt_cursor_get();
 }
 
 /** Public quality and change-reporting status for researchers and operations. */

@@ -28,33 +28,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Select a rotating historical window
-        env:
-          OVERRIDE_START: ${{ github.event.inputs.start }}
-          OVERRIDE_END: ${{ github.event.inputs.end }}
-        run: |
-          python - <<'PY' >> "$GITHUB_ENV"
-          import os
-          from datetime import date, timedelta
-
-          first = date(2015, 1, 1)
-          today = date.today()
-          chunk_days = 14
-          chunks = ((today - first).days // chunk_days) + 1
-          override_start = os.environ.get("OVERRIDE_START", "").strip()
-          override_end = os.environ.get("OVERRIDE_END", "").strip()
-          if override_start:
-              start = date.fromisoformat(override_start)
-              end = date.fromisoformat(override_end) if override_end else start + timedelta(days=13)
-          else:
-              slot = (today - first).days % chunks
-              start = first + timedelta(days=slot * chunk_days)
-              end = min(start + timedelta(days=13), today)
-          if end < start or end - start > timedelta(days=13):
-              raise SystemExit("Historical sweep must be a 1–14 day window")
-          print(f"BACKFILL_START={start.isoformat()}")
-          print(f"BACKFILL_END={end.isoformat()}")
-          PY
       - name: Install dependencies
         working-directory: railway
         run: pip install -r requirements.txt
@@ -73,6 +46,7 @@ jobs:
           GDELT_QUERY_ATTEMPTS: '3'
           GDELT_QUERY_BACKOFF_SECONDS: '15'
           BACKFILL_DEADLINE_SECONDS: '600'
+          HISTORICAL_START_OVERRIDE: ${{ github.event.inputs.start || '' }}
+          HISTORICAL_END_OVERRIDE: ${{ github.event.inputs.end || '' }}
         run: |
-          echo "Historical global sweep: $BACKFILL_START to $BACKFILL_END"
-          python gdelt_backfill.py
+          python historical_news_sweep.py

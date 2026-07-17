@@ -10,6 +10,7 @@ import html
 import os
 import re
 import time
+import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timezone
 
@@ -134,6 +135,16 @@ QUERY_ATTEMPTS = max(1, min(5, int(os.environ.get("GDELT_QUERY_ATTEMPTS", "3")))
 QUERY_BACKOFF_SECONDS = max(1, min(60, int(os.environ.get("GDELT_QUERY_BACKOFF_SECONDS", "15"))))
 
 
+def _retry_delay(response, attempt):
+    """Honor a bounded Retry-After hint, with jitter for shared API fairness."""
+    hinted = 0
+    try:
+        hinted = int((response.headers.get("Retry-After") or "").strip()) if response else 0
+    except (AttributeError, TypeError, ValueError):
+        hinted = 0
+    return min(180, max(QUERY_BACKOFF_SECONDS * (attempt + 1), hinted)) + random.uniform(0, 3)
+
+
 def _strip_html(markup):
     text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", markup)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -187,14 +198,16 @@ def pull_gdelt_between(start, end, max_records=250):
     # once lost 63 windows to 429s without this).
     articles = None
     last_error = None
+    delay = REQUEST_DELAY
     for attempt in range(QUERY_ATTEMPTS):
-        time.sleep(REQUEST_DELAY if attempt == 0 else QUERY_BACKOFF_SECONDS * attempt)
+        time.sleep(delay)
         try:
             resp = requests.get(GDELT_URL, params=params,
                                 headers={"User-Agent": BROWSER_UA}, timeout=30)
             if resp.status_code == 429:
                 last_error = "HTTP 429"
-                print(f"GDELT 429 (attempt {attempt + 1}/{QUERY_ATTEMPTS}), backing off")
+                delay = _retry_delay(resp, attempt)
+                print(f"GDELT 429 (attempt {attempt + 1}/{QUERY_ATTEMPTS}), retrying after {delay:.0f}s")
                 continue
             resp.raise_for_status()
             articles = resp.json().get("articles", []) or []

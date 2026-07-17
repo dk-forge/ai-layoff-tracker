@@ -13,6 +13,7 @@ from extractor import _quote_is_supported
 from enrich_context import query_params, rotating_page
 from source_registry import MARKETS, coverage_manifest, discovery_terms
 from sources.press_releases import _items
+from sources.gdelt import _retry_delay
 from sources.edgar import FORMS
 from dedupe_llm import select_candidate_clusters
 
@@ -66,6 +67,10 @@ class EvidenceGuardTests(unittest.TestCase):
         self.assertEqual(params["sort"], "job_count")
         self.assertEqual(rotating_page(11, 5, today=__import__("datetime").date(2026, 1, 1)), 1)
         self.assertEqual(rotating_page(11, 5, today=__import__("datetime").date(2026, 1, 2)), 2)
+
+    def test_gdelt_retry_delay_honors_retry_after_floor(self):
+        response = SimpleNamespace(headers={"Retry-After": "90"})
+        self.assertGreaterEqual(_retry_delay(response, 0), 90)
 
 
 if __name__ == "__main__":
