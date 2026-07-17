@@ -25,7 +25,7 @@
   │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
-  │           /reclassify /source-health /event-migrate                                    │
+  │           /reclassify /enrich-context /source-health /event-migrate                     │
   │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
   │                                                                                      │

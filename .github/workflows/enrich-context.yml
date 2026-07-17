@@ -1,0 +1,31 @@
+name: Enrich announcement and domicile evidence
+
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Rows to reassess (1-50; scheduled default is 10)'
+        required: false
+        default: '10'
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openai requests
+      - name: Enrich only exact source-supported context
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CONTEXT_ENRICH_BATCH: ${{ github.event.inputs.batch || '10' }}
+        run: |
+          cd railway
+          python enrich_context.py

@@ -11,9 +11,12 @@ function alt_meta_fields() {
         'ticker'             => 'string',
         'job_count'          => 'integer',
         'layoff_date'        => 'string',   // "2025-01-15" ISO format
+        'announcement_date'  => 'string',   // public announcement date, when source-supported
         'industry'           => 'string',
         'country'            => 'string',
         'employer_country'   => 'string',   // employer HQ/domicile when stated
+        'employer_country_evidence' => 'string',
+        'announcement_evidence' => 'string',
         'roles'              => 'string',   // roles/departments affected, when stated
         'source_url'         => 'string',
         'source_type'        => 'string',   // "8K" | "press_release" | "news"

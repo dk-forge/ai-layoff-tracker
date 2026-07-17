@@ -72,9 +72,12 @@ Response format:
   "ticker": "string or null",
   "job_count": "integer or null",
   "layoff_date": "YYYY-MM-DD or null",
+  "announcement_date": "YYYY-MM-DD when the source states the public announcement date, otherwise null",
+  "announcement_evidence": "exact source phrase containing that date, or null",
   "industry": "one of: Technology, Media & Entertainment, Finance & Insurance, Healthcare & Pharma, Retail & E-commerce, Manufacturing, Automotive, Aerospace & Defense, Airlines & Travel, Energy, Telecom, Education, Logistics & Transport, Food & Hospitality, Real Estate & Construction, Consumer Goods, Professional Services, Agriculture, Government & Nonprofit — or null if unclear",
   "country": "the single country where the cuts happen (or where most of them happen if the source gives a breakdown). If the cuts span several countries with no clear majority, use exactly 'Multiple countries'. Use 'United States' and 'United Kingdom' (never US/USA/UK). Null if not stated.",
-  "employer_country": "country where the employer is headquartered or domiciled, only if stated or unambiguous from the source. Use canonical names; null if unknown. This is NOT the job-location country.",
+  "employer_country": "country where the employer is headquartered or domiciled, only if explicitly stated in this source. Use canonical names; null if unknown. This is NOT the job-location country.",
+  "employer_country_evidence": "exact source phrase supporting employer domicile, or null",
   "state": "2-letter US state abbreviation (e.g. CA, TX, NY) if the source states a US location for the cuts, otherwise null",
   "roles": "the specific roles, teams, or departments affected, exactly as stated in the source (e.g. 'customer service and engineering'), or null if not stated",
   "excerpt": "2-3 sentence excerpt from the source that confirms the layoff. Exact text from source.",
@@ -204,6 +207,52 @@ TEXT:\n""" + raw_text
     return {"ai_causation": cause, "ai_language": quote.strip() if isinstance(quote, str) else "", "confidence": confidence}
 
 
+def extract_context_evidence(raw_text):
+    """Extract only explicit domicile and public announcement-date evidence.
+
+    This narrow reassessment cannot alter job counts, layoff dates, stages or
+    causal labels. Quotes are checked locally before the result is sent to the
+    keyed enrichment endpoint.
+    """
+    raw_text = (raw_text or "")[:6000]
+    if not raw_text.strip():
+        return None
+    prompt = """Read this layoff source and return STRICT JSON only:
+{"employer_country":"canonical country or null","employer_country_evidence":"exact source phrase or null","announcement_date":"YYYY-MM-DD or null","announcement_evidence":"exact source phrase containing the announcement date or null"}
+
+Rules: employer_country is only the employer's HQ/domicile when the text says
+so; never infer it from job location or brand familiarity. announcement_date is
+the public announcement date only when an exact date is stated in the text;
+never substitute an effective layoff date or page-access date. Return null for
+any unsupported field. Evidence phrases must be copied exactly from TEXT.
+
+TEXT:\n""" + raw_text
+    try:
+        response = _get_client().chat.completions.create(
+            model=MODEL, max_tokens=350,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content if response.choices else ""
+        result = _parse_json_response(content or "")
+    except Exception as exc:
+        print(f"Context evidence reassessment failed: {exc}")
+        return None
+    if not isinstance(result, dict):
+        return None
+    out = {}
+    country = result.get("employer_country")
+    country_quote = result.get("employer_country_evidence")
+    if isinstance(country, str) and country.strip() and _quote_is_supported(country_quote, raw_text):
+        out["employer_country"] = country.strip()
+        out["employer_country_evidence"] = country_quote.strip()
+    announcement_date = _normalize_date(result.get("announcement_date"))
+    announcement_quote = result.get("announcement_evidence")
+    if announcement_date and _quote_is_supported(announcement_quote, raw_text):
+        out["announcement_date"] = announcement_date
+        out["announcement_evidence"] = announcement_quote.strip()
+    return out or None
+
+
 _US_STATE_ABBR = {
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
     "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
@@ -319,6 +368,22 @@ TEXT:
         _normalize_date(extracted.get("layoff_date"))
         or _normalize_date(raw_entry.get("filing_date"))
     )
+    # Announcement date is deliberately separate from the effective layoff
+    # date. It enables valid monthly announcement comparisons and is retained
+    # only when the source/model supplies a real date (never copied from the
+    # effective date as a convenience).
+    announcement_evidence = extracted.get("announcement_evidence")
+    extracted["announcement_date"] = (
+        _normalize_date(extracted.get("announcement_date"))
+        if _quote_is_supported(announcement_evidence, raw_text) else None
+    )
+    extracted["announcement_evidence"] = announcement_evidence.strip() if extracted["announcement_date"] else None
+    domicile_evidence = extracted.get("employer_country_evidence")
+    if not _quote_is_supported(domicile_evidence, raw_text):
+        extracted["employer_country"] = None
+        extracted["employer_country_evidence"] = None
+    else:
+        extracted["employer_country_evidence"] = domicile_evidence.strip()
     # Coverage floor: filings/articles often reference older restructurings;
     # a date before 2015 means the model grabbed a historical date from the
     # text. Fall back to the source's own date, else leave undated.

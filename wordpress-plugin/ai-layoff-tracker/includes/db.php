@@ -34,9 +34,12 @@ function alt_db_install() {
         ticker VARCHAR(32) NOT NULL DEFAULT '',
         job_count INT UNSIGNED NOT NULL DEFAULT 0,
         layoff_date DATE NULL,
+        announcement_date DATE NULL,
         industry VARCHAR(120) NOT NULL DEFAULT '',
         country VARCHAR(64) NOT NULL DEFAULT '',
         employer_country VARCHAR(64) NOT NULL DEFAULT '',
+        employer_country_evidence TEXT NULL,
+        announcement_evidence TEXT NULL,
         state CHAR(2) NOT NULL DEFAULT '',
         source_type VARCHAR(32) NOT NULL DEFAULT '',
         verification_level VARCHAR(16) NOT NULL DEFAULT '',
@@ -56,6 +59,7 @@ function alt_db_install() {
         PRIMARY KEY (id),
         UNIQUE KEY dedup_hash (dedup_hash),
         KEY layoff_date (layoff_date),
+        KEY announcement_date (announcement_date),
         KEY state (state),
         KEY country (country),
         KEY industry (industry),
@@ -236,9 +240,12 @@ function alt_db_upsert(array $row) {
         'ticker'             => substr((string) ($row['ticker'] ?? ''), 0, 32),
         'job_count'          => max(0, (int) ($row['job_count'] ?? 0)),
         'layoff_date'        => alt_db_valid_date((string) ($row['layoff_date'] ?? '')),
+        'announcement_date'  => alt_db_valid_date((string) ($row['announcement_date'] ?? '')),
         'industry'           => substr((string) ($row['industry'] ?? ''), 0, 120),
         'country'            => substr((string) ($row['country'] ?? ''), 0, 64),
         'employer_country'   => substr((string) ($row['employer_country'] ?? ''), 0, 64),
+        'employer_country_evidence' => sanitize_textarea_field($row['employer_country_evidence'] ?? ''),
+        'announcement_evidence' => sanitize_textarea_field($row['announcement_evidence'] ?? ''),
         'state'              => substr((string) ($row['state'] ?? ''), 0, 2),
         'source_type'        => substr((string) ($row['source_type'] ?? ''), 0, 32),
         'verification_level' => substr((string) ($row['verification_level'] ?? ''), 0, 16),
@@ -304,9 +311,12 @@ function alt_db_sync_post($post_id) {
         'ticker'             => get_post_meta($post_id, 'ticker', true),
         'job_count'          => get_post_meta($post_id, 'job_count', true),
         'layoff_date'        => get_post_meta($post_id, 'layoff_date', true),
+        'announcement_date'  => get_post_meta($post_id, 'announcement_date', true),
         'industry'           => get_post_meta($post_id, 'industry', true),
         'country'            => get_post_meta($post_id, 'country', true),
         'employer_country'   => get_post_meta($post_id, 'employer_country', true),
+        'employer_country_evidence' => get_post_meta($post_id, 'employer_country_evidence', true),
+        'announcement_evidence' => get_post_meta($post_id, 'announcement_evidence', true),
         'state'              => get_post_meta($post_id, 'state', true),
         'source_type'        => get_post_meta($post_id, 'source_type', true),
         'verification_level' => get_post_meta($post_id, 'verification_level', true),
@@ -429,6 +439,9 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
     if ($r->get_param('ai_primary') === '1' || $r->get_param('ai_primary') === 'true') { $where[] = "ai_causation = 'primary_cause'"; }
     if (($status = sanitize_key((string) $r->get_param('review_status'))) !== '') { $where[] = "review_status = %s"; $params[] = $status; }
+    if ($r->get_param('context_missing') === '1' || $r->get_param('context_missing') === 'true') {
+        $where[] = "(employer_country = '' OR announcement_date IS NULL)";
+    }
     // stage=announced -> announcement-stage only; stage=verified -> filed/reported only
     $stage = (string) $r->get_param('stage');
     if ($stage === 'announced') { $where[] = "announced = 1"; }
@@ -459,9 +472,12 @@ function alt_db_row_to_array($row) {
         'ticker'             => $row->ticker !== '' ? $row->ticker : null,
         'job_count'          => (int) $row->job_count,
         'layoff_date'        => $row->layoff_date ?: '',
+        'announcement_date'  => $row->announcement_date ?: '',
         'industry'           => $row->industry,
         'country'            => $row->country,
         'employer_country'   => $row->employer_country,
+        'employer_country_evidence' => $row->employer_country_evidence ?: null,
+        'announcement_evidence' => $row->announcement_evidence ?: null,
         'state'              => $row->state,
         'source_type'        => $row->source_type,
         'source_name'        => $row->source_name,
@@ -569,6 +585,13 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_reclassify',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected, evidence-bounded enrichment of public announcement date
+    // and employer domicile. This never guesses from job location or replaces
+    // an existing value without a new exact source quote.
+    register_rest_route('layoffs/v1', '/enrich-context', array(
+        'methods' => 'POST', 'callback' => 'alt_api_enrich_context',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Read-only public operational transparency, plus a key-protected writer
     // used by the autonomous collectors after each source attempt.
     register_rest_route('layoffs/v1', '/source-health', array(
@@ -631,6 +654,42 @@ function alt_api_reclassify(WP_REST_Request $r) {
     return rest_ensure_response($out);
 }
 
+/** Apply only source-quoted context fields that are presently blank. */
+function alt_api_enrich_context(WP_REST_Request $r) {
+    global $wpdb;
+    $items = $r->get_param('items');
+    if (!is_array($items)) return new WP_Error('alt_bad_request', 'items must be an array.', array('status' => 400));
+    $table = alt_db_table();
+    $out = array('updated' => array(), 'not_found' => array(), 'rejected' => array());
+    foreach ($items as $item) {
+        $id = (int) ($item['id'] ?? 0);
+        $row = $id ? $wpdb->get_row($wpdb->prepare("SELECT id, post_id, employer_country, announcement_date FROM $table WHERE id = %d", $id)) : null;
+        if (!$row) { $out['not_found'][] = $id; continue; }
+        $data = array();
+        $domicile = function_exists('alt_normalize_country') ? alt_normalize_country((string) ($item['employer_country'] ?? '')) : '';
+        $domicile_evidence = trim((string) ($item['employer_country_evidence'] ?? ''));
+        if ($row->employer_country === '' && $domicile !== '' && strlen($domicile_evidence) >= 12) {
+            $data['employer_country'] = $domicile;
+            $data['employer_country_evidence'] = sanitize_textarea_field($domicile_evidence);
+        }
+        $announcement_date = alt_db_valid_date((string) ($item['announcement_date'] ?? ''));
+        $announcement_evidence = trim((string) ($item['announcement_evidence'] ?? ''));
+        if (empty($row->announcement_date) && $announcement_date && strlen($announcement_evidence) >= 12) {
+            $data['announcement_date'] = $announcement_date;
+            $data['announcement_evidence'] = sanitize_textarea_field($announcement_evidence);
+        }
+        if (!$data) { $out['rejected'][] = $id; continue; }
+        if ($wpdb->update($table, $data, array('id' => $id)) === false) {
+            return new WP_Error('alt_db_error', 'Context enrichment failed: ' . $wpdb->last_error, array('status' => 500));
+        }
+        if (!empty($row->post_id)) foreach ($data as $key => $value) update_post_meta((int) $row->post_id, $key, $value);
+        $out['updated'][] = $id;
+    }
+    if (!empty($out['updated'])) alt_log_correction('enriched', $out['updated'], 'Automated source-evidence context enrichment');
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
+}
+
 function alt_api_source_health_get() {
     $health = get_option('alt_source_health');
     return rest_ensure_response(is_array($health) ? $health : array());
@@ -682,7 +741,7 @@ function alt_api_quality_status() {
     // This is the disclosed correction trail, not an invented ingest count:
     // legacy rows have no immutable created-at timestamp yet, so additions
     // cannot be reported honestly until the dataset-version ledger lands.
-    $changes = array('corrected' => 0, 'removed' => 0, 'merged' => 0, 'reclassified' => 0);
+    $changes = array('corrected' => 0, 'removed' => 0, 'merged' => 0, 'reclassified' => 0, 'enriched' => 0);
     foreach ($log as $entry) {
         if (($entry['date'] ?? '') < $since) continue;
         $action = sanitize_key($entry['action'] ?? '');
