@@ -1,5 +1,6 @@
 """
-Pulls 8-K filings from SEC EDGAR full-text search API.
+Pulls domestic 8-K and foreign-issuer 6-K filings from SEC EDGAR full-text
+search API.
 Searches for workforce reduction language.
 
 Spec deviation (the original spec would break silently): the spec's
@@ -91,6 +92,7 @@ def _fetch_filing_text(url):
 
 PAGE_SIZE = 10  # EFTS fixed page size
 MAX_PAGES_PER_KEYWORD = 3
+FORMS = ("8-K", "6-K")
 
 
 def _search_keyword(keyword, start, end):
@@ -98,40 +100,45 @@ def _search_keyword(keyword, start, end):
     heavy layoff day one page silently misses filings."""
     hits = []
     total = 0
-    for page in range(MAX_PAGES_PER_KEYWORD):
-        params = {
-            "q": f'"{keyword}"',
-            "dateRange": "custom",
-            "startdt": start.strftime("%Y-%m-%d"),
-            "enddt": end.strftime("%Y-%m-%d"),
-            "forms": "8-K",
-            "from": page * PAGE_SIZE,
-        }
-        time.sleep(REQUEST_DELAY_SECONDS)
-        resp = requests.get(EDGAR_FTS_URL, params=params, headers=_headers(), timeout=30)
-        resp.raise_for_status()
-        payload = resp.json().get("hits", {})
-        page_hits = payload.get("hits", [])
-        hits.extend(page_hits)
-        total = (payload.get("total") or {}).get("value", 0)
-        if len(page_hits) < PAGE_SIZE or (page + 1) * PAGE_SIZE >= total:
-            break
-
-    if total > MAX_PAGES_PER_KEYWORD * PAGE_SIZE:
-        print(f"EDGAR: keyword '{keyword}' matched {total} filings; "
-              f"only the first {MAX_PAGES_PER_KEYWORD * PAGE_SIZE} were fetched")
+    for form in FORMS:
+        total = 0
+        for page in range(MAX_PAGES_PER_KEYWORD):
+            params = {
+                "q": f'"{keyword}"',
+                "dateRange": "custom",
+                "startdt": start.strftime("%Y-%m-%d"),
+                "enddt": end.strftime("%Y-%m-%d"),
+                "forms": form,
+                "from": page * PAGE_SIZE,
+            }
+            time.sleep(REQUEST_DELAY_SECONDS)
+            resp = requests.get(EDGAR_FTS_URL, params=params, headers=_headers(), timeout=30)
+            resp.raise_for_status()
+            payload = resp.json().get("hits", {})
+            page_hits = payload.get("hits", [])
+            for hit in page_hits:
+                # Preserve the search form even when the response's internal
+                # field shape changes; the source label remains auditable.
+                hit["_alt_form"] = form
+            hits.extend(page_hits)
+            total = (payload.get("total") or {}).get("value", 0)
+            if len(page_hits) < PAGE_SIZE or (page + 1) * PAGE_SIZE >= total:
+                break
+        if total > MAX_PAGES_PER_KEYWORD * PAGE_SIZE:
+            print(f"EDGAR: {form} keyword '{keyword}' matched {total} filings; "
+                  f"only the first {MAX_PAGES_PER_KEYWORD * PAGE_SIZE} were fetched")
     return hits
 
 
 def pull_edgar_filings(days_back=1):
-    """Pull 8-K filings from the last N days containing layoff language."""
+    """Pull 8-K/6-K filings from the last N days containing layoff language."""
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days_back)
     return pull_edgar_filings_between(start, end)
 
 
 def pull_edgar_filings_between(start, end):
-    """Pull 8-K filings filed in [start, end] containing layoff language.
+    """Pull 8-K/6-K filings filed in [start, end] containing layoff language.
 
     Used by both the daily cron (recent window) and the historical backfill
     (monthly windows across 2024→now).
@@ -161,9 +168,10 @@ def pull_edgar_filings_between(start, end):
                 continue
 
             company_name, ticker = _parse_display_name(source.get("display_names"))
+            form = hit.get("_alt_form", "8-K")
             candidates[doc_url] = {
                 "source_type": "8K",
-                "source_name": "SEC EDGAR",
+                "source_name": f"SEC EDGAR {form}",
                 "verification_level": "gold",
                 "source_url": doc_url,
                 "company_name": company_name,

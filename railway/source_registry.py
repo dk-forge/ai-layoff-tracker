@@ -37,7 +37,7 @@ GLOBAL_TERMS = (
 MARKETS = {
     "US": Market("US", "reconciled", "Challenger, Gray & Christmas",
                  ("WARN notice", "mass layoff", "workforce reduction"),
-                 ("state WARN notices", "SEC EDGAR", "company IR")),
+                 ("state WARN notices", "SEC EDGAR 8-K/6-K", "company IR")),
     "CA": Market("CA", "partial", "", ("termination notice", "mass termination"),
                  ("SEDAR+", "company IR", "national business news")),
     "GB": Market("GB", "partial", "", ("redundancy consultation", "redundancies"),

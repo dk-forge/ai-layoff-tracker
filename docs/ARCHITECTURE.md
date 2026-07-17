@@ -4,7 +4,7 @@
                          ┌────────────────────────────────────────────────┐
   SOURCES                │  INGEST (railway/ — Python, GitHub Actions)    │
   ────────               │                                                │
-  SEC EDGAR 8-K ────────►│ cron.py (Railway cron 12:00 & 22:00 UTC)       │
+  SEC EDGAR 8-K/6-K ────►│ cron.py (Railway cron 12:00 & 22:00 UTC)       │
   NewsAPI ──────────────►│   EDGAR + NewsAPI + GDELT(36h worldwide)       │
   GDELT (worldwide press)│   → extractor.py (DeepSeek-V3 via OpenRouter)  │──POST /add──┐
   Company IR/newsroom RSS│   → evidence quote + causal AI class           │             │
@@ -64,7 +64,7 @@ docs/                        this documentation
 ```
 
 ## Data semantics (the parts that bite)
-- **Verification tiers:** `gold`=SEC 8-K, `warn`=state WARN notice, `silver`=press release, `bronze`=news.
+- **Verification tiers:** `gold`=SEC EDGAR 8-K/6-K, `warn`=state WARN notice, `silver`=press release, `bronze`=news.
 - **Dedup:** exact = md5(company+date+count). Fuzzy = same normalized company within ±30 days blocks
   a second *news* entry. `/dedupe` collapses cross-outlet clusters keeping best tier. **WARN is exempt
   from fuzzy + cluster dedup** — its hash also includes city+state.
