@@ -22,7 +22,7 @@
   │      └── mirrored into the table on save (alt_db_sync_post)                          │
   │                                                                                      │
   │  REST layoffs/v1:                                                                    │
-  │   PUBLIC  /query /aggregate /facets   ← 5-min micro-cache (transients, alt_data_ver) │
+  │   PUBLIC  /query /aggregate /facets /integrity-status ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
   │           /reclassify /source-health /event-migrate                                    │

@@ -569,6 +569,10 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_source_health_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // Public aggregate-only integrity telemetry for journalists and ops.
+    register_rest_route('layoffs/v1', '/integrity-status', array(
+        'methods' => 'GET', 'callback' => 'alt_api_integrity_status', 'permission_callback' => '__return_true',
+    ));
 }
 
 /**
@@ -632,6 +636,26 @@ function alt_api_source_health_post(WP_REST_Request $r) {
     );
     update_option('alt_source_health', $health, false);
     return rest_ensure_response(array($source => $health[$source]));
+}
+
+function alt_api_integrity_status() {
+    global $wpdb;
+    $layoffs = alt_db_table();
+    $events = alt_events_table();
+    $reports = alt_source_reports_table();
+    $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs");
+    $migrated = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs WHERE event_id > 0");
+    $event_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $events");
+    $report_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports");
+    return rest_ensure_response(array(
+        'canonical_events' => $event_count,
+        'source_reports' => $report_count,
+        'canonical_rows_total' => $total,
+        'canonical_rows_migrated' => $migrated,
+        'canonical_rows_remaining' => max(0, $total - $migrated),
+        'migration_complete' => $total === $migrated,
+        'generated_at' => gmdate('c'),
+    ));
 }
 
 function alt_api_trash(WP_REST_Request $r) {

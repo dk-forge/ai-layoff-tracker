@@ -15,6 +15,8 @@ or fuzzy duplicate joins the existing canonical event as a retained source
 report rather than becoming a second counted row or being discarded. Legacy
 rows are migrated in resumable batches; source reports removed before this
 store existed cannot be reconstructed without re-discovering them.
+Progress is public at `GET /integrity-status`, including canonical rows still
+awaiting migration and the total retained source-report count.
 
 `country` means where the affected jobs are located. `employer_country` means
 the employer’s HQ/domicile when evidence supports it. Never use one as a proxy
