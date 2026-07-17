@@ -36,6 +36,7 @@ jobs:
           CHALLENGER_ALLOWED_VARIANCE: ${{ github.event.inputs.allowed_variance || '0.10' }}
         run: |
           cd railway
+          set -o pipefail
           python challenger_reconcile.py | tee challenger-reconciliation.json
           cp challenger-reconciliation.json "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4

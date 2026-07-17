@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| Ops (Jul 17) | **Challenger threshold failure repair.** The reconciliation command piped output through `tee`, which masked its non-zero threshold result. Enabled `pipefail` so an out-of-threshold benchmark visibly fails the workflow while still retaining/publishing its record. |
 | 2.17.2 (Jul 17) | **Retained evidence hashes.** Each newly retained source report now carries a SHA-256 hash of its stored evidence excerpt, exposed with the event’s source reports. This is tamper-evidence for the retained excerpt, not a claim to archive an entire publisher page; legacy report-hash backfill remains a separate bounded migration. |
 | 2.17.1 (Jul 17) | **Retained Challenger reconciliation history.** Monthly reconciliation now posts its official report URL, strict source-evidenced tracker total, broader diagnostic figure and coverage gap to a public retained endpoint instead of leaving it only as a GitHub artifact. A threshold miss still fails loudly and never changes tracker totals. |
 | 2.17.0 (Jul 17) | **Enrichment status and runtime bound.** Quality status now marks announcement/domicile enrichment active. Its successful first ten-record pass took 19m22s (3 source-supported enrichments; 7 inaccessible or unsupported), so the unattended daily batch is reduced to five to stay under the 20-minute Actions cap. Inaccessible publisher pages remain visibly unverified; they are never bypassed. |

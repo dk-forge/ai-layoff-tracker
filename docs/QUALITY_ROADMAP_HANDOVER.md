@@ -69,6 +69,12 @@ effective layoff date. The strict metric can legitimately be zero while
 enrichment is still early. That is an honest coverage signal, not a reason to
 inflate it.
 
+First retained public record (2026-07-17): official June Challenger report
+records 101,743 YTD AI-attributed cuts; strict tracker comparator is 0 while
+announcement-date/domicile enrichment is early. This is a disclosed coverage
+gap, not a data correction. The workflow uses `pipefail`; threshold misses must
+be red in Actions while retaining the public record.
+
 ## Active and pending work
 
 1. **Finish context enrichment and publish a monthly Challenger panel.**
