@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| 2.17.3 (Jul 17) | **High-impact editorial triage queue.** Added a public, read-only review queue for very large (5,000+), source-quoted AI-primary and multi-country events. It only identifies records for human review, reports retained-source counts and never alters a record, its sources or totals automatically. |
 | Ops (Jul 17) | **Challenger threshold failure repair.** The reconciliation command piped output through `tee`, which masked its non-zero threshold result. Enabled `pipefail` so an out-of-threshold benchmark visibly fails the workflow while still retaining/publishing its record. |
 | 2.17.2 (Jul 17) | **Retained evidence hashes.** Each newly retained source report now carries a SHA-256 hash of its stored evidence excerpt, exposed with the event’s source reports. This is tamper-evidence for the retained excerpt, not a claim to archive an entire publisher page; legacy report-hash backfill remains a separate bounded migration. |
 | 2.17.1 (Jul 17) | **Retained Challenger reconciliation history.** Monthly reconciliation now posts its official report URL, strict source-evidenced tracker total, broader diagnostic figure and coverage gap to a public retained endpoint instead of leaving it only as a GitHub artifact. A threshold miss still fails loudly and never changes tracker totals. |

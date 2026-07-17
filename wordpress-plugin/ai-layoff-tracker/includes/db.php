@@ -617,6 +617,15 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/quality-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_quality_status', 'permission_callback' => '__return_true',
     ));
+    // Read-only triage list. This flags records for editorial attention; it
+    // never changes a count, classification, source, or publication status.
+    register_rest_route('layoffs/v1', '/review-queue', array(
+        'methods' => 'GET', 'callback' => 'alt_api_review_queue', 'permission_callback' => '__return_true',
+        'args' => array(
+            'per_page' => array('type' => 'integer', 'default' => 50),
+            'page' => array('type' => 'integer', 'default' => 1),
+        ),
+    ));
     register_rest_route('layoffs/v1', '/benchmarks/challenger', array(
         array('methods' => 'GET', 'callback' => 'alt_api_challenger_benchmarks', 'permission_callback' => '__return_true'),
         array('methods' => 'POST', 'callback' => 'alt_api_challenger_benchmark_post',
@@ -773,9 +782,56 @@ function alt_api_quality_status() {
             array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Monthly strict US benchmark artifact; public month table pending announcement-date backfill'),
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
             array('id' => 'country_recall_benchmarks', 'status' => 'planned', 'scope' => 'Measured coverage by country and period, never implied completeness'),
-            array('id' => 'high_impact_editorial_review', 'status' => 'planned', 'scope' => 'Large, AI-primary and multi-country events'),
+            array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
         ),
+    ));
+}
+
+/**
+ * Public, evidence-preserving editorial triage queue.
+ *
+ * This is intentionally a queue rather than an automatic correction rule:
+ * the triggers identify events whose count, causation claim, or geography
+ * merits a human look. Existing review_status is reported, not overwritten.
+ */
+function alt_api_review_queue(WP_REST_Request $r) {
+    global $wpdb;
+    $per_page = min(100, max(1, (int) $r->get_param('per_page')));
+    $page = max(1, (int) $r->get_param('page'));
+    $offset = ($page - 1) * $per_page;
+    $layoffs = alt_db_table();
+    $reports = alt_source_reports_table();
+    $where = "(l.job_count >= 5000 OR l.ai_causation = 'primary_cause' OR l.country = 'Multiple countries')";
+    $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs l WHERE $where");
+    $sql = "SELECT l.*, (SELECT COUNT(*) FROM $reports r WHERE r.event_id = l.event_id) AS retained_source_count
+        FROM $layoffs l
+        WHERE $where
+        ORDER BY l.job_count DESC, l.id DESC
+        LIMIT %d OFFSET %d";
+    $rows = $wpdb->get_results($wpdb->prepare($sql, $per_page, $offset)) ?: array();
+    $items = array();
+    foreach ($rows as $row) {
+        $item = alt_db_row_to_array($row);
+        $triggers = array();
+        if ((int) $row->job_count >= 5000) $triggers[] = 'very_large_event';
+        if ($row->ai_causation === 'primary_cause') $triggers[] = 'ai_primary_claim';
+        if ($row->country === 'Multiple countries') $triggers[] = 'multi_country_event';
+        $item['review_triggers'] = $triggers;
+        $item['retained_source_count'] = (int) $row->retained_source_count;
+        $items[] = $item;
+    }
+    return rest_ensure_response(array(
+        'methodology' => array(
+            'purpose' => 'Editorial triage only; appearing here does not mean a record is inaccurate or automatically changed.',
+            'triggers' => array('very_large_event' => 'job_count >= 5,000', 'ai_primary_claim' => 'source-quoted AI primary-cause classification', 'multi_country_event' => 'single event reported across multiple countries'),
+            'source_safeguard' => 'Every item links to its retained event-source reports; review must preserve sources and record any correction in the public corrections trail.',
+        ),
+        'total' => $total,
+        'page' => $page,
+        'per_page' => $per_page,
+        'items' => $items,
+        'generated_at' => gmdate('c'),
     ));
 }
 

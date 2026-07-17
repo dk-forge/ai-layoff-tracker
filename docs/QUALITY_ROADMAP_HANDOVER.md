@@ -21,7 +21,10 @@ remain the publication standard.
 
 ## Live, verified foundation
 
-- Plugin version **2.16.9**, deployed from commit `ce20951`.
+- Plugin version **2.17.3** is the current pending deployment (high-impact
+  review queue). The previous live version is **2.17.2**, deployed from commit
+  `36384d2`; verify the deployment run and public endpoint before recording
+  the new commit here as live.
 - Public quality endpoint:
   `GET /blog/wp-json/layoffs/v1/quality-status`.
   It exposes dataset revision, disclosed corrections, source health, canonical
@@ -92,7 +95,12 @@ be red in Actions while retaining the public record.
      remeasure before using it publicly as a current figure.
 
 3. **High-impact review queue and durable source evidence.**
-   - Queue very large events, AI-primary claims, and multi-country events.
+   - A live, read-only triage queue is available at
+     `GET /blog/wp-json/layoffs/v1/review-queue`. It identifies very large
+     (5,000+), source-quoted AI-primary and multi-country events, exposes each
+     record's retained-source count and makes no automatic editorial change.
+     Review remains a human decision and any correction must preserve sources
+     and enter the corrections trail.
    - New source reports carry SHA-256 hashes of their retained evidence excerpt.
      Backfill legacy report hashes in bounded batches. Preserve source URL,
      retained excerpt/evidence and content hash/snapshot metadata where
