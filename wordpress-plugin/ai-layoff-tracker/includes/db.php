@@ -610,6 +610,10 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/integrity-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_integrity_status', 'permission_callback' => '__return_true',
     ));
+    register_rest_route('layoffs/v1', '/source-evidence-hash-backfill', array(
+        'methods' => 'POST', 'callback' => 'alt_api_source_evidence_hash_backfill',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // A compact, machine-readable view of operational health, retained-source
     // integrity and the openly scoped quality roadmap. It deliberately names
     // pending/blocked work instead of turning an absent connector into a
@@ -749,15 +753,40 @@ function alt_api_integrity_status() {
     $migrated = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs WHERE event_id > 0");
     $event_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $events");
     $report_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports");
+    $hashable_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> ''");
+    $hashed_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash <> ''");
     return rest_ensure_response(array(
         'canonical_events' => $event_count,
         'source_reports' => $report_count,
+        'hashable_source_reports' => $hashable_reports,
+        'hashed_source_reports' => $hashed_reports,
+        'source_report_hashes_remaining' => max(0, $hashable_reports - $hashed_reports),
         'canonical_rows_total' => $total,
         'canonical_rows_migrated' => $migrated,
         'canonical_rows_remaining' => max(0, $total - $migrated),
         'migration_complete' => $total === $migrated,
         'generated_at' => gmdate('c'),
     ));
+}
+
+/**
+ * Backfill hashes only from the evidence excerpts already retained locally.
+ * No source URL is fetched and no source/excerpt/classification is modified.
+ */
+function alt_api_source_evidence_hash_backfill(WP_REST_Request $r) {
+    global $wpdb;
+    $limit = min(1000, max(1, (int) ($r->get_param('limit') ?: 500)));
+    $reports = alt_source_reports_table();
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, excerpt FROM $reports WHERE excerpt <> '' AND evidence_hash = '' ORDER BY id ASC LIMIT %d", $limit), ARRAY_A) ?: array();
+    $updated = 0;
+    foreach ($rows as $row) {
+        $ok = $wpdb->update($reports, array('evidence_hash' => hash('sha256', (string) $row['excerpt'])), array('id' => (int) $row['id']));
+        if ($ok === false) return new WP_Error('alt_db_error', 'Evidence-hash backfill failed: ' . $wpdb->last_error, array('status' => 500, 'updated' => $updated));
+        if ($ok) $updated++;
+    }
+    $remaining = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash = ''");
+    return rest_ensure_response(array('updated' => $updated, 'remaining' => $remaining, 'scope' => 'Hashes are derived from already-retained excerpts only; external pages are not fetched.'));
 }
 
 /** Public quality and change-reporting status for researchers and operations. */
@@ -787,6 +816,7 @@ function alt_api_quality_status() {
         'workstreams' => array(
             array('id' => 'operational_monitoring', 'status' => 'active', 'scope' => 'Collector health, integrity and workflow failures'),
             array('id' => 'canonical_source_evidence', 'status' => 'complete', 'scope' => 'Canonical events retain all known source reports'),
+            array('id' => 'durable_evidence_retention', 'status' => 'active', 'scope' => 'SHA-256 retained-excerpt hashes; bounded legacy backfill, not publisher-page archiving'),
             array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Public monthly strict US benchmark; source-evidenced announcement-date backfill continues'),
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),

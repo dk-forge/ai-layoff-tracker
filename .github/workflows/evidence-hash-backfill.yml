@@ -1,0 +1,28 @@
+name: Retained evidence hash backfill
+
+on:
+  schedule:
+    - cron: '35 6 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Reports per bounded run (1-1000)'
+        required: false
+        default: '500'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Hash retained excerpts only
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          LIMIT: ${{ github.event.inputs.limit || '500' }}
+        run: |
+          curl --fail-with-body -sS -X POST \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H 'Content-Type: application/json' \
+            --data "{\"limit\":$LIMIT}" \
+            https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-evidence-hash-backfill

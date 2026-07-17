@@ -108,7 +108,9 @@ be red in Actions while retaining the public record.
      Review remains a human decision and any correction must preserve sources
      and enter the corrections trail.
    - New source reports carry SHA-256 hashes of their retained evidence excerpt.
-     Backfill legacy report hashes in bounded batches. Preserve source URL,
+     Daily `evidence-hash-backfill.yml` now backfills 500 legacy hashes per run
+     from the already-retained excerpt only; progress is public in
+     `/integrity-status`. Preserve source URL,
      retained excerpt/evidence and content hash/snapshot metadata where
      permitted. A hash of a short excerpt is not a source-page archive; label
      it accurately.
