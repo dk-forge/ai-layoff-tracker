@@ -48,11 +48,12 @@ remain the publication standard.
   horizontally on narrow screens.
 - Legacy AI-evidence reassessment runs daily with a 10-record scheduled batch
   after a 25-record batch reached GitHub Actions' 20-minute ceiling.
-- Historical GDELT recovery fails loudly and is publicly degraded on external
-  HTTP 429s. Its seven-day cursor advances only after a successful window and
-  honors bounded Retry-After/backoff delays, so a rate-limited window is
-  retried rather than skipped. Do not conceal the condition or use prohibited
-  scraping.
+- Historical GDELT recovery is publicly degraded on external HTTP 429s. Its
+  seven-day cursor advances only after a successful window and honors bounded
+  Retry-After/backoff delays, so a rate-limited window is retried rather than
+  skipped. A known upstream 429 completes the GitHub workflow as a visible
+  deferred condition; code, authentication and write failures still fail
+  loudly. Do not conceal the condition or use prohibited scraping.
 
 ## Newly live: evidence-only context enrichment
 

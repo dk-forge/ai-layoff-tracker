@@ -11,6 +11,7 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
+| Ops (Jul 17) | **External GDELT rate-limit notification repair.** A documented upstream HTTP 429 now leaves source health degraded and the historical cursor unchanged, but completes the scheduled workflow as deferred rather than producing a misleading repository-failure email. Unexpected failures remain red. |
 |---|---|
 | 2.18.0 (Jul 17) | **Public AI Tracker Health page.** Added a dynamic operations page at `/blog/ai-layoff-tracker/ai-tracker-health/` with current collector state, last pull, source scope/cadence, safe degraded details, integrity/backlog counts, workstreams and Challenger alert context. It uses existing public endpoints; run-history charts begin only when append-only telemetry is installed rather than fabricating legacy daily pulls. |
 | 2.17.9 (Jul 17) | **Success-anchored GDELT history recovery.** Historical global-news recovery now uses one seven-day window and advances its persistent cursor only after success. HTTP 429 responses honor a bounded Retry-After/backoff delay, and failed windows stay queued for the next run rather than disappearing until a later rotation. The public source-health endpoint still shows the external degradation; no proxying or prohibited workaround is used. |

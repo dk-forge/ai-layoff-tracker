@@ -14,6 +14,7 @@ from enrich_context import query_params, rotating_page
 from source_registry import MARKETS, coverage_manifest, discovery_terms
 from sources.press_releases import _items
 from sources.gdelt import _retry_delay
+from historical_news_sweep import WINDOW_DAYS
 from sources.edgar import FORMS
 from dedupe_llm import select_candidate_clusters
 
@@ -71,6 +72,9 @@ class EvidenceGuardTests(unittest.TestCase):
     def test_gdelt_retry_delay_honors_retry_after_floor(self):
         response = SimpleNamespace(headers={"Retry-After": "90"})
         self.assertGreaterEqual(_retry_delay(response, 0), 90)
+
+    def test_historical_gdelt_window_is_bounded_to_one_week(self):
+        self.assertEqual(WINDOW_DAYS, 7)
 
 
 if __name__ == "__main__":

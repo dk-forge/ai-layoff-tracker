@@ -37,7 +37,19 @@ def main():
     os.environ["BACKFILL_START"] = start.isoformat()
     os.environ["BACKFILL_END"] = end.isoformat()
     print(f"Success-anchored historical GDELT window: {start} to {end}")
-    gdelt_backfill.run()
+    try:
+        gdelt_backfill.run()
+    except RuntimeError as exc:
+        # GDELT's shared public endpoint can explicitly throttle a healthy
+        # client. The backfill already recorded this as degraded, and because
+        # the cursor is not advanced the identical window will retry later.
+        # Treat it as a visible deferred condition, not a red repository/code
+        # failure that floods the owner with email. Other exceptions still
+        # fail loudly for investigation.
+        if "HTTP 429" in str(exc):
+            print("GDELT historical recovery deferred by upstream rate limit; cursor retained for retry.")
+            return 0
+        raise
     if not override:
         _api("historical-gdelt-cursor", "POST", {"next_start": (end + timedelta(days=1)).isoformat()})
         print("Historical GDELT cursor advanced after successful window.")
