@@ -130,6 +130,8 @@ REQUEST_DELAY = 1.2       # GDELT asks for gentle use
 RAW_TEXT_LIMIT = 3000
 MAX_DOC_BYTES = 400_000
 FETCH_WORKERS = max(1, min(6, int(os.environ.get("GDELT_FETCH_WORKERS", "4"))))
+QUERY_ATTEMPTS = max(1, min(5, int(os.environ.get("GDELT_QUERY_ATTEMPTS", "3"))))
+QUERY_BACKOFF_SECONDS = max(1, min(60, int(os.environ.get("GDELT_QUERY_BACKOFF_SECONDS", "15"))))
 
 
 def _strip_html(markup):
@@ -184,22 +186,24 @@ def pull_gdelt_between(start, end, max_records=250):
     # instead of surrendering the whole month window (a 72-window backfill
     # once lost 63 windows to 429s without this).
     articles = None
-    for attempt in range(5):
-        time.sleep(REQUEST_DELAY if attempt == 0 else 45 * attempt)
+    last_error = None
+    for attempt in range(QUERY_ATTEMPTS):
+        time.sleep(REQUEST_DELAY if attempt == 0 else QUERY_BACKOFF_SECONDS * attempt)
         try:
             resp = requests.get(GDELT_URL, params=params,
                                 headers={"User-Agent": BROWSER_UA}, timeout=30)
             if resp.status_code == 429:
-                print(f"GDELT 429 (attempt {attempt + 1}/5), backing off")
+                last_error = "HTTP 429"
+                print(f"GDELT 429 (attempt {attempt + 1}/{QUERY_ATTEMPTS}), backing off")
                 continue
             resp.raise_for_status()
             articles = resp.json().get("articles", []) or []
             break
         except Exception as e:
-            print(f"GDELT query error (attempt {attempt + 1}/5): {e}")
+            last_error = str(e)
+            print(f"GDELT query error (attempt {attempt + 1}/{QUERY_ATTEMPTS}): {e}")
     if articles is None:
-        print("GDELT window abandoned after 5 attempts")
-        return []
+        raise RuntimeError(f"GDELT window abandoned after {QUERY_ATTEMPTS} attempts: {last_error or 'unknown error'}")
 
     candidates, seen = [], set()
     for a in articles:

@@ -70,6 +70,8 @@ jobs:
           # the rotating schedule makes steady, autonomous historical progress.
           BACKFILL_MAX_ARTICLES: '10'
           OPENROUTER_TIMEOUT_SECONDS: '45'
+          GDELT_QUERY_ATTEMPTS: '3'
+          GDELT_QUERY_BACKOFF_SECONDS: '15'
         run: |
           echo "Historical global sweep: $BACKFILL_START to $BACKFILL_END"
           python gdelt_backfill.py
