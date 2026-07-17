@@ -72,7 +72,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <div class="alt-stat-card">
             <span class="alt-stat-value" id="alt-stat-announced">—</span>
             <span class="alt-stat-label">Announced job cuts</span>
-            <span class="alt-stat-desc"><b>Separate number.</b> Announced but not yet filed or executed. <b>Not counted in Verified or AI-attributed.</b></span>
+            <span class="alt-stat-desc"><b>Separate number.</b> Source-linked plans at announcement stage. <b>Not counted in Verified or AI-attributed.</b></span>
             <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
         </div>
         <div class="alt-stat-card">
@@ -91,7 +91,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <span class="alt-stat-sub"></span>
         </div>
     </div>
-    <p class="alt-stats-note">How to read these numbers: <b>Verified job cuts</b> is the main figure — cuts with a filing or report behind them. <b>Explicitly AI-attributed</b> is a slice of that Verified number, the cuts a company openly blamed on AI. <b>Announced job cuts</b> is a separate figure for cuts a company has announced but not yet filed or executed; it is <b>not</b> counted in either of the other two, so nothing is double-counted.</p>
+    <p class="alt-stats-note">How to read these numbers: <b>Verified job cuts</b> is the main figure — cuts with a filing or report behind them. <b>Explicitly AI-attributed</b> is a slice of that Verified number, the cuts a company openly blamed on AI. <b>Announced job cuts</b> is a separate announcement-history figure. A later filing or report is linked or merged when confidently matched; an unmatched announcement is <b>not</b> a claim that the cuts remain unexecuted. It is not counted in either of the other two, so nothing is double-counted.</p>
     <p class="alt-stats-note"><b>Important for Challenger comparisons:</b> these cards are scoped by the job-location country filter. Challenger measures announcements by US-based employers, so the cards are not a like-for-like Challenger total. The monthly reconciliation records the strict employer-domicile, announced, AI-primary comparison and its variance; we never change our data merely to match the benchmark.</p>
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
