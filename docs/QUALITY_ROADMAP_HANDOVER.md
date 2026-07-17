@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-17. This is the continuation brief for the AI Layoff
+Last updated: 2026-07-17 (operations verified after the 2.18.1 deploy). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -28,8 +28,10 @@ remain the publication standard.
   once the append-only run ledger is deployed, never reconstructed from legacy
   rows.
 
-- Plugin version **2.17.7** is live from commit `b7779e4` (deployment run
-  `29591800650`). The retained-excerpt hash backfill is live; integrity after
+- Plugin version **2.18.1** is live from commit `2877251` (deployment run
+  `29614434464`). That deployment passed a pre-upload PHP syntax lint and a
+  post-upload cache-busted public tracker API verification. The retained-excerpt
+  hash backfill is live; integrity after
   the latest successful deep dedupe is 43,892 canonical rows/events and 43,971
   retained source reports, with no migration backlog.
 - Public quality endpoint:
@@ -104,7 +106,9 @@ be red in Actions while retaining the public record.
      page. New records retain the official report month, strict qualifying
      figure, official report URL and a coverage gap—never an "accuracy" claim.
    - Do not display a percentage as “accuracy” or copy Challenger's total.
-   - Current monthly workflow produces an artifact but no public table yet.
+   - The current monthly record is public through the endpoint, tracker-page
+     comparison table, and health page. The workflow artifact remains the
+     detailed operational audit trail.
 
 2. **Measured recall by country/period.**
    - Public protocol: `docs/RECALL_BENCHMARK_PROTOCOL.md`; endpoint:
