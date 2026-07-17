@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       batch:
-        description: 'Rows to reassess (1-100)'
+        description: 'Rows to reassess (1-100; scheduled default is 10)'
         required: false
-        default: '25'
+        default: '10'
 
 jobs:
   reclassify:
@@ -27,7 +27,7 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          RECLASSIFY_BATCH: ${{ github.event.inputs.batch || '25' }}
+          RECLASSIFY_BATCH: ${{ github.event.inputs.batch || '10' }}
         run: |
           cd railway
           python reclassify_legacy_ai.py

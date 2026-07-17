@@ -7,7 +7,8 @@ an exact evidence quote for any causal AI claim; inaccessible sources remain
 plainly marked legacy/unreviewed for a later retry.
 
 Env: WP_SITE_URL, WP_API_KEY, OPENROUTER_API_KEY.
-Optional: RECLASSIFY_BATCH (default 25).
+Optional: RECLASSIFY_BATCH (default 10). The scheduled batch is deliberately
+small because each row may require a slow publisher fetch and a model call.
 """
 import html
 import os
@@ -22,7 +23,7 @@ from extractor import classify_ai_evidence
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
-BATCH = max(1, min(100, int(os.environ.get("RECLASSIFY_BATCH", "25"))))
+BATCH = max(1, min(100, int(os.environ.get("RECLASSIFY_BATCH", "10"))))
 
 
 def clean_html(content):
