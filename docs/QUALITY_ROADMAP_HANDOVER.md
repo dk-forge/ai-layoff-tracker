@@ -21,9 +21,9 @@ remain the publication standard.
 
 ## Live, verified foundation
 
-- Plugin version **2.17.4** is live from commit `37c0b97` (deployment run
-  `29585680862`); the public Challenger panel and retained reconciliation
-  endpoint were verified after the standard schema/cache initialization.
+- Plugin version **2.17.5** is live from commit `5dbe7d0` (deployment run
+  `29587666455`); the public recall-benchmark endpoint and quality status were
+  verified after the standard schema/cache initialization.
 - Public quality endpoint:
   `GET /blog/wp-json/layoffs/v1/quality-status`.
   It exposes dataset revision, disclosed corrections, source health, canonical
