@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-17 (health-page feature-state list added in plugin 2.18.8; deployment verification pending). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-17 (evidence-hash backfill validated at 1,000 and scheduled twice daily; health-page feature-state list is live in plugin 2.18.8). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -131,8 +131,10 @@ be red in Actions while retaining the public record.
      Review remains a human decision and any correction must preserve sources
      and enter the corrections trail.
    - New source reports carry SHA-256 hashes of their retained evidence excerpt.
-     Daily `evidence-hash-backfill.yml` backfills a bounded 500 legacy hashes per
-     run from the already-retained excerpt only. The workflow validates its
+     Twice-daily `evidence-hash-backfill.yml` backfills a bounded 1,000 legacy
+     hashes per run from the already-retained excerpt only. A controlled
+     production batch completed 1,000 in about 1.4 seconds on 2026-07-17; the
+     two schedules have a concurrency guard so runs never overlap. The workflow validates its
      returned progress payload and writes the updated/remaining counts to the
      GitHub Actions summary; progress is public in `/integrity-status`.
      Preserve source URL, retained excerpt/evidence and content hash/snapshot

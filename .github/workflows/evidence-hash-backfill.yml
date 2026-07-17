@@ -3,12 +3,17 @@ name: Retained evidence hash backfill
 on:
   schedule:
     - cron: '35 6 * * *'
+    - cron: '35 18 * * *'
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Reports per bounded run (1-1000; scheduled default is 500)'
+        description: 'Reports per bounded run (1-1000; scheduled default is 1000)'
         required: false
-        default: '500'
+        default: '1000'
+
+concurrency:
+  group: evidence-hash-backfill
+  cancel-in-progress: false
 
 jobs:
   backfill:
@@ -18,7 +23,7 @@ jobs:
       - name: Hash retained excerpts only
         env:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
-          LIMIT: ${{ github.event.inputs.limit || '500' }}
+          LIMIT: ${{ github.event.inputs.limit || '1000' }}
         run: |
           case "$LIMIT" in
             ''|*[!0-9]*) echo "LIMIT must be an integer from 1 to 1000" >&2; exit 2 ;;
