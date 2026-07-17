@@ -50,7 +50,7 @@ wordpress-plugin/ai-layoff-tracker/
 railway/
   cron.py                    2×daily ingest (EDGAR + NewsAPI + GDELT 36h) + source health
   extractor.py               DeepSeek prompt + post-processing; source-quote guard and AI causal taxonomy
-  source_registry.py         Market status, discovery vocabulary, intended source coverage (not a completeness claim)
+  source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
@@ -64,7 +64,8 @@ docs/                        this documentation
 ```
 
 ## Data semantics (the parts that bite)
-- **Verification tiers:** `gold`=SEC EDGAR 8-K/6-K, `warn`=state WARN notice, `silver`=press release, `bronze`=news.
+- **Verification tiers:** `gold`=SEC EDGAR 8-K/6-K, `warn`=state WARN notice, `silver`=press release/Eurofound ERM, `bronze`=news.
+- **Market registry:** a named official system is a *candidate* until it has a stable public interface, a tested connector and source-health reporting. Only `live_sources` are coverage claims; all other countries remain discovery-only.
 - **Dedup:** exact = md5(company+date+count). Fuzzy = same normalized company within ±30 days blocks
   a second *news* entry. `/dedupe` collapses cross-outlet clusters keeping best tier. **WARN is exempt
   from fuzzy + cluster dedup** — its hash also includes city+state.

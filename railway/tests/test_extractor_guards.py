@@ -10,7 +10,7 @@ sys.modules.setdefault("openai", SimpleNamespace())
 sys.modules.setdefault("requests", SimpleNamespace())
 
 from extractor import _quote_is_supported
-from source_registry import discovery_terms
+from source_registry import MARKETS, coverage_manifest, discovery_terms
 from sources.press_releases import _items
 from sources.edgar import FORMS
 
@@ -31,6 +31,15 @@ class EvidenceGuardTests(unittest.TestCase):
 
     def test_edgar_includes_foreign_issuer_disclosures(self):
         self.assertEqual(FORMS, ("8-K", "6-K"))
+
+    def test_candidate_sources_are_not_presented_as_live_coverage(self):
+        canada = MARKETS["CA"]
+        self.assertEqual(canada.status, "discovery_only")
+        self.assertIn("SEDAR+", canada.candidate_official_sources)
+        self.assertNotIn("SEDAR+", canada.live_sources)
+        manifest = {row["country"]: row for row in coverage_manifest()}
+        self.assertEqual(manifest["CA"]["live_sources"],
+                         ["worldwide news", "reviewed company IR feeds"])
 
 
 if __name__ == "__main__":

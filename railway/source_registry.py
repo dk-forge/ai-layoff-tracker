@@ -15,10 +15,14 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Market:
     iso2: str
-    status: str  # reconciled | structured_official | partial | discovery_only
+    # ``status`` describes a live collector, never a source we merely intend
+    # to build. This keeps the registry safe to expose to reporters later.
+    # Values: reconciled | structured_official | discovery_only.
+    status: str
     benchmark: str
     terms: tuple[str, ...]
-    sources: tuple[str, ...]
+    live_sources: tuple[str, ...]
+    candidate_official_sources: tuple[str, ...]
 
 
 # Cross-market terms are intentionally broad.  They are discovery terms only;
@@ -37,31 +41,35 @@ GLOBAL_TERMS = (
 MARKETS = {
     "US": Market("US", "reconciled", "Challenger, Gray & Christmas",
                  ("WARN notice", "mass layoff", "workforce reduction"),
-                 ("state WARN notices", "SEC EDGAR 8-K/6-K", "company IR")),
-    "CA": Market("CA", "partial", "", ("termination notice", "mass termination"),
-                 ("SEDAR+", "company IR", "national business news")),
-    "GB": Market("GB", "partial", "", ("redundancy consultation", "redundancies"),
-                 ("RNS", "company IR", "national business news")),
-    "AU": Market("AU", "partial", "", ("redundancy", "job cuts"),
-                 ("ASX announcements", "company IR", "national business news")),
-    "JP": Market("JP", "partial", "", ("restructuring", "workforce reduction"),
-                 ("TDnet", "EDINET", "company IR")),
-    "IN": Market("IN", "partial", "", ("retrenchment", "job cuts"),
-                 ("NSE", "BSE", "company IR")),
-    "HK": Market("HK", "partial", "", ("restructuring", "job cuts"),
-                 ("HKEXnews", "company IR")),
-    "SG": Market("SG", "partial", "", ("retrenchment", "workforce reduction"),
-                 ("SGXNet", "company IR")),
-    "ZA": Market("ZA", "partial", "", ("retrenchment", "section 189"),
-                 ("SENS", "company IR")),
+                 ("state WARN notices", "SEC EDGAR 8-K/6-K", "company IR"), ()),
+    # These markets have worldwide-news discovery today. Their named filing
+    # systems are candidates, not active feeds. Do not turn one into a coverage
+    # claim until it has a documented public interface, connector, fixtures and
+    # source-health reporting.
+    "CA": Market("CA", "discovery_only", "", ("termination notice", "mass termination"),
+                 ("worldwide news", "reviewed company IR feeds"), ("SEDAR+",)),
+    "GB": Market("GB", "discovery_only", "", ("redundancy consultation", "redundancies"),
+                 ("worldwide news", "reviewed company IR feeds"), ("RNS",)),
+    "AU": Market("AU", "discovery_only", "", ("redundancy", "job cuts"),
+                 ("worldwide news", "reviewed company IR feeds"), ("ASX announcements",)),
+    "JP": Market("JP", "discovery_only", "", ("restructuring", "workforce reduction"),
+                 ("worldwide news", "reviewed company IR feeds"), ("TDnet", "EDINET")),
+    "IN": Market("IN", "discovery_only", "", ("retrenchment", "job cuts"),
+                 ("worldwide news", "reviewed company IR feeds"), ("NSE", "BSE")),
+    "HK": Market("HK", "discovery_only", "", ("restructuring", "job cuts"),
+                 ("worldwide news", "reviewed company IR feeds"), ("HKEXnews",)),
+    "SG": Market("SG", "discovery_only", "", ("retrenchment", "workforce reduction"),
+                 ("worldwide news", "reviewed company IR feeds"), ("SGXNet",)),
+    "ZA": Market("ZA", "discovery_only", "", ("retrenchment", "section 189"),
+                 ("worldwide news", "reviewed company IR feeds"), ("SENS",)),
     "BR": Market("BR", "discovery_only", "", ("demissões", "cortes de empregos"),
-                 ("company IR", "national business news")),
+                 ("worldwide news", "reviewed company IR feeds"), ()),
     "MX": Market("MX", "discovery_only", "", ("despidos", "recorte de personal"),
-                 ("company IR", "national business news")),
-    "KR": Market("KR", "partial", "", ("restructuring", "job cuts"),
-                 ("DART", "company IR")),
-    "IL": Market("IL", "partial", "", ("layoffs", "workforce reduction"),
-                 ("TASE", "company IR")),
+                 ("worldwide news", "reviewed company IR feeds"), ()),
+    "KR": Market("KR", "discovery_only", "", ("restructuring", "job cuts"),
+                 ("worldwide news", "reviewed company IR feeds"), ("DART",)),
+    "IL": Market("IL", "discovery_only", "", ("layoffs", "workforce reduction"),
+                 ("worldwide news", "reviewed company IR feeds"), ("TASE",)),
 }
 
 
@@ -79,6 +87,7 @@ def coverage_manifest() -> list[dict[str, object]]:
     """JSON-safe data used by monitoring and future public coverage pages."""
     return [
         {"country": m.iso2, "status": m.status, "benchmark": m.benchmark,
-         "sources": list(m.sources)}
+         "live_sources": list(m.live_sources),
+         "candidate_official_sources": list(m.candidate_official_sources)}
         for m in MARKETS.values()
     ]
