@@ -14,7 +14,7 @@ from reclassify_legacy_ai import UA, clean_html
 
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
-BATCH = max(1, min(50, int(os.environ.get("CONTEXT_ENRICH_BATCH", "10"))))
+BATCH = max(1, min(50, int(os.environ.get("CONTEXT_ENRICH_BATCH", "5"))))
 
 
 def report_health(status, entries=0, detail=""):

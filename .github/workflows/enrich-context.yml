@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       batch:
-        description: 'Rows to reassess (1-50; scheduled default is 10)'
+        description: 'Rows to reassess (1-50; scheduled default is 5)'
         required: false
-        default: '10'
+        default: '5'
 
 jobs:
   enrich:
@@ -25,7 +25,7 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          CONTEXT_ENRICH_BATCH: ${{ github.event.inputs.batch || '10' }}
+          CONTEXT_ENRICH_BATCH: ${{ github.event.inputs.batch || '5' }}
         run: |
           cd railway
           python enrich_context.py
