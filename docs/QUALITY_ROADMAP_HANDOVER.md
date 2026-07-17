@@ -132,13 +132,21 @@ be red in Actions while retaining the public record.
    - No paid subscriptions are planned. Do not sign up for, scrape around,
      or misrepresent licensed/permissioned sources. Reviewed public company IR
      RSS/Atom feeds are the preferred expansion path.
-   - Free credentials now worth obtaining: Japan EDINET (`EDINET_API_KEY`) and
-     South Korea OpenDART (`OPENDART_API_KEY`) for future tested official
-     connectors; UK Companies House (`COMPANIES_HOUSE_API_KEY`) for employer
-     identity enrichment. Store them as GitHub Actions and Railway secrets,
-     never in code or chat. Do not activate a collector merely because a key
-     exists: each needs fixtures, rate/error handling, source retention and a
-     source-health entry first.
+   - **Credential status, 2026-07-17:** the owner reports these free keys are
+     present in both GitHub Actions secrets and Railway environment variables:
+     Japan EDINET (`EDINET_API_KEY_JP`), South Korea OpenDART
+     (`OPENDART_API_KEY_KR`), and UK Companies House
+     (`COMPANIES_HOUSE_API_KEY_UK`). Never record, expose or request their
+     values in chat, code, commits, logs, fixtures or documentation.
+   - EDINET registration can reject the login flow with a Japanese
+     "non-standard operation" message if pop-ups/cookies are blocked or a
+     bookmarked B2C page is used. Start only from
+     `https://api.edinet-fsa.go.jp/api/auth/index.aspx?mode=1` in a fresh
+     browser session; the owner resolved this by allowing pop-ups.
+   - Do not activate a collector merely because a key exists: each needs
+     fixtures, rate/error handling, source retention and a source-health entry
+     first. EDINET/OpenDART are future official-disclosure connectors;
+     Companies House is employer-identity enrichment, not a UK layoff feed.
    - Highest no-credential expansion is a versioned registry of reviewed,
      company-owned newsroom/IR RSS or Atom feeds. Do not treat generic wire
      feeds as official, and document terms/domain ownership before admission.
