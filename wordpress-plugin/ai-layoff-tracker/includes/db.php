@@ -580,6 +580,13 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/integrity-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_integrity_status', 'permission_callback' => '__return_true',
     ));
+    // A compact, machine-readable view of operational health, retained-source
+    // integrity and the openly scoped quality roadmap. It deliberately names
+    // pending/blocked work instead of turning an absent connector into a
+    // misleading coverage claim.
+    register_rest_route('layoffs/v1', '/quality-status', array(
+        'methods' => 'GET', 'callback' => 'alt_api_quality_status', 'permission_callback' => '__return_true',
+    ));
 }
 
 /**
@@ -662,6 +669,42 @@ function alt_api_integrity_status() {
         'canonical_rows_remaining' => max(0, $total - $migrated),
         'migration_complete' => $total === $migrated,
         'generated_at' => gmdate('c'),
+    ));
+}
+
+/** Public quality and change-reporting status for researchers and operations. */
+function alt_api_quality_status() {
+    $health = get_option('alt_source_health');
+    $log = get_option('alt_corrections_log');
+    $health = is_array($health) ? $health : array();
+    $log = is_array($log) ? $log : array();
+    $since = gmdate('Y-m-d', strtotime('-30 days'));
+    // This is the disclosed correction trail, not an invented ingest count:
+    // legacy rows have no immutable created-at timestamp yet, so additions
+    // cannot be reported honestly until the dataset-version ledger lands.
+    $changes = array('corrected' => 0, 'removed' => 0, 'merged' => 0, 'reclassified' => 0);
+    foreach ($log as $entry) {
+        if (($entry['date'] ?? '') < $since) continue;
+        $action = sanitize_key($entry['action'] ?? '');
+        if (isset($changes[$action])) $changes[$action] += max(0, (int) ($entry['count'] ?? 0));
+        elseif ($action === 'edited') $changes['corrected'] += max(0, (int) ($entry['count'] ?? 0));
+    }
+    $integrity = alt_api_integrity_status()->get_data();
+    return rest_ensure_response(array(
+        'generated_at' => gmdate('c'),
+        'dataset_revision' => (int) get_option('alt_data_ver', 1),
+        'last_30_days_disclosed_changes' => $changes,
+        'source_health' => $health,
+        'integrity' => $integrity,
+        'workstreams' => array(
+            array('id' => 'operational_monitoring', 'status' => 'active', 'scope' => 'Collector health, integrity and workflow failures'),
+            array('id' => 'canonical_source_evidence', 'status' => 'complete', 'scope' => 'Canonical events retain all known source reports'),
+            array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Monthly strict US benchmark artifact; public month table pending announcement-date backfill'),
+            array('id' => 'announcement_and_domicile_enrichment', 'status' => 'planned', 'scope' => 'Only explicit source-supported values; legacy rows are not inferred'),
+            array('id' => 'country_recall_benchmarks', 'status' => 'planned', 'scope' => 'Measured coverage by country and period, never implied completeness'),
+            array('id' => 'high_impact_editorial_review', 'status' => 'planned', 'scope' => 'Large, AI-primary and multi-country events'),
+            array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
+        ),
     ));
 }
 
