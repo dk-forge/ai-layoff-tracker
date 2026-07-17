@@ -9,8 +9,10 @@ Idempotent (dedup guard). Env:
   BACKFILL_END    YYYY-MM-DD (default today, UTC)
   BACKFILL_LIMIT  int        (optional cap on posts — for a test run)
   BACKFILL_MAX_ARTICLES int  (optional cap on model candidates; use for schedules)
+  BACKFILL_DEADLINE_SECONDS int (optional wall-time budget; scheduled safety)
 """
 import os
+import time
 from datetime import datetime, timedelta, timezone
 
 from sources.gdelt import pull_gdelt_between
@@ -42,6 +44,8 @@ def run():
     end = _parse(os.environ.get("BACKFILL_END"), datetime.now(timezone.utc))
     limit = int(os.environ.get("BACKFILL_LIMIT") or 0) or None
     max_articles = int(os.environ.get("BACKFILL_MAX_ARTICLES") or 0) or None
+    deadline_seconds = int(os.environ.get("BACKFILL_DEADLINE_SECONDS") or 0) or None
+    started_at = time.monotonic()
     print(f"GDELT backfill {start.date()} → {end.date()}"
           + (f" (post limit {limit})" if limit else "")
           + (f" (candidate cap {max_articles})" if max_articles else ""))
@@ -59,6 +63,10 @@ def run():
             raise
         print(f"[{label}] {len(entries)} articles")
         for raw in entries:
+            if deadline_seconds and time.monotonic() - started_at >= deadline_seconds:
+                print(f"Reached BACKFILL_DEADLINE_SECONDS={deadline_seconds}; stopping safely.")
+                _summary(posted, ai, dupes, skipped, failed, considered)
+                return
             if max_articles and considered >= max_articles:
                 print(f"Reached BACKFILL_MAX_ARTICLES={max_articles}; stopping.")
                 _summary(posted, ai, dupes, skipped, failed, considered)

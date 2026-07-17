@@ -72,6 +72,7 @@ jobs:
           OPENROUTER_TIMEOUT_SECONDS: '45'
           GDELT_QUERY_ATTEMPTS: '3'
           GDELT_QUERY_BACKOFF_SECONDS: '15'
+          BACKFILL_DEADLINE_SECONDS: '600'
         run: |
           echo "Historical global sweep: $BACKFILL_START to $BACKFILL_END"
           python gdelt_backfill.py

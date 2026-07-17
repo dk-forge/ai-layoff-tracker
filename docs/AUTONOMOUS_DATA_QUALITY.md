@@ -69,6 +69,8 @@ inspectable recovery cycle rather than an uncontrolled repeating scan of all
 historical news.
 Source-query retries are bounded as well; an exhausted GDELT retry budget marks
 the source degraded and fails the run rather than silently returning zero.
+The scheduled job also has a ten-minute extraction budget; it stops safely and
+resumes in a later rotating window rather than overlapping the next run.
 
 Humans may improve rules or source connectors, but do not need to adjudicate
 routine events. A connector that breaks must fail loudly and be marked degraded
