@@ -614,6 +614,11 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/quality-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_quality_status', 'permission_callback' => '__return_true',
     ));
+    register_rest_route('layoffs/v1', '/benchmarks/challenger', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_challenger_benchmarks', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_challenger_benchmark_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
 }
 
 /**
@@ -769,6 +774,34 @@ function alt_api_quality_status() {
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
         ),
     ));
+}
+
+/** Public retained reconciliation history; never a command to alter totals. */
+function alt_api_challenger_benchmarks() {
+    $records = get_option('alt_challenger_benchmarks');
+    return rest_ensure_response(is_array($records) ? array_values($records) : array());
+}
+
+function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
+    $year = (int) $r->get_param('year');
+    $benchmark = max(0, (int) $r->get_param('challenger_ai_jobs_ytd'));
+    $tracker = max(0, (int) $r->get_param('tracker_ai_primary_announced_us_employer_jobs_ytd'));
+    $url = esc_url_raw($r->get_param('benchmark_url'));
+    if ($year < 2015 || $year > 2100 || !$benchmark || !$url) {
+        return new WP_Error('alt_bad_request', 'year, benchmark URL and positive Challenger total are required.', array('status' => 400));
+    }
+    $records = get_option('alt_challenger_benchmarks');
+    if (!is_array($records)) $records = array();
+    $records[$year] = array(
+        'year' => $year, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
+        'benchmark_url' => $url, 'challenger_ai_jobs_ytd' => $benchmark,
+        'tracker_ai_primary_announced_us_employer_jobs_ytd' => $tracker,
+        'tracker_ai_cited_announced_us_job_location_jobs_ytd' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_ytd')),
+        'variance' => round(($tracker - $benchmark) / $benchmark, 4),
+        'definition' => 'Strict: US employer + source-evidenced announcement date + announced + AI primary + canonical event. Diagnostic figure is not Challenger-comparable.',
+    );
+    krsort($records); update_option('alt_challenger_benchmarks', array_slice($records, 0, 24, true), false);
+    return rest_ensure_response($records[$year]);
 }
 
 function alt_api_trash(WP_REST_Request $r) {

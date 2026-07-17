@@ -72,8 +72,10 @@ inflate it.
 ## Active and pending work
 
 1. **Finish context enrichment and publish a monthly Challenger panel.**
-   - Add persisted monthly reconciliation records, official report URL,
-     definition, coverage gap and diagnostic broader number.
+   - Persisted reconciliation records now live at
+     `GET /blog/wp-json/layoffs/v1/benchmarks/challenger`; add an on-page
+     monthly table with official report URL, definition, coverage gap and
+     diagnostic broader number.
    - Do not display a percentage as “accuracy” or copy Challenger's total.
    - Current monthly workflow produces an artifact but no public table yet.
 

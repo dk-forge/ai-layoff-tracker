@@ -67,6 +67,15 @@ def tracker_comparison_totals(site, year):
     return strict, strict_url, observed, observed_url
 
 
+def publish_record(site, payload):
+    key = os.environ.get("WP_API_KEY", "")
+    if not key:
+        raise RuntimeError("WP_API_KEY is required to retain the public reconciliation record")
+    response = requests.post(site.rstrip("/") + "/wp-json/layoffs/v1/benchmarks/challenger",
+        json=payload, headers={**UA, "X-Layoff-API-Key": key}, timeout=60)
+    response.raise_for_status()
+
+
 def main():
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     if not site:
@@ -88,6 +97,7 @@ def main():
         "variance": round(variance, 4), "allowed_variance": allowed,
         "definition": "Strict: US-based employer + announced cuts + AI primary cause + canonical event. Observed: US job location + any explicit AI citation + announced; not comparable to Challenger.",
     }
+    publish_record(site, payload)
     print(json.dumps(payload, indent=2))
     if abs(variance) > allowed:
         print("RECONCILIATION OUTSIDE THRESHOLD: trigger backfill/quality investigation; do not force totals.")
