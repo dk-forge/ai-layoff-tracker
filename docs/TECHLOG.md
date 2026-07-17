@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| 2.17.5 (Jul 17) | **Measured-recall publication guardrails.** Added public country-period recall history and a key-protected writer that refuses a sample without a public reference-set URL, bounded numerator/denominator and explicit basis. The companion protocol makes clear that sample recall is neither country completeness nor an accuracy score; the superseded 5/35 baseline is not presented as current. |
 | 2.17.4 (Jul 17) | **Public Challenger reconciliation panel.** The tracker page now renders retained official Challenger comparisons with their strict qualifying tracker figure and a plainly labelled coverage gap—not a claimed accuracy percentage. New reconciliation records retain the report month so the public history grows month by month instead of overwriting a calendar-year slot. |
 | 2.17.3 (Jul 17) | **High-impact editorial triage queue.** Added a public, read-only review queue for very large (5,000+), source-quoted AI-primary and multi-country events. It only identifies records for human review, reports retained-source counts and never alters a record, its sources or totals automatically. |
 | Ops (Jul 17) | **Challenger threshold failure repair.** The reconciliation command piped output through `tee`, which masked its non-zero threshold result. Enabled `pipefail` so an out-of-threshold benchmark visibly fails the workflow while still retaining/publishing its record. |

@@ -88,10 +88,14 @@ be red in Actions while retaining the public record.
    - Current monthly workflow produces an artifact but no public table yet.
 
 2. **Measured recall by country/period.**
-   - Publish recall samples, reference-event set, methodology and confidence.
-   - Never claim country completeness. The historical baseline is 5/35 (14.3%)
-     for the documented June–July reference sample before subsequent changes;
-     remeasure before using it publicly as a current figure.
+   - Public protocol: `docs/RECALL_BENCHMARK_PROTOCOL.md`; endpoint:
+     `GET /blog/wp-json/layoffs/v1/benchmarks/recall`. The protected writer
+     rejects any record without a public reference-set URL, single country and
+     closed period, stated basis, and bounded numerator/denominator.
+   - Never claim country completeness. The historical 5/35 (14.3%) June–July
+     baseline predates the later source and deduplication changes, so it is
+     intentionally not published as current; remeasure from an independent,
+     documented reference set first.
 
 3. **High-impact review queue and durable source evidence.**
    - A live, read-only triage queue is available at

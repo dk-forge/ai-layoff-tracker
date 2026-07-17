@@ -631,6 +631,14 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_challenger_benchmark_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // Country-period recall samples are public methodology records, not a
+    // completeness claim. A benchmark cannot be posted without an openly
+    // reviewable independent reference set.
+    register_rest_route('layoffs/v1', '/benchmarks/recall', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_recall_benchmarks', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_recall_benchmark_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
 }
 
 /**
@@ -779,9 +787,9 @@ function alt_api_quality_status() {
         'workstreams' => array(
             array('id' => 'operational_monitoring', 'status' => 'active', 'scope' => 'Collector health, integrity and workflow failures'),
             array('id' => 'canonical_source_evidence', 'status' => 'complete', 'scope' => 'Canonical events retain all known source reports'),
-            array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Monthly strict US benchmark artifact; public month table pending announcement-date backfill'),
+            array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Public monthly strict US benchmark; source-evidenced announcement-date backfill continues'),
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
-            array('id' => 'country_recall_benchmarks', 'status' => 'planned', 'scope' => 'Measured coverage by country and period, never implied completeness'),
+            array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
         ),
@@ -863,6 +871,47 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
         'definition' => 'Strict: US employer + source-evidenced announcement date + announced + AI primary + canonical event. Diagnostic figure is not Challenger-comparable.',
     );
     krsort($records); update_option('alt_challenger_benchmarks', array_slice($records, 0, 24, true), false);
+    return rest_ensure_response($records[$key]);
+}
+
+/** Public recall sample history. Empty means no current measured sample—not zero coverage. */
+function alt_api_recall_benchmarks() {
+    $records = get_option('alt_recall_benchmarks');
+    return rest_ensure_response(array(
+        'methodology' => array(
+            'meaning' => 'Recall is the share of a disclosed independent reference-event sample matched to a canonical tracker event in the same country and period. It is a sample measurement, not national completeness or accuracy.',
+            'admission_rule' => 'Each record must link to an openly reviewable reference set, state its country and period, and retain numerator and denominator. Samples are not combined across countries or periods.',
+            'matching_rule' => 'A match requires the same underlying event after source-preserving canonical deduplication; similar company news alone is not sufficient.',
+        ),
+        'benchmarks' => is_array($records) ? array_values($records) : array(),
+        'generated_at' => gmdate('c'),
+    ));
+}
+
+/** Retain a reproducible country-period recall sample after an independent review. */
+function alt_api_recall_benchmark_post(WP_REST_Request $r) {
+    $country = alt_normalize_country((string) $r->get_param('country'));
+    $start = alt_db_valid_date((string) $r->get_param('period_start'));
+    $end = alt_db_valid_date((string) $r->get_param('period_end'));
+    $reference = max(0, (int) $r->get_param('reference_events'));
+    $matched = max(0, (int) $r->get_param('matched_events'));
+    $reference_set_url = esc_url_raw((string) $r->get_param('reference_set_url'));
+    $basis = sanitize_key((string) $r->get_param('reference_basis'));
+    if ($country === '' || $country === 'Multiple countries' || !$start || !$end || $end < $start || !$reference || $matched > $reference || !$reference_set_url || !in_array($basis, array('independent_manual_sample', 'public_dataset_sample'), true)) {
+        return new WP_Error('alt_bad_request', 'country, valid period, positive reference count, bounded match count, public reference-set URL and allowed basis are required.', array('status' => 400));
+    }
+    $records = get_option('alt_recall_benchmarks');
+    if (!is_array($records)) $records = array();
+    $key = sanitize_title($country) . '|' . $start . '|' . $end;
+    $records[$key] = array(
+        'country' => $country, 'period_start' => $start, 'period_end' => $end,
+        'reference_basis' => $basis, 'reference_set_url' => $reference_set_url,
+        'reference_events' => $reference, 'matched_events' => $matched,
+        'sample_recall' => round($matched / $reference, 4),
+        'methodology_version' => '1.0', 'recorded_at' => gmdate('c'),
+        'disclosure' => 'Sample recall only; not a country completeness or accuracy claim.',
+    );
+    krsort($records); update_option('alt_recall_benchmarks', array_slice($records, 0, 100, true), false);
     return rest_ensure_response($records[$key]);
 }
 
