@@ -1024,6 +1024,7 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-source-health table { width: 100%; min-width: 420px; border-collapse: collapse; font-size: 12px; }
 .alt-source-health th, .alt-source-health td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--alt-grid); }
 .alt-source-health th { color: var(--alt-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.alt-challenger-chart { position: relative; height: 245px; margin: 14px 0 6px; }
 .alt-source-ok td:nth-child(2) { color: #187449; font-weight: 700; }
 .alt-source-running td:nth-child(2) { color: #9a6700; font-weight: 700; }
 .alt-source-degraded td:nth-child(2) { color: #a12d2d; font-weight: 700; }

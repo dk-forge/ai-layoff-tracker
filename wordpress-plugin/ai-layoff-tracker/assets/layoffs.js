@@ -874,6 +874,31 @@
         });
     }
 
+    function initChallengerReconciliationChart() {
+        var canvas = document.getElementById('alt-chart-challenger-reconciliation');
+        if (!canvas || !chartsAvailable()) return;
+        var points;
+        try { points = JSON.parse(canvas.getAttribute('data-points') || '[]'); }
+        catch (e) { return; }
+        if (!Array.isArray(points) || points.length < 2) return;
+        var options = cloneOptions();
+        options.plugins.tooltip.callbacks = { label: function (ctx) {
+            return (ctx.dataset.label || 'Jobs') + ': ' + fmt(ctx.parsed.y);
+        } };
+        options.scales.y.ticks.callback = function (value) { return fmt(value); };
+        mountChart('alt-chart-challenger-reconciliation', {
+            type: 'line',
+            data: {
+                labels: points.map(function (p) { return monthLabel(p.period); }),
+                datasets: [
+                    { label: 'Challenger official YTD', data: points.map(function (p) { return p.challenger; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
+                    { label: 'ATR strict comparable YTD', data: points.map(function (p) { return p.tracker; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
+                ]
+            },
+            options: options
+        });
+    }
+
     function renderBar(canvasId, entries, filterId, activeValue, tipPrefix) {
         if (!document.getElementById(canvasId)) return;
         entries = entries || [];
@@ -1562,6 +1587,7 @@
         if (chartsAvailable()) {
             Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
             Chart.defaults.color = INK.muted;
+            initChallengerReconciliationChart();
         }
         DASH_PRESENT = !!document.querySelector('.alt-dashboard');
 

@@ -9,13 +9,36 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 $alt_challenger_records = get_option('alt_challenger_benchmarks');
 $alt_challenger_records = is_array($alt_challenger_records) ? array_values($alt_challenger_records) : array();
 usort($alt_challenger_records, function($a, $b) {
-    return strcmp((string) ($b['report_month'] ?? $b['recorded_at'] ?? ''), (string) ($a['report_month'] ?? $a['recorded_at'] ?? ''));
+    $a_period = (string) (!empty($a['report_month']) ? $a['report_month'] : substr((string) ($a['recorded_at'] ?? ''), 0, 7));
+    $b_period = (string) (!empty($b['report_month']) ? $b['report_month'] : substr((string) ($b['recorded_at'] ?? ''), 0, 7));
+    return strcmp($b_period, $a_period);
 });
+// One retained reconciliation per official report month. A later write with an
+// explicit report_month supersedes an earlier setup record for that same month.
+$alt_challenger_by_period = array();
+foreach ($alt_challenger_records as $alt_challenger_record) {
+    $alt_period = !empty($alt_challenger_record['report_month'])
+        ? (string) $alt_challenger_record['report_month']
+        : substr((string) ($alt_challenger_record['recorded_at'] ?? ''), 0, 7);
+    if ($alt_period === '') $alt_period = 'recorded-' . count($alt_challenger_by_period);
+    if (!isset($alt_challenger_by_period[$alt_period]) || !empty($alt_challenger_record['report_month'])) {
+        $alt_challenger_by_period[$alt_period] = $alt_challenger_record;
+    }
+}
+$alt_challenger_records = array_values($alt_challenger_by_period);
+$alt_challenger_chart = array();
+foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
+    $alt_challenger_chart[] = array(
+        'period' => !empty($alt_challenger_record['report_month']) ? $alt_challenger_record['report_month'] : substr((string) ($alt_challenger_record['recorded_at'] ?? ''), 0, 7),
+        'challenger' => max(0, (int) ($alt_challenger_record['challenger_ai_jobs_ytd'] ?? 0)),
+        'tracker' => max(0, (int) ($alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0)),
+    );
+}
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>
-    <p class="alt-lead">Source-linked layoff events worldwide, across all industries and causes, with evidence-backed AI attribution kept separate from AI context. Every record links to its filing, company statement, government notice, restructuring database entry, or named news report. Coverage varies by country and source, so use the country, source and date filters to scope your research.</p>
+    <p class="alt-lead">Source-linked layoff events worldwide, across all industries and causes, with evidence-backed AI attribution kept separate from AI context. Published events retain a cited filing, company statement, government notice, restructuring database entry, or named news report; where a government publishes notices only in a list, that is labelled clearly. Coverage varies by country and source, so use the country, source and date filters to scope your research.</p>
 
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -315,6 +338,14 @@ usort($alt_challenger_records, function($a, $b) {
         <div class="alt-method-body">
             <p>This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. The strict tracker figure includes only canonical events with a source-evidenced announcement date, a US-based employer, announcement-stage status and AI as the primary stated cause. The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
             <?php if ($alt_challenger_records) : ?>
+            <?php if (count($alt_challenger_chart) >= 2) : ?>
+            <div class="alt-challenger-chart">
+                <canvas id="alt-chart-challenger-reconciliation" data-points="<?php echo esc_attr(wp_json_encode($alt_challenger_chart)); ?>" aria-label="Cumulative year-to-date Challenger and strict tracker AI-announcement comparison"></canvas>
+            </div>
+            <p class="alt-muted">Cumulative year-to-date values by official report month. This is a coverage reconciliation, not a monthly layoff-total chart or an accuracy score.</p>
+            <?php else : ?>
+            <p class="alt-muted">The first official comparison is retained below. A cumulative month-by-month trend will appear automatically after a second official report month is recorded.</p>
+            <?php endif; ?>
             <div class="alt-source-health alt-challenger-table">
                 <table>
                     <thead><tr><th>Report period</th><th>Challenger AI/automation cuts YTD</th><th>Strict tracker figure YTD</th><th>Coverage gap</th><th>Official report</th></tr></thead>

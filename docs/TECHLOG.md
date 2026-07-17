@@ -11,6 +11,7 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
+| 2.18.3 (Jul 17) | **Monthly Challenger transparency.** The public reconciliation now retains one displayed record per official report month and automatically renders a clearly labelled cumulative-YTD comparison trend once two official months exist. It never fabricates monthly cuts from a single report and continues to describe the difference as a coverage gap, not accuracy. |
 | 2.18.2 (Jul 17) | **Compact date-state formatting.** Date, `upcoming`, and `announced` labels now render as one non-fragmenting table-cell unit, preventing announcement badges from wrapping onto a detached second line on narrow screens. |
 | 2.18.1 (Jul 17) | **Deployment PHP-fatal guard.** A WordPress recovery email reported an `api.php` parse error during the older 2.17.2 deployment. The committed 2.17.2 source was balanced and the live 2.18.0 tracker/API subsequently returned 200, indicating a transient in-place FTPS upload read rather than a persistent syntax defect. Deploys now lint every plugin PHP file before upload and verify a cache-busted public tracker API response after upload. |
 | Ops (Jul 17) | **External GDELT rate-limit notification repair.** A documented upstream HTTP 429 now leaves source health degraded and the historical cursor unchanged, but completes the scheduled workflow as deferred rather than producing a misleading repository-failure email. Unexpected failures remain red. |
