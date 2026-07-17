@@ -110,6 +110,11 @@ else the next import re-creates it). 3. Remove/correct data: single entries →
 in the site's corrections log (templates/page-tracker.php) + TECHLOG. Counts are part of
 the dedup hash — corrected counts need the purge path, plain re-import duplicates.
 
+**An announced plan may have later executed / been filed**
+1. Inspect the public `/announcement-lifecycle-candidates` queue. It is only a narrow, read-only lead: exact company/count/country plus a source-evidenced announcement date and a later record within 365 days.
+2. Compare every retained source report for both events; confirm the scope, geography and timeline describe the same underlying cut.
+3. Only then use the keyed `/merge-events` route with an editorial reason. Never merge from company name or an LLM suggestion alone. The merge keeps every source report.
+
 **Challenger reconciliation fails**
 1. Do not change the tracker total to match the benchmark. The comparison is only valid for US-based employers,
    announced cuts, AI-primary cause and canonical events.

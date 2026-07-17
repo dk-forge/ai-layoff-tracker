@@ -112,6 +112,13 @@ class EvidenceGuardTests(unittest.TestCase):
     def test_historical_gdelt_window_is_bounded_to_one_week(self):
         self.assertEqual(WINDOW_DAYS, 7)
 
+    def test_metadata_completeness_never_treats_hq_as_job_state(self):
+        db_source = (Path(__file__).resolve().parents[2]
+                     / "wordpress-plugin/ai-layoff-tracker/includes/db.php").read_text()
+        self.assertIn("us_rows_missing_job_location_state", db_source)
+        self.assertIn("employer domicile and headquarters are never substituted", db_source)
+        self.assertIn("rows_missing_industry", db_source)
+
     def test_gdelt_rate_limit_marker_survives_follow_up_bad_response(self):
         throttled = SimpleNamespace(status_code=429, headers={})
         malformed = SimpleNamespace(

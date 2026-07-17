@@ -22,7 +22,7 @@
   │      └── mirrored into the table on save (alt_db_sync_post)                          │
   │                                                                                      │
   │  REST layoffs/v1:                                                                    │
-  │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status /review-queue /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
+  │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
   │           /reclassify /enrich-context /source-health /event-migrate                     │
@@ -91,9 +91,17 @@ automatable or licensed for reuse.
   unknown are distinct classifications. A primary/contributing classification is accepted only when the
   claimed exact quote exists in the supplied source passage. `country` is job location; `employer_country`
   is employer domicile/HQ when stated.
+- **Metadata completeness:** `/integrity-status` discloses blank industry rows and blank US affected-job
+  state rows. These are measurable enrichment backlogs, not permission to infer values: WARN notices often
+  omit industry, and a national announcement remains state-unspecified unless a source identifies affected
+  job locations. Employer HQ/domicile and office footprint must never be used as job-state substitutes.
 - **Challenger comparison:** the on-page country filter is job location, not employer domicile. The monthly
   strict comparator uses US employer domicile + announcement stage + AI-primary + canonical events. A separate
   visible US-job-location/any-AI figure is diagnostic only and is never represented as Challenger-comparable.
+- **Announcement lifecycle candidates:** a read-only queue can surface an exact-count, same-company,
+  same-job-location-country announcement followed within 365 days by a later non-announced record. It is
+  deliberately an editorial lead, never an auto-merge rule; confirmation uses retained sources and the
+  existing keyed source-preserving merge path.
 - **Link precision:** most states publish one list page, not per-notice URLs. UI labels list-page
   links "(list)"; exact per-notice links (VT etc.) display plain.
 

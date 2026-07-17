@@ -56,43 +56,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
     <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
 
-    <div class="alt-stats-bar" id="alt-stats-bar">
-        <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-total">—</span>
-            <span class="alt-stat-label">Verified job cuts</span>
-            <span class="alt-stat-desc">Filed or reported. The main number.</span>
-            <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
-        </div>
-        <div class="alt-stat-card alt-stat-card-ai">
-            <span class="alt-stat-value" id="alt-stat-ai">—</span>
-            <span class="alt-stat-label">Explicitly AI-attributed</span>
-            <span class="alt-stat-desc"><b>Part of the Verified cuts</b> to the left — the ones a company openly blamed on AI.</span>
-            <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
-        </div>
-        <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-announced">—</span>
-            <span class="alt-stat-label">Announced job cuts</span>
-            <span class="alt-stat-desc"><b>Separate number.</b> Source-linked plans at announcement stage. <b>Not counted in Verified or AI-attributed.</b></span>
-            <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
-        </div>
-        <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-companies">—</span>
-            <span class="alt-stat-label">Companies</span>
-            <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
-        </div>
-        <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-industries">—</span>
-            <span class="alt-stat-label">Industries</span>
-            <span class="alt-stat-sub"></span>
-        </div>
-        <div class="alt-stat-card">
-            <span class="alt-stat-value" id="alt-stat-countries">—</span>
-            <span class="alt-stat-label">Countries</span>
-            <span class="alt-stat-sub"></span>
-        </div>
-    </div>
-    <p class="alt-stats-note">How to read these numbers: <b>Verified job cuts</b> is the main figure — cuts with a filing or report behind them. <b>Explicitly AI-attributed</b> is a slice of that Verified number, the cuts a company openly blamed on AI. <b>Announced job cuts</b> is a separate announcement-history figure. A later filing or report is linked or merged when confidently matched; an unmatched announcement is <b>not</b> a claim that the cuts remain unexecuted. It is not counted in either of the other two, so nothing is double-counted.</p>
-    <p class="alt-stats-note"><b>Important for Challenger comparisons:</b> these cards are scoped by the job-location country filter. Challenger measures announcements by US-based employers, so the cards are not a like-for-like Challenger total. The monthly reconciliation records the strict employer-domicile, announced, AI-primary comparison and its variance; we never change our data merely to match the benchmark.</p>
+    <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
@@ -220,6 +184,49 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <input type="checkbox" id="alt-f-announced" hidden>
     </div>
 
+    <section class="alt-results-summary" aria-labelledby="alt-results-summary-title">
+        <h2 class="screen-reader-text" id="alt-results-summary-title">Results summary</h2>
+        <div class="alt-stats-bar" id="alt-stats-bar">
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-total">—</span>
+                <span class="alt-stat-label">Verified job cuts</span>
+                <span class="alt-stat-desc">Filed or reported. The main number.</span>
+                <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
+            </div>
+            <div class="alt-stat-card alt-stat-card-ai">
+                <span class="alt-stat-value" id="alt-stat-ai">—</span>
+                <span class="alt-stat-label">Explicitly AI-attributed</span>
+                <span class="alt-stat-desc"><b>Part of the Verified cuts</b> to the left — the ones a company openly blamed on AI.</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
+            </div>
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-announced">—</span>
+                <span class="alt-stat-label">Announced job cuts</span>
+                <span class="alt-stat-desc"><b>Separate number.</b> Source-linked plans at announcement stage. <b>Not counted in Verified or AI-attributed.</b></span>
+                <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
+            </div>
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-companies">—</span>
+                <span class="alt-stat-label">Companies</span>
+                <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
+            </div>
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-industries">—</span>
+                <span class="alt-stat-label">Industries</span>
+                <span class="alt-stat-sub"></span>
+            </div>
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-countries">—</span>
+                <span class="alt-stat-label">Countries</span>
+                <span class="alt-stat-sub"></span>
+            </div>
+        </div>
+        <nav class="alt-stats-links" aria-label="About these results">
+            <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
+            <a class="alt-method-link" href="#alt-challenger-comparison">Why US figures differ from Challenger</a>
+        </nav>
+    </section>
+
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
     <div class="alt-minigrid">
         <div class="alt-mini alt-chart-card">
@@ -297,9 +304,11 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         </table>
     </div>
 
-    <details class="alt-methodology">
+    <details class="alt-methodology" id="alt-metric-definitions">
         <summary>Methodology &amp; sources (for journalists &amp; researchers)</summary>
         <div class="alt-method-body">
+            <p><b>What the summary cards mean.</b> <b>Verified job cuts</b> is the main figure: cuts with a filing or independently reported source behind them. <b>Explicitly AI-attributed</b> is a subset of Verified job cuts where the source explicitly names AI as a cause. <b>Announced job cuts</b> is a separate announcement-history figure: source-linked plans reported at announcement stage. A later filing or report is linked or merged when confidently matched; an unmatched announcement is <b>not</b> a claim that cuts remain unexecuted. Announced cuts are not counted in Verified or AI-attributed totals, so the cards do not double-count.</p>
+            <p><b>Geography in the cards.</b> Country and US-state filters describe the documented location of affected jobs, not an employer's headquarters or every place it operates. A national announcement without a source-supported job-location state remains state-unspecified rather than being assigned to a state by inference.</p>
             <p><b>What this is.</b> A continuously updated, source-linked database of publicly reported layoffs worldwide. It records the source, evidence quote, event status and revision history so every figure can be independently checked. It is not a claim of complete coverage in every country.</p>
 
             <p><b>Where the data comes from.</b> Sources are always labeled on the entry:
@@ -333,10 +342,10 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         </div>
     </details>
 
-    <details class="alt-methodology">
+    <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">
-            <p>This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. The strict tracker figure includes only canonical events with a source-evidenced announcement date, a US-based employer, announcement-stage status and AI as the primary stated cause. The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
+            <p><b>Why the figures differ.</b> The cards above are scoped by the job-location country filter, while Challenger measures announcements by US-based employers. They are therefore not a like-for-like Challenger total. This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. The strict tracker figure includes only canonical events with a source-evidenced announcement date, a US-based employer, announcement-stage status and AI as the primary stated cause. The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
             <?php if ($alt_challenger_records) : ?>
             <?php if (count($alt_challenger_chart) >= 2) : ?>
             <div class="alt-challenger-chart">
@@ -452,4 +461,11 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         </div>
         <code class="alt-journalist-api"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
     </div>
+
+    <footer class="alt-provenance" aria-label="Tracker provenance">
+        <span>Tracker release <b>v<?php echo esc_html(ALT_VERSION); ?></b></span>
+        <span id="alt-provenance-quality" aria-live="polite">Dataset status loading…</span>
+        <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a>
+        <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a>
+    </footer>
 </div>

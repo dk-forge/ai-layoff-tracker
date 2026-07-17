@@ -73,6 +73,27 @@
         el.style.display = ''; el.textContent = text;
         el.classList.toggle('alt-status-error', !!isError);
     }
+
+    // The concise result-summary links point to native disclosure panels.
+    // Open the destination before the browser scrolls to it so keyboard,
+    // mouse and direct fragment-link visitors all reach readable content.
+    function revealMethodologyHash() {
+        var id = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : '';
+        if (!id) return;
+        var target = document.getElementById(id);
+        if (target && target.tagName === 'DETAILS') target.open = true;
+    }
+    function initMethodologyAnchors() {
+        document.querySelectorAll('.alt-method-link').forEach(function (link) {
+            link.addEventListener('click', function () {
+                var id = (link.getAttribute('href') || '').replace(/^#/, '');
+                var target = id ? document.getElementById(id) : null;
+                if (target && target.tagName === 'DETAILS') target.open = true;
+            });
+        });
+        revealMethodologyHash();
+        window.addEventListener('hashchange', revealMethodologyHash);
+    }
     function monthLabel(key) {
         var p = key.split('-');
         return MONTHS[parseInt(p[1], 10) - 1] + ' ' + p[0];
@@ -127,6 +148,26 @@
             table.appendChild(body); box.appendChild(table);
         }).catch(function () {
             note.textContent = 'Live source status is temporarily unavailable; the dataset itself remains available through the tracker and API.';
+        });
+    }
+
+    // This is deliberately a small live pointer to the existing public
+    // quality endpoint, rather than a locally cached or inferred timestamp.
+    function renderProvenance() {
+        var el = document.getElementById('alt-provenance-quality');
+        if (!el) return;
+        apiGet('quality-status', {}).then(function (status) {
+            var revision = Number(status && status.dataset_revision);
+            var checked = status && status.generated_at ? new Date(status.generated_at) : null;
+            var revisionText = Number.isFinite(revision) && revision > 0
+                ? 'Dataset revision ' + fmt(revision)
+                : 'Dataset revision unavailable';
+            var checkedText = checked && !isNaN(checked.getTime())
+                ? 'status checked ' + checked.toLocaleString()
+                : 'status check time unavailable';
+            el.textContent = revisionText + ' · ' + checkedText;
+        }).catch(function () {
+            el.textContent = 'Live dataset status temporarily unavailable';
         });
     }
 
@@ -1594,6 +1635,8 @@
         // Standalone AI / company pages don't use the shared filter surface.
         initAiTracker();
         initCompanyHistory();
+        initMethodologyAnchors();
+        renderProvenance();
 
         var hasFilterSurface = document.getElementById('alt-table') || document.getElementById('alt-stats-bar') || DASH_PRESENT;
         if (!hasFilterSurface) return;

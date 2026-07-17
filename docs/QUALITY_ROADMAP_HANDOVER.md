@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-17 (operations verified after the 2.18.1 deploy). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-17 (announcement-lifecycle candidate queue and metadata-completeness telemetry integrated; deploy verification pending). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.

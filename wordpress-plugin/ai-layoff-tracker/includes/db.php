@@ -68,6 +68,9 @@ function alt_db_install() {
         KEY ai_causation (ai_causation),
         KEY review_status (review_status),
         KEY company_key (company_key),
+        /* Read-only announcement-to-later-evidence candidate lookup. This is
+         * deliberately not a merge index: candidates remain editorial work. */
+        KEY lifecycle_lookup (announced, company_key, job_count, layoff_date),
         KEY post_id (post_id),
         KEY event_id (event_id)
     ) $charset;";
@@ -642,6 +645,15 @@ function alt_register_query_routes() {
             'page' => array('type' => 'integer', 'default' => 1),
         ),
     ));
+    // Read-only, deliberately narrow lifecycle candidates. A candidate is
+    // never a merge decision: it is a same-company/same-count/source-supported
+    // announcement followed by a later reported/filing record in the same
+    // job-location country. Editors must verify retained evidence before using
+    // the existing keyed /merge-events endpoint.
+    register_rest_route('layoffs/v1', '/announcement-lifecycle-candidates', array(
+        'methods' => 'GET', 'callback' => 'alt_api_announcement_lifecycle_candidates', 'permission_callback' => '__return_true',
+        'args' => array('per_page' => array('type' => 'integer', 'default' => 50)),
+    ));
     register_rest_route('layoffs/v1', '/benchmarks/challenger', array(
         array('methods' => 'GET', 'callback' => 'alt_api_challenger_benchmarks', 'permission_callback' => '__return_true'),
         array('methods' => 'POST', 'callback' => 'alt_api_challenger_benchmark_post',
@@ -767,6 +779,15 @@ function alt_api_integrity_status() {
     $report_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports");
     $hashable_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> ''");
     $hashed_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash <> ''");
+    // These are deliberately completeness counters, not inferred values.
+    // A blank industry is common in structured WARN notices. A blank US state
+    // means the source did not identify the affected-job location; never use
+    // an employer HQ, office footprint, or brand knowledge to fill it.
+    $missing_industry = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs WHERE industry = ''");
+    $us_job_location_rows = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $layoffs WHERE country = %s", 'United States'));
+    $us_rows_missing_state = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $layoffs WHERE country = %s AND state = ''", 'United States'));
     return rest_ensure_response(array(
         'canonical_events' => $event_count,
         'source_reports' => $report_count,
@@ -777,6 +798,14 @@ function alt_api_integrity_status() {
         'canonical_rows_migrated' => $migrated,
         'canonical_rows_remaining' => max(0, $total - $migrated),
         'migration_complete' => $total === $migrated,
+        'metadata_completeness' => array(
+            'rows_missing_industry' => $missing_industry,
+            'industry_rule' => 'Industry remains blank unless the source supports it or a reviewed, cited official entity mapping is available; structured WARN notices commonly omit it.',
+            'us_job_location_rows' => $us_job_location_rows,
+            'us_rows_with_known_job_location_state' => max(0, $us_job_location_rows - $us_rows_missing_state),
+            'us_rows_missing_job_location_state' => $us_rows_missing_state,
+            'state_rule' => 'US state is the affected-job location only. It remains blank for national or unspecified announcements; employer domicile and headquarters are never substituted.',
+        ),
         'generated_at' => gmdate('c'),
     ));
 }
@@ -848,6 +877,7 @@ function alt_api_quality_status() {
             array('id' => 'durable_evidence_retention', 'status' => 'active', 'scope' => 'SHA-256 retained-excerpt hashes; bounded legacy backfill, not publisher-page archiving'),
             array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Public monthly strict US benchmark; source-evidenced announcement-date backfill continues'),
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
+            array('id' => 'industry_and_job_location_metadata', 'status' => 'active', 'scope' => 'Public completeness telemetry identifies blank industry and affected-job-state fields; enrichment requires source evidence or a reviewed cited official entity mapping, never headquarters inference'),
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'dataset_release_ledger', 'status' => 'active', 'scope' => 'Immutable release snapshots from this deployment forward; no invented legacy addition counts'),
@@ -928,6 +958,61 @@ function alt_api_review_queue(WP_REST_Request $r) {
         'page' => $page,
         'per_page' => $per_page,
         'items' => $items,
+        'generated_at' => gmdate('c'),
+    ));
+}
+
+/**
+ * Conservative, read-only queue for reconciling an announced plan with a
+ * later filing or report. It intentionally requires an exact count and a
+ * source-evidenced announcement date, and it never changes rows, event IDs,
+ * source reports, or published totals. Similar company news is not enough.
+ */
+function alt_api_announcement_lifecycle_candidates(WP_REST_Request $r) {
+    global $wpdb;
+    $per_page = min(100, max(1, (int) $r->get_param('per_page')));
+    $table = alt_db_table();
+    // A later record can be a filing or independently reported execution. We
+    // require a concrete job-location country; never infer state/country from
+    // headquarters. When both states are known, they must also agree.
+    $sql = "SELECT
+            a.id AS announcement_id, a.event_id AS announcement_event_id,
+            a.company AS company, a.job_count AS job_count,
+            a.announcement_date AS announcement_date, a.country AS country,
+            a.state AS announcement_state, a.source_name AS announcement_source_name,
+            a.source_type AS announcement_source_type, a.source_url AS announcement_source_url,
+            b.id AS later_record_id, b.event_id AS later_event_id,
+            b.layoff_date AS later_record_date, b.state AS later_record_state,
+            b.source_name AS later_source_name, b.source_type AS later_source_type,
+            b.source_url AS later_source_url
+        FROM $table a
+        INNER JOIN $table b ON b.company_key = a.company_key
+            AND b.job_count = a.job_count
+            AND b.announced = 0
+            AND b.layoff_date >= a.announcement_date
+            AND b.layoff_date <= DATE_ADD(a.announcement_date, INTERVAL 365 DAY)
+            AND b.country = a.country
+            AND (a.state = '' OR b.state = '' OR a.state = b.state)
+        WHERE a.announced = 1
+            AND a.announcement_date <> ''
+            AND a.company_key <> ''
+            AND a.country <> ''
+            AND a.source_url <> ''
+            AND b.source_url <> ''
+            AND a.event_id <> b.event_id
+            AND a.source_url <> b.source_url
+        ORDER BY a.announcement_date DESC, a.id DESC
+        LIMIT %d";
+    $rows = $wpdb->get_results($wpdb->prepare($sql, $per_page), ARRAY_A) ?: array();
+    return rest_ensure_response(array(
+        'methodology' => array(
+            'purpose' => 'Read-only editorial candidates for a possible lifecycle relationship between a source-linked announcement and a later filing or reported record.',
+            'deterministic_screen' => 'Same normalized company, exact job count, same non-empty job-location country, source-evidenced announcement date, later non-announced record within 365 days, and compatible known state.',
+            'not_a_merge_rule' => 'Candidates are not merged automatically. An editor must compare retained source reports, timing, geography and scope, then use the keyed merge endpoint only for the same underlying event.',
+            'source_safeguard' => 'No candidate operation removes or rewrites a source report. A confirmed merge retains all reports on the canonical event.',
+        ),
+        'total_returned' => count($rows),
+        'items' => $rows,
         'generated_at' => gmdate('c'),
     ));
 }
