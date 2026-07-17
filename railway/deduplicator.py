@@ -1,5 +1,10 @@
 """
-Prevents duplicate entries via WordPress REST API check.
+Legacy client-side duplicate lookup.
+
+Normal ingestion deliberately posts every evidence-bearing record to WordPress:
+the server deduplicates totals while retaining a duplicate's source report on
+the canonical event. This helper remains only for diagnostics/backward
+compatibility; do not use it to pre-skip a source-bearing ingest record.
 """
 import os
 

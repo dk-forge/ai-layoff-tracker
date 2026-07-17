@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 
-from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
 
 SEED_PATH = os.path.join(os.path.dirname(__file__), "seed_data", "ai_layoffs.json")
@@ -31,11 +30,6 @@ def run():
 
         hash_input = f"{company.lower()}{entry.get('layoff_date') or ''}{job_count}"
         entry["dedup_hash"] = hashlib.md5(hash_input.encode("utf-8")).hexdigest()
-
-        if is_duplicate(entry["dedup_hash"]):
-            print(f"= already present: {company}")
-            dupes += 1
-            continue
 
         status = post_to_wordpress(entry)
         if status == "posted":

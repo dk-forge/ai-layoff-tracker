@@ -15,7 +15,6 @@ from datetime import datetime, timedelta, timezone
 
 from sources.gdelt import pull_gdelt_between
 from extractor import extract_layoff_data
-from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
@@ -73,9 +72,6 @@ def run():
                 extracted = extract_layoff_data(raw)
                 if not extracted:
                     skipped += 1
-                    continue
-                if is_duplicate(extracted["dedup_hash"]):
-                    dupes += 1
                     continue
                 status = post_to_wordpress(extracted)
                 if status == "posted":

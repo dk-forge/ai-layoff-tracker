@@ -12,7 +12,6 @@ from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
 from sources.press_releases import pull_press_releases
 from extractor import extract_layoff_data
-from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
@@ -76,12 +75,9 @@ def run():
                 skipped_not_layoff += 1
                 continue
 
-            # Skip duplicates
-            if is_duplicate(extracted["dedup_hash"]):
-                skipped_dupes += 1
-                continue
-
-            # Post to WordPress
+            # Always let WordPress perform authoritative deduplication. A 409
+            # now retains this article as a corroborating source report on the
+            # canonical event; pre-skipping here would throw that evidence away.
             status = post_to_wordpress(extracted)
             if status == "posted":
                 posted += 1

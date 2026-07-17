@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| Data integrity (Jul 17) | **Duplicate-source retention repair.** Removed client-side pre-dedup skips from all normal ingest paths. WordPress remains the authority for deduplicated totals, but now receives every duplicate article/filing and attaches it as a corroborating source report instead of silently dropping the evidence before it reaches the event graph. |
 | 2.16.3 (Jul 17) | **Integrity progress telemetry.** Added a public aggregate-only `/integrity-status` endpoint reporting canonical-event migration progress and retained source-report count, so this foundational data-quality transition can be measured rather than inferred. |
 | Ops (Jul 17) | **Historical sweep reliability bound.** A 50-candidate verification sweep exceeded a sensible daily runtime, so scheduled history recovery is now 10 candidates per run and OpenRouter client calls time out after 45 seconds (with one SDK retry). Timed-out candidates are logged and skipped; they never stall the queue. |
 | 2.16.2 (Jul 16) | **Source-health running state.** Collector status now reports `running` before a source pull, then healthy/degraded on completion. The public panel no longer presents an active long-running collection as missing status. |

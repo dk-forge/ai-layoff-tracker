@@ -17,6 +17,9 @@ rows are migrated in resumable batches; source reports removed before this
 store existed cannot be reconstructed without re-discovering them.
 Progress is public at `GET /integrity-status`, including canonical rows still
 awaiting migration and the total retained source-report count.
+All normal Python ingest paths intentionally post evidence-bearing duplicates
+to the server; client-side pre-dedup must never discard a second source before
+it can join the canonical event.
 
 `country` means where the affected jobs are located. `employer_country` means
 the employer’s HQ/domicile when evidence supports it. Never use one as a proxy

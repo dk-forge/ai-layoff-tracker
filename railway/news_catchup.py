@@ -14,7 +14,6 @@ import os
 
 from sources.newsapi import pull_news_articles
 from extractor import extract_layoff_data
-from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
 
 
@@ -31,9 +30,6 @@ def run():
             extracted = extract_layoff_data(raw)
             if not extracted:
                 skipped += 1
-                continue
-            if is_duplicate(extracted["dedup_hash"]):
-                dupes += 1
                 continue
             status = post_to_wordpress(extracted)
             if status == "posted":
