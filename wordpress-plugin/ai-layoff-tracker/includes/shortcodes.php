@@ -48,6 +48,11 @@ function alt_shortcode_ai_tracker() {
 }
 add_shortcode('alt_ai_tracker', 'alt_shortcode_ai_tracker');
 
+function alt_shortcode_tracker_health() {
+    return alt_template('page-health.php');
+}
+add_shortcode('alt_tracker_health', 'alt_shortcode_tracker_health');
+
 function alt_shortcode_company_history($atts) {
     $atts = shortcode_atts(array('company' => ''), $atts, 'alt_company_history');
     $company = sanitize_text_field($atts['company']);

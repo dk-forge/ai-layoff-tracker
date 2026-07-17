@@ -21,6 +21,13 @@ remain the publication standard.
 
 ## Live, verified foundation
 
+- Public operations page: `/blog/ai-layoff-tracker/ai-tracker-health/` renders
+  current source health, safe last-attempt detail, static cadence/scope,
+  integrity, evidence backlog, review queue, workstreams and benchmark state.
+  It reads public APIs dynamically; historical per-run telemetry begins only
+  once the append-only run ledger is deployed, never reconstructed from legacy
+  rows.
+
 - Plugin version **2.17.7** is live from commit `b7779e4` (deployment run
   `29591800650`). The retained-excerpt hash backfill is live; integrity after
   the latest successful deep dedupe is 43,892 canonical rows/events and 43,971
