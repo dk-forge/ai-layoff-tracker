@@ -94,6 +94,7 @@ function alt_db_install() {
         verification_level VARCHAR(16) NOT NULL DEFAULT '',
         source_url TEXT NULL,
         excerpt TEXT NULL,
+        evidence_hash CHAR(64) NOT NULL DEFAULT '',
         ai_causation VARCHAR(32) NOT NULL DEFAULT 'unknown',
         ai_language TEXT NULL,
         observed_at DATETIME NOT NULL,
@@ -128,10 +129,12 @@ function alt_event_add_report($event_id, $source) {
     if (!$event_id || ($url === '' && $name === '')) return 0;
     $key = md5($event_id . '|' . $url . '|' . $name);
     $table = alt_source_reports_table();
+    $excerpt = sanitize_textarea_field($source['excerpt'] ?? '');
+    $evidence_hash = $excerpt === '' ? '' : hash('sha256', $excerpt);
     $wpdb->query($wpdb->prepare(
-        "INSERT IGNORE INTO $table (event_id, report_key, source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language, observed_at) VALUES (%d, %s, %s, %s, %s, %s, %s, %s, %s, UTC_TIMESTAMP())",
+        "INSERT IGNORE INTO $table (event_id, report_key, source_name, source_type, verification_level, source_url, excerpt, evidence_hash, ai_causation, ai_language, observed_at) VALUES (%d, %s, %s, %s, %s, %s, %s, %s, %s, %s, UTC_TIMESTAMP())",
         $event_id, $key, $name, sanitize_key($source['source_type'] ?? ''), sanitize_key($source['verification_level'] ?? ''), $url,
-        sanitize_textarea_field($source['excerpt'] ?? ''), alt_normalize_ai_causation($source['ai_causation'] ?? 'unknown'),
+        $excerpt, $evidence_hash, alt_normalize_ai_causation($source['ai_causation'] ?? 'unknown'),
         sanitize_text_field($source['ai_language'] ?? '')
     ));
     return (int) $wpdb->insert_id;
@@ -156,7 +159,7 @@ function alt_event_sources_for_layoff($layoff_id) {
     global $wpdb;
     $event_id = alt_event_for_layoff($layoff_id);
     if (!$event_id) return array();
-    return $wpdb->get_results($wpdb->prepare("SELECT source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language, observed_at FROM " . alt_source_reports_table() . " WHERE event_id = %d ORDER BY id ASC", $event_id), ARRAY_A) ?: array();
+    return $wpdb->get_results($wpdb->prepare("SELECT source_name, source_type, verification_level, source_url, excerpt, evidence_hash, ai_causation, ai_language, observed_at FROM " . alt_source_reports_table() . " WHERE event_id = %d ORDER BY id ASC", $event_id), ARRAY_A) ?: array();
 }
 
 /** Reason tags are stored as ",tag1,tag2," so a filter is a simple LIKE. */

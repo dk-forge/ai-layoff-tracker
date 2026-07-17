@@ -87,9 +87,11 @@ inflate it.
 
 3. **High-impact review queue and durable source evidence.**
    - Queue very large events, AI-primary claims, and multi-country events.
-   - Preserve source URL, retained excerpt/evidence and content hash/snapshot
-     metadata where permitted. A hash of a short excerpt is not a source-page
-     archive; label it accurately.
+   - New source reports carry SHA-256 hashes of their retained evidence excerpt.
+     Backfill legacy report hashes in bounded batches. Preserve source URL,
+     retained excerpt/evidence and content hash/snapshot metadata where
+     permitted. A hash of a short excerpt is not a source-page archive; label
+     it accurately.
 
 4. **Dataset release ledger and monthly change report.**
    - Add immutable revision records and report additions, corrections, merges
