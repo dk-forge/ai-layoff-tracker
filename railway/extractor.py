@@ -18,6 +18,7 @@ import openai
 # is the default — near the price floor while staying strong at extraction.
 MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "45"))
 
 ALLOWED_REASON_TAGS = {
     "ai_automation",
@@ -98,6 +99,11 @@ def _get_client():
         _client = openai.OpenAI(
             api_key=api_key,
             base_url=OPENROUTER_BASE_URL,
+            # A stalled model call must not block a scheduled ingestion or
+            # history-recovery job for many minutes. Per-entry callers handle
+            # a timeout as a recorded failed candidate and continue.
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            max_retries=1,
             default_headers={
                 # optional OpenRouter attribution headers
                 "HTTP-Referer": "https://asktherecruiter.com",
