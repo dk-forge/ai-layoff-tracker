@@ -11,10 +11,9 @@ This pass groups entries by normalized company, forms candidate clusters of
 similar job counts within a 120-day window, and asks DeepSeek which entries
 are the SAME event reported multiple times versus genuinely distinct layoffs
 (Meta cut 11,000 in 2022, 10,000 in 2023 and 8,000 in 2026 — same company,
-different events). For each same-event group it keeps ONE canonical entry and
-trashes the rest through /trash, which suppresses their hashes so the next
-import cannot resurrect them and logs the removal in the public corrections
-log.
+different events). For each confirmed group it keeps ONE canonical entry and
+moves every duplicate's source report onto that event before removing the
+extra row. The public event-source endpoint therefore retains every receipt.
 
 Canonical preference: a verified entry over an announced one; then the
 earliest date; then the most authoritative source (SEC/WARN/ERM over news).
@@ -28,6 +27,7 @@ import os
 import re
 import sys
 import time
+from datetime import date
 import urllib.request
 from collections import defaultdict
 
@@ -113,9 +113,55 @@ def candidate_clusters(rows):
             if len(group) > 1:
                 used.add(a["id"])
                 clusters.append(group)
-    # biggest clusters first (most impact); bound the count
-    clusters.sort(key=len, reverse=True)
-    return clusters[:MAX_CLUSTERS]
+    # Do not slice here. A stable "largest first" cap starves every small
+    # two-report cluster forever when the backlog is large (exactly the class
+    # of duplicate a newsroom needs us to catch).
+    return clusters
+
+
+def _cluster_identity(group):
+    """Deterministic key, used to rotate the bounded daily work queue."""
+    return tuple(sorted(int(r["id"]) for r in group))
+
+
+def _cluster_priority(group):
+    """High-confidence repeats are reviewed every day; all others rotate."""
+    counts = defaultdict(int)
+    for row in group:
+        counts[int(row["job_count"])] += 1
+    # Exact matching counts are a strong duplicate signal, but never a merge
+    # decision: the LLM still reviews source excerpts before any action.
+    exact_repeat = max(counts.values())
+    newest = max((row.get("layoff_date") or "") for row in group)
+    return exact_repeat, newest, len(group)
+
+
+def select_candidate_clusters(clusters, limit=MAX_CLUSTERS, today=None):
+    """Return a bounded, rotating queue so no candidate is permanently missed.
+
+    One quarter of the budget is reserved for the highest-confidence repeats;
+    the rest walks deterministically through all remaining clusters each day.
+    With a stable backlog, every candidate receives an LLM decision over time.
+    """
+    if limit <= 0 or not clusters:
+        return []
+    if len(clusters) <= limit:
+        return clusters
+    always_n = min(len(clusters), max(1, limit // 4))
+    ranked = sorted(clusters, key=_cluster_priority, reverse=True)
+    always = ranked[:always_n]
+    always_keys = {_cluster_identity(group) for group in always}
+    remaining = sorted(
+        (group for group in clusters if _cluster_identity(group) not in always_keys),
+        key=_cluster_identity,
+    )
+    slots = limit - len(always)
+    if not remaining or slots <= 0:
+        return always
+    day = today or date.today()
+    start = (day.toordinal() * slots) % len(remaining)
+    rotated = (remaining[start:] + remaining[:start])[:slots]
+    return always + rotated
 
 
 def ask_llm(group):
@@ -167,10 +213,12 @@ def main():
     # cluster isolation is strictly better and just as free.)
     rows = fetch_all()
     by_id = {r["id"]: r for r in rows}
-    clusters = candidate_clusters(rows)
-    print(f"{len(rows)} entries, {len(clusters)} candidate clusters to review")
+    all_clusters = candidate_clusters(rows)
+    clusters = select_candidate_clusters(all_clusters)
+    print(f"{len(rows)} entries, {len(all_clusters)} candidate clusters; "
+          f"{len(clusters)} selected for this rotating review")
 
-    trash_ids, skipped = [], 0
+    merges, skipped = [], 0
     for group in clusters:
         try:
             events = ask_llm(group)
@@ -179,34 +227,42 @@ def main():
                 if len(ev) < 2:
                     continue
                 keep = canonical([by_id[i] for i in ev])
-                for i in ev:
-                    if i != keep["id"]:
-                        trash_ids.append(i)
+                duplicate_ids = [i for i in ev if i != keep["id"]]
+                if duplicate_ids:
+                    merges.append({"keeper_id": keep["id"], "duplicate_ids": duplicate_ids})
+                    for i in duplicate_ids:
                         print(f"  dup: id {i} ({by_id[i]['source_name'][:18]}) -> keep {keep['id']} "
                               f"({keep['company_name']} {keep['job_count']} {keep['layoff_date']})")
         except Exception as e:  # one company's cluster failing must not abort the run
             skipped += 1
             print(f"  skipped cluster {group[0]['company_name'][:24]}: {e}")
 
-    trash_ids = sorted(set(trash_ids))
-    print(f"\n{len(trash_ids)} duplicate(s) to remove, {skipped} cluster(s) skipped")
-    removed = fails = 0
-    for i in range(0, len(trash_ids), 100):
-        batch = trash_ids[i:i + 100]
+    # A source link is evidence, not disposable duplicate clutter. The server
+    # merges each confirmed report into the keeper's canonical event before it
+    # removes the duplicate row, so /event/{id}/sources remains complete.
+    deduped = {}
+    for merge in merges:
+        keeper = merge["keeper_id"]
+        deduped.setdefault(keeper, set()).update(merge["duplicate_ids"])
+    merges = [{"keeper_id": keeper, "duplicate_ids": sorted(ids)} for keeper, ids in deduped.items()]
+    print(f"\n{sum(len(m['duplicate_ids']) for m in merges)} duplicate(s) to merge, {skipped} cluster(s) skipped")
+    merged = fails = 0
+    for i in range(0, len(merges), 100):
+        batch = merges[i:i + 100]
         try:
-            req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/trash",
-                data=json.dumps({"ids": batch,
+            req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/merge-events",
+                data=json.dumps({"merges": batch,
                     "reason": "Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by DeepSeek"}).encode(),
                 headers={"X-Layoff-API-Key": KEY, "Content-Type": "application/json", "User-Agent": UA})
             res = json.load(urllib.request.urlopen(req, timeout=90))
-            removed += len(res.get("trashed_posts", [])) + len(res.get("deleted_rows", []))
+            merged += len(res.get("merged_rows", []))
             print(res)
         except Exception as e:  # a failed batch is retried tomorrow, not fatal today
             fails += 1
-            print(f"  trash batch failed (will retry next run): {e}")
-    print(f"\nDone: {removed} removed, {fails} batch(es) deferred, {skipped} cluster(s) skipped")
+            print(f"  merge batch failed (will retry next run): {e}")
+    print(f"\nDone: {merged} merged, {fails} batch(es) deferred, {skipped} cluster(s) skipped")
     # Only fail the run if literally nothing could be processed.
-    if clusters and not trash_ids and skipped == len(clusters):
+    if clusters and not merges and skipped == len(clusters):
         sys.exit(1)
 
 

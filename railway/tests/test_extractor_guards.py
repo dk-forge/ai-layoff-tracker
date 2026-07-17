@@ -13,6 +13,7 @@ from extractor import _quote_is_supported
 from source_registry import MARKETS, coverage_manifest, discovery_terms
 from sources.press_releases import _items
 from sources.edgar import FORMS
+from dedupe_llm import select_candidate_clusters
 
 
 class EvidenceGuardTests(unittest.TestCase):
@@ -40,6 +41,21 @@ class EvidenceGuardTests(unittest.TestCase):
         manifest = {row["country"]: row for row in coverage_manifest()}
         self.assertEqual(manifest["CA"]["live_sources"],
                          ["worldwide news", "reviewed company IR feeds"])
+
+    def test_dedupe_queue_rotates_smaller_clusters_instead_of_starving_them(self):
+        clusters = [
+            [{"id": 1, "job_count": 100, "layoff_date": "2026-01-01"},
+             {"id": 2, "job_count": 110, "layoff_date": "2026-01-02"},
+             {"id": 3, "job_count": 120, "layoff_date": "2026-01-03"}],
+            [{"id": 10, "job_count": 20000, "layoff_date": "2026-02-01"},
+             {"id": 11, "job_count": 20000, "layoff_date": "2026-03-06"}],
+            [{"id": 20, "job_count": 300, "layoff_date": "2026-01-10"},
+             {"id": 21, "job_count": 400, "layoff_date": "2026-01-11"}],
+        ]
+        selected = select_candidate_clusters(clusters, limit=2)
+        selected_ids = {row["id"] for group in selected for row in group}
+        # Exact-count repeat is always in the priority quarter of the queue.
+        self.assertTrue({10, 11}.issubset(selected_ids))
 
 
 if __name__ == "__main__":

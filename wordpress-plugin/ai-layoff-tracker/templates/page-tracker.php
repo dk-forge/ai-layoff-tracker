@@ -64,6 +64,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         </div>
     </div>
     <p class="alt-stats-note">How to read these numbers: <b>Verified job cuts</b> is the main figure — cuts with a filing or report behind them. <b>Explicitly AI-attributed</b> is a slice of that Verified number, the cuts a company openly blamed on AI. <b>Announced job cuts</b> is a separate figure for cuts a company has announced but not yet filed or executed; it is <b>not</b> counted in either of the other two, so nothing is double-counted.</p>
+    <p class="alt-stats-note"><b>Important for Challenger comparisons:</b> these cards are scoped by the job-location country filter. Challenger measures announcements by US-based employers, so the cards are not a like-for-like Challenger total. The monthly reconciliation records the strict employer-domicile, announced, AI-primary comparison and its variance; we never change our data merely to match the benchmark.</p>
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
@@ -223,7 +224,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <div class="alt-chart-h" id="alt-country-chart-title">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-countries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-countries"></div>

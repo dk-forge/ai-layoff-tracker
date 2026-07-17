@@ -539,6 +539,13 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_trash',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: collapse confirmed duplicate rows while retaining every
+    // source report on the surviving canonical event.
+    register_rest_route('layoffs/v1', '/merge-events', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_merge_events',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Key-protected: drop table-only WARN rows ahead of a clean re-import.
     // (Corrected counts change the dedup hash, so upsert alone would leave the
     // old wrong rows behind as duplicates.) CPT-backed rows are untouched.
@@ -711,6 +718,45 @@ function alt_api_trash(WP_REST_Request $r) {
         alt_log_correction('removed', array_merge($out['trashed_posts'], $out['deleted_rows']), $reason);
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
+}
+
+/** Merge LLM-confirmed duplicate rows without throwing away their evidence. */
+function alt_api_merge_events(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    $events = alt_events_table();
+    $reports = alt_source_reports_table();
+    $reason = trim((string) $r->get_param('reason'));
+    $out = array('merged_rows' => array(), 'not_found' => array(), 'rejected' => array());
+    foreach ((array) $r->get_param('merges') as $merge) {
+        $keeper_id = (int) ($merge['keeper_id'] ?? 0);
+        $keeper = $keeper_id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $keeper_id), ARRAY_A) : null;
+        if (!$keeper) { $out['not_found'][] = $keeper_id; continue; }
+        $keeper_event = alt_event_register_report_for_layoff($keeper_id, $keeper);
+        if (!$keeper_event) { $out['rejected'][] = $keeper_id; continue; }
+        foreach (array_unique(array_map('intval', (array) ($merge['duplicate_ids'] ?? array()))) as $duplicate_id) {
+            if (!$duplicate_id || $duplicate_id === $keeper_id) continue;
+            $duplicate = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $duplicate_id), ARRAY_A);
+            if (!$duplicate) { $out['not_found'][] = $duplicate_id; continue; }
+            $duplicate_event = alt_event_for_layoff($duplicate_id);
+            alt_event_add_report($keeper_event, $duplicate);
+            if ($duplicate_event && $duplicate_event !== $keeper_event) {
+                $old_reports = $wpdb->get_results($wpdb->prepare("SELECT source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language FROM $reports WHERE event_id = %d", $duplicate_event), ARRAY_A);
+                foreach ($old_reports as $report) alt_event_add_report($keeper_event, $report);
+                $wpdb->delete($reports, array('event_id' => $duplicate_event));
+                $wpdb->delete($events, array('id' => $duplicate_event));
+            }
+            if (!empty($duplicate['dedup_hash'])) alt_suppress_hash($duplicate['dedup_hash'], 'merged: ' . $reason);
+            if (!empty($duplicate['post_id'])) wp_trash_post((int) $duplicate['post_id']);
+            $wpdb->delete($table, array('id' => $duplicate_id));
+            $out['merged_rows'][] = $duplicate_id;
+        }
+    }
+    if (!empty($out['merged_rows'])) {
+        alt_log_correction('merged', $out['merged_rows'], $reason ?: 'Confirmed duplicate sources merged into canonical event');
+        if (function_exists('alt_flush_caches')) alt_flush_caches();
+    }
     return rest_ensure_response($out);
 }
 

@@ -51,12 +51,20 @@ def challenger_ai_total(url):
     raise RuntimeError("Could not extract Challenger YTD AI total from latest report")
 
 
-def tracker_ai_primary_total(site, year):
-    url = (site.rstrip("/") + "/wp-json/layoffs/v1/aggregate"
-           f"?years={year}&employer_country=United%20States&ai_primary=1&stage=announced")
+def tracker_total(site, query):
+    url = site.rstrip("/") + "/wp-json/layoffs/v1/aggregate?" + query
     response = requests.get(url, headers=UA, timeout=90)
     response.raise_for_status()
     return int(response.json()["totals"]["jobs"]), url
+
+
+def tracker_comparison_totals(site, year):
+    """Return strict and visible figures without pretending they are equal."""
+    strict, strict_url = tracker_total(
+        site, f"years={year}&employer_country=United%20States&ai_primary=1&stage=announced")
+    observed, observed_url = tracker_total(
+        site, f"years={year}&country=United%20States&ai=1&stage=announced")
+    return strict, strict_url, observed, observed_url
 
 
 def main():
@@ -68,14 +76,17 @@ def main():
     allowed = float(os.environ.get("CHALLENGER_ALLOWED_VARIANCE") or "0.10")
     report = latest_report_url()
     challenger = challenger_ai_total(report)
-    tracker, tracker_url = tracker_ai_primary_total(site, year)
+    tracker, tracker_url, observed, observed_url = tracker_comparison_totals(site, year)
     variance = (tracker - challenger) / challenger if challenger else 0.0
     payload = {
         "year": year, "benchmark": "Challenger, Gray & Christmas",
         "benchmark_url": report, "challenger_ai_jobs_ytd": challenger,
-        "tracker_query": tracker_url, "tracker_ai_primary_announced_jobs_ytd": tracker,
+        "tracker_strict_query": tracker_url,
+        "tracker_ai_primary_announced_us_employer_jobs_ytd": tracker,
+        "tracker_observed_query": observed_url,
+        "tracker_ai_cited_announced_us_job_location_jobs_ytd": observed,
         "variance": round(variance, 4), "allowed_variance": allowed,
-        "definition": "US-based employer + announced cuts + AI primary cause + canonical event",
+        "definition": "Strict: US-based employer + announced cuts + AI primary cause + canonical event. Observed: US job location + any explicit AI citation + announced; not comparable to Challenger.",
     }
     print(json.dumps(payload, indent=2))
     if abs(variance) > allowed:

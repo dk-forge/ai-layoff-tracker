@@ -699,6 +699,12 @@
         renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
         renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
         renderBarList('alt-bars-countries', agg.top_countries, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+        var countryTitle = document.getElementById('alt-country-chart-title');
+        if (countryTitle) {
+            countryTitle.innerHTML = selectedList('alt-f-country').length
+                ? 'By country <span class="alt-chart-sub">Other possible country pivots · tap to filter</span>'
+                : 'By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
+        }
     }
 
     function selectedList(id) {

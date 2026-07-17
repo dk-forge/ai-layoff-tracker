@@ -72,8 +72,9 @@ automatable or licensed for reuse.
 - **Verification tiers:** `gold`=SEC EDGAR 8-K/6-K, `warn`=state WARN notice, `silver`=press release/Eurofound ERM, `bronze`=news.
 - **Market registry:** a named official system is a *candidate* until it has a stable public interface, a tested connector and source-health reporting. Only `live_sources` are coverage claims; all other countries remain discovery-only.
 - **Dedup:** exact = md5(company+date+count). Fuzzy = same normalized company within ±30 days blocks
-  a second *news* entry. `/dedupe` collapses cross-outlet clusters keeping best tier. **WARN is exempt
-  from fuzzy + cluster dedup** — its hash also includes city+state.
+  a second *news* entry. The daily deep scan rotates through all bounded candidate clusters (with exact-count
+  repeats prioritized), and merges confirmed reports into one canonical event while retaining every source link.
+  **WARN is exempt from fuzzy + cluster dedup** — its hash also includes city+state.
 - **Countries:** canonical "United States"/"United Kingdom"; regions & multi-country phrases
   ("Global", "Europe", "India and US") → **"Multiple countries"** (splitting would double-count).
   Real "and"-countries (Trinidad and Tobago…) are whitelisted first.
@@ -90,6 +91,9 @@ automatable or licensed for reuse.
   unknown are distinct classifications. A primary/contributing classification is accepted only when the
   claimed exact quote exists in the supplied source passage. `country` is job location; `employer_country`
   is employer domicile/HQ when stated.
+- **Challenger comparison:** the on-page country filter is job location, not employer domicile. The monthly
+  strict comparator uses US employer domicile + announcement stage + AI-primary + canonical events. A separate
+  visible US-job-location/any-AI figure is diagnostic only and is never represented as Challenger-comparable.
 - **Link precision:** most states publish one list page, not per-notice URLs. UI labels list-page
   links "(list)"; exact per-notice links (VT etc.) display plain.
 
