@@ -11,6 +11,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from datetime import date
+from email.utils import parsedate_to_datetime
 
 import requests
 
@@ -23,16 +24,27 @@ def _strip(markup):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html.unescape(text))).strip()
 
 
-def latest_report_url():
+def latest_report():
     response = requests.get(FEED, headers=UA, timeout=45)
     response.raise_for_status()
     root = ET.fromstring(response.content)
     for node in root.iter():
         if node.tag.rsplit("}", 1)[-1].lower() != "item":
             continue
+        url = ""
+        published = ""
         for child in list(node):
-            if child.tag.rsplit("}", 1)[-1].lower() == "link" and child.text:
-                return child.text.strip()
+            tag = child.tag.rsplit("}", 1)[-1].lower()
+            if tag == "link" and child.text:
+                url = child.text.strip()
+            elif tag in ("pubdate", "date") and child.text:
+                published = child.text.strip()
+        if url:
+            try:
+                report_month = parsedate_to_datetime(published).strftime("%Y-%m")
+            except (TypeError, ValueError, IndexError):
+                report_month = date.today().strftime("%Y-%m")
+            return url, report_month
     raise RuntimeError("No report URL found in Challenger job-cuts feed")
 
 
@@ -83,12 +95,12 @@ def main():
         return 1
     year = int(os.environ.get("BENCHMARK_YEAR") or date.today().year)
     allowed = float(os.environ.get("CHALLENGER_ALLOWED_VARIANCE") or "0.10")
-    report = latest_report_url()
+    report, report_month = latest_report()
     challenger = challenger_ai_total(report)
     tracker, tracker_url, observed, observed_url = tracker_comparison_totals(site, year)
     variance = (tracker - challenger) / challenger if challenger else 0.0
     payload = {
-        "year": year, "benchmark": "Challenger, Gray & Christmas",
+        "year": year, "report_month": report_month, "benchmark": "Challenger, Gray & Christmas",
         "benchmark_url": report, "challenger_ai_jobs_ytd": challenger,
         "tracker_strict_query": tracker_url,
         "tracker_ai_primary_announced_us_employer_jobs_ytd": tracker,

@@ -843,6 +843,8 @@ function alt_api_challenger_benchmarks() {
 
 function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
     $year = (int) $r->get_param('year');
+    $report_month = (string) $r->get_param('report_month');
+    if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $report_month)) $report_month = gmdate('Y-m');
     $benchmark = max(0, (int) $r->get_param('challenger_ai_jobs_ytd'));
     $tracker = max(0, (int) $r->get_param('tracker_ai_primary_announced_us_employer_jobs_ytd'));
     $url = esc_url_raw($r->get_param('benchmark_url'));
@@ -851,8 +853,9 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
     }
     $records = get_option('alt_challenger_benchmarks');
     if (!is_array($records)) $records = array();
-    $records[$year] = array(
-        'year' => $year, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
+    $key = $year . '-' . $report_month;
+    $records[$key] = array(
+        'year' => $year, 'report_month' => $report_month, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
         'benchmark_url' => $url, 'challenger_ai_jobs_ytd' => $benchmark,
         'tracker_ai_primary_announced_us_employer_jobs_ytd' => $tracker,
         'tracker_ai_cited_announced_us_job_location_jobs_ytd' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_ytd')),
@@ -860,7 +863,7 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
         'definition' => 'Strict: US employer + source-evidenced announcement date + announced + AI primary + canonical event. Diagnostic figure is not Challenger-comparable.',
     );
     krsort($records); update_option('alt_challenger_benchmarks', array_slice($records, 0, 24, true), false);
-    return rest_ensure_response($records[$year]);
+    return rest_ensure_response($records[$key]);
 }
 
 function alt_api_trash(WP_REST_Request $r) {

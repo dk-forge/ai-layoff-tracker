@@ -6,6 +6,11 @@ $alt_csv  = admin_url('admin-post.php?action=alt_export_csv');
 $alt_json = admin_url('admin-post.php?action=alt_export_json');
 $alt_api  = rest_url('layoffs/v1/query');
 $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>';
+$alt_challenger_records = get_option('alt_challenger_benchmarks');
+$alt_challenger_records = is_array($alt_challenger_records) ? array_values($alt_challenger_records) : array();
+usort($alt_challenger_records, function($a, $b) {
+    return strcmp((string) ($b['report_month'] ?? $b['recorded_at'] ?? ''), (string) ($a['report_month'] ?? $a['recorded_at'] ?? ''));
+});
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
@@ -302,6 +307,39 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
             <p id="alt-source-health-note">Checking the most recent collector status…</p>
             <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
             <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs.</p>
+        </div>
+    </details>
+
+    <details class="alt-methodology">
+        <summary>US AI-announcement reconciliation with Challenger</summary>
+        <div class="alt-method-body">
+            <p>This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. The strict tracker figure includes only canonical events with a source-evidenced announcement date, a US-based employer, announcement-stage status and AI as the primary stated cause. The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
+            <?php if ($alt_challenger_records) : ?>
+            <div class="alt-source-health alt-challenger-table">
+                <table>
+                    <thead><tr><th>Report period</th><th>Challenger AI/automation cuts YTD</th><th>Strict tracker figure YTD</th><th>Coverage gap</th><th>Official report</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($alt_challenger_records as $alt_benchmark) :
+                        $alt_challenger_total = max(0, (int) ($alt_benchmark['challenger_ai_jobs_ytd'] ?? 0));
+                        $alt_tracker_total = max(0, (int) ($alt_benchmark['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0));
+                        $alt_gap = max(0, $alt_challenger_total - $alt_tracker_total);
+                        $alt_period = !empty($alt_benchmark['report_month']) ? $alt_benchmark['report_month'] : substr((string) ($alt_benchmark['recorded_at'] ?? ''), 0, 10);
+                    ?>
+                        <tr>
+                            <td><?php echo esc_html($alt_period ?: 'Recorded comparison'); ?></td>
+                            <td><?php echo number_format($alt_challenger_total); ?></td>
+                            <td><?php echo number_format($alt_tracker_total); ?></td>
+                            <td><?php echo number_format($alt_gap); ?> fewer qualifying tracker records</td>
+                            <td><?php if (!empty($alt_benchmark['benchmark_url'])) : ?><a href="<?php echo esc_url($alt_benchmark['benchmark_url']); ?>" target="_blank" rel="noopener">Challenger report</a><?php else : ?>—<?php endif; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <p>The current gap principally reflects incomplete source-evidenced announcement-date and employer-domicile enrichment, plus different source mixes. It does <b>not</b> mean that untracked events are false, that tracked events are wrong, or that the tracker is complete. Each monthly report remains available here even when the workflow flags a large gap for investigation.</p>
+            <?php else : ?>
+            <p>No retained Challenger comparison is available yet. This is a reporting setup state, not evidence of zero layoffs.</p>
+            <?php endif; ?>
         </div>
     </details>
 

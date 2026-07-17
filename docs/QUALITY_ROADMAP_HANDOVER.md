@@ -79,11 +79,11 @@ be red in Actions while retaining the public record.
 
 ## Active and pending work
 
-1. **Finish context enrichment and publish a monthly Challenger panel.**
-   - Persisted reconciliation records now live at
-     `GET /blog/wp-json/layoffs/v1/benchmarks/challenger`; add an on-page
-     monthly table with official report URL, definition, coverage gap and
-     diagnostic broader number.
+1. **Finish context enrichment and maintain the monthly Challenger panel.**
+   - Persisted reconciliation records live at
+     `GET /blog/wp-json/layoffs/v1/benchmarks/challenger` and on the tracker
+     page. New records retain the official report month, strict qualifying
+     figure, official report URL and a coverage gap—never an "accuracy" claim.
    - Do not display a percentage as “accuracy” or copy Challenger's total.
    - Current monthly workflow produces an artifact but no public table yet.
 
