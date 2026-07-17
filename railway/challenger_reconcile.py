@@ -61,9 +61,9 @@ def tracker_total(site, query):
 def tracker_comparison_totals(site, year):
     """Return strict and visible figures without pretending they are equal."""
     strict, strict_url = tracker_total(
-        site, f"years={year}&employer_country=United%20States&ai_primary=1&stage=announced")
+        site, f"years={year}&date_basis=announcement&employer_country=United%20States&ai_primary=1&stage=announced")
     observed, observed_url = tracker_total(
-        site, f"years={year}&country=United%20States&ai=1&stage=announced")
+        site, f"years={year}&date_basis=announcement&country=United%20States&ai=1&stage=announced")
     return strict, strict_url, observed, observed_url
 
 

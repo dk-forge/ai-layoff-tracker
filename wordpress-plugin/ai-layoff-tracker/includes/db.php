@@ -374,17 +374,21 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     global $wpdb;
     $where = array("1=1");
     $params = array();
+    // The public UI defaults to effective/filing date. Benchmark callers can
+    // explicitly request announcement_date; that date is source-evidenced and
+    // never inferred from the effective date.
+    $date_col = $r->get_param('date_basis') === 'announcement' ? 'announcement_date' : 'layoff_date';
 
     $from = $r->get_param('from');
     $to = $r->get_param('to');
     if ($except !== 'date') {
-        if ($from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $where[] = "layoff_date >= %s"; $params[] = $from; }
-        if ($to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) { $where[] = "layoff_date <= %s"; $params[] = $to; }
+        if ($from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $where[] = "$date_col >= %s"; $params[] = $from; }
+        if ($to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) { $where[] = "$date_col <= %s"; $params[] = $to; }
 
         // Multi-select period dimensions: years=2024,2026 quarters=1,3 months=1,2.
         // They AND together (years 2024+2025 with Q1 = Q1 of both years), which
         // is the natural cross-reference behavior.
-        $int_in = function ($param, $expr, $min, $max) use (&$where, &$params, $r) {
+        $int_in = function ($param, $expr, $min, $max) use (&$where, &$params, $r, $date_col) {
             $vals = array();
             foreach (explode(',', (string) $r->get_param($param)) as $v) {
                 $v = (int) trim($v);
@@ -392,13 +396,13 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
             }
             if ($vals) {
                 $ph = implode(',', array_fill(0, count($vals), '%d'));
-                $where[] = "layoff_date IS NOT NULL AND $expr IN ($ph)";
+                $where[] = "$date_col IS NOT NULL AND $expr IN ($ph)";
                 foreach ($vals as $v) { $params[] = $v; }
             }
         };
-        $int_in('years', 'YEAR(layoff_date)', 1990, 2100);
-        $int_in('quarters', 'QUARTER(layoff_date)', 1, 4);
-        $int_in('months', 'MONTH(layoff_date)', 1, 12);
+        $int_in('years', "YEAR($date_col)", 1990, 2100);
+        $int_in('quarters', "QUARTER($date_col)", 1, 4);
+        $int_in('months', "MONTH($date_col)", 1, 12);
     }
 
     // Category filters accept comma lists (multi-select cross-referencing).
@@ -759,7 +763,7 @@ function alt_api_quality_status() {
             array('id' => 'operational_monitoring', 'status' => 'active', 'scope' => 'Collector health, integrity and workflow failures'),
             array('id' => 'canonical_source_evidence', 'status' => 'complete', 'scope' => 'Canonical events retain all known source reports'),
             array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Monthly strict US benchmark artifact; public month table pending announcement-date backfill'),
-            array('id' => 'announcement_and_domicile_enrichment', 'status' => 'planned', 'scope' => 'Only explicit source-supported values; legacy rows are not inferred'),
+            array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
             array('id' => 'country_recall_benchmarks', 'status' => 'planned', 'scope' => 'Measured coverage by country and period, never implied completeness'),
             array('id' => 'high_impact_editorial_review', 'status' => 'planned', 'scope' => 'Large, AI-primary and multi-country events'),
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),

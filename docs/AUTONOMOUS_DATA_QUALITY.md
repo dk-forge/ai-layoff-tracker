@@ -129,6 +129,11 @@ report, extract its YTD AI figure, and compare the strict tracker query. A
 threshold miss fails loudly; it is a discovery/reclassification signal, never
 permission to force the tracker total.
 
+The comparator requests `date_basis=announcement`, so rows without an exact
+source-supported announcement date are excluded rather than silently grouped
+by effective layoff date. Its coverage gap is therefore a quality signal, not
+a claim of complete Challenger parity.
+
 ## Regression and operational checks
 
 Run before every deployment:
