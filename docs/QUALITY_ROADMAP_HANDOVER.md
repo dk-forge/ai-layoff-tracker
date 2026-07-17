@@ -21,15 +21,16 @@ remain the publication standard.
 
 ## Live, verified foundation
 
-- Plugin version **2.17.6** is live from commit `4b3540d` (deployment run
-  `29589675323`). The immediate bulk-event fix and a manual canonical migration
-  repair were verified: 43,918 rows, events and sources are again complete.
+- Plugin version **2.17.7** is live from commit `b7779e4` (deployment run
+  `29591800650`). The retained-excerpt hash backfill is live; integrity after
+  the latest successful deep dedupe is 43,892 canonical rows/events and 43,971
+  retained source reports, with no migration backlog.
 - Public quality endpoint:
   `GET /blog/wp-json/layoffs/v1/quality-status`.
   It exposes dataset revision, disclosed corrections, source health, canonical
   integrity and openly labelled workstream states.
-- Integrity migration is complete: **43,897 canonical events** and **43,950
-  retained source reports** at the last completed verification. Bulk imports
+- Integrity migration is complete: **43,892 canonical events** and **43,971
+  retained source reports** at the latest verification. Bulk imports
   now attach canonical events immediately; if a run lands during the prior
   deployment's migration interval, run/await canonical-event migration before
   calling the graph complete.
