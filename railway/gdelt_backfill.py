@@ -52,7 +52,8 @@ def run():
         label = w_start.strftime("%Y-%m-%d")
         try:
             report_source_health("gdelt_historical", "running", 0, f"window {label}: collection in progress")
-            entries = pull_gdelt_between(w_start, w_end)
+            remaining = max_articles - considered if max_articles else 250
+            entries = pull_gdelt_between(w_start, w_end, max_records=min(250, remaining))
             report_source_health("gdelt_historical", "ok", len(entries), f"window {label}")
         except Exception as exc:
             report_source_health("gdelt_historical", "degraded", 0, f"window {label}: {exc}")

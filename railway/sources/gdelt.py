@@ -7,8 +7,10 @@ This is the historical + global press layer: free, worldwide, back to 2024,
 and it's where AI-attributed layoff language actually appears.
 """
 import html
+import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timezone
 
 import requests
@@ -127,6 +129,7 @@ BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.3
 REQUEST_DELAY = 1.2       # GDELT asks for gentle use
 RAW_TEXT_LIMIT = 3000
 MAX_DOC_BYTES = 400_000
+FETCH_WORKERS = max(1, min(6, int(os.environ.get("GDELT_FETCH_WORKERS", "4"))))
 
 
 def _strip_html(markup):
@@ -198,22 +201,28 @@ def pull_gdelt_between(start, end, max_records=250):
         print("GDELT window abandoned after 5 attempts")
         return []
 
-    results, seen = [], set()
+    candidates, seen = [], set()
     for a in articles:
         url = a.get("url")
         dom = _domain(a)
         if not url or url in seen or not _is_trusted(dom):
             continue
         seen.add(url)
+        candidates.append((a, url, dom))
+
+    def fetch_candidate(candidate):
+        a, url, dom = candidate
         try:
+            # Gentle staggering plus a small worker pool prevents one slow or
+            # dead publisher from serially blocking an entire global window.
             time.sleep(0.2)
             text = _fetch_article(url)
         except Exception as e:
             print(f"GDELT fetch error {url}: {e}")
-            continue
+            return None
         if not text.strip():
-            continue
-        results.append({
+            return None
+        return {
             "source_type": "news",
             "source_name": dom,
             "verification_level": "bronze",
@@ -222,7 +231,15 @@ def pull_gdelt_between(start, end, max_records=250):
             "company_name": None,
             "ticker": None,
             "filing_date": _seen_to_iso(a.get("seendate")),
-        })
+        }
 
-    print(f"GDELT: {len(articles)} matched, {len(results)} from trusted domains")
+    results = []
+    with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
+        futures = [pool.submit(fetch_candidate, candidate) for candidate in candidates]
+        for future in as_completed(futures):
+            entry = future.result()
+            if entry:
+                results.append(entry)
+
+    print(f"GDELT: {len(articles)} matched, {len(candidates)} trusted, {len(results)} fetched")
     return results
