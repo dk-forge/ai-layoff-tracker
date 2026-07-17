@@ -1,0 +1,35 @@
+{
+  "manifest_version": 1,
+  "publication_status": "template_only_not_a_benchmark",
+  "country": "United States",
+  "subnational_scope": "California",
+  "period": {
+    "from": "2026-06-01",
+    "to": "2026-06-30",
+    "date_field": "official WARN notice date"
+  },
+  "reference_set": {
+    "publisher": "California Employment Development Department",
+    "document_title": "2025-2026 WARN Report from July 01, 2025 through June 30, 2026",
+    "document_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
+    "independence_rule": "Transcribe the selected official source rows before querying the tracker.",
+    "selection_rule": "TO_BE_SET_BEFORE_TRACKER_LOOKUP",
+    "retrieved_at": "TO_BE_RECORDED"
+  },
+  "required_event_fields": [
+    "reference_row_id",
+    "official_source_url",
+    "official_document_location",
+    "company_name",
+    "notice_date",
+    "effective_date",
+    "stated_job_count",
+    "match_decision",
+    "canonical_event_id_or_null",
+    "match_notes",
+    "reviewed_by",
+    "reviewed_at"
+  ],
+  "reference_events": [],
+  "publication_guard": "Do not calculate or post matched_events, reference_events_count or sample_recall until this manifest has complete independently assembled rows and a second-editor review."
+}
