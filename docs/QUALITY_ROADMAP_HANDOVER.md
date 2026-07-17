@@ -152,6 +152,9 @@ be red in Actions while retaining the public record.
      status and one Companies House record without downloading/publishing
      filings or logging secret values. Passing it proves access only, not that
      a connector is live or permitted for automated data reuse.
+   - Credential smoke run `29605524613` passed on 2026-07-17 against the three
+     configured GitHub secrets. This validates read-only access only; no filing
+     was stored, published or added to source-health coverage.
    - Highest no-credential expansion is a versioned registry of reviewed,
      company-owned newsroom/IR RSS or Atom feeds. Do not treat generic wire
      feeds as official, and document terms/domain ownership before admission.
