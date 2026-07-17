@@ -1016,9 +1016,15 @@
                     // flip early/late around midnight.
                     var n = new Date();
                     var today = n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate());
-                    var badges = (d > today ? ' <span class="alt-upcoming" title="Filed in advance. The effective date has not arrived yet.">upcoming</span>' : '');
-                    if (row.announced) badges += ' <span class="alt-upcoming" title="Announcement of planned cuts, not yet executed or filed">announced</span>';
-                    return escapeHtml(d) + badges;
+                    var badges = [];
+                    if (d > today) badges.push('<span class="alt-upcoming" title="Filed in advance. The effective date has not arrived yet.">upcoming</span>');
+                    if (row.announced) badges.push('<span class="alt-upcoming" title="Announcement of planned cuts, not yet executed or filed">announced</span>');
+                    // Keep date-state labels as one compact unit.  Plain
+                    // inline whitespace let DataTables wrap "announced" onto
+                    // a detached second line on narrow screens.
+                    return '<span class="alt-date-cell"><time datetime="' + escapeHtml(d) + '">' + escapeHtml(d) + '</time>'
+                        + (badges.length ? '<span class="alt-date-badges">' + badges.join('') + '</span>' : '')
+                        + '</span>';
                 } },
                 { data: 'company_name', render: function (d, t, row) {
                     if (t !== 'display') return d || '';

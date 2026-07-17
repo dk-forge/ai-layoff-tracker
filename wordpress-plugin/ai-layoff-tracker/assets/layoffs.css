@@ -688,6 +688,23 @@ body.admin-bar .alt-count-row { top: 32px; }
     vertical-align: middle;
 }
 
+/* The date and its planned/announced state are one data point. Grouping the
+   badges prevents a narrow DataTables cell from orphaning a state badge below
+   the date and making the whole row look broken on mobile. */
+.alt-date-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: max-content;
+    white-space: nowrap;
+}
+.alt-date-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.alt-date-cell .alt-upcoming { margin-left: 0; }
+
 .alt-ai-yes {
     display: inline-block;
     font-size: 10px;
