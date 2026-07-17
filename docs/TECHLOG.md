@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| 2.16.2 (Jul 16) | **Source-health running state.** Collector status now reports `running` before a source pull, then healthy/degraded on completion. The public panel no longer presents an active long-running collection as missing status. |
 | Data source (Jul 16) | **SEC foreign-issuer expansion.** EDGAR discovery now searches both domestic 8-K and foreign-issuer 6-K filings under the same legal-filings tier, retaining the exact form in the source label. This expands first-party disclosure coverage without weakening source or evidence standards. |
 | Ops (Jul 16) | **Historical-sweep workload bound.** The scheduled GDELT history sweep now caps itself at 100 model candidates per run. An initial unbounded verification run was cancelled after it exceeded the expected runtime; the rotating recovery programme now has a predictable cost and completion window. |
 | Ops (Jul 16) | **Data-quality workflow reliability.** The daily report itself was healthy; only its optional DeepSeek classification spot-check failed. Replaced the brittle inline request with a retried, time-bounded runner that reports temporary audit unavailability in the Actions summary without failing the whole report, while preserving fail-loud behavior if a selected automatic correction cannot be applied. |

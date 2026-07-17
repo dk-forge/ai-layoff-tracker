@@ -300,7 +300,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
         <div class="alt-method-body">
             <p id="alt-source-health-note">Checking the most recent collector status…</p>
             <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
-            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs.</p>
+            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs.</p>
         </div>
     </details>
 

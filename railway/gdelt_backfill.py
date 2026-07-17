@@ -51,6 +51,7 @@ def run():
     for w_start, w_end in week_windows(start, end):
         label = w_start.strftime("%Y-%m-%d")
         try:
+            report_source_health("gdelt_historical", "running", 0, f"window {label}: collection in progress")
             entries = pull_gdelt_between(w_start, w_end)
             report_source_health("gdelt_historical", "ok", len(entries), f"window {label}")
         except Exception as exc:

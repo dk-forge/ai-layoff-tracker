@@ -44,6 +44,7 @@ def run():
         ("press_releases", pull_press_releases),
     ):
         try:
+            report_source_health(source, "running", 0, "collection in progress")
             pulled = collector()
             entries += pulled
             report_source_health(source, "ok", len(pulled))
@@ -54,6 +55,7 @@ def run():
         # Worldwide press coverage (Europe/Asia/everywhere) via GDELT. 36h
         # window overlaps the twice-daily runs; dedup drops the repeats.
         now = datetime.now(timezone.utc)
+        report_source_health("gdelt", "running", 0, "collection in progress")
         pulled = pull_gdelt_between(now - timedelta(hours=36), now)
         entries += pulled
         report_source_health("gdelt", "ok", len(pulled))

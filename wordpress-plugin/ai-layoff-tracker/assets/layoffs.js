@@ -117,10 +117,11 @@
             names.forEach(function (name) {
                 var item = health[name] || {};
                 var tr = document.createElement('tr');
-                [name, item.status === 'ok' ? 'Healthy' : 'Degraded', fmt(item.entries), item.checked_at ? new Date(item.checked_at).toLocaleString() : '—'].forEach(function (value) {
+                var label = item.status === 'ok' ? 'Healthy' : (item.status === 'running' ? 'Running' : 'Degraded');
+                [name, label, fmt(item.entries), item.checked_at ? new Date(item.checked_at).toLocaleString() : '—'].forEach(function (value) {
                     var td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
                 });
-                tr.className = item.status === 'ok' ? 'alt-source-ok' : 'alt-source-degraded';
+                tr.className = item.status === 'ok' ? 'alt-source-ok' : (item.status === 'running' ? 'alt-source-running' : 'alt-source-degraded');
                 body.appendChild(tr);
             });
             table.appendChild(body); box.appendChild(table);

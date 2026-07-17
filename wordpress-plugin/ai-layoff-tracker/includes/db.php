@@ -624,7 +624,8 @@ function alt_api_source_health_post(WP_REST_Request $r) {
     $health = get_option('alt_source_health');
     if (!is_array($health)) $health = array();
     $health[$source] = array(
-        'status' => $r->get_param('status') === 'ok' ? 'ok' : 'degraded',
+        'status' => in_array($r->get_param('status'), array('ok', 'running', 'degraded'), true)
+            ? $r->get_param('status') : 'degraded',
         'entries' => max(0, (int) $r->get_param('entries')),
         'checked_at' => gmdate('c'),
         'detail' => substr(sanitize_text_field((string) $r->get_param('detail')), 0, 240),
