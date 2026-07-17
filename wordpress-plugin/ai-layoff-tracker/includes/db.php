@@ -1118,7 +1118,7 @@ function alt_api_bulk(WP_REST_Request $r) {
         $hash = substr((string) ($e['dedup_hash'] ?? ''), 0, 32);
         $company = trim((string) ($e['company_name'] ?? ''));
         if ($hash === '' || $company === '') continue;
-        alt_db_upsert(array(
+        $row = array(
             'post_id'            => null,
             'dedup_hash'         => $hash,
             'company'            => $company,
@@ -1142,8 +1142,14 @@ function alt_api_bulk(WP_REST_Request $r) {
             'reason_tags'        => $e['reason_tags'] ?? array(),
             'roles'              => $e['roles'] ?? '',
             'excerpt'            => $e['excerpt'] ?? '',
-        ));
-        $upserted++;
+        );
+        $id = alt_db_upsert($row);
+        // Bulk WARN rows are canonical events too. Registering here keeps the
+        // evidence graph complete immediately after an import instead of
+        // waiting for the daily legacy migration. The report insert is
+        // idempotent, so a re-import retains rather than duplicates evidence.
+        if ($id) alt_event_register_report_for_layoff($id, $row);
+        if ($id) $upserted++;
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response(array('received' => count($entries), 'upserted' => $upserted));

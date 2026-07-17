@@ -29,7 +29,10 @@ remain the publication standard.
   It exposes dataset revision, disclosed corrections, source health, canonical
   integrity and openly labelled workstream states.
 - Integrity migration is complete: **43,897 canonical events** and **43,950
-  retained source reports** at the last verification.
+  retained source reports** at the last completed verification. Bulk imports
+  now attach canonical events immediately; if a run lands during the prior
+  deployment's migration interval, run/await canonical-event migration before
+  calling the graph complete.
 - Daily deep dedupe preserves every report on the surviving canonical event;
   the cluster queue rotates so small duplicate pairs cannot starve behind large
   clusters.
