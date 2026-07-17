@@ -135,7 +135,7 @@ the table may scroll only inside its own scroll container.
 
 ### Source health
 
-Every cron collector reports `ok` or `degraded`, its raw-entry count, a short
+Every live or historical collector reports `ok` or `degraded`, its raw-entry count, a short
 error detail and timestamp to the public `GET /source-health` endpoint. This
 is a coverage-status signal, not a claim that a source returned every event.
 An empty successful response is explicitly represented as `ok` with zero

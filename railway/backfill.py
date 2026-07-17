@@ -21,6 +21,7 @@ from sources.edgar import pull_edgar_filings_between
 from extractor import extract_layoff_data
 from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
+from source_health import report_source_health
 
 
 def _parse_date(value, default):
@@ -55,7 +56,9 @@ def run():
         label = w_start.strftime("%Y-%m")
         try:
             entries = pull_edgar_filings_between(w_start, w_end)
+            report_source_health("edgar_historical", "ok", len(entries), f"window {label}")
         except Exception as e:
+            report_source_health("edgar_historical", "degraded", 0, f"window {label}: {e}")
             print(f"[{label}] EDGAR pull failed: {e}")
             continue
         print(f"[{label}] {len(entries)} candidate filings")

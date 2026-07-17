@@ -16,6 +16,7 @@ from sources.gdelt import pull_gdelt_between
 from extractor import extract_layoff_data
 from deduplicator import is_duplicate
 from wp_poster import post_to_wordpress
+from source_health import report_source_health
 
 
 def _parse(value, default):
@@ -46,7 +47,12 @@ def run():
     posted = dupes = skipped = failed = ai = 0
     for w_start, w_end in week_windows(start, end):
         label = w_start.strftime("%Y-%m-%d")
-        entries = pull_gdelt_between(w_start, w_end)
+        try:
+            entries = pull_gdelt_between(w_start, w_end)
+            report_source_health("gdelt_historical", "ok", len(entries), f"window {label}")
+        except Exception as exc:
+            report_source_health("gdelt_historical", "degraded", 0, f"window {label}: {exc}")
+            raise
         print(f"[{label}] {len(entries)} articles")
         for raw in entries:
             if limit and posted >= limit:
