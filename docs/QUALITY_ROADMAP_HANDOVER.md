@@ -132,6 +132,16 @@ be red in Actions while retaining the public record.
    - No paid subscriptions are planned. Do not sign up for, scrape around,
      or misrepresent licensed/permissioned sources. Reviewed public company IR
      RSS/Atom feeds are the preferred expansion path.
+   - Free credentials now worth obtaining: Japan EDINET (`EDINET_API_KEY`) and
+     South Korea OpenDART (`OPENDART_API_KEY`) for future tested official
+     connectors; UK Companies House (`COMPANIES_HOUSE_API_KEY`) for employer
+     identity enrichment. Store them as GitHub Actions and Railway secrets,
+     never in code or chat. Do not activate a collector merely because a key
+     exists: each needs fixtures, rate/error handling, source retention and a
+     source-health entry first.
+   - Highest no-credential expansion is a versioned registry of reviewed,
+     company-owned newsroom/IR RSS or Atom feeds. Do not treat generic wire
+     feeds as official, and document terms/domain ownership before admission.
 
 6. **Research/distribution products, after core data work.**
    - Build state/national embeddable widgets first. Do not begin metro widgets
