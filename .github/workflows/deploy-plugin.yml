@@ -38,6 +38,17 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
+      - name: Set up PHP for syntax validation
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Lint every plugin PHP file before upload
+        run: |
+          set -euo pipefail
+          find wordpress-plugin/ai-layoff-tracker -type f -name '*.php' -print0 \
+            | xargs -0 -n1 php -l
+
       - name: Verify secrets are configured
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
@@ -112,3 +123,16 @@ jobs:
               wordpress-plugin/ai-layoff-tracker/ \"$REMOTE_DIR\";
           "
           echo "Deployed wordpress-plugin/ai-layoff-tracker/ to $REMOTE_DIR"
+
+      - name: Verify the deployed tracker API
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: |
+          set -euo pipefail
+          # A cache-busting public endpoint confirms that WordPress loaded the
+          # newly uploaded plugin rather than merely serving cached HTML.
+          curl --fail --show-error --silent --retry 4 --retry-all-errors \
+            --retry-delay 5 --max-time 30 \
+            -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+            "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
+            | python3 -c 'import json, sys; payload = json.load(sys.stdin); assert "canonical_events" in payload; print("Live tracker API verified.")'

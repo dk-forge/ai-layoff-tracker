@@ -9,6 +9,10 @@ DB-table dbDelta) on the first PHP request. To trip it immediately:
 ```bash
 curl -s "https://asktherecruiter.com/blog/?bump=$RANDOM" -o /dev/null
 ```
+The deployment first PHP-lints every plugin file, then verifies a cache-busted
+public tracker API response after FTPS completes. A failed live verification is
+an actionable deployment alert; do not assume an FTP success alone means the
+plugin loaded.
 Rollback = `git revert` + push (there is no other rollback path; FTP is the only door).
 
 ## GitHub workflows (Actions tab)
