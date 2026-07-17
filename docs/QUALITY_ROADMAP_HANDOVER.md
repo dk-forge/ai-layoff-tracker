@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-17 (announcement-lifecycle candidate queue and metadata-completeness telemetry integrated; deploy verification pending). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-17 (health-page feature-state list added in plugin 2.18.8; deployment verification pending). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -23,7 +23,10 @@ remain the publication standard.
 
 - Public operations page: `/blog/ai-layoff-tracker/ai-tracker-health/` renders
   current source health, safe last-attempt detail, static cadence/scope,
-  integrity, evidence backlog, review queue, workstreams and benchmark state.
+  integrity, evidence backlog, review queue, workstreams, benchmark state and
+  a plain-language Features list. The Features list labels released, in-progress,
+  pending-review and planned capabilities; it must never replace the live
+  collector/error status above it or imply global completeness.
   It reads public APIs dynamically; historical per-run telemetry begins only
   once the append-only run ledger is deployed, never reconstructed from legacy
   rows.
