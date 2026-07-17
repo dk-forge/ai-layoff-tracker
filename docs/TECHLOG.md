@@ -12,6 +12,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Ver | What |
 |---|---|
+| Ops (Jul 17) | **Challenger-candidate context queue.** The daily, evidence-only context worker now starts with announced AI-tagged US job-location candidates ordered by disclosed job count, then rotates the bounded result page daily. This prevents one inaccessible high-impact source from starving later candidates while keeping exact source quotes mandatory; it does not infer employer domicile, announcement date or AI-primary causation. |
 | 2.17.8 (Jul 17) | **Dataset release ledger.** Versioned deployments now retain a public snapshot of dataset revision, canonical rows/events and retained reports. The ledger starts prospectively and explicitly does not fabricate legacy addition counts; corrections remain separately disclosed. |
 | 2.17.7 (Jul 17) | **Bounded legacy evidence-hash backfill.** Added an autonomous daily 500-report backfill that computes SHA-256 only from excerpts already retained in the database. Public integrity status now discloses hashable, hashed and remaining reports. It never retrieves or claims to archive publisher pages. |
 | 2.17.6 (Jul 17) | **Immediate bulk evidence registration.** A WARN import temporarily left newly inserted bulk rows outside the canonical-event graph until the daily migration. Bulk upserts now register their canonical event and retained source report in the same request; re-imports remain idempotent. |

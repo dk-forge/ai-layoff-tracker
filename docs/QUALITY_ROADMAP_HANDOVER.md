@@ -60,8 +60,12 @@ benchmarking live.
   prompt, validates returned quotes locally, and reports health as
   `context_enrichment`.
 - `.github/workflows/enrich-context.yml` runs daily at 03:41 UTC. Its scheduled
-  batch is **5** because the first ten-record smoke test took 19m22s. Manual
-  runs can select 1–50 deliberately.
+  batch is **5** because the first ten-record smoke test took 19m22s. It now
+  prioritises announced, AI-tagged US job-location candidates by count for the
+  Challenger comparator and rotates its result page daily, so unreadable
+  sources cannot starve smaller candidates. This is a priority order only:
+  domicile, announcement date and AI-primary status still require exact source
+  evidence. Manual runs can select 1–50 deliberately.
 - First manual run `29563662072` succeeded: checked 10, enriched 3, unsupported
   or unreadable 7. A Moneycontrol page returned HTTP 403; this stays visible as
   inaccessible evidence and must not be bypassed.

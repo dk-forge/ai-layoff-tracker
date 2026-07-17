@@ -10,6 +10,7 @@ sys.modules.setdefault("openai", SimpleNamespace())
 sys.modules.setdefault("requests", SimpleNamespace())
 
 from extractor import _quote_is_supported
+from enrich_context import query_params, rotating_page
 from source_registry import MARKETS, coverage_manifest, discovery_terms
 from sources.press_releases import _items
 from sources.edgar import FORMS
@@ -56,6 +57,15 @@ class EvidenceGuardTests(unittest.TestCase):
         selected_ids = {row["id"] for group in selected for row in group}
         # Exact-count repeat is always in the priority quarter of the queue.
         self.assertTrue({10, 11}.issubset(selected_ids))
+
+    def test_context_priority_is_narrow_and_rotates_batches(self):
+        params = query_params(5, "challenger_priority")
+        self.assertEqual(params["country"], "United States")
+        self.assertEqual(params["stage"], "announced")
+        self.assertEqual(params["ai"], "1")
+        self.assertEqual(params["sort"], "job_count")
+        self.assertEqual(rotating_page(11, 5, today=__import__("datetime").date(2026, 1, 1)), 1)
+        self.assertEqual(rotating_page(11, 5, today=__import__("datetime").date(2026, 1, 2)), 2)
 
 
 if __name__ == "__main__":

@@ -26,6 +26,9 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           CONTEXT_ENRICH_BATCH: ${{ github.event.inputs.batch || '5' }}
+          # Prioritise source-linked US announced AI candidates for the public
+          # Challenger comparator. Exact quotes remain mandatory for updates.
+          CONTEXT_ENRICH_MODE: challenger_priority
         run: |
           cd railway
           python enrich_context.py
