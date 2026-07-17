@@ -147,6 +147,11 @@ be red in Actions while retaining the public record.
      fixtures, rate/error handling, source retention and a source-health entry
      first. EDINET/OpenDART are future official-disclosure connectors;
      Companies House is employer-identity enrichment, not a UK layoff feed.
+   - `.github/workflows/official-connector-credential-smoke.yml` is a manual,
+     read-only credential check. It queries EDINET list metadata, OpenDART list
+     status and one Companies House record without downloading/publishing
+     filings or logging secret values. Passing it proves access only, not that
+     a connector is live or permitted for automated data reuse.
    - Highest no-credential expansion is a versioned registry of reviewed,
      company-owned newsroom/IR RSS or Atom feeds. Do not treat generic wire
      feeds as official, and document terms/domain ownership before admission.
