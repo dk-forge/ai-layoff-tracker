@@ -63,6 +63,11 @@ railway/
 docs/                        this documentation
 ```
 
+`docs/OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md` is the evidence-backed admission
+log for proposed country-specific sources. It is intentionally separate from
+the live-source registry: publicly searchable does not automatically mean
+automatable or licensed for reuse.
+
 ## Data semantics (the parts that bite)
 - **Verification tiers:** `gold`=SEC EDGAR 8-K/6-K, `warn`=state WARN notice, `silver`=press release/Eurofound ERM, `bronze`=news.
 - **Market registry:** a named official system is a *candidate* until it has a stable public interface, a tested connector and source-health reporting. Only `live_sources` are coverage claims; all other countries remain discovery-only.
