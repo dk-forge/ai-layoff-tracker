@@ -3,6 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Unit tests exercise pure guardrails and do not create an API client.
@@ -13,6 +14,7 @@ from extractor import _quote_is_supported
 from enrich_context import query_params, rotating_page
 from source_registry import MARKETS, coverage_manifest, discovery_terms
 from sources.press_releases import _items
+from sources import gdelt
 from sources.gdelt import _retry_delay
 from historical_news_sweep import WINDOW_DAYS
 from sources.edgar import FORMS
@@ -75,6 +77,24 @@ class EvidenceGuardTests(unittest.TestCase):
 
     def test_historical_gdelt_window_is_bounded_to_one_week(self):
         self.assertEqual(WINDOW_DAYS, 7)
+
+    def test_gdelt_rate_limit_marker_survives_follow_up_bad_response(self):
+        throttled = SimpleNamespace(status_code=429, headers={})
+        malformed = SimpleNamespace(
+            status_code=200,
+            headers={},
+            raise_for_status=lambda: None,
+            json=lambda: (_ for _ in ()).throw(ValueError("bad upstream JSON")),
+        )
+        with patch.object(gdelt.requests, "get", side_effect=[throttled, malformed, malformed], create=True), \
+             patch.object(gdelt.time, "sleep"), \
+             patch.object(gdelt, "QUERY_ATTEMPTS", 3):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 429"):
+                gdelt.pull_gdelt_between(
+                    __import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+                    __import__("datetime").datetime(2026, 1, 2, tzinfo=__import__("datetime").timezone.utc),
+                    max_records=1,
+                )
 
 
 if __name__ == "__main__":

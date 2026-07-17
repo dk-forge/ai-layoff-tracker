@@ -198,6 +198,7 @@ def pull_gdelt_between(start, end, max_records=250):
     # once lost 63 windows to 429s without this).
     articles = None
     last_error = None
+    saw_rate_limit = False
     delay = REQUEST_DELAY
     for attempt in range(QUERY_ATTEMPTS):
         time.sleep(delay)
@@ -205,6 +206,7 @@ def pull_gdelt_between(start, end, max_records=250):
             resp = requests.get(GDELT_URL, params=params,
                                 headers={"User-Agent": BROWSER_UA}, timeout=30)
             if resp.status_code == 429:
+                saw_rate_limit = True
                 last_error = "HTTP 429"
                 delay = _retry_delay(resp, attempt)
                 print(f"GDELT 429 (attempt {attempt + 1}/{QUERY_ATTEMPTS}), retrying after {delay:.0f}s")
@@ -216,6 +218,13 @@ def pull_gdelt_between(start, end, max_records=250):
             last_error = str(e)
             print(f"GDELT query error (attempt {attempt + 1}/{QUERY_ATTEMPTS}): {e}")
     if articles is None:
+        # A 429 followed by a malformed/empty upstream response is still an
+        # upstream availability incident. Preserve the 429 marker so the
+        # caller leaves the cursor in place and reports the source as
+        # deferred, rather than classifying the final parser symptom as a
+        # repository failure.
+        if saw_rate_limit:
+            last_error = f"HTTP 429 (followed by upstream response error: {last_error or 'unknown error'})"
         raise RuntimeError(f"GDELT window abandoned after {QUERY_ATTEMPTS} attempts: {last_error or 'unknown error'}")
 
     candidates, seen = [], set()
