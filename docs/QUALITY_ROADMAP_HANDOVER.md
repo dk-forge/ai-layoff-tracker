@@ -21,9 +21,9 @@ remain the publication standard.
 
 ## Live, verified foundation
 
-- Plugin version **2.17.5** is live from commit `5dbe7d0` (deployment run
-  `29587666455`); the public recall-benchmark endpoint and quality status were
-  verified after the standard schema/cache initialization.
+- Plugin version **2.17.6** is live from commit `4b3540d` (deployment run
+  `29589675323`). The immediate bulk-event fix and a manual canonical migration
+  repair were verified: 43,918 rows, events and sources are again complete.
 - Public quality endpoint:
   `GET /blog/wp-json/layoffs/v1/quality-status`.
   It exposes dataset revision, disclosed corrections, source health, canonical
