@@ -29,6 +29,9 @@ change that ships the connector, tests, workflow and public methodology.
 | Canada — SEDAR+ | The official search page supports searching public filings and downloading public documents. SEDAR+ says continuous-disclosure documents such as news releases are immediately public. | **Candidate, not live.** No documented, permissioned incremental/bulk interface has been established for this project. Do not scrape the interactive application or imply SEDAR+ coverage. |
 | United Kingdom — LSE RNS | LSE says RNS news remains searchable on its website (two years of history), but its former RSS/RNS RSS services are disabled. | **Blocked pending a licensed/API route.** Do not implement a browser scraper as a substitute for the retired feed. |
 | Australia — ASX announcements | ASX publishes current and historical announcement search pages, but its current announcements page states that the content must not be used for commercial purposes. | **Do not ingest** unless ASX grants permission or a suitable licence is obtained. Public availability is not reuse permission. |
+| Japan — EDINET | The Financial Services Agency provides a documented EDINET API, including a dated document-list endpoint. | **Credential access verified; connector not live.** A key permits API authentication, but an implementation still needs permitted-reuse confirmation, Japanese-language fixtures, incremental cursor/rate handling, source retention and source-health reporting. |
+| South Korea — OpenDART | The Financial Supervisory Service provides documented JSON disclosure-list endpoints. | **Credential access verified; connector not live.** Implement only after terms/reuse review, Korean-language fixtures, bounded incremental retrieval, original-document retention and source-health reporting. |
+| United Kingdom — Companies House | Companies House provides an authenticated public company-information API. | **Credential access verified for identity enrichment only; not a layoff source.** It may eventually evidence employer domicile/registered identity, but must never create or inflate a UK layoff event. |
 
 ### Primary references
 
@@ -36,6 +39,23 @@ change that ships the connector, tests, workflow and public methodology.
 - [SEDAR+ explanation of public documents](https://www.sedarplus.ca/onlinehelp/filings/view-a-filing/information-shown-on-a-submitted-filing/)
 - [LSE RNS access and RSS policy](https://www.londonstockexchange.com/welcome-to-london-stock-exchange)
 - [ASX today's announcements](https://www.asx.com.au/asx/v2/statistics/todayAnns.do)
+- [EDINET API authentication](https://api.edinet-fsa.go.jp/api/auth/index.aspx?mode=1)
+- [OpenDART API](https://opendart.fss.or.kr/)
+- [Companies House API](https://developer.company-information.service.gov.uk/)
+
+## Credential-access boundary
+
+On 2026-07-17, the manual, read-only GitHub Actions workflow
+`official-connector-credential-smoke.yml` successfully authenticated to
+EDINET, OpenDART and Companies House (run `29605524613`). It did not download,
+retain or publish filings; it only confirms that the configured secrets can
+make bounded official requests. The secrets themselves are never stored in this
+repository, test fixtures, workflow output or documentation.
+
+Credential success is deliberately not an admission decision. Each source must
+still pass the five admission-rule gates above, and must be marked
+`discovery_only` in `railway/source_registry.py` until its complete connector
+is tested and deployed.
 
 ## Next safe research order
 
