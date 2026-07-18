@@ -1,0 +1,84 @@
+name: Evidence-reviewed data corrections
+
+# Executes a reviewed sequence of keyed correction calls (merge/edit/
+# reclassify/enrich/add-attach) prepared by an evidence dossier. Every step
+# names its endpoint from a fixed allowlist, carries its own payload, and
+# declares the expected HTTP codes (the /add source-attach branch expects
+# 409). The run log plus the server's public corrections trail are the audit
+# record; `reason` is required and echoed into the summary.
+
+on:
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: 'JSON array: [{"endpoint":"edit|merge-events|reclassify|enrich-context|add","body":{...},"expect":[200]}]'
+        required: true
+      reason:
+        description: 'Dossier reference / why (shown in the run summary)'
+        required: true
+
+concurrency:
+  group: data-corrections
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Apply correction sequence
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          STEPS: ${{ github.event.inputs.steps }}
+          REASON: ${{ github.event.inputs.reason }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          python3 - <<'PY'
+          import json, os, sys, time, urllib.request
+
+          ALLOWED = {"edit", "merge-events", "reclassify", "enrich-context", "add"}
+          steps = json.loads(os.environ["STEPS"])
+          assert isinstance(steps, list) and steps, "steps must be a non-empty JSON array"
+          summary_lines = ["## Data corrections", "", f"- Reason: {os.environ.get('REASON','')}", ""]
+          base = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
+          for i, step in enumerate(steps, 1):
+              endpoint = step.get("endpoint")
+              assert endpoint in ALLOWED, f"step {i}: endpoint '{endpoint}' not in allowlist {sorted(ALLOWED)}"
+              expect = set(step.get("expect", [200]))
+              body = json.dumps(step["body"]).encode()
+              req = urllib.request.Request(base + endpoint, data=body, method="POST", headers={
+                  "X-Layoff-API-Key": os.environ["WP_API_KEY"],
+                  "Content-Type": "application/json",
+                  "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)",
+              })
+              status, text = None, ""
+              for attempt in range(4):
+                  try:
+                      with urllib.request.urlopen(req, timeout=120) as resp:
+                          status, text = resp.status, resp.read().decode()[:800]
+                      break
+                  except urllib.error.HTTPError as e:
+                      status, text = e.code, e.read().decode()[:800]
+                      if status in expect:
+                          break
+                      if status in (502, 503, 504, 520, 521, 522, 524) and attempt < 3:
+                          print(f"step {i}: transient HTTP {status}, retrying in 45s")
+                          time.sleep(45)
+                          continue
+                      break
+                  except Exception as e:
+                      status, text = 0, str(e)[:300]
+                      if attempt < 3:
+                          print(f"step {i}: {e}; retrying in 45s")
+                          time.sleep(45)
+                          continue
+              print(f"step {i} {endpoint}: HTTP {status}\n{text}")
+              summary_lines.append(f"- Step {i} `{endpoint}` -> HTTP {status} {'OK' if status in expect else 'FAILED'}")
+              if status not in expect:
+                  with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+                      f.write("\n".join(summary_lines) + "\n")
+                  sys.exit(1)
+              time.sleep(8)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(summary_lines) + "\n")
+          PY

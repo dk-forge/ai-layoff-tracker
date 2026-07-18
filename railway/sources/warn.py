@@ -109,11 +109,27 @@ _COUNT_TIERS = [
     ["worker", "headcount", "jobs", "job ", "emp #"],
     ["employee"],
 ]
+# "company"/"employer" excluded: CT DOL publishes an "affected_company"
+# column, which tier-1 "affected" matched — so counts were parsed out of the
+# company NAME (names without digits -> 0 -> row dropped; CT collection was
+# effectively dead, e.g. the 313-worker CVS/Aetna notice).
 _COUNT_EXCL = ["address", "site", "county", "zip", "postal", "code", "reason", "index",
-               "name", "date", "phone", "area", "region", "wda", "lwib", "url", "page"]
+               "name", "date", "phone", "area", "region", "wda", "lwib", "url", "page",
+               "company", "employer"]
 
 
 def _count_col(rl):
+    # Prefer a positive "Revised" figure first: Illinois keeps ONE cumulative
+    # row per site event and revises it in place, so the original "Expected
+    # Layoff" understates every later notification (Capital One/Discover
+    # Riverwoods: expected 215 vs revised 2,027 across six notice dates).
+    for k, v in rl.items():
+        if not v or any(x in k for x in _COUNT_EXCL):
+            continue
+        if "revised" in k:
+            digits = re.search(r"\d[\d,]*", str(v))
+            if digits and int(digits.group(0).replace(",", "")) > 0:
+                return v
     for tier in _COUNT_TIERS:
         for k, v in rl.items():
             if not v or any(x in k for x in _COUNT_EXCL):

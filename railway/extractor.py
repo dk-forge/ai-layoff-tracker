@@ -132,6 +132,20 @@ def _parse_json_response(text):
         raise
 
 
+def _percent_only_mention(job_count, raw_text):
+    """True when a small count appears in the text ONLY as "N%" / "N percent".
+
+    That is a mis-parse of a percentage, not a headcount (Intuit: "17% of its
+    staff" was stored as 17 jobs). Rejecting is honest — a corrected count
+    must come from an explicit figure, never be derived here.
+    """
+    if not raw_text or not job_count or job_count > 100:
+        return False
+    as_percent = re.search(rf"\b{job_count}\s*(%|percent\b)", raw_text, re.I)
+    as_count = re.search(rf"\b{job_count}\b(?!\s*(%|percent))", raw_text, re.I)
+    return bool(as_percent and not as_count)
+
+
 def _coerce_job_count(value):
     """The model occasionally returns '9,000' or '9000' as a string."""
     if isinstance(value, bool):
@@ -351,6 +365,10 @@ TEXT:
     # Skip if no usable job count
     job_count = _coerce_job_count(extracted.get("job_count"))
     if not job_count:
+        return None
+    if _percent_only_mention(job_count, raw_text):
+        print(f"Extraction rejected: job_count {job_count} appears only as a percentage "
+              f"— source: {raw_entry.get('source_url')}")
         return None
     extracted["job_count"] = job_count
 
