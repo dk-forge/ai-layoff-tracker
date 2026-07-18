@@ -4,7 +4,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-HEALTH_TEMPLATE = (ROOT / "wordpress-plugin/ai-layoff-tracker/templates/page-health.php").read_text()
+# The widget builder moved to its own publisher page on 2026-07-18.
+HEALTH_TEMPLATE = (ROOT / "wordpress-plugin/ai-layoff-tracker/templates/page-publisher.php").read_text()
 HEALTH_JS = (ROOT / "wordpress-plugin/ai-layoff-tracker/assets/health.js").read_text()
 
 
