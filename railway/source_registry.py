@@ -42,6 +42,9 @@ MARKETS = {
     "US": Market("US", "reconciled", "Challenger, Gray & Christmas",
                  ("WARN notice", "mass layoff", "workforce reduction"),
                  ("state WARN notices", "SEC EDGAR 8-K/6-K", "company IR"), ()),
+    "EU": Market("EU", "structured_official", "European Restructuring Monitor (Eurofound)",
+                 ("collective redundancy", "collective dismissal", "restructuring"),
+                 ("European Restructuring Monitor (Eurofound)", "worldwide news", "reviewed company IR feeds"), ()),
     # These markets have worldwide-news discovery today. Their named filing
     # systems are candidates, not active feeds. Do not turn one into a coverage
     # claim until it has a documented public interface, connector, fixtures and

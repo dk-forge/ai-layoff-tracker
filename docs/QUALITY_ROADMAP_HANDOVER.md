@@ -31,6 +31,11 @@ remain the publication standard.
   collector-run ledger (time, source, status, raw candidate volume and safe
   detail); it never reconstructs legacy activity or treats raw candidates as
   accepted events.
+  The permitted Eurofound European Restructuring Monitor (ERM) import also
+  writes its own `running`, `ok`, or `degraded` health state. It is an
+  announcement-stage, source-linked EU27+Norway (and historical UK) source,
+  with Eurofound factsheet links and attribution—not a claim of complete
+  European coverage.
 
 - Plugin version **2.18.28** is the next `main` deployment. Each
   deployment passes a pre-upload PHP syntax lint and a post-upload cache-busted

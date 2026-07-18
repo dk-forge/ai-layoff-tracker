@@ -34,6 +34,8 @@ from datetime import date, timedelta
 
 import requests
 
+from source_health import report_source_health
+
 CSV_URL = "https://apps.eurofound.europa.eu/restructuring-events/factsheetscsv"
 DETAIL_URL = "https://apps.eurofound.europa.eu/restructuring-events/detail/{id}"
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
@@ -125,31 +127,47 @@ def to_entry(r):
     }
 
 
-def main():
+def run():
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     key = os.environ.get("WP_API_KEY", "")
     if not site or not key:
-        print("WP_SITE_URL / WP_API_KEY missing"); sys.exit(1)
+        raise RuntimeError("WP_SITE_URL / WP_API_KEY missing")
+    if not report_source_health("eurofound_erm", "running", 0, "daily Eurofound ERM import in progress"):
+        raise RuntimeError("Could not publish Eurofound ERM running health status")
+    try:
+        entries = [e for e in (to_entry(r) for r in fetch_events()) if e]
+        print(f"ERM: {len(entries)} job-loss events >= {MIN_DATE} "
+              f"({sum(e['job_count'] for e in entries):,} jobs)")
 
-    entries = [e for e in (to_entry(r) for r in fetch_events()) if e]
-    print(f"ERM: {len(entries)} job-loss events >= {MIN_DATE} "
-          f"({sum(e['job_count'] for e in entries):,} jobs)")
+        failed = 0
+        for i in range(0, len(entries), BATCH):
+            batch = entries[i:i + BATCH]
+            resp = requests.post(
+                f"{site}/wp-json/layoffs/v1/bulk",
+                json={"entries": batch},
+                headers={**UA, "X-Layoff-API-Key": key, "Content-Type": "application/json"},
+                timeout=180)
+            if resp.status_code != 200:
+                failed += 1
+                print(f"batch {i // BATCH + 1} FAILED: {resp.status_code} {resp.text[:300]}")
+            else:
+                print(f"batch {i // BATCH + 1}: {resp.json()}")
+        if failed:  # data jobs fail loudly (house rule)
+            raise RuntimeError(f"Eurofound ERM import had {failed} failed batch(es)")
+        detail = f"{len(entries)} source-linked ERM announcement event(s) imported"
+        if not report_source_health("eurofound_erm", "ok", len(entries), detail):
+            raise RuntimeError("Could not publish Eurofound ERM completion health status")
+        return entries
+    except Exception as exc:
+        # A failed source attempt is a material coverage condition, not an
+        # empty successful pull. Preserve the failure in the public health
+        # ledger before the workflow exits non-zero.
+        report_source_health("eurofound_erm", "degraded", 0, f"ERM import failed: {exc}")
+        raise
 
-    failed = 0
-    for i in range(0, len(entries), BATCH):
-        batch = entries[i:i + BATCH]
-        resp = requests.post(
-            f"{site}/wp-json/layoffs/v1/bulk",
-            json={"entries": batch},
-            headers={**UA, "X-Layoff-API-Key": key, "Content-Type": "application/json"},
-            timeout=180)
-        if resp.status_code != 200:
-            failed += 1
-            print(f"batch {i // BATCH + 1} FAILED: {resp.status_code} {resp.text[:300]}")
-        else:
-            print(f"batch {i // BATCH + 1}: {resp.json()}")
-    if failed:  # data jobs fail loudly (house rule)
-        sys.exit(1)
+
+def main():
+    run()
 
 
 if __name__ == "__main__":
