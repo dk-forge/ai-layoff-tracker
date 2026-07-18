@@ -15,6 +15,7 @@ Env:
 """
 import os
 import sys
+import time
 
 import requests
 
@@ -41,22 +42,38 @@ def post_bulk(entries):
     }
     upserted = 0
     total_batches = (len(entries) + BATCH - 1) // BATCH
+    # The shared host intermittently answers 5xx/timeouts under load (a
+    # 2026-07-18 nationwide reload lost 5 batches to 504s). The upsert is
+    # hash-idempotent, so retrying a batch is always safe; only a batch that
+    # stays failed after the retries counts against the run.
+    transient = {500, 502, 503, 504, 520, 521, 522, 524}
     for i in range(0, len(entries), BATCH):
         chunk = entries[i:i + BATCH]
         n = i // BATCH + 1
-        try:
-            resp = requests.post(f"{wp}/wp-json/layoffs/v1/bulk",
-                                 json={"entries": chunk}, headers=headers, timeout=180)
-            if resp.status_code == 200:
-                got = resp.json().get("upserted", 0)
-                upserted += got
-                print(f"  batch {n}/{total_batches}: upserted {got}")
-            else:
+        for attempt in range(3):
+            try:
+                resp = requests.post(f"{wp}/wp-json/layoffs/v1/bulk",
+                                     json={"entries": chunk}, headers=headers, timeout=180)
+                if resp.status_code == 200:
+                    got = resp.json().get("upserted", 0)
+                    upserted += got
+                    print(f"  batch {n}/{total_batches}: upserted {got}")
+                    break
+                if resp.status_code in transient and attempt < 2:
+                    print(f"  batch {n}/{total_batches}: transient {resp.status_code}, retrying in 60s")
+                    time.sleep(60)
+                    continue
                 FAILED_BATCHES += 1
                 print(f"  batch {n}/{total_batches} FAILED: {resp.status_code} {resp.text[:200]}")
-        except Exception as e:
-            FAILED_BATCHES += 1
-            print(f"  batch {n}/{total_batches} error: {e}")
+                break
+            except Exception as e:
+                if attempt < 2:
+                    print(f"  batch {n}/{total_batches}: {e}; retrying in 60s")
+                    time.sleep(60)
+                    continue
+                FAILED_BATCHES += 1
+                print(f"  batch {n}/{total_batches} error: {e}")
+                break
     return upserted
 
 
