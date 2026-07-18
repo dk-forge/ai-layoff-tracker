@@ -15,7 +15,10 @@ on:
 jobs:
   reclassify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Rows take ~2.5 min each (source refetch + evidence re-read); 20 min
+    # cancelled every batch above ~6. 45 min fits the 1-100 input range's
+    # practical batches while still bounding a hung run.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
