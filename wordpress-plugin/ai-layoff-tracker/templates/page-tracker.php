@@ -49,7 +49,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>
-    <p class="alt-lead">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them. <a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a></p>
+    <p class="alt-lead">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them. <a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></p>
 
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>

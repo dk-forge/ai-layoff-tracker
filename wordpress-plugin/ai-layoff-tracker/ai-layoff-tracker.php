@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.40
+ * Version: 2.18.41
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.40');
+define('ALT_VERSION', '2.18.41');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -111,6 +111,16 @@ function alt_ensure_tracker_health_page_once() {
 }
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
 
+function alt_ensure_publisher_page_once() {
+    if (get_page_by_path('ai-layoff-tracker/publisher-tools')) return;
+    $parent = get_page_by_path('ai-layoff-tracker');
+    if (!$parent) return; // retry later; never create an orphaned page
+    wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
+        'post_parent' => (int) $parent->ID, 'post_title' => 'Embed the Layoff Tracker',
+        'post_name' => 'publisher-tools', 'post_content' => '[alt_publisher_tools]'));
+}
+add_action('init', 'alt_ensure_publisher_page_once', 20);
+
 function alt_ensure_quarterly_report_page_once() {
     if (get_page_by_path('ai-layoff-tracker/state-of-layoffs')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
@@ -177,7 +187,7 @@ function alt_page_needs_assets() {
     if (!$post) return false;
     $shortcodes = array(
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
-        'alt_ai_tracker', 'alt_tracker_health', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
+        'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact',
     );
     foreach ($shortcodes as $shortcode) {
@@ -190,7 +200,8 @@ function alt_enqueue_assets() {
     if (!apply_filters('alt_enqueue_assets', alt_page_needs_assets())) return;
 
     wp_enqueue_style('alt-styles', ALT_PLUGIN_URL . 'assets/layoffs.css', array(), ALT_VERSION);
-    $is_health_page = is_singular() && has_shortcode(get_post_field('post_content', get_queried_object_id()), 'alt_tracker_health');
+    $alt_page_content = is_singular() ? get_post_field('post_content', get_queried_object_id()) : '';
+    $is_health_page = $alt_page_content && (has_shortcode($alt_page_content, 'alt_tracker_health') || has_shortcode($alt_page_content, 'alt_publisher_tools'));
     if ($is_health_page) {
         wp_enqueue_script('alt-health-js', ALT_PLUGIN_URL . 'assets/health.js', array(), ALT_VERSION, true);
         wp_localize_script('alt-health-js', 'altHealthData', array(
