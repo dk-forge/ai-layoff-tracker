@@ -89,8 +89,8 @@ body:has(.alt-tracker-wrap) .entry-title {
 }
 body:has(.alt-tracker-wrap) .entry-content { margin-top: 12px; }
 /* The theme stacks ~60px of padding above the title on this page; tighten it */
-body:has(.alt-tracker-wrap) main.wp-block-group { margin-top: 10px; }
-body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 12px; }
+body:has(.alt-tracker-wrap) main.wp-block-group { margin-top: 24px !important; }
+body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px !important; }
 .alt-header { margin: 0 0 18px; }
 .alt-brand { font-size: 12.5px; color: var(--alt-muted); margin-left: 10px; white-space: nowrap; }
 .alt-brand strong { color: var(--alt-ink-2); font-weight: 600; }

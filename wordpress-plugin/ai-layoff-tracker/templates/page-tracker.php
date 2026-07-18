@@ -38,7 +38,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>
-    <p class="alt-lead">Source-linked layoff events worldwide, across all industries and causes, with evidence-backed AI attribution kept separate from AI context. Published events retain a cited filing, company statement, government notice, restructuring database entry, or named news report; where a government publishes notices only in a list, that is labelled clearly. Coverage varies by country and source, so use the country, source and date filters to scope your research.</p>
+    <p class="alt-lead">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them. <a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a></p>
 
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -185,7 +185,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </div>
 
     <section class="alt-results-summary" aria-labelledby="alt-results-summary-title">
-        <h2 class="screen-reader-text" id="alt-results-summary-title">Results summary</h2>
+        <div class="screen-reader-text" id="alt-results-summary-title" role="heading" aria-level="2">Results summary</div>
         <div class="alt-stats-bar" id="alt-stats-bar">
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-total">—</span>
@@ -391,7 +391,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </details>
 
     <section class="alt-methodology alt-faq" itemscope>
-        <h2 class="alt-detail-h" style="font-size:19px;margin:0 0 10px">Frequently asked questions</h2>
+        <div class="alt-detail-h" role="heading" aria-level="2" style="font-size:19px;margin:0 0 10px">Frequently asked questions</div>
         <?php foreach (alt_faq_items() as $qa) : ?>
         <details class="alt-faq-item">
             <summary><?php echo esc_html($qa[0]); ?></summary>

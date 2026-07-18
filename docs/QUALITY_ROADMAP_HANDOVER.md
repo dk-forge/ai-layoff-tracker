@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-17 (evidence-hash backfill validated at 1,000 and scheduled twice daily; health-page feature-state list is live in plugin 2.18.8). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (tracker page spacing/TOC cleanup live in plugin 2.18.9; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
