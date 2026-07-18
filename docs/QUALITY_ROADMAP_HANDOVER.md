@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.12 includes a frameable, noindex US widget; Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.13 includes a frameable, noindex US widget with host-canonicalization guard; Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.

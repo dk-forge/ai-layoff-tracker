@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.12
+ * Version: 2.18.13
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.12');
+define('ALT_VERSION', '2.18.13');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -142,7 +142,13 @@ function alt_detect_widget_request($wp) {
 add_action('parse_request', 'alt_detect_widget_request');
 
 function alt_render_widget_route() {
-    if (!get_query_var('alt_tracker_widget')) return;
+    // The shared host's canonical redirect can run before a custom query var
+    // reaches WP_Query. Use only an exact path or explicit `=1` query as a
+    // fallback; never intercept a broader class of URLs.
+    $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+    $is_widget_path = (bool) preg_match('~(?:^|/)ai-layoff-tracker/widget$~', $path);
+    $is_widget_query = isset($_GET['alt_tracker_widget']) && (string) wp_unslash($_GET['alt_tracker_widget']) === '1';
+    if (!get_query_var('alt_tracker_widget') && !$is_widget_path && !$is_widget_query) return;
     status_header(200);
     header('X-Robots-Tag: noindex, nofollow', true);
     // This is the only intentionally embeddable route. It has no cookies,
