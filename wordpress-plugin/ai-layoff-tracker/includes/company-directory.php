@@ -107,3 +107,64 @@ add_filter('document_title_parts', 'alt_company_directory_title', 5);
 function alt_company_directory_seo_title($title) { $data = alt_company_directory_current(); return $data ? $data['company']['display_name'] . ' layoffs: source-linked event history' : $title; }
 add_filter('wpseo_title', 'alt_company_directory_seo_title', 5);
 add_filter('rank_math/frontend/title', 'alt_company_directory_seo_title', 5);
+
+/**
+ * Indexable company URLs: approved mappings whose evidence support still
+ * meets the two-event threshold at read time. Cached against the data
+ * version so admissions and merges refresh the list.
+ */
+function alt_company_directory_indexable_urls() {
+    global $wpdb;
+    $cache_key = 'alt_company_dir_sitemap_' . md5((string) get_option('alt_data_ver', 1));
+    $cached = get_transient($cache_key);
+    if (is_array($cached)) return $cached;
+    $directory = alt_company_directory_table();
+    $layoffs = alt_db_table(); $events = alt_events_table(); $reports = alt_source_reports_table();
+    $slugs = $wpdb->get_col(
+        "SELECT d.slug FROM $directory d
+         WHERE d.review_status = 'approved' AND (
+             SELECT COUNT(*) FROM $layoffs l
+             INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
+             WHERE l.company_key = d.company_key AND l.event_id > 0
+             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
+         ) >= 2 ORDER BY d.slug ASC") ?: array();
+    $urls = array_map('alt_company_directory_url', $slugs);
+    set_transient($cache_key, $urls, 15 * MINUTE_IN_SECONDS);
+    return $urls;
+}
+
+/**
+ * Self-served company sitemap. The production site's SEO plugin disables WP
+ * core sitemaps (wp-sitemap.xml is 404; sitemap_index.xml is the real index),
+ * so a core-sitemaps provider would silently never render. Instead the plugin
+ * serves /company-layoffs-sitemap.xml itself and appends that URL to whichever
+ * SEO plugin's sitemap index is active — the same defensive dual-hook pattern
+ * as the robots/canonical/title filters above.
+ */
+function alt_company_directory_sitemap_url() { return home_url('/company-layoffs-sitemap.xml'); }
+function alt_company_directory_register_sitemap_route() {
+    add_rewrite_rule('^company-layoffs-sitemap\.xml$', 'index.php?alt_company_sitemap=1', 'top');
+}
+add_action('init', 'alt_company_directory_register_sitemap_route', 1);
+function alt_company_directory_sitemap_query_vars($vars) { $vars[] = 'alt_company_sitemap'; return $vars; }
+add_filter('query_vars', 'alt_company_directory_sitemap_query_vars');
+function alt_company_directory_render_sitemap() {
+    if ((string) get_query_var('alt_company_sitemap') === '') return;
+    $urls = alt_company_directory_indexable_urls();
+    if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
+    status_header(200);
+    header('Content-Type: application/xml; charset=UTF-8');
+    header('X-Robots-Tag: noindex, follow');
+    echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+    foreach ($urls as $url) { echo '  <url><loc>' . esc_url($url) . '</loc></url>' . "\n"; }
+    echo '</urlset>';
+    exit;
+}
+add_action('template_redirect', 'alt_company_directory_render_sitemap', 0);
+function alt_company_directory_sitemap_index_entry($xml) {
+    if (!alt_company_directory_indexable_urls()) return $xml;
+    return $xml . '<sitemap><loc>' . esc_url(alt_company_directory_sitemap_url()) . '</loc></sitemap>' . "\n";
+}
+add_filter('wpseo_sitemap_index', 'alt_company_directory_sitemap_index_entry');
+add_filter('rank_math/sitemap/index', 'alt_company_directory_sitemap_index_entry');

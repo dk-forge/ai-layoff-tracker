@@ -92,11 +92,9 @@ def _first_number(text, patterns, label):
     raise RuntimeError(f"Could not extract Challenger {label} AI total")
 
 
-def challenger_ai_totals(url, reference_month):
+def challenger_ai_totals(url, reference_month, page_text=None):
     """Parse a new official report.  Historical records stay source-cited above."""
-    response = requests.get(url, headers=UA, timeout=45)
-    response.raise_for_status()
-    text = _strip(response.text)
+    text = page_text if page_text is not None else _fetch_report_text(url)
     month_name = MONTH_NAMES[int(reference_month[5:7]) - 1]
     monthly = _first_number(text, (
         rf"In {month_name}, Artificial Intelligence(?: \(AI\))?[^.]{{0,180}}?\bwith\s+([\d,]+)\s+announced",
@@ -110,6 +108,42 @@ def challenger_ai_totals(url, reference_month):
         r"Artificial Intelligence(?: \(AI\))?[^.]{{0,180}}?\b([\d,]+)\s+cuts this year",
     ), "YTD")
     return monthly, ytd
+
+
+def _fetch_report_text(url):
+    response = requests.get(url, headers=UA, timeout=45)
+    response.raise_for_status()
+    return _strip(response.text)
+
+
+def challenger_all_cut_totals(url, reference_month, page_text=None):
+    """Fail-soft parse of Challenger's headline TOTAL announced cuts.
+
+    The AI figures above remain strict (a parse failure fails the run); the
+    all-cuts pair is an additional labeled comparator, so a wording change in
+    an old report degrades to (None, None) with a printed warning instead of
+    blocking the AI reconciliation.
+    """
+    try:
+        text = page_text if page_text is not None else _fetch_report_text(url)
+        month_name = MONTH_NAMES[int(reference_month[5:7]) - 1]
+        monthly = _first_number(text, (
+            rf"announced\s+([\d,]+)\s+(?:job )?cuts in {month_name}",
+            rf"announced plans to cut\s+([\d,]+)\s+jobs in {month_name}",
+            rf"{month_name}[^.]{{0,120}}?announced\s+([\d,]+)\s+(?:job )?cuts",
+            rf"job cuts (?:cool(?:ed)?|fell|rose|surged|climbed)[^.]{{0,80}}?to\s+([\d,]+)",
+            rf"cut\s+([\d,]+)\s+jobs in {month_name}",
+        ), "monthly total")
+        ytd = _first_number(text, (
+            r"(?:So far this year|Year to date|This year)[^.]{0,160}?announced(?: plans to cut)?\s+([\d,]+)",
+            r"employers have announced\s+([\d,]+)\s+(?:job )?cuts",
+            r"announced\s+([\d,]+)\s+job cuts (?:so far )?this year",
+            r"a total of\s+([\d,]+)\s+(?:job )?cuts (?:have been )?announced",
+        ), "YTD total")
+        return monthly, ytd
+    except Exception as exc:
+        print(f"WARNING: all-cuts totals unavailable for {reference_month}: {exc}")
+        return None, None
 
 
 def reports_for_year(year):
@@ -142,6 +176,9 @@ def tracker_comparison_totals(site, reference_month):
     groups = {
         "strict": {"employer_country": "United States", "ai_primary": "1"},
         "observed": {"country": "United States", "ai": "1"},
+        # All-cuts comparator: identical strict gates minus the AI
+        # requirement, against Challenger's headline total announced cuts.
+        "strict_all": {"employer_country": "United States"},
     }
     totals = {}
     urls = {}
@@ -169,9 +206,15 @@ def payload_for_report(site, report, allowed):
     totals, urls = tracker_comparison_totals(site, report["reference_month"])
     challenger_ytd = int(report["ai_jobs_ytd"])
     challenger_month = int(report["ai_jobs_month"])
+    total_month, total_ytd = challenger_all_cut_totals(report["benchmark_url"], report["reference_month"])
     variance = (totals["strict_ytd"] - challenger_ytd) / challenger_ytd if challenger_ytd else 0.0
     monthly_variance = (totals["strict_month"] - challenger_month) / challenger_month if challenger_month else 0.0
     return {
+        "challenger_total_jobs_month": total_month, "challenger_total_jobs_ytd": total_ytd,
+        "tracker_announced_us_employer_jobs_month": totals["strict_all_month"],
+        "tracker_announced_us_employer_jobs_ytd": totals["strict_all_ytd"],
+        "tracker_all_month_query": urls["strict_all_month"],
+        "tracker_all_query": urls["strict_all_ytd"],
         "year": int(report["reference_month"][:4]), "reference_month": report["reference_month"],
         "report_month": report["report_month"], "benchmark": "Challenger, Gray & Christmas",
         "benchmark_url": report["benchmark_url"], "challenger_ai_jobs_month": challenger_month,
@@ -186,7 +229,7 @@ def payload_for_report(site, report, allowed):
         "tracker_ai_cited_announced_us_job_location_jobs_ytd": totals["observed_ytd"],
         "monthly_variance": round(monthly_variance, 4), "variance": round(variance, 4),
         "allowed_variance": allowed,
-        "definition": "Strict: US employer + source-evidenced announcement date + announced + AI primary + canonical event. Diagnostic figure is US job location + any explicit AI citation and is not Challenger-comparable.",
+        "definition": "Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Challenger AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Challenger total announced cuts. Diagnostic figure is US job location + any explicit AI citation and is not Challenger-comparable.",
     }
 
 

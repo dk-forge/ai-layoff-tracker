@@ -803,6 +803,15 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_company_directory_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // Automated admission under a published deterministic policy: the server
+    // selects unmapped company keys whose evidence support is comfortably
+    // above the manual threshold and whose display name passes identity
+    // sanity checks, then runs them through the SAME admission validator as
+    // the manual writer. No page can appear below the evidence threshold.
+    register_rest_route('layoffs/v1', '/company-directory/autopilot', array(
+        'methods' => 'POST', 'callback' => 'alt_api_company_directory_autopilot',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
 }
 
 /** Public, read-only registry listing: reviewed mappings and their evidence support. */
@@ -823,7 +832,7 @@ function alt_api_company_directory_get() {
         );
     }
     return rest_ensure_response(array(
-        'methodology' => 'Company pages exist only for reviewed identity mappings and render only source-linked canonical events. A listed mapping is an identity review record, not a completeness claim for that employer.',
+        'methodology' => 'Company pages exist only for admitted identity mappings — added by editor review or by a published automated evidence-threshold policy (autopilot-v1) — and render only source-linked canonical events. A listed mapping is an identity record, not a completeness claim for that employer.',
         'mappings' => $out,
     ));
 }
@@ -836,7 +845,6 @@ function alt_api_company_directory_get() {
  * mapping can never will a page into existence without retained evidence.
  */
 function alt_api_company_directory_post(WP_REST_Request $r) {
-    global $wpdb;
     $reason = trim((string) $r->get_param('reason'));
     if ($reason === '') {
         return new WP_Error('alt_bad_request', 'reason is required.', array('status' => 400));
@@ -845,6 +853,14 @@ function alt_api_company_directory_post(WP_REST_Request $r) {
     if (!is_array($mappings) || !$mappings) {
         return new WP_Error('alt_bad_request', 'mappings must be a non-empty array.', array('status' => 400));
     }
+    $out = alt_company_directory_admit_mappings($mappings);
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
+}
+
+/** Shared admission validator used by both the manual writer and autopilot. */
+function alt_company_directory_admit_mappings(array $mappings) {
+    global $wpdb;
     $directory = alt_company_directory_table();
     $layoffs = alt_db_table(); $events = alt_events_table(); $reports = alt_source_reports_table();
     $out = array('admitted' => array(), 'rejected' => array());
@@ -901,6 +917,146 @@ function alt_api_company_directory_post(WP_REST_Request $r) {
             'source_linked_canonical_events' => $supported,
             'url' => alt_company_directory_url($slug),
         );
+    }
+    return $out;
+}
+
+/** Identity sanity gate for automated admission. Returns '' when the name is usable. */
+function alt_company_directory_name_rejection($name) {
+    $name = trim((string) $name);
+    $length = function_exists('mb_strlen') ? mb_strlen($name) : strlen($name);
+    if ($length < 2 || $length > 64) return 'display name length outside 2-64 characters';
+    if (!preg_match('/\p{L}/u', $name)) return 'display name contains no letters';
+    if (count(preg_split('/\s+/', $name)) > 6) return 'display name reads like a sentence, not an identity';
+    $lower = function_exists('mb_strtolower') ? mb_strtolower($name) : strtolower($name);
+    $generic = array('multiple companies', 'multiple', 'various', 'various companies', 'various employers',
+        'unknown', 'undisclosed', 'not disclosed', 'n/a', 'company', 'companies', 'employer', 'employers',
+        'several', 'several companies', 'several firms', 'firm', 'firms', 'tbd', 'not specified',
+        'unnamed', 'unnamed company', 'confidential', 'staffing agency', 'tech companies',
+        'a major tech company', 'major tech company');
+    if (in_array($lower, $generic, true)) return 'generic, non-identifying company name';
+    // Extraction placeholders arrive in many spellings ('Unknown Co',
+    // 'Unknown Company', 'Various Employers Inc') that all normalize to the
+    // same company_key — compare in key space too so variants cannot slip
+    // around the exact-match list.
+    if (function_exists('alt_company_key')) {
+        $generic_keys = array_filter(array_map('alt_company_key', $generic));
+        $name_key = alt_company_key($name);
+        if ($name_key === '' || in_array($name_key, $generic_keys, true)) {
+            return 'generic, non-identifying company name (normalized match)';
+        }
+    }
+    return '';
+}
+
+/**
+ * Park a key the autopilot cannot safely admit as a 'pending' directory row.
+ * Pending rows never render or list publicly, but they satisfy the candidate
+ * query's NOT EXISTS — so a perpetually unadmittable key stops occupying a
+ * candidate slot on every weekly run and waits for manual review instead.
+ */
+function alt_company_directory_park_pending($key, $name) {
+    global $wpdb;
+    $directory = alt_company_directory_table();
+    if ($wpdb->get_var($wpdb->prepare("SELECT id FROM $directory WHERE company_key = %s", $key))) return;
+    $name = sanitize_text_field((string) $name);
+    $display = $name !== '' ? (function_exists('mb_substr') ? mb_substr($name, 0, 190) : substr($name, 0, 190)) : $key;
+    $slug = sanitize_title($display);
+    if ($slug === '' || $wpdb->get_var($wpdb->prepare("SELECT id FROM $directory WHERE slug = %s", $slug))) {
+        $slug = 'pending-' . substr(md5($key), 0, 12);
+        if ($wpdb->get_var($wpdb->prepare("SELECT id FROM $directory WHERE slug = %s", $slug))) return;
+    }
+    $now = current_time('mysql', true);
+    $wpdb->insert($directory, array(
+        'company_key' => $key, 'slug' => $slug, 'display_name' => $display,
+        'review_status' => 'pending', 'reviewed_at' => null,
+        'created_at' => $now, 'updated_at' => $now,
+    ));
+}
+
+/**
+ * Automated weekly admission. Selects unmapped company keys with at least
+ * min_events source-linked canonical events (floor 3 — deliberately above the
+ * manual two-event threshold), picks the most frequently reported company
+ * name for the key, applies the identity sanity gate, and admits through the
+ * same validator as the manual writer. The Actions run log plus this
+ * response are the audit trail; the policy string is returned every run.
+ */
+function alt_api_company_directory_autopilot(WP_REST_Request $r) {
+    global $wpdb;
+    $min_events = max(3, min(10, (int) ($r->get_param('min_events') ?: 3)));
+    $limit = max(1, min(50, (int) ($r->get_param('limit') ?: 25)));
+    // Idempotency: a workflow retry after an ambiguous gateway error replays
+    // the stored response instead of admitting a second batch, so one run can
+    // never exceed its documented cap or lose its audit record.
+    $token = sanitize_key((string) $r->get_param('run_token'));
+    if ($token !== '') {
+        $prior = get_option('alt_directory_autopilot_last');
+        if (is_array($prior) && ($prior['token'] ?? '') === $token && isset($prior['response'])) {
+            return rest_ensure_response($prior['response']);
+        }
+    }
+    $directory = alt_company_directory_table();
+    $layoffs = alt_db_table(); $events = alt_events_table(); $reports = alt_source_reports_table();
+    $candidates = $wpdb->get_results($wpdb->prepare(
+        "SELECT l.company_key, COUNT(*) supported
+         FROM $layoffs l INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
+         WHERE l.event_id > 0 AND l.company_key <> ''
+           AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
+           AND NOT EXISTS (SELECT 1 FROM $directory d WHERE d.company_key = l.company_key)
+         GROUP BY l.company_key HAVING COUNT(*) >= %d
+         ORDER BY supported DESC, l.company_key ASC LIMIT %d", $min_events, $limit), ARRAY_A) ?: array();
+    $mappings = array(); $skipped = array(); $names_by_key = array();
+    foreach ($candidates as $candidate) {
+        $key = $candidate['company_key'];
+        // Name candidates come ONLY from the qualifying evidence rows — the
+        // same canonical, source-linked set the threshold counted — never
+        // from unrelated rows that happen to share the normalized key.
+        $names = $wpdb->get_col($wpdb->prepare(
+            "SELECT DISTINCT l.company FROM $layoffs l
+             INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
+             WHERE l.company_key = %s AND l.event_id > 0 AND l.company <> ''
+             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')", $key)) ?: array();
+        $distinct = array_values(array_unique(array_map(
+            function_exists('mb_strtolower') ? 'mb_strtolower' : 'strtolower',
+            array_map('trim', $names))));
+        $name = sanitize_text_field((string) ($names[0] ?? ''));
+        $names_by_key[$key] = $name;
+        if (count($distinct) !== 1) {
+            $skipped[] = array('company_key' => $key, 'why' => 'qualifying events disagree on the company name; parked pending manual identity review');
+            alt_company_directory_park_pending($key, $name);
+            continue;
+        }
+        $why = alt_company_directory_name_rejection($name);
+        if ($why !== '') {
+            $skipped[] = array('company_key' => $key, 'why' => $why . '; parked pending manual identity review');
+            alt_company_directory_park_pending($key, $name);
+            continue;
+        }
+        $slug = sanitize_title($name);
+        if ($slug === '') {
+            $skipped[] = array('company_key' => $key, 'why' => 'name produces an empty slug; parked pending manual identity review');
+            alt_company_directory_park_pending($key, $name);
+            continue;
+        }
+        $mappings[] = array('company_key' => $key, 'slug' => $slug, 'display_name' => $name, 'review_status' => 'approved');
+    }
+    $out = $mappings ? alt_company_directory_admit_mappings($mappings) : array('admitted' => array(), 'rejected' => array());
+    // Validator-rejected keys (e.g. slug owned by another mapping) are parked
+    // too, so they stop consuming candidate slots on every future run.
+    foreach ($out['rejected'] as $rejected) {
+        if (!empty($rejected['company_key'])) {
+            alt_company_directory_park_pending($rejected['company_key'], $names_by_key[$rejected['company_key']] ?? '');
+        }
+    }
+    $out['skipped_identity_checks'] = $skipped;
+    $out['candidates_considered'] = count($candidates);
+    $out['policy'] = "autopilot-v1: unmapped company keys with >=$min_events source-linked canonical events, "
+        . 'a single agreed company name across the qualifying evidence rows passing identity sanity checks, '
+        . 'and a unique slug; validated by the same server-side admission rules as manual review. '
+        . 'Unadmittable keys are parked as pending for manual review.';
+    if ($token !== '') {
+        update_option('alt_directory_autopilot_last', array('token' => $token, 'response' => $out), false);
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
@@ -1239,7 +1395,7 @@ function alt_api_quality_status() {
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'dataset_release_ledger', 'status' => 'active', 'scope' => 'Immutable release snapshots from this deployment forward; no invented legacy addition counts'),
-            array('id' => 'company_directory', 'status' => 'active', 'scope' => 'Reviewed, source-linked company pages only; the first reviewed mappings (admitted 2026-07-18) are live and every page renders retained source links, with the two-event indexability threshold enforced server-side'),
+            array('id' => 'company_directory', 'status' => 'active', 'scope' => 'Source-linked company pages that grow automatically: a weekly autopilot (autopilot-v1) admits companies at three or more source-linked canonical events with a clean identity, through the same server-side admission rules and two-event indexability threshold as manual review; indexable pages are sitemap-listed'),
             array('id' => 'quarterly_state_of_layoffs', 'status' => 'active', 'scope' => 'Server-generated immutable quarterly snapshots; the first report (2026-Q2) is published from a frozen snapshot with its data revision and coverage limits disclosed'),
             array('id' => 'warn_transparency_dataset', 'status' => 'in_progress', 'scope' => 'Separate evidence-linked timing/adjudication research dataset; never included in layoff or AI totals'),
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'First five reviewed company-owned IR feeds admitted to the versioned registry on 2026-07-18; live collection state is reported by source health above. Official national connectors remain pending permitted interfaces'),
@@ -1565,9 +1721,15 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
         'tracker_ai_primary_announced_us_employer_jobs_ytd' => $tracker,
         'tracker_ai_cited_announced_us_job_location_jobs_month' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_month')),
         'tracker_ai_cited_announced_us_job_location_jobs_ytd' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_ytd')),
+        // All-cuts comparator pair (nullable: Challenger totals parse
+        // fail-soft, and older records predate these fields).
+        'challenger_total_jobs_month' => $r->get_param('challenger_total_jobs_month') === null ? null : max(0, (int) $r->get_param('challenger_total_jobs_month')),
+        'challenger_total_jobs_ytd' => $r->get_param('challenger_total_jobs_ytd') === null ? null : max(0, (int) $r->get_param('challenger_total_jobs_ytd')),
+        'tracker_announced_us_employer_jobs_month' => $r->get_param('tracker_announced_us_employer_jobs_month') === null ? null : max(0, (int) $r->get_param('tracker_announced_us_employer_jobs_month')),
+        'tracker_announced_us_employer_jobs_ytd' => $r->get_param('tracker_announced_us_employer_jobs_ytd') === null ? null : max(0, (int) $r->get_param('tracker_announced_us_employer_jobs_ytd')),
         'monthly_variance' => $benchmark_month ? round(($tracker_month - $benchmark_month) / $benchmark_month, 4) : null,
         'variance' => round(($tracker - $benchmark) / $benchmark, 4),
-        'definition' => 'Strict: US employer + source-evidenced announcement date + announced + AI primary + canonical event. Diagnostic figure is not Challenger-comparable.',
+        'definition' => 'Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Challenger AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Challenger total announced cuts. Diagnostic figure is not Challenger-comparable.',
     );
     krsort($records); update_option('alt_challenger_benchmarks', array_slice($records, 0, 24, true), false);
     return rest_ensure_response($records[$key]);
@@ -2179,12 +2341,20 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     $months = $wpdb->get_results(alt_db_prep(
         "SELECT CONCAT(YEAR(layoff_date),'-',LPAD(MONTH(layoff_date),2,'0')) m,
                 SUM(job_count) jobs,
-                COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
+                COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
+                COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) verified_jobs,
+                COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) announced_jobs,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN job_count END),0) ai_announced_jobs
          FROM $table WHERE $where AND layoff_date > '2000-01-01'
          GROUP BY m ORDER BY m ASC", $params));
     $series = array();
     foreach ($months ?: array() as $row) {
-        $series[] = array('month' => $row->m, 'jobs' => (int) $row->jobs, 'ai_jobs' => (int) $row->ai_jobs);
+        $series[] = array(
+            'month' => $row->m, 'jobs' => (int) $row->jobs, 'ai_jobs' => (int) $row->ai_jobs,
+            'verified_jobs' => (int) $row->verified_jobs, 'announced_jobs' => (int) $row->announced_jobs,
+            'ai_verified_jobs' => (int) $row->ai_verified_jobs, 'ai_announced_jobs' => (int) $row->ai_announced_jobs,
+        );
     }
 
     // Largest single events

@@ -1,0 +1,84 @@
+name: Company directory autopilot
+
+# Weekly automated admission of company pages under the published
+# autopilot-v1 policy. The SERVER decides everything that matters: it only
+# considers unmapped company keys with >=3 source-linked canonical events,
+# applies identity sanity checks, and validates through the same admission
+# rules as manual review — so this workflow can never publish a page without
+# retained evidence. The run log is the audit trail.
+
+on:
+  schedule:
+    - cron: '20 14 * * 2'
+  workflow_dispatch:
+    inputs:
+      min_events:
+        description: 'Minimum source-linked canonical events (3-10)'
+        required: false
+        default: '3'
+      limit:
+        description: 'Maximum admissions per run (1-50)'
+        required: false
+        default: '25'
+
+concurrency:
+  group: company-directory
+  cancel-in-progress: false
+
+jobs:
+  autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Admit qualifying companies
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          MIN_EVENTS: ${{ github.event.inputs.min_events || '3' }}
+          LIMIT: ${{ github.event.inputs.limit || '25' }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          case "$MIN_EVENTS$LIMIT" in *[!0-9]*) echo "inputs must be integers" >&2; exit 2 ;; esac
+          # Retry transient shared-host gateway errors; the endpoint admits
+          # "whatever qualifies and is still unmapped", so a re-POST after an
+          # ambiguous 522 is safe. Real errors still fail loudly.
+          attempt=0
+          while :; do
+            attempt=$((attempt+1))
+            http="$(curl -sS -o /tmp/resp.json -w '%{http_code}' --connect-timeout 20 --max-time 180 -X POST \
+              -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+              -H "X-Layoff-API-Key: $WP_API_KEY" \
+              -H 'Content-Type: application/json' \
+              --data "{\"min_events\":$MIN_EVENTS,\"limit\":$LIMIT,\"run_token\":\"gh-${{ github.run_id }}\"}" \
+              https://asktherecruiter.com/blog/wp-json/layoffs/v1/company-directory/autopilot)" || http=000
+            [ "$http" = "200" ] && break
+            case "$http" in
+              000|502|503|504|520|521|522|524)
+                if [ "$attempt" -ge 4 ]; then
+                  echo "Autopilot call failed after $attempt attempts (last HTTP $http)" >&2
+                  cat /tmp/resp.json 2>/dev/null; exit 22
+                fi
+                echo "Transient HTTP $http on attempt $attempt; retrying in 45s"
+                sleep 45 ;;
+              *)
+                echo "Autopilot call returned HTTP $http" >&2
+                cat /tmp/resp.json 2>/dev/null; exit 22 ;;
+            esac
+          done
+          cat /tmp/resp.json
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          r = json.load(open('/tmp/resp.json'))
+          print('## Company-directory autopilot')
+          print()
+          print(f"- Policy: {r.get('policy', '?')}")
+          print(f"- Candidates considered: **{r.get('candidates_considered', 0)}**")
+          print(f"- Admitted: **{len(r.get('admitted', []))}**")
+          for a in r.get('admitted', []):
+              print(f"  - {a['slug']} ({a['source_linked_canonical_events']} source-linked events) -> {a['url']}")
+          print(f"- Rejected by admission rules: **{len(r.get('rejected', []))}**")
+          for x in r.get('rejected', []):
+              print(f"  - {x.get('company_key', '?')}: {x.get('why')}")
+          print(f"- Skipped by identity checks: **{len(r.get('skipped_identity_checks', []))}**")
+          for x in r.get('skipped_identity_checks', []):
+              print(f"  - {x.get('company_key', '?')}: {x.get('why')}")
+          PY

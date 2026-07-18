@@ -904,13 +904,20 @@
             ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '';
         if (!series || !series.length) { clearChart('alt-chart-weekly'); return; }
         var options = cloneOptions();
-        options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Jobs cut: ' + fmt(ctx.parsed.y); } };
+        options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Jobs cut') + ': ' + fmt(ctx.parsed.y); } };
+        // Verified is the primary line (matches the main stat card); the
+        // dashed announced line keeps plan-stage months (incl. future WARN
+        // effective dates) visible without mixing the two numbers.
+        var verified = series.map(function (s) { return (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+        var announced = series.map(function (s) { return s.announced_jobs || 0; });
+        var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 }];
+        if (announced.some(function (v) { return v > 0; })) {
+            datasets.push({ label: 'Announced job cuts', data: announced, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 });
+            options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+        }
         mountChart('alt-chart-weekly', {
             type: 'line',
-            data: {
-                labels: series.map(function (s) { return monthLabel(s.month); }),
-                datasets: [{ data: series.map(function (s) { return s.jobs; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 }]
-            },
+            data: { labels: series.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
             options: options
         });
     }
@@ -923,17 +930,24 @@
         if (range) range.textContent = ai.length
             ? 'since ' + monthLabel(ai[0].month) : '';
         if (!ai.length) { clearChart('alt-chart-ai-cumulative'); return; }
-        var running = 0;
-        var cum = (series || []).map(function (s) { running += s.ai_jobs; return { month: s.month, v: running }; })
-            .filter(function (x) { return x.v > 0; });
+        // Two labeled lines mirroring the stat cards: the verified subset and
+        // the announced-plan subset accumulate separately, never summed.
+        var start = null;
+        (series || []).forEach(function (s, i) { if (start === null && s.ai_jobs > 0) start = i; });
+        var window = (series || []).slice(start === null ? 0 : start);
+        var runV = 0, runA = 0;
+        var cumV = window.map(function (s) { runV += (s.ai_verified_jobs != null) ? s.ai_verified_jobs : s.ai_jobs; return runV; });
+        var cumA = window.map(function (s) { runA += s.ai_announced_jobs || 0; return runA; });
         var options = cloneOptions();
-        options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Cumulative AI-attributed: ' + fmt(ctx.parsed.y); } };
+        options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
+        var datasets = [{ label: 'Explicitly AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.25 }];
+        if (cumA[cumA.length - 1] > 0) {
+            datasets.push({ label: 'Announced AI job cuts', data: cumA, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.25 });
+            options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+        }
         mountChart('alt-chart-ai-cumulative', {
             type: 'line',
-            data: {
-                labels: cum.map(function (x) { return monthLabel(x.month); }),
-                datasets: [{ data: cum.map(function (x) { return x.v; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.25 }]
-            },
+            data: { labels: window.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
             options: options
         });
     }
@@ -952,26 +966,39 @@
             result.plugins.tooltip.callbacks = { label: function (ctx) {
                 return (ctx.dataset.label || 'Jobs') + ': ' + fmt(ctx.parsed.y);
             } };
+            result.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             result.scales.y.ticks.callback = function (value) { return fmt(value); };
             return result;
         }
+        function pick(field) { return points.map(function (p) { return (p[field] === undefined || p[field] === null) ? null : p[field]; }); }
+        function hasAny(field) { return points.some(function (p) { return p[field] !== null && p[field] !== undefined; }); }
+        // Four labeled comparison series: Challenger vs AskTheRecruiter, for
+        // all announced US cuts and for AI-attributed cuts. All-cuts lines
+        // appear only once the reconciliation job has retained those fields.
+        function datasetsFor(suffix) {
+            var sets = [
+                { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
+                { label: 'AskTheRecruiter — announced AI cuts (strict)', data: pick('tracker_' + suffix), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
+            ];
+            if (hasAny('challenger_total_' + suffix)) {
+                sets.push({ label: 'Challenger — all cuts', data: pick('challenger_total_' + suffix), borderColor: SEQ_BLUE, borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
+            }
+            if (hasAny('tracker_all_' + suffix)) {
+                sets.push({ label: 'AskTheRecruiter — announced US cuts', data: pick('tracker_all_' + suffix), borderColor: PALETTE[5], borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
+            }
+            return sets;
+        }
         var labels = points.map(function (p) { return monthLabel(p.period); });
-        if (monthlyCanvas && points.some(function (p) { return p.challenger_month !== null && p.challenger_month !== undefined; })) {
+        if (monthlyCanvas && hasAny('challenger_month')) {
             mountChart('alt-chart-challenger-monthly', {
                 type: 'line',
-                data: { labels: labels, datasets: [
-                    { label: 'Challenger official (month)', data: points.map(function (p) { return p.challenger_month; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
-                    { label: 'ATR strict comparable (month)', data: points.map(function (p) { return p.tracker_month; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
-                ] }, options: options()
+                data: { labels: labels, datasets: datasetsFor('month') }, options: options()
             });
         }
         if (ytdCanvas) {
             mountChart('alt-chart-challenger-reconciliation', {
                 type: 'line',
-                data: { labels: labels, datasets: [
-                    { label: 'Challenger official YTD', data: points.map(function (p) { return p.challenger_ytd; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
-                    { label: 'ATR strict comparable YTD', data: points.map(function (p) { return p.tracker_ytd; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
-                ] }, options: options()
+                data: { labels: labels, datasets: datasetsFor('ytd') }, options: options()
             });
         }
     }

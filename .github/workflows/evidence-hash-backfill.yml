@@ -32,12 +32,35 @@ jobs:
             echo "LIMIT must be from 1 to 1000" >&2
             exit 2
           fi
-          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 120 -X POST \
-            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
-            -H "X-Layoff-API-Key: $WP_API_KEY" \
-            -H 'Content-Type: application/json' \
-            --data "{\"limit\":$LIMIT}" \
-            https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-evidence-hash-backfill)"
+          # The shared host intermittently answers with Cloudflare gateway
+          # errors (522 origin timeout) even when the bounded write lands.
+          # Both backfill endpoints process "whatever is still pending", so a
+          # re-POST after an ambiguous gateway error is safe. Retry only
+          # transient gateway failures; anything else still fails loudly.
+          attempt=0
+          while :; do
+            attempt=$((attempt+1))
+            http="$(curl -sS -o /tmp/resp.json -w '%{http_code}' --connect-timeout 20 --max-time 120 -X POST \
+              -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+              -H "X-Layoff-API-Key: $WP_API_KEY" \
+              -H 'Content-Type: application/json' \
+              --data "{\"limit\":$LIMIT}" \
+              https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-evidence-hash-backfill)" || http=000
+            [ "$http" = "200" ] && break
+            case "$http" in
+              000|502|503|504|520|521|522|524)
+                if [ "$attempt" -ge 4 ]; then
+                  echo "Evidence-hash call failed after $attempt attempts (last HTTP $http)" >&2
+                  cat /tmp/resp.json 2>/dev/null; exit 22
+                fi
+                echo "Transient HTTP $http on attempt $attempt; retrying in 45s"
+                sleep 45 ;;
+              *)
+                echo "Evidence-hash call returned HTTP $http" >&2
+                cat /tmp/resp.json 2>/dev/null; exit 22 ;;
+            esac
+          done
+          response="$(cat /tmp/resp.json)"
           printf '%s\n' "$response"
           python3 - "$response" <<'PY'
           import json
@@ -65,12 +88,32 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           LIMIT: ${{ github.event.inputs.limit || '1000' }}
         run: |
-          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 120 -X POST \
-            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
-            -H "X-Layoff-API-Key: $WP_API_KEY" \
-            -H 'Content-Type: application/json' \
-            --data "{\"limit\":$LIMIT}" \
-            https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-report-link-backfill)"
+          # Same transient-gateway retry as the hash step: this endpoint also
+          # restores "whatever is still missing", so re-POSTing is safe.
+          attempt=0
+          while :; do
+            attempt=$((attempt+1))
+            http="$(curl -sS -o /tmp/resp.json -w '%{http_code}' --connect-timeout 20 --max-time 120 -X POST \
+              -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+              -H "X-Layoff-API-Key: $WP_API_KEY" \
+              -H 'Content-Type: application/json' \
+              --data "{\"limit\":$LIMIT}" \
+              https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-report-link-backfill)" || http=000
+            [ "$http" = "200" ] && break
+            case "$http" in
+              000|502|503|504|520|521|522|524)
+                if [ "$attempt" -ge 4 ]; then
+                  echo "Link-restore call failed after $attempt attempts (last HTTP $http)" >&2
+                  cat /tmp/resp.json 2>/dev/null; exit 22
+                fi
+                echo "Transient HTTP $http on attempt $attempt; retrying in 45s"
+                sleep 45 ;;
+              *)
+                echo "Link-restore call returned HTTP $http" >&2
+                cat /tmp/resp.json 2>/dev/null; exit 22 ;;
+            esac
+          done
+          response="$(cat /tmp/resp.json)"
           printf '%s\n' "$response"
           python3 - "$response" <<'PY'
           import json

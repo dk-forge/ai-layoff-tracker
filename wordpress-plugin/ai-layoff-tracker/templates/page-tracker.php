@@ -37,6 +37,12 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         'tracker_month' => array_key_exists('tracker_ai_primary_announced_us_employer_jobs_month', $alt_challenger_record) ? max(0, (int) $alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_month']) : null,
         'challenger_ytd' => max(0, (int) ($alt_challenger_record['challenger_ai_jobs_ytd'] ?? 0)),
         'tracker_ytd' => max(0, (int) ($alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0)),
+        // All-cuts comparator pair; null when a record predates the fields or
+        // the fail-soft Challenger totals parse was unavailable.
+        'challenger_total_month' => isset($alt_challenger_record['challenger_total_jobs_month']) && $alt_challenger_record['challenger_total_jobs_month'] !== null ? max(0, (int) $alt_challenger_record['challenger_total_jobs_month']) : null,
+        'challenger_total_ytd' => isset($alt_challenger_record['challenger_total_jobs_ytd']) && $alt_challenger_record['challenger_total_jobs_ytd'] !== null ? max(0, (int) $alt_challenger_record['challenger_total_jobs_ytd']) : null,
+        'tracker_all_month' => isset($alt_challenger_record['tracker_announced_us_employer_jobs_month']) && $alt_challenger_record['tracker_announced_us_employer_jobs_month'] !== null ? max(0, (int) $alt_challenger_record['tracker_announced_us_employer_jobs_month']) : null,
+        'tracker_all_ytd' => isset($alt_challenger_record['tracker_announced_us_employer_jobs_ytd']) && $alt_challenger_record['tracker_announced_us_employer_jobs_ytd'] !== null ? max(0, (int) $alt_challenger_record['tracker_announced_us_employer_jobs_ytd']) : null,
     );
 }
 ?>
@@ -206,17 +212,16 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts</span>
-                <span class="alt-stat-desc"><b>This number is not part of Verified job cuts.</b> Source-linked plans at announcement stage.</span>
+                <span class="alt-stat-desc"><b>This number is not part of Verified job cuts.</b> Source-linked plans at announcement stage, dated in the selected period.</span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
                 <span class="alt-stat-label">Announced AI job cuts</span>
-                <span class="alt-stat-desc"><b>This number is part of Announced job cuts.</b> Announced plans the company links to AI.</span>
+                <span class="alt-stat-desc"><b>This number is part of Announced job cuts.</b> Announced plans the company links to AI, dated in the selected period.</span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-ai-share">—</span>
-                <span class="alt-stat-label">AI share of Verified</span>
-                <span class="alt-stat-desc">How much of Verified job cuts is explicitly AI-attributed.</span>
+                <span class="alt-stat-label">of Verified job cuts are AI-attributed</span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-companies">—</span>
@@ -358,7 +363,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">
-            <p><b>Why the figures differ.</b> The cards above are scoped by the job-location country filter, while Challenger measures announcements by US-based employers. They are therefore not a like-for-like Challenger total. This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. The strict tracker figure includes only canonical events with a source-evidenced announcement date, a US-based employer, announcement-stage status and AI as the primary stated cause. The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
+            <p><b>Why the figures differ.</b> The cards above are scoped by the job-location country filter, while Challenger measures announcements by US-based employers. They are therefore not a like-for-like Challenger total. This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. Two labeled pairs are compared, each updated automatically when Challenger publishes its monthly report: <b>Challenger AI cuts vs AskTheRecruiter announced AI cuts (strict)</b>, and <b>Challenger all announced cuts vs AskTheRecruiter announced US cuts</b>. The strict AskTheRecruiter figures include only canonical events with a source-evidenced announcement date, a US-based employer and announcement-stage status (plus AI as the primary stated cause for the AI pair). The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
             <?php if ($alt_challenger_records) : ?>
             <?php if (count($alt_challenger_chart) >= 2) : ?>
             <div class="alt-challenger-chart">
@@ -374,7 +379,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <?php endif; ?>
             <div class="alt-source-health alt-challenger-table">
                 <table>
-                    <thead><tr><th>Announcement month</th><th>Challenger AI cuts (month)</th><th>Strict tracker (month)</th><th>Monthly gap</th><th>Challenger AI cuts (YTD)</th><th>Strict tracker (YTD)</th><th>YTD gap</th><th>Official report</th></tr></thead>
+                    <thead><tr><th>Announcement month</th><th>Challenger AI cuts (month)</th><th>AskTheRecruiter AI cuts, strict (month)</th><th>Monthly AI gap</th><th>Challenger AI cuts (YTD)</th><th>AskTheRecruiter AI cuts, strict (YTD)</th><th>YTD AI gap</th><th>Challenger all cuts (month)</th><th>AskTheRecruiter announced US cuts (month)</th><th>Official report</th></tr></thead>
                     <tbody>
                     <?php foreach ($alt_challenger_records as $alt_benchmark) :
                         $alt_challenger_total = max(0, (int) ($alt_benchmark['challenger_ai_jobs_ytd'] ?? 0));
@@ -394,6 +399,8 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                             <td><?php echo number_format($alt_challenger_total); ?></td>
                             <td><?php echo number_format($alt_tracker_total); ?></td>
                             <td><?php echo number_format($alt_gap); ?> fewer qualifying tracker records</td>
+                            <td><?php echo isset($alt_benchmark['challenger_total_jobs_month']) && $alt_benchmark['challenger_total_jobs_month'] !== null ? number_format((int) $alt_benchmark['challenger_total_jobs_month']) : '—'; ?></td>
+                            <td><?php echo isset($alt_benchmark['tracker_announced_us_employer_jobs_month']) && $alt_benchmark['tracker_announced_us_employer_jobs_month'] !== null ? number_format((int) $alt_benchmark['tracker_announced_us_employer_jobs_month']) : '—'; ?></td>
                             <td><?php if (!empty($alt_benchmark['benchmark_url'])) : ?><a href="<?php echo esc_url($alt_benchmark['benchmark_url']); ?>" target="_blank" rel="noopener">Challenger report</a><?php else : ?>—<?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
