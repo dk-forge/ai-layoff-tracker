@@ -7,8 +7,10 @@ an exact evidence quote for any causal AI claim; inaccessible sources remain
 plainly marked legacy/unreviewed for a later retry.
 
 Env: WP_SITE_URL, WP_API_KEY, OPENROUTER_API_KEY.
-Optional: RECLASSIFY_BATCH (default 10). The scheduled batch is deliberately
+Optional: RECLASSIFY_BATCH (default 5). The scheduled batch is deliberately
 small because each row may require a slow publisher fetch and a model call.
+RECLASSIFY_DEADLINE_SECONDS (default 900) stops safely between rows so an
+unreachable publisher or model cannot consume the GitHub Actions hard limit.
 """
 import html
 import os
@@ -23,7 +25,8 @@ from extractor import classify_ai_evidence
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
-BATCH = max(1, min(100, int(os.environ.get("RECLASSIFY_BATCH", "10"))))
+BATCH = max(1, min(100, int(os.environ.get("RECLASSIFY_BATCH", "5"))))
+DEADLINE_SECONDS = max(60, min(1100, int(os.environ.get("RECLASSIFY_DEADLINE_SECONDS", "900"))))
 
 
 def clean_html(content):
@@ -65,7 +68,15 @@ def main():
         print("No legacy AI rows pending reclassification")
         return 0
     updates, unreadable, model_failures = [], 0, 0
+    started_at = time.monotonic()
+    checked = 0
     for row in rows:
+        # This worker changes no source or event fact. Stopping before a new
+        # row is therefore safe and lets the next daily run resume the queue.
+        if time.monotonic() - started_at >= DEADLINE_SECONDS:
+            print(f"Reached RECLASSIFY_DEADLINE_SECONDS={DEADLINE_SECONDS}; stopping safely after {checked} row(s)")
+            break
+        checked += 1
         try:
             text = fetch_text(row.get("source_url") or "")
             if not text:
@@ -83,10 +94,10 @@ def main():
     if updates:
         result = post_updates(updates)
         print(f"reclassified={len(result.get('updated', []))} rejected={len(result.get('rejected', []))}")
-    print(f"checked={len(rows)} queued={len(updates)} unreadable={unreadable} model_failures={model_failures}")
+    print(f"checked={checked} queued={len(updates)} unreadable={unreadable} model_failures={model_failures}")
     # A total failure should be visible in Actions rather than silently looking
     # like a successful historical clean-up.
-    return 1 if not updates and len(rows) and unreadable + model_failures == len(rows) else 0
+    return 1 if not updates and checked and unreadable + model_failures == checked else 0
 
 
 if __name__ == "__main__":

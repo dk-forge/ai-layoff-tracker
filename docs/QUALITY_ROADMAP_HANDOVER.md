@@ -50,8 +50,10 @@ remain the publication standard.
   clusters.
 - Mobile page-overflow containment is deployed; tables alone may scroll
   horizontally on narrow screens.
-- Legacy AI-evidence reassessment runs daily with a 10-record scheduled batch
-  after a 25-record batch reached GitHub Actions' 20-minute ceiling.
+- Legacy AI-evidence reassessment runs daily with a five-record scheduled batch
+  and a 15-minute between-row deadline after a later 10-record pass reached
+  GitHub Actions' 20-minute ceiling. A bounded partial pass resumes safely;
+  a fully unreadable attempted batch still fails visibly.
 - Historical GDELT recovery is publicly degraded on external HTTP 429s. Its
   seven-day cursor advances only after a successful window and honors bounded
   Retry-After/backoff delays, so a rate-limited window is retried rather than
