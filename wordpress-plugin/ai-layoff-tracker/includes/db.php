@@ -1113,7 +1113,27 @@ function alt_api_announcement_lifecycle_candidates(WP_REST_Request $r) {
 /** Public retained reconciliation history; never a command to alter totals. */
 function alt_api_challenger_benchmarks() {
     $records = get_option('alt_challenger_benchmarks');
-    return rest_ensure_response(is_array($records) ? array_values($records) : array());
+    if (!is_array($records)) return rest_ensure_response(array());
+    // Legacy setup records predate report_month. Present one authoritative
+    // record per official report month, preferring the newer record that
+    // explicitly names that month. This does not rewrite history or totals;
+    // it prevents an API consumer from mistaking a setup duplicate for a
+    // second independent Challenger publication.
+    $by_month = array();
+    foreach ($records as $record) {
+        if (!is_array($record)) continue;
+        $month = (string) ($record['report_month'] ?? '');
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
+            $month = substr((string) ($record['recorded_at'] ?? ''), 0, 7);
+        }
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) continue;
+        if (!isset($by_month[$month]) || !empty($record['report_month'])) {
+            $record['report_month'] = $month;
+            $by_month[$month] = $record;
+        }
+    }
+    krsort($by_month);
+    return rest_ensure_response(array_values($by_month));
 }
 
 function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
@@ -1128,7 +1148,8 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
     }
     $records = get_option('alt_challenger_benchmarks');
     if (!is_array($records)) $records = array();
-    $key = $year . '-' . $report_month;
+    // One retained public comparator per official report month.
+    $key = $report_month;
     $records[$key] = array(
         'year' => $year, 'report_month' => $report_month, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
         'benchmark_url' => $url, 'challenger_ai_jobs_ytd' => $benchmark,

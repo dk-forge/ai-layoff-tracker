@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.18 removes an invalid blank legacy row with no evidence and cleans its orphaned event graph; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.19 makes the public Challenger endpoint return one authoritative retained record per report month and corrects stale operational counts; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -31,17 +31,15 @@ remain the publication standard.
   once the append-only run ledger is deployed, never reconstructed from legacy
   rows.
 
-- Plugin version **2.18.1** is live from commit `2877251` (deployment run
-  `29614434464`). That deployment passed a pre-upload PHP syntax lint and a
-  post-upload cache-busted public tracker API verification. The retained-excerpt
-  hash backfill is live; integrity after
-  the latest successful deep dedupe is 43,892 canonical rows/events and 43,971
-  retained source reports, with no migration backlog.
+- Plugin version **2.18.19** is live from the current `main` deployment. Each
+  deployment passes a pre-upload PHP syntax lint and a post-upload cache-busted
+  public tracker API verification. The retained-excerpt hash backfill is live;
+  live integrity is the source of truth rather than this narrative snapshot.
 - Public quality endpoint:
   `GET /blog/wp-json/layoffs/v1/quality-status`.
   It exposes dataset revision, disclosed corrections, source health, canonical
   integrity and openly labelled workstream states.
-- Integrity migration is complete: **43,892 canonical events** and **43,971
+- Integrity migration is complete: **43,892 canonical events** and **43,974
   retained source reports** at the latest verification. Bulk imports
   now attach canonical events immediately; if a run lands during the prior
   deployment's migration interval, run/await canonical-event migration before
@@ -112,6 +110,9 @@ be red in Actions while retaining the public record.
    - The current monthly record is public through the endpoint, tracker-page
      comparison table, and health page. The workflow artifact remains the
      detailed operational audit trail.
+   - The endpoint returns one authoritative retained record per official
+     report month. Earlier setup entries without `report_month` remain stored
+     for audit but cannot appear as a misleading duplicate publication.
 
 2. **Measured recall by country/period.**
    - Public protocol: `docs/RECALL_BENCHMARK_PROTOCOL.md`; endpoint:
