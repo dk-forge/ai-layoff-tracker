@@ -41,9 +41,22 @@ you are a new agent (Codex or otherwise) taking over.
   total under 5,000 stores null, never a wrong benchmark figure). Stored
   months now carry challenger_total_jobs_month for Jan-Jun (YTD null for
   Jan-Mar where old wording defeats the parser — acceptable).
-- **In flight at handover time:** reclassify-legacy-ai manual passes
-  (batch=15) draining ai_causation=unknown; a per-month Challenger gap
-  deep-research workflow writing docs/CHALLENGER_GAP_CLOSURE_PLAN.md.
+- **Gap-closure execution (late 2026-07-18):** R2+R8 corrections all
+  EXECUTED and live-verified (Intuit 17→3,000 AI-denied; Meta Mar 100→700;
+  Dow 3,700 contributing_cause + US domicile; Lucid merged; Oracle merged
+  and converged on 21,000 — net −29,000 honesty correction). Three parser
+  incidents fixed with regression tests: CT WARN dead parser
+  (affected_company as count column), IL revised-count preference, extractor
+  percent-of-workforce guard. Nationwide WARN purge-reload dispatched with
+  the fixed parser. R4 outlet additions landed (16 trade/regional). R5
+  historical sweep windows running sequentially (GDELT public-API 429s
+  abandon some windows — re-run those windows later; each reports
+  gdelt_historical health honestly). reclassify-legacy-ai ceiling raised to
+  45 min (20 min cancelled batches >6). New `data-corrections.yml` executes
+  reviewed keyed correction sequences (endpoint allowlist; the /add
+  attach-branch full-row-overwrites unpinned fuzzy-matched rows — pin
+  first). Deferred: Oracle 10-K report attach + verbatim Mar-31
+  announcement evidence; Microsoft R10 policy call; R9 curated seeds.
 - **User asks recorded:** segmented searches per country/state/industry
   must keep running (done — see rotation above); everything autonomous with
   zero manual steps; US first, then Europe, then Asia.
