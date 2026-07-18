@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.11
+ * Version: 2.18.12
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.11');
+define('ALT_VERSION', '2.18.12');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -129,15 +129,31 @@ function alt_widget_query_vars($vars) {
 }
 add_filter('query_vars', 'alt_widget_query_vars');
 
+// Bluehost's WordPress install canonicalizes an unmatched child path before a
+// normal template can render it. Recognize this one public, noindex route at
+// request parsing time so the pretty iframe URL works without changing any
+// other page or rewrite behavior.
+function alt_detect_widget_request($wp) {
+    $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+    if (preg_match('~(?:^|/)ai-layoff-tracker/widget$~', $path)) {
+        $wp->query_vars['alt_tracker_widget'] = '1';
+    }
+}
+add_action('parse_request', 'alt_detect_widget_request');
+
 function alt_render_widget_route() {
     if (!get_query_var('alt_tracker_widget')) return;
     status_header(200);
     header('X-Robots-Tag: noindex, nofollow', true);
+    // This is the only intentionally embeddable route. It has no cookies,
+    // forms or account state; do not relax frame protection for tracker pages.
+    header_remove('X-Frame-Options');
+    header('Content-Security-Policy: frame-ancestors *', true);
     nocache_headers();
     include ALT_PLUGIN_DIR . 'templates/page-widget.php';
     exit;
 }
-add_action('template_redirect', 'alt_render_widget_route');
+add_action('template_redirect', 'alt_render_widget_route', 1);
 
 /**
  * Only load DataTables/Chart.js on pages that actually use a plugin shortcode
