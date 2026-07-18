@@ -54,7 +54,7 @@ jobs:
         # the shared requirements.txt keeps the PyPI floor for every other job.
         run: |
           pip install -r requirements.txt
-          pip install jinja2
+          pip install jinja2 setuptools
           pip install --no-build-isolation "warn-scraper @ git+https://github.com/biglocalnews/warn-scraper@f7b3dd26af1f3ad700762504bd7c5c0d23979507"
       - name: Mark pipeline refreshing
         run: |
