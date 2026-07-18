@@ -791,6 +791,16 @@ function alt_api_integrity_status() {
     $events_with_linked_source = (int) $wpdb->get_var(
         "SELECT COUNT(DISTINCT event_id) FROM $reports WHERE source_url <> ''"
     );
+    // Keep a tiny, already-public row-level sample actionable for researchers
+    // and editors. This is not an alternate query surface or a claim that a
+    // missing internal source-report link means the canonical row has no URL.
+    $source_link_gap_samples = $wpdb->get_results(
+        "SELECT l.id, l.event_id, l.company, l.layoff_date, l.source_name, l.source_url
+         FROM $layoffs l
+         LEFT JOIN (SELECT DISTINCT event_id FROM $reports WHERE source_url <> '') linked
+           ON linked.event_id = l.event_id
+         WHERE l.event_id > 0 AND linked.event_id IS NULL
+         ORDER BY l.id ASC LIMIT 5", ARRAY_A) ?: array();
     $hashable_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> ''");
     $hashed_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash <> ''");
     // These are deliberately completeness counters, not inferred values.
@@ -808,6 +818,16 @@ function alt_api_integrity_status() {
         'canonical_events_with_linked_source_reports' => $events_with_linked_source,
         'canonical_events_without_linked_source_reports' => max(0, $event_count - $events_with_linked_source),
         'source_link_rule' => 'A cited source means at least one retained event-source report has a public URL. Events without a link remain a visible integrity gap; source-report volume alone is not treated as proof of complete citation coverage.',
+        'source_link_gap_samples' => array_map(function ($row) {
+            return array(
+                'id' => (int) $row['id'],
+                'event_id' => (int) $row['event_id'],
+                'company_name' => (string) $row['company'],
+                'layoff_date' => (string) $row['layoff_date'],
+                'source_name' => (string) $row['source_name'],
+                'source_url' => (string) $row['source_url'],
+            );
+        }, $source_link_gap_samples),
         'hashable_source_reports' => $hashable_reports,
         'hashed_source_reports' => $hashed_reports,
         'source_report_hashes_remaining' => max(0, $hashable_reports - $hashed_reports),
