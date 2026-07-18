@@ -385,6 +385,13 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini .alt-barrow-name { font-size: 13px; }
 .alt-mini .alt-barrow-val { font-size: 12.5px; }
 .alt-mini .alt-bartrack { height: 7px; }
+/* Expanded cards get readable type to match the larger canvas fonts. */
+.alt-mini.alt-expanded .alt-barrow-name { font-size: 16px; }
+.alt-mini.alt-expanded .alt-barrow-val { font-size: 15px; }
+.alt-mini.alt-expanded .alt-bartrack { height: 12px; }
+.alt-mini.alt-expanded .alt-chart-h { font-size: 19px; }
+.alt-mini.alt-expanded .alt-chart-sub { font-size: 13.5px; }
+.alt-mini.alt-expanded .alt-chart-box { height: 420px; }
 .alt-chart-btns { display: inline-flex; gap: 6px; flex: 0 0 auto; }
 .alt-expand, .alt-chart-dl {
     flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;

@@ -177,6 +177,24 @@
     function mountChart(canvasId, config) {
         var canvas = document.getElementById(canvasId);
         if (!canvas) return null;
+        // Expanded cards re-render through here (the expand toggle calls
+        // renderCharts), so scale type up for readability at full width:
+        // Chart.js grows the canvas but keeps fonts fixed otherwise.
+        if (canvas.closest && canvas.closest('.alt-expanded')) {
+            var o = config.options = config.options || {};
+            var scales = o.scales || {};
+            [scales.x, scales.y].forEach(function (ax) {
+                if (ax && ax.ticks) ax.ticks.font = { size: 15 };
+            });
+            o.plugins = o.plugins || {};
+            o.plugins.legend = o.plugins.legend || {};
+            o.plugins.legend.labels = Object.assign({}, o.plugins.legend.labels,
+                { font: { size: 14 }, boxWidth: 16 });
+            if (o.plugins.tooltip) {
+                o.plugins.tooltip.titleFont = { size: 15 };
+                o.plugins.tooltip.bodyFont = { size: 14 };
+            }
+        }
         if (CHARTS[canvasId]) { CHARTS[canvasId].destroy(); delete CHARTS[canvasId]; }
         CHARTS[canvasId] = new Chart(canvas, config);
         return CHARTS[canvasId];
