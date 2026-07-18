@@ -106,6 +106,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Incident | Root cause | Standing guard |
 |---|---|---|
+| WARN purge-reload silently broke every canonical JOIN (company pages 404d, sitemap shrank 14→6) — found 2026-07-18 | Reload re-imports rows with NEW ids; events kept canonical_layoff_id pointing at the deleted ids | The daily event-migrate pass now repairs dangling canonical pointers (33,813 re-pointed) and flushes caches; verify company pages after any future purge-reload |
 | CT WARN collection effectively dead (1 wrong row ever; CVS/Aetna 313 dropped) — found 2026-07-18 | Tier-1 count keyword "affected" matched CT DOL's `affected_company` header, so counts parsed from company NAMES (no digits → 0 → dropped) | "company"/"employer" in `_COUNT_EXCL` + CT-shape regression test; nationwide purge-reload rebuilt the table |
 | IL revisions never updated counts (Capital One/Discover Riverwoods: held 215, real 2,027) — found 2026-07-18 | IL IEBS keeps ONE cumulative row per site event and revises in place; parser preferred "Expected Layoff" over "Revised Layoff" | `_count_col` prefers a positive "Revised" figure; regression test with the real IEBS shape |
 | Intuit stored as 17 jobs (real ~3,000) | Extractor parsed "17% of its staff" as a headcount | `_percent_only_mention` guard rejects a small count that appears in the text only as "N%" + test; row corrected via /edit with sources retained |
