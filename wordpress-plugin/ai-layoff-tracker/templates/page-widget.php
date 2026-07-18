@@ -2,7 +2,7 @@
 /** Standalone state/national widget; loaded only by alt_render_widget_route. */
 if (!defined('ABSPATH')) exit;
 
-$alt_widget_year = isset($_GET['year']) ? absint(wp_unslash($_GET['year'])) : (int) gmdate('Y');
+$alt_widget_year = isset($_GET['tracker_year']) ? absint(wp_unslash($_GET['tracker_year'])) : (int) gmdate('Y');
 $alt_widget_year = max(2015, min((int) gmdate('Y'), $alt_widget_year));
 $alt_widget_state = isset($_GET['state']) ? strtoupper(sanitize_text_field(wp_unslash($_GET['state']))) : '';
 $alt_widget_state = function_exists('alt_normalize_state') ? alt_normalize_state($alt_widget_state) : '';

@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.13 includes a frameable, noindex US widget with host-canonicalization guard; Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.14 includes a frameable, noindex US widget on its explicit host-safe query route; Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -206,7 +206,7 @@ be red in Actions while retaining the public record.
 
 6. **Research/distribution products, after core data work.**
    - A minimal, noindex iframe widget foundation now exists at
-     `/blog/ai-layoff-tracker/widget/?year=YYYY&state=CA`. It is intentionally
+     `/blog/?alt_tracker_widget=1&tracker_year=YYYY&state=CA`. It is intentionally
      limited to the US national or state view and uses the public aggregate
      endpoint. It links to the exact filtered tracker view and explicitly says
      it is source-linked rather than complete. Publishers choose whether and

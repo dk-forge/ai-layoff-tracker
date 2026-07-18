@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.13
+ * Version: 2.18.14
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.13');
+define('ALT_VERSION', '2.18.14');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -61,9 +61,6 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('alt_db_install')) {
         alt_db_install();
     }
-    // FTPS deploys do not invoke plugin activation. Rebuild rewrite rules once
-    // per version so newly added public routes (such as the widget) resolve.
-    flush_rewrite_rules(false);
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');
     delete_transient('alt_faq_numbers');
@@ -116,39 +113,34 @@ add_action('init', 'alt_ensure_tracker_health_page_once', 20);
 /**
  * A deliberately narrow, iframe-safe widget surface. It is limited to a
  * United States national or state view; metro geography is not yet reliable.
- * The page is noindex because an embed is a display surface, not an SEO page.
+ * The explicit query route avoids a shared-host canonical redirect that cannot
+ * reliably serve a virtual child page. The response is noindex by design.
  */
-function alt_register_widget_route() {
-    add_rewrite_rule('^ai-layoff-tracker/widget/?$', 'index.php?alt_tracker_widget=1', 'top');
+function alt_is_widget_request() {
+    return isset($_GET['alt_tracker_widget']) && (string) wp_unslash($_GET['alt_tracker_widget']) === '1';
 }
-add_action('init', 'alt_register_widget_route', 1);
 
-function alt_widget_query_vars($vars) {
-    $vars[] = 'alt_tracker_widget';
-    return $vars;
-}
-add_filter('query_vars', 'alt_widget_query_vars');
-
-// Bluehost's WordPress install canonicalizes an unmatched child path before a
-// normal template can render it. Recognize this one public, noindex route at
-// request parsing time so the pretty iframe URL works without changing any
-// other page or rewrite behavior.
-function alt_detect_widget_request($wp) {
-    $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
-    if (preg_match('~(?:^|/)ai-layoff-tracker/widget$~', $path)) {
-        $wp->query_vars['alt_tracker_widget'] = '1';
+// The host adds SAMEORIGIN before template rendering. Remove it during header
+// construction, then repeat after headers are sent for plugins that add it
+// late. This applies only to the explicit, noindex widget query.
+function alt_widget_response_headers($headers) {
+    if (alt_is_widget_request()) {
+        unset($headers['X-Frame-Options']);
+        $headers['Content-Security-Policy'] = 'frame-ancestors *';
     }
+    return $headers;
 }
-add_action('parse_request', 'alt_detect_widget_request');
+add_filter('wp_headers', 'alt_widget_response_headers');
+
+function alt_widget_remove_frame_header() {
+    if (!alt_is_widget_request()) return;
+    header_remove('X-Frame-Options');
+    header('Content-Security-Policy: frame-ancestors *', true);
+}
+add_action('send_headers', 'alt_widget_remove_frame_header', PHP_INT_MAX);
 
 function alt_render_widget_route() {
-    // The shared host's canonical redirect can run before a custom query var
-    // reaches WP_Query. Use only an exact path or explicit `=1` query as a
-    // fallback; never intercept a broader class of URLs.
-    $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
-    $is_widget_path = (bool) preg_match('~(?:^|/)ai-layoff-tracker/widget$~', $path);
-    $is_widget_query = isset($_GET['alt_tracker_widget']) && (string) wp_unslash($_GET['alt_tracker_widget']) === '1';
-    if (!get_query_var('alt_tracker_widget') && !$is_widget_path && !$is_widget_query) return;
+    if (!alt_is_widget_request()) return;
     status_header(200);
     header('X-Robots-Tag: noindex, nofollow', true);
     // This is the only intentionally embeddable route. It has no cookies,
