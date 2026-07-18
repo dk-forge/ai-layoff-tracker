@@ -1,7 +1,52 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 evening (plugin 2.18.32). Read this block first if
+Last updated: 2026-07-18 night (plugin 2.18.35). Read this block first if
 you are a new agent (Codex or otherwise) taking over.
+
+**LATEST (2.18.33-2.18.35 + railway):**
+- **FIRST RECALL BENCHMARK PUBLISHED: 91.67% (11/12), United States,
+  June 2026** — via the new `recall-benchmark-publish.yml` workflow, which
+  recomputes the sample from the committed manifest, refuses any manifest
+  not `publication_reviewed_ready_to_retain`, and pins the public
+  `reference_set_url` to the commit SHA. The three-actor chain (transcription
+  reviewer → matching editor → publication reviewer) was executed by three
+  distinct agent passes; the publication reviewer independently re-derived
+  the positional selection from the sealed PDF (SHA-256 verified) and
+  re-checked all 12 match decisions against the live API. The one no-match
+  (HealthCare Partners Arcadia) is real and root-caused (see below).
+- **HCP root cause (audit addendum has full detail):** CA WARN rows hash on
+  company+effective_date+jobs+city+state, warn-scraper leaves CA city blank,
+  and notice type is not a schema field — so two same-day 1-employee HCP
+  notices (Arcadia Layoff vs Washington Blvd Closure) collapsed into one
+  row, last-write-wins. Fix path is recorded in the addendum; it needs a
+  hash-input change = dedup-hash migration (bulk-purge + re-import), so do
+  NOT hot-patch it casually.
+- **Rotating segmented discovery** (railway/sources/gdelt.py + newsapi.py):
+  each run adds a few narrow country/state/industry/AI-phrase queries chosen
+  by deterministic daily rotation (full matrix every ~6-9 days). Only the
+  broad query is health-bearing. Env: GDELT_SEGMENT_QUERIES (default 4),
+  NEWSAPI_SEGMENT_QUERIES (default 2), 0 disables.
+- **TRUSTED_DOMAINS 207 → 240** with the four-region research sweep's papers
+  of record (allowlist-only).
+- **Brazil CVM discovery client** (railway/sources/cvm_br.py + offline-
+  fixture tests): keyless, ODbL-attributed, discovery-only; NOT cron-wired
+  yet — wire a health probe like edinet_jp/opendart_kr when promoting.
+- **Mobile fixes (2.18.33/34):** minmax(0,1fr) grids (bare 1fr blowout was
+  clipping the health page on iPhone), Easy-TOC suppressed on plugin
+  surfaces via its filters + :has() CSS fallback, and plugin surfaces go
+  full-viewport-width under 700px (theme padding stacked to ~220px content
+  on a 375px phone).
+- **Challenger four-line comparison is live end-to-end** with plausibility
+  floors on the fail-soft all-cuts parser (a YTD below its own month or a
+  total under 5,000 stores null, never a wrong benchmark figure). Stored
+  months now carry challenger_total_jobs_month for Jan-Jun (YTD null for
+  Jan-Mar where old wording defeats the parser — acceptable).
+- **In flight at handover time:** reclassify-legacy-ai manual passes
+  (batch=15) draining ai_causation=unknown; a per-month Challenger gap
+  deep-research workflow writing docs/CHALLENGER_GAP_CLOSURE_PLAN.md.
+- **User asks recorded:** segmented searches per country/state/industry
+  must keep running (done — see rotation above); everything autonomous with
+  zero manual steps; US first, then Europe, then Asia.
 
 **2.18.32 — what shipped and why.**
 1. *Company-directory autopilot.* Keyed POST `/company-directory/autopilot`
