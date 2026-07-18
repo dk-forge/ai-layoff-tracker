@@ -1190,6 +1190,24 @@ body.admin-bar .alt-count-row { top: 32px; }
    future overflow contained instead of shifting the page borders. */
 .alt-health-page{overflow-x:clip}
 .alt-feature-grid article,.alt-health-summary>div{overflow-wrap:break-word;min-width:0}
+/* Hide any theme-injected table of contents on plugin surfaces (the PHP
+   filter suppresses generation; this covers cached pages until they expire). */
+.entry-content:has(.alt-wrap) #ez-toc-container,
+.entry-content:has(.alt-quarterly-report) #ez-toc-container{display:none}
+/* The theme stacks global padding three levels deep, squeezing our content
+   to ~220px on a 375px phone. On small screens the plugin surfaces break out
+   to the full viewport so cards and tables get real width back. */
+@media (max-width: 700px) {
+    .alt-wrap, .alt-quarterly-report {
+        width: 100vw;
+        max-width: 100vw;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+        padding-left: 14px;
+        padding-right: 14px;
+        box-sizing: border-box;
+    }
+}
 .alt-widget-builder-controls,.alt-widget-builder-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:12px 0}.alt-widget-builder label{display:grid;gap:5px;font-size:.9rem;font-weight:650}.alt-widget-builder select{min-width:170px;padding:7px;border:1px solid #cfc8b7;border-radius:6px;background:#fff}.alt-widget-builder textarea{display:block;width:100%;margin:6px 0 0;padding:9px;border:1px solid #cfc8b7;border-radius:6px;background:#faf9f5;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}.alt-widget-builder-actions a{font-size:.9rem}.alt-widget-builder #alt-widget-builder-note,.alt-widget-builder #alt-widget-copy-status{font-size:.85rem;color:#5f625d}.alt-widget-builder #alt-widget-copy-status{min-height:1.2em;margin:4px 0 0}
 
 /* Immutable, query-backed quarterly research reports. */

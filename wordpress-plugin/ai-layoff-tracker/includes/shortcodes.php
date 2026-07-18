@@ -53,6 +53,29 @@ function alt_shortcode_tracker_health() {
 }
 add_shortcode('alt_tracker_health', 'alt_shortcode_tracker_health');
 
+/**
+ * Suppress the site's Easy Table of Contents on pages this plugin renders.
+ * The injected TOC indexes our app sections as if they were article
+ * headings, overlaps the hero on phones, and adds nothing a data dashboard
+ * needs. Detection is by our own shortcodes/routes, so ordinary blog posts
+ * keep their TOC.
+ */
+function alt_page_is_plugin_surface() {
+    if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
+    $post = get_post();
+    if (!$post || empty($post->post_content)) return false;
+    foreach (array('alt_tracker', 'alt_tracker_health', 'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker', 'alt_company_history') as $shortcode) {
+        if (has_shortcode($post->post_content, $shortcode)) return true;
+    }
+    return false;
+}
+function alt_disable_toc_on_plugin_pages() {
+    if (!alt_page_is_plugin_surface()) return;
+    add_filter('ez_toc_maybe_apply_the_content_filter', '__return_false', 99);
+    add_filter('ez_toc_modify_process_page_content', '__return_empty_string', 99);
+}
+add_action('wp', 'alt_disable_toc_on_plugin_pages');
+
 /** Frozen, server-generated quarterly research snapshot. */
 function alt_shortcode_quarterly_report($atts) {
     $atts = shortcode_atts(array('report' => ''), $atts, 'alt_quarterly_report');
