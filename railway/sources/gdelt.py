@@ -127,12 +127,16 @@ TRUSTED_DOMAINS = {
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
-REQUEST_DELAY = 1.2       # GDELT asks for gentle use
+REQUEST_DELAY = 5.0       # GDELT asks for gentle use; 429s under load, so pace well below the shared limit
 RAW_TEXT_LIMIT = 3000
 MAX_DOC_BYTES = 400_000
 FETCH_WORKERS = max(1, min(6, int(os.environ.get("GDELT_FETCH_WORKERS", "4"))))
-QUERY_ATTEMPTS = max(1, min(5, int(os.environ.get("GDELT_QUERY_ATTEMPTS", "3"))))
-QUERY_BACKOFF_SECONDS = max(1, min(60, int(os.environ.get("GDELT_QUERY_BACKOFF_SECONDS", "15"))))
+# Five patient attempts with a longer base backoff: a rate-limited shared API
+# rewards waiting, and the cursor design means an abandoned window is retried
+# next run anyway — so patience here converts "degraded" runs into "ok" runs
+# without any extra request volume.
+QUERY_ATTEMPTS = max(1, min(6, int(os.environ.get("GDELT_QUERY_ATTEMPTS", "5"))))
+QUERY_BACKOFF_SECONDS = max(1, min(120, int(os.environ.get("GDELT_QUERY_BACKOFF_SECONDS", "40"))))
 
 
 def _retry_delay(response, attempt):
