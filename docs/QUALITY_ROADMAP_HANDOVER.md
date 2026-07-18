@@ -1,6 +1,83 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 PM (plugin 2.18.31: the public stats bar is two
+Last updated: 2026-07-18 evening (plugin 2.18.32). Read this block first if
+you are a new agent (Codex or otherwise) taking over.
+
+**2.18.32 — what shipped and why.**
+1. *Company-directory autopilot.* Keyed POST `/company-directory/autopilot`
+   auto-admits unmapped company keys with >=3 source-linked canonical events
+   through the SAME `alt_company_directory_admit_mappings()` validator as
+   manual review. Safety gates added after an adversarial multi-agent diff
+   review CONFIRMED these defects pre-deploy (all fixed): (a) generic-name
+   blocklist also matches in `alt_company_key` normalized space, so
+   'Unknown Company'-style variants cannot slip past the exact-match list;
+   (b) the display name must be the SINGLE agreed name across the qualifying
+   canonical source-linked rows (prevents titling a page with the wrong
+   employer when distinct companies share a normalized key); (c) unadmittable
+   keys are parked as `review_status='pending'` directory rows so they stop
+   occupying the ORDER-BY-supported candidate window forever (pending rows
+   never render publicly); (d) `run_token` idempotency: a workflow gateway
+   retry replays the stored response instead of admitting a second batch.
+   Weekly cron: `.github/workflows/company-directory-autopilot.yml`
+   (Tuesdays 14:20 UTC, dispatchable, passes `run_token: gh-<run_id>`).
+2. *Company sitemap.* WP core sitemaps are DISABLED on production (the SEO
+   plugin serves `/blog/sitemap_index.xml`; `/blog/wp-sitemap.xml` is 404),
+   so a core sitemap provider would silently never render — the plugin now
+   serves `/company-layoffs-sitemap.xml` itself (rewrite + template_redirect
+   in `includes/company-directory.php`) and appends it to the active SEO
+   plugin's index via BOTH `wpseo_sitemap_index` and
+   `rank_math/sitemap/index` filters (same dual-hook pattern as the file's
+   robots/canonical/title filters).
+3. *Challenger four-line comparison.* `challenger_reconcile.py` now also
+   parses Challenger's headline TOTAL announced cuts (fail-soft: a parse
+   miss prints a warning and stores null — the AI figures remain
+   fail-loudly) and computes the strict announced-US tracker comparator
+   without the AI gate (`strict_all` group). New nullable benchmark fields:
+   `challenger_total_jobs_month/ytd`,
+   `tracker_announced_us_employer_jobs_month/ytd` (+ query URLs). The
+   tracker page charts show four labeled series (Challenger/AskTheRecruiter
+   x AI/all-cuts, dashed = all-cuts pair) with a visible legend; the
+   comparison table adds the all-cuts month columns. Monthly cron updates
+   everything automatically; a manual `challenger-reconcile.yml` dispatch
+   backfills the new fields for already-recorded months.
+4. */aggregate* monthly `series` rows now carry `verified_jobs`,
+   `announced_jobs`, `ai_verified_jobs`, `ai_announced_jobs` alongside the
+   legacy `jobs`/`ai_jobs`. Jobs-per-month chart plots Verified with a
+   dashed Announced line; the cumulative AI chart plots verified-AI vs
+   announced-AI lines. Stat cards: the share card reads
+   "<value>% — of Verified job cuts are AI-attributed"; both announced
+   cards say "dated in the selected period" (announced plans carry future
+   effective dates, so a year filter includes future-dated plans for that
+   year).
+5. *Evidence-hash backlog: DONE.* `remaining` hit 0 on 2026-07-18 after
+   sequential bounded runs (37,424 -> 0 in one day). The Features card is
+   now Active. `evidence-hash-backfill.yml` retries transient gateway
+   errors (000/502/503/504/520/521/522/524, 4 attempts, 45s) before failing
+   loudly — the shared host intermittently 522s even when the bounded write
+   landed; both endpoints process "whatever is still pending" so re-POST is
+   safe there (the autopilot endpoint instead uses run_token, because it is
+   NOT naturally idempotent).
+6. *Context enrichment:* 12 manual batch-9 passes all succeeded today on
+   top of the daily job; announcement-date evidence is what moves the
+   strict Challenger comparator (Coinbase 700 already moved the diagnostic
+   YTD from 0 -> 700).
+
+**User priorities (2026-07-18, explicit):** US data quality first — target
+is the strict comparator within 5-10% of Challenger — then worldwide;
+regional order after the US: Europe (all countries), then Asia, then the
+rest. Everything must run unattended: collectors (Railway 2x daily), WARN
+daily, autopilot weekly, Challenger monthly, quarterly report, bounded
+hash/enrichment jobs daily, years/facets/widget dropdowns all derive from
+data — no manual steps. The user must never need to remind or trigger
+anything.
+
+**Why June 2026 US shows 0 AI-attributed:** genuinely no June-dated US
+event carries an explicit AI attribution yet (the 13 AI+US 2026 events date
+to Jan/Feb/Mar/Apr/May/Jul). Challenger's June AI figure is 14,029 — that
+delta is the recall+classification gap the enrichment/classification/recall
+workstreams exist to close; do not fabricate attributions to fill it.
+
+Earlier same day, plugin 2.18.31: the public stats bar is two
 rows of four cards — Verified, Explicitly AI-attributed, Announced, and the
 new Announced-AI number (`/aggregate` now returns
 `ai_announced_jobs`/`ai_announced_entries`), plus AI-share-of-Verified,

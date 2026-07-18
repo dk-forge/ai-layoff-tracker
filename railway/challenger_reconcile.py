@@ -126,7 +126,12 @@ def challenger_all_cut_totals(url, reference_month, page_text=None):
     """
     try:
         text = page_text if page_text is not None else _fetch_report_text(url)
-        month_name = MONTH_NAMES[int(reference_month[5:7]) - 1]
+    except Exception as exc:
+        print(f"WARNING: all-cuts totals unavailable for {reference_month}: {exc}")
+        return None, None
+    month_name = MONTH_NAMES[int(reference_month[5:7]) - 1]
+    monthly = ytd = None
+    try:
         monthly = _first_number(text, (
             rf"announced\s+([\d,]+)\s+(?:job )?cuts in {month_name}",
             rf"announced plans to cut\s+([\d,]+)\s+jobs in {month_name}",
@@ -134,16 +139,28 @@ def challenger_all_cut_totals(url, reference_month, page_text=None):
             rf"job cuts (?:cool(?:ed)?|fell|rose|surged|climbed)[^.]{{0,80}}?to\s+([\d,]+)",
             rf"cut\s+([\d,]+)\s+jobs in {month_name}",
         ), "monthly total")
-        ytd = _first_number(text, (
-            r"(?:So far this year|Year to date|This year)[^.]{0,160}?announced(?: plans to cut)?\s+([\d,]+)",
-            r"employers have announced\s+([\d,]+)\s+(?:job )?cuts",
-            r"announced\s+([\d,]+)\s+job cuts (?:so far )?this year",
-            r"a total of\s+([\d,]+)\s+(?:job )?cuts (?:have been )?announced",
-        ), "YTD total")
-        return monthly, ytd
     except Exception as exc:
-        print(f"WARNING: all-cuts totals unavailable for {reference_month}: {exc}")
-        return None, None
+        print(f"WARNING: monthly all-cuts total unavailable for {reference_month}: {exc}")
+    try:
+        ytd = _first_number(text, (
+            r"(?:So far this year|Year to date|This year)[^.]{0,160}?announced(?: plans to cut)?\s+([\d,]+)\s+(?:job )?cuts",
+            r"employers have announced(?: plans to cut)?\s+([\d,]+)\s+(?:job )?cuts",
+            r"announced\s+([\d,]+)\s+job cuts (?:so far )?this year",
+            r"a total of\s+([\d,]+)\s+(?:job )?cuts (?:have been )?announced this year",
+        ), "YTD total")
+    except Exception as exc:
+        print(f"WARNING: YTD all-cuts total unavailable for {reference_month}: {exc}")
+    # Plausibility floors: Challenger headline totals are always tens of
+    # thousands, and a YTD figure can never be below its own month. A number
+    # failing these is a mis-parse — storing null is honest; storing a wrong
+    # benchmark figure is not.
+    if monthly is not None and monthly < 5000:
+        print(f"WARNING: dropping implausible monthly all-cuts parse {monthly} for {reference_month}")
+        monthly = None
+    if ytd is not None and (ytd < 5000 or (monthly is not None and ytd < monthly)):
+        print(f"WARNING: dropping implausible YTD all-cuts parse {ytd} for {reference_month}")
+        ytd = None
+    return monthly, ytd
 
 
 def reports_for_year(year):
