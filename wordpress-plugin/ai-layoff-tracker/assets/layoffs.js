@@ -593,10 +593,15 @@
         var annJ = t.announced_jobs || 0;
         var verifiedJ = t.jobs - annJ;
         var when = period + scope;
+        // Announced plans carry future dates inside the selected period, so
+        // "YTD" would wrongly imply they already happened. Plans can also
+        // change or be cancelled before execution — dates are the company's
+        // stated schedule, not a promise.
+        var whenAnnounced = period.replace(' YTD', '') + scope + ' · includes future-dated plans';
         setText('alt-stat-total', fmt(verifiedJ));
         setText('alt-stat-total-entries', when);
         setText('alt-stat-announced', fmt(annJ));
-        setText('alt-stat-announced-sub', when);
+        setText('alt-stat-announced-sub', whenAnnounced);
         // AI-attributed is the VERIFIED subset; announced-AI is the ANNOUNCED
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
@@ -606,7 +611,7 @@
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
         setText('alt-stat-ai-announced', fmt(aiAnnJ));
-        setText('alt-stat-ai-announced-sub', when);
+        setText('alt-stat-ai-announced-sub', whenAnnounced);
         renderChallengerNote();
         var share = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
         setText('alt-stat-ai-share', share == null ? '—'
@@ -947,9 +952,12 @@
         // effective dates) visible without mixing the two numbers.
         var verified = series.map(function (s) { return (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
         var announced = series.map(function (s) { return s.announced_jobs || 0; });
-        var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 }];
+        // A single-month filter yields one data point; with pointRadius 0 a
+        // lone point renders as literally nothing and the chart looks stale.
+        var dots = series.length <= 2 ? 4 : 0;
+        var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 }];
         if (announced.some(function (v) { return v > 0; })) {
-            datasets.push({ label: 'Announced job cuts', data: announced, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 });
+            datasets.push({ label: 'Announced job cuts (separate series — not in Verified)', data: announced, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.3 });
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
         }
         mountChart('alt-chart-weekly', {
@@ -971,20 +979,21 @@
         // the announced-plan subset accumulate separately, never summed.
         var start = null;
         (series || []).forEach(function (s, i) { if (start === null && s.ai_jobs > 0) start = i; });
-        var window = (series || []).slice(start === null ? 0 : start);
+        var charted = (series || []).slice(start === null ? 0 : start);
         var runV = 0, runA = 0;
-        var cumV = window.map(function (s) { runV += (s.ai_verified_jobs != null) ? s.ai_verified_jobs : s.ai_jobs; return runV; });
-        var cumA = window.map(function (s) { runA += s.ai_announced_jobs || 0; return runA; });
+        var cumV = charted.map(function (s) { runV += (s.ai_verified_jobs != null) ? s.ai_verified_jobs : s.ai_jobs; return runV; });
+        var cumA = charted.map(function (s) { runA += s.ai_announced_jobs || 0; return runA; });
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
-        var datasets = [{ label: 'Explicitly AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.25 }];
+        var dots = charted.length <= 2 ? 4 : 0;
+        var datasets = [{ label: 'Explicitly AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI job cuts', data: cumA, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.25 });
+            datasets.push({ label: 'Announced AI job cuts (separate series — not in the verified line)', data: cumA, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.25 });
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
         }
         mountChart('alt-chart-ai-cumulative', {
             type: 'line',
-            data: { labels: window.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
+            data: { labels: charted.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
             options: options
         });
     }

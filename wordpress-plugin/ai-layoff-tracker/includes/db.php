@@ -2235,7 +2235,11 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
         set_transient($key, $payload, 5 * MINUTE_IN_SECONDS);
     }
     $resp = rest_ensure_response($payload);
-    $resp->header('Cache-Control', 'public, max-age=60');
+    // Server transients hold 5 minutes; let browsers and any edge cache ride
+    // the same window, and serve stale while revalidating so repeat visits
+    // never wait on the shared host. Data-changing writes bump alt_data_ver,
+    // which changes every transient key immediately regardless.
+    $resp->header('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
     return $resp;
 }
 

@@ -76,6 +76,20 @@ function alt_disable_toc_on_plugin_pages() {
 }
 add_action('wp', 'alt_disable_toc_on_plugin_pages');
 
+/**
+ * The site stack sends "no-cache, no-store" on page HTML, so every anonymous
+ * visit pays a full ~2s shared-host render before the app even starts. The
+ * plugin surfaces are static shells whose numbers load client-side from the
+ * (cached) API, so a short public cache is safe and cuts most of the wait.
+ * Logged-in views and the admission-sensitive company pages stay uncached.
+ */
+function alt_public_page_cache_headers() {
+    if (is_user_logged_in() || !alt_page_is_plugin_surface()) return;
+    if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return;
+    header('Cache-Control: public, max-age=180, s-maxage=300, stale-while-revalidate=600');
+}
+add_action('template_redirect', 'alt_public_page_cache_headers', PHP_INT_MAX);
+
 /** Frozen, server-generated quarterly research snapshot. */
 function alt_shortcode_quarterly_report($atts) {
     $atts = shortcode_atts(array('report' => ''), $atts, 'alt_quarterly_report');
