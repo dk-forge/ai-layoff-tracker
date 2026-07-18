@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.21 adds an append-only public collector-run ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -27,9 +27,10 @@ remain the publication standard.
   a plain-language Features list. The Features list labels released, in-progress,
   pending-review and planned capabilities; it must never replace the live
   collector/error status above it or imply global completeness.
-  It reads public APIs dynamically; historical per-run telemetry begins only
-  once the append-only run ledger is deployed, never reconstructed from legacy
-  rows.
+  It reads public APIs dynamically. Plugin 2.18.21 begins an append-only
+  collector-run ledger (time, source, status, raw candidate volume and safe
+  detail); it never reconstructs legacy activity or treats raw candidates as
+  accepted events.
 
 - Plugin version **2.18.19** is live from the current `main` deployment. Each
   deployment passes a pre-upload PHP syntax lint and a post-upload cache-busted

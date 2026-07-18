@@ -103,10 +103,27 @@ function alt_db_install() {
         observed_at DATETIME NOT NULL,
         PRIMARY KEY (id), UNIQUE KEY report_key (report_key), KEY event_id (event_id)
     ) $charset;");
+
+    // Append-only operational telemetry. This begins at deployment rather
+    // than reconstructing unrecorded legacy run volumes. It records collector
+    // attempts only; it is not a layoff-event or source-evidence store.
+    $source_runs = alt_source_runs_table();
+    dbDelta("CREATE TABLE $source_runs (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        source VARCHAR(64) NOT NULL DEFAULT '',
+        status VARCHAR(16) NOT NULL DEFAULT 'degraded',
+        entries INT UNSIGNED NOT NULL DEFAULT 0,
+        detail VARCHAR(240) NOT NULL DEFAULT '',
+        attempted_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        KEY source_attempted_at (source, attempted_at),
+        KEY attempted_at (attempted_at)
+    ) $charset;");
 }
 
 function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events'; }
 function alt_source_reports_table() { global $wpdb; return $wpdb->prefix . 'alt_source_reports'; }
+function alt_source_runs_table() { global $wpdb; return $wpdb->prefix . 'alt_source_runs'; }
 
 /** Attach a canonical row to an event, creating the event if needed. */
 function alt_event_for_layoff($layoff_id) {
@@ -622,6 +639,16 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_source_health_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // Append-only collector-attempt ledger. It begins with this deployment;
+    // legacy volume is intentionally not reconstructed or guessed.
+    register_rest_route('layoffs/v1', '/source-runs', array(
+        'methods' => 'GET', 'callback' => 'alt_api_source_runs', 'permission_callback' => '__return_true',
+        'args' => array(
+            'source' => array('type' => 'string', 'default' => ''),
+            'days' => array('type' => 'integer', 'default' => 30),
+            'per_page' => array('type' => 'integer', 'default' => 50),
+        ),
+    ));
     // Public aggregate-only integrity telemetry for journalists and ops.
     register_rest_route('layoffs/v1', '/integrity-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_integrity_status', 'permission_callback' => '__return_true',
@@ -773,6 +800,7 @@ function alt_api_source_health_get() {
 }
 
 function alt_api_source_health_post(WP_REST_Request $r) {
+    global $wpdb;
     $source = sanitize_key((string) $r->get_param('source'));
     if ($source === '') return new WP_Error('alt_bad_request', 'source is required.', array('status' => 400));
     $health = get_option('alt_source_health');
@@ -785,7 +813,51 @@ function alt_api_source_health_post(WP_REST_Request $r) {
         'detail' => substr(sanitize_text_field((string) $r->get_param('detail')), 0, 240),
     );
     update_option('alt_source_health', $health, false);
+    // Each successful health write is also a retained operational attempt.
+    // This has no path to alter layoff rows, events or source reports.
+    $logged = $wpdb->insert(alt_source_runs_table(), array(
+        'source' => $source,
+        'status' => $health[$source]['status'],
+        'entries' => $health[$source]['entries'],
+        'detail' => $health[$source]['detail'],
+        'attempted_at' => gmdate('Y-m-d H:i:s'),
+    ), array('%s', '%s', '%d', '%s', '%s'));
+    if ($logged === false) {
+        return new WP_Error('alt_db_error', 'Could not retain collector-run telemetry: ' . $wpdb->last_error, array('status' => 500));
+    }
     return rest_ensure_response(array($source => $health[$source]));
+}
+
+/** Public, bounded history of collector attempts recorded after ledger inception. */
+function alt_api_source_runs(WP_REST_Request $r) {
+    global $wpdb;
+    $days = min(90, max(1, (int) $r->get_param('days')));
+    $per_page = min(200, max(1, (int) $r->get_param('per_page')));
+    $source = sanitize_key((string) $r->get_param('source'));
+    $since = gmdate('Y-m-d H:i:s', time() - ($days * DAY_IN_SECONDS));
+    $table = alt_source_runs_table();
+    if ($source !== '') {
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT source, status, entries, detail, attempted_at FROM $table WHERE source = %s AND attempted_at >= %s ORDER BY id DESC LIMIT %d",
+            $source, $since, $per_page), ARRAY_A);
+    } else {
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT source, status, entries, detail, attempted_at FROM $table WHERE attempted_at >= %s ORDER BY id DESC LIMIT %d",
+            $since, $per_page), ARRAY_A);
+    }
+    $rows = is_array($rows) ? $rows : array();
+    foreach ($rows as &$row) {
+        $row['attempted_at'] = gmdate('c', strtotime($row['attempted_at'] . ' UTC'));
+        $row['entries'] = (int) $row['entries'];
+    }
+    unset($row);
+    return rest_ensure_response(array(
+        'methodology' => 'Append-only collector-attempt telemetry begins with plugin 2.18.21. Counts are raw candidate documents from each source attempt, not accepted events or a reconstruction of historical activity.',
+        'since' => gmdate('c', strtotime($since . ' UTC')),
+        'through' => gmdate('c'),
+        'source' => $source,
+        'runs' => $rows,
+    ));
 }
 
 function alt_api_integrity_status() {
