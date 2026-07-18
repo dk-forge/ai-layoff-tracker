@@ -3,6 +3,11 @@
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '—').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const fmt = v => v ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(v)) + ' UTC' : 'Not yet reported';
+  // A failed/running collection did not produce a count. Showing "0 found"
+  // would incorrectly turn an unavailable query into evidence of zero news.
+  const entriesLabel = x => (x && x.status === 'ok')
+    ? `${Number(x.entries || 0).toLocaleString()} found`
+    : 'No completed count';
   const meta = {
     edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', 'Twice daily'],
     newsapi: ['Worldwide licensed news discovery', 'Twice daily'],
@@ -33,7 +38,7 @@
     $('alt-health-summary').innerHTML = `<div><b>${i.canonical_events.toLocaleString()}</b><span>canonical events</span></div><div><b>${i.source_reports.toLocaleString()}</b><span>retained reports</span></div><div><b>${degraded}</b><span>degraded source${degraded === 1 ? '' : 's'}</span></div><div><b>${i.source_report_hashes_remaining.toLocaleString()}</b><span>evidence hashes pending</span></div>`;
     $('alt-health-sources').innerHTML = Object.entries(h).map(([id, x]) => {
       const m = meta[id] || ['Operational collector', 'See source-health'];
-      return `<tr><th>${esc(id)}</th><td>${esc(m[0])}</td><td>${esc(m[1])}</td><td><time>${esc(fmt(x.checked_at))}</time></td><td>${Number(x.entries || 0).toLocaleString()} found</td><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> ${esc(x.detail || '')}</td></tr>`;
+      return `<tr><th>${esc(id)}</th><td>${esc(m[0])}</td><td>${esc(m[1])}</td><td><time>${esc(fmt(x.checked_at))}</time></td><td>${esc(entriesLabel(x))}</td><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> ${esc(x.detail || '')}</td></tr>`;
     }).join('') || '<tr><td colspan="6">No collector reports yet.</td></tr>';
     $('alt-health-workstreams').innerHTML = (q.workstreams || []).map(x => `<p><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> <b>${esc(x.id.replaceAll('_', ' '))}</b><br>${esc(x.scope)}</p>`).join('');
     const last = Array.isArray(c) && c[0] ? c[0] : null;

@@ -37,6 +37,11 @@ class SourceRunLedgerGuards(unittest.TestCase):
         self.assertIn('source-runs?days=', HEALTH_JS)
         self.assertIn('per_page=200', HEALTH_JS)
 
+    def test_failed_collection_is_not_presented_as_zero_found(self):
+        self.assertIn("const entriesLabel", HEALTH_JS)
+        self.assertIn("x.status === 'ok'", HEALTH_JS)
+        self.assertIn("'No completed count'", HEALTH_JS)
+
 
 if __name__ == "__main__":
     unittest.main()
