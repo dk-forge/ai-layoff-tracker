@@ -53,11 +53,15 @@ superseded baseline, not published through the endpoint as a current result.
 Re-measure from an independently documented reference set before posting the
 first public country-period benchmark.
 
-The California June 2026 candidate has a public official reference document
-and a reviewed, rule-conformant twelve-row manifest: the 2026-07-18
-independent transcription review verified every field against the official
-PDF and corrected a selection error at three page boundaries before any match
-decision existed. It remains blocked pending the separate canonical matching
-pass and the independent publication review described in
-`recall-reference-sets/CA_US_2026_06_PUBLICATION_CHECKLIST.md`; those passes
-must be performed by a reviewer distinct from the transcription pass.
+The California June 2026 candidate has completed all three independence
+passes with distinct actors (2026-07-18): the transcription review verified
+every field against the official PDF and corrected a selection error at three
+page boundaries before any match decision existed; the matching editor
+recorded per-row evidenced decisions on the live API; and the publication
+reviewer independently re-derived the positional sample from the sealed PDF
+and re-verified all twelve decisions, confirming reference_events = 12 and
+matched_events = 11. The manifest is `publication_reviewed_ready_to_retain`.
+Publication now requires only the two key-holder steps in
+`recall-reference-sets/CA_US_2026_06_PUBLICATION_CHECKLIST.md`: commit the
+reviewed manifest at a stable public URL, then post the bounded figures to
+the keyed endpoint with that URL. No recall number is public until then.

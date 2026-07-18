@@ -17,18 +17,37 @@ class RecallReferenceManifestTests(unittest.TestCase):
     def test_california_draft_has_source_citations_but_no_measurement(self):
         path = Path(__file__).resolve().parents[2] / "docs" / "recall-reference-sets" / "ca-us-2026-06.warn-draft.json"
         draft = json.loads(path.read_text())
-        # The transcription review completed 2026-07-18; matching and
-        # publication review remain open, so this is still not a measurement.
+        # Transcription review, matching pass and publication review all
+        # completed 2026-07-18 by three distinct actors. The manifest is ready
+        # to retain, but it still records no recall measurement itself: the
+        # numerator/denominator are posted to the keyed endpoint, which
+        # computes and labels sample_recall.
         self.assertEqual(draft["publication_status"],
-                         "transcription_reviewed_pending_match_and_publication_review")
+                         "publication_reviewed_ready_to_retain")
+        self.assertEqual(draft["reference_basis"], "independent_manual_sample")
         self.assertEqual(len(draft["reference_events"]), 12)
         self.assertRegex(draft["reference_set"]["document_sha256"], r"^[a-f0-9]{64}$")
         self.assertNotIn("sample_recall", draft)
         self.assertNotIn("matched_events", draft)
+        matched, unmatched = 0, 0
         for event in draft["reference_events"]:
             self.assertIn("PDF text page marker", event["official_document_location"])
-            self.assertEqual(event["match_decision"], "pending_independent_tracker_lookup")
-            self.assertIsNone(event["canonical_event_id_or_null"])
+            self.assertIn(event["match_decision"],
+                          ("matched_canonical_event", "no_matching_tracker_event"))
+            self.assertTrue(event["matching_evidence"])
+            if event["match_decision"] == "matched_canonical_event":
+                matched += 1
+                self.assertIsInstance(event["canonical_event_id_or_null"], int)
+            else:
+                unmatched += 1
+                self.assertIsNone(event["canonical_event_id_or_null"])
+        # The reviewed sample retains its no-match row; matched IDs are unique
+        # (canonical dedup means one event cannot satisfy two reference rows).
+        self.assertEqual((matched, unmatched), (11, 1))
+        ids = [e["canonical_event_id_or_null"] for e in draft["reference_events"]
+               if e["match_decision"] == "matched_canonical_event"]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertIn("publication_review", draft)
 
     def test_california_candidate_has_an_explicit_publication_blocker(self):
         path = Path(__file__).resolve().parents[2] / "docs" / "recall-reference-sets" / "CA_US_2026_06_PUBLICATION_CHECKLIST.md"

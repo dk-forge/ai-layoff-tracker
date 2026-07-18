@@ -1,0 +1,95 @@
+name: Publish reviewed recall benchmark
+
+# Retains a country-period recall sample on the public /benchmarks/recall
+# endpoint. This workflow refuses to publish anything the three-actor review
+# chain has not finished: it recomputes the numerator/denominator from the
+# committed manifest itself and hard-fails unless publication_status is
+# 'publication_reviewed_ready_to_retain'. The reference_set_url is pinned to
+# the exact commit SHA so the published sample cites an immutable manifest.
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest:
+        description: 'Repo path of the reviewed reference-set manifest'
+        required: false
+        default: 'docs/recall-reference-sets/ca-us-2026-06.warn-draft.json'
+
+concurrency:
+  group: recall-benchmark-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Derive reviewed sample values from the committed manifest
+        id: derive
+        env:
+          MANIFEST: ${{ github.event.inputs.manifest || 'docs/recall-reference-sets/ca-us-2026-06.warn-draft.json' }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          path = os.environ['MANIFEST']
+          d = json.load(open(path))
+          status = d.get('publication_status')
+          assert status == 'publication_reviewed_ready_to_retain', \
+              f"manifest not publication-reviewed (status: {status})"
+          assert 'transcription_review' in d and 'matching_review' in d and 'publication_review' in d, \
+              'all three review blocks must be present'
+          events = d['reference_events']
+          decisions = [e['match_decision'] for e in events]
+          assert all(x in ('matched_canonical_event', 'no_matching_tracker_event') for x in decisions), \
+              'every row needs a final match decision'
+          matched = sum(1 for x in decisions if x == 'matched_canonical_event')
+          basis = d.get('reference_basis')
+          assert basis in ('independent_manual_sample', 'public_dataset_sample'), f'bad basis: {basis}'
+          print(f"country={d['country']}")
+          print(f"period_start={d['period']['from']}")
+          print(f"period_end={d['period']['to']}")
+          print(f"reference_events={len(events)}")
+          print(f"matched_events={matched}")
+          print(f"basis={basis}")
+          PY
+      - name: Retain on the public benchmark endpoint
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          MANIFEST: ${{ github.event.inputs.manifest || 'docs/recall-reference-sets/ca-us-2026-06.warn-draft.json' }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          REF_URL="https://github.com/${{ github.repository }}/blob/${{ github.sha }}/$MANIFEST"
+          BODY=$(REF_URL="$REF_URL" python3 -c "import json,os;print(json.dumps({
+            'country': '${{ steps.derive.outputs.country }}',
+            'period_start': '${{ steps.derive.outputs.period_start }}',
+            'period_end': '${{ steps.derive.outputs.period_end }}',
+            'reference_events': int('${{ steps.derive.outputs.reference_events }}'),
+            'matched_events': int('${{ steps.derive.outputs.matched_events }}'),
+            'reference_set_url': os.environ['REF_URL'],
+            'reference_basis': '${{ steps.derive.outputs.basis }}'}))")
+          attempt=0
+          while :; do
+            attempt=$((attempt+1))
+            http="$(curl -sS -o /tmp/resp.json -w '%{http_code}' --connect-timeout 20 --max-time 120 -X POST \
+              -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+              -H "X-Layoff-API-Key: $WP_API_KEY" \
+              -H 'Content-Type: application/json' \
+              --data "$BODY" \
+              https://asktherecruiter.com/blog/wp-json/layoffs/v1/benchmarks/recall)" || http=000
+            [ "$http" = "200" ] && break
+            case "$http" in
+              000|502|503|504|520|521|522|524)
+                if [ "$attempt" -ge 4 ]; then echo "failed after $attempt attempts (HTTP $http)" >&2; cat /tmp/resp.json 2>/dev/null; exit 22; fi
+                echo "Transient HTTP $http; retrying in 45s"; sleep 45 ;;
+              *) echo "HTTP $http" >&2; cat /tmp/resp.json 2>/dev/null; exit 22 ;;
+            esac
+          done
+          cat /tmp/resp.json
+          {
+            echo '## Recall benchmark retained'
+            echo
+            echo "- Sample: ${{ steps.derive.outputs.country }} ${{ steps.derive.outputs.period_start }}..${{ steps.derive.outputs.period_end }}"
+            echo "- Matched: ${{ steps.derive.outputs.matched_events }} / ${{ steps.derive.outputs.reference_events }}"
+            echo "- Manifest (immutable): $REF_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

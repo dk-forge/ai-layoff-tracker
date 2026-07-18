@@ -1,6 +1,7 @@
 {
  "manifest_version": 1,
- "publication_status": "transcription_reviewed_pending_match_and_publication_review",
+ "publication_status": "publication_reviewed_ready_to_retain",
+ "reference_basis": "independent_manual_sample",
  "country": "United States",
  "subnational_scope": "California WARN notices only",
  "period": {
@@ -50,12 +51,15 @@
    "effective_date": "2026-08-28",
    "stated_job_count": 1,
    "layoff_or_closure_type": "Layoff / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
+   "match_decision": "no_matching_tracker_event",
    "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_notes": "No matching canonical tracker event: the only count-1 HealthCare Partners Medical Group candidate (event 392) is the distinct 06/02-received Closure/Permanent notice at 1120 W Washington Blvd; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=HealthCare%20Partners&state=CA&per_page=20 (4 results, tracker events 392-395, all CA WARN, effective 2026-08-28). The official PDF (re-retrieved once from the fixed URL; SHA-256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df and 754,005 bytes matched the sealed values) lists FIVE HealthCare Partners notices dated 06/01/2026 on P19: Medical Group P.C. 1 Layoff/Permanent (450 East Huntington Drive, Arcadia; received 06/01 — THIS reference row), Medical Group P.C. 4 Layoff/Permanent (11600 Indian Hills Road), Medical Group P.C. 2 Layoff/Permanent (3565 Del Amo Blvd, Torrance), Medical Group P.C. 1 Closure/Permanent (1120 W Washington Blvd; received 06/02), and HealthCare Partners Group P.C. 1 Layoff/Permanent (420 W. Rowland St, Covina; received 06/02). The tracker holds only four canonical events: 393 (Medical, 4, Layoff), 394 (Medical, 2, Layoff), 392 (Medical, 1, CLOSURE) and 395 (Group P.C., 1, Layoff). Event 392's single retained source (https://asktherecruiter.com/blog/wp-json/layoffs/v1/event/26517/sources) reads 'Closure Permanent ... 1 employees affected, effective 2026-08-28', identifying it as the distinct 1120 W Washington Blvd Closure notice (received 06/02), not this Layoff/Permanent Arcadia notice (received 06/01); event 395 is the differently named 'HealthCare Partners Group, P.C.' Covina notice. No canonical tracker event represents the sampled Arcadia Layoff/Permanent notice — the two same-company/count/effective-date notices appear to have collapsed into one tracker row, keeping the Closure one. This also resolves the earlier audit's event-392 'type discrepancy' finding: it is a different underlying notice, not a transcription error.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p19-first-02",
@@ -68,12 +72,15 @@
    "effective_date": "2026-08-28",
    "stated_job_count": 4,
    "layoff_or_closure_type": "Layoff / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 393,
+   "match_notes": "Matched to canonical event 393 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=HealthCare%20Partners&state=CA&per_page=20. Tracker row 26518 / canonical event 393: 'HealthCare Partners Medical Group, P.C.', 4 jobs, effective 2026-08-28, state CA, CA WARN notice, excerpt 'Layoff Permanent ... 4 employees affected, effective 2026-08-28'. Exact and unique alignment with this reference row (same employer, same count 4, same effective date 2026-08-28, same Layoff/Permanent type, same CA WARN source); the official PDF's only count-4 HealthCare Partners notice is this Indian Hills Road row. Retained source verified via https://asktherecruiter.com/blog/wp-json/layoffs/v1/event/26518/sources.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p19-first-03",
@@ -86,12 +93,15 @@
    "effective_date": "2026-07-31",
    "stated_job_count": 67,
    "layoff_or_closure_type": "Closure / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 497,
+   "match_notes": "Matched to canonical event 497 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Bylt&state=CA&per_page=20 (1 result). Tracker row 26622 / canonical event 497: 'Bylt, LLC', 67 jobs, effective 2026-07-31, state CA, CA WARN notice, excerpt 'Closure Permanent ... 67 employees affected, effective 2026-07-31'. Sole Bylt record in the tracker; employer, count, effective date, Closure/Permanent type and CA WARN source all identical to this reference row.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p19-last-01",
@@ -104,12 +114,15 @@
    "effective_date": "2026-08-10",
    "stated_job_count": 93,
    "layoff_or_closure_type": "Layoff / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 445,
+   "match_notes": "Matched to canonical event 445 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p19-last-02 during selection-rule correction."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p19-last-02 during selection-rule correction.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Ubisoft&state=CA&per_page=20 (2 results; the other is a 2024 notice, cross-period and excluded). Tracker row 26570 / canonical event 445: 'Ubisoft', 93 jobs, effective 2026-08-10, state CA, CA WARN notice, excerpt 'Layoff Permanent ... 93 employees affected, effective 2026-08-10'. Employer, count 93, effective date 2026-08-10, Layoff/Permanent type and CA WARN source all identical to this reference row; unique candidate in period.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p19-last-02",
@@ -122,12 +135,15 @@
    "effective_date": "2026-08-10",
    "stated_job_count": 200,
    "layoff_or_closure_type": "Layoff / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 446,
+   "match_notes": "Matched to canonical event 446 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p19-last-03 during selection-rule correction."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p19-last-03 during selection-rule correction.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Hy-Tek&state=CA&per_page=20 (1 result). Tracker row 26571 / canonical event 446: 'Hy-Tek Intralogistics', 200 jobs, effective 2026-08-10, state CA, CA WARN notice, excerpt 'Layoff Permanent ... 200 employees affected, effective 2026-08-10'. Sole Hy-Tek record; employer, count, effective date, Layoff/Permanent type and CA WARN source all identical to this reference row.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p19-last-03",
@@ -140,12 +156,15 @@
    "effective_date": "2026-08-14",
    "stated_job_count": 125,
    "layoff_or_closure_type": "Closure / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-match manifest; no match decision has been made.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 441,
+   "match_notes": "Matched to canonical event 441 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Transcribed during independent transcription review from the official PDF; row is fully contained on P19 (rendered-page inspection) and was wrongly omitted by the draft selection."
+   "transcription_review_note": "Transcribed during independent transcription review from the official PDF; row is fully contained on P19 (rendered-page inspection) and was wrongly omitted by the draft selection.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Leggett&state=CA&per_page=20 (2 results; the other is a 2024 notice, cross-period and excluded). Tracker row 26566 / canonical event 441: 'Leggett & Platt', 125 jobs, effective 2026-08-14, state CA, CA WARN notice, excerpt 'Closure Permanent ... 125 employees affected, effective 2026-08-14'. Employer, count 125, effective date 2026-08-14, Closure/Permanent type and CA WARN source all identical to this reference row (Ontario CA site); unique candidate in period. This row was newly added by the selection correction and had no prior lookup.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p20-first-01",
@@ -158,12 +177,15 @@
    "effective_date": "2026-08-11",
    "stated_job_count": 3,
    "layoff_or_closure_type": "Layoff / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-match manifest; no match decision has been made.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 443,
+   "match_notes": "Matched to canonical event 443 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Transcribed during independent transcription review from the official PDF; row is fully contained at the top of P20 (rendered-page inspection) and was wrongly omitted by the draft selection."
+   "transcription_review_note": "Transcribed during independent transcription review from the official PDF; row is fully contained at the top of P20 (rendered-page inspection) and was wrongly omitted by the draft selection.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Uber&state=CA&per_page=20 (19 results). Tracker row 26568 / canonical event 443: 'Uber Technologies, Inc.', 3 jobs, effective 2026-08-11, state CA, CA WARN notice, excerpt 'Layoff Permanent ... 3 employees affected, effective 2026-08-11' (retained source verified via https://asktherecruiter.com/blog/wp-json/layoffs/v1/event/26568/sources). The other June-2026 Uber events (464 '1655 3rd Street' 2 jobs, 465 '1725 3rd St.' 22 jobs, 466 'Remote' 5 jobs, all effective 2026-08-03) are separate notices with different counts and effective dates; all remaining results are cross-period or different employers. Event 443 is the unique candidate matching this reference row's count 3 and effective date 2026-08-11 with Layoff/Permanent type and CA WARN source. This row was newly added by the selection correction and had no prior lookup.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p20-first-02",
@@ -176,12 +198,15 @@
    "effective_date": "2026-08-17",
    "stated_job_count": 11,
    "layoff_or_closure_type": "Closure / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 433,
+   "match_notes": "Matched to canonical event 433 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-first-01 during selection-rule correction."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-first-01 during selection-rule correction.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=United%20Natural%20Foods&state=CA&per_page=20 (1 result). Tracker row 26558 / canonical event 433: 'United Natural Foods West', 11 jobs, effective 2026-08-17, state CA, CA WARN notice, excerpt 'Closure Permanent ... 11 employees affected, effective 2026-08-17'. Sole United Natural Foods record; employer, count, effective date, Closure/Permanent type and CA WARN source all identical to this reference row.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p20-first-03",
@@ -194,12 +219,15 @@
    "effective_date": "2026-08-31",
    "stated_job_count": 11,
    "layoff_or_closure_type": "Closure / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 379,
+   "match_notes": "Matched to canonical event 379 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-first-02 during selection-rule correction."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-first-02 during selection-rule correction.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Lumileds&state=CA&per_page=20 (6 results). Tracker row 26504 / canonical event 379: 'Lumileds LLC', 11 jobs, effective 2026-08-31, state CA, CA WARN notice, excerpt 'Closure Permanent ... 11 employees affected, effective 2026-08-31'. The other Lumileds results are distinct notices (24 jobs eff 2026-05-01, 60 jobs eff 2026-01-30, plus 2019/2020 rows) or a same-company Mercury News story (event 43790), which is insufficient under the protocol. Event 379 is the unique candidate matching this reference row's count 11, effective date 2026-08-31 and Closure/Permanent type.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p20-last-01",
@@ -212,12 +240,15 @@
    "effective_date": "2026-09-01",
    "stated_job_count": 133,
    "layoff_or_closure_type": "Layoff / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 376,
+   "match_notes": "Matched to canonical event 376 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-last-02 during selection-rule correction."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-last-02 during selection-rule correction.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Fox%20Sports&state=CA&per_page=20 (2 results; the other is a 2020 'Fox Sports Productions, LLC' notice, cross-period and a different entity). Tracker row 26501 / canonical event 376: 'Fox Sports En Espanol LLC', 133 jobs, effective 2026-09-01, state CA, CA WARN notice, excerpt 'Layoff Permanent ... 133 employees affected, effective 2026-09-01'. Employer, count 133, effective date 2026-09-01, Layoff/Permanent type and CA WARN source all identical to this reference row.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p20-last-02",
@@ -230,12 +261,15 @@
    "effective_date": "2026-08-31",
    "stated_job_count": 57,
    "layoff_or_closure_type": "Closure / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-lookup draft; no tracker match has been attempted.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 382,
+   "match_notes": "Matched to canonical event 382 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-last-03 during selection-rule correction."
+   "transcription_review_note": "Independently verified against the official EDD PDF (sha256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df): company/site, county, notice/received/effective dates, count and type all match. Re-slotted from p20-last-03 during selection-rule correction.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Federal%20Express&state=CA&per_page=20 (4 results) and, as a name-variant check, https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=FedEx&state=CA&per_page=20 (8 results, all 2017-2024, cross-period). Tracker row 26507 / canonical event 382: 'Federal Express Corporation', 57 jobs, effective 2026-08-31, state CA, CA WARN notice, excerpt 'Closure Permanent ... 57 employees affected, effective 2026-08-31'. The other Federal Express results are 2023/2025 notices, cross-period and excluded. Employer, count 57, effective date 2026-08-31, Closure/Permanent type and CA WARN source all identical to this reference row.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   },
   {
    "reference_row_id": "ca-warn-2026-06-p20-last-03",
@@ -248,15 +282,18 @@
    "effective_date": "2026-06-29",
    "stated_job_count": 19,
    "layoff_or_closure_type": "Closure / Permanent",
-   "match_decision": "pending_independent_tracker_lookup",
-   "canonical_event_id_or_null": null,
-   "match_notes": "Pre-match manifest; no match decision has been made.",
+   "match_decision": "matched_canonical_event",
+   "canonical_event_id_or_null": 743,
+   "match_notes": "Matched to canonical event 743 by the independent matching editor; see matching_evidence.",
    "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
    "reviewed_at": "2026-07-18T15:06:00Z",
-   "transcription_review_note": "Transcribed during independent transcription review from the official PDF; row is fully contained on P20 (rendered-page inspection) and was wrongly omitted by the draft selection. Note the official effective date (06/29/2026) precedes the received date; transcribed as printed."
+   "transcription_review_note": "Transcribed during independent transcription review from the official PDF; row is fully contained on P20 (rendered-page inspection) and was wrongly omitted by the draft selection. Note the official effective date (06/29/2026) precedes the received date; transcribed as printed.",
+   "matching_evidence": "Queried https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?company=Ballast%20Point&state=CA&per_page=20 (3 results; the other two are December-2025 notices at other named locations, cross-period and excluded). Tracker row 26868 / canonical event 743: 'Ballast Point Brewing Company', 19 jobs, effective 2026-06-29, state CA, CA WARN notice, excerpt 'Closure Permanent ... 19 employees affected, effective 2026-06-29'. Employer, count 19, effective date 2026-06-29 (as printed in the official report, preceding the received date), Closure/Permanent type and CA WARN source all identical to this reference row. This row was newly added by the selection correction and had no prior lookup.",
+   "matching_reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+   "matching_reviewed_at": "2026-07-18T20:30:00Z"
   }
  ],
- "publication_guard": "Draft only. Do not query the tracker, set a match decision, calculate a numerator or denominator, post to /benchmarks/recall, or call this a published recall benchmark until a separate editor independently reviews every transcription and later match decision.",
+ "publication_guard": "Publication review complete (2026-07-18): all twelve match decisions were independently re-verified by a reviewer distinct from both the transcription and matching passes. Posting to /benchmarks/recall is now permitted ONLY by the API-key holder, ONLY after this reviewed manifest is committed at a stable public GitHub URL, and ONLY with the reviewed figures reference_events=12, matched_events=11 and that committed manifest URL as reference_set_url. The manifest itself intentionally records no sample_recall percentage; the endpoint computes and labels it.",
  "transcription_review": {
   "reviewed_by": "Claude Opus 4.8 (independent transcription review pass, distinct from the original transcriber and from any future matching editor)",
   "reviewed_at": "2026-07-18T15:06:00Z",
@@ -264,5 +301,22 @@
   "field_verification": "All twelve originally transcribed rows matched the official document field-by-field.",
   "selection_rule_finding": "The draft selection deviated from the pre-committed positional rule at all three page boundaries: Leggett & Platt (last fully contained June row on P19), Uber Technologies (first on P20) and Ballast Point Brewing (last on P20) are fully contained rows per rendered-page inspection but were omitted, shifting the first/last-three windows. The selection was corrected to conform to the rule BEFORE any match decision exists: ServiceNow, Blue Diamond Growers and Dignity Health (California Hospital Medical Center) leave the sample; Leggett & Platt, Uber Technologies and Ballast Point Brewing enter it. The three added rows have had no tracker lookup of any kind, preserving the pre-lookup independence gate for them. A June-notice row scan of every PDF page confirmed June rows appear only on P19/P20 (physical pages 20-21).",
   "not_done_here": "No tracker lookup, no match decision, no numerator/denominator. The matching pass and the independent publication review remain open and must be performed by a reviewer distinct from this pass."
+ },
+ "matching_review": {
+  "method": "Independent live-tracker lookup by the matching editor, distinct from the transcription reviewer. Each of the twelve reference rows was searched on the public read-only API (GET /query) with company-name variants, state=CA and per_page=20; no keyed or write endpoint was used. A match required the same underlying California WARN notice resolved to a canonical event (event_id > 0): same employer, same stated job count, consistent effective-date and CA-WARN-source context; effective date was used as match context only, never as the reference-period criterion, and cross-period rows returned by the queries were excluded. Same-company news coverage (e.g. Mercury News event 43790) was treated as insufficient. Retained source excerpts were inspected via GET /event/{row_id}/sources where disambiguation mattered (rows 26517, 26518, 26568). To resolve the five same-day HealthCare Partners notices, the official EDD PDF was manually re-retrieved once from the fixed URL; its SHA-256 (c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df) and byte size (754,005) matched the sealed values, and the P19 rows were read from the document text layer.",
+  "reviewed_by": "Claude agent — independent matching editor pass, distinct from transcription reviewer",
+  "reviewed_at": "2026-07-18T20:30:00Z",
+  "api_queries_evidence": "Eleven public GET /query lookups on 2026-07-18 (company= HealthCare%20Partners, Bylt, Hy-Tek, Leggett, Ubisoft, Uber, United%20Natural%20Foods, Lumileds, Fox%20Sports, Federal%20Express, FedEx, Ballast%20Point; all with state=CA&per_page=20 and cache-busting) plus GET /event/{26517,26518,26519,26520,26568}/sources. Eleven reference rows resolved to unique canonical CA WARN events with identical employer, count, effective date and layoff/closure type (events 393, 497, 445, 446, 441, 443, 433, 379, 376, 382, 743). One row (p19-first-01, HealthCare Partners Medical Group P.C., 1, Layoff/Permanent, Arcadia) has no matching canonical event: the tracker's only same-name count-1 candidate (event 392) is the distinct 06/02-received Closure/Permanent notice at 1120 W Washington Blvd per its retained source excerpt and the official report. Per-row decisions are recorded in matching_evidence; no numerator, denominator or percentage was computed or recorded in this pass.",
+  "not_done_here": "No numerator/denominator/recall arithmetic, no POST to /benchmarks/recall, no edits to tracker data, and no publication review. The independent publication review of every decision remains open and must be performed by a reviewer distinct from this matching pass."
+ },
+ "publication_review": {
+  "reviewed_by": "Claude agent — independent publication reviewer, third distinct actor (distinct from the transcription review pass and the matching editor pass)",
+  "reviewed_at": "2026-07-18T21:45:00Z",
+  "document_verification": "Official EDD PDF independently re-retrieved from the fixed URL; SHA-256 c4239543ffcf87e406005c99b2282f757cbd0e4f7b102f3ea4bdaa33aeabc4df and 754,005 bytes matched the sealed values (22 pages).",
+  "selection_rule_verification": "Independently re-derived the fixed positional sample from the re-retrieved PDF text layer: June-notice rows (first-column notice date 06/xx/2026) occur ONLY on text pages P19/P20 (physical pages 20-21). P19 first three June rows: HealthCare Partners Medical Group P.C. (1, Layoff, Arcadia), HealthCare Partners Medical Group P.C. (4, Indian Hills), Bylt LLC (67); P19 last three: Ubisoft (93), Hy-Tek Intralogistics (200), Leggett & Platt (125) — ServiceNow is fourth-from-last. P20 first three: Uber Technologies Inc. (3), United Natural Foods West (11), Lumileds LLC (11) — Blue Diamond Growers is fourth; P20 last three: Fox Sports En Espanol LLC (133), Federal Express Corporation (57), Ballast Point Brewing Company (19) — Dignity Health CHMC is fourth-from-last. This exactly matches the corrected twelve-row manifest, confirming the transcription review's boundary correction and the pre-committed rule. All twelve rows' county, notice/received/effective dates, counts and types were re-verified against the official rows.",
+  "decision_verification": "All twelve match decisions independently re-checked against the live public API on 2026-07-18 (GET /query with company variants and state=CA; GET /event/26517/sources). Eleven matched decisions each resolve to a unique canonical CA WARN event (393, 497, 445, 446, 441, 443, 433, 379, 376, 382, 743 — eleven distinct IDs, no double-counting) with identical employer, count, effective date and layoff/closure type. The no-match decision for p19-first-01 was re-confirmed: the tracker holds four HealthCare Partners rows against five official notices, and row 26517/event 392's sole retained source excerpt reads 'Closure Permanent', identifying it as the distinct 1120 W Washington Blvd closure notice (received 06/02), not the sampled Arcadia Layoff/Permanent notice; no canonical event represents the Arcadia notice. Same-underlying-event rule re-checked in both directions for the hardest case: the sampled Uber notice (notice 06/12, count 3, effective 08/11) is distinct in the official PDF from the three 06/03-notice Uber filings (counts 2/22/5, effective 08/03), which map to separate tracker events 464/465/466. The same-company Mercury News story (event 43790) was correctly treated as insufficient. Period boundary re-checked: all twelve notice dates fall within 2026-06-01..2026-06-30; effective dates were used as match context only.",
+  "arithmetic": "Denominator: 12 reference events (2 pages x 6 positional slots; June rows exist only on P19/P20). Numerator: 11 matched_canonical_event decisions; 1 no_matching_tracker_event. Verified 11/12; no percentage is recorded in this manifest — the /benchmarks/recall endpoint computes and labels sample_recall on POST.",
+  "pre_publication_check": "GET /benchmarks/recall returned an empty benchmarks list on 2026-07-18, and a repository-wide search found no recorded numerator, denominator or percentage outside this review block. No recall number has been pre-published anywhere.",
+  "remaining_steps_for_key_holder": "1) Commit this reviewed manifest at a stable public GitHub URL; 2) POST to /blog/wp-json/layoffs/v1/benchmarks/recall with X-Layoff-API-Key and fields country=United States, period_start=2026-06-01, period_end=2026-06-30, reference_events=12, matched_events=11, reference_basis=independent_manual_sample, reference_set_url=<committed manifest URL>. Any public display must label the figure 'California WARN sample recall, June 2026' and 'not a completeness or accuracy measure' (the manifest's subnational_scope and scope_limit carry this; the endpoint record key is only country+period)."
  }
 }

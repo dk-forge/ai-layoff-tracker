@@ -122,6 +122,36 @@ TRUSTED_DOMAINS = {
     "expresso.pt", "publico.pt",                             # Portugal
     "startribune.com", "chron.com", "miamiherald.com",       # more US regionals
     "cnbc.com", "thehill.com",                               # (dupes are harmless; set dedups)
+    # --- 2026-07 four-region research sweep (docs/COUNTRY_SOURCE_RESEARCH_2026_07.md
+    # §3, "Newspapers-only fallback by country"): per-country papers of record and
+    # business dailies. Allowlist-only — these mark articles as trusted when they
+    # surface via GDELT/NewsAPI; we never scrape these sites directly.
+    "latribune.fr",                                           # France
+    "di.se",                                                  # Sweden
+    "berlingske.dk",                                          # Denmark
+    "dn.no",                                                  # Norway
+    "kauppalehti.fi",                                         # Finland
+    "pb.pl", "rp.pl",                                         # Poland
+    "handelszeitung.ch",                                      # Switzerland
+    "jornaldenegocios.pt", "eco.sapo.pt",                     # Portugal
+    "elfinanciero.com.mx",                                    # Mexico
+    "ambito.com", "cronista.com",                             # Argentina
+    "latercera.com",                                          # Chile (Pulso)
+    "larepublica.co",                                         # Colombia
+    "hket.com",                                               # Hong Kong
+    "businessdesk.co.nz",                                     # New Zealand
+    "bisnis.com", "kontan.co.id",                             # Indonesia
+    "theedgemalaysia.com",                                    # Malaysia
+    "bworldonline.com",                                       # Philippines
+    "vneconomy.vn",                                           # Vietnam
+    "bangkokbiznews.com",                                     # Thailand (Krungthep Turakij)
+    "globes.co.il",                                           # Israel
+    "dunya.com",                                              # Turkey
+    "argaam.com",                                             # Saudi Arabia
+    "businessday.ng", "nairametrics.com",                     # Nigeria
+    "dailynewsegypt.com",                                     # Egypt
+    "kommersant.ru", "rbc.ru", "thebell.io",                  # Russia
+    "epravda.com.ua",                                         # Ukraine
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
