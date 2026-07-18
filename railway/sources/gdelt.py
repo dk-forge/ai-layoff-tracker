@@ -197,7 +197,7 @@ TRUSTED_DOMAINS = {
     # Corporate press-release wires: PRIMARY announcement text, the exact
     # channel Challenger monitors. Allowlist-only — GDELT/NewsAPI surface the
     # releases; we never crawl the wires directly.
-    "prnewswire.com", "businesswire.com", "globenewswire.com",
+    "prnewswire.com", "businesswire.com", "globenewswire.com", "prweb.com",
     # --- 2026-07-18 worldwide papers-of-record expansion: built from the
     # per-country Wikipedia newspaper lists by a five-continent review pass
     # (top 2-5 active newsrooms per country; state-outlet caveats inline).
