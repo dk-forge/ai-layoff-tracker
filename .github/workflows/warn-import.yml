@@ -47,7 +47,15 @@ jobs:
           [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
       - name: Install deps
         working-directory: railway
-        run: pip install -r requirements.txt
+        # warn-scraper's PyPI release predates the ms.py/nd.py scrapers, and
+        # its sdist at the pinned commit imports jinja2 at build time (an
+        # upstream packaging gap), so the git install needs the build dep
+        # preinstalled and isolation off. Pinned by commit for reproducibility;
+        # the shared requirements.txt keeps the PyPI floor for every other job.
+        run: |
+          pip install -r requirements.txt
+          pip install jinja2
+          pip install --no-build-isolation "warn-scraper @ git+https://github.com/biglocalnews/warn-scraper@f7b3dd26af1f3ad700762504bd7c5c0d23979507"
       - name: Mark pipeline refreshing
         run: |
           curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \
