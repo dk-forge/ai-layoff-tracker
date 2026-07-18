@@ -194,6 +194,10 @@ TRUSTED_DOMAINS = {
     "kuow.org",                   # Seattle NPR (Boeing/Amazon/Microsoft)
     "wbur.org",                   # Boston NPR (biotech)
     "kqed.org",                   # SF Bay NPR (tech)
+    # Corporate press-release wires: PRIMARY announcement text, the exact
+    # channel Challenger monitors. Allowlist-only — GDELT/NewsAPI surface the
+    # releases; we never crawl the wires directly.
+    "prnewswire.com", "businesswire.com", "globenewswire.com",
     "techrepublic.com", "electrek.co", "gamedeveloper.com",   # tech/EV/games trade
     "chicago.suntimes.com",                                   # Chicago daily
     "wral.com",                                               # Raleigh NC (WRAL TechWire)
