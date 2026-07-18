@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.19 makes the public Challenger endpoint return one authoritative retained record per report month and corrects stale operational counts; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -113,6 +113,10 @@ be red in Actions while retaining the public record.
    - The endpoint returns one authoritative retained record per official
      report month. Earlier setup entries without `report_month` remain stored
      for audit but cannot appear as a misleading duplicate publication.
+   - NewsAPI now makes two bounded, URL-deduplicated queries per collection:
+     broad layoff coverage plus a separate AI/automation announcement query.
+     It remains licensed-news discovery, not a direct company announcement
+     census; extraction and source-evidence rules remain unchanged.
 
 2. **Measured recall by country/period.**
    - Public protocol: `docs/RECALL_BENCHMARK_PROTOCOL.md`; endpoint:

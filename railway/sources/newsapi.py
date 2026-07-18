@@ -17,7 +17,19 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 
 TRUSTED_DOMAINS = (
     "reuters.com,bloomberg.com,wsj.com,ft.com,apnews.com,"
-    "techcrunch.com,cnbc.com,theguardian.com"
+    "techcrunch.com,cnbc.com,theguardian.com,cbsnews.com,npr.org,axios.com,"
+    "bbc.com,theverge.com,arstechnica.com,fortune.com,businessinsider.com"
+)
+
+# Keep the general layoffs sweep separate from a targeted AI/automation sweep.
+# Both remain discovery only: the extractor still needs source text that
+# supports a count, date and causal classification before an event is posted.
+# Two queries per twice-daily run are comfortably inside NewsAPI's 100/day
+# developer allowance and recover announcement wording that a broad result
+# ranking can otherwise bury.
+DISCOVERY_QUERIES = (
+    'layoffs OR "job cuts" OR "workforce reduction" OR "reduction in force"',
+    '(layoffs OR "job cuts" OR "workforce reduction") AND (AI OR "artificial intelligence" OR automation)',
 )
 
 
@@ -31,54 +43,52 @@ def pull_news_articles(days_back=2):
         "%Y-%m-%dT%H:%M:%SZ"
     )
 
-    params = {
-        "q": 'layoffs OR "job cuts" OR "workforce reduction" OR "reduction in force"',
-        "from": from_date,
-        "domains": TRUSTED_DOMAINS,
-        "language": "en",
-        "sortBy": "publishedAt",
-        "pageSize": 100,
-        "apiKey": api_key,
-    }
-
-    try:
-        resp = requests.get(NEWSAPI_URL, params=params, timeout=30)
-
-        if resp.status_code == 429:
-            # Per error-handling requirements: log and skip, no retry this run
-            print("NewsAPI: rate limited (429) — skipping this run")
-            return []
-
-        data = resp.json()
-        if data.get("status") != "ok":
-            print(f"NewsAPI error response: {data.get('code')} — {data.get('message')}")
-            return []
-
-        results = []
-        for article in data.get("articles", []):
-            title = article.get("title") or ""
-            url = article.get("url") or ""
-            # NewsAPI substitutes '[Removed]' placeholders for retracted items
-            if not url or title == "[Removed]":
+    results, seen_urls = [], set()
+    for query in DISCOVERY_QUERIES:
+        params = {
+            "q": query,
+            "from": from_date,
+            "domains": TRUSTED_DOMAINS,
+            "language": "en",
+            "sortBy": "publishedAt",
+            "pageSize": 100,
+            "apiKey": api_key,
+        }
+        try:
+            resp = requests.get(NEWSAPI_URL, params=params, timeout=30)
+            if resp.status_code == 429:
+                # A quota/rate limit applies to the whole API key, so another
+                # query in this run cannot safely recover it.
+                print("NewsAPI: rate limited (429) — stopping this run")
+                break
+            data = resp.json()
+            if data.get("status") != "ok":
+                print(f"NewsAPI error response: {data.get('code')} — {data.get('message')}")
                 continue
-            results.append({
-                "source_type": "news",
-                "source_name": (article.get("source") or {}).get("name", "Unknown"),
-                "verification_level": "bronze",
-                "raw_text": " ".join(filter(None, [
-                    title,
-                    article.get("description") or "",
-                    article.get("content") or "",
-                ])),
-                "source_url": url,
-                "company_name": None,  # the extraction model fills this in
-                "ticker": None,        # the extraction model fills this in
-                "filing_date": (article.get("publishedAt") or "")[:10],
-            })
-
-        print(f"NewsAPI: {len(results)} articles pulled")
-        return results
-
-    except Exception as e:
-        print(f"NewsAPI error: {e}")
-        return []
+            for article in data.get("articles", []):
+                title = article.get("title") or ""
+                url = article.get("url") or ""
+                # NewsAPI substitutes '[Removed]' placeholders for retracted items.
+                if not url or url in seen_urls or title == "[Removed]":
+                    continue
+                seen_urls.add(url)
+                results.append({
+                    "source_type": "news",
+                    "source_name": (article.get("source") or {}).get("name", "Unknown"),
+                    "verification_level": "bronze",
+                    "raw_text": " ".join(filter(None, [
+                        title,
+                        article.get("description") or "",
+                        article.get("content") or "",
+                    ])),
+                    "source_url": url,
+                    "company_name": None,  # the extraction model fills this in
+                    "ticker": None,        # the extraction model fills this in
+                    "filing_date": (article.get("publishedAt") or "")[:10],
+                })
+        except Exception as e:
+            # Preserve a usable result from the other bounded query, but make
+            # this source attempt visibly degraded to the cron caller.
+            print(f"NewsAPI query error: {e}")
+    print(f"NewsAPI: {len(results)} unique articles pulled across {len(DISCOVERY_QUERIES)} queries")
+    return results
