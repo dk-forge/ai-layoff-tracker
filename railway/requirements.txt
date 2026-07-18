@@ -1,6 +1,6 @@
 openai>=1.40.0
 requests>=2.32.0
-warn-scraper>=1.2.0
+warn-scraper @ git+https://github.com/biglocalnews/warn-scraper@f7b3dd26af1f3ad700762504bd7c5c0d23979507
 pyquery>=2.0.0
 et-xmlfile>=1.1.0
 # custom state collectors (pdf tables, xlsx archives, Akamai HTTP/2 on mass.gov)
