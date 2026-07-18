@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
+from sources import edinet, opendart
 from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
@@ -30,6 +31,40 @@ def _mark_phase(phase):
                       timeout=20)
     except Exception as e:
         print(f"phase ping failed: {e}")
+
+
+def run_discovery_probes():
+    """Health-visible discovery probes for Japan EDINET and South Korea OpenDART.
+
+    Each probe lists one official daily filing window and reports the count to
+    source health so the public page shows the probe ran. Nothing is ingested,
+    classified, or added to the extraction pipeline — this is deliberately NOT
+    a coverage claim (see docs/OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md before
+    promoting either client to a real connector).
+    """
+    yesterday = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=1)).date()
+    probes = (
+        ("edinet_jp", "EDINET_API_KEY_JP",
+         lambda: len(edinet.list_documents_for_date(yesterday).documents)),
+        ("opendart_kr", "OPENDART_API_KEY_KR",
+         lambda: len(opendart.list_disclosures(yesterday, yesterday).disclosures)),
+    )
+    for source, env_key, probe in probes:
+        if not os.environ.get(env_key, ""):
+            report_source_health(source, "degraded", 0,
+                                 f"{env_key} is not configured in this runtime")
+            continue
+        try:
+            report_source_health(source, "running", 0, "discovery list in progress")
+            count = probe()
+            report_source_health(
+                source, "ok", count,
+                f"discovery only: {count} official filing(s) listed for "
+                f"{yesterday.isoformat()}; nothing ingested or classified",
+            )
+        except Exception as e:
+            report_source_health(source, "degraded", 0, f"discovery probe failed: {e}")
+            print(f"{source} discovery probe failed: {e}")
 
 
 def run():
@@ -77,6 +112,8 @@ def run():
     except Exception as e:
         report_source_health("gdelt", "degraded", 0, str(e))
         print(f"GDELT source failed: {e}")
+
+    run_discovery_probes()
 
     print(f"Pulled {len(entries)} raw entries")
 

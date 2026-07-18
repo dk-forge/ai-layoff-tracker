@@ -8,19 +8,33 @@
   const entriesLabel = x => (x && x.status === 'ok')
     ? `${Number(x.entries || 0).toLocaleString()} found`
     : 'No completed count';
+  // [coverage target, cadence, country/region, collection method]. The
+  // region+method pair renders under the source id in both tables so a reader
+  // can see what country a collector serves and how it collects.
   const meta = {
-    edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', 'Twice daily'],
-    newsapi: ['Worldwide licensed news discovery', 'Twice daily'],
-    gdelt: ['Worldwide multilingual news discovery', 'Twice daily'],
-    gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored'],
-    press_releases: ['Reviewed company-controlled IR/newsroom feeds', 'Twice daily'],
-    context_enrichment: ['Existing source-linked records', 'Daily evidence-only'],
+    edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', 'Twice daily', 'United States', 'Official filings API'],
+    warn_us: ['State WARN mass-layoff notices', 'Daily', 'United States', 'State labor-agency notices'],
+    newsapi: ['Worldwide licensed news discovery', 'Twice daily', 'Worldwide', 'Licensed news API'],
+    gdelt: ['Worldwide multilingual news discovery', 'Twice daily', 'Worldwide', 'Open news-index API'],
+    gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],
+    press_releases: ['Reviewed company-controlled IR/newsroom feeds', 'Twice daily', 'Per reviewed company (US · DE)', 'Company RSS/Atom feeds'],
+    eurofound_erm: ['Eurofound ERM restructuring announcements', 'Daily', 'European Union', 'Official monitor dataset'],
+    context_enrichment: ['Existing source-linked records', 'Daily evidence-only', 'Internal', 'Evidence re-read'],
+    edinet_jp: ['EDINET daily filing list — discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
+    opendart_kr: ['OpenDART disclosure list — discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
+    companies_house_uk: ['Registered-identity checks; identity support only', 'On demand', 'United Kingdom', 'Official registry API'],
+  };
+  const srcLabel = id => {
+    const m = meta[id];
+    return m && m[2]
+      ? `${esc(id)}<br><small class="alt-health-src-meta">${esc(m[2])} · ${esc(m[3])}</small>`
+      : esc(id);
   };
   const get = path => fetch(api + path + (path.includes('?') ? '&' : '?') + 'cb=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject(path));
 
   function renderRuns(ledger) {
     const runs = ledger && Array.isArray(ledger.runs) ? ledger.runs : [];
-    $('alt-health-runs').innerHTML = runs.map(x => `<tr><td><time>${esc(fmt(x.attempted_at))}</time></td><th>${esc(x.source)}</th><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span></td><td>${Number(x.entries || 0).toLocaleString()}</td><td>${esc(x.detail || '')}</td></tr>`).join('') || '<tr><td colspan="5">No collector attempts are recorded for this window. History begins with the ledger release.</td></tr>';
+    $('alt-health-runs').innerHTML = runs.map(x => `<tr><td><time>${esc(fmt(x.attempted_at))}</time></td><th>${srcLabel(x.source)}</th><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span></td><td>${Number(x.entries || 0).toLocaleString()}</td><td>${esc(x.detail || '')}</td></tr>`).join('') || '<tr><td colspan="5">No collector attempts are recorded for this window. History begins with the ledger release.</td></tr>';
   }
 
   function loadRuns(days) {
@@ -74,7 +88,7 @@
     $('alt-health-summary').innerHTML = `<div><b>${i.canonical_events.toLocaleString()}</b><span>canonical events</span></div><div><b>${i.source_reports.toLocaleString()}</b><span>retained reports</span></div><div><b>${degraded}</b><span>degraded source${degraded === 1 ? '' : 's'}</span></div><div><b>${i.source_report_hashes_remaining.toLocaleString()}</b><span>evidence hashes pending</span></div>`;
     $('alt-health-sources').innerHTML = Object.entries(h).map(([id, x]) => {
       const m = meta[id] || ['Operational collector', 'See source-health'];
-      return `<tr><th>${esc(id)}</th><td>${esc(m[0])}</td><td>${esc(m[1])}</td><td><time>${esc(fmt(x.checked_at))}</time></td><td>${esc(entriesLabel(x))}</td><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> ${esc(x.detail || '')}</td></tr>`;
+      return `<tr><th>${srcLabel(id)}</th><td>${esc(m[0])}</td><td>${esc(m[1])}</td><td><time>${esc(fmt(x.checked_at))}</time></td><td>${esc(entriesLabel(x))}</td><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> ${esc(x.detail || '')}</td></tr>`;
     }).join('') || '<tr><td colspan="6">No collector reports yet.</td></tr>';
     $('alt-health-workstreams').innerHTML = (q.workstreams || []).map(x => `<p><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> <b>${esc(x.id.replaceAll('_', ' '))}</b><br>${esc(x.scope)}</p>`).join('');
     const last = Array.isArray(c) && c[0] ? c[0] : null;

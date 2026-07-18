@@ -20,6 +20,7 @@ import requests
 
 from sources.warn import pull_warn
 from sources.warn_custom import pull_warn_custom
+from source_health import report_source_health
 
 BATCH = 1000
 FAILED_BATCHES = 0
@@ -77,7 +78,12 @@ def main():
         print("ERROR: WARN_PURGE requires WARN_STATES=all (purge is global; a "
               "state-scoped reload would wipe the other states)")
         sys.exit(1)
-    entries = pull_warn(states, min_employees=min_emp, start_date=start)
+    report_source_health("warn_us", "running", 0, f"WARN import in progress: {scope}")
+    try:
+        entries = pull_warn(states, min_employees=min_emp, start_date=start)
+    except Exception as exc:
+        report_source_health("warn_us", "degraded", 0, f"WARN scrape failed: {exc}")
+        raise
     # Custom collectors cover the states whose sites broke the open scraper
     # (TX, FL, GA, OH, MI, CO, ID, LA).
     customs = pull_warn_custom(states)
@@ -122,7 +128,11 @@ def main():
     # batch was rejected so the scheduled workflow shows red.
     if FAILED_BATCHES:
         print(f"ERROR: {FAILED_BATCHES} batch(es) failed to post")
+        report_source_health("warn_us", "degraded", 0,
+                             f"{FAILED_BATCHES} bulk batch(es) rejected by the API")
         sys.exit(1)
+    report_source_health("warn_us", "ok", len(entries),
+                         f"{scope}: {upserted} upserted from {len(entries)} notices")
 
 
 if __name__ == "__main__":

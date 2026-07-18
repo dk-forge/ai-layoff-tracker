@@ -17,7 +17,10 @@ class RecallReferenceManifestTests(unittest.TestCase):
     def test_california_draft_has_source_citations_but_no_measurement(self):
         path = Path(__file__).resolve().parents[2] / "docs" / "recall-reference-sets" / "ca-us-2026-06.warn-draft.json"
         draft = json.loads(path.read_text())
-        self.assertEqual(draft["publication_status"], "draft_pending_independent_review")
+        # The transcription review completed 2026-07-18; matching and
+        # publication review remain open, so this is still not a measurement.
+        self.assertEqual(draft["publication_status"],
+                         "transcription_reviewed_pending_match_and_publication_review")
         self.assertEqual(len(draft["reference_events"]), 12)
         self.assertRegex(draft["reference_set"]["document_sha256"], r"^[a-f0-9]{64}$")
         self.assertNotIn("sample_recall", draft)

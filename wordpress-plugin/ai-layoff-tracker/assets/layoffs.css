@@ -115,14 +115,14 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 
 .alt-stats-bar {
     display: grid;
-    /* Fixed 3-up so the three explained cards (Verified / Announced / AI)
-       share one even row, and Companies / Industries / Countries share the
-       next — instead of six-across with mismatched heights. */
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Fixed 4-up so the four job-count cards (Verified / AI-attributed /
+       Announced / Announced-AI) share one even row, and the context cards
+       (AI share / Companies / Industries / Countries) share the next. */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     margin: 0 0 18px;
 }
-@media (max-width: 720px) { .alt-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 980px) { .alt-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 460px) { .alt-stats-bar { grid-template-columns: 1fr; } }
 .alt-stat-card {
     position: relative;
@@ -1073,6 +1073,7 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-health-run-heading label { flex: 0 0 auto; color: var(--alt-muted); font-size: 12px; font-weight: 700; }
 .alt-health-run-heading select { display: block; margin-top: 4px; min-width: 128px; }
 @media (max-width: 600px) { .alt-health-run-heading { display: block; } .alt-health-run-heading label { display: inline-block; margin: 8px 0; } }
+.alt-health-src-meta { display: block; margin-top: 2px; color: var(--alt-muted); font-size: .78rem; font-weight: 400; white-space: nowrap; }
 .alt-challenger-chart { position: relative; height: 245px; margin: 14px 0 6px; }
 .alt-source-ok td:nth-child(2) { color: #187449; font-weight: 700; }
 .alt-source-running td:nth-child(2) { color: #9a6700; font-weight: 700; }

@@ -201,14 +201,22 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
                 <span class="alt-stat-label">Explicitly AI-attributed</span>
-                <span class="alt-stat-desc"><b>Part of the Verified cuts</b> to the left — the ones a company openly blamed on AI.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-entries"></span>
+                <span class="alt-stat-desc"><b>This number is part of Verified job cuts.</b> Cuts the company openly blamed on AI.</span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts</span>
-                <span class="alt-stat-desc"><b>Separate number.</b> Source-linked plans at announcement stage. <b>Not counted in Verified or AI-attributed.</b></span>
-                <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
+                <span class="alt-stat-desc"><b>This number is not part of Verified job cuts.</b> Source-linked plans at announcement stage.</span>
+            </div>
+            <div class="alt-stat-card alt-stat-card-ai">
+                <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
+                <span class="alt-stat-label">Announced AI job cuts</span>
+                <span class="alt-stat-desc"><b>This number is part of Announced job cuts.</b> Announced plans the company links to AI.</span>
+            </div>
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-ai-share">—</span>
+                <span class="alt-stat-label">AI share of Verified</span>
+                <span class="alt-stat-desc">How much of Verified job cuts is explicitly AI-attributed.</span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-companies">—</span>

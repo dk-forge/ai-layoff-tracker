@@ -567,23 +567,26 @@
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
 
-    function plural(n, word) { return fmt(n) + ' ' + word + (n === 1 ? '' : 's'); }
-
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
         var scope = statScopeLabel();
-        var annJ = t.announced_jobs || 0, annE = t.announced_entries || 0;
-        setText('alt-stat-total', fmt(t.jobs - annJ));
-        setText('alt-stat-total-entries', plural(t.entries - annE, 'layoff') + ' · ' + period + scope);
+        var annJ = t.announced_jobs || 0;
+        var verifiedJ = t.jobs - annJ;
+        setText('alt-stat-total', fmt(verifiedJ));
+        setText('alt-stat-total-entries', period + scope);
         setText('alt-stat-announced', fmt(annJ));
-        setText('alt-stat-announced-sub', plural(annE, 'announcement') + ' · ' + period + scope);
-        // AI-attributed is the VERIFIED subset (announced-AI lives only in the
-        // Announced number), so it is genuinely "part of Verified".
+        // AI-attributed is the VERIFIED subset; announced-AI is the ANNOUNCED
+        // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
-        var aiE = (t.ai_verified_entries != null) ? t.ai_verified_entries : t.ai_entries;
         setText('alt-stat-ai', fmt(aiJ));
-        setText('alt-stat-ai-entries', plural(aiE, 'layoff') + ' · ' + period + scope);
+        var aiAnnJ = (t.ai_announced_jobs != null)
+            ? t.ai_announced_jobs
+            : Math.max(0, (t.ai_jobs || 0) - aiJ);
+        setText('alt-stat-ai-announced', fmt(aiAnnJ));
+        var share = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
+        setText('alt-stat-ai-share', share == null ? '—'
+            : (share >= 10 ? Math.round(share) : share.toFixed(1)) + '%');
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));
         setText('alt-stat-countries', fmt(t.countries));
