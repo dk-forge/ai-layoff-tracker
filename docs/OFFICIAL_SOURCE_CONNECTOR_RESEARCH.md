@@ -75,6 +75,10 @@ evidence-review aid only—not a collector, coverage claim, or enrichment job.
 3. Research public labour-ministry sources that publish event-level employer,
    count and document links, starting with the countries already named in the
    public gaps section. Apply the admission rule above before coding.
+   **Done 2026-07-18:** a 93-source, four-region sweep is recorded in
+   [COUNTRY_SOURCE_RESEARCH_2026_07.md](COUNTRY_SOURCE_RESEARCH_2026_07.md),
+   including a ranked top-10 admission shortlist (Brazil CVM IPE first), the
+   per-country do-not-ingest reasons, and the newspapers-only fallback list.
 
 Until a connector clears this checklist, worldwide GDELT/news discovery and
 reviewed company feeds remain the only described coverage path for that market.
