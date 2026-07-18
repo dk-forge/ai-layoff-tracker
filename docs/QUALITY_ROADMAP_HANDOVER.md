@@ -1,6 +1,17 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 PM (plugin 2.18.30: the company directory is live —
+Last updated: 2026-07-18 PM (plugin 2.18.31: the public stats bar is two
+rows of four cards — Verified, Explicitly AI-attributed, Announced, and the
+new Announced-AI number (`/aggregate` now returns
+`ai_announced_jobs`/`ai_announced_entries`), plus AI-share-of-Verified,
+Companies, Industries, Countries; each subset card states which parent
+number it belongs to and the event-count sublines were removed. The health
+page labels every collector with its country/region and collection method
+in both tables. `cron.py` runs health-visible discovery probes for Japan
+EDINET (`edinet_jp`) and South Korea OpenDART (`opendart_kr`) — official
+filing lists only, nothing ingested, explicitly not a coverage claim — and
+`warn_import.py` now reports `warn_us` source health so the largest US
+source is visible in collector operations. Earlier same day, plugin 2.18.30: the company directory is live —
 a keyed `/company-directory` writer with a public GET listing and the
 `company-directory.yml` admission workflow enforce the two-event
 source-linked threshold server-side, and the first six reviewed mappings
