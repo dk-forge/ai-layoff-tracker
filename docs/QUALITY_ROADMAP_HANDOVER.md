@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.17 adds an actionable public sample for any remaining event-source-link integrity gap; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.18 removes an invalid blank legacy row with no evidence and cleans its orphaned event graph; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -152,6 +152,9 @@ be red in Actions while retaining the public record.
      canonical-row URL; it never fetches a source or changes a fact. The
      endpoint exposes up to five already-public canonical-row samples for a
      remaining gap so it can be corrected from evidence rather than guessed.
+     If a sampled row is structurally blank with no company, date or source,
+     remove it through the correction workflow and clean its orphaned event
+     graph; do not invent missing evidence.
 
 4. **Dataset release ledger and monthly change report.**
    - Public `GET /blog/wp-json/layoffs/v1/dataset-releases` snapshots begin at

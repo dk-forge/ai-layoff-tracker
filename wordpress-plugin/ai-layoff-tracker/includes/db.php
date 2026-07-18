@@ -143,6 +143,19 @@ function alt_event_add_report($event_id, $source) {
     return (int) $wpdb->insert_id;
 }
 
+/** Remove an event graph only after its last canonical row is gone. */
+function alt_cleanup_orphan_event($event_id) {
+    global $wpdb;
+    $event_id = (int) $event_id;
+    if (!$event_id) return false;
+    $layoffs = alt_db_table();
+    if ((int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $layoffs WHERE event_id = %d", $event_id)) > 0) {
+        return false;
+    }
+    $wpdb->delete(alt_source_reports_table(), array('event_id' => $event_id));
+    return (bool) $wpdb->delete(alt_events_table(), array('id' => $event_id));
+}
+
 function alt_event_register_report_for_layoff($layoff_id, $source) {
     global $wpdb;
     $event_id = alt_event_for_layoff($layoff_id);
@@ -1173,7 +1186,7 @@ function alt_api_trash(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
     $reason = (string) $r->get_param('reason');
-    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'not_found' => array(), 'suppressed' => 0);
+    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'orphan_events_cleaned' => array(), 'not_found' => array(), 'suppressed' => 0);
 
     // `ids` are TABLE row ids — the `id` field the public /query API returns.
     // Rows mirrored from a CPT post get the post trashed (hooks remove the
@@ -1183,7 +1196,7 @@ function alt_api_trash(WP_REST_Request $r) {
     foreach ((array) $r->get_param('ids') as $tid) {
         $tid = (int) $tid;
         $row = $tid ? $wpdb->get_row($wpdb->prepare(
-            "SELECT id, post_id, dedup_hash FROM $table WHERE id = %d", $tid)) : null;
+            "SELECT id, post_id, event_id, dedup_hash FROM $table WHERE id = %d", $tid)) : null;
         if (!$row) {
             $out['not_found'][] = $tid;
             continue;
@@ -1200,6 +1213,7 @@ function alt_api_trash(WP_REST_Request $r) {
             $wpdb->delete($table, array('id' => (int) $row->id));
             $out['deleted_rows'][] = (int) $row->id;
         }
+        if (alt_cleanup_orphan_event((int) $row->event_id)) $out['orphan_events_cleaned'][] = (int) $row->event_id;
     }
 
     // Direct id spaces still accepted for completeness.
