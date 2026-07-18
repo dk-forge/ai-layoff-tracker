@@ -2111,8 +2111,29 @@ function alt_api_event_migrate(WP_REST_Request $r) {
         $last = (int) $row['id'];
         alt_event_register_report_for_layoff($last, $row);
     }
+    // Canonical-pointer repair: a WARN purge + reload deletes rows and
+    // re-imports them with NEW ids while the bulk writer re-links them to the
+    // retained events — leaving each event's canonical_layoff_id dangling at
+    // the deleted id. Every canonical JOIN (company pages, sitemap, directory
+    // admission counts, review queue) then misses those rows. Re-point each
+    // dangling event at its lowest surviving row; events with no surviving
+    // rows keep their retained reports and stay untouched.
+    $events = alt_events_table();
+    $repaired = (int) $wpdb->query(
+        "UPDATE $events e
+         JOIN (
+             SELECT e2.id AS eid, MIN(l2.id) AS new_canon
+             FROM $events e2
+             LEFT JOIN $table lc ON lc.id = e2.canonical_layoff_id
+             JOIN $table l2 ON l2.event_id = e2.id
+             WHERE lc.id IS NULL
+             GROUP BY e2.id
+             LIMIT 20000
+         ) fix ON fix.eid = e.id
+         SET e.canonical_layoff_id = fix.new_canon");
+    if ($repaired > 0 && function_exists('alt_flush_caches')) alt_flush_caches();
     $remaining = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE event_id = 0");
-    return rest_ensure_response(array('processed' => count($rows), 'last_id' => $last, 'remaining' => $remaining));
+    return rest_ensure_response(array('processed' => count($rows), 'last_id' => $last, 'remaining' => $remaining, 'canonical_repaired' => $repaired));
 }
 
 /**
