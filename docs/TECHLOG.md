@@ -106,6 +106,11 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Incident | Root cause | Standing guard |
 |---|---|---|
+| CT WARN collection effectively dead (1 wrong row ever; CVS/Aetna 313 dropped) — found 2026-07-18 | Tier-1 count keyword "affected" matched CT DOL's `affected_company` header, so counts parsed from company NAMES (no digits → 0 → dropped) | "company"/"employer" in `_COUNT_EXCL` + CT-shape regression test; nationwide purge-reload rebuilt the table |
+| IL revisions never updated counts (Capital One/Discover Riverwoods: held 215, real 2,027) — found 2026-07-18 | IL IEBS keeps ONE cumulative row per site event and revises in place; parser preferred "Expected Layoff" over "Revised Layoff" | `_count_col` prefers a positive "Revised" figure; regression test with the real IEBS shape |
+| Intuit stored as 17 jobs (real ~3,000) | Extractor parsed "17% of its staff" as a headcount | `_percent_only_mention` guard rejects a small count that appears in the text only as "N%" + test; row corrected via /edit with sources retained |
+| Oracle double-counted as 50,000 (Feb 20K analyst-forecast row + Apr 30K execution row of the same plan) | Anticipatory analyst coverage ("may lay off up to 30,000", TD Cowen) ingested as an announcement event | Rows merged (all reports retained), converged on the 10-K-grounded net 21,000 with the 20-30K gross range documented in the excerpt; corrections trail entry |
+| /add source-attach overwrote an unpinned ERM row's fields (Dow briefly showed 4,500/blank country) — same day | Fuzzy same-company ±30d match routes /add into `alt_db_upsert`, which full-row-UPDATEs unpinned rows (last write wins) | Corrected + row pinned (edited=1); lesson: attach evidence to pinned rows only via /edit, or pin first — recorded in the gap-closure plan |
 | RI showed 98,912-worker notice (real: 9,891) | Count parser stripped ALL non-digits: "9,891 … (2 from RI)" → 98912 | `_count` parses FIRST number only; date-shaped values → 0; single-notice cap 100K; weekly anomaly report flags ≥5K notices |
 | NJ row parsed as 2.4 **trillion** jobs | Multi-county list "240 (Passaic), 417 (Bergen)…" digit-concatenated | Same first-number fix (→ 240, the lower bound) |
 | Visible range said "…– Dec 31, 2050" | State filing typo (also "3030-03-30") | Import window 2015→today+18mo; `/cleanup` NULLs implausible dates |

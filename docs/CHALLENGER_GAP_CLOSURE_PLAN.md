@@ -134,9 +134,20 @@ comparator with zero new ingestion — the largest lever by an order of
 magnitude. Evidence rules are non-negotiable: exact source quotes only;
 403-blocked evidence stays visibly inaccessible (Moneycontrol precedent).
 
-**R2 — The four dedup-hash corrections** (job-count changes ⇒
-`/bulk-purge` + full re-import, never plain upsert; each enters the public
-corrections trail):
+**R2 — The four dedup-hash corrections. EXECUTED 2026-07-18** (verification
+dossiers wf_33fab6a2-641; all five including R8 Oracle verified live).
+Mechanism correction discovered during execution: `/bulk-purge` + re-import
+applies ONLY to WARN bulk-table rows — for news/ERM rows, `alt_api_edit`
+suppresses the original dedup hash, re-hashes (md5('edited:'+old)) and pins
+`edited=1` server-side, so `/edit` is the safe path and re-imports can
+neither resurrect nor overwrite the correction. Outcomes: Intuit 17→3,000
+but AI **explicitly_denied** (CEO on record: "nothing to do with AI" — the
+plan's [AI] tag was wrong); Meta Mar 100→700; Dow stays 3,700 at
+**contributing_cause** (CBS's 4,500 is the gross plan incl. the separately
+retained 800 European cuts; not AI-primary); Lucid merged (both reports
+retained). Caution learned live: the `/add` source-attach branch full-row
+overwrites UNPINNED fuzzy-matched rows — pin first or use /edit. Original
+list:
 1. Intuit 17 → ~3,000 (LLM parsed "17% of workforce" as 17 jobs — also add
    a percent-of-workforce guard test to `railway/tests/test_extractor_guards.py`);
 2. Meta 2026-03-25: 100 → ~700 (Reality Labs round, Challenger-named);
@@ -190,14 +201,18 @@ Document terms and domain ownership per the admission gate.
 daily bounded batches) for the causation-evidence third of the 47,677
 backlog. Same non-negotiables as R1.
 
-**R8 — Oracle lifecycle reconciliation** (largest single overcount risk:
-±29,000 on the AI line). Mechanism: the read-only review queue
-(`/review-queue`, `announcement-lifecycle-review.yml`) surfaces it; the
-human correction preserves all source reports and enters the corrections
-trail. Attach the June 22 10-K as attribution/lifecycle evidence on the
-existing Feb/Apr events; converge on one canonical plan figure (the
-company-disclosed 21,000 unless better evidence emerges). Never import the
-10-K figure as a new June event.
+**R8 — Oracle lifecycle reconciliation. EXECUTED 2026-07-18.** The Feb
+20,000 row proved to be analyst-forecast coverage (TD Cowen 20K-30K, "may
+lay off up to 30,000") of the same Fiscal 2026 Restructuring Plan executed
+Mar 31 and held as the Apr 30,000 row. Merged (all four reports retained on
+the canonical event), converged on the 10-K-grounded net 21,000 (162K→141K
+headcount, "adoption and deployment of AI technologies... have resulted...
+in reductions to our workforce"), US domicile enriched from the SEC 10-K
+cover page, row pinned. Net −29,000 on the observed AI line — honesty over
+a flattering comparator. Still open: verbatim March-31 announcement-date
+evidence (Forbes wording needs live verification) and the 10-K attach as a
+separate retained report (deferred: the /add attach branch overwrites
+unpinned rows; the row is now pinned so a future attach is safe).
 
 **R9 — Curated seed path for sweep-unreachable events.** Mechanism:
 `railway/seed_ai.py` + `seed_data/ai_layoffs.json` (idempotent, exact
