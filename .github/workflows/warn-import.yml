@@ -47,30 +47,20 @@ jobs:
           [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
       - name: Install deps
         working-directory: railway
-        # The PyPI warn-scraper release predates the MS/ND scrapers, and its
-        # git sdist cannot build (setup imports its own runtime deps). Inject
-        # just the two scraper modules (plus the pdfrodent helper MS uses)
-        # from a pinned upstream commit into the installed package; the
+        # The PyPI warn-scraper release predates the ND scraper, and its git
+        # sdist cannot build (setup imports its own runtime deps). Inject just
+        # nd.py from a pinned upstream commit into the installed package; the
         # import self-check fails the job loudly on any incompatibility, and
-        # per-state subproces isolation caps any runtime surprise at one
-        # state's output.
+        # per-state subprocess isolation caps any runtime surprise at one
+        # state's output. (MS's upstream scraper needs the camelot/ghostscript
+        # stack — deferred to the custom-parser list instead.)
         run: |
           pip install -r requirements.txt
-          pip install pdfplumber pyquery
+          pip install pdfplumber
           BASE=https://raw.githubusercontent.com/biglocalnews/warn-scraper/f7b3dd26af1f3ad700762504bd7c5c0d23979507
           SCRAPERS_DIR=$(python -c "import warn.scrapers, os; print(os.path.dirname(warn.scrapers.__file__))")
-          WARN_DIR=$(python -c "import warn, os; print(os.path.dirname(warn.__file__))")
-          mkdir -p "$WARN_DIR/pdfrodent"
-          curl -sSf "$BASE/warn/scrapers/ms.py" -o "$SCRAPERS_DIR/ms.py"
           curl -sSf "$BASE/warn/scrapers/nd.py" -o "$SCRAPERS_DIR/nd.py"
-          curl -sSf "$BASE/warn/pdfrodent/__init__.py" -o "$WARN_DIR/pdfrodent/__init__.py"
-          curl -sSf "$BASE/warn/pdfrodent/pdfrodent.py" -o "$WARN_DIR/pdfrodent/pdfrodent.py"
-          python - <<'PY'
-          import importlib
-          for m in ("warn.scrapers.ms", "warn.scrapers.nd"):
-              importlib.import_module(m)
-          print("injected scrapers import OK")
-          PY
+          python -c "import warn.scrapers.nd; print('injected ND scraper import OK')"
       - name: Mark pipeline refreshing
         run: |
           curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \

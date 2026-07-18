@@ -188,7 +188,7 @@ def _count(s):
 # earlier version of this list (IL and PA are top-5 layoff states!).
 ALL_STATES = [
     "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
-    "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MS", "MT", "ND", "NE",
+    "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
     "NJ", "NM", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
     "VA", "VT", "WA", "WI",
 ]
