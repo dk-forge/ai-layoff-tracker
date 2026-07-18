@@ -208,16 +208,23 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
                 <span class="alt-stat-label">Explicitly AI-attributed</span>
                 <span class="alt-stat-desc"><b>This number is part of Verified job cuts.</b> Cuts the company openly blamed on AI.</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts</span>
                 <span class="alt-stat-desc"><b>This number is not part of Verified job cuts.</b> Source-linked plans at announcement stage, dated in the selected period.</span>
+                <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai">
+            <div class="alt-stat-card alt-stat-card-ai" data-challenger="<?php echo esc_attr(wp_json_encode(array(
+                'ai_ytd' => $alt_challenger_records ? (int) ($alt_challenger_records[0]['challenger_ai_jobs_ytd'] ?? 0) : 0,
+                'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
+            ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
                 <span class="alt-stat-label">Announced AI job cuts</span>
                 <span class="alt-stat-desc"><b>This number is part of Announced job cuts.</b> Announced plans the company links to AI, dated in the selected period.</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
+                <span class="alt-stat-sub" id="alt-stat-challenger-note" style="display:none"></span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-ai-share">—</span>

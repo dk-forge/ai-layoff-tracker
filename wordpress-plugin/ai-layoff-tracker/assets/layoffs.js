@@ -567,23 +567,47 @@
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
 
+    // Shows the retained Challenger AI benchmark under the Announced-AI card
+    // ONLY when the view is scoped to the United States (their measure is
+    // US-only, so showing it against a world view would mislead). Reads the
+    // monthly-reconciliation record the server injects; updates itself when
+    // the next official report is retained.
+    function renderChallengerNote() {
+        var note = document.getElementById('alt-stat-challenger-note');
+        if (!note) return;
+        var card = note.closest('[data-challenger]');
+        var data;
+        try { data = JSON.parse(card.getAttribute('data-challenger') || '{}'); } catch (e) { data = {}; }
+        var countries = readControl('alt-f-country') || [];
+        var usOnly = countries.length === 1 && countries[0] === 'United States';
+        if (!usOnly || !data.ai_ytd) { note.style.display = 'none'; return; }
+        note.innerHTML = 'Challenger benchmark: ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
+            + monthLabel(data.ref_month) + ') · <a href="#alt-challenger-comparison">see US comparison</a>';
+        note.style.display = '';
+    }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
         var scope = statScopeLabel();
         var annJ = t.announced_jobs || 0;
         var verifiedJ = t.jobs - annJ;
+        var when = period + scope;
         setText('alt-stat-total', fmt(verifiedJ));
-        setText('alt-stat-total-entries', period + scope);
+        setText('alt-stat-total-entries', when);
         setText('alt-stat-announced', fmt(annJ));
+        setText('alt-stat-announced-sub', when);
         // AI-attributed is the VERIFIED subset; announced-AI is the ANNOUNCED
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
         setText('alt-stat-ai', fmt(aiJ));
+        setText('alt-stat-ai-sub', when);
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
         setText('alt-stat-ai-announced', fmt(aiAnnJ));
+        setText('alt-stat-ai-announced-sub', when);
+        renderChallengerNote();
         var share = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
         setText('alt-stat-ai-share', share == null ? '—'
             : (share >= 10 ? Math.round(share) : share.toFixed(1)) + '%');
@@ -857,6 +881,16 @@
         return true;
     }
 
+    // Jobs dated after the current month (announced plans, future WARN
+    // effective dates). Charted months exclude them; callers surface a note.
+    function futureDatedJobs(series) {
+        var now = new Date();
+        var nowKey = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
+        return (series || []).reduce(function (sum, s) {
+            return s.month > nowKey ? sum + (s.jobs || 0) : sum;
+        }, 0);
+    }
+
     function fillMonths(series) {
         if (!series || !series.length) return [];
         var map = {};
@@ -873,14 +907,15 @@
         else if (years.length) end = years[years.length - 1] + '-12';
         else end = series[series.length - 1].month;
 
-        // Cap the ZERO-FILL at the current month, but never below real data:
-        // WARN filings carry future effective dates that must stay visible.
+        // Hard-cap the chart at the CURRENT month (owner decision 2026-07-18):
+        // months that haven't happened yet made the trend read as a year of
+        // collapse. Future-dated notices stay in the stats and table; the
+        // renderers surface an "excludes future-dated" note when any exist.
+        // The cap advances automatically as months roll over.
         var now = new Date();
         var nowKey = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
-        var lastData = series[series.length - 1].month;
-        var cap = lastData > nowKey ? lastData : nowKey;
-        if (end > cap) end = cap;
-        if (end < start) return series;
+        if (end > nowKey) end = nowKey;
+        if (end < start) return series.filter(function (s) { return s.month <= nowKey; });
 
         var out = [];
         var y = parseInt(start.slice(0, 4), 10), m = parseInt(start.slice(5, 7), 10);
@@ -898,10 +933,12 @@
 
     function renderTrend(series) {
         if (!document.getElementById('alt-chart-weekly')) return;
+        var futureJobs = futureDatedJobs(series);
         series = fillMonths(series);
         var range = document.getElementById('alt-trend-range');
-        if (range) range.textContent = series.length
-            ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '';
+        if (range) range.textContent = (series.length
+            ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '')
+            + (futureJobs > 0 ? ' · ' + fmt(futureJobs) + ' future-dated jobs in the table, not charted' : '');
         if (!series || !series.length) { clearChart('alt-chart-weekly'); return; }
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Jobs cut') + ': ' + fmt(ctx.parsed.y); } };
