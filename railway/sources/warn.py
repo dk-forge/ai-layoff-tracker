@@ -32,7 +32,7 @@ STATE_WARN_URL = {
     "HI": "https://labor.hawaii.gov/wdc/warn-notices/",
     "IA": "https://www.iowaworkforcedevelopment.gov/worker-adjustment-and-retraining-notification-act",
     "ID": "https://www.labor.idaho.gov/businesss/layoff-assistance/",
-    "IL": "https://dceo.illinois.gov/aboutdceo/reportsrequiredbystatute/warnreports.html",
+    "IL": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
     "IN": "https://www.in.gov/dwd/warn-notices/",
     "KS": "https://www.kansasworks.com/search/warn_lookups",
     "KY": "https://kcc.ky.gov/employer/Pages/Business-Downsizing-Assistance---WARN.aspx",
@@ -188,9 +188,9 @@ def _count(s):
 # earlier version of this list (IL and PA are top-5 layoff states!).
 ALL_STATES = [
     "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
-    "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "NE", "NJ", "NM",
-    "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT",
-    "WA", "WI",
+    "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MS", "MT", "ND", "NE",
+    "NJ", "NM", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
+    "VA", "VT", "WA", "WI",
 ]
 
 

@@ -159,6 +159,41 @@ TRUSTED_DOMAINS = {
     # rejected (marketing/webinar site, not a newsroom).
     "healthcaredive.com", "fiercepharma.com",                 # healthcare trade
     "paymentsdive.com",                                       # fintech trade
+    # --- 2026-07 US metro/city business press sweep: metro outlets report
+    # local layoffs before national press. Allowlist-only (GDELT/NewsAPI
+    # surface articles; never crawl). Paywalled entries follow the existing
+    # wsj/ft posture; bot-blocked fetches drop out harmlessly.
+    "bizjournals.com",            # ACBJ network — one domain, 44 metro Business Journals
+    "chicagobusiness.com",        # Crain's Chicago Business
+    "crainsnewyork.com",          # Crain's New York Business
+    "crainsdetroit.com",          # Crain's Detroit Business (auto belt)
+    "crainscleveland.com",        # Crain's Cleveland Business (healthcare/mfg)
+    "crainsgrandrapids.com",      # Crain's Grand Rapids (W. Michigan mfg)
+    "ajc.com",                    # Atlanta Journal-Constitution
+    "inquirer.com",               # Philadelphia Inquirer
+    "oregonlive.com",             # The Oregonian — Portland (Intel/Nike)
+    "tampabay.com",               # Tampa Bay Times
+    "post-gazette.com",           # Pittsburgh Post-Gazette
+    "stltoday.com",               # St. Louis Post-Dispatch
+    "azcentral.com",              # Arizona Republic — Phoenix (chips)
+    "cleveland.com",              # Plain Dealer / Advance
+    "freep.com", "detroitnews.com",  # Detroit dailies (auto layoffs)
+    "jsonline.com",               # Milwaukee Journal Sentinel
+    "dispatch.com",               # Columbus Dispatch (Intel Ohio)
+    "tennessean.com",             # Nashville (healthcare HQs)
+    "charlotteobserver.com",      # Charlotte (banking)
+    "houstonchronicle.com",       # paywalled sibling of chron.com
+    "statesman.com",              # Austin (Tesla/Oracle/Dell metro)
+    "sandiegouniontribune.com",   # San Diego (biotech/defense)
+    "sltrib.com",                 # Salt Lake Tribune (Silicon Slopes)
+    "thebaltimorebanner.com",     # Baltimore Banner
+    "reviewjournal.com",          # Las Vegas R-J (hospitality)
+    "ibj.com",                    # Indianapolis Business Journal
+    "geekwire.com",               # Seattle tech — breaks Amazon/Microsoft cuts early
+    "marketplace.org",            # APM Marketplace
+    "kuow.org",                   # Seattle NPR (Boeing/Amazon/Microsoft)
+    "wbur.org",                   # Boston NPR (biotech)
+    "kqed.org",                   # SF Bay NPR (tech)
     "techrepublic.com", "electrek.co", "gamedeveloper.com",   # tech/EV/games trade
     "chicago.suntimes.com",                                   # Chicago daily
     "wral.com",                                               # Raleigh NC (WRAL TechWire)

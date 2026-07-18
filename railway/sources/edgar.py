@@ -28,6 +28,13 @@ SEC_ARCHIVES_BASE = "https://www.sec.gov/Archives/edgar/data"
 # the singular forms alone missed ~90-130 filings per 90 days (term audit
 # 2026-07-15). Keep phrases precise; the extractor discards non-events.
 KEYWORDS = [
+    # "item 2.05" is the 8-K item for Costs Associated with Exit or Disposal
+    # Activities — a verified perfect proxy for restructuring filings that a
+    # 2026-07 audit showed the wording keywords below miss ~25% of. The LLM
+    # extractor still discards exit costs that aren't job cuts. (EFTS quotes
+    # each keyword itself and matches case-insensitively; the excerpt finder
+    # needs the lowercase form.)
+    "item 2.05",
     "workforce reduction",
     "workforce reductions",
     "reduction in force",
