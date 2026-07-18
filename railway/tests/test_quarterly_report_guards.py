@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DB = (ROOT / "wordpress-plugin/ai-layoff-tracker/includes/db.php").read_text()
 WORKFLOW = (ROOT / ".github/workflows/quarterly-report.yml").read_text()
 TEMPLATE = (ROOT / "wordpress-plugin/ai-layoff-tracker/templates/page-quarterly-report.php").read_text()
+EXPORT = (ROOT / "wordpress-plugin/ai-layoff-tracker/includes/export.php").read_text()
 
 
 class QuarterlyReportGuards(unittest.TestCase):
@@ -41,6 +42,23 @@ class QuarterlyReportGuards(unittest.TestCase):
         declaration = TEMPLATE.index("function alt_quarterly_report_table")
         first_call = TEMPLATE.index("alt_quarterly_report_table($verified")
         self.assertLess(declaration, first_call)
+
+    def test_appendix_is_read_only_from_the_stored_snapshot(self):
+        self.assertIn("/reports/quarterly/(?P<report_id>", DB)
+        start = DB.index("function alt_quarterly_report_appendix_data")
+        body = DB[start: DB.index("function alt_api_quarterly_report_appendix_get", start)]
+        self.assertIn("Frozen aggregate tables and time series only", body)
+        self.assertNotIn("alt_api_aggregate_compute", body)
+        export_start = EXPORT.index("function alt_quarterly_appendix_download")
+        export_body = EXPORT[export_start:]
+        self.assertIn("alt_quarterly_report_appendix_data($report)", export_body)
+        self.assertNotIn("alt_db_where", export_body)
+        self.assertNotIn("$wpdb", export_body)
+
+    def test_html_report_links_both_readable_and_downloadable_appendices(self):
+        self.assertIn("Readable JSON appendix", TEMPLATE)
+        self.assertIn("Download CSV appendix", TEMPLATE)
+        self.assertIn("Download JSON appendix", TEMPLATE)
 
 
 if __name__ == "__main__":

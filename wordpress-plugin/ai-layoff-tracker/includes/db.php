@@ -751,6 +751,11 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/reports/quarterly/(?P<report_id>\\d{4}-Q[1-4])', array(
         'methods' => 'GET', 'callback' => 'alt_api_quarterly_report_get', 'permission_callback' => '__return_true',
     ));
+    // A readable appendix built only from the immutable stored report record;
+    // it never calls the live aggregate queries or exposes a new raw-data feed.
+    register_rest_route('layoffs/v1', '/reports/quarterly/(?P<report_id>\\d{4}-Q[1-4])/appendix', array(
+        'methods' => 'GET', 'callback' => 'alt_api_quarterly_report_appendix_get', 'permission_callback' => '__return_true',
+    ));
     // Read-only triage list. This flags records for editorial attention; it
     // never changes a count, classification, source, or publication status.
     register_rest_route('layoffs/v1', '/review-queue', array(
@@ -1156,10 +1161,44 @@ function alt_api_quarterly_reports() {
 
 function alt_api_quarterly_report_get(WP_REST_Request $r) {
     $report_id = (string) $r->get_param('report_id');
-    $reports = get_option('alt_quarterly_reports');
-    $report = is_array($reports) && isset($reports[$report_id]) ? $reports[$report_id] : null;
+    $report = alt_quarterly_report_by_id($report_id);
     if (!$report) return new WP_Error('alt_not_found', 'Quarterly report not found.', array('status' => 404));
     return rest_ensure_response($report);
+}
+
+/** Shared immutable lookup for HTML/REST/download appendix consumers. */
+function alt_quarterly_report_by_id($report_id) {
+    $reports = get_option('alt_quarterly_reports');
+    return is_array($reports) && isset($reports[$report_id]) ? $reports[$report_id] : null;
+}
+
+/** A compact, stable appendix shape that contains only fields already frozen. */
+function alt_quarterly_report_appendix_data($report) {
+    $snapshot = is_array($report['snapshot'] ?? null) ? $report['snapshot'] : array();
+    return array(
+        'appendix_version' => 1,
+        'report_id' => (string) ($report['report_id'] ?? ''),
+        'title' => (string) ($report['title'] ?? ''),
+        'publication_status' => (string) ($report['publication_status'] ?? ''),
+        'generated_at' => (string) ($report['generated_at'] ?? ''),
+        'dataset_revision' => (int) ($report['dataset_revision'] ?? 0),
+        'period' => $report['period'] ?? array(),
+        'query_manifest' => $report['query_manifest'] ?? array(),
+        'coverage_at_publication' => $report['coverage_at_publication'] ?? array(),
+        'limitations' => $report['limitations'] ?? array(),
+        'snapshot' => array(
+            'verified' => $snapshot['verified'] ?? array(),
+            'announced' => $snapshot['announced'] ?? array(),
+            'ai_primary_verified_subset' => $snapshot['ai_primary_verified_subset'] ?? array(),
+        ),
+        'appendix_scope' => 'Frozen aggregate tables and time series only. This appendix does not regenerate values from the live database and is not a raw event export.',
+    );
+}
+
+function alt_api_quarterly_report_appendix_get(WP_REST_Request $r) {
+    $report = alt_quarterly_report_by_id((string) $r->get_param('report_id'));
+    if (!$report) return new WP_Error('alt_not_found', 'Quarterly report not found.', array('status' => 404));
+    return rest_ensure_response(alt_quarterly_report_appendix_data($report));
 }
 
 /** Strictly derive a calendar-quarter date interval from a stable report id. */

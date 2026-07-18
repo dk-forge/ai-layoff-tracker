@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.26
+ * Version: 2.18.27
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.26');
+define('ALT_VERSION', '2.18.27');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -193,7 +193,11 @@ function alt_enqueue_assets() {
     $is_health_page = is_singular() && has_shortcode(get_post_field('post_content', get_queried_object_id()), 'alt_tracker_health');
     if ($is_health_page) {
         wp_enqueue_script('alt-health-js', ALT_PLUGIN_URL . 'assets/health.js', array(), ALT_VERSION, true);
-        wp_localize_script('alt-health-js', 'altHealthData', array('apiUrl' => esc_url_raw(rest_url('layoffs/v1/'))));
+        wp_localize_script('alt-health-js', 'altHealthData', array(
+            'apiUrl' => esc_url_raw(rest_url('layoffs/v1/')),
+            'widgetUrl' => esc_url_raw(home_url('/?alt_tracker_widget=1')),
+            'trackerUrl' => esc_url_raw(home_url('/ai-layoff-tracker/')),
+        ));
         return;
     }
 

@@ -27,6 +27,14 @@ class RecallReferenceManifestTests(unittest.TestCase):
             self.assertEqual(event["match_decision"], "pending_independent_tracker_lookup")
             self.assertIsNone(event["canonical_event_id_or_null"])
 
+    def test_california_candidate_has_an_explicit_publication_blocker(self):
+        path = Path(__file__).resolve().parents[2] / "docs" / "recall-reference-sets" / "CA_US_2026_06_PUBLICATION_CHECKLIST.md"
+        checklist = path.read_text()
+        self.assertIn("blocked — no recall metric may be posted yet", checklist)
+        self.assertIn("second editor", checklist)
+        self.assertIn("Every reference row receives exactly one", checklist)
+        self.assertIn("not a completeness or accuracy measure", checklist)
+
 
 if __name__ == "__main__":
     unittest.main()

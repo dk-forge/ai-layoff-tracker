@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.26 corrects public failed/running collector wording so an unavailable query is never displayed as “0 found”; 2.18.25 fixes the first quarterly report page render before publication hand-off; 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.27 adds a copyable US national/state widget builder, frozen quarterly JSON/CSV appendices, a discovery-only OpenDART metadata client, and the recall publication independence gate; 2.18.26 corrects public failed/running collector wording so an unavailable query is never displayed as “0 found”; 2.18.25 fixes the first quarterly report page render before publication hand-off; 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -234,7 +234,10 @@ be red in Actions while retaining the public record.
      endpoint. It links to the exact filtered tracker view and explicitly says
      it is source-linked rather than complete. Publishers choose whether and
      how to add a separate attribution link; do not promise a backlink or
-     create metro variants from this foundation. Do not begin metro widgets
+     create metro variants from this foundation. The public health page now
+     provides a copyable, scope-validated iframe snippet; it emits iframe code
+     only and leaves any optional external attribution attributes to publishers.
+     Do not begin metro widgets
      until metro geography is reliable. Link each widget to its exact filtered
      tracker view and methodology; publishers control backlink attributes.
    - Company-directory foundation: `/blog/company-layoffs/{slug}/` resolves
@@ -257,6 +260,10 @@ be red in Actions while retaining the public record.
    - `.github/workflows/quarterly-report.yml` runs after each completed
      quarter, and may be manually invoked. It submits no totals or prose; a
      degraded source remains a visible coverage gap in the stored snapshot.
+   - The report page exposes a readable JSON appendix and downloadable JSON/CSV
+     appendices. They are shaped exclusively from the immutable stored snapshot
+     (aggregate tables and time series only), never regenerated from current
+     data and never presented as a raw event export.
      It may publish on AskTheRecruiter automatically; third-party syndication
      requires permission.
    - WARN transparency is a separate future dataset. Never call an employer a

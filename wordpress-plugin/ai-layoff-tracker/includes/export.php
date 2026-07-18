@@ -13,6 +13,8 @@ add_action('admin_post_alt_export_csv', 'alt_export_csv');
 add_action('admin_post_nopriv_alt_export_csv', 'alt_export_csv');
 add_action('admin_post_alt_export_json', 'alt_export_json');
 add_action('admin_post_nopriv_alt_export_json', 'alt_export_json');
+add_action('admin_post_alt_quarterly_appendix', 'alt_quarterly_appendix_download');
+add_action('admin_post_nopriv_alt_quarterly_appendix', 'alt_quarterly_appendix_download');
 
 /**
  * Neutralize spreadsheet formula injection: a cell starting with = + - @
@@ -129,5 +131,59 @@ function alt_export_json() {
     });
 
     echo '],"total_records":' . $count . '}';
+    exit;
+}
+
+/**
+ * Download a CSV or JSON appendix from a report's already-stored snapshot.
+ * This deliberately has no query-builder or database aggregate call: a report
+ * appendix must remain byte-for-byte about the historic report data, not the
+ * current live dataset. JSON mirrors the readable REST appendix endpoint.
+ */
+function alt_quarterly_appendix_download() {
+    $report_id = sanitize_text_field((string) ($_GET['report_id'] ?? ''));
+    $format = sanitize_key((string) ($_GET['format'] ?? 'csv'));
+    $report = function_exists('alt_quarterly_report_by_id') ? alt_quarterly_report_by_id($report_id) : null;
+    if (!$report || !function_exists('alt_quarterly_report_appendix_data')) {
+        wp_die('Quarterly report appendix not found.', 'Not found', array('response' => 404));
+    }
+    $appendix = alt_quarterly_report_appendix_data($report);
+    $filename = 'state-of-layoffs-' . sanitize_file_name($report_id) . '-appendix';
+    nocache_headers();
+    if ($format === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '.json"');
+        echo wp_json_encode($appendix, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        exit;
+    }
+    if ($format !== 'csv') wp_die('Appendix format must be csv or json.', 'Bad request', array('response' => 400));
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, array('section', 'metric_or_dimension', 'label', 'jobs', 'ai_attributed_jobs', 'report_id', 'dataset_revision', 'period_from', 'period_to', 'appendix_scope'));
+    $meta = array(
+        $appendix['report_id'], (int) $appendix['dataset_revision'],
+        (string) ($appendix['period']['from'] ?? ''), (string) ($appendix['period']['to'] ?? ''),
+        (string) $appendix['appendix_scope'],
+    );
+    $write = function ($section, $metric, $label, $jobs, $ai_jobs = '') use ($out, $meta) {
+        fputcsv($out, array_merge(array($section, $metric, $label, $jobs, $ai_jobs), $meta));
+    };
+    foreach (array('verified', 'announced', 'ai_primary_verified_subset') as $section) {
+        $data = $appendix['snapshot'][$section] ?? array();
+        foreach (($data['totals'] ?? array()) as $metric => $value) {
+            if (is_scalar($value)) $write($section, 'total', $metric, $value);
+        }
+        foreach (array('top_industries' => 'industry', 'top_countries' => 'country', 'top_states' => 'state', 'reasons' => 'reason') as $key => $dimension) {
+            foreach (($data[$key] ?? array()) as $row) {
+                $write($section, $dimension, (string) ($row[0] ?? ''), (int) ($row[1] ?? 0), isset($row[2]) ? (int) $row[2] : '');
+            }
+        }
+        foreach (($data['series'] ?? array()) as $row) {
+            $write($section, 'month', (string) ($row['month'] ?? ''), (int) ($row['jobs'] ?? 0), (int) ($row['ai_jobs'] ?? 0));
+        }
+    }
+    fclose($out);
     exit;
 }

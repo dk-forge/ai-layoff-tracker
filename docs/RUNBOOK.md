@@ -138,6 +138,7 @@ the dedup hash — corrected counts need the purge path, plain re-import duplica
 2. Check the public report JSON, its `dataset_revision`, source-health snapshot and the current `/quality-status` revision.
 3. The report page automatically says when live data have changed since its snapshot. Correct underlying event data through the normal source-preserving correction path; do not alter historical report facts.
 4. If a materially corrected replacement is necessary, create an explicitly versioned follow-up report and document its relationship to the original. Do not silently reuse the same quarter id.
+5. The report JSON/CSV appendix is derived only from the stored immutable snapshot. If it differs from the page, treat that as a release defect; never regenerate an old appendix from the current live aggregate.
 
 **Contact form not delivering**
 Mails go via `wp_mail()` to info@asktherecruiter.com — confirm the mailbox exists in

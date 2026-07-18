@@ -34,6 +34,9 @@ function alt_quarterly_report_table($rows, $label) {
   $period = $report['period'] ?? array(); $coverage = $report['coverage_at_publication'] ?? array();
   $degraded = $coverage['degraded_sources'] ?? array();
   $report_api = $api_base . 'reports/quarterly/' . rawurlencode($report['report_id']);
+  $appendix_api = $report_api . '/appendix';
+  $appendix_csv = admin_url('admin-post.php?action=alt_quarterly_appendix&format=csv&report_id=' . rawurlencode($report['report_id']));
+  $appendix_json = admin_url('admin-post.php?action=alt_quarterly_appendix&format=json&report_id=' . rawurlencode($report['report_id']));
 ?>
   <header class="alt-report-hero">
     <p class="alt-eyebrow">AskTheRecruiter · query-backed research snapshot</p>
@@ -60,7 +63,7 @@ function alt_quarterly_report_table($rows, $label) {
   <section><h2>Coverage and revision record</h2>
     <p>This is a frozen, server-generated snapshot of the public aggregate queries recorded below. It is not a layoff census, forecast, causal analysis, or claim of national completeness.</p>
     <ul><li>Dataset revision at publication: <?php echo (int) $report['dataset_revision']; ?>.</li><li>Evidence integrity: <?php echo number_format_i18n((int) (($coverage['integrity']['source_reports'] ?? 0))); ?> retained source reports; <?php echo number_format_i18n((int) (($coverage['integrity']['source_report_hashes_remaining'] ?? 0))); ?> retained excerpts awaiting hash backfill.</li><li>Disclosed changes in the 30 days before publication: corrected <?php echo (int) (($coverage['last_30_days_disclosed_changes']['corrected'] ?? 0)); ?>, removed <?php echo (int) (($coverage['last_30_days_disclosed_changes']['removed'] ?? 0)); ?>, merged <?php echo (int) (($coverage['last_30_days_disclosed_changes']['merged'] ?? 0)); ?>.</li></ul>
-    <p><a href="<?php echo esc_url($report_api); ?>">Machine-readable frozen report snapshot</a> · <a href="<?php echo esc_url($api_base . 'quality-status'); ?>">current quality status</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">live source-linked tracker</a></p>
+    <p><a href="<?php echo esc_url($report_api); ?>">Machine-readable frozen report snapshot</a> · <a href="<?php echo esc_url($appendix_api); ?>">Readable JSON appendix</a> · <a href="<?php echo esc_url($appendix_csv); ?>">Download CSV appendix</a> · <a href="<?php echo esc_url($appendix_json); ?>">Download JSON appendix</a> · <a href="<?php echo esc_url($api_base . 'quality-status'); ?>">current quality status</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">live source-linked tracker</a></p>
   </section>
   <section><h2>Methods and limits</h2><p><?php echo esc_html($report['revision_notice']); ?></p><p>Country is affected-job location; it is not employer headquarters. Fields without source support remain blank. A listed source can be a government notice list rather than an individual notice URL, and the live tracker labels that distinction.</p></section>
 <?php endif; ?>

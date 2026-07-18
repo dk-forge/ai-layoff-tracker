@@ -30,6 +30,42 @@
     });
   }
 
+  function initWidgetBuilder() {
+    const year = $('alt-widget-year'), state = $('alt-widget-state'), code = $('alt-widget-code');
+    const copy = $('alt-widget-copy'), tracker = $('alt-widget-tracker-link'), status = $('alt-widget-copy-status');
+    if (!year || !state || !code || !copy || !tracker || !window.altHealthData.widgetUrl || !window.altHealthData.trackerUrl) return;
+    const currentYear = new Date().getUTCFullYear();
+    for (let y = currentYear; y >= 2015; y--) {
+      const option = document.createElement('option'); option.value = String(y); option.textContent = String(y); year.appendChild(option);
+    }
+    const update = () => {
+      const selectedState = /^[A-Z]{2}$/.test(state.value) ? state.value : '';
+      const widgetUrl = new URL(window.altHealthData.widgetUrl, window.location.origin);
+      widgetUrl.searchParams.set('tracker_year', year.value);
+      if (selectedState) widgetUrl.searchParams.set('state', selectedState);
+      const trackerUrl = new URL(window.altHealthData.trackerUrl, window.location.origin);
+      trackerUrl.searchParams.set('years', year.value); trackerUrl.searchParams.set('country', 'United States');
+      if (selectedState) trackerUrl.searchParams.set('state', selectedState);
+      const scope = selectedState ? selectedState : 'United States';
+      code.value = `<iframe src="${widgetUrl.toString()}" title="${scope} layoff tracker widget, ${year.value}" loading="lazy" style="width:100%;max-width:420px;height:220px;border:0"></iframe>`;
+      tracker.href = trackerUrl.toString();
+      status.textContent = '';
+    };
+    get('facets').then(facets => {
+      (Array.isArray(facets.states) ? facets.states : []).filter(x => /^[A-Z]{2}$/.test(x)).forEach(value => {
+        const option = document.createElement('option'); option.value = value; option.textContent = `United States · ${value}`; state.appendChild(option);
+      });
+    }).catch(() => { /* National widget remains available if facets are unavailable. */ });
+    year.addEventListener('change', update); state.addEventListener('change', update); update();
+    copy.addEventListener('click', () => {
+      const finish = ok => { status.textContent = ok ? 'Widget code copied.' : 'Select and copy the code above.'; };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code.value).then(() => finish(true)).catch(() => finish(false));
+      else { code.focus(); code.select(); try { finish(document.execCommand('copy')); } catch (_) { finish(false); } }
+    });
+  }
+
+  initWidgetBuilder();
+
   Promise.all(['quality-status', 'integrity-status', 'status', 'review-queue', 'benchmarks/challenger', 'benchmarks/recall', 'dataset-releases'].map(get)).then(([q, i, s, r, c, rec, ledger]) => {
     const h = q.source_health || {};
     const degraded = Object.values(h).filter(x => x.status === 'degraded').length;
