@@ -1,0 +1,85 @@
+name: Publish quarterly State of Layoffs snapshot
+
+# A factual, query-backed report snapshot. The WordPress endpoint calculates
+# every total from the same aggregate route as the public tracker; this
+# workflow supplies only a previous-quarter id and never sends prose or facts.
+on:
+  schedule:
+    - cron: '0 15 7 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      report_id:
+        description: 'Calendar quarter, e.g. 2026-Q2 (blank = previous completed quarter)'
+        required: false
+        type: string
+      publication_status:
+        description: 'published or draft_generated'
+        required: false
+        default: 'published'
+        type: choice
+        options: [published, draft_generated]
+
+concurrency:
+  group: quarterly-state-of-layoffs
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve completed calendar quarter
+        id: quarter
+        env:
+          INPUT_REPORT_ID: ${{ inputs.report_id }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import datetime, os, re
+          supplied = os.environ.get('INPUT_REPORT_ID', '').strip()
+          if supplied:
+              if not re.fullmatch(r'\d{4}-Q[1-4]', supplied):
+                  raise SystemExit('report_id must look like 2026-Q2')
+              print('report_id=' + supplied)
+          else:
+              today = datetime.date.today()
+              q = (today.month - 1) // 3 + 1
+              year = today.year
+              q -= 1
+              if q == 0:
+                  q, year = 4, year - 1
+              print(f'report_id={year}-Q{q}')
+          PY
+      - name: Preserve server-generated immutable snapshot
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          REPORT_ID: ${{ steps.quarter.outputs.report_id }}
+          STATUS: ${{ inputs.publication_status || 'published' }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo '::error::WP_API_KEY not set.'; exit 1; }
+          base='https://asktherecruiter.com/blog/wp-json/layoffs/v1/reports/quarterly'
+          existing="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 90 -o /tmp/report.json -w '%{http_code}' \
+            -H 'User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "$base/$REPORT_ID" || true)"
+          if [ "$existing" = '200' ]; then
+            echo "Quarterly report $REPORT_ID already exists; immutable snapshot retained."
+            python3 -m json.tool /tmp/report.json >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 120 -X POST "$base" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" -H 'Content-Type: application/json' \
+            -H 'User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+            --data "{\"report_id\":\"$REPORT_ID\",\"publication_status\":\"$STATUS\"}")"
+          python3 - "$response" <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          report = json.loads(sys.argv[1])
+          required = ('report_id', 'dataset_revision', 'snapshot', 'coverage_at_publication', 'limitations')
+          missing = [key for key in required if key not in report]
+          if missing:
+              raise SystemExit('Unexpected quarterly report response: missing ' + ', '.join(missing))
+          verified = report['snapshot']['verified']['totals']
+          announced = report['snapshot']['announced']['totals']
+          print(f"## State of Layoffs — {report['report_id']}\n")
+          print(f"- Snapshot revision: **{report['dataset_revision']}**")
+          print(f"- Verified jobs: **{verified['jobs']:,}**")
+          print(f"- Announcement-stage jobs (separate): **{announced['announced_jobs']:,}**")
+          print('- This report is a frozen source-linked event snapshot, not a completeness claim.')
+          PY

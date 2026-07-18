@@ -119,11 +119,54 @@ function alt_db_install() {
         KEY source_attempted_at (source, attempted_at),
         KEY attempted_at (attempted_at)
     ) $charset;");
+
+    // A reviewed identity registry is intentionally separate from raw event
+    // names. `company_key` is a useful dedup key, not proof that every name
+    // collapsing to it belongs to one legal employer.
+    $directory = alt_company_directory_table();
+    dbDelta("CREATE TABLE $directory (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        company_key VARCHAR(255) NOT NULL,
+        slug VARCHAR(191) NOT NULL,
+        display_name VARCHAR(255) NOT NULL,
+        aliases LONGTEXT NULL,
+        review_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        reviewed_at DATETIME NULL,
+        created_at DATETIME NOT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (id), UNIQUE KEY company_key (company_key), UNIQUE KEY slug (slug), KEY review_status (review_status)
+    ) $charset;");
+
+    // Separate editorial WARN-transparency register. It is intentionally not
+    // joined to layoff tables or aggregate endpoints: notice timing alone is
+    // not a layoff count or legal finding.
+    $warn_transparency = alt_warn_transparency_table();
+    dbDelta("CREATE TABLE $warn_transparency (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        record_key CHAR(32) NOT NULL,
+        state CHAR(2) NOT NULL DEFAULT '',
+        employer VARCHAR(255) NOT NULL DEFAULT '',
+        related_layoff_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        assessment_status VARCHAR(48) NOT NULL DEFAULT '',
+        notice_date DATE NULL,
+        affected_date DATE NULL,
+        exception_evidence TEXT NULL,
+        adjudication_url TEXT NULL,
+        source_name VARCHAR(191) NOT NULL DEFAULT '',
+        source_url TEXT NULL,
+        evidence_excerpt TEXT NULL,
+        evidence_hash CHAR(64) NOT NULL DEFAULT '',
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id), UNIQUE KEY record_key (record_key),
+        KEY state_status (state, assessment_status), KEY related_layoff_id (related_layoff_id)
+    ) $charset;");
 }
 
 function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events'; }
 function alt_source_reports_table() { global $wpdb; return $wpdb->prefix . 'alt_source_reports'; }
+function alt_company_directory_table() { global $wpdb; return $wpdb->prefix . 'alt_company_directory'; }
 function alt_source_runs_table() { global $wpdb; return $wpdb->prefix . 'alt_source_runs'; }
+function alt_warn_transparency_table() { global $wpdb; return $wpdb->prefix . 'alt_warn_transparency'; }
 
 /**
  * FTP deployment can serve a request while files are still arriving. Keep the
@@ -697,6 +740,17 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/dataset-releases', array(
         'methods' => 'GET', 'callback' => 'alt_api_dataset_releases', 'permission_callback' => '__return_true',
     ));
+    // Immutable, server-generated quarterly research snapshots. The writer
+    // accepts a quarter identifier only; it never accepts client-supplied
+    // totals or model-written findings.
+    register_rest_route('layoffs/v1', '/reports/quarterly', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_quarterly_reports', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_quarterly_report_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
+    register_rest_route('layoffs/v1', '/reports/quarterly/(?P<report_id>\\d{4}-Q[1-4])', array(
+        'methods' => 'GET', 'callback' => 'alt_api_quarterly_report_get', 'permission_callback' => '__return_true',
+    ));
     // Read-only triage list. This flags records for editorial attention; it
     // never changes a count, classification, source, or publication status.
     register_rest_route('layoffs/v1', '/review-queue', array(
@@ -726,6 +780,13 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/benchmarks/recall', array(
         array('methods' => 'GET', 'callback' => 'alt_api_recall_benchmarks', 'permission_callback' => '__return_true'),
         array('methods' => 'POST', 'callback' => 'alt_api_recall_benchmark_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
+    // Separate, source-evidenced WARN timing/adjudication register. It never
+    // affects layoff/AI totals and uses “violation” only after adjudication.
+    register_rest_route('layoffs/v1', '/warn-transparency', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_warn_transparency_get', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_warn_transparency_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
 }
@@ -1063,6 +1124,9 @@ function alt_api_quality_status() {
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'dataset_release_ledger', 'status' => 'active', 'scope' => 'Immutable release snapshots from this deployment forward; no invented legacy addition counts'),
+            array('id' => 'company_directory', 'status' => 'in_progress', 'scope' => 'Reviewed, source-linked company pages only; no company page is published until a reviewed registry mapping meets its evidence threshold'),
+            array('id' => 'quarterly_state_of_layoffs', 'status' => 'in_progress', 'scope' => 'Server-generated immutable quarterly snapshots; the first report is published only after the scheduled or keyed snapshot workflow succeeds'),
+            array('id' => 'warn_transparency_dataset', 'status' => 'in_progress', 'scope' => 'Separate evidence-linked timing/adjudication research dataset; never included in layoff or AI totals'),
             array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
         ),
     ));
@@ -1076,6 +1140,107 @@ function alt_api_dataset_releases() {
         'releases' => is_array($releases) ? array_values($releases) : array(),
         'generated_at' => gmdate('c'),
     ));
+}
+
+/** Return the stored report list without recomputing historical facts. */
+function alt_api_quarterly_reports() {
+    $reports = get_option('alt_quarterly_reports');
+    $reports = is_array($reports) ? $reports : array();
+    krsort($reports);
+    return rest_ensure_response(array(
+        'methodology' => 'Quarterly reports are immutable, server-generated snapshots of fixed tracker queries. They are not a completeness claim, forecast, or model-written editorial analysis.',
+        'reports' => array_values($reports),
+        'generated_at' => gmdate('c'),
+    ));
+}
+
+function alt_api_quarterly_report_get(WP_REST_Request $r) {
+    $report_id = (string) $r->get_param('report_id');
+    $reports = get_option('alt_quarterly_reports');
+    $report = is_array($reports) && isset($reports[$report_id]) ? $reports[$report_id] : null;
+    if (!$report) return new WP_Error('alt_not_found', 'Quarterly report not found.', array('status' => 404));
+    return rest_ensure_response($report);
+}
+
+/** Strictly derive a calendar-quarter date interval from a stable report id. */
+function alt_quarterly_report_window($report_id) {
+    if (!preg_match('/^(\\d{4})-Q([1-4])$/', (string) $report_id, $m)) return null;
+    $year = (int) $m[1]; $quarter = (int) $m[2];
+    if ($year < 2015 || $year > ((int) gmdate('Y') + 1)) return null;
+    $month = (($quarter - 1) * 3) + 1;
+    $start = sprintf('%04d-%02d-01', $year, $month);
+    $end = gmdate('Y-m-t', strtotime($start . ' +2 months'));
+    return array('from' => $start, 'to' => $end, 'year' => $year, 'quarter' => $quarter);
+}
+
+/** Compute an aggregate through the same filter and calculation path as the UI. */
+function alt_quarterly_report_aggregate($params) {
+    $request = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
+    foreach ($params as $key => $value) $request->set_param($key, $value);
+    return alt_api_aggregate_compute($request);
+}
+
+/**
+ * Store one immutable, query-backed quarterly snapshot. A caller cannot pass
+ * totals, prose, sources, or findings: all factual content is recomputed from
+ * the live indexed dataset at this timestamp. Later corrections are disclosed
+ * by comparing the stored revision with the live dataset revision.
+ */
+function alt_api_quarterly_report_post(WP_REST_Request $r) {
+    $report_id = sanitize_text_field((string) $r->get_param('report_id'));
+    $window = alt_quarterly_report_window($report_id);
+    if (!$window) return new WP_Error('alt_bad_request', 'report_id must be a calendar quarter such as 2026-Q2.', array('status' => 400));
+    $reports = get_option('alt_quarterly_reports');
+    $reports = is_array($reports) ? $reports : array();
+    if (isset($reports[$report_id])) {
+        return new WP_Error('alt_conflict', 'Quarterly reports are immutable; this report_id already exists.', array('status' => 409));
+    }
+    $base = array('from' => $window['from'], 'to' => $window['to']);
+    $verified_query = array_merge($base, array('stage' => 'verified'));
+    $announced_query = array_merge($base, array('stage' => 'announced'));
+    $ai_primary_query = array_merge($verified_query, array('ai_primary' => '1'));
+    $quality = alt_api_quality_status()->get_data();
+    $health = is_array($quality['source_health'] ?? null) ? $quality['source_health'] : array();
+    $degraded = array();
+    foreach ($health as $source => $status) if (($status['status'] ?? '') === 'degraded') $degraded[] = (string) $source;
+    $status = sanitize_key((string) $r->get_param('publication_status'));
+    if (!in_array($status, array('published', 'draft_generated'), true)) $status = 'published';
+    $reports[$report_id] = array(
+        'report_id' => $report_id,
+        'publication_status' => $status,
+        'title' => 'State of Layoffs — ' . $report_id,
+        'period' => array('from' => $window['from'], 'to' => $window['to'], 'date_basis' => 'layoff_date'),
+        'generated_at' => gmdate('c'),
+        'dataset_revision' => (int) ($quality['dataset_revision'] ?? get_option('alt_data_ver', 1)),
+        'plugin_version' => defined('ALT_VERSION') ? ALT_VERSION : '',
+        'methodology_version' => 'quarterly-report-v1',
+        'query_manifest' => array(
+            'verified' => $verified_query,
+            'announced' => $announced_query,
+            'ai_primary_verified_subset' => $ai_primary_query,
+        ),
+        'snapshot' => array(
+            'verified' => alt_quarterly_report_aggregate($verified_query),
+            'announced' => alt_quarterly_report_aggregate($announced_query),
+            'ai_primary_verified_subset' => alt_quarterly_report_aggregate($ai_primary_query),
+        ),
+        'coverage_at_publication' => array(
+            'source_health' => $health,
+            'degraded_sources' => $degraded,
+            'integrity' => $quality['integrity'] ?? array(),
+            'last_30_days_disclosed_changes' => $quality['last_30_days_disclosed_changes'] ?? array(),
+        ),
+        'limitations' => array(
+            'This is a source-linked event snapshot, not a complete census of layoffs in any country.',
+            'Verified and announcement-stage cuts are separate series and must not be added together.',
+            'Industry, job-location state, employer domicile and AI causation remain blank or excluded when the source does not support them.',
+            'A degraded source at publication is a visible coverage gap, not a zero result.',
+        ),
+        'revision_notice' => 'This frozen report preserves the dataset revision at publication. The live tracker may later change through corrections, source additions, deduplication or enrichment.',
+    );
+    krsort($reports);
+    update_option('alt_quarterly_reports', $reports, false);
+    return rest_ensure_response($reports[$report_id]);
 }
 
 /** Called only on a versioned plugin deployment after schema/cache initialization. */
@@ -1290,6 +1455,59 @@ function alt_api_recall_benchmark_post(WP_REST_Request $r) {
     );
     krsort($records); update_option('alt_recall_benchmarks', array_slice($records, 0, 100, true), false);
     return rest_ensure_response($records[$key]);
+}
+
+/** WARN transparency statuses separate timing observations from legal findings. */
+function alt_warn_transparency_statuses() {
+    return array('notice_recorded_60_plus_days', 'short_notice_exception_stated', 'short_notice_unresolved', 'court_adjudicated_warn_violation');
+}
+
+/** Public read-only register; it is deliberately outside layoff and AI metrics. */
+function alt_api_warn_transparency_get() {
+    global $wpdb;
+    $table = alt_warn_transparency_table();
+    $rows = $wpdb->get_results("SELECT id, state, employer, related_layoff_id, assessment_status, notice_date, affected_date, exception_evidence, adjudication_url, source_name, source_url, evidence_excerpt, evidence_hash, created_at FROM $table ORDER BY created_at DESC, id DESC LIMIT 500", ARRAY_A) ?: array();
+    return rest_ensure_response(array(
+        'methodology' => array(
+            'scope' => 'Separate source-evidenced WARN timing/adjudication register. It is not included in layoff or AI totals, charts, exports or compliance rates.',
+            'legal_safeguard' => 'A short notice interval is not labelled a violation. Only court_adjudicated_warn_violation requires and may state an adjudication source.',
+            'allowed_statuses' => alt_warn_transparency_statuses(),
+            'evidence_safeguard' => 'Each record retains a cited source and hash of its stored excerpt; the hash is not a source-page archive.',
+        ),
+        'records' => $rows, 'generated_at' => gmdate('c'),
+    ));
+}
+
+/** Keyed, evidence-bounded editorial writer for the separate WARN register. */
+function alt_api_warn_transparency_post(WP_REST_Request $r) {
+    global $wpdb;
+    $status = sanitize_key((string) $r->get_param('assessment_status'));
+    $state = function_exists('alt_normalize_state') ? alt_normalize_state((string) $r->get_param('state')) : '';
+    $employer = sanitize_text_field((string) $r->get_param('employer'));
+    $source_name = sanitize_text_field((string) $r->get_param('source_name'));
+    $source_url = esc_url_raw((string) $r->get_param('source_url'));
+    $excerpt = sanitize_textarea_field((string) $r->get_param('evidence_excerpt'));
+    if (!$state || !$employer || !$source_name || !$source_url || strlen($excerpt) < 12 || !in_array($status, alt_warn_transparency_statuses(), true)) return new WP_Error('alt_bad_request', 'state, employer, allowed assessment_status, source name/URL and a non-trivial evidence excerpt are required.', array('status' => 400));
+    $notice_date = alt_db_valid_date((string) $r->get_param('notice_date'));
+    $affected_date = alt_db_valid_date((string) $r->get_param('affected_date'));
+    $exception_evidence = sanitize_textarea_field((string) $r->get_param('exception_evidence'));
+    $adjudication_url = esc_url_raw((string) $r->get_param('adjudication_url'));
+    $adjudication_evidence = sanitize_textarea_field((string) $r->get_param('adjudication_evidence'));
+    $timing_status = in_array($status, array('notice_recorded_60_plus_days', 'short_notice_exception_stated', 'short_notice_unresolved'), true);
+    if ($timing_status && (!$notice_date || !$affected_date)) return new WP_Error('alt_bad_request', 'Timing labels require source-evidenced notice_date and affected_date.', array('status' => 400));
+    $days = $timing_status ? (int) floor((strtotime($affected_date) - strtotime($notice_date)) / DAY_IN_SECONDS) : null;
+    if ($timing_status && $days < 0) return new WP_Error('alt_bad_request', 'affected_date cannot precede notice_date.', array('status' => 400));
+    if ($status === 'notice_recorded_60_plus_days' && $days < 60) return new WP_Error('alt_bad_request', 'This label requires a recorded interval of at least 60 days.', array('status' => 400));
+    if (in_array($status, array('short_notice_exception_stated', 'short_notice_unresolved'), true) && $days >= 60) return new WP_Error('alt_bad_request', 'Short-notice labels require a recorded interval below 60 days.', array('status' => 400));
+    if ($status === 'short_notice_exception_stated' && strlen($exception_evidence) < 12) return new WP_Error('alt_bad_request', 'An explicit source excerpt stating the exception is required.', array('status' => 400));
+    if ($status === 'court_adjudicated_warn_violation' && (!$adjudication_url || strlen($adjudication_evidence) < 12)) return new WP_Error('alt_bad_request', 'A court/adjudication URL and evidence excerpt are required before using the violation label.', array('status' => 400));
+    $key = md5(implode('|', array($state, strtolower($employer), $status, $source_url, $notice_date, $affected_date, $adjudication_url)));
+    $table = alt_warn_transparency_table();
+    $data = array('record_key' => $key, 'state' => $state, 'employer' => $employer, 'related_layoff_id' => max(0, (int) $r->get_param('related_layoff_id')), 'assessment_status' => $status, 'notice_date' => $notice_date ?: null, 'affected_date' => $affected_date ?: null, 'exception_evidence' => $exception_evidence, 'adjudication_url' => $adjudication_url, 'source_name' => $source_name, 'source_url' => $source_url, 'evidence_excerpt' => $excerpt, 'evidence_hash' => hash('sha256', $excerpt), 'created_at' => gmdate('Y-m-d H:i:s'));
+    $wpdb->query($wpdb->prepare("INSERT IGNORE INTO $table (record_key, state, employer, related_layoff_id, assessment_status, notice_date, affected_date, exception_evidence, adjudication_url, source_name, source_url, evidence_excerpt, evidence_hash, created_at) VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", $data['record_key'], $data['state'], $data['employer'], $data['related_layoff_id'], $data['assessment_status'], $data['notice_date'], $data['affected_date'], $data['exception_evidence'], $data['adjudication_url'], $data['source_name'], $data['source_url'], $data['evidence_excerpt'], $data['evidence_hash'], $data['created_at']));
+    if ($wpdb->last_error) return new WP_Error('alt_db_error', 'WARN transparency record could not be saved.', array('status' => 500));
+    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE record_key = %s", $key), ARRAY_A);
+    return rest_ensure_response($row ?: $data);
 }
 
 function alt_api_trash(WP_REST_Request $r) {

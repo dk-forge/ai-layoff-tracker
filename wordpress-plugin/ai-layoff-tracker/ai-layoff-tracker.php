@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.23
+ * Version: 2.18.24
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.23');
+define('ALT_VERSION', '2.18.24');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -16,6 +16,7 @@ define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 require_once ALT_PLUGIN_DIR . 'includes/cpt.php';
 require_once ALT_PLUGIN_DIR . 'includes/db.php';
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
+require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';
 require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
@@ -110,6 +111,16 @@ function alt_ensure_tracker_health_page_once() {
 }
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
 
+function alt_ensure_quarterly_report_page_once() {
+    if (get_page_by_path('ai-layoff-tracker/state-of-layoffs')) return;
+    $parent = get_page_by_path('ai-layoff-tracker');
+    if (!$parent) return; // retry later; never create an orphaned report page
+    wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
+        'post_parent' => (int) $parent->ID, 'post_title' => 'State of Layoffs',
+        'post_name' => 'state-of-layoffs', 'post_content' => '[alt_quarterly_report]'));
+}
+add_action('init', 'alt_ensure_quarterly_report_page_once', 21);
+
 /**
  * A deliberately narrow, iframe-safe widget surface. It is limited to a
  * United States national or state view; metro geography is not yet reliable.
@@ -159,13 +170,14 @@ add_action('template_redirect', 'alt_render_widget_route', 1);
  * Filter `alt_enqueue_assets` to force-enable on custom templates.
  */
 function alt_page_needs_assets() {
+    if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
     if (!is_singular()) return false;
     if (is_singular('layoffs')) return true;   // per-entry permalink pages
     $post = get_post();
     if (!$post) return false;
     $shortcodes = array(
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
-        'alt_ai_tracker', 'alt_tracker_health', 'alt_company_history', 'alt_export_buttons',
+        'alt_ai_tracker', 'alt_tracker_health', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact',
     );
     foreach ($shortcodes as $shortcode) {

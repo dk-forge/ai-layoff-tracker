@@ -32,6 +32,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
 | historical-news-sweep | daily + manual | Rotates through one 14-day global GDELT history window per day; dedup makes retries safe |
 | announcement-lifecycle-review | daily + manual | Read-only summary of exact-count, source-supported announcement-to-later-record candidates; never auto-merges or changes sources |
+| quarterly-report | 7th day after quarter close + manual | Stores an immutable, server-generated State of Layoffs snapshot; accepts only quarter id/status, never client totals or editorial claims |
 | canonical-event-migrate | daily + manual | Resumable no-LLM conversion of legacy rows into canonical events with retained source reports |
 
 The advisory DeepSeek spot-check inside `data-quality` retries temporary
@@ -52,6 +53,12 @@ sends: `curl -s "https://asktherecruiter.com/blog/ai-layoff-tracker/?cb=$RANDOM"
 3. If server is stale, trip the flush URL above (works only if the version was bumped).
 4. Autoptimize is NOT flushed on deploy (by design since v2.7.3 — content-hashed
 filenames self-invalidate). If an AO asset looks stale, the version bump alone fixes it.
+
+**Company directory page is missing or should not be indexed**
+1. Unknown, pending or ambiguous `/company-layoffs/{slug}/` paths must return 404; do not add a freeform alias to make one resolve.
+2. Confirm the reviewed registry row has the intended stable slug, canonical company key, display name and review status. A raw dedup key alone is not an identity decision.
+3. Confirm every displayed canonical event retains at least one valid source URL. Approved records need two or more such events to index; otherwise use the reviewed `noindex` status.
+4. A versioned deployment rebuilds the directory rewrite rule once after its template is present. Verify a known reviewed slug, an unknown slug (404), and the resulting robots directive after deploy.
 
 **White screen / HTTP 500 anywhere**
 A PHP fatal from the latest deploy. `git revert` the last plugin commit, push, trip flush.
@@ -125,6 +132,12 @@ the dedup hash — corrected counts need the purge path, plain re-import duplica
    date/count and definition differences must remain separately identifiable.
 4. If the official Challenger site changes its markup, update `railway/challenger_reconcile.py` with a regression
    fixture; do not replace it with a guessed hard-coded total.
+
+**Quarterly report needs correction or rerun**
+1. Do not overwrite a published report. Quarterly report ids are immutable so that journalists can reproduce what was published.
+2. Check the public report JSON, its `dataset_revision`, source-health snapshot and the current `/quality-status` revision.
+3. The report page automatically says when live data have changed since its snapshot. Correct underlying event data through the normal source-preserving correction path; do not alter historical report facts.
+4. If a materially corrected replacement is necessary, create an explicitly versioned follow-up report and document its relationship to the original. Do not silently reuse the same quarter id.
 
 **Contact form not delivering**
 Mails go via `wp_mail()` to info@asktherecruiter.com — confirm the mailbox exists in

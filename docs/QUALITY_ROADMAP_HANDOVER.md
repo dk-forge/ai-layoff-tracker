@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -237,12 +237,26 @@ be red in Actions while retaining the public record.
      create metro variants from this foundation. Do not begin metro widgets
      until metro geography is reliable. Link each widget to its exact filtered
      tracker view and methodology; publishers control backlink attributes.
-   - Build company directory pages under `/blog/company-layoffs/{slug}/` only
-     for source-linked, substantive canonical-company records. Avoid thin or
-     invented SEO prose; `noindex` low-value pages.
-   - Automate an HTML-first, accessible quarterly “State of Layoffs” report
-     plus PDF/data appendix. Findings must be template/query-backed, report the
-     dataset revision and coverage limits, and include a “what changed” section.
+   - Company-directory foundation: `/blog/company-layoffs/{slug}/` resolves
+     only through the reviewed `alt_company_directory` identity registry; it
+     never turns a freeform company name or a raw dedup key into a public page.
+     The registry initially has no published mappings. A page requires retained
+     source-linked canonical events and shows every retained source link. Only
+     two-or-more-event reviewed records may be indexed; reviewed one-event
+     records are `noindex,follow`, and unknown/pending/ambiguous slugs are 404.
+     Avoid generated narrative, inferred identity/industry/geography, and thin
+     SEO prose. The route is deliberately uncached at page level; its bounded
+     data cache is salted by `alt_data_ver` so writes invalidate it safely.
+   - Quarterly-report foundation: `POST /reports/quarterly` accepts only a
+     calendar-quarter id and server-generates an immutable snapshot using the
+     tracker aggregate path. It retains query manifest, verified/announced
+     separation, source health, integrity and dataset revision. The public
+     HTML report is accessible and printable; it compares frozen and live
+     revision numbers rather than rewriting history. A PDF/data appendix is a
+     later rendering convenience, not the source of record.
+   - `.github/workflows/quarterly-report.yml` runs after each completed
+     quarter, and may be manually invoked. It submits no totals or prose; a
+     degraded source remains a visible coverage gap in the stored snapshot.
      It may publish on AskTheRecruiter automatically; third-party syndication
      requires permission.
    - WARN transparency is a separate future dataset. Never call an employer a

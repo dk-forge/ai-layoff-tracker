@@ -53,6 +53,15 @@ function alt_shortcode_tracker_health() {
 }
 add_shortcode('alt_tracker_health', 'alt_shortcode_tracker_health');
 
+/** Frozen, server-generated quarterly research snapshot. */
+function alt_shortcode_quarterly_report($atts) {
+    $atts = shortcode_atts(array('report' => ''), $atts, 'alt_quarterly_report');
+    $report_id = sanitize_text_field($atts['report']);
+    if ($report_id === '' && isset($_GET['report'])) $report_id = sanitize_text_field(wp_unslash($_GET['report']));
+    return alt_template('page-quarterly-report.php', array('report_id' => $report_id));
+}
+add_shortcode('alt_quarterly_report', 'alt_shortcode_quarterly_report');
+
 function alt_shortcode_company_history($atts) {
     $atts = shortcode_atts(array('company' => ''), $atts, 'alt_company_history');
     $company = sanitize_text_field($atts['company']);

@@ -22,7 +22,7 @@
   │      └── mirrored into the table on save (alt_db_sync_post)                          │
   │                                                                                      │
   │  REST layoffs/v1:                                                                    │
-  │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
+  │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
   │           /reclassify /enrich-context /source-health /event-migrate                     │
@@ -43,6 +43,7 @@ wordpress-plugin/ai-layoff-tracker/
   includes/api.php           /add /dedupe /stats /all + normalizers (country/industry/state) + dedup guards
   includes/cpt.php           CPT + allowed source/verification tiers (gold|warn|silver|bronze)
   includes/contact.php       /contact page auto-creation + form handler (mails info@) + spam defenses
+  includes/company-directory.php reviewed canonical-company route; source-linked pages only
   includes/export.php        CSV/JSON streaming exports (full table, chunked)
   includes/shortcodes.php    [alt_tracker] [alt_stats_bar] [alt_dashboard] [alt_contact] ...
   templates/page-tracker.php the main page markup (stats → filters → charts → table)
@@ -104,8 +105,15 @@ automatable or licensed for reuse.
   same-job-location-country announcement followed within 365 days by a later non-announced record. It is
   deliberately an editorial lead, never an auto-merge rule; confirmation uses retained sources and the
   existing keyed source-preserving merge path.
+- **Quarterly reports:** `POST /reports/quarterly` accepts only a calendar-quarter id and computes immutable
+  source-scoped snapshots through the same aggregate query path used by the tracker. It never accepts client
+  totals or model-written findings. The public report retains its query parameters, source health, integrity
+  and dataset revision; the HTML page discloses when live data have since changed.
 - **Link precision:** most states publish one list page, not per-notice URLs. UI labels list-page
   links "(list)"; exact per-notice links (VT etc.) display plain.
+- **Company directory:** `/company-layoffs/{slug}/` resolves only through a reviewed identity registry.
+  Raw `company_key` is a dedup aid, not a legal-entity assertion. Directory rows require canonical events
+  with retained source URLs; low-value reviewed records are noindex and unknown/pending keys are 404.
 
 ## Filter model (front-end ⇄ API)
 Multi-select params, comma-joined: `years, quarters, months, industry, country, state, sources,
