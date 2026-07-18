@@ -67,3 +67,40 @@ The appropriate next step is to preserve an official-report citation (or
 source excerpt containing the notice date and worksite) on each candidate,
 resolve the one type discrepancy without overwriting source evidence, then
 perform the protocol's separate matching and publication-review passes.
+
+## Addendum — 2026-07-18 transcription review corrected the selection
+
+Reviewer: Claude Opus 4.8 independent transcription review pass (distinct from
+the Codex audit above and from any future matching editor).
+
+The review re-retrieved the official PDF (SHA-256 and byte size matched the
+sealed values) and confirmed all twelve draft transcriptions field-by-field,
+consistent with the audit above. It additionally inspected rendered page
+images at the three page boundaries, which the text-layer review above did
+not, and found the draft selection deviated from the pre-committed positional
+rule in all three places:
+
+- Leggett & Platt (2026-06-15, 125, Closure/Permanent) is the fully contained
+  last June-notice row of P19 and was omitted; ServiceNow is fourth-from-last.
+- Uber Technologies, Inc. (2026-06-12 notice, 3, Layoff/Permanent) is the
+  fully contained first June-notice row of P20 and was omitted.
+- Ballast Point Brewing Company (2026-06-29 notice, 19, Closure/Permanent) is
+  the fully contained last June-notice row of P20 and was omitted.
+
+Because no match decision existed, the manifest selection was corrected to
+conform to the rule before any matching pass. Consequences for this audit:
+
+1. The candidate rows recorded above for `p19-last-01` (ServiceNow, event
+   432 / row 26557), `p20-first-03` (Blue Diamond Growers, event 413 / row
+   26538) and `p20-last-01` (Dignity Health CHMC, event 468 / row 26593)
+   refer to companies no longer in the sample; the remaining candidate rows
+   now correspond to shifted slot IDs. Treat the whole table as historical
+   context, not a shortlist for the corrected sample.
+2. The three newly added reference rows have had **no tracker lookup of any
+   kind**, so their pre-lookup independence is intact.
+3. The HealthCare Partners type-discrepancy finding (official
+   `Layoff / Permanent` vs tracker `Closure / Permanent`) still stands and
+   still requires a source-preserving resolution.
+
+Publication remains blocked pending the separate matching pass and the
+independent publication review.

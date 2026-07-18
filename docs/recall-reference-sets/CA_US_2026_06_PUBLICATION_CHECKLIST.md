@@ -1,6 +1,8 @@
 # California WARN June 2026 — recall publication gate
 
 Status: **blocked — no recall metric may be posted yet.**
+Transcription review: **complete with a selection correction (2026-07-18).**
+Matching pass and independent publication review: **open.**
 
 The source is suitable for a *manual reference sample*: California EDD
 publicly links its closed FY 2025–26 WARN report at
@@ -16,14 +18,28 @@ California-all-layoffs, WARN-compliance, or country-completeness recall.
 
 ## Required before any tracker lookup
 
-- [ ] A second editor compares every one of the twelve manifest rows with the
+- [x] A second editor compares every one of the twelve manifest rows with the
   official PDF location, company/site, county, notice/received/effective
-  dates, count and closure/layoff type.
-- [ ] The editor records their identity and UTC review time in each row, and
+  dates, count and closure/layoff type. *(Done 2026-07-18 by the Claude
+  independent review pass: document re-retrieved, SHA-256 and byte size
+  matched the sealed values, and every field of the twelve transcribed rows
+  matched the official PDF.)*
+- [x] The editor records their identity and UTC review time in each row, and
   confirms the fixed document-position selection rule has not changed.
-- [ ] The reviewed pre-lookup manifest is committed with the official URL and
+  *(Identity and UTC time recorded in every row. The rule text is unchanged,
+  but its application was found wrong at all three page boundaries: rendered-
+  page inspection shows Leggett & Platt (last row of P19), Uber Technologies
+  (first row of P20) and Ballast Point Brewing (last row of P20) are fully
+  contained June-notice rows that the draft omitted. Because no match decision
+  existed, the selection was corrected to conform to the pre-committed rule:
+  ServiceNow, Blue Diamond Growers and Dignity Health (California Hospital
+  Medical Center) leave the sample; the three omitted rows enter it. The three
+  added rows have had no tracker lookup, preserving their pre-lookup
+  independence.)*
+- [x] The reviewed pre-lookup manifest is committed with the official URL and
   hash intact. It contains no tracker IDs, match decisions, numerator or
-  percentage at this stage.
+  percentage at this stage. *(Committed 2026-07-18; `publication_status` is
+  `transcription_reviewed_pending_match_and_publication_review`.)*
 
 ## Required matching rule
 
@@ -58,7 +74,15 @@ scraper, redistribute the PDF, or treat it as permission for a live connector.
 
 ## Current blocker
 
-The manifest is intentionally pre-lookup and has no completed independent
-transcription review or source-level canonical match review. Therefore the
-denominator, numerator and sample-recall percentage are **not yet known and
-must not be inferred from current WARN import counts**.
+The transcription review is complete and the manifest now conforms to its
+pre-committed selection rule. The remaining blockers are the source-level
+canonical matching pass and the independent publication review, which must be
+performed by a reviewer distinct from the 2026-07-18 transcription pass. Two
+prior findings also remain open: the earlier candidate audit's HealthCare
+Partners type discrepancy, and the fact that retained tracker source excerpts
+do not yet carry notice-date/worksite context (see the audit addendum).
+Because three sample rows changed in the selection correction, the earlier
+audit's candidate table is partially stale and must not be treated as a
+match shortlist for the corrected sample. The denominator, numerator and
+sample-recall percentage are **still not known and must not be inferred from
+current WARN import counts**.

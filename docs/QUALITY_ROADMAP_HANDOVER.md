@@ -143,6 +143,16 @@ operator deliberately needs CI enforcement.
      baseline predates the later source and deduplication changes, so it is
      intentionally not published as current; remeasure from an independent,
      documented reference set first.
+   - California WARN June 2026 sample status (2026-07-18): the independent
+     transcription review is complete — every field of the twelve rows was
+     verified against the official EDD PDF (hash-matched), and a selection
+     error at three page boundaries (Leggett & Platt, Uber Technologies,
+     Ballast Point omitted despite being fully contained rows) was corrected
+     to conform to the pre-committed positional rule before any match
+     decision. Remaining gates: the canonical matching pass and the
+     independent publication review, by a reviewer distinct from the
+     transcription pass; the earlier audit's candidate table is partially
+     stale and is context only. No numerator/denominator exists yet.
 
 3. **High-impact review queue and durable source evidence.**
    - A live, read-only triage queue is available at

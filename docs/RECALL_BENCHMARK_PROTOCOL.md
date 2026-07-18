@@ -54,6 +54,10 @@ Re-measure from an independently documented reference set before posting the
 first public country-period benchmark.
 
 The California June 2026 candidate has a public official reference document
-and a fixed, source-cited pre-lookup draft, but remains blocked pending the
-independent transcription and canonical-match reviews described in
-`recall-reference-sets/CA_US_2026_06_PUBLICATION_CHECKLIST.md`.
+and a reviewed, rule-conformant twelve-row manifest: the 2026-07-18
+independent transcription review verified every field against the official
+PDF and corrected a selection error at three page boundaries before any match
+decision existed. It remains blocked pending the separate canonical matching
+pass and the independent publication review described in
+`recall-reference-sets/CA_US_2026_06_PUBLICATION_CHECKLIST.md`; those passes
+must be performed by a reviewer distinct from the transcription pass.
