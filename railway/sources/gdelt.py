@@ -152,6 +152,23 @@ TRUSTED_DOMAINS = {
     "dailynewsegypt.com",                                     # Egypt
     "kommersant.ru", "rbc.ru", "thebell.io",                  # Russia
     "epravda.com.ua",                                         # Ukraine
+    # --- 2026-07-18 Challenger gap-closure R4 (docs/CHALLENGER_GAP_CLOSURE_PLAN.md):
+    # reviewed US trade/regional outlets that carried missed-event coverage.
+    # Healthcare trade press is the motivating sector (Challenger Jan
+    # healthcare 17,107 vs ~400 in named events). xtalks.com was reviewed and
+    # rejected (marketing/webinar site, not a newsroom).
+    "healthcaredive.com", "fiercepharma.com",                 # healthcare trade
+    "paymentsdive.com",                                       # fintech trade
+    "techrepublic.com", "electrek.co", "gamedeveloper.com",   # tech/EV/games trade
+    "chicago.suntimes.com",                                   # Chicago daily
+    "wral.com",                                               # Raleigh NC (WRAL TechWire)
+    "mprnews.org",                                            # Minnesota Public Radio
+    "boston.com",                                             # Boston Globe Media
+    "sanantonioreport.org",                                   # San Antonio nonprofit newsroom
+    "fox5vegas.com",                                          # Las Vegas TV news
+    "westfaironline.com",                                     # Westchester/Fairfield business
+    "kvrr.com", "wwnytv.com",                                 # Fargo / Watertown TV news
+    "recorder.com",                                           # Greenfield Recorder (MA)
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
