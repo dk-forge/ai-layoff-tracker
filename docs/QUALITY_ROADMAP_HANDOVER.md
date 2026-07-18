@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (tracker page spacing/TOC cleanup live in plugin 2.18.9; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.11 adds a safe US widget, Companies House identity foundation and a recall draft; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -151,6 +151,10 @@ be red in Actions while retaining the public record.
      ledger inception and record revision plus canonical rows/events/reports.
      It deliberately does not invent historical addition counts; corrections,
      removals and merges remain disclosed through `/quality-status`.
+   - Plugin 2.18.10 adds a rolling public change panel to the health page. It
+     combines the release ledger window with the real rolling 30-day correction
+     trail and current source-health state. It calls total movement “net change”
+     rather than claiming it is a count of gross additions.
 
 5. **Free, permitted source expansion.**
    - Maintain `docs/OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md` and
@@ -194,9 +198,20 @@ be red in Actions while retaining the public record.
      visibly degraded with an explicit no-registry detail rather than being
      presented as a live zero-result official feed. This is an admission gate,
      not a new national connector or coverage claim.
+   - A bounded Companies House identity adapter exists for an already-known
+     exact company number. It returns the official public profile URL and a
+     separately labelled registered-office country candidate only. It has no
+     name search, event-write or automatic domicile/job-location enrichment
+     path, and remains a review aid rather than a live collector.
 
 6. **Research/distribution products, after core data work.**
-   - Build state/national embeddable widgets first. Do not begin metro widgets
+   - A minimal, noindex iframe widget foundation now exists at
+     `/blog/ai-layoff-tracker/widget/?year=YYYY&state=CA`. It is intentionally
+     limited to the US national or state view and uses the public aggregate
+     endpoint. It links to the exact filtered tracker view and explicitly says
+     it is source-linked rather than complete. Publishers choose whether and
+     how to add a separate attribution link; do not promise a backlink or
+     create metro variants from this foundation. Do not begin metro widgets
      until metro geography is reliable. Link each widget to its exact filtered
      tracker view and methodology; publishers control backlink attributes.
    - Build company directory pages under `/blog/company-layoffs/{slug}/` only

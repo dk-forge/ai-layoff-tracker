@@ -242,6 +242,26 @@
             FILTER_IDS.forEach(function (id) { writeControl(id, s[id]); });
         } catch (e) { /* corrupt */ }
     }
+    // Shared links and widgets can open the full tracker with the exact
+    // public filter scope. URL parameters intentionally win over a visitor's
+    // locally saved exploratory filters.
+    function restoreFiltersFromUrl() {
+        var query = new URLSearchParams(window.location.search);
+        var mappings = {
+            years: 'alt-f-years', quarters: 'alt-f-quarters', months: 'alt-f-months',
+            industry: 'alt-f-industry', country: 'alt-f-country', state: 'alt-f-state',
+            sources: 'alt-f-verification', reasons: 'alt-f-reasons'
+        };
+        Object.keys(mappings).forEach(function (key) {
+            if (query.has(key)) writeControl(mappings[key], query.get(key).split(',').filter(Boolean));
+        });
+        [['from', 'alt-f-from'], ['to', 'alt-f-to'], ['q', 'alt-search'], ['company', 'alt-f-company'],
+         ['keyword', 'alt-f-keyword'], ['min_jobs', 'alt-f-minjobs']].forEach(function (pair) {
+            if (query.has(pair[0])) writeControl(pair[1], query.get(pair[0]));
+        });
+        if (query.get('ai') === '1') writeControl('alt-f-ai', true);
+        if (query.get('stage') === 'announced') writeControl('alt-f-announced', true);
+    }
     function clearFilters() {
         FILTER_IDS.forEach(function (id) {
             var el = document.getElementById(id);
@@ -1651,6 +1671,7 @@
             // year whenever no period is actively selected — every page load
             // starts scoped to this year; "All time" is one click away.
             restoreFilters();
+            restoreFiltersFromUrl();
             var noPeriod = !(readControl('alt-f-years') || []).length
                 && !(readControl('alt-f-quarters') || []).length
                 && !(readControl('alt-f-months') || []).length

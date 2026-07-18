@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.9
+ * Version: 2.18.11
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.9');
+define('ALT_VERSION', '2.18.11');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -61,6 +61,9 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('alt_db_install')) {
         alt_db_install();
     }
+    // FTPS deploys do not invoke plugin activation. Rebuild rewrite rules once
+    // per version so newly added public routes (such as the widget) resolve.
+    flush_rewrite_rules(false);
     delete_transient('alt_all_cache');
     delete_transient('alt_stats_cache');
     delete_transient('alt_faq_numbers');
@@ -109,6 +112,32 @@ function alt_ensure_tracker_health_page_once() {
         'post_name' => 'ai-tracker-health', 'post_content' => '[alt_tracker_health]'));
 }
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
+
+/**
+ * A deliberately narrow, iframe-safe widget surface. It is limited to a
+ * United States national or state view; metro geography is not yet reliable.
+ * The page is noindex because an embed is a display surface, not an SEO page.
+ */
+function alt_register_widget_route() {
+    add_rewrite_rule('^ai-layoff-tracker/widget/?$', 'index.php?alt_tracker_widget=1', 'top');
+}
+add_action('init', 'alt_register_widget_route', 1);
+
+function alt_widget_query_vars($vars) {
+    $vars[] = 'alt_tracker_widget';
+    return $vars;
+}
+add_filter('query_vars', 'alt_widget_query_vars');
+
+function alt_render_widget_route() {
+    if (!get_query_var('alt_tracker_widget')) return;
+    status_header(200);
+    header('X-Robots-Tag: noindex, nofollow', true);
+    nocache_headers();
+    include ALT_PLUGIN_DIR . 'templates/page-widget.php';
+    exit;
+}
+add_action('template_redirect', 'alt_render_widget_route');
 
 /**
  * Only load DataTables/Chart.js on pages that actually use a plugin shortcode

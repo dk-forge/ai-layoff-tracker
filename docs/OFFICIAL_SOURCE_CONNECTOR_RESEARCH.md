@@ -57,6 +57,15 @@ still pass the five admission-rule gates above, and must be marked
 `discovery_only` in `railway/source_registry.py` until its complete connector
 is tested and deployed.
 
+### Read-only Companies House foundation
+
+`railway/sources/companies_house.py` is a deliberately non-publishing
+identity adapter. It accepts an already-known exact company number, returns the
+official public company-profile URL and calls the address country
+`registered_office_country`. It cannot search by name, create a layoff event,
+set employer domicile, or infer an affected-job location. It is a future
+evidence-review aid only—not a collector, coverage claim, or enrichment job.
+
 ## Next safe research order
 
 1. Ask SEDAR+ / the Canadian Securities Administrators whether its data

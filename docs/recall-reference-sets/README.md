@@ -44,3 +44,17 @@ notice rows. Do not silently exclude no-match rows.
 This is a United States country-period sample with a clearly disclosed
 California source scope. It does not measure all United States layoffs or all
 California layoffs outside the relevant WARN requirements.
+
+## California June 2026 draft
+
+`ca-us-2026-06.warn-draft.json` is a source-cited, pre-lookup draft based on
+the same closed EDD report. It is deliberately marked
+`draft_pending_independent_review`: no tracker lookup, match decision,
+denominator, numerator or recall percentage is present. It records the
+retrieved source hash and a fixed document-position selection rule so a second
+editor can verify the original transcription before any matching begins.
+
+The EDD report is publicly linked by the agency. This project uses it only for
+a small manual, source-linked factual reference sample; the State's site terms
+do not supply an explicit automated/commercial bulk-reuse licence. Do not turn
+this draft into a scraper or republish the official PDF.
