@@ -56,6 +56,7 @@ railway/
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
   canonical_event_migrate.py Resumable legacy event/source-report migration (no LLM)
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
+  announcement-lifecycle-review.yml Daily read-only exact-match lifecycle lead summary
   sources/{edgar,gdelt,newsapi,warn}.py
   warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
   backfill.py gdelt_backfill.py news_catchup.py seed_ai.py   one-off runners

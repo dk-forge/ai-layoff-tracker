@@ -31,6 +31,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | challenger-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official Challenger report; fails if variance exceeds 10% |
 | reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
 | historical-news-sweep | daily + manual | Rotates through one 14-day global GDELT history window per day; dedup makes retries safe |
+| announcement-lifecycle-review | daily + manual | Read-only summary of exact-count, source-supported announcement-to-later-record candidates; never auto-merges or changes sources |
 | canonical-event-migrate | daily + manual | Resumable no-LLM conversion of legacy rows into canonical events with retained source reports |
 
 The advisory DeepSeek spot-check inside `data-quality` retries temporary

@@ -130,6 +130,11 @@ be red in Actions while retaining the public record.
      record's retained-source count and makes no automatic editorial change.
      Review remains a human decision and any correction must preserve sources
      and enter the corrections trail.
+   - `announcement-lifecycle-review.yml` runs daily at 17:15 UTC and can be
+     run manually. It reads the deliberately narrow public candidate queue and
+     writes a bounded count plus its safeguards to the Actions summary. It has
+     no credentials and no write path: candidate presence is never an automatic
+     merge decision or a reason to alter totals or source reports.
    - New source reports carry SHA-256 hashes of their retained evidence excerpt.
      Twice-daily `evidence-hash-backfill.yml` backfills a bounded 1,000 legacy
      hashes per run from the already-retained excerpt only. A controlled

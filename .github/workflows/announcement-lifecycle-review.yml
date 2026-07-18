@@ -1,0 +1,48 @@
+name: Announcement lifecycle review candidates
+
+# A read-only editorial lead report. It never calls /merge-events and never
+# changes counts, sources, event IDs or publication status.
+on:
+  schedule:
+    - cron: '15 17 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: announcement-lifecycle-review
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Summarize source-preserving lifecycle candidates
+        run: |
+          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 90 \
+            -H 'User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+            'https://asktherecruiter.com/blog/wp-json/layoffs/v1/announcement-lifecycle-candidates?per_page=100')"
+          printf '%s\n' "$response"
+          python3 - "$response" <<'PY'
+          import json
+          import os
+          import sys
+
+          try:
+              result = json.loads(sys.argv[1])
+              total = result['total_returned']
+              items = result['items']
+              methodology = result['methodology']
+          except (json.JSONDecodeError, KeyError, TypeError) as exc:
+              raise SystemExit(f"Unexpected lifecycle-review response: {exc}")
+          if not isinstance(total, int) or not isinstance(items, list):
+              raise SystemExit("Unexpected lifecycle-review progress types")
+          if total != len(items):
+              raise SystemExit("Lifecycle-review count does not match returned candidates")
+
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('## Announcement lifecycle review candidates\n\n')
+              summary.write(f'- High-confidence candidates returned: **{total:,}** (bounded at 100)\n')
+              summary.write('- This is a read-only editorial lead report—not an automatic merge decision.\n')
+              summary.write(f"- Screen: {methodology['deterministic_screen']}\n")
+              summary.write(f"- Safeguard: {methodology['source_safeguard']}\n")
+          PY
