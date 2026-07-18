@@ -1058,6 +1058,12 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-source-health table { width: 100%; min-width: 420px; border-collapse: collapse; font-size: 12px; }
 .alt-source-health th, .alt-source-health td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--alt-grid); }
 .alt-source-health th { color: var(--alt-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.alt-health-run-heading { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.alt-health-run-heading h2 { margin-bottom: 5px; }
+.alt-health-run-heading p { margin-top: 0; }
+.alt-health-run-heading label { flex: 0 0 auto; color: var(--alt-muted); font-size: 12px; font-weight: 700; }
+.alt-health-run-heading select { display: block; margin-top: 4px; min-width: 128px; }
+@media (max-width: 600px) { .alt-health-run-heading { display: block; } .alt-health-run-heading label { display: inline-block; margin: 8px 0; } }
 .alt-challenger-chart { position: relative; height: 245px; margin: 14px 0 6px; }
 .alt-source-ok td:nth-child(2) { color: #187449; font-weight: 700; }
 .alt-source-running td:nth-child(2) { color: #9a6700; font-weight: 700; }

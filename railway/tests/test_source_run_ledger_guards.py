@@ -5,6 +5,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = (ROOT / "wordpress-plugin/ai-layoff-tracker/includes/db.php").read_text()
+HEALTH_TEMPLATE = (ROOT / "wordpress-plugin/ai-layoff-tracker/templates/page-health.php").read_text()
+HEALTH_JS = (ROOT / "wordpress-plugin/ai-layoff-tracker/assets/health.js").read_text()
 
 
 class SourceRunLedgerGuards(unittest.TestCase):
@@ -26,6 +28,14 @@ class SourceRunLedgerGuards(unittest.TestCase):
         self.assertIn("alt_source_runs_table_ready()", body)
         self.assertNotIn("alt_db_table()", body)
         self.assertNotIn("alt_source_reports_table()", body)
+
+    def test_health_page_has_bounded_run_history_windows(self):
+        self.assertIn('id="alt-health-run-days"', HEALTH_TEMPLATE)
+        self.assertIn('value="7"', HEALTH_TEMPLATE)
+        self.assertIn('value="30"', HEALTH_TEMPLATE)
+        self.assertIn('value="90"', HEALTH_TEMPLATE)
+        self.assertIn('source-runs?days=', HEALTH_JS)
+        self.assertIn('per_page=200', HEALTH_JS)
 
 
 if __name__ == "__main__":
