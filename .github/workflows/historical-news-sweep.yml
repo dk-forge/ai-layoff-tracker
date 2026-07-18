@@ -42,6 +42,12 @@ jobs:
           # Ten source articles per run keeps a worst-case timeout bounded;
           # the rotating schedule makes steady, autonomous historical progress.
           BACKFILL_MAX_ARTICLES: '10'
+          # Historical windows fight GDELT's shared-endpoint throttling far
+          # more than live pulls; be maximally patient rather than abandoning
+          # a window (2026-07-18: three targeted June windows were lost to
+          # 429s at the default patience).
+          GDELT_QUERY_ATTEMPTS: '6'
+          GDELT_QUERY_BACKOFF_SECONDS: '90'
           OPENROUTER_TIMEOUT_SECONDS: '45'
           GDELT_QUERY_ATTEMPTS: '3'
           GDELT_QUERY_BACKOFF_SECONDS: '15'
