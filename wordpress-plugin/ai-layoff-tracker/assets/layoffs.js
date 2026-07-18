@@ -792,6 +792,15 @@
         renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
         renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
         renderBarList('alt-bars-countries', agg.top_countries, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+        // Largest single events: name, jobs, AI segment when explicitly
+        // attributed. Tapping toggles the company text filter.
+        var companyBox = document.getElementById('alt-f-company');
+        var leaderEntries = (agg.leaders || []).map(function (l) {
+            return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0];
+        });
+        renderBarList('alt-bars-leaders', leaderEntries, null,
+            companyBox && companyBox.value ? [companyBox.value] : [],
+            companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null);
         var countryTitle = document.getElementById('alt-country-chart-title');
         if (countryTitle) {
             countryTitle.innerHTML = selectedList('alt-f-country').length
@@ -808,7 +817,7 @@
     // "Where the cuts are" bars: name left, value right, a track whose blue
     // fill is scaled to the top bar, with an orange leading segment showing the
     // AI-attributed share. Rows are buttons that toggle the matching filter.
-    function renderBarList(containerId, entries, filterId, activeValues) {
+    function renderBarList(containerId, entries, filterId, activeValues, onPick) {
         var box = document.getElementById(containerId);
         if (!box) return;
         // Compact cards show a top-4 preview; expanded (or full-size dashboard
@@ -834,7 +843,7 @@
             var isActive = active.indexOf(label) !== -1;
             var dim = active.length && !isActive;
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
-                + (filterId ? '' : ' disabled')
+                + ((filterId || onPick) ? '' : ' disabled')
                 + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
                 + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(label) + '</span>'
                 + '<span class="alt-barrow-val">' + fmt(jobs) + '</span></span>'
@@ -849,12 +858,14 @@
         }
         box.innerHTML = html;
 
-        if (filterId) {
+        if (filterId || onPick) {
             box.querySelectorAll('.alt-barrow').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     // Multi-select: each click adds/removes that value, so bars
-                    // compose (e.g. CA + WA + Technology).
-                    toggleMultiFilter(filterId, btn.getAttribute('data-val'));
+                    // compose (e.g. CA + WA + Technology). onPick overrides for
+                    // non-multi targets (e.g. the company text filter).
+                    if (onPick) { onPick(btn.getAttribute('data-val')); }
+                    else { toggleMultiFilter(filterId, btn.getAttribute('data-val')); }
                     refreshAll();
                 });
             });
@@ -957,8 +968,16 @@
         var dots = series.length <= 2 ? 4 : 0;
         var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 }];
         if (announced.some(function (v) { return v > 0; })) {
-            datasets.push({ label: 'Announced job cuts (separate series — not in Verified)', data: announced, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.3 });
+            // STACKED band: announced plans sit on top of verified, so the
+            // top edge of the amber band reads as verified + announced —
+            // matching the intuition that plans "add to" the total.
+            datasets.push({ label: 'Announced job cuts (stacked on top — band top = total incl. plans)', data: announced, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
+            options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            options.plugins.tooltip.callbacks.footer = function (items) {
+                var total = items.reduce(function (s, it) { return s + it.parsed.y; }, 0);
+                return items.length > 1 ? 'Total incl. plans: ' + fmt(total) : '';
+            };
         }
         mountChart('alt-chart-weekly', {
             type: 'line',
@@ -988,8 +1007,13 @@
         var dots = charted.length <= 2 ? 4 : 0;
         var datasets = [{ label: 'Explicitly AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI job cuts (separate series — not in the verified line)', data: cumA, borderColor: PALETTE[2], borderDash: [6, 4], borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.25 });
+            datasets.push({ label: 'Announced AI plans (stacked on top — band top = total AI incl. plans)', data: cumA, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            options.plugins.tooltip.callbacks.footer = function (items) {
+                var total = items.reduce(function (s, it) { return s + it.parsed.y; }, 0);
+                return items.length > 1 ? 'Total AI incl. plans: ' + fmt(total) : '';
+            };
         }
         mountChart('alt-chart-ai-cumulative', {
             type: 'line',
