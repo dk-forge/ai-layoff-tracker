@@ -1,0 +1,58 @@
+name: Company directory (reviewed identity mappings)
+
+# Admits reviewed company identity mappings to the public directory registry.
+# The server independently counts source-linked canonical events and refuses
+# an 'approved' mapping below the two-event indexability threshold, so this
+# workflow can never publish a page without retained evidence. The Actions
+# run log is the audit trail; `reason` is required.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mappings:
+        description: 'JSON array: [{"company_key":"...","slug":"...","display_name":"...","review_status":"approved|noindex|pending"}]'
+        required: true
+      reason:
+        description: 'Review basis (who reviewed, what evidence was checked)'
+        required: true
+
+jobs:
+  admit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Submit reviewed mappings
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          MAPPINGS: ${{ github.event.inputs.mappings }}
+          REASON: ${{ github.event.inputs.reason }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          BODY=$(python3 - <<'PY'
+          import os, json
+          mappings = json.loads(os.environ['MAPPINGS'])
+          assert isinstance(mappings, list) and mappings, 'mappings must be a non-empty JSON array'
+          for m in mappings:
+              assert isinstance(m, dict) and m.get('company_key') and m.get('slug') and m.get('display_name'), \
+                  'each mapping needs company_key, slug and display_name'
+          print(json.dumps({'mappings': mappings, 'reason': os.environ.get('REASON', '')}))
+          PY
+          )
+          response=$(curl --fail-with-body -sS --connect-timeout 20 --max-time 120 -X POST \
+            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/company-directory" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -d "$BODY")
+          echo "$response"
+          python3 - <<PY >> "$GITHUB_STEP_SUMMARY"
+          import json
+          r = json.loads('''$response''')
+          print('## Company-directory admission result')
+          print()
+          print(f"- Admitted: **{len(r.get('admitted', []))}**")
+          for a in r.get('admitted', []):
+              print(f"  - {a['slug']} ({a['review_status']}, {a['source_linked_canonical_events']} source-linked events) -> {a['url']}")
+          print(f"- Rejected: **{len(r.get('rejected', []))}**")
+          for x in r.get('rejected', []):
+              print(f"  - {x.get('company_key', '?')}: {x.get('why')}")
+          PY

@@ -794,6 +794,116 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_warn_transparency_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // Reviewed company-directory registry writer. It admits identity mappings
+    // only; page publication is still decided at render time from live
+    // source-linked canonical events, and the server refuses an 'approved'
+    // mapping whose evidence support is below the indexability threshold.
+    register_rest_route('layoffs/v1', '/company-directory', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_company_directory_get', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_company_directory_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
+}
+
+/** Public, read-only registry listing: reviewed mappings and their evidence support. */
+function alt_api_company_directory_get() {
+    global $wpdb;
+    $directory = alt_company_directory_table();
+    $rows = $wpdb->get_results(
+        "SELECT slug, display_name, review_status, reviewed_at FROM $directory
+         WHERE review_status IN ('approved','noindex') ORDER BY display_name ASC", ARRAY_A) ?: array();
+    $out = array();
+    foreach ($rows as $row) {
+        $out[] = array(
+            'slug' => $row['slug'],
+            'display_name' => $row['display_name'],
+            'review_status' => $row['review_status'],
+            'reviewed_at' => $row['reviewed_at'],
+            'url' => alt_company_directory_url($row['slug']),
+        );
+    }
+    return rest_ensure_response(array(
+        'methodology' => 'Company pages exist only for reviewed identity mappings and render only source-linked canonical events. A listed mapping is an identity review record, not a completeness claim for that employer.',
+        'mappings' => $out,
+    ));
+}
+
+/**
+ * Keyed registry writer. Each mapping is a reviewed identity decision:
+ * company_key -> public slug/display name. The server independently counts
+ * source-linked canonical events for the key and refuses 'approved' below
+ * the two-event indexability threshold (and 'noindex' below one), so a
+ * mapping can never will a page into existence without retained evidence.
+ */
+function alt_api_company_directory_post(WP_REST_Request $r) {
+    global $wpdb;
+    $reason = trim((string) $r->get_param('reason'));
+    if ($reason === '') {
+        return new WP_Error('alt_bad_request', 'reason is required.', array('status' => 400));
+    }
+    $mappings = $r->get_param('mappings');
+    if (!is_array($mappings) || !$mappings) {
+        return new WP_Error('alt_bad_request', 'mappings must be a non-empty array.', array('status' => 400));
+    }
+    $directory = alt_company_directory_table();
+    $layoffs = alt_db_table(); $events = alt_events_table(); $reports = alt_source_reports_table();
+    $out = array('admitted' => array(), 'rejected' => array());
+    foreach ($mappings as $m) {
+        $key = trim((string) ($m['company_key'] ?? ''));
+        $slug = sanitize_title((string) ($m['slug'] ?? ''));
+        $name = sanitize_text_field((string) ($m['display_name'] ?? ''));
+        $status = sanitize_key((string) ($m['review_status'] ?? ''));
+        if ($key === '' || $slug === '' || $name === '' || !in_array($status, array('approved', 'noindex', 'pending'), true)) {
+            $out['rejected'][] = array('mapping' => $m, 'why' => 'company_key, slug, display_name and a valid review_status are required');
+            continue;
+        }
+        // Server-side evidence count: source-linked canonical events only —
+        // the same shape the public page query uses.
+        $supported = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $layoffs l INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
+             WHERE l.company_key = %s AND l.event_id > 0
+             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')", $key));
+        if ($status === 'approved' && $supported < 2) {
+            $out['rejected'][] = array('company_key' => $key, 'why' => "approved requires >=2 source-linked canonical events; found $supported");
+            continue;
+        }
+        if ($status === 'noindex' && $supported < 1) {
+            $out['rejected'][] = array('company_key' => $key, 'why' => "noindex requires >=1 source-linked canonical event; found $supported");
+            continue;
+        }
+        $slug_owner = $wpdb->get_var($wpdb->prepare(
+            "SELECT company_key FROM $directory WHERE slug = %s", $slug));
+        if ($slug_owner !== null && $slug_owner !== $key) {
+            $out['rejected'][] = array('company_key' => $key, 'why' => "slug '$slug' already belongs to another mapping");
+            continue;
+        }
+        $now = current_time('mysql', true);
+        $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM $directory WHERE company_key = %s", $key));
+        $data = array(
+            'company_key' => $key, 'slug' => $slug, 'display_name' => $name,
+            'aliases' => isset($m['aliases']) ? wp_json_encode(array_map('sanitize_text_field', (array) $m['aliases'])) : null,
+            'review_status' => $status,
+            'reviewed_at' => in_array($status, array('approved', 'noindex'), true) ? $now : null,
+            'updated_at' => $now,
+        );
+        if ($existing) {
+            $wpdb->update($directory, $data, array('id' => (int) $existing));
+        } else {
+            $data['created_at'] = $now;
+            $wpdb->insert($directory, $data);
+        }
+        if ($wpdb->last_error) {
+            $out['rejected'][] = array('company_key' => $key, 'why' => 'database error: ' . $wpdb->last_error);
+            continue;
+        }
+        $out['admitted'][] = array(
+            'company_key' => $key, 'slug' => $slug, 'review_status' => $status,
+            'source_linked_canonical_events' => $supported,
+            'url' => alt_company_directory_url($slug),
+        );
+    }
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
 }
 
 /**
@@ -1130,9 +1240,9 @@ function alt_api_quality_status() {
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'dataset_release_ledger', 'status' => 'active', 'scope' => 'Immutable release snapshots from this deployment forward; no invented legacy addition counts'),
             array('id' => 'company_directory', 'status' => 'in_progress', 'scope' => 'Reviewed, source-linked company pages only; no company page is published until a reviewed registry mapping meets its evidence threshold'),
-            array('id' => 'quarterly_state_of_layoffs', 'status' => 'in_progress', 'scope' => 'Server-generated immutable quarterly snapshots; the first report is published only after the scheduled or keyed snapshot workflow succeeds'),
+            array('id' => 'quarterly_state_of_layoffs', 'status' => 'active', 'scope' => 'Server-generated immutable quarterly snapshots; the first report (2026-Q2) is published from a frozen snapshot with its data revision and coverage limits disclosed'),
             array('id' => 'warn_transparency_dataset', 'status' => 'in_progress', 'scope' => 'Separate evidence-linked timing/adjudication research dataset; never included in layoff or AI totals'),
-            array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'Only free, permitted and tested official/IR interfaces are promoted live'),
+            array('id' => 'national_connectors_and_ir_feeds', 'status' => 'pending_permission', 'scope' => 'First five reviewed company-owned IR feeds admitted to the versioned registry on 2026-07-18; live collection state is reported by source health above. Official national connectors remain pending permitted interfaces'),
         ),
     ));
 }
