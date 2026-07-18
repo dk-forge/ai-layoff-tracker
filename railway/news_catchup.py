@@ -14,6 +14,7 @@ import os
 
 from sources.newsapi import pull_news_articles
 from extractor import extract_layoff_data
+from source_health import report_source_health
 from wp_poster import post_to_wordpress
 
 
@@ -21,7 +22,16 @@ def run():
     days = int(os.environ.get("NEWS_DAYS_BACK") or 28)
     print(f"News catch-up: pulling last {days} days of layoff coverage")
 
-    entries = pull_news_articles(days_back=days)
+    # A manually-dispatched recovery run is a real collector attempt.  Record
+    # it through the same public health channel as the scheduled Railway
+    # collector so the health dashboard's "last pull" is not misleadingly
+    # stale after a successful catch-up.
+    report_source_health("newsapi", "running", 0, f"manual {days}-day catch-up in progress")
+    try:
+        entries = pull_news_articles(days_back=days)
+    except Exception as exc:
+        report_source_health("newsapi", "degraded", 0, f"manual {days}-day catch-up failed: {exc}")
+        raise
     print(f"NewsAPI returned {len(entries)} articles")
 
     posted = dupes = skipped = failed = ai = 0
@@ -48,6 +58,13 @@ def run():
 
     print(f"News catch-up complete: {posted} posted ({ai} AI-attributed), "
           f"{dupes} duplicates, {skipped} non-events, {failed} failed")
+    report_source_health(
+        "newsapi",
+        "ok",
+        len(entries),
+        f"manual {days}-day catch-up: {posted} posted, {dupes} duplicates, "
+        f"{skipped} non-events, {failed} processing failures",
+    )
 
 
 if __name__ == "__main__":
