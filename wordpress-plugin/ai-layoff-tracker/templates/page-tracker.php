@@ -29,9 +29,14 @@ $alt_challenger_records = array_values($alt_challenger_by_period);
 $alt_challenger_chart = array();
 foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     $alt_challenger_chart[] = array(
-        'period' => !empty($alt_challenger_record['report_month']) ? $alt_challenger_record['report_month'] : substr((string) ($alt_challenger_record['recorded_at'] ?? ''), 0, 7),
-        'challenger' => max(0, (int) ($alt_challenger_record['challenger_ai_jobs_ytd'] ?? 0)),
-        'tracker' => max(0, (int) ($alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0)),
+        // Challenger publishes the prior month's announcements. Keep the
+        // announcement reference month separate from the report publication
+        // month so the chart cannot visually shift events a month late.
+        'period' => !empty($alt_challenger_record['reference_month']) ? $alt_challenger_record['reference_month'] : (!empty($alt_challenger_record['report_month']) ? $alt_challenger_record['report_month'] : substr((string) ($alt_challenger_record['recorded_at'] ?? ''), 0, 7)),
+        'challenger_month' => array_key_exists('challenger_ai_jobs_month', $alt_challenger_record) ? max(0, (int) $alt_challenger_record['challenger_ai_jobs_month']) : null,
+        'tracker_month' => array_key_exists('tracker_ai_primary_announced_us_employer_jobs_month', $alt_challenger_record) ? max(0, (int) $alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_month']) : null,
+        'challenger_ytd' => max(0, (int) ($alt_challenger_record['challenger_ai_jobs_ytd'] ?? 0)),
+        'tracker_ytd' => max(0, (int) ($alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0)),
     );
 }
 ?>
@@ -349,24 +354,35 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <?php if ($alt_challenger_records) : ?>
             <?php if (count($alt_challenger_chart) >= 2) : ?>
             <div class="alt-challenger-chart">
+                <canvas id="alt-chart-challenger-monthly" data-points="<?php echo esc_attr(wp_json_encode($alt_challenger_chart)); ?>" aria-label="Monthly Challenger and strict tracker AI-announcement comparison"></canvas>
+            </div>
+            <p class="alt-muted">Monthly, source-linked announcement figures. This is a coverage reconciliation, not an accuracy score.</p>
+            <div class="alt-challenger-chart">
                 <canvas id="alt-chart-challenger-reconciliation" data-points="<?php echo esc_attr(wp_json_encode($alt_challenger_chart)); ?>" aria-label="Cumulative year-to-date Challenger and strict tracker AI-announcement comparison"></canvas>
             </div>
-            <p class="alt-muted">Cumulative year-to-date values by official report month. This is a coverage reconciliation, not a monthly layoff-total chart or an accuracy score.</p>
+            <p class="alt-muted">Cumulative year-to-date values use the same reference months and official reports.</p>
             <?php else : ?>
             <p class="alt-muted">The first official comparison is retained below. A cumulative month-by-month trend will appear automatically after a second official report month is recorded.</p>
             <?php endif; ?>
             <div class="alt-source-health alt-challenger-table">
                 <table>
-                    <thead><tr><th>Report period</th><th>Challenger AI/automation cuts YTD</th><th>Strict tracker figure YTD</th><th>Coverage gap</th><th>Official report</th></tr></thead>
+                    <thead><tr><th>Announcement month</th><th>Challenger AI cuts (month)</th><th>Strict tracker (month)</th><th>Monthly gap</th><th>Challenger AI cuts (YTD)</th><th>Strict tracker (YTD)</th><th>YTD gap</th><th>Official report</th></tr></thead>
                     <tbody>
                     <?php foreach ($alt_challenger_records as $alt_benchmark) :
                         $alt_challenger_total = max(0, (int) ($alt_benchmark['challenger_ai_jobs_ytd'] ?? 0));
                         $alt_tracker_total = max(0, (int) ($alt_benchmark['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0));
                         $alt_gap = max(0, $alt_challenger_total - $alt_tracker_total);
-                        $alt_period = !empty($alt_benchmark['report_month']) ? $alt_benchmark['report_month'] : substr((string) ($alt_benchmark['recorded_at'] ?? ''), 0, 10);
+                        $alt_has_monthly = array_key_exists('challenger_ai_jobs_month', $alt_benchmark) && array_key_exists('tracker_ai_primary_announced_us_employer_jobs_month', $alt_benchmark);
+                        $alt_challenger_month = $alt_has_monthly ? max(0, (int) $alt_benchmark['challenger_ai_jobs_month']) : null;
+                        $alt_tracker_month = $alt_has_monthly ? max(0, (int) $alt_benchmark['tracker_ai_primary_announced_us_employer_jobs_month']) : null;
+                        $alt_monthly_gap = $alt_has_monthly ? max(0, $alt_challenger_month - $alt_tracker_month) : null;
+                        $alt_period = !empty($alt_benchmark['reference_month']) ? $alt_benchmark['reference_month'] : (!empty($alt_benchmark['report_month']) ? $alt_benchmark['report_month'] : substr((string) ($alt_benchmark['recorded_at'] ?? ''), 0, 10));
                     ?>
                         <tr>
                             <td><?php echo esc_html($alt_period ?: 'Recorded comparison'); ?></td>
+                            <td><?php echo $alt_has_monthly ? number_format($alt_challenger_month) : '—'; ?></td>
+                            <td><?php echo $alt_has_monthly ? number_format($alt_tracker_month) : '—'; ?></td>
+                            <td><?php echo $alt_has_monthly ? number_format($alt_monthly_gap) . ' fewer qualifying tracker records' : '—'; ?></td>
                             <td><?php echo number_format($alt_challenger_total); ?></td>
                             <td><?php echo number_format($alt_tracker_total); ?></td>
                             <td><?php echo number_format($alt_gap); ?> fewer qualifying tracker records</td>

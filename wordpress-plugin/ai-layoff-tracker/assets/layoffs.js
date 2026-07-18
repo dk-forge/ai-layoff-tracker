@@ -936,28 +936,41 @@
     }
 
     function initChallengerReconciliationChart() {
-        var canvas = document.getElementById('alt-chart-challenger-reconciliation');
+        var ytdCanvas = document.getElementById('alt-chart-challenger-reconciliation');
+        var monthlyCanvas = document.getElementById('alt-chart-challenger-monthly');
+        var canvas = ytdCanvas || monthlyCanvas;
         if (!canvas || !chartsAvailable()) return;
         var points;
         try { points = JSON.parse(canvas.getAttribute('data-points') || '[]'); }
         catch (e) { return; }
         if (!Array.isArray(points) || points.length < 2) return;
-        var options = cloneOptions();
-        options.plugins.tooltip.callbacks = { label: function (ctx) {
-            return (ctx.dataset.label || 'Jobs') + ': ' + fmt(ctx.parsed.y);
-        } };
-        options.scales.y.ticks.callback = function (value) { return fmt(value); };
-        mountChart('alt-chart-challenger-reconciliation', {
-            type: 'line',
-            data: {
-                labels: points.map(function (p) { return monthLabel(p.period); }),
-                datasets: [
-                    { label: 'Challenger official YTD', data: points.map(function (p) { return p.challenger; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
-                    { label: 'ATR strict comparable YTD', data: points.map(function (p) { return p.tracker; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
-                ]
-            },
-            options: options
-        });
+        function options() {
+            var result = cloneOptions();
+            result.plugins.tooltip.callbacks = { label: function (ctx) {
+                return (ctx.dataset.label || 'Jobs') + ': ' + fmt(ctx.parsed.y);
+            } };
+            result.scales.y.ticks.callback = function (value) { return fmt(value); };
+            return result;
+        }
+        var labels = points.map(function (p) { return monthLabel(p.period); });
+        if (monthlyCanvas && points.some(function (p) { return p.challenger_month !== null && p.challenger_month !== undefined; })) {
+            mountChart('alt-chart-challenger-monthly', {
+                type: 'line',
+                data: { labels: labels, datasets: [
+                    { label: 'Challenger official (month)', data: points.map(function (p) { return p.challenger_month; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
+                    { label: 'ATR strict comparable (month)', data: points.map(function (p) { return p.tracker_month; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
+                ] }, options: options()
+            });
+        }
+        if (ytdCanvas) {
+            mountChart('alt-chart-challenger-reconciliation', {
+                type: 'line',
+                data: { labels: labels, datasets: [
+                    { label: 'Challenger official YTD', data: points.map(function (p) { return p.challenger_ytd; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
+                    { label: 'ATR strict comparable YTD', data: points.map(function (p) { return p.tracker_ytd; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
+                ] }, options: options()
+            });
+        }
     }
 
     function renderBar(canvasId, entries, filterId, activeValue, tipPrefix) {

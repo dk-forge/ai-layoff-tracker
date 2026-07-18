@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.27 adds a copyable US national/state widget builder, frozen quarterly JSON/CSV appendices, a discovery-only OpenDART metadata client, and the recall publication independence gate; 2.18.26 corrects public failed/running collector wording so an unavailable query is never displayed as “0 found”; 2.18.25 fixes the first quarterly report page render before publication hand-off; 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.28 adds source-linked January–June 2026 monthly and cumulative Challenger reconciliation history, keeps the announcement reference month separate from report-publication month, and treats an expected coverage gap as a visible alert rather than a repository failure; source/authentication/parse/write errors remain failures and a manual threshold gate remains available. Plugin 2.18.27 adds a copyable US national/state widget builder, frozen quarterly JSON/CSV appendices, a discovery-only OpenDART metadata client, and the recall publication independence gate; 2.18.26 corrects public failed/running collector wording so an unavailable query is never displayed as “0 found”; 2.18.25 fixes the first quarterly report page render before publication hand-off; 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -32,7 +32,7 @@ remain the publication standard.
   detail); it never reconstructs legacy activity or treats raw candidates as
   accepted events.
 
-- Plugin version **2.18.19** is live from the current `main` deployment. Each
+- Plugin version **2.18.28** is the next `main` deployment. Each
   deployment passes a pre-upload PHP syntax lint and a post-upload cache-busted
   public tracker API verification. The retained-excerpt hash backfill is live;
   live integrity is the source of truth rather than this narrative snapshot.
@@ -96,11 +96,17 @@ effective layoff date. The strict metric can legitimately be zero while
 enrichment is still early. That is an honest coverage signal, not a reason to
 inflate it.
 
-First retained public record (2026-07-17): official June Challenger report
-records 101,743 YTD AI-attributed cuts; strict tracker comparator is 0 while
-announcement-date/domicile enrichment is early. This is a disclosed coverage
-gap, not a data correction. The workflow uses `pipefail`; threshold misses must
-be red in Actions while retaining the public record.
+The initial retained June 2026 record reports 101,743 YTD AI-attributed cuts;
+the strict tracker comparator is 0 while announcement-date/domicile enrichment
+is early. Plugin 2.18.28 backfills the official January–June 2026 reference
+months (7,624; 4,680; 15,341; 21,490; 38,579; 14,029) and their retained YTD
+figures, each linked to the original Challenger release. The scheduled worker
+adds the next official feed item automatically. It records the same-month and
+cumulative strict query URLs, figures and coverage gaps. A large gap is a
+visible `coverage_alert`, not a failed processing job; authentication, fetch,
+parse and record-write errors still fail loudly. An optional manual
+`fail_on_gap` workflow input preserves the old threshold-gate behavior when an
+operator deliberately needs CI enforcement.
 
 ## Active and pending work
 
@@ -110,9 +116,11 @@ be red in Actions while retaining the public record.
      page. New records retain the official report month, strict qualifying
      figure, official report URL and a coverage gap—never an "accuracy" claim.
    - Do not display a percentage as “accuracy” or copy Challenger's total.
-   - The current monthly record is public through the endpoint, tracker-page
-     comparison table, and health page. The workflow artifact remains the
-     detailed operational audit trail.
+   - The current monthly records are public through the endpoint, tracker-page
+     monthly and cumulative charts/table, and health page. The worker retains
+     the real announcement reference month separately from the later report
+     publication month, so comparisons cannot be visually shifted a month.
+     The workflow artifact remains the detailed operational audit trail.
    - The endpoint returns one authoritative retained record per official
      report month. Earlier setup entries without `report_month` remain stored
      for audit but cannot appear as a misleading duplicate publication.

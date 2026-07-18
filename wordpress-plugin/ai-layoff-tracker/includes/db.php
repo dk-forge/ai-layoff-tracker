@@ -1433,8 +1433,12 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
     $year = (int) $r->get_param('year');
     $report_month = (string) $r->get_param('report_month');
     if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $report_month)) $report_month = gmdate('Y-m');
+    $reference_month = (string) $r->get_param('reference_month');
+    if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $reference_month)) $reference_month = $report_month;
     $benchmark = max(0, (int) $r->get_param('challenger_ai_jobs_ytd'));
+    $benchmark_month = max(0, (int) $r->get_param('challenger_ai_jobs_month'));
     $tracker = max(0, (int) $r->get_param('tracker_ai_primary_announced_us_employer_jobs_ytd'));
+    $tracker_month = max(0, (int) $r->get_param('tracker_ai_primary_announced_us_employer_jobs_month'));
     $url = esc_url_raw($r->get_param('benchmark_url'));
     if ($year < 2015 || $year > 2100 || !$benchmark || !$url) {
         return new WP_Error('alt_bad_request', 'year, benchmark URL and positive Challenger total are required.', array('status' => 400));
@@ -1444,10 +1448,14 @@ function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
     // One retained public comparator per official report month.
     $key = $report_month;
     $records[$key] = array(
-        'year' => $year, 'report_month' => $report_month, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
+        'year' => $year, 'reference_month' => $reference_month, 'report_month' => $report_month, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
         'benchmark_url' => $url, 'challenger_ai_jobs_ytd' => $benchmark,
+        'challenger_ai_jobs_month' => $benchmark_month,
+        'tracker_ai_primary_announced_us_employer_jobs_month' => $tracker_month,
         'tracker_ai_primary_announced_us_employer_jobs_ytd' => $tracker,
+        'tracker_ai_cited_announced_us_job_location_jobs_month' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_month')),
         'tracker_ai_cited_announced_us_job_location_jobs_ytd' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_ytd')),
+        'monthly_variance' => $benchmark_month ? round(($tracker_month - $benchmark_month) / $benchmark_month, 4) : null,
         'variance' => round(($tracker - $benchmark) / $benchmark, 4),
         'definition' => 'Strict: US employer + source-evidenced announcement date + announced + AI primary + canonical event. Diagnostic figure is not Challenger-comparable.',
     );

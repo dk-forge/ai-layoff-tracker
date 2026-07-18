@@ -17,6 +17,11 @@ on:
         description: 'Absolute allowed variance, e.g. 0.10 for 10%'
         required: false
         default: '0.10'
+      fail_on_gap:
+        description: 'Fail the run for an expected coverage gap (normally false; processing errors always fail)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   reconcile:
@@ -34,6 +39,7 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           BENCHMARK_YEAR: ${{ github.event.inputs.year || '2026' }}
           CHALLENGER_ALLOWED_VARIANCE: ${{ github.event.inputs.allowed_variance || '0.10' }}
+          CHALLENGER_FAIL_ON_GAP: ${{ github.event.inputs.fail_on_gap || 'false' }}
         run: |
           cd railway
           set -o pipefail
