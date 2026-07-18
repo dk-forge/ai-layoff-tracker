@@ -37,6 +37,11 @@ class QuarterlyReportGuards(unittest.TestCase):
         self.assertIn("Machine-readable frozen report snapshot", TEMPLATE)
         self.assertIn("not a layoff census", TEMPLATE)
 
+    def test_table_renderer_is_declared_before_its_first_render_call(self):
+        declaration = TEMPLATE.index("function alt_quarterly_report_table")
+        first_call = TEMPLATE.index("alt_quarterly_report_table($verified")
+        self.assertLess(declaration, first_call)
+
 
 if __name__ == "__main__":
     unittest.main()

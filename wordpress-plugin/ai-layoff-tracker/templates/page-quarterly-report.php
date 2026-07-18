@@ -7,6 +7,20 @@ if (!empty($report_id) && isset($all_reports[$report_id])) $report = $all_report
 else $report = !empty($all_reports) ? reset($all_reports) : null;
 $live_revision = (int) get_option('alt_data_ver', 1);
 $api_base = rest_url('layoffs/v1/');
+// Conditional function declarations are evaluated only when execution reaches
+// them. Define this renderer before the first table call so the report cannot
+// partially render and then fatal on its first breakdown.
+if (!function_exists('alt_quarterly_report_table')) {
+function alt_quarterly_report_table($rows, $label) {
+    if (!is_array($rows) || !$rows) { echo '<p class="alt-muted">No source-supported values for this snapshot.</p>'; return; }
+    echo '<table class="alt-report-table"><thead><tr><th scope="col">' . esc_html($label) . '</th><th scope="col">Jobs</th><th scope="col">AI-attributed jobs</th></tr></thead><tbody>';
+    foreach (array_slice($rows, 0, 8) as $row) {
+        $name = (string) ($row[0] ?? ''); $jobs = (int) ($row[1] ?? 0); $ai = (int) ($row[2] ?? 0);
+        echo '<tr><th scope="row">' . esc_html($name) . '</th><td>' . number_format_i18n($jobs) . '</td><td>' . number_format_i18n($ai) . '</td></tr>';
+    }
+    echo '</tbody></table>';
+}
+}
 ?>
 <main class="alt-wrap alt-quarterly-report" id="alt-quarterly-report">
 <?php if (!$report): ?>
@@ -51,16 +65,3 @@ $api_base = rest_url('layoffs/v1/');
   <section><h2>Methods and limits</h2><p><?php echo esc_html($report['revision_notice']); ?></p><p>Country is affected-job location; it is not employer headquarters. Fields without source support remain blank. A listed source can be a government notice list rather than an individual notice URL, and the live tracker labels that distinction.</p></section>
 <?php endif; ?>
 </main>
-<?php
-if (!function_exists('alt_quarterly_report_table')) {
-function alt_quarterly_report_table($rows, $label) {
-    if (!is_array($rows) || !$rows) { echo '<p class="alt-muted">No source-supported values for this snapshot.</p>'; return; }
-    echo '<table class="alt-report-table"><thead><tr><th scope="col">' . esc_html($label) . '</th><th scope="col">Jobs</th><th scope="col">AI-attributed jobs</th></tr></thead><tbody>';
-    foreach (array_slice($rows, 0, 8) as $row) {
-        $name = (string) ($row[0] ?? ''); $jobs = (int) ($row[1] ?? 0); $ai = (int) ($row[2] ?? 0);
-        echo '<tr><th scope="row">' . esc_html($name) . '</th><td>' . number_format_i18n($jobs) . '</td><td>' . number_format_i18n($ai) . '</td></tr>';
-    }
-    echo '</tbody></table>';
-}
-}
-?>
