@@ -47,15 +47,30 @@ jobs:
           [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
       - name: Install deps
         working-directory: railway
-        # warn-scraper's PyPI release predates the ms.py/nd.py scrapers, and
-        # its sdist at the pinned commit imports jinja2 at build time (an
-        # upstream packaging gap), so the git install needs the build dep
-        # preinstalled and isolation off. Pinned by commit for reproducibility;
-        # the shared requirements.txt keeps the PyPI floor for every other job.
+        # The PyPI warn-scraper release predates the MS/ND scrapers, and its
+        # git sdist cannot build (setup imports its own runtime deps). Inject
+        # just the two scraper modules (plus the pdfrodent helper MS uses)
+        # from a pinned upstream commit into the installed package; the
+        # import self-check fails the job loudly on any incompatibility, and
+        # per-state subproces isolation caps any runtime surprise at one
+        # state's output.
         run: |
           pip install -r requirements.txt
-          pip install jinja2 setuptools
-          pip install --no-build-isolation "warn-scraper @ git+https://github.com/biglocalnews/warn-scraper@f7b3dd26af1f3ad700762504bd7c5c0d23979507"
+          pip install pdfplumber pyquery
+          BASE=https://raw.githubusercontent.com/biglocalnews/warn-scraper/f7b3dd26af1f3ad700762504bd7c5c0d23979507
+          SCRAPERS_DIR=$(python -c "import warn.scrapers, os; print(os.path.dirname(warn.scrapers.__file__))")
+          WARN_DIR=$(python -c "import warn, os; print(os.path.dirname(warn.__file__))")
+          mkdir -p "$WARN_DIR/pdfrodent"
+          curl -sSf "$BASE/warn/scrapers/ms.py" -o "$SCRAPERS_DIR/ms.py"
+          curl -sSf "$BASE/warn/scrapers/nd.py" -o "$SCRAPERS_DIR/nd.py"
+          curl -sSf "$BASE/warn/pdfrodent/__init__.py" -o "$WARN_DIR/pdfrodent/__init__.py"
+          curl -sSf "$BASE/warn/pdfrodent/pdfrodent.py" -o "$WARN_DIR/pdfrodent/pdfrodent.py"
+          python - <<'PY'
+          import importlib
+          for m in ("warn.scrapers.ms", "warn.scrapers.nd"):
+              importlib.import_module(m)
+          print("injected scrapers import OK")
+          PY
       - name: Mark pipeline refreshing
         run: |
           curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \
