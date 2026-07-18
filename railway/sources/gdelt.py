@@ -12,7 +12,7 @@ import re
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import timezone
+from datetime import datetime, timezone
 
 import requests
 
@@ -213,10 +213,53 @@ def _fetch_article(url):
     return text[:RAW_TEXT_LIMIT]
 
 
-def pull_gdelt_between(start, end, max_records=250):
-    """Return raw layoff-news entries (trusted domains) filed in [start, end]."""
+# Segmented recall sweeps: a broad "layoffs" query ranks global mega-stories
+# first, so smaller country/state/industry announcements can fall below the
+# maxrecords cutoff and never enter the pipeline. Each run therefore ALSO
+# runs a few narrow queries chosen by deterministic daily rotation, so the
+# whole matrix is covered every ~6 days at twice-daily cadence without
+# increasing per-run volume beyond a handful of extra requests. Expand the
+# matrix freely — rotation, not volume, absorbs growth.
+SEGMENT_TERMS = (
+    # US states with the highest layoff volume
+    '"California"', '"New York"', '"Texas"', '"Washington"', '"Florida"',
+    '"Illinois"', '"Massachusetts"', '"Georgia"', '"Michigan"', '"Ohio"',
+    '"Pennsylvania"', '"New Jersey"',
+    # countries (Translingual matches non-English coverage too)
+    '"Germany"', '"France"', '"United Kingdom"', '"Canada"', '"India"',
+    '"Japan"', '"Brazil"', '"Spain"', '"Italy"', '"Netherlands"',
+    '"Sweden"', '"South Korea"', '"Singapore"', '"Israel"', '"Mexico"',
+    '"Poland"', '"Switzerland"', '"Ireland"', '"Australia"',
+    # industries
+    '"manufacturing"', '"software"', '"banking"', '"retail"',
+    '"healthcare"', '"automotive"', '"media"', '"logistics"',
+    '"pharmaceutical"', '"insurance"', '"telecom"', '"aerospace"',
+    # AI-attribution phrasings the broad vocabulary can rank too low
+    '"AI layoffs"', '"replaced by AI"', '"because of AI"',
+    '"artificial intelligence" "job cuts"', '"automation" "restructuring"',
+)
+SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
+
+
+def _segment_queries_for_now():
+    """Deterministic daily rotation over the segment matrix (0 disables)."""
+    if not SEGMENT_QUERIES_PER_RUN:
+        return []
+    now = datetime.now(timezone.utc)
+    run_of_day = 0 if now.hour < 17 else 1  # the two Railway cron slots
+    start_idx = ((now.timetuple().tm_yday * 2 + run_of_day) * SEGMENT_QUERIES_PER_RUN) % len(SEGMENT_TERMS)
+    picked = [SEGMENT_TERMS[(start_idx + i) % len(SEGMENT_TERMS)] for i in range(SEGMENT_QUERIES_PER_RUN)]
+    return [f"{QUERY} {term}" for term in picked]
+
+
+def _query_window(query, start, end, max_records):
+    """One GDELT ArtList query with patient 429 backoff.
+
+    Returns (articles, saw_rate_limit, last_error); articles is None when the
+    window was abandoned after all attempts.
+    """
     params = {
-        "query": QUERY,
+        "query": query,
         "mode": "ArtList",
         "format": "json",
         "maxrecords": max_records,
@@ -227,9 +270,6 @@ def pull_gdelt_between(start, end, max_records=250):
         "startdatetime": start.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "enddatetime": end.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
     }
-    # GDELT throttles aggressively on historical sweeps — back off and retry
-    # instead of surrendering the whole month window (a 72-window backfill
-    # once lost 63 windows to 429s without this).
     articles = None
     last_error = None
     saw_rate_limit = False
@@ -251,6 +291,15 @@ def pull_gdelt_between(start, end, max_records=250):
         except Exception as e:
             last_error = str(e)
             print(f"GDELT query error (attempt {attempt + 1}/{QUERY_ATTEMPTS}): {e}")
+    return articles, saw_rate_limit, last_error
+
+
+def pull_gdelt_between(start, end, max_records=250):
+    """Return raw layoff-news entries (trusted domains) filed in [start, end]."""
+    # GDELT throttles aggressively on historical sweeps — back off and retry
+    # instead of surrendering the whole month window (a 72-window backfill
+    # once lost 63 windows to 429s without this).
+    articles, saw_rate_limit, last_error = _query_window(QUERY, start, end, max_records)
     if articles is None:
         # A 429 followed by a malformed/empty upstream response is still an
         # upstream availability incident. Preserve the 429 marker so the
@@ -260,6 +309,17 @@ def pull_gdelt_between(start, end, max_records=250):
         if saw_rate_limit:
             last_error = f"HTTP 429 (followed by upstream response error: {last_error or 'unknown error'})"
         raise RuntimeError(f"GDELT window abandoned after {QUERY_ATTEMPTS} attempts: {last_error or 'unknown error'}")
+
+    # Rotating narrow sweeps ride the same window. Only the broad query is
+    # health-bearing: a segment that stays rate-limited is skipped with a log
+    # line and rotates back around within days, so it must not fail the run.
+    for segment_query in _segment_queries_for_now():
+        seg_articles, _, seg_error = _query_window(segment_query, start, end, max_records)
+        if seg_articles is None:
+            print(f"GDELT segment skipped ({seg_error}): {segment_query[-60:]}")
+            continue
+        print(f"GDELT segment {segment_query[-48:]}: {len(seg_articles)} article(s)")
+        articles.extend(seg_articles)
 
     candidates, seen = [], set()
     for a in articles:

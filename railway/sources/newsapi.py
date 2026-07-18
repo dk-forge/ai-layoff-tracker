@@ -32,6 +32,31 @@ DISCOVERY_QUERIES = (
     '(layoffs OR "job cuts" OR "workforce reduction") AND (AI OR "artificial intelligence" OR automation)',
 )
 
+# Rotating narrow sweeps: broad ranking buries smaller state/industry/country
+# announcements, so each run adds a couple of segment queries chosen by
+# deterministic daily rotation (full matrix covered every ~9 days at
+# twice-daily cadence). Two extra requests per run stays far inside the
+# 100/day developer allowance. 0 disables.
+SEGMENT_TERMS = (
+    '"California"', '"New York"', '"Texas"', '"Washington state"', '"Florida"',
+    '"Illinois"', '"Massachusetts"', '"Georgia"', '"Michigan"', '"Ohio"',
+    '"manufacturing"', '"software"', '"banking"', '"retail"', '"healthcare"',
+    '"automotive"', '"media"', '"logistics"', '"insurance"', '"telecom"',
+    '"United Kingdom"', '"Canada"', '"India"', '"Germany"', '"Australia"',
+    '"replaced by AI"', '"AI restructuring"', '"automation" AND "job cuts"',
+)
+SEGMENT_QUERIES_PER_RUN = max(0, min(6, int(os.environ.get("NEWSAPI_SEGMENT_QUERIES", "2"))))
+
+
+def _segment_queries_for_now():
+    if not SEGMENT_QUERIES_PER_RUN:
+        return []
+    now = datetime.now(timezone.utc)
+    run_of_day = 0 if now.hour < 17 else 1
+    start = ((now.timetuple().tm_yday * 2 + run_of_day) * SEGMENT_QUERIES_PER_RUN) % len(SEGMENT_TERMS)
+    picked = [SEGMENT_TERMS[(start + i) % len(SEGMENT_TERMS)] for i in range(SEGMENT_QUERIES_PER_RUN)]
+    return [f'(layoffs OR "job cuts" OR "workforce reduction") AND {term}' for term in picked]
+
 
 def pull_news_articles(days_back=2):
     api_key = os.environ.get("NEWSAPI_KEY")
@@ -44,7 +69,7 @@ def pull_news_articles(days_back=2):
     )
 
     results, seen_urls = [], set()
-    for query in DISCOVERY_QUERIES:
+    for query in tuple(DISCOVERY_QUERIES) + tuple(_segment_queries_for_now()):
         params = {
             "q": query,
             "from": from_date,
@@ -90,5 +115,6 @@ def pull_news_articles(days_back=2):
             # Preserve a usable result from the other bounded query, but make
             # this source attempt visibly degraded to the cron caller.
             print(f"NewsAPI query error: {e}")
-    print(f"NewsAPI: {len(results)} unique articles pulled across {len(DISCOVERY_QUERIES)} queries")
+    print(f"NewsAPI: {len(results)} unique articles pulled across "
+          f"{len(DISCOVERY_QUERIES) + len(_segment_queries_for_now())} queries (incl. rotating segments)")
     return results

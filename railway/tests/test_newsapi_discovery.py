@@ -41,7 +41,10 @@ class NewsApiDiscoveryTests(unittest.TestCase):
              patch.object(newsapi.requests, "get", side_effect=get, create=True):
             rows = newsapi.pull_news_articles(days_back=2)
 
-        self.assertEqual(len(queries), len(newsapi.DISCOVERY_QUERIES))
+        # Broad queries plus the deterministic daily segment rotation.
+        self.assertEqual(
+            len(queries),
+            len(newsapi.DISCOVERY_QUERIES) + len(newsapi._segment_queries_for_now()))
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["source_url"], article["url"])
         self.assertEqual(rows[0]["verification_level"], "bronze")
