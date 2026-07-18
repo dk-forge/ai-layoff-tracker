@@ -617,6 +617,13 @@ function alt_register_query_routes() {
         'methods' => 'POST', 'callback' => 'alt_api_source_evidence_hash_backfill',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Repairs only the event graph's internal retained-source link from an
+    // already stored canonical-row URL. It never fetches a publisher page or
+    // alters event facts, classifications, or visible source URLs.
+    register_rest_route('layoffs/v1', '/source-report-link-backfill', array(
+        'methods' => 'POST', 'callback' => 'alt_api_source_report_link_backfill',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // A keyed, success-anchored cursor for the bounded historical GDELT
     // recovery worker. It advances only after a complete window succeeds, so
     // an upstream rate limit is retried rather than skipped for years.
@@ -838,6 +845,49 @@ function alt_api_source_evidence_hash_backfill(WP_REST_Request $r) {
     }
     $remaining = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash = ''");
     return rest_ensure_response(array('updated' => $updated, 'remaining' => $remaining, 'scope' => 'Hashes are derived from already-retained excerpts only; external pages are not fetched.'));
+}
+
+/**
+ * Restore a missing link in an existing canonical event's retained-source
+ * graph from the canonical row's already-published source fields. This is a
+ * repair of the evidence relationship only: it never requests the external
+ * URL, changes a row, or treats a source name as a source URL.
+ */
+function alt_api_source_report_link_backfill(WP_REST_Request $r) {
+    global $wpdb;
+    $limit = min(1000, max(1, (int) ($r->get_param('limit') ?: 500)));
+    $layoffs = alt_db_table();
+    $reports = alt_source_reports_table();
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT l.id, l.event_id, l.source_name, l.source_type, l.verification_level,
+                l.source_url, l.excerpt, l.ai_causation, l.ai_language
+         FROM $layoffs l
+         LEFT JOIN (SELECT DISTINCT event_id FROM $reports WHERE source_url <> '') linked
+           ON linked.event_id = l.event_id
+         WHERE l.event_id > 0 AND l.source_url <> '' AND linked.event_id IS NULL
+         ORDER BY l.id ASC LIMIT %d", $limit), ARRAY_A) ?: array();
+    $updated = 0;
+    foreach ($rows as $row) {
+        $event_id = (int) $row['event_id'];
+        if (!$event_id) continue;
+        if (!alt_event_add_report($event_id, $row)) {
+            return new WP_Error('alt_db_error', 'Retained source-link backfill failed: ' . $wpdb->last_error, array('status' => 500, 'updated' => $updated));
+        }
+        $updated++;
+    }
+    $remaining = (int) $wpdb->get_var(
+        "SELECT COUNT(DISTINCT l.event_id)
+         FROM $layoffs l
+         LEFT JOIN (SELECT DISTINCT event_id FROM $reports WHERE source_url <> '') linked
+           ON linked.event_id = l.event_id
+         WHERE l.event_id > 0 AND l.source_url <> '' AND linked.event_id IS NULL"
+    );
+    if ($updated && function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response(array(
+        'updated' => $updated,
+        'remaining' => $remaining,
+        'scope' => 'Restored event-source links from already-retained canonical-row URLs only; no external page was fetched and no layoff fact or source URL was changed.',
+    ));
 }
 
 function alt_api_historical_gdelt_cursor_get() {

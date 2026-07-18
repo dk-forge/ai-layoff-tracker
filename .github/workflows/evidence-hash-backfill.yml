@@ -60,3 +60,36 @@ jobs:
               summary.write(f'- Retained excerpts still pending: **{remaining:,}**\\n')
               summary.write(f'- Scope: {scope}\\n')
           PY
+      - name: Restore retained event-source links
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          LIMIT: ${{ github.event.inputs.limit || '1000' }}
+        run: |
+          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 120 -X POST \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H 'Content-Type: application/json' \
+            --data "{\"limit\":$LIMIT}" \
+            https://asktherecruiter.com/blog/wp-json/layoffs/v1/source-report-link-backfill)"
+          printf '%s\n' "$response"
+          python3 - "$response" <<'PY'
+          import json
+          import os
+          import sys
+
+          try:
+              result = json.loads(sys.argv[1])
+              updated = result['updated']
+              remaining = result['remaining']
+              scope = result['scope']
+          except (json.JSONDecodeError, KeyError, TypeError) as exc:
+              raise SystemExit(f"Unexpected retained-source-link response: {exc}")
+          if not isinstance(updated, int) or not isinstance(remaining, int):
+              raise SystemExit("Unexpected retained-source-link progress types")
+          print(f"Retained event-source links restored: {updated}; remaining: {remaining}")
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('## Retained event-source link backfill\\n\\n')
+              summary.write(f'- Restored this bounded run: **{updated:,}**\\n')
+              summary.write(f'- Canonical events still missing a retained-source link: **{remaining:,}**\\n')
+              summary.write(f'- Scope: {scope}\\n')
+          PY

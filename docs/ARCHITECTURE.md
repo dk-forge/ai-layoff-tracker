@@ -93,7 +93,7 @@ automatable or licensed for reuse.
   claimed exact quote exists in the supplied source passage. `country` is job location; `employer_country`
   is employer domicile/HQ when stated.
 - **Metadata and citation completeness:** `/integrity-status` discloses blank industry rows, blank US affected-job
-  state rows, and canonical events without a retained public source URL. These are measurable enrichment backlogs,
+  state rows, and canonical events without a linked retained-source report. These are measurable enrichment backlogs,
   not permission to infer values: WARN notices often
   omit industry, and a national announcement remains state-unspecified unless a source identifies affected
   job locations. Employer HQ/domicile and office footprint must never be used as job-state substitutes.

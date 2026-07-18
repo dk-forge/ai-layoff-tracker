@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.15 adds public per-event source-link coverage telemetry; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.16 adds a bounded event-source-link repair to public telemetry; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -146,9 +146,10 @@ be red in Actions while retaining the public record.
      metadata where permitted. A hash of a short excerpt is not a source-page
      archive; label it accurately.
    - `/integrity-status` now separately reports canonical events with and
-     without at least one retained public source URL. Do not use the raw
-     source-report count to imply every event is cited; an event without a
-     link is a visible integrity backlog.
+     without at least one linked retained-source report. Do not use the raw
+     source-report count to imply every event is cited. The bounded link
+     backfill can restore a missing event-graph link only from the existing
+     canonical-row URL; it never fetches a source or changes a fact.
 
 4. **Dataset release ledger and monthly change report.**
    - Public `GET /blog/wp-json/layoffs/v1/dataset-releases` snapshots begin at
