@@ -1,0 +1,60 @@
+{
+  "_comment": "Versioned registry of manually reviewed, company-owned newsroom/IR RSS-Atom feeds. Every entry passes the same _validate_feed gate as PRESS_RELEASE_FEEDS env entries: HTTPS feed URL on the recorded owner domain, HTTPS terms URL on the same owner domain, and a manual review date. Review evidence, 2026-07-18 (Claude review pass): each feed URL was fetched live (HTTP 200, RSS or XML content type) and parsed with the collector's own parser, returning current items whose links resolve on the owner domain. Terms pages: salesforce.com and micron.com returned HTTP 200; intel.com, sap.com and cisco.com legal pages returned HTTP 403 to a non-browser client (bot-gated) and render normally in a browser. Boeing's newsroom was deliberately NOT admitted because it is hosted on a vendor domain (boeing.mediaroom.com) that fails the company-owned-domain rule.",
+  "feeds": [
+    {
+      "name": "Intel Newsroom",
+      "company_name": "Intel Corporation",
+      "url": "https://newsroom.intel.com/feed",
+      "owner_domain": "intel.com",
+      "terms_url": "https://www.intel.com/content/www/us/en/legal/terms-of-use.html",
+      "reviewed_at": "2026-07-18",
+      "country": "United States",
+      "employer_country": "United States",
+      "ticker": "INTC"
+    },
+    {
+      "name": "SAP News Center",
+      "company_name": "SAP SE",
+      "url": "https://news.sap.com/feed/",
+      "owner_domain": "sap.com",
+      "terms_url": "https://www.sap.com/legal-notice.html",
+      "reviewed_at": "2026-07-18",
+      "country": "Germany",
+      "employer_country": "Germany",
+      "ticker": "SAP"
+    },
+    {
+      "name": "Cisco Newsroom",
+      "company_name": "Cisco Systems, Inc.",
+      "url": "https://newsroom.cisco.com/c/services/i/servlets/newsroom/rssfeed.json",
+      "owner_domain": "cisco.com",
+      "terms_url": "https://www.cisco.com/c/en/us/about/legal/terms-conditions.html",
+      "reviewed_at": "2026-07-18",
+      "country": "United States",
+      "employer_country": "United States",
+      "ticker": "CSCO"
+    },
+    {
+      "name": "Salesforce News",
+      "company_name": "Salesforce, Inc.",
+      "url": "https://www.salesforce.com/news/feed/",
+      "owner_domain": "salesforce.com",
+      "terms_url": "https://www.salesforce.com/company/legal/",
+      "reviewed_at": "2026-07-18",
+      "country": "United States",
+      "employer_country": "United States",
+      "ticker": "CRM"
+    },
+    {
+      "name": "Micron Investor News",
+      "company_name": "Micron Technology, Inc.",
+      "url": "https://investors.micron.com/rss/news-releases.xml",
+      "owner_domain": "micron.com",
+      "terms_url": "https://www.micron.com/legal",
+      "reviewed_at": "2026-07-18",
+      "country": "United States",
+      "employer_country": "United States",
+      "ticker": "MU"
+    }
+  ]
+}

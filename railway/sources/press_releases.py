@@ -22,19 +22,48 @@ from source_registry import discovery_terms
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 
 
+REVIEWED_FEEDS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reviewed_feeds.json"
+)
+
+
+def _registry_feeds():
+    """Load the versioned, repo-committed reviewed-feed registry.
+
+    The registry file is the durable, auditable admission record (each change
+    is a reviewed commit).  It goes through the exact same validation gate as
+    environment-supplied entries; a malformed registry fails loudly rather
+    than silently shrinking coverage.
+    """
+    if not os.path.exists(REVIEWED_FEEDS_PATH):
+        return []
+    try:
+        data = json.loads(open(REVIEWED_FEEDS_PATH, encoding="utf-8").read())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"reviewed_feeds.json is unreadable or invalid JSON: {exc}")
+    feeds = data.get("feeds") if isinstance(data, dict) else data
+    if not isinstance(feeds, list):
+        raise RuntimeError("reviewed_feeds.json must contain a 'feeds' JSON array")
+    return feeds
+
+
 def _feeds():
     raw = os.environ.get("PRESS_RELEASE_FEEDS", "[]")
     try:
-        feeds = json.loads(raw)
+        env_feeds = json.loads(raw)
     except json.JSONDecodeError:
         raise RuntimeError("PRESS_RELEASE_FEEDS must be valid JSON")
-    if not isinstance(feeds, list):
+    if not isinstance(env_feeds, list):
         raise RuntimeError("PRESS_RELEASE_FEEDS must be a JSON array")
-    accepted = []
-    for index, feed in enumerate(feeds, start=1):
+    accepted, seen_urls = [], set()
+    for index, feed in enumerate(_registry_feeds() + env_feeds, start=1):
         if not isinstance(feed, dict):
-            raise RuntimeError(f"PRESS_RELEASE_FEEDS entry {index} must be an object")
-        accepted.append(_validate_feed(feed, index))
+            raise RuntimeError(f"Reviewed feed entry {index} must be an object")
+        validated = _validate_feed(feed, index)
+        if validated["url"] in seen_urls:
+            continue  # env override duplicating a registry entry
+        seen_urls.add(validated["url"])
+        accepted.append(validated)
     return accepted
 
 
@@ -118,14 +147,27 @@ def _items(payload):
 
 
 def pull_press_releases(days_back=3):
-    """Return recent, layoff-shaped official releases from configured feeds."""
+    """Return recent, layoff-shaped official releases from configured feeds.
+
+    One slow or failing feed must not lose the others' primary-source items:
+    each feed is isolated, failures are reported per feed, and the run raises
+    only when EVERY reviewed feed failed (a genuine outage, kept loud).
+    """
     cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
     terms = tuple(t.lower() for t in discovery_terms())
     out = []
-    for feed in _feeds():
-        response = requests.get(feed["url"], headers=UA, timeout=30)
-        response.raise_for_status()
-        for title, url, description, published in _items(response.content):
+    feeds = _feeds()
+    failed = []
+    for feed in feeds:
+        try:
+            response = requests.get(feed["url"], headers=UA, timeout=30)
+            response.raise_for_status()
+            payload = response.content
+        except Exception as exc:
+            failed.append(f"{feed['name']}: {exc.__class__.__name__}: {exc}")
+            print(f"Press-release feed failed (continuing): {feed['name']}: {exc}")
+            continue
+        for title, url, description, published in _items(payload):
             text = f"{title} {description}".strip()
             if not url or not any(term in text.lower() for term in terms):
                 continue
@@ -161,5 +203,13 @@ def pull_press_releases(days_back=3):
                 "country": feed.get("country"),
                 "employer_country": feed.get("employer_country") or feed.get("country"),
             })
-    print(f"Press releases: {len(out)} matched official-feed item(s)")
+    if feeds and failed and len(failed) == len(feeds):
+        raise RuntimeError(
+            "All reviewed press-release feeds failed: " + " | ".join(failed)
+        )
+    print(
+        f"Press releases: {len(out)} matched official-feed item(s) from "
+        f"{len(feeds) - len(failed)}/{len(feeds)} reviewed feed(s)"
+        + (f"; failed: {'; '.join(failed)}" if failed else "")
+    )
     return out
