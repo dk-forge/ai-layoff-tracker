@@ -1,6 +1,6 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 (plugin 2.18.14 includes a frameable, noindex US widget on its explicit host-safe query route; Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+Last updated: 2026-07-18 (plugin 2.18.15 adds public per-event source-link coverage telemetry; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -145,6 +145,10 @@ be red in Actions while retaining the public record.
      Preserve source URL, retained excerpt/evidence and content hash/snapshot
      metadata where permitted. A hash of a short excerpt is not a source-page
      archive; label it accurately.
+   - `/integrity-status` now separately reports canonical events with and
+     without at least one retained public source URL. Do not use the raw
+     source-report count to imply every event is cited; an event without a
+     link is a visible integrity backlog.
 
 4. **Dataset release ledger and monthly change report.**
    - Public `GET /blog/wp-json/layoffs/v1/dataset-releases` snapshots begin at
@@ -203,6 +207,13 @@ be red in Actions while retaining the public record.
      separately labelled registered-office country candidate only. It has no
      name search, event-write or automatic domicile/job-location enrichment
      path, and remains a review aid rather than a live collector.
+   - An inactive EDINET daily-document-list client exists at
+     `railway/sources/edinet.py`. It uses the official metadata endpoint only,
+     never downloads a filing, writes an event or changes source health, and
+     advances a future cursor only after a complete matching daily result.
+     Before activation, add a persisted replay cursor, Japanese-language
+     document/evidence fixtures, an evidence-only body stage and health
+     reporting. It remains `discovery_only` until then.
 
 6. **Research/distribution products, after core data work.**
    - A minimal, noindex iframe widget foundation now exists at

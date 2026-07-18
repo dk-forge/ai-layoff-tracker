@@ -777,6 +777,13 @@ function alt_api_integrity_status() {
     $migrated = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs WHERE event_id > 0");
     $event_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $events");
     $report_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports");
+    // A canonical event can retain several reports. Count the events with at
+    // least one linkable source separately from raw report volume so the
+    // public integrity view can disclose any citation gap rather than imply
+    // that a report count alone proves every event has a usable source link.
+    $events_with_linked_source = (int) $wpdb->get_var(
+        "SELECT COUNT(DISTINCT event_id) FROM $reports WHERE source_url <> ''"
+    );
     $hashable_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> ''");
     $hashed_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash <> ''");
     // These are deliberately completeness counters, not inferred values.
@@ -791,6 +798,9 @@ function alt_api_integrity_status() {
     return rest_ensure_response(array(
         'canonical_events' => $event_count,
         'source_reports' => $report_count,
+        'canonical_events_with_linked_source_reports' => $events_with_linked_source,
+        'canonical_events_without_linked_source_reports' => max(0, $event_count - $events_with_linked_source),
+        'source_link_rule' => 'A cited source means at least one retained event-source report has a public URL. Events without a link remain a visible integrity gap; source-report volume alone is not treated as proof of complete citation coverage.',
         'hashable_source_reports' => $hashable_reports,
         'hashed_source_reports' => $hashed_reports,
         'source_report_hashes_remaining' => max(0, $hashable_reports - $hashed_reports),
