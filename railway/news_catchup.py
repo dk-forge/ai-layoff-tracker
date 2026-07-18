@@ -26,7 +26,8 @@ def run():
     # it through the same public health channel as the scheduled Railway
     # collector so the health dashboard's "last pull" is not misleadingly
     # stale after a successful catch-up.
-    report_source_health("newsapi", "running", 0, f"manual {days}-day catch-up in progress")
+    if not report_source_health("newsapi", "running", 0, f"manual {days}-day catch-up in progress"):
+        raise RuntimeError("Could not publish NewsAPI catch-up health status")
     try:
         entries = pull_news_articles(days_back=days)
     except Exception as exc:
@@ -58,13 +59,14 @@ def run():
 
     print(f"News catch-up complete: {posted} posted ({ai} AI-attributed), "
           f"{dupes} duplicates, {skipped} non-events, {failed} failed")
-    report_source_health(
+    if not report_source_health(
         "newsapi",
         "ok",
         len(entries),
         f"manual {days}-day catch-up: {posted} posted, {dupes} duplicates, "
         f"{skipped} non-events, {failed} processing failures",
-    )
+    ):
+        raise RuntimeError("Could not publish NewsAPI catch-up health result")
 
 
 if __name__ == "__main__":

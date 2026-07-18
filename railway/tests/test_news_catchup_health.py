@@ -20,7 +20,7 @@ class NewsCatchupHealthTests(unittest.TestCase):
     def test_successful_manual_run_reports_running_then_ok(self):
         reports = []
         with patch.dict(os.environ, {"NEWS_DAYS_BACK": "7"}, clear=False), \
-             patch.object(news_catchup, "report_source_health", side_effect=lambda *args: reports.append(args)), \
+             patch.object(news_catchup, "report_source_health", side_effect=lambda *args: (reports.append(args) or True)), \
              patch.object(news_catchup, "pull_news_articles", return_value=[]):
             news_catchup.run()
 
@@ -33,7 +33,7 @@ class NewsCatchupHealthTests(unittest.TestCase):
     def test_collection_exception_is_visible_as_degraded_and_propagates(self):
         reports = []
         with patch.dict(os.environ, {"NEWS_DAYS_BACK": "7"}, clear=False), \
-             patch.object(news_catchup, "report_source_health", side_effect=lambda *args: reports.append(args)), \
+             patch.object(news_catchup, "report_source_health", side_effect=lambda *args: (reports.append(args) or True)), \
              patch.object(news_catchup, "pull_news_articles", side_effect=RuntimeError("upstream unavailable")):
             with self.assertRaisesRegex(RuntimeError, "upstream unavailable"):
                 news_catchup.run()
@@ -42,6 +42,14 @@ class NewsCatchupHealthTests(unittest.TestCase):
             "newsapi", "degraded", 0,
             "manual 7-day catch-up failed: upstream unavailable",
         ))
+
+    def test_health_write_failure_fails_the_manual_workflow(self):
+        with patch.dict(os.environ, {"NEWS_DAYS_BACK": "7"}, clear=False), \
+             patch.object(news_catchup, "report_source_health", return_value=False), \
+             patch.object(news_catchup, "pull_news_articles") as collector:
+            with self.assertRaisesRegex(RuntimeError, "Could not publish NewsAPI catch-up health status"):
+                news_catchup.run()
+        collector.assert_not_called()
 
 
 if __name__ == "__main__":

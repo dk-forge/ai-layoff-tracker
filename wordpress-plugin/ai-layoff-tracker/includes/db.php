@@ -125,6 +125,20 @@ function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events';
 function alt_source_reports_table() { global $wpdb; return $wpdb->prefix . 'alt_source_reports'; }
 function alt_source_runs_table() { global $wpdb; return $wpdb->prefix . 'alt_source_runs'; }
 
+/**
+ * FTP deployment can serve a request while files are still arriving. Keep the
+ * collector ledger self-healing: a writer verifies this one additive table
+ * before using it, then runs the idempotent dbDelta installer if needed.
+ */
+function alt_source_runs_table_ready() {
+    global $wpdb;
+    $table = alt_source_runs_table();
+    $exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+    if ($exists === $table) return true;
+    alt_db_install();
+    return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) === $table;
+}
+
 /** Attach a canonical row to an event, creating the event if needed. */
 function alt_event_for_layoff($layoff_id) {
     global $wpdb;
@@ -803,6 +817,9 @@ function alt_api_source_health_post(WP_REST_Request $r) {
     global $wpdb;
     $source = sanitize_key((string) $r->get_param('source'));
     if ($source === '') return new WP_Error('alt_bad_request', 'source is required.', array('status' => 400));
+    if (!alt_source_runs_table_ready()) {
+        return new WP_Error('alt_db_error', 'Collector-run telemetry table is unavailable after migration retry.', array('status' => 500));
+    }
     $health = get_option('alt_source_health');
     if (!is_array($health)) $health = array();
     $health[$source] = array(

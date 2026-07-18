@@ -23,6 +23,7 @@ class SourceRunLedgerGuards(unittest.TestCase):
         start = DB.index("function alt_api_source_health_post")
         body = DB[start: DB.index("function alt_api_source_runs", start)]
         self.assertIn("$wpdb->insert(alt_source_runs_table()", body)
+        self.assertIn("alt_source_runs_table_ready()", body)
         self.assertNotIn("alt_db_table()", body)
         self.assertNotIn("alt_source_reports_table()", body)
 
