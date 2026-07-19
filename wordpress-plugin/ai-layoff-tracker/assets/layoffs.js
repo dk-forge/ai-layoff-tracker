@@ -1027,7 +1027,7 @@
         }, options: options });
     }
 
-    var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings',
+    var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings', '8K': 'SEC 8-K filings',
         erm: 'Eurofound ERM', press_release: 'Company releases', seed: 'Curated (sourced)' };
 
     function renderAiCumulative(series) {
