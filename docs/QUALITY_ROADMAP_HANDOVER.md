@@ -1,7 +1,28 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-18 night (plugin 2.18.35). Read this block first if
+Last updated: 2026-07-19 (plugin 2.18.72). Read this block first if
 you are a new agent (Codex or otherwise) taking over.
+
+**2.18.72 (2026-07-19): employer-domicile basis is live.** `/aggregate` and
+`/query` accept `country_basis=employer` (country filter matches evidenced
+`employer_country`, falling back to job location ONLY where domicile is
+blank) and `ai_broad=1` (row filter matching the ai_broad aggregate
+definition). A curated registry of deterministic public HQ facts
+(`railway/seed_data/employer_domicile.json`; ambiguous domiciles like
+Airbus/Shell/Nordea-pre-2018/Schlumberger deliberately absent, plus offline
+tests) backfilled 251 blank-domicile 'Multiple countries' rows via
+`/enrich-context` (run 29695840127; `employer-domicile-backfill.yml` is
+idempotent and re-runnable — re-run it after new multi-country events land,
+or grow the registry). Live effect on US 2026: total 347,415 (job-location)
+→ 406,692 employer basis (92% of Challenger 443,604); AI-broad 57,156 (56%)
+→ 114,278 (112% of Challenger 101,743). The tracker Challenger charts have
+an orange "US-employer basis (Challenger-comparable)" line; the health
+benchmark race table has employer-basis total/AI rows. The strict
+comparator's gates are UNCHANGED; `/enrich-context` now takes an optional
+`reason` so curated batches are honestly labelled in the corrections trail.
+Candidate follow-up: the year-by-year benchmark history table still uses
+job-location US cells; consider employer basis there once pre-2026 domicile
+coverage is meaningful.
 
 **IMMEDIATE NEXT ACTION (recorded 2026-07-19 ~01:15 UTC):** seed the four
 named June events via the R9 curated path (`seed_data/ai_layoffs.json` +
