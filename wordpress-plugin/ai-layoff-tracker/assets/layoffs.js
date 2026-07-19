@@ -723,7 +723,7 @@
         setText('alt-stat-states', t.states > 0 ? fmt(t.states) : '0');
         // Singular/plural so "1 countries" never renders
         setText('alt-stat-industries-label', t.industries === 1 ? 'industry' : 'industries');
-        setText('alt-stat-countries-label', (t.countries === 1 ? 'country' : 'countries') + ' with layoffs');
+        setText('alt-stat-countries-label', (t.countries === 1 ? 'country' : 'countries') + ' with reported layoffs');
         setText('alt-stat-states-label', t.states === 1 ? 'US state' : 'US states');
 
         // The earliest and latest layoff dates actually present in this view.

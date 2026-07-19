@@ -571,6 +571,16 @@ TRUSTED_DOMAINS = {
     # Startup/tech press surfaced by the 2026-07-19 aggregator diff (their
     # entries cited these outlets; most of the missed small/mid AI events
     # ran here first)
+    # WARN-gap states (2026-07-19): MO and NM publish no usable notices and
+    # HI/OK omit headcounts, so their strongest local press carries the load
+    # for official-channel gaps. All four states remain covered via SEC + news.
+    "kansascity.com",            # Missouri/Kansas — Kansas City Star
+    "abqjournal.com",            # New Mexico — Albuquerque Journal
+    "santafenewmexican.com",     # New Mexico — Santa Fe New Mexican
+    "staradvertiser.com",        # Hawaii — Honolulu Star-Advertiser
+    "civilbeat.org",             # Hawaii — Honolulu Civil Beat
+    "oklahoman.com",             # Oklahoma — The Oklahoman
+    "tulsaworld.com",            # Oklahoma — Tulsa World
     "inc42.com",                 # India — startup/tech press (Paytm, GoKwik-class events)
     "techinasia.com",            # Southeast Asia tech press (Tokopedia, Shopee-class events)
     "skift.com",                 # travel-industry trade (Mews, lastminute-class events)
@@ -656,6 +666,9 @@ SEGMENT_TERMS = (
     '"California"', '"New York"', '"Texas"', '"Washington"', '"Florida"',
     '"Illinois"', '"Massachusetts"', '"Georgia"', '"Michigan"', '"Ohio"',
     '"Pennsylvania"', '"New Jersey"',
+    # WARN-gap states get dedicated rotation slots: their official channels
+    # are silent, so press discovery must not miss them
+    '"Missouri"', '"New Mexico"', '"Hawaii"', '"Oklahoma"',
     # countries (Translingual matches non-English coverage too)
     '"Germany"', '"France"', '"United Kingdom"', '"Canada"', '"India"',
     '"Japan"', '"Brazil"', '"Spain"', '"Italy"', '"Netherlands"',
