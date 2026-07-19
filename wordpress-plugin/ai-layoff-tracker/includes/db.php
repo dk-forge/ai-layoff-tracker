@@ -2420,6 +2420,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         'top_industries' => $topN('industry', 'industry'),
         'top_countries'  => $topN('country', 'country'),
         'top_states'     => $topN('state', 'state'),
+        'source_types'   => $topN('source_type', 'sources'),
         'reasons'        => $reasons,
         'series'         => $series,
         'leaders'        => $leaders,

@@ -816,6 +816,10 @@
         var leaderEntries = (agg.leaders || []).map(function (l) {
             return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0];
         });
+        renderAiShare(agg.series);
+        renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
+            return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
+        }), null, []);
         renderBarList('alt-bars-leaders', leaderEntries, null,
             companyBox && companyBox.value ? [companyBox.value] : [],
             companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null);
@@ -989,7 +993,7 @@
             // STACKED band: announced plans sit on top of verified, so the
             // top edge of the amber band reads as verified + announced —
             // matching the intuition that plans "add to" the total.
-            datasets.push({ label: 'Announced job cuts (stacked on top — band top = total incl. plans)', data: announced, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
+            datasets.push({ label: 'Announced (stacked — top edge = total)', data: announced, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1003,6 +1007,28 @@
             options: options
         });
     }
+
+    // Monthly AI share of verified cuts, as a percent line.
+    function renderAiShare(series) {
+        if (!document.getElementById('alt-chart-ai-share-trend')) return;
+        series = fillMonths(series);
+        var pts = (series || []).map(function (s) {
+            var v = (s.verified_jobs != null) ? s.verified_jobs : s.jobs;
+            var ai = (s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0);
+            return { month: s.month, v: v > 0 ? Math.round(1000 * ai / v) / 10 : null };
+        });
+        if (!pts.some(function (p) { return p.v > 0; })) { clearChart('alt-chart-ai-share-trend'); return; }
+        var options = cloneOptions();
+        options.scales.y.ticks.callback = function (v) { return v + '%'; };
+        options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
+        mountChart('alt-chart-ai-share-trend', { type: 'line', data: {
+            labels: pts.map(function (p) { return monthLabel(p.month); }),
+            datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227,73,72,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
+        }, options: options });
+    }
+
+    var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings',
+        erm: 'Eurofound ERM', press_release: 'Company releases', seed: 'Curated (sourced)' };
 
     function renderAiCumulative(series) {
         if (!document.getElementById('alt-chart-ai-cumulative')) return;
@@ -1023,9 +1049,9 @@
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
         var dots = charted.length <= 2 ? 4 : 0;
-        var datasets = [{ label: 'Explicitly AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
+        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI plans (stacked on top — band top = total AI incl. plans)', data: cumA, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            datasets.push({ label: 'Announced AI (stacked — top edge = total)', data: cumA, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
