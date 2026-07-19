@@ -282,6 +282,11 @@
     });
   }
   renderBenchRace();
+  // Ops page left open stays current: benchmark tables re-render every
+  // 5 minutes, and a hidden tab reloads fully every 10 so every section
+  // (runs, summary, ledger) refreshes without anyone touching it.
+  setInterval(function () { renderBenchRace(); renderBenchMonthly(); renderBenchHistory(); }, 300000);
+  setInterval(function () { if (document.hidden) location.reload(); }, 600000);
   Promise.all(['quality-status', 'integrity-status', 'status', 'review-queue', 'benchmarks/challenger', 'benchmarks/recall', 'dataset-releases'].map(safeGet)).then(([q, i, s, r, c, rec, ledger]) => {
     q = q || { source_health: {}, workstreams: [], last_30_days_disclosed_changes: {} };
     i = i || { canonical_events: 0, source_reports: 0, source_report_hashes_remaining: 0, metadata_completeness: {}, canonical_events_without_linked_source_reports: 0 };

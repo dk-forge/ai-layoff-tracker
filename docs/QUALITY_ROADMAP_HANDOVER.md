@@ -604,3 +604,12 @@ by industry" and before "Cumulative AI-attributed cuts", so the reading order
 is: how much is AI (share trend), which industries (intensity), WHICH JOBS
 (roles), then the running total. Card sub must carry the sample disclaimer
 already specified. No em dashes in its copy.
+
+## Roles in the daily narrative (2026-07-19, owner request)
+
+Once the roles backfill ships, the narrative headline box adds the roles
+dimension: append to the '{year} so far' row (or as its own row) a short
+'most-affected roles: X · Y' fragment computed from the same stage=verified
+aggregates, only when role coverage in the view is meaningful (>=20% of jobs
+tagged); otherwise omit the fragment entirely. Same plain-language style,
+no em dashes, and the roles chart's sample disclaimer applies.

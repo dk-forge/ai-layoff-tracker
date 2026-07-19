@@ -1429,6 +1429,38 @@
         });
     }
 
+    // The server-rendered reconciliation table shows the STRICT comparator,
+    // which reads as all-zeros until announcement-date enrichment completes.
+    // Enrich it live: inject a broad US-employer column with real monthly
+    // numbers, and say plainly what a strict zero means.
+    function enhanceChallengerTable() {
+        var table = document.querySelector('.alt-challenger-table table');
+        if (!table) return;
+        var head = table.querySelector('thead tr');
+        var rows = table.querySelectorAll('tbody tr');
+        if (!head || !rows.length) return;
+        var firstMonth = (rows[rows.length - 1].cells[0] || {}).textContent || '';
+        var yr = /^(\d{4})-/.test(firstMonth) ? firstMonth.slice(0, 4) : String(new Date().getFullYear());
+        apiGet('aggregate', { years: yr, country: 'United States', country_basis: 'employer' }).then(function (a) {
+            var by = {};
+            ((a && a.series) || []).forEach(function (sr) { by[sr.month] = sr.ai_broad_jobs || 0; });
+            var th = document.createElement('th');
+            th.textContent = 'AskTheRecruiter AI broad, US employer (month)';
+            head.insertBefore(th, head.cells[3]);
+            Array.prototype.forEach.call(rows, function (tr) {
+                var m = (tr.cells[0] || {}).textContent.trim();
+                var td = document.createElement('td');
+                var v = by[m];
+                td.innerHTML = (v != null) ? '<b>' + fmt(v) + '</b>' : '—';
+                tr.insertBefore(td, tr.cells[3]);
+            });
+            var note = document.createElement('p');
+            note.className = 'alt-muted';
+            note.textContent = 'A strict zero means no event has completed full announcement-date enrichment for that month yet, not zero AI cuts: the live broad column beside it carries the comparable monthly numbers.';
+            table.parentNode.parentNode.insertBefore(note, table.parentNode);
+        }).catch(function () { /* table stays as rendered */ });
+    }
+
     function initChallengerReconciliationChart() {
         var ytdCanvas = document.getElementById('alt-chart-challenger-reconciliation');
         var monthlyCanvas = document.getElementById('alt-chart-challenger-monthly');
@@ -2319,6 +2351,7 @@
             Chart.defaults.color = INK.muted;
             initChallengerReconciliationChart();
         }
+        enhanceChallengerTable();
         DASH_PRESENT = !!document.querySelector('.alt-dashboard');
 
         // Standalone AI / company pages don't use the shared filter surface.
