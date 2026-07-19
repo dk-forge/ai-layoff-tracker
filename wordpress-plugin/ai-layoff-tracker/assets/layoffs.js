@@ -21,7 +21,8 @@
     /* Palette + labels                                                    */
     /* ------------------------------------------------------------------ */
 
-    var PALETTE = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
+    var PALETTE = ['#2a78d6', '#e34948', '#1baf7a', '#8b46c8', '#eda100', '#8c5a3b', '#e87ba4', '#5b6472'];
+    var ALT_RED = '#e34948', ALT_AMBER = '#eda100';
     var SEQ_BLUE = '#2a78d6';
     var SEQ_BLUE_FILL = 'rgba(42, 120, 214, 0.18)';
     var INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9' };
@@ -332,6 +333,7 @@
     function toggleMultiFilter(id, value) {
         var el = document.getElementById(id);
         if (!el) return false;
+        if (id === 'alt-f-country') LAST_MULTI_DIM = 'country';
         var toggled = false;
         Array.prototype.forEach.call(el.options, function (o) {
             if (o.value === value) { o.selected = !o.selected; toggled = true; }
@@ -979,11 +981,20 @@
     }
 
     var CMP_SEQ = 0;
+    // Which compare dimension the visitor touched last. Without this, a
+    // leftover multi-country selection silently swallowed every year pick
+    // (the trend chart kept "comparing Germany · United States" no matter
+    // which years were chosen).
+    var LAST_MULTI_DIM = null;
     function compareSelections() {
-        var years = readControl('alt-f-years') || [];
-        var countries = readControl('alt-f-country') || [];
-        if (countries.length >= 2 && countries.length <= 5) return { dim: 'country', values: countries.slice(0, 5) };
-        if (years.length >= 2 && years.length <= 5) return { dim: 'years', values: years.slice().sort() };
+        var years = (readControl('alt-f-years') || []).slice().sort().slice(0, 8);
+        var countries = (readControl('alt-f-country') || []).slice(0, 8);
+        var yearsOk = years.length >= 2, countriesOk = countries.length >= 2;
+        if (yearsOk && countriesOk) {
+            return LAST_MULTI_DIM === 'years' ? { dim: 'years', values: years } : { dim: 'country', values: countries };
+        }
+        if (countriesOk) return { dim: 'country', values: countries };
+        if (yearsOk) return { dim: 'years', values: years };
         return null;
     }
 
@@ -1057,7 +1068,7 @@
             // STACKED band: announced plans sit on top of verified, so the
             // top edge of the amber band reads as verified + announced —
             // matching the intuition that plans "add to" the total.
-            datasets.push({ label: 'Announced plans — stacked on top of Verified', data: announced, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
+            datasets.push({ label: 'Announced plans — stacked on top of Verified', data: announced, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1080,10 +1091,36 @@
         var box = document.getElementById('alt-chart-yoy');
         if (!box) return;
         var years = readControl('alt-f-years') || [];
-        var year = years.length === 1 ? parseInt(years[0], 10)
-            : (!years.length ? new Date().getFullYear() : null);
-        if (!year) { clearChart('alt-chart-yoy'); return; }
         var seq = ++YOY_SEQ;
+        var nowYearNum = new Date().getFullYear();
+        if (years.length >= 2) {
+            var picked = years.slice().sort().slice(0, 8);
+            var nowKey2 = pad2(new Date().getMonth() + 1);
+            var mm = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+            Promise.all(picked.map(function (yr) {
+                var p = currentParams();
+                p.years = String(yr);
+                return apiGet('aggregate', p).then(function (a) { return (a && a.series) || []; });
+            })).then(function (lists) {
+                if (seq !== YOY_SEQ) return;
+                var datasets = picked.map(function (yr, i) {
+                    var by = {};
+                    lists[i].forEach(function (s) { by[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+                    return { label: String(yr),
+                        data: mm.map(function (m) { return (parseInt(yr, 10) === nowYearNum && m > nowKey2) ? null : (by[m] || 0); }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 };
+                });
+                if (!datasets.some(function (d) { return d.data.some(function (v) { return v > 0; }); })) { clearChart('alt-chart-yoy'); return; }
+                var options = cloneOptions();
+                options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+                options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+                mountChart('alt-chart-yoy', { type: 'line', data: {
+                    labels: mm.map(function (m) { return monthLabel('2000-' + m).split(' ')[0]; }), datasets: datasets
+                }, options: options });
+            }).catch(function () { clearChart('alt-chart-yoy'); });
+            return;
+        }
+        var year = years.length === 1 ? parseInt(years[0], 10) : nowYearNum;
         var params = currentParams();
         params.years = String(year - 1);
         apiGet('aggregate', params).then(function (prev) {
@@ -1121,15 +1158,69 @@
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
         mountChart('alt-chart-ai-share-trend', { type: 'line', data: {
             labels: pts.map(function (p) { return monthLabel(p.month); }),
-            datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: PALETTE[5], backgroundColor: 'rgba(227,73,72,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
+            datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(227,73,72,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
         }, options: options });
     }
 
     var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings', '8K': 'SEC 8-K filings',
         erm: 'Eurofound ERM', press_release: 'Company releases', seed: 'Curated (sourced)' };
 
+    var CMP_AI_SEQ = 0;
+    function renderCompareAiCumulative(cmp) {
+        var seq = ++CMP_AI_SEQ;
+        Promise.all(cmp.values.map(function (v) {
+            var params = currentParams();
+            params[cmp.dim === 'years' ? 'years' : 'country'] = v;
+            return apiGet('aggregate', params).then(function (a) { return (a && a.series) || []; });
+        })).then(function (lists) {
+            if (seq !== CMP_AI_SEQ) return;
+            var aiVal = function (s) { return (s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0); };
+            var labels, datasets;
+            var nowYearNum = new Date().getFullYear();
+            var nowKey = pad2(new Date().getMonth() + 1);
+            if (cmp.dim === 'years') {
+                var mm = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+                labels = mm.map(function (m) { return monthLabel('2000-' + m).split(' ')[0]; });
+                datasets = cmp.values.map(function (yr, i) {
+                    var by = {};
+                    lists[i].forEach(function (s) { by[s.month.slice(5)] = aiVal(s); });
+                    var run = 0;
+                    return { label: String(yr),
+                        data: mm.map(function (m) { if (parseInt(yr, 10) === nowYearNum && m > nowKey) return null; run += by[m] || 0; return run; }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.25 };
+                });
+            } else {
+                var monthSet = {};
+                lists.forEach(function (l) { l.forEach(function (s) { if (aiVal(s) > 0) monthSet[s.month] = 1; }); });
+                var months = Object.keys(monthSet).sort().filter(function (m) { return m <= nowYearNum + '-' + nowKey; });
+                labels = months.map(monthLabel);
+                datasets = cmp.values.map(function (c, i) {
+                    var by = {};
+                    lists[i].forEach(function (s) { by[s.month] = aiVal(s); });
+                    var run = 0;
+                    return { label: c, data: months.map(function (m) { run += by[m] || 0; return run; }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: months.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: false, tension: 0.25 };
+                });
+            }
+            var any = datasets.some(function (d) { return d.data.some(function (v) { return v > 0; }); });
+            var range = document.getElementById('alt-cum-range');
+            if (!labels.length || !any) {
+                if (range) range.textContent = 'no AI-attributed cuts in this comparison';
+                clearChart('alt-chart-ai-cumulative');
+                return;
+            }
+            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — cumulative verified AI cuts';
+            var options = cloneOptions();
+            options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+            mountChart('alt-chart-ai-cumulative', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
+        }).catch(function () { /* merged view already rendered as fallback */ });
+    }
+
     function renderAiCumulative(series) {
         if (!document.getElementById('alt-chart-ai-cumulative')) return;
+        var cmpAi = compareSelections();
+        if (cmpAi) { renderCompareAiCumulative(cmpAi); return; }
         series = fillMonths(series);
         var ai = (series || []).filter(function (s) { return s.ai_jobs > 0; });
         var range = document.getElementById('alt-cum-range');
@@ -1147,9 +1238,9 @@
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
         var dots = charted.length <= 2 ? 4 : 0;
-        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
+        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: ALT_RED, backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI plans — stacked on top', data: cumA, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            datasets.push({ label: 'Announced AI plans — stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1189,7 +1280,7 @@
         // appear only once the reconciliation job has retained those fields.
         // Five distinct colors — solid = AI pair, dashed = all-cuts pair,
         // green = our observed AI (real holdings; not the strict comparator).
-        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#eda100' };
+        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#8b46c8' };
         function datasetsFor(suffix, observed) {
             var sets = [
                 { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: C.chalAI, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
@@ -1427,7 +1518,12 @@
         setStatus('alt-table-status', null);
 
         var redraw = null;
-        function onFilterChange() { clearTimeout(redraw); redraw = setTimeout(refreshAll, 250); }
+        function onFilterChange(e) {
+            var id = e && e.target && e.target.id;
+            if (id === 'alt-f-years') LAST_MULTI_DIM = 'years';
+            else if (id === 'alt-f-country') LAST_MULTI_DIM = 'country';
+            clearTimeout(redraw); redraw = setTimeout(refreshAll, 250);
+        }
         FILTER_IDS.forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) return;
@@ -1555,7 +1651,7 @@
                 options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Jobs: ' + fmt(ctx.parsed.y); } };
                 mountChart('alt-chart-company', {
                     type: 'bar',
-                    data: { labels: matches.map(function (r) { return r.layoff_date || 'unknown'; }), datasets: [{ data: matches.map(function (r) { return r.job_count; }), backgroundColor: matches.map(function (r) { return r.ai_explicit ? PALETTE[5] : SEQ_BLUE; }), borderRadius: 4, maxBarThickness: 40 }] },
+                    data: { labels: matches.map(function (r) { return r.layoff_date || 'unknown'; }), datasets: [{ data: matches.map(function (r) { return r.job_count; }), backgroundColor: matches.map(function (r) { return r.ai_explicit ? ALT_RED : SEQ_BLUE; }), borderRadius: 4, maxBarThickness: 40 }] },
                     options: options
                 });
             }
