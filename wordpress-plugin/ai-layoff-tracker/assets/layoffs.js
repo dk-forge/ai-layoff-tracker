@@ -1835,7 +1835,23 @@
         var BAR_AGG_KEY = {
             'alt-bars-industries': ['top_industries', 'by-industry'],
             'alt-bars-states': ['top_states', 'by-us-state'],
-            'alt-bars-countries': ['top_countries', 'by-country']
+            'alt-bars-countries': ['top_countries', 'by-country'],
+            'alt-bars-sourcetypes': ['source_types', 'by-data-source']
+        };
+        // Computed lists export exactly what the card shows for the current
+        // filters (LAST_AGG is the filtered aggregate).
+        var BAR_ROWS_FN = {
+            'alt-bars-leaders': function () {
+                return ((LAST_AGG && LAST_AGG.leaders) || []).map(function (l) {
+                    return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0];
+                });
+            },
+            'alt-bars-ai-intensity': function () {
+                return ((LAST_AGG && LAST_AGG.top_industries) || [])
+                    .filter(function (e) { return e[1] >= 1000 && e[2] > 0; })
+                    .map(function (e) { return [e[0], Math.round(100 * e[2] / e[1]), Math.round(100 * e[2] / e[1])]; })
+                    .sort(function (a, b) { return b[1] - a[1]; });
+            }
         };
         Array.prototype.forEach.call(document.querySelectorAll('.alt-chart-dl'), function (btn) {
             btn.addEventListener('click', function (e) {
@@ -1858,7 +1874,7 @@
                     a.click();
                 } else {
                     var meta = BAR_AGG_KEY[t];
-                    var rows = (meta && LAST_AGG && LAST_AGG[meta[0]]) || [];
+                    var rows = BAR_ROWS_FN[t] ? BAR_ROWS_FN[t]() : ((meta && LAST_AGG && LAST_AGG[meta[0]]) || []);
                     if (!rows.length) return;
                     var csv = 'label,jobs,ai_attributed_jobs\n' + rows.map(function (r) {
                         return '"' + String(r[0]).replace(/"/g, '""') + '",' + r[1] + ',' + (r[2] || 0);

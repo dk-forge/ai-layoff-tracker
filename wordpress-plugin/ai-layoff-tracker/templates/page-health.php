@@ -2,6 +2,19 @@
 <main class="alt-wrap alt-health-page" id="alt-health-page">
   <header class="alt-health-hero"><p class="alt-eyebrow">AskTheRecruiter · public operations</p><h1>AI Tracker Health</h1><p>Live collector health, evidence integrity, coverage limits and active quality work. A degraded source is a visible gap—not a zero result.</p><p id="alt-health-updated" role="status">Loading live operational status…</p></header>
   <section class="alt-health-summary" aria-label="Operational summary" id="alt-health-summary"></section>
+  <section class="alt-health-grid"><div class="alt-health-section"><h2>Operator actions — needs a human, once</h2><ul class="alt-health-schedule">
+    <li><b>Cloudflare cache rule</b> for <code>/blog/ai-layoff-tracker*</code> ("Eligible for cache") — cuts first paint from ~1.5s to ~200ms.</li>
+    <li><b>Search Console:</b> submit <code>/blog/company-layoffs-sitemap.xml</code>.</li>
+    <li><b>Denmark Jobindsats key:</b> send the drafted application (docs/outreach/); store as <code>JOBINDSATS_API_KEY_DK</code>.</li>
+    <li><b>Quebec MESS courtesy notice:</b> send the drafted email; collector is pre-built.</li>
+    <li><b>CourtListener token:</b> free signup; store as <code>COURTLISTENER_API_KEY</code>.</li>
+  </ul></div>
+  <div class="alt-health-section"><h2>Operate — for maintainers &amp; agents</h2><ul class="alt-health-schedule">
+    <li><a href="https://github.com/dk-forge/ai-layoff-tracker/actions" target="_blank" rel="noopener">GitHub Actions</a> — every scheduled job, manual dispatches, full run logs.</li>
+    <li><a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/docs/QUALITY_ROADMAP_HANDOVER.md" target="_blank" rel="noopener">Continuation brief</a> — the complete state of the programme for any new agent or maintainer.</li>
+    <li><a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/docs/CHALLENGER_GAP_CLOSURE_PLAN.md" target="_blank" rel="noopener">Challenger gap-closure plan</a> — the ranked path to parity, with executed items marked.</li>
+    <li><a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality-status</a> · <a href="<?php echo esc_url(rest_url('layoffs/v1/integrity-status')); ?>">integrity-status</a> — machine-readable state for automation.</li>
+  </ul></div></section>
   <section class="alt-health-section alt-feature-list" aria-labelledby="alt-feature-list-heading">
     <div class="alt-feature-list-heading"><div><p class="alt-eyebrow">Product roadmap</p><h2 id="alt-feature-list-heading">Features list</h2></div><p>Released capabilities and their rollout state. Live collector status and errors are shown above; this list does not imply complete country coverage.</p></div>
     <div class="alt-feature-grid">

@@ -292,23 +292,23 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-barlist" id="alt-bars-countries"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-h">Largest single events <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">Largest single events <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-leaders" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-leaders"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-h">AI share of Verified, monthly <span class="alt-chart-sub">how attribution is trending</span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">AI share of Verified, monthly <span class="alt-chart-sub">how attribution is trending</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-share-trend" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-chart-box"><canvas id="alt-chart-ai-share-trend"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-h">By data source <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share</span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">By data source <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-sourcetypes" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-sourcetypes"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts, same filters</span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts, same filters</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts blamed on AI</span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts blamed on AI</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-ai-intensity"></div>
         </div>
         <div class="alt-mini alt-chart-card">
