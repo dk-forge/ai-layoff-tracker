@@ -608,17 +608,40 @@ layoffs.fyi (worldwide tech, began Mar 2020, per their year pages): 2020:
 These render in health.js BENCH_HISTORY with live ATR columns; update the
 constants when re-verified, with the as-of date.
 
-## Historical-year backfill (added 2026-07-19)
+## Historical-year backfill (added 2026-07-19; 2025 EXECUTED same day)
 
-The 2024 and 2025 year rows sit at 63% and 60% of Challenger totals for the
-same structural reason 2026 did before this weekend: announcement-level
-events are under-represented relative to WARN execution slices. The monthly
-work-backwards audit should therefore ALSO cover one historical year per
-run (verify-at-source against that year's aggregator pages and Challenger
-monthly reports, seed with named-outlet links, AI causations only with
-quotes). 2025 first, then 2024. AI columns for 2023-2025 already exceed
-Challenger (their AI reason-code undercounted; ours is the broad tier) —
-that is the honest state, not a defect to fix.
+**2025 run complete (see TECHLOG audit entry for full detail).** Outcome:
+US 2025 moved 726,686 → 670,658 (55.6% of Challenger). The old 60% was
+inflated: ~152K of double counting (UPS ×2 + superseded April stage, HHS ×4
++ its own sub-slices, IRS ×2, Microsoft program overlap, Intel wrong-year
+phantom, Recruit ×3, more) was merged/corrected, and 34 verified missing
+events were seeded (+97,582 US, incl. Rite Aid 24.5K, Joann 19K, VA 30K,
+SSA 7K). ai_broad US 2025 is now 52,259 = 95% of Challenger's 54,836 (the
+old 128,759/235% rode on dup rows). 14 AI reclassifications applied
+(Salesforce primary_cause with the Benioff "agentic layer" verbatim;
+Microsoft/Meta-600/IBM honestly downgraded to ai_linked).
+
+**Key methodology finding: 90% of Challenger 2025 is not honestly
+reachable.** ~250–300K of their total is voluntary federal separations
+(75K deferred-resignation acceptances + attrition-heavy agency programs).
+The DRP 75K is deliberately NOT seeded: those acceptances are already
+inside seeded agency totals (VA 30K quotes its attrition/DRP composition).
+Treat the residual gap as a documented composition difference, like the
+AI-column note below.
+
+**PENDING owner action:** dispatch trash-entries.yml for phantom rows
+70461 (Meta "8,000" lawsuit-allegation extraction, AI-flagged), 70769
+(Benzinga BLS commentary "5,000"), 70083 (DOGE 10K cross-agency aggregate
+overlapping VA/NOAA/IRS rows) → a further −23,000 honesty correction.
+The in-session dispatch was permission-blocked.
+
+**Next: 2024 (63% row), same protocol.** Known 2024 leads from this run:
+Intel 2024 keeper is row 301 (its Dec-2024 TheHindu-newsletter dup 70471
+was already merged); watch for the same Challenger-roundup-article
+extraction pattern that duplicated UPS. ERM-vs-US-news group overlaps
+(Intel 24.5K ERM, Microsoft 9K ERM Jul-2025, TCS) remain documented skips
+per the Telia/Nissan precedent — a cross-source group-event reconciler is
+the eventual fix, not row deletion.
 
 ## Roles-impacted chart: required disclaimer (2026-07-19)
 
