@@ -687,6 +687,13 @@ SEGMENT_TERMS = (
     '"sackings"', '"job shedding"', '"shed jobs"', '"slash jobs"',
     '"voluntary separation scheme"', '"mass termination"',
     '"jobs terminated"', '"staff reduction"', '"retrenched workers"',
+    # Public-sector and education segments (2026-07-19 Challenger sector
+    # decomposition: government + education + nonprofit are ~9% of their
+    # total and never file WARN or 8-K — but the big events make the press)
+    '"school district" "layoffs"', '"university" "job cuts"',
+    '"state employees" "layoffs"', '"federal employees" "layoffs"',
+    '"city workers" "laid off"', '"nonprofit" "layoffs"',
+    '"hospital" "layoffs"', '"school" "positions eliminated"',
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
 
