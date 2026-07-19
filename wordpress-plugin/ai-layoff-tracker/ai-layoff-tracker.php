@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.92
+ * Version: 2.18.93
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.92');
+define('ALT_VERSION', '2.18.93');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -231,7 +231,7 @@ function alt_enqueue_assets() {
     $alt_page_content = is_singular() ? get_post_field('post_content', get_queried_object_id()) : '';
     $is_health_page = $alt_page_content && (has_shortcode($alt_page_content, 'alt_tracker_health') || has_shortcode($alt_page_content, 'alt_publisher_tools'));
     if ($is_health_page) {
-        wp_enqueue_script('alt-health-js', ALT_PLUGIN_URL . 'assets/health.js', array(), $alt_asset_ver('assets/health.js'), true);
+        wp_enqueue_script('alt-health-js', ALT_PLUGIN_URL . 'assets/health.js', array(), $alt_asset_ver('assets/health.js'), array('in_footer' => true, 'strategy' => 'defer'));
         wp_localize_script('alt-health-js', 'altHealthData', array(
             'apiUrl' => esc_url_raw(rest_url('layoffs/v1/')),
             'widgetUrl' => esc_url_raw(home_url('/?alt_tracker_widget=1')),
@@ -270,7 +270,11 @@ function alt_enqueue_assets() {
         ALT_PLUGIN_URL . 'assets/layoffs.js',
         array('jquery', 'datatables-js', 'chartjs'),
         $alt_asset_ver('assets/layoffs.js'),
-        true
+        // Autoptimize defers our dependencies (jquery/datatables/chartjs).
+        // Since our file is AO-excluded it MUST defer too, or it executes
+        // before deferred jQuery exists and dies on its first line
+        // (2026-07-19 blank-page incident).
+        array('in_footer' => true, 'strategy' => 'defer')
     );
 
     // Pass data to JS
