@@ -2350,14 +2350,26 @@ function alt_api_cleanup(WP_REST_Request $r) {
 }
 
 /**
- * Something in the stack (WP core nocache, a host cache plugin) appends
- * "Cache-Control: no-cache, no-store" + "Expires: 0" to REST responses, which
- * overrides our max-age and disables browser caching. Two-layer suppression
- * for anonymous GETs on the public read endpoints only.
+ * Two layers add nocache headers to REST responses; each needs its own fix.
+ *
+ * 1. WP-side (core nocache + any cache plugin calling nocache_headers()):
+ *    suppressed by the two filters below for anonymous reads on the public
+ *    endpoints.
+ * 2. Bluehost's Apache appends "Cache-Control: no-cache, no-store,
+ *    must-revalidate" + "Pragma: no-cache" + "Expires: 0" AFTER PHP's headers
+ *    on every PHP response — producing a DUPLICATE Cache-Control that makes
+ *    browsers treat the response as no-store. Proven host-side, not WP-side
+ *    (2026-07-19): a direct request to a plugin file that exits before WP
+ *    loads still carries the trio, and so does an origin-direct curl that
+ *    bypasses Cloudflare and the Railway root proxy. No PHP filter can strip
+ *    it; alt_htaccess_ensure() (includes/htaccess.php) overrides it with a
+ *    mod_headers block in the WP root .htaccess, which Apache merges after
+ *    its own config.
  */
 function alt_is_public_read_request() {
     if (is_user_logged_in()) return false;
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') return false;
+    // HEAD mirrors GET cacheability (RFC 9110); everything else stays nocache.
+    if (!in_array($_SERVER['REQUEST_METHOD'] ?? '', array('GET', 'HEAD'), true)) return false;
     $uri = $_SERVER['REQUEST_URI'] ?? '';
     foreach (array('query', 'aggregate', 'facets', 'stats', 'all', 'conversion') as $ep) {
         if (strpos($uri, 'layoffs/v1/' . $ep) !== false) return true;

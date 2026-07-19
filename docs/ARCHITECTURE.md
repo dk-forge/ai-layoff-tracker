@@ -124,7 +124,18 @@ dimension OR. Slicer charts call /aggregate ignoring their own dimension (`excep
 always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; every write bumps it.
 
 ## Caching layers
+Request chain for `/blog/*` (observed 2026-07-19): **Cloudflare → Railway root app (reverse-proxies
+/blog) → Bluehost Apache** (`x-railway-*` headers + base64 `host-header: shared.bluehost.com` on
+/blog responses; origin reachable directly via the Bluehost IP that `mail.asktherecruiter.com`
+resolves to, with `curl --resolve`).
+
 1. Page HTML: WP-Super-Cache (+ Autoptimize) — flushed automatically on version bump.
-2. API JSON: 5-min transients keyed by params+alt_data_ver; `Cache-Control: public, max-age=60`.
+2. API JSON: 5-min transients keyed by params+alt_data_ver; `alt_api_cached` sends
+   `Cache-Control: public, max-age=300, s-maxage=300, stale-while-revalidate=600`
+   (the `nocache_headers` filter swap uses `max-age=60`).
 3. Cloudflare: Cache Rule (added 2026-07-15 by owner) edge-caches `/blog/wp-json/layoffs/v1/*` GETs.
    ⚠ Ensure the rule's Browser TTL = "Respect origin" (a 5-day browser TTL was observed initially).
+   HEAD requests are never edge-cached (`cf-cache-status: DYNAMIC` is normal on HEAD; verify with GET).
+4. Browser: works only because `includes/htaccess.php` maintains a mod_headers block in the WP root
+   `.htaccess` that strips the duplicate `no-cache, no-store` Cache-Control (+Pragma+Expires) that
+   Bluehost's Apache appends to every PHP response after PHP's own headers (v2.19.15; see TECHLOG).

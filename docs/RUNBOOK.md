@@ -65,11 +65,33 @@ filenames self-invalidate). If an AO asset looks stale, the version bump alone f
 **White screen / HTTP 500 anywhere**
 A PHP fatal from the latest deploy. `git revert` the last plugin commit, push, trip flush.
 Balance-check PHP before deploying (see CLAUDE.md); there is no staging environment.
+If EVERY URL 500s (not just plugin pages), also suspect `/blog/.htaccess`: remove the
+`# BEGIN AI Layoff Tracker` block over FTP (the plugin's writer canary-probes and
+rolls back on its own, but a half-written file from an unrelated crash cannot).
 
 **API returns stale numbers**
 Micro-cache holds 5 min. Any write bumps `alt_data_ver`; manual bump: run the `cleanup`
 workflow. Browser-side: check the Cloudflare cache rule's Browser TTL (must be
 "Respect origin" — origin sends `max-age=60`).
+
+**Duplicate Cache-Control returns (API/page sends `public, max-age=…` AND `no-cache, no-store…`)**
+Bluehost's Apache injects the no-store trio after PHP's headers on every PHP response;
+the plugin overrides it with a marked block in the WP root `.htaccess` (managed by
+`includes/htaccess.php`, self-healing on init, canary-probed, auto-rolls-back on 5xx).
+1. Check state: option `alt_htaccess_state` (`status: verified|failed`, `reason: write|probe`).
+2. Check the file: the `# BEGIN AI Layoff Tracker` block must exist in `/blog/.htaccess`
+   (view over FTP). If the host or another plugin rewrote the file, the init hook
+   restores the block within 12h; to force it now, delete transient `alt_htaccess_ok`
+   and option `alt_htaccess_state`, then hit any page.
+3. If `status: failed` with `reason: probe`, a write made the site 5xx and was rolled
+   back — the block only re-attempts on the next `ALT_VERSION` bump. Investigate before
+   bumping (Apache error log via cPanel).
+4. Verify with GET, not HEAD: `curl -sS -D - -o /dev/null -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' ".../aggregate?cb=$RANDOM" | grep -i cache-control`
+   must show exactly ONE header. `cf-cache-status` on HEAD always reads DYNAMIC
+   (Cloudflare serves cached GETs only) — that alone is not a failure signal.
+5. If the trio ever comes back at a layer `.htaccess` can't reach (front proxy),
+   fallback: Cloudflare Response Header Transform Rule setting Cache-Control for
+   `/blog/wp-json/layoffs/v1/*` (owner action, document in TECHLOG infra section).
 
 **Charts empty / filters dead in the browser**
 Check the three endpoints directly (`/facets`, `/aggregate`, `/query?per_page=1` with
