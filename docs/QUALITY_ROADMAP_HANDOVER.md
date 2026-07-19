@@ -6,10 +6,16 @@ you are a new agent (Codex or otherwise) taking over.
 **NEWEST (2026-07-19 00:18 UTC):** `GCP_BIGQUERY_CREDENTIALS_JSON` is live in
 GitHub secrets and VERIFIED working (credential smoke run 29666728674:
 dry-run against `gdelt-bq.gdeltv2.gkg_partitioned` authenticated, 0 bytes
-billed). NEXT HEADLINE BUILD: a BigQuery-backed GDELT collector path
-(prefer BigQuery when the secret exists, fall back to the public DOC API)
-— this permanently ends the 429 throttling. Confirm the same secret exists
-in Railway variables before wiring the cron path. CourtListener key + LSE
+billed). BUILT AND VERIFIED 2026-07-19 00:52 UTC: sources/gdelt_bq.py queries
+gdelt-bq.gdeltv2.gkg_partitioned (SourceCommonName column — no V2 prefix;
+LIMIT must be literal; partition filter + 30GB bytes cap). Policy: sweeps
+set GDELT_PREFER_BQ=1; live pulls try the public API first and fall back
+to BigQuery on abandonment. First verified run: 900 articles, no rate
+limits (June 3-9 window that had failed 4x on 429s). Secret is in BOTH
+Railway and GitHub. Also fixed: historical-news-sweep.yml had DUPLICATE
+GDELT_QUERY_* env keys, which GitHub's parser rejects — this had broken
+EVERY sweep dispatch; pyyaml does not catch duplicate keys, so validate
+workflows with actionlint or grep for dupes. CourtListener key + LSE
 RNS licence + Denmark Jobindsats key remain pending user actions (outreach
 drafts in docs/outreach/).
 
