@@ -81,7 +81,14 @@
 
   initWidgetBuilder();
 
-  Promise.all(['quality-status', 'integrity-status', 'status', 'review-queue', 'benchmarks/challenger', 'benchmarks/recall', 'dataset-releases'].map(get)).then(([q, i, s, r, c, rec, ledger]) => {
+  // Each endpoint retries once and degrades to null on failure, so one flaky
+  // fetch renders as a visible gap in its own section instead of blanking the
+  // entire page (observed live 2026-07-19).
+  const safeGet = path => get(path).catch(() => get(path)).catch(() => null);
+  Promise.all(['quality-status', 'integrity-status', 'status', 'review-queue', 'benchmarks/challenger', 'benchmarks/recall', 'dataset-releases'].map(safeGet)).then(([q, i, s, r, c, rec, ledger]) => {
+    q = q || { source_health: {}, workstreams: [], last_30_days_disclosed_changes: {} };
+    i = i || { canonical_events: 0, source_reports: 0, source_report_hashes_remaining: 0, metadata_completeness: {}, canonical_events_without_linked_source_reports: 0 };
+    s = s || {}; r = r || {}; rec = rec || []; ledger = ledger || {};
     const h = q.source_health || {};
     const degraded = Object.values(h).filter(x => x.status === 'degraded').length;
     const completeness = i.metadata_completeness || {};

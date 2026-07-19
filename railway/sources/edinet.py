@@ -235,12 +235,11 @@ def _document_text_from_archive(content: bytes) -> tuple[str, bool]:
     """
     archive = zipfile.ZipFile(io.BytesIO(content))  # May raise BadZipFile.
     members = sorted(
-        info for info in archive.infolist()
-        if not info.is_dir()
-        and info.filename.replace("\\", "/").split("/")[0] != ".."
-        and "PublicDoc" in info.filename
-        and info.filename.lower().endswith((".htm", ".html", ".xml"))
-    , key=lambda info: info.filename)
+        (info for info in archive.infolist()
+         if not info.is_dir()
+         and "PublicDoc" in info.filename
+         and info.filename.lower().endswith((".htm", ".html", ".xml"))),
+        key=lambda info: info.filename)
     pieces: list[str] = []
     total = 0
     truncated = False

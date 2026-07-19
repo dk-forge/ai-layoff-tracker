@@ -1057,7 +1057,7 @@
             // STACKED band: announced plans sit on top of verified, so the
             // top edge of the amber band reads as verified + announced —
             // matching the intuition that plans "add to" the total.
-            datasets.push({ label: 'Announced (stacked — top edge = total)', data: announced, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
+            datasets.push({ label: 'Announced plans — stacked on top of Verified', data: announced, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1149,7 +1149,7 @@
         var dots = charted.length <= 2 ? 4 : 0;
         var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI (stacked — top edge = total)', data: cumA, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            datasets.push({ label: 'Announced AI plans — stacked on top', data: cumA, borderColor: PALETTE[2], backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1692,7 +1692,12 @@
             if (!tV && !pV && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still filling in from the worldwide press index. Pick "All time" in the Years filter to see earlier verified events.';
             }
-            el.innerHTML = txt;
+            el.innerHTML = txt + ' <button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy this summary as plain text">Copy as post</button>';
+            var copyBtn = el.querySelector('.alt-narrative-copy');
+            if (copyBtn) copyBtn.addEventListener('click', function () {
+                var plain = el.textContent.replace('Copy as post', '').trim() + ' — via asktherecruiter.com/blog/ai-layoff-tracker/';
+                if (navigator.clipboard) navigator.clipboard.writeText(plain).then(function () { copyBtn.textContent = 'Copied!'; setTimeout(function () { copyBtn.textContent = 'Copy as post'; }, 1500); });
+            });
         }).catch(function () { el.textContent = ''; });
     }
 

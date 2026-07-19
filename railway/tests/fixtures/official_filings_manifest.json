@@ -1,0 +1,83 @@
+{
+  "description": "Bounded text excerpts from real, public official filings, used as offline fixtures for the EDINET/OpenDART evidence-only document stages. Excerpts were retrieved on 2026-07-18 from the official public viewers (EDINET keyless PDF download host disclosure2dl.edinet-fsa.go.jp; DART public report viewer dart.fss.or.kr/report/viewer.do). '[…]' marks an elision between two excerpts of the same document; no text was reordered or altered beyond whitespace collapsing and markup stripping. These excerpts substantiate detector behaviour only; none of them is a tracker event.",
+  "retrieved": "2026-07-18",
+  "fixtures": [
+    {
+      "file": "edinet_jp_S100X44W_jdi_extraordinary.txt",
+      "market": "JP",
+      "filer": "株式会社ジャパンディスプレイ (Japan Display Inc., EDINET E30481)",
+      "document": "臨時報告書 (extraordinary report), submitted 2025-11-14",
+      "document_id": "S100X44W",
+      "source_url": "https://disclosure2.edinet-fsa.go.jp/WEEK0010.aspx?docID=S100X44W",
+      "expect_review_candidate": true,
+      "expect_strong_terms": ["希望退職", "人員削減"],
+      "note": "Business-structure-improvement charge for domestic/overseas workforce reductions via solicited voluntary retirement; the companion semiannual report states 1,483 applicants."
+    },
+    {
+      "file": "edinet_jp_S100XEHG_sankyotateyama_semiannual.txt",
+      "market": "JP",
+      "filer": "三協立山株式会社 (Sankyo Tateyama, EDINET E26831)",
+      "document": "半期報告書 (semiannual report), submitted 2026-01-08",
+      "document_id": "S100XEHG",
+      "source_url": "https://disclosure2.edinet-fsa.go.jp/WEEK0010.aspx?docID=S100XEHG",
+      "expect_review_candidate": true,
+      "expect_strong_terms": ["希望退職"],
+      "note": "Post-balance-sheet event: board resolved on 2026-01-08 to solicit voluntary retirements as part of structural reform."
+    },
+    {
+      "file": "edinet_jp_S100YI8X_sanken_annual.txt",
+      "market": "JP",
+      "filer": "サンケン電気株式会社 (Sanken Electric, EDINET E01790)",
+      "document": "有価証券報告書 (annual securities report), submitted 2026-06-24",
+      "document_id": "S100YI8X",
+      "source_url": "https://disclosure2.edinet-fsa.go.jp/WEEK0010.aspx?docID=S100YI8X",
+      "expect_review_candidate": true,
+      "expect_strong_terms": ["希望退職"],
+      "note": "Special severance for subsidiaries plus a post-balance-sheet voluntary-retirement solicitation resolved 2026-05-07 at subsidiary Yamagata Sanken."
+    },
+    {
+      "file": "edinet_jp_S100YI8X_sanken_governance_negative.txt",
+      "market": "JP",
+      "filer": "サンケン電気株式会社 (Sanken Electric, EDINET E01790)",
+      "document": "有価証券報告書 (annual securities report), submitted 2026-06-24",
+      "document_id": "S100YI8X",
+      "source_url": "https://disclosure2.edinet-fsa.go.jp/WEEK0010.aspx?docID=S100YI8X",
+      "expect_review_candidate": false,
+      "expect_strong_terms": [],
+      "note": "Near-miss negative: executive-compensation boilerplate mentioning 構造改革 (structural reform) targets with no workforce event."
+    },
+    {
+      "file": "opendart_kr_20260714000459_kookminbank_prospectus.txt",
+      "market": "KR",
+      "filer": "국민은행 (Kookmin Bank)",
+      "document": "투자설명서(일괄신고) (shelf prospectus), filed 2026-07-14",
+      "filing_number": "20260714000459",
+      "source_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260714000459",
+      "expect_review_candidate": true,
+      "expect_strong_terms": ["희망퇴직"],
+      "note": "Due-diligence section: voluntary-retirement programme executed 2026-01-20 covering 550 employees under a labour-management agreement."
+    },
+    {
+      "file": "opendart_kr_20260714000427_lbsemicon_registration.txt",
+      "market": "KR",
+      "filer": "LB세미콘 (LB Semicon)",
+      "document": "[기재정정] 증권신고서(지분증권) (amended equity registration statement), filed 2026-07-14",
+      "filing_number": "20260714000427",
+      "source_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260714000427",
+      "expect_review_candidate": true,
+      "expect_strong_terms": ["희망퇴직"],
+      "note": "Risk-factor section: 2025 company-wide voluntary retirement (76 employees) with severance ex-gratia costs and ongoing fixed-cost effects."
+    },
+    {
+      "file": "opendart_kr_20260716000545_hanjin_negative.txt",
+      "market": "KR",
+      "filer": "한진 (Hanjin)",
+      "document": "[발행조건확정] 증권신고서(채무증권) 예비투자설명서 (debt registration, preliminary prospectus), filed 2026-07-16",
+      "filing_number": "20260716000545",
+      "source_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260716000545",
+      "expect_review_candidate": false,
+      "expect_strong_terms": [],
+      "note": "Near-miss negative: labour-intensive business description, debt-ratio 감축 (reduction) and group 구조조정 (restructuring of non-core businesses) with no workforce event — the exact noise that keeps 구조조정 in the context tier."
+    }
+  ]
+}
