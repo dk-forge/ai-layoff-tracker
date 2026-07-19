@@ -162,8 +162,8 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-filter" data-dd="Reasons" data-empty="All reasons">
                 <label for="alt-f-reasons">Reasons</label>
                 <select id="alt-f-reasons" multiple>
-                    <option value="ai_automation">AI / automation</option>
-                    <option value="possible_ai">Possible AI</option>
+                    <option value="ai_automation">AI: company-stated (specific)</option>
+                    <option value="possible_ai">AI-linked (broad)</option>
                     <option value="revenue_decline">Revenue decline</option>
                     <option value="restructuring">Restructuring</option>
                     <option value="merger_acquisition">Merger / acquisition</option>
@@ -212,8 +212,8 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-all">—</span>
-                <span class="alt-stat-label">All job cuts, incl. plans</span>
-                <span class="alt-stat-desc">Verified + Announced together: the full picture for the period.</span>
+                <span class="alt-stat-label">Verified + announced job cuts</span>
+                <span class="alt-stat-desc">Both tiers together: everything filed, reported, or planned in the period.</span>
                 <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
             </div>
             <div class="alt-stat-card">
@@ -225,13 +225,13 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                <span class="alt-stat-label">AI-linked, specific (by the company)</span>
+                <span class="alt-stat-label">AI-linked verified cuts (specific)</span>
                 <span class="alt-stat-desc">Part of Verified, in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
-                <span class="alt-stat-label">AI-linked, broad</span>
+                <span class="alt-stat-label">AI-linked, broad (verified + announced)</span>
                 <span class="alt-stat-desc">Part of All job cuts: anything the company or press tied to AI, like "amid AI push" or "AI pivot."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
             </div>
@@ -246,7 +246,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
-                <span class="alt-stat-label">AI cuts anticipated, YTD</span>
+                <span class="alt-stat-label">All AI job cuts, incl. announced</span>
                 <span class="alt-stat-desc">Every AI-linked cut this year, counted by US employer: the like-for-like total against the US benchmark. Fixed scope: it does not follow the filters.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
             </div>
