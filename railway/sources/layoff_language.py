@@ -116,6 +116,21 @@ class TermMatch:
     excerpt: str    # bounded window around the match, for review only
 
 
+def strip_markup(document: str) -> str:
+    """Reduce an HTML/XML filing body to reviewable plain text.
+
+    Drops script/style/comment blocks, removes tags, unescapes entities and
+    collapses whitespace.  This is deliberately simple, offline and identical
+    for both document stages so fixtures test the exact production behaviour.
+    """
+    text = str(document or "")
+    text = re.sub(r"(?is)<(script|style)\b.*?</\1\s*>", " ", text)
+    text = re.sub(r"(?s)<!--.*?-->", " ", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = _html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _normalise(text: str) -> str:
     """NFKC-fold and collapse runs of whitespace to single spaces."""
     folded = unicodedata.normalize("NFKC", str(text or ""))

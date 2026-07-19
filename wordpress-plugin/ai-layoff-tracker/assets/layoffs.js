@@ -1640,8 +1640,11 @@
         var pPrev = Object.assign({ years: String(y - 1) }, base);
         var iso = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
         var d7 = new Date(now.getTime() - 6 * 86400000), d14 = new Date(now.getTime() - 13 * 86400000), d8 = new Date(now.getTime() - 7 * 86400000);
-        var pWeek = Object.assign({ from: iso(d7), to: iso(now) }, base);
-        var pWeekPrev = Object.assign({ from: iso(d14), to: iso(d8) }, base);
+        // stage=verified keeps the weekly totals AND its largest-event pick
+        // on the same basis (an announced 50K plan must not headline a
+        // 9K verified week).
+        var pWeek = Object.assign({ from: iso(d7), to: iso(now), stage: 'verified' }, base);
+        var pWeekPrev = Object.assign({ from: iso(d14), to: iso(d8), stage: 'verified' }, base);
         Promise.all([apiGet('aggregate', pThis), apiGet('aggregate', pPrev), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev)]).then(function (r) {
             var t = r[0].totals, p = r[1].totals, w = r[2].totals, wp = r[3].totals;
             var wLead = (r[2].leaders || [])[0];
@@ -1672,8 +1675,8 @@
             }
             txt += '. Across all of ' + b(y - 1) + ', ' + b(fmt(pV)) + ' verified event' +
                 (pV === 1 ? '' : 's') + ' affected ' + b(fmt(pJ)) + ' workers' + perDay(perDayPrev) + '.';
-            var wJ = w.jobs - (w.announced_jobs || 0), wpJ = wp.jobs - (wp.announced_jobs || 0);
-            var wE = w.entries - (w.announced_entries || 0);
+            var wJ = w.jobs, wpJ = wp.jobs;
+            var wE = w.entries;
             if (wJ > 0) {
                 txt += ' This week: ' + b(fmt(wJ)) + ' workers across ' + b(fmt(wE)) +
                     ' verified event' + (wE === 1 ? '' : 's');

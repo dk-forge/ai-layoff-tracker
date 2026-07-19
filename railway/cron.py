@@ -43,14 +43,19 @@ def run_discovery_probes():
     a coverage claim (see docs/OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md before
     promoting any client to a real connector).
     """
-    yesterday = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=1)).date()
+    # Each source computes the newest *complete* local filing day itself:
+    # EDINET submissions close 17:15 JST and DART reception closes 19:00 KST,
+    # so the evening-UTC run (22:00 local) probes the just-closed local day and
+    # the late-UTC run (07:00 local next morning) re-checks it.
+    edinet_day = edinet.latest_complete_list_date()
+    opendart_day = opendart.latest_complete_list_date()
     current_year = datetime.now(timezone.utc).year
     # Each probe: (source id, gating env key or None, window label, list call).
     probes = (
-        ("edinet_jp", "EDINET_API_KEY_JP", yesterday.isoformat(),
-         lambda: len(edinet.list_documents_for_date(yesterday).documents)),
-        ("opendart_kr", "OPENDART_API_KEY_KR", yesterday.isoformat(),
-         lambda: len(opendart.list_disclosures(yesterday, yesterday).disclosures)),
+        ("edinet_jp", "EDINET_API_KEY_JP", edinet_day.isoformat(),
+         lambda: len(edinet.list_documents_for_date(edinet_day).documents)),
+        ("opendart_kr", "OPENDART_API_KEY_KR", opendart_day.isoformat(),
+         lambda: len(opendart.list_disclosures(opendart_day, opendart_day).disclosures)),
         # CVM's open-data portal requires no API key, so this probe is keyless:
         # env gate is None and the "not configured" branch never applies. The
         # window is the current calendar year's Fato Relevante index.
