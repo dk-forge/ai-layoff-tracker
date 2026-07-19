@@ -102,7 +102,8 @@ def main():
         report_source_health("warn_us", "degraded", 0, f"WARN scrape failed: {exc}")
         raise
     # Custom collectors cover the states whose sites broke the open scraper
-    # (TX, FL, GA, OH, MI, CO, ID, LA).
+    # (TX, FL, GA, OH, MI, CO, ID, LA, NC, NV, MN, MA) plus the retired NY
+    # history database (dedup hashes absorb the warn-scraper overlap).
     customs = pull_warn_custom(states)
     if min_emp:
         customs = [e for e in customs if e["job_count"] >= min_emp]

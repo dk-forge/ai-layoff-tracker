@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from sources import edinet, opendart
+from sources import cvm_br, edinet, opendart
 from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
@@ -34,23 +34,31 @@ def _mark_phase(phase):
 
 
 def run_discovery_probes():
-    """Health-visible discovery probes for Japan EDINET and South Korea OpenDART.
+    """Health-visible discovery probes for Japan EDINET, South Korea OpenDART,
+    and Brazil CVM.
 
-    Each probe lists one official daily filing window and reports the count to
+    Each probe lists one official filing window and reports the count to
     source health so the public page shows the probe ran. Nothing is ingested,
     classified, or added to the extraction pipeline — this is deliberately NOT
     a coverage claim (see docs/OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md before
-    promoting either client to a real connector).
+    promoting any client to a real connector).
     """
     yesterday = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=1)).date()
+    current_year = datetime.now(timezone.utc).year
+    # Each probe: (source id, gating env key or None, window label, list call).
     probes = (
-        ("edinet_jp", "EDINET_API_KEY_JP",
+        ("edinet_jp", "EDINET_API_KEY_JP", yesterday.isoformat(),
          lambda: len(edinet.list_documents_for_date(yesterday).documents)),
-        ("opendart_kr", "OPENDART_API_KEY_KR",
+        ("opendart_kr", "OPENDART_API_KEY_KR", yesterday.isoformat(),
          lambda: len(opendart.list_disclosures(yesterday, yesterday).disclosures)),
+        # CVM's open-data portal requires no API key, so this probe is keyless:
+        # env gate is None and the "not configured" branch never applies. The
+        # window is the current calendar year's Fato Relevante index.
+        ("cvm_br", None, str(current_year),
+         lambda: len(cvm_br.list_filings_for_year(current_year).filings)),
     )
-    for source, env_key, probe in probes:
-        if not os.environ.get(env_key, ""):
+    for source, env_key, window, probe in probes:
+        if env_key and not os.environ.get(env_key, ""):
             report_source_health(source, "degraded", 0,
                                  f"{env_key} is not configured in this runtime")
             continue
@@ -60,7 +68,7 @@ def run_discovery_probes():
             report_source_health(
                 source, "ok", count,
                 f"discovery only: {count} official filing(s) listed for "
-                f"{yesterday.isoformat()}; nothing ingested or classified",
+                f"{window}; nothing ingested or classified",
             )
         except Exception as e:
             report_source_health(source, "degraded", 0, f"discovery probe failed: {e}")

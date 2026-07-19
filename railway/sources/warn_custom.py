@@ -6,8 +6,12 @@ the exact same dedup-hash formula — as sources/warn.py, so re-imports upsert
 instead of duplicating.
 
 States: TX (Socrata JSON), FL (POST form -> HTML table), GA (WP admin-ajax),
-OH (CSV on the Ohio DAM), MI (Sitecore search JSON), CO (Google Sheets xlsx),
-ID (text PDF), LA (per-year text PDFs).
+OH (per-year CSVs on the Ohio DAM, archives to 2020), MI (Sitecore search
+JSON), CO (Google Sheets xlsx), ID (text PDF), LA (per-year text PDFs, 2015+
+via Wayback for the years laworks.net dropped), NC (per-year CSV + archive
+PDFs to 2015), NV (master PDFs), MN (report PDFs), MA (CSV + FY xlsx), and
+NY history (the retired dol.ny.gov database, frozen 4/1/2025 — supplements
+warn-scraper's live-dashboard NY coverage; identical hashes dedup the overlap).
 """
 import hashlib
 import html as _html
@@ -147,43 +151,77 @@ def fetch_ga():
     return out
 
 
-def fetch_oh():
-    """Ohio DAM CSV, url discovered from the JFS notices page (headers on row 3)."""
+# Ohio's 2026 site rebuild moved WARN under /job-workforce-services and added
+# per-year archive pages. Archives exist for 2020+ only — the 2015-2019 slugs
+# 404 (never migrated; verified 2026-07-18). Each page links its year's CSV
+# on the Ohio DAM, now with f_auto/q_auto/v<nnn> segments in the path.
+_OH_WARN_BASE = ("https://jfs.ohio.gov/job-workforce-services/"
+                 "job-programs-and-services/submit-a-warn-notice")
+_OH_ARCHIVE_START = 2020
+_OH_CSV_RE = re.compile(r'https://dam\.assets\.ohio\.gov/raw/upload/[^"\\ ]+\.csv')
+
+
+def _oh_entries_from_csv(text):
+    """Parse one Ohio DAM CSV (headers may sit a couple of metadata rows down)."""
     import csv as _csv
+    lines = text.splitlines()
+    start = next((i for i, ln in enumerate(lines[:6]) if "company" in ln.lower()), None)
+    if start is None:
+        return []
+    out = []
+    for row in _csv.DictReader(io.StringIO("\n".join(lines[start:]))):
+        rl = {(k or "").lower().strip(): (v or "").strip() for k, v in row.items() if k}
+        company = rl.get("company") or ""
+        jobs = _count(rl.get("potential number affected") or rl.get("number affected") or "")
+        date = (_to_iso_date(rl.get("layoff date(s)") or "")
+                or _to_iso_date(rl.get("date received") or ""))
+        city = (rl.get("city/county") or "").split("/")[0]
+        e = _entry("OH", company, jobs, date, city, detail_url=rl.get("url") or "")
+        if e:
+            out.append(e)
+    return out
+
+
+def fetch_oh():
+    """Ohio DAM CSVs discovered from the JFS current page + per-year archive
+    pages (2020+). Every page and every CSV is fail-isolated."""
     from datetime import date as _date
-    landing = "https://jfs.ohio.gov/job-services-and-unemployment/job-services/warn/warn-current-public-notices"
+    this_year = _date.today().year
+    pages = [f"{_OH_WARN_BASE}/current-public-notices-of-layoffs-and-closures"]
+    pages += [f"{_OH_WARN_BASE}/{y}-public-notices-of-layoffs-and-closures"
+              for y in range(_OH_ARCHIVE_START, this_year)]
     urls = []
-    try:
-        page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
-        urls = re.findall(r'https://dam\.assets\.ohio\.gov/raw/upload/[^"\\ ]+\.csv', page)
-    except Exception as e:
-        print(f"OH landing fetch failed ({e}), falling back to versionless URLs")
-    for y in (_date.today().year, _date.today().year - 1):
-        urls.append(f"https://dam.assets.ohio.gov/raw/upload/jfs.ohio.gov/{y}/{y}-warn-notice.csv")
-    out, seen_urls = [], set()
-    for u in urls:
-        if u in seen_urls:
-            continue
-        seen_urls.add(u)
+    for page_url in pages:
+        slug = page_url.rsplit("/", 1)[-1]
         try:
-            text = requests.get(u, headers=UA, timeout=TIMEOUT).text
+            page = requests.get(page_url, headers=UA, timeout=TIMEOUT)
+            if page.status_code != 200:
+                print(f"    OH: {slug} -> HTTP {page.status_code}")
+                continue
+            found = _OH_CSV_RE.findall(page.text)
+            if not found:
+                print(f"    OH: no DAM CSV link on {slug}")
+            urls += found
+        except Exception as exc:
+            print(f"    OH: {slug} failed ({exc})")
+    # versionless fallback keeps the current years importable through a
+    # landing-page redesign (pre-2026 pattern; still resolves for {year})
+    for y in (this_year, this_year - 1):
+        urls.append(f"https://dam.assets.ohio.gov/raw/upload/jfs.ohio.gov/{y}/{y}-warn-notice.csv")
+    out, seen = [], set()
+    for u in urls:
+        # same file relinked under new renderer flags / version segments
+        key = re.sub(r"(?:f_auto/|q_auto/|v\d+/)", "", u)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            resp = requests.get(u, headers=UA, timeout=TIMEOUT)
+            if resp.status_code != 200:
+                continue
+            out += _oh_entries_from_csv(resp.text)
         except Exception:
             continue
-        lines = text.splitlines()
-        # headers may sit a couple of renderer-metadata rows down
-        start = next((i for i, ln in enumerate(lines[:6]) if "company" in ln.lower()), None)
-        if start is None:
-            continue
-        for row in _csv.DictReader(io.StringIO("\n".join(lines[start:]))):
-            rl = {(k or "").lower().strip(): (v or "").strip() for k, v in row.items() if k}
-            company = rl.get("company") or ""
-            jobs = _count(rl.get("potential number affected") or rl.get("number affected") or "")
-            date = (_to_iso_date(rl.get("layoff date(s)") or "")
-                    or _to_iso_date(rl.get("date received") or ""))
-            city = (rl.get("city/county") or "").split("/")[0]
-            e = _entry("OH", company, jobs, date, city, detail_url=rl.get("url") or "")
-            if e:
-                out.append(e)
     return out
 
 
@@ -279,6 +317,12 @@ def _pdf_tables(content):
     return tables
 
 
+def _pdf_text(content):
+    import pdfplumber
+    with pdfplumber.open(io.BytesIO(content)) as pdf:
+        return "\n".join((p.extract_text() or "") for p in pdf.pages)
+
+
 def fetch_id():
     """Idaho: one cumulative text-layer PDF; link rotates, scraped from landing."""
     landing = "https://www.labor.idaho.gov/businesss/layoff-assistance/"
@@ -302,60 +346,240 @@ def fetch_id():
     return out
 
 
+def _la_entries_from_tables(tables, url):
+    """LA row shapes: 2026+ is Company|Address|Notice|Layoff|Affected|Industry;
+    2015-2025 is Company(+addr)|Notice|Layoff|Affected|Industry."""
+    out = []
+    for table in tables:
+        for row in table:
+            cells = ["" if c is None else str(c).strip().replace("\n", " ") for c in row]
+            if len(cells) < 5 or "company" in (cells[0] or "").lower():
+                continue
+            if len(cells) >= 6:
+                company, notice, layoff, affected = cells[0], cells[2], cells[3], cells[4]
+            else:
+                company, notice, layoff, affected = cells[0], cells[1], cells[2], cells[3]
+            jobs = _count(affected)
+            date = _to_iso_date(layoff) or _to_iso_date(notice)
+            e = _entry("LA", company, jobs, date, detail_url=url)
+            if e:
+                out.append(e)
+    return out
+
+
 def fetch_la():
-    """Louisiana: per-year text-layer PDFs (2025+), updated in place."""
+    """Louisiana: per-year text-layer PDFs, updated in place. laworks.net now
+    hosts only the current two years — WarnNotices2015-2024.pdf all 404 on the
+    live site (verified 2026-07-18) — so removed years fall back to a Wayback
+    Machine snapshot taken after the year closed (same trust as MN's CDX
+    discovery). Every year is fail-isolated."""
     from datetime import date as _date
     out = []
-    for y in range(2025, _date.today().year + 1):
-        url = f"https://www.laworks.net/Downloads/WFD/WarnNotices{y}.pdf"
+    for y in range(2015, _date.today().year + 1):
+        live = f"https://www.laworks.net/Downloads/WFD/WarnNotices{y}.pdf"
+        content, source = None, live
         try:
-            resp = requests.get(url, headers=UA, timeout=60)
-            if resp.status_code != 200 or not resp.content[:4] == b"%PDF":
-                continue
+            resp = requests.get(live, headers=UA, timeout=60)
+            if resp.status_code == 200 and resp.content[:4] == b"%PDF":
+                content = resp.content
         except Exception:
-            continue
-        for table in _pdf_tables(resp.content):
-            for row in table:
-                cells = ["" if c is None else str(c).strip().replace("\n", " ") for c in row]
-                if len(cells) < 5 or "company" in (cells[0] or "").lower():
+            pass
+        if content is None:
+            # April-after-year-end targets a complete-year snapshot while
+            # steering clear of later capture dates that archived the 404
+            wayback = f"https://web.archive.org/web/{y + 1}0401id_/{live}"
+            for attempt in range(2):  # Wayback is slow and flaky — retry once
+                try:
+                    resp = requests.get(wayback, headers=UA, timeout=90)
+                    if resp.status_code == 200 and resp.content[:4] == b"%PDF":
+                        content, source = resp.content, wayback
+                    break
+                except Exception:
                     continue
-                if len(cells) >= 6:   # 2026: Company|Address|Notice|Layoff|Affected|Industry
-                    company, notice, layoff, affected = cells[0], cells[2], cells[3], cells[4]
-                else:                 # 2025: Company(+addr)|Notice|Layoff|Affected|Industry
-                    company, notice, layoff, affected = cells[0], cells[1], cells[2], cells[3]
-                jobs = _count(affected)
-                date = _to_iso_date(layoff) or _to_iso_date(notice)
-                e = _entry("LA", company, jobs, date, detail_url=url)
-                if e:
-                    out.append(e)
+        if content is None:
+            print(f"    LA {y}: no live or archived PDF")
+            continue
+        try:
+            out += _la_entries_from_tables(_pdf_tables(content), source)
+        except Exception as exc:
+            print(f"    LA {y}: PDF parse failed ({exc})")
+    return out
+
+
+_NC_WARN_BASE = ("https://www.commerce.nc.gov/data-tools-reports/"
+                 "labor-market-data-tools/workforce-warn-reports")
+
+
+def _nc_year_csv(y):
+    """Current NC vintage: Drupal year page -> rotating date-stamped CSV on
+    files.nc.gov (the page slug only exists for the current year or two)."""
+    import csv as _csv
+    page = requests.get(f"{_NC_WARN_BASE}/report-workforce-warn-summary-list-{y}",
+                        headers=UA, timeout=TIMEOUT)
+    if page.status_code != 200:
+        return []
+    m = re.search(r'href="(https://files\.nc\.gov/[^"]+\.csv[^"]*)"', page.text)
+    if not m:
+        return []
+    text = requests.get(_html.unescape(m.group(1)), headers=UA, timeout=TIMEOUT).text
+    out = []
+    for r in _csv.DictReader(io.StringIO(text)):
+        jobs = _count(r.get("Number affected at this location") or "")
+        date = (_to_iso_date(r.get("Effective Date") or "")
+                or _to_iso_date(r.get("Date of Notice") or ""))
+        e = _entry("NC", r.get("WARN Notice: WARN Notice Name"), jobs, date,
+                   r.get("City") or "", kind=r.get("WARN notice type") or "",
+                   detail_url=page.url)
+        if e:
+            out.append(e)
+    return out
+
+
+def _nc_header_cols(cells):
+    """Map the heterogeneous NC header spellings (2018-2021 grids, 2022+
+    grids/CSV) to field indexes; None unless the row looks like a header."""
+    idx = {}
+    for i, c in enumerate(cells):
+        lc = re.sub(r"\s+", " ", str(c or "")).strip().lower()
+        if "warn notice name" in lc or lc == "company":
+            idx["company"] = i
+        elif "number affected" in lc or "no. of employees" in lc:
+            idx["jobs"] = i
+        elif lc == "effective date":
+            idx["eff"] = i
+        elif lc in ("date of notice", "notice date"):
+            idx["notice"] = i
+        elif lc == "city":
+            idx["city"] = i
+        elif "warn notice type" in lc or lc.replace(" ", "") == "layoff/closure":
+            idx["kind"] = i
+    return idx if "company" in idx and "jobs" in idx else None
+
+
+def _nc_grid_entries(tables, url):
+    """Header-keyed rows from the gridded NC archive PDFs (2018+). The 2022+
+    files only carry the header on page 1, so the column map persists across
+    tables/pages."""
+    out, cols = [], None
+    for table in tables:
+        for row in table:
+            cells = ["" if c is None else re.sub(r"\s+", " ", str(c)).strip() for c in row]
+            hdr = _nc_header_cols(cells)
+            if hdr:
+                cols = hdr
+                continue
+            if not cols:
+                continue
+            get = lambda k: cells[cols[k]] if k in cols and cols[k] < len(cells) else ""
+            e = _entry("NC", get("company"), _count(get("jobs")),
+                       _to_iso_date(get("eff")) or _to_iso_date(get("notice")),
+                       get("city"), kind=get("kind"), detail_url=url)
+            if e:
+                out.append(e)
+    return out
+
+
+# 2015-2017 NC reports have no table grid and interleave monthly summary
+# blocks between data rows; these markers identify non-data lines.
+_NC_TEXT_NOISE = re.compile(
+    r"WARN Notice|Date Range|Effective Date|Month:|Total Notices|Sum of|"
+    r"Layoff:|Closure:|Grand Total")
+
+
+def _nc_text_rows(words, url):
+    """2015-2017 NC vintage: bucket pdfplumber words into columns using the
+    x-positions of the per-page header row (Notice Date | Effective Date |
+    Company Name | City | # Emp. Affected + kind). Wrapped company/city
+    continuation lines merge into the previous row."""
+    anchors = {}
+    for w in words:
+        if w["text"] in ("Notice", "Effective", "Company", "City", "#"):
+            anchors.setdefault(round(w["top"]), {}).setdefault(w["text"], w["x0"])
+    header_top = cols = None
+    for top, d in sorted(anchors.items()):
+        if {"Notice", "Effective", "Company", "City"} <= set(d):
+            header_top = top
+            cols = [d["Notice"], d["Effective"], d["Company"], d["City"],
+                    d.get("#", d["City"] + 55)]
+            break
+    if cols is None:
+        return []
+    lines, cur_top = [], None
+    for w in sorted(words, key=lambda x: (x["top"], x["x0"])):
+        if w["top"] <= header_top + 2:
+            continue
+        if cur_top is None or w["top"] - cur_top > 3:
+            lines.append([])
+            cur_top = w["top"]
+        lines[-1].append(w)
+    rows = []  # [notice, effective, company, city, count+kind tail]
+    for ws in lines:
+        cells = ["", "", "", "", ""]
+        for w in sorted(ws, key=lambda x: x["x0"]):
+            ci = 0
+            for i, cx in enumerate(cols):
+                if w["x0"] >= cx - 6:
+                    ci = i
+            cells[ci] = f"{cells[ci]} {w['text']}".strip()
+        if _NC_TEXT_NOISE.search(" ".join(cells)):
+            continue
+        if _to_iso_date(cells[0]) or _to_iso_date(cells[1]):
+            rows.append(cells)
+        elif rows:  # wrapped continuation of the previous row
+            for i in (2, 3):
+                if cells[i]:
+                    rows[-1][i] = f"{rows[-1][i]} {cells[i]}".strip()
+    out = []
+    for cells in rows:
+        kind_m = re.search(r"Layoffs?|Closures?", cells[4])
+        e = _entry("NC", cells[2], _count(cells[4]),
+                   _to_iso_date(cells[1]) or _to_iso_date(cells[0]), cells[3],
+                   kind=kind_m.group(0) if kind_m else "", detail_url=url)
+        if e:
+            out.append(e)
     return out
 
 
 def fetch_nc():
-    """NC Commerce Drupal year page -> rotating date-stamped CSV on files.nc.gov."""
+    """NC Commerce, three vintages (verified 2026-07-18): the current year or
+    two live on Drupal pages with a rotating CSV; 2015-2025 hang off the
+    warn-summary-report-archives page as per-year PDFs — gridded tables for
+    2018+, headerless text columns for 2015-2017. Everything fail-isolated."""
     from datetime import date as _date
     out = []
     for y in (_date.today().year, _date.today().year - 1):  # Jan rollover safety
-        page = requests.get(
-            "https://www.commerce.nc.gov/data-tools-reports/labor-market-data-tools/"
-            f"workforce-warn-reports/report-workforce-warn-summary-list-{y}",
-            headers=UA, timeout=TIMEOUT)
-        if page.status_code != 200:
+        try:
+            out += _nc_year_csv(y)
+        except Exception as exc:
+            print(f"    NC {y}: summary-list failed ({exc})")
+    try:
+        arch = requests.get(f"{_NC_WARN_BASE}/warn-summary-report-archives",
+                            headers=UA, timeout=TIMEOUT)
+        hrefs = re.findall(r'href="([^"]*warn[^"]*/open)"', arch.text, re.I)
+    except Exception as exc:
+        print(f"    NC: archive index failed ({exc})")
+        hrefs = []
+    seen = set()
+    for href in hrefs:
+        ym = re.search(r"(20\d\d)", href)
+        # 2014 exists on the page but predates the tracker's 2015 cutoff
+        if not ym or int(ym.group(1)) < 2015 or href in seen:
             continue
-        m = re.search(r'href="(https://files\.nc\.gov/[^"]+\.csv[^"]*)"', page.text)
-        if not m:
-            continue
-        text = requests.get(_html.unescape(m.group(1)), headers=UA, timeout=TIMEOUT).text
-        import csv as _csv
-        for r in _csv.DictReader(io.StringIO(text)):
-            jobs = _count(r.get("Number affected at this location") or "")
-            date = (_to_iso_date(r.get("Effective Date") or "")
-                    or _to_iso_date(r.get("Date of Notice") or ""))
-            e = _entry("NC", r.get("WARN Notice: WARN Notice Name"), jobs, date,
-                       r.get("City") or "", kind=r.get("WARN notice type") or "",
-                       detail_url=page.url)
-            if e:
-                out.append(e)
+        seen.add(href)
+        url = href if href.startswith("http") else "https://www.commerce.nc.gov" + href
+        try:
+            resp = requests.get(url, headers=UA, timeout=60)
+            if resp.status_code != 200 or resp.content[:4] != b"%PDF":
+                raise RuntimeError(f"HTTP {resp.status_code} / not a PDF")
+            entries = _nc_grid_entries(_pdf_tables(resp.content), url)
+            if not entries:  # 2015-2017 vintage
+                import pdfplumber
+                with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+                    for p in pdf.pages:
+                        entries += _nc_text_rows(p.extract_words(), url)
+            out += entries
+        except Exception as exc:
+            print(f"    NC {ym.group(1)} archive: failed ({exc})")
     return out
 
 
@@ -574,10 +798,94 @@ def fetch_ma():
     return out
 
 
+# --- New York history: the retired dol.ny.gov database (frozen 4/1/2025) ---
+# The hub page itself lists the final Jan-Apr 2025 notices and links plain-
+# HTML year archives for 2023/2024. All three share one 4-column table
+# (Company | Region | Date Posted | Notice Dated) with NO headcount — the
+# count and layoff date live in the per-notice PDF behind each company link
+# (verified 2026-07-18). Live NY data comes from warn-scraper's dashboard
+# scraper; identical dedup hashes make the overlap upsert-safe.
+_NY_HUB = "https://dol.ny.gov/warn-notices"
+
+
+def _ny_listing_rows(page_html):
+    """(company, detail_url, notice_date_text) rows from a retired-NY listing."""
+    rows = []
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", page_html, re.S | re.I):
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S | re.I)
+        if len(cells) < 4:
+            continue
+        link = re.search(r'href="\s*(/warn-[^"]+)"', cells[0])
+        company = _strip_tags(cells[0])
+        if not link or not company:
+            continue
+        rows.append((company, "https://dol.ny.gov" + link.group(1).strip(),
+                     _strip_tags(cells[3])))
+    return rows
+
+
+def _ny_fields_from_text(text):
+    """(jobs, layoff_date_iso) from the uniform NY WARN-unit notice layout.
+    Dates wrap across lines in the PDF text layer ('February\\n12, 2024'), so
+    the field windows are whitespace-flattened first. Amended notices list the
+    original count before the '• Amended to N' bullet — the first-number parse
+    keeps the original, matching the tracker's lower-bound convention."""
+    flat = re.sub(r"\s+", " ", text or "")
+    jm = (re.search(r"Total Number of Affected Workers\s*:?\s*([\d,]+)", flat, re.I)
+          or re.search(r"Number of Affected Employees at Site\s*:?\s*([\d,]+)", flat, re.I))
+    jobs = _count(jm.group(1)) if jm else 0
+    dm = re.search(r"(?:Layoff|Closure)[^:]{0,15}Start Date\s*:\s*(.{0,220})", flat, re.I)
+    date = _to_iso_date(dm.group(1)) if dm else ""
+    if not date:
+        nm = re.search(r"Date of Notice\s*:\s*(.{0,60})", flat, re.I)
+        date = _to_iso_date(nm.group(1)) if nm else ""
+    return jobs, date
+
+
+def fetch_ny_history():
+    """History backfill for NY from the retired database: walk each frozen
+    listing, then fetch every linked per-notice PDF for its count/start date
+    (falling back to the listing's notice date). Listings and notices are each
+    fail-isolated."""
+    listings = [("2025 hub", _NY_HUB),
+                ("2024", "https://dol.ny.gov/2024-warn-notices"),
+                ("2023", "https://dol.ny.gov/2023-warn-notices")]
+    out = []
+    for label, listing_url in listings:
+        try:
+            page = requests.get(listing_url, headers=UA, timeout=TIMEOUT)
+            if page.status_code != 200:
+                raise RuntimeError(f"HTTP {page.status_code}")
+            rows = _ny_listing_rows(page.text)
+        except Exception as exc:
+            print(f"    NY {label}: listing failed ({exc})")
+            continue
+        kept = failed = 0
+        for company, detail_url, notice_text in rows:
+            try:
+                resp = requests.get(detail_url, headers=UA, timeout=60)
+                if resp.status_code != 200:
+                    raise RuntimeError(f"HTTP {resp.status_code}")
+                text = (_pdf_text(resp.content) if resp.content[:4] == b"%PDF"
+                        else _strip_tags(resp.text))
+                jobs, date = _ny_fields_from_text(text)
+            except Exception:
+                failed += 1
+                continue
+            e = _entry("NY", company, jobs, date or _to_iso_date(notice_text),
+                       detail_url=detail_url)
+            if e:
+                out.append(e)
+                kept += 1
+        print(f"    NY {label}: {kept} kept, {failed} failed of {len(rows)} rows")
+    return out
+
+
 CUSTOM_STATES = {
     "TX": fetch_tx, "FL": fetch_fl, "GA": fetch_ga, "OH": fetch_oh,
     "MI": fetch_mi, "CO": fetch_co, "ID": fetch_id, "LA": fetch_la,
     "NC": fetch_nc, "NV": fetch_nv, "MN": fetch_mn, "MA": fetch_ma,
+    "NY": fetch_ny_history,
 }
 
 

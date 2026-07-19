@@ -22,6 +22,7 @@
     context_enrichment: ['Existing source-linked records', 'Daily evidence-only', 'Internal', 'Evidence re-read'],
     edinet_jp: ['EDINET daily filing list — discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
     opendart_kr: ['OpenDART disclosure list — discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
+    cvm_br: ['CVM Fato Relevante yearly index — discovery only, nothing ingested', 'Twice daily', 'Brazil', 'Official open-data portal'],
     companies_house_uk: ['Registered-identity checks; identity support only', 'On demand', 'United Kingdom', 'Official registry API'],
   };
   const srcLabel = id => {
