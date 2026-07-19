@@ -1,8 +1,18 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <main class="alt-wrap alt-health-page" id="alt-health-page">
   <header class="alt-health-hero"><p class="alt-eyebrow">AskTheRecruiter · public operations</p><h1>AI Tracker Health</h1><p>Live collector health, evidence integrity, coverage limits and active quality work. A degraded source is a visible gap—not a zero result.</p><p id="alt-health-updated" role="status">Loading live operational status…</p></header>
+  <nav class="alt-health-toc" aria-label="Page contents">
+    <a href="#alt-sec-actions">Operator actions</a>
+    <a href="#alt-sec-roadmap">Product roadmap</a>
+    <a href="#alt-sec-benchmarks">Benchmark race</a>
+    <a href="#alt-sec-collectors">Collector operations</a>
+    <a href="#alt-sec-runs">Recent runs</a>
+    <a href="#alt-sec-work">Current work</a>
+    <a href="#alt-sec-schedule">Schedule</a>
+    <a href="#alt-sec-changes">Change report</a>
+  </nav>
   <section class="alt-health-summary" aria-label="Operational summary" id="alt-health-summary"></section>
-  <section class="alt-health-grid"><div class="alt-health-section"><h2>Operator actions — needs a human, once</h2><ul class="alt-health-schedule">
+  <section class="alt-health-grid" id="alt-sec-actions"><div class="alt-health-section"><h2>Operator actions — needs a human, once</h2><ul class="alt-health-schedule">
     <li><b>Cloudflare cache rule</b> for <code>/blog/ai-layoff-tracker*</code> ("Eligible for cache") — cuts first paint from ~1.5s to ~200ms.</li>
     <li><b>Search Console:</b> submit <code>/blog/company-layoffs-sitemap.xml</code>.</li>
     <li><b>Denmark Jobindsats key:</b> send the drafted application (docs/outreach/); store as <code>JOBINDSATS_API_KEY_DK</code>.</li>
@@ -16,7 +26,7 @@
     <li><a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/docs/CHALLENGER_GAP_CLOSURE_PLAN.md" target="_blank" rel="noopener">Challenger gap-closure plan</a> — the ranked path to parity, with executed items marked.</li>
     <li><a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality-status</a> · <a href="<?php echo esc_url(rest_url('layoffs/v1/integrity-status')); ?>">integrity-status</a> — machine-readable state for automation.</li>
   </ul></div></section>
-  <section class="alt-health-section alt-feature-list" aria-labelledby="alt-feature-list-heading">
+  <section class="alt-health-section alt-feature-list" id="alt-sec-roadmap" aria-labelledby="alt-feature-list-heading">
     <div class="alt-feature-list-heading"><div><p class="alt-eyebrow">Product roadmap</p><h2 id="alt-feature-list-heading">Features list</h2></div><p>Released capabilities and their rollout state. Live collector status and errors are shown above; this list does not imply complete country coverage.</p></div>
     <div class="alt-feature-grid">
       <article><span class="alt-health-status alt-health-active">Active</span><h3>Source-linked event records</h3><p>Published events keep cited filings, government notices, company statements or named reports; canonical records can retain several reports.</p></article>
@@ -37,17 +47,17 @@
       <article><span class="alt-health-status alt-health-in_progress">In progress</span><h3>WARN transparency dataset</h3><p>The separate evidence-linked research foundation is ready. It will not label an employer non-compliant without verified notice, timing and adjudication evidence.</p></article>
     </div>
   </section>
-  <section class="alt-health-section"><h2>Collector operations</h2><p>Last completed source attempt. Counts are raw candidate documents, not a claim of accepted events.</p><div class="alt-health-table-wrap"><table><thead><tr><th>Source</th><th>Coverage target</th><th>Cadence</th><th>Last pull</th><th>Result</th><th>Status / safe detail</th></tr></thead><tbody id="alt-health-sources"></tbody></table></div></section>
-  <section class="alt-health-section"><div class="alt-health-run-heading"><div><h2>Recent collector runs</h2><p>Append-only history from this health-ledger release onward. It records source attempts and raw candidates—not accepted events—and never reconstructs earlier runs.</p></div><label for="alt-health-run-days">Window <select id="alt-health-run-days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label></div><div class="alt-health-table-wrap"><table><thead><tr><th>When</th><th>Source</th><th>Status</th><th>Raw candidates</th><th>Safe detail</th></tr></thead><tbody id="alt-health-runs"></tbody></table></div></section>
-  <section class="alt-health-grid"><div class="alt-health-section"><h2>Current work</h2><div id="alt-health-workstreams"></div></div><div class="alt-health-section"><h2>Actionable backlogs</h2><div id="alt-health-backlogs"></div></div></section>
-  <section class="alt-health-section"><h2>Schedule and coverage</h2><ul class="alt-health-schedule"><li><b>Railway, twice daily:</b> SEC EDGAR (United States), NewsAPI and global GDELT (worldwide news), reviewed company IR feeds, plus Japan EDINET and South Korea OpenDART discovery probes (official filing lists only — nothing is ingested or classified from them).</li><li><b>GitHub Actions, daily:</b> US WARN and Eurofound ERM (European Union) at 13:00 UTC; dedupe, quality, evidence-hash and bounded enrichment/recovery jobs.</li><li><b>Monthly:</b> strict US Challenger reconciliation. A red threshold is a coverage alert, not a data-ingest crash.</li><li><b>Discovery only:</b> the Japan and South Korea probes report their run health above but are not a coverage claim; an evidence-gated extraction connector must pass review first. United Kingdom Companies House access is identity-support only.</li></ul><p>Collector-run telemetry begins with plugin 2.18.21; legacy daily pull counts are not reconstructed or guessed.</p></section>
-  <section class="alt-health-section"><h2>Benchmark race — Challenger &amp; layoffs.fyi vs ATR</h2>
+  <section class="alt-health-section" id="alt-sec-benchmarks"><h2>Benchmark race — Challenger &amp; layoffs.fyi vs ATR</h2>
     <p>Our cells recompute from the live database on every page load, so each data pull moves this table. Challenger cells update automatically when the monthly reconciliation stores their new report. layoffs.fyi cells are manually verified snapshots (leads-only policy; no automated pulls without their permission) with the as-of date shown.</p>
     <div class="alt-health-table-wrap"><table>
       <thead><tr><th>Measure (2026)</th><th>Challenger</th><th>layoffs.fyi</th><th>ATR (live)</th><th>ATR vs benchmark</th></tr></thead>
       <tbody id="alt-bench-race"><tr><td colspan="5">Loading live benchmark comparison…</td></tr></tbody>
     </table></div>
   </section>
-  <section class="alt-health-section"><h2>Rolling dataset change report</h2><p>Snapshot totals begin at ledger inception. Net change is not labelled as gross additions, because merges, corrections and removals can change the total.</p><div id="alt-health-release-report" aria-live="polite">Loading release and change data…</div></section>
+  <section class="alt-health-section" id="alt-sec-collectors"><h2>Collector operations</h2><p>Last completed source attempt. Counts are raw candidate documents, not a claim of accepted events.</p><div class="alt-health-table-wrap"><table><thead><tr><th>Source</th><th>Coverage target</th><th>Cadence</th><th>Last pull</th><th>Result</th><th>Status / safe detail</th></tr></thead><tbody id="alt-health-sources"></tbody></table></div></section>
+  <section class="alt-health-section" id="alt-sec-runs"><div class="alt-health-run-heading"><div><h2>Recent collector runs</h2><p>Append-only history from this health-ledger release onward. It records source attempts and raw candidates—not accepted events—and never reconstructs earlier runs.</p></div><label for="alt-health-run-days">Window <select id="alt-health-run-days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label></div><div class="alt-health-table-wrap"><table><thead><tr><th>When</th><th>Source</th><th>Status</th><th>Raw candidates</th><th>Safe detail</th></tr></thead><tbody id="alt-health-runs"></tbody></table></div></section>
+  <section class="alt-health-grid" id="alt-sec-work"><div class="alt-health-section"><h2>Current work</h2><div id="alt-health-workstreams"></div></div><div class="alt-health-section"><h2>Actionable backlogs</h2><div id="alt-health-backlogs"></div></div></section>
+  <section class="alt-health-section" id="alt-sec-schedule"><h2>Schedule and coverage</h2><ul class="alt-health-schedule"><li><b>Railway, twice daily:</b> SEC EDGAR (United States), NewsAPI and global GDELT (worldwide news), reviewed company IR feeds, plus Japan EDINET and South Korea OpenDART discovery probes (official filing lists only — nothing is ingested or classified from them).</li><li><b>GitHub Actions, daily:</b> US WARN and Eurofound ERM (European Union) at 13:00 UTC; dedupe, quality, evidence-hash and bounded enrichment/recovery jobs.</li><li><b>Monthly:</b> strict US Challenger reconciliation. A red threshold is a coverage alert, not a data-ingest crash.</li><li><b>Discovery only:</b> the Japan and South Korea probes report their run health above but are not a coverage claim; an evidence-gated extraction connector must pass review first. United Kingdom Companies House access is identity-support only.</li></ul><p>Collector-run telemetry begins with plugin 2.18.21; legacy daily pull counts are not reconstructed or guessed.</p></section>
+  <section class="alt-health-section" id="alt-sec-changes"><h2>Rolling dataset change report</h2><p>Snapshot totals begin at ledger inception. Net change is not labelled as gross additions, because merges, corrections and removals can change the total.</p><div id="alt-health-release-report" aria-live="polite">Loading release and change data…</div></section>
   <p class="alt-health-links">Machine-readable: <a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality</a> · <a href="<?php echo esc_url(rest_url('layoffs/v1/integrity-status')); ?>">integrity</a> · <a href="<?php echo esc_url(rest_url('layoffs/v1/source-health')); ?>">source health</a> · <a href="<?php echo esc_url(rest_url('layoffs/v1/source-runs')); ?>">collector runs</a> · <a href="<?php echo esc_url(rest_url('layoffs/v1/dataset-releases')); ?>">release ledger</a></p>
 </main>

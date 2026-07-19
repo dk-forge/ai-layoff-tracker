@@ -1220,6 +1220,10 @@ body.admin-bar .alt-count-row { top: 32px; }
    iPhone). minmax(0,1fr) above removes the auto minimum; these keep any
    future overflow contained instead of shifting the page borders. */
 .alt-health-page{overflow-x:clip}
+.alt-health-toc{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px}
+.alt-health-toc a{display:inline-block;padding:6px 12px;border:1px solid #d9d2bd;border-radius:999px;background:#fff;font-size:13px;font-weight:600;text-decoration:none;color:inherit}
+.alt-health-toc a:hover{background:#faf7ee;border-color:#c4ba9c}
+.alt-health-page section{scroll-margin-top:80px}
 .alt-feature-grid article,.alt-health-summary>div{overflow-wrap:break-word;min-width:0}
 /* Hide any theme-injected table of contents on plugin surfaces (the PHP
    filter suppresses generation; this covers cached pages until they expire). */
