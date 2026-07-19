@@ -1224,6 +1224,13 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-health-toc a{display:inline-block;padding:6px 12px;border:1px solid #d9d2bd;border-radius:999px;background:#fff;font-size:13px;font-weight:600;text-decoration:none;color:inherit}
 .alt-health-toc a:hover{background:#faf7ee;border-color:#c4ba9c}
 .alt-health-page section{scroll-margin-top:80px}
+.alt-bench-group th{background:#faf7ee;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#6b6345;padding-top:14px}
+.alt-bench-grouphead{border-left:2px solid #e6e0cf;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.alt-bench-table td:nth-child(4){border-right:2px solid #e6e0cf}
+.alt-bench-table td:nth-child(7){border-right:2px solid #e6e0cf}
+.alt-pct-good{color:#187449;font-weight:800}
+.alt-pct-mid{color:#9a6700;font-weight:800}
+.alt-pct-low{color:#a12d2d;font-weight:800}
 .alt-feature-grid article,.alt-health-summary>div{overflow-wrap:break-word;min-width:0}
 /* Hide any theme-injected table of contents on plugin surfaces (the PHP
    filter suppresses generation; this covers cached pages until they expire). */

@@ -57,9 +57,12 @@
     <p id="alt-bench-race-updated" aria-live="polite">Loading update history…</p>
     <h3>Year by year, as far back as both benchmarks publish</h3>
     <p>Challenger figures are from their own year-end reports (AI reason code began May 2023; the 2024 AI figure is Challenger's printed YTD, confirmed exact by their own cumulative arithmetic). layoffs.fyi is worldwide tech only and began tracking March 2020. ATR cells are live.</p>
-    <div class="alt-health-table-wrap"><table>
-      <thead><tr><th>Year</th><th>Challenger US total</th><th>ATR US (live)</th><th>Challenger US AI</th><th>ATR US AI broad (live)</th><th>fyi tech</th><th>ATR tech (live)</th></tr></thead>
-      <tbody id="alt-bench-history"><tr><td colspan="7">Loading year-by-year comparison…</td></tr></tbody>
+    <div class="alt-health-table-wrap"><table class="alt-bench-table">
+      <thead>
+        <tr><th rowspan="2">Year</th><th colspan="3" class="alt-bench-grouphead">All US cuts</th><th colspan="3" class="alt-bench-grouphead">US AI cuts</th><th colspan="3" class="alt-bench-grouphead">Tech cuts, worldwide</th></tr>
+        <tr><th>Challenger</th><th>ATR</th><th>%</th><th>Challenger</th><th>ATR broad</th><th>%</th><th>layoffs.fyi</th><th>ATR</th><th>%</th></tr>
+      </thead>
+      <tbody id="alt-bench-history"><tr><td colspan="10">Loading year-by-year comparison…</td></tr></tbody>
     </table></div>
   </section>
   <section class="alt-health-section" id="alt-sec-collectors"><h2>Collector operations</h2><p>Last completed source attempt. Counts are raw candidate documents, not a claim of accepted events.</p><div class="alt-health-table-wrap"><table><thead><tr><th>Source</th><th>Coverage target</th><th>Cadence</th><th>Last pull</th><th>Result</th><th>Status / safe detail</th></tr></thead><tbody id="alt-health-sources"></tbody></table></div></section>

@@ -114,14 +114,20 @@
       agg('years=' + y + '&industry=Technology'),
     ]))).then(rows => {
       const fmtN = v => (v == null ? '—' : Number(v).toLocaleString('en-US'));
-      const pctCell = (ours, bench) => fmtN(ours) + ((ours != null && bench > 0) ? ' <span class="alt-health-src-meta">' + Math.round(100 * ours / bench) + '%</span>' : '');
+      const pctBadge = (ours, bench) => {
+        if (ours == null || !(bench > 0)) return '—';
+        const p2 = Math.round(100 * ours / bench);
+        const cls = p2 >= 90 ? 'alt-pct-good' : (p2 >= 60 ? 'alt-pct-mid' : 'alt-pct-low');
+        return '<span class="' + cls + '">' + p2 + '%</span>';
+      };
       body.innerHTML = years.map((y, i) => {
         const h = BENCH_HISTORY[y];
         const us = rows[i][0] && rows[i][0].totals ? rows[i][0].totals : {};
         const tech = rows[i][1] && rows[i][1].totals ? rows[i][1].totals : {};
-        return '<tr><td><b>' + y + '</b></td><td>' + fmtN(h.chal) + '</td><td>' + pctCell(us.jobs, h.chal) +
-          '</td><td>' + fmtN(h.chalAI) + '</td><td>' + pctCell(us.ai_broad_jobs, h.chalAI) +
-          '</td><td>' + fmtN(h.fyi) + '</td><td>' + pctCell(tech.jobs, h.fyi) + '</td></tr>';
+        return '<tr><td><b>' + y + '</b></td>' +
+          '<td>' + fmtN(h.chal) + '</td><td>' + fmtN(us.jobs) + '</td><td>' + pctBadge(us.jobs, h.chal) + '</td>' +
+          '<td>' + fmtN(h.chalAI) + '</td><td>' + fmtN(us.ai_broad_jobs) + '</td><td>' + pctBadge(us.ai_broad_jobs, h.chalAI) + '</td>' +
+          '<td>' + fmtN(h.fyi) + '</td><td>' + fmtN(tech.jobs) + '</td><td>' + pctBadge(tech.jobs, h.fyi) + '</td></tr>';
       }).join('');
       // Fill 2026 Challenger cells from the stored reconciliation records
       safeGet('benchmarks/challenger').then(chal => {
@@ -130,9 +136,9 @@
         const firstRow = body.querySelector('tr');
         if (!firstRow) return;
         const cells = firstRow.querySelectorAll('td');
-        if (cells.length >= 4) {
+        if (cells.length >= 7) {
           if (latest.challenger_total_jobs_ytd) cells[1].textContent = Number(latest.challenger_total_jobs_ytd).toLocaleString('en-US') + ' YTD';
-          if (latest.challenger_ai_jobs_ytd) cells[3].textContent = Number(latest.challenger_ai_jobs_ytd).toLocaleString('en-US') + ' YTD';
+          if (latest.challenger_ai_jobs_ytd) cells[4].textContent = Number(latest.challenger_ai_jobs_ytd).toLocaleString('en-US') + ' YTD';
         }
       });
     }).catch(() => {
@@ -170,19 +176,29 @@
       const techBroad = tech && tech.totals ? tech.totals.ai_broad_jobs : null;
       const worldJobs = world && world.totals ? world.totals.jobs : null;
       const worldBroad = world && world.totals ? world.totals.ai_broad_jobs : null;
-      const pct = (ours, bench) => (ours != null && bench > 0) ? Math.round(100 * ours / bench) + '%' : '—';
+      const pct = (ours, bench) => {
+        if (ours == null || !(bench > 0)) return '—';
+        const p2 = Math.round(100 * ours / bench);
+        const cls = p2 >= 90 ? 'alt-pct-good' : (p2 >= 60 ? 'alt-pct-mid' : 'alt-pct-low');
+        return '<span class="' + cls + '">' + p2 + '%</span>';
+      };
       const row = (label, c, f, a, vs) => '<tr><td>' + label + '</td><td>' + c + '</td><td>' + f + '</td><td><b>' + a + '</b></td><td>' + vs + '</td></tr>';
+      const group = label => '<tr class="alt-bench-group"><th colspan="5">' + label + '</th></tr>';
       body.innerHTML =
-        row('US total cuts, YTD (job location)', fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
-        row('US total cuts, YTD — US-employer basis (Challenger-comparable)', fmtN(chalTotalYtd), '—', fmtN(usEmpJobs), pct(usEmpJobs, chalTotalYtd)) +
-        row('US AI cuts, YTD (broad, job location)', fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
-        row('US AI cuts, YTD — US-employer basis (broad, Challenger-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
-        row('US total cuts, latest report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalTotalMo), '—', '—', '—') +
-        row('US AI cuts, latest report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
-        row('Tech cuts, worldwide (Challenger sector, ' + CHAL_STATIC.asOf + ' · fyi as of ' + FYI.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal) + ' of fyi') +
-        row('Tech AI cuts, worldwide (broad · fyi as of ' + FYI.asOf + ')', '—', fmtN(FYI.techAI), fmtN(techBroad), pct(techBroad, FYI.techAI) + ' of fyi') +
-        row('All industries worldwide', '—', '—', fmtN(worldJobs), '') +
-        row('Worldwide AI (broad)', '—', '—', fmtN(worldBroad), '');
+        group('ALL CUTS — United States') +
+        row('By US employer, YTD (Challenger-comparable)', fmtN(chalTotalYtd), '—', fmtN(usEmpJobs), pct(usEmpJobs, chalTotalYtd)) +
+        row('By US job location, YTD', fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
+        row('Latest Challenger report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalTotalMo), '—', '—', '—') +
+        group('AI CUTS — United States') +
+        row('By US employer, broad (Challenger-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
+        row('By US job location, broad', fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
+        row('Latest Challenger report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
+        group('TECH — worldwide (layoffs.fyi-comparable · fyi as of ' + FYI.asOf + ')') +
+        row('Tech cuts (Challenger sector col, ' + CHAL_STATIC.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal)) +
+        row('Tech AI cuts (broad)', '—', fmtN(FYI.techAI), fmtN(techBroad), pct(techBroad, FYI.techAI)) +
+        group('WORLDWIDE — ATR only (no benchmark measures this)') +
+        row('All industries, all countries', '—', '—', fmtN(worldJobs), '') +
+        row('AI cuts, broad', '—', '—', fmtN(worldBroad), '');
       // Per-column update history: last 3 timestamps each, all live.
       const fmtT = iso => { try { return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return iso; } };
       const chalTimes = (Array.isArray(chal) ? chal : [])
