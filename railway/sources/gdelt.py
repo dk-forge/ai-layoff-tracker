@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 
 import requests
 
+from sources import gdelt_bq
+
 from source_registry import discovery_terms
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
@@ -668,6 +670,19 @@ def _query_window(query, start, end, max_records):
 
 def pull_gdelt_between(start, end, max_records=250):
     """Return raw layoff-news entries (trusted domains) filed in [start, end]."""
+    # Prefer the BigQuery mirror when its credential is configured: same
+    # dataset, per-project quota, no shared-endpoint 429s, and no 250-record
+    # cap (which also makes the segment rotation unnecessary for the window).
+    # Any failure falls straight back to the public API path below.
+    if gdelt_bq.available():
+        try:
+            from source_registry import discovery_terms as _terms
+            bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
+            print(f"GDELT via BigQuery mirror: {len(bq_articles)} article(s), no rate limits")
+            return _fetch_trusted(bq_articles)
+        except Exception as e:
+            print(f"GDELT BigQuery mirror failed ({e}); falling back to public API")
+
     # GDELT throttles aggressively on historical sweeps — back off and retry
     # instead of surrendering the whole month window (a 72-window backfill
     # once lost 63 windows to 429s without this).
@@ -693,6 +708,12 @@ def pull_gdelt_between(start, end, max_records=250):
         print(f"GDELT segment {segment_query[-48:]}: {len(seg_articles)} article(s)")
         articles.extend(seg_articles)
 
+    return _fetch_trusted(articles)
+
+
+def _fetch_trusted(articles):
+    """Trusted-domain gate + concurrent article fetch, shared by both the
+    BigQuery-mirror and public-API paths."""
     candidates, seen = [], set()
     for a in articles:
         url = a.get("url")

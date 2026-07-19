@@ -33,6 +33,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}
         run: |
           missing=0
           for v in OPENROUTER_API_KEY WP_API_KEY; do
