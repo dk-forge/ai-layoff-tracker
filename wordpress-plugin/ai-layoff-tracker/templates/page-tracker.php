@@ -206,7 +206,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
-                <span class="alt-stat-label">Announced job cuts</span>
+                <span class="alt-stat-label">Announced job cuts (planned)</span>
                 <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
             </div>
@@ -239,7 +239,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
-                <span class="alt-stat-label">AI-linked announced plans</span>
+                <span class="alt-stat-label">AI-linked planned cuts (announced)</span>
                 <span class="alt-stat-desc">Part of Announced: plans citing AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
             </div>
@@ -248,7 +248,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
-                <span class="alt-stat-label">US AI job cuts, incl. announced</span>
+                <span class="alt-stat-label">US AI job cuts, incl. planned</span>
                 <span class="alt-stat-desc">Every AI cut by a US company this year: verified, announced, and press-linked combined. Always the full US year, no matter what filters are set.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-share-line"></span>
