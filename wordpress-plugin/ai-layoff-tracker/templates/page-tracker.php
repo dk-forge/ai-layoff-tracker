@@ -247,7 +247,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
                 <span class="alt-stat-label">All AI job cuts, incl. announced</span>
-                <span class="alt-stat-desc">Every AI-linked cut this year, counted by US employer: the like-for-like total against the US benchmark. Fixed scope: it does not follow the filters.</span>
+                <span class="alt-stat-desc">All AI cuts by US companies this year: verified, announced, and press-linked combined. Always the full year, no matter what filters are set.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
             </div>
         </div>

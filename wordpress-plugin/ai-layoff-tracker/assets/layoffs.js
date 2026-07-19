@@ -697,19 +697,7 @@
             var tot = a && a.totals && a.totals.ai_broad_jobs;
             if (tot == null) return;
             setText('alt-stat-ai-anticipated', fmt(tot));
-            var sub = yNow + ' YTD · US employers';
-            var card = document.querySelector('[data-challenger]');
-            if (card) {
-                try {
-                    var cd = JSON.parse(card.getAttribute('data-challenger') || '{}');
-                    if (cd.ai_ytd && cd.ref_month && a.series) {
-                        var thru = 0;
-                        a.series.forEach(function (sr) { if (sr.month <= cd.ref_month) thru += sr.ai_broad_jobs || 0; });
-                        sub += ' · through ' + monthLabel(cd.ref_month) + ': ' + Math.round(100 * thru / cd.ai_ytd) + '% of the US benchmark';
-                    }
-                } catch (e) { /* generic sub */ }
-            }
-            setText('alt-stat-ai-anticipated-sub', sub);
+            setText('alt-stat-ai-anticipated-sub', yNow + ' YTD · US employers');
         }).catch(function () { setText('alt-stat-ai-anticipated', '—'); });
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
@@ -723,7 +711,7 @@
         setText('alt-stat-states', t.states > 0 ? fmt(t.states) : '0');
         // Singular/plural so "1 countries" never renders
         setText('alt-stat-industries-label', t.industries === 1 ? 'industry' : 'industries');
-        setText('alt-stat-countries-label', (t.countries === 1 ? 'country' : 'countries') + ' with events');
+        setText('alt-stat-countries-label', (t.countries === 1 ? 'country' : 'countries') + ' with layoffs');
         setText('alt-stat-states-label', t.states === 1 ? 'US state' : 'US states');
 
         // The earliest and latest layoff dates actually present in this view.
