@@ -835,7 +835,7 @@
         var countryTitle = document.getElementById('alt-country-chart-title');
         if (countryTitle) {
             countryTitle.innerHTML = selectedList('alt-f-country').length
-                ? 'By country <span class="alt-chart-sub">Other possible country pivots · tap to filter</span>'
+                ? 'By country <span class="alt-chart-sub">Other countries you could pivot to · tap to filter</span>'
                 : 'By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
         }
     }
@@ -1638,8 +1638,13 @@
         var base = tab.countries.length ? { country: tab.countries.join(',') } : {};
         var pThis = Object.assign({ years: String(y) }, base);
         var pPrev = Object.assign({ years: String(y - 1) }, base);
-        Promise.all([apiGet('aggregate', pThis), apiGet('aggregate', pPrev)]).then(function (r) {
-            var t = r[0].totals, p = r[1].totals;
+        var iso = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+        var d7 = new Date(now.getTime() - 6 * 86400000), d14 = new Date(now.getTime() - 13 * 86400000), d8 = new Date(now.getTime() - 7 * 86400000);
+        var pWeek = Object.assign({ from: iso(d7), to: iso(now) }, base);
+        var pWeekPrev = Object.assign({ from: iso(d14), to: iso(d8) }, base);
+        Promise.all([apiGet('aggregate', pThis), apiGet('aggregate', pPrev), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev)]).then(function (r) {
+            var t = r[0].totals, p = r[1].totals, w = r[2].totals, wp = r[3].totals;
+            var wLead = (r[2].leaders || [])[0];
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             // Verified-only figures, so the narrative matches the "Verified job
             // cuts" card exactly (announced cuts are stated separately).
@@ -1667,6 +1672,20 @@
             }
             txt += '. Across all of ' + b(y - 1) + ', ' + b(fmt(pV)) + ' verified event' +
                 (pV === 1 ? '' : 's') + ' affected ' + b(fmt(pJ)) + ' workers' + perDay(perDayPrev) + '.';
+            var wJ = w.jobs - (w.announced_jobs || 0), wpJ = wp.jobs - (wp.announced_jobs || 0);
+            var wE = w.entries - (w.announced_entries || 0);
+            if (wJ > 0) {
+                txt += ' This week: ' + b(fmt(wJ)) + ' workers across ' + b(fmt(wE)) +
+                    ' verified event' + (wE === 1 ? '' : 's');
+                if (wLead && wLead.job_count) {
+                    txt += ' — the largest at ' + b(wLead.company_name) + ' (' + b(fmt(wLead.job_count)) + ')';
+                }
+                if (wpJ > 0) {
+                    var delta = Math.round(100 * (wJ - wpJ) / wpJ);
+                    txt += delta >= 0 ? ', up ' + b(delta + '%') + ' on the week before.'
+                                     : ', down ' + b(Math.abs(delta) + '%') + ' on the week before.';
+                } else { txt += '.'; }
+            }
             if (!tV && !pV && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still filling in from the worldwide press index. Pick "All time" in the Years filter to see earlier verified events.';
             }
