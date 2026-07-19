@@ -543,3 +543,16 @@ OpenText 400, Tokopedia 450, Paytm 400, Groupon 400, MyHeritage 75-vs-500
 count conflict, and the ~85 smaller companies in the agent's diff_final.json).
 POLICY REMINDER: their rows are leads only; every seed must cite the
 underlying named-outlet article, never the aggregator.
+
+## Verified benchmark histories (researched 2026-07-19, on the health page)
+
+Challenger annual US totals from their own year-end reports: 2019: 592,556 ·
+2020: 2,304,755 (COVID) · 2021: 321,970 · 2022: 363,824 · 2023: 721,677 (AI
+4,247; AI reason code began May 2023) · 2024: 761,358 (AI 12,742 — their
+printed Sept-2024 YTD, confirmed exact by Dec-2025 cumulative arithmetic:
+71,825 - 54,836 - 4,247 = 12,742) · 2025: 1,206,374 (AI 54,836).
+layoffs.fyi (worldwide tech, began Mar 2020, per their year pages): 2020:
+80,998 · 2021: 15,823 · 2022: 165,269 · 2023: 265,660 · 2024: 152,922 ·
+2025: 122,606 · 2026 snapshot 2026-07-18: 121,326 (AI 95,829).
+These render in health.js BENCH_HISTORY with live ATR columns; update the
+constants when re-verified, with the as-of date.

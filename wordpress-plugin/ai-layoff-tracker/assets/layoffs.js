@@ -1144,8 +1144,58 @@
         }).catch(function () { clearChart('alt-chart-yoy'); });
     }
 
+    var CMP_SHARE_SEQ = 0;
+    function renderCompareAiShare(cmp) {
+        var seq = ++CMP_SHARE_SEQ;
+        Promise.all(cmp.values.map(function (v) {
+            var params = currentParams();
+            params[cmp.dim === 'years' ? 'years' : 'country'] = v;
+            return apiGet('aggregate', params).then(function (a) { return (a && a.series) || []; });
+        })).then(function (lists) {
+            if (seq !== CMP_SHARE_SEQ) return;
+            var share = function (srow) {
+                var v = (srow.verified_jobs != null) ? srow.verified_jobs : srow.jobs;
+                var ai = (srow.ai_verified_jobs != null) ? srow.ai_verified_jobs : (srow.ai_jobs || 0);
+                return v > 0 ? Math.round(1000 * ai / v) / 10 : null;
+            };
+            var labels, datasets;
+            var nowYearNum = new Date().getFullYear();
+            var nowKey = pad2(new Date().getMonth() + 1);
+            if (cmp.dim === 'years') {
+                var mm = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+                labels = mm.map(function (mo) { return monthLabel('2000-' + mo).split(' ')[0]; });
+                datasets = cmp.values.map(function (yr, i) {
+                    var by = {};
+                    lists[i].forEach(function (srow) { by[srow.month.slice(5)] = share(srow); });
+                    return { label: String(yr),
+                        data: mm.map(function (mo) { return (parseInt(yr, 10) === nowYearNum && mo > nowKey) ? null : (by[mo] != null ? by[mo] : null); }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.25, spanGaps: true };
+                });
+            } else {
+                var monthSet = {};
+                lists.forEach(function (l) { l.forEach(function (srow) { monthSet[srow.month] = 1; }); });
+                var months = Object.keys(monthSet).sort().filter(function (mo) { return mo <= nowYearNum + '-' + nowKey; });
+                labels = months.map(monthLabel);
+                datasets = cmp.values.map(function (c, i) {
+                    var by = {};
+                    lists[i].forEach(function (srow) { by[srow.month] = share(srow); });
+                    return { label: c, data: months.map(function (mo) { return by[mo] != null ? by[mo] : null; }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.25, spanGaps: true };
+                });
+            }
+            if (!datasets.some(function (d) { return d.data.some(function (v) { return v > 0; }); })) { clearChart('alt-chart-ai-share-trend'); return; }
+            var options = cloneOptions();
+            options.scales.y.ticks.callback = function (v) { return v + '%'; };
+            options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + ctx.parsed.y + '%'; } };
+            mountChart('alt-chart-ai-share-trend', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
+        }).catch(function () { /* merged view already rendered as fallback */ });
+    }
+
     function renderAiShare(series) {
         if (!document.getElementById('alt-chart-ai-share-trend')) return;
+        var cmpShare = compareSelections();
+        if (cmpShare) { renderCompareAiShare(cmpShare); return; }
         series = fillMonths(series);
         var pts = (series || []).map(function (s) {
             var v = (s.verified_jobs != null) ? s.verified_jobs : s.jobs;

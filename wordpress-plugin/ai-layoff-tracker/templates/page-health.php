@@ -54,6 +54,12 @@
       <tbody id="alt-bench-race"><tr><td colspan="5">Loading live benchmark comparison…</td></tr></tbody>
     </table></div>
     <p id="alt-bench-race-updated" aria-live="polite">Loading update history…</p>
+    <h3>Year by year, as far back as both benchmarks publish</h3>
+    <p>Challenger figures are from their own year-end reports (AI reason code began May 2023; the 2024 AI figure is Challenger's printed YTD, confirmed exact by their own cumulative arithmetic). layoffs.fyi is worldwide tech only and began tracking March 2020. ATR cells are live.</p>
+    <div class="alt-health-table-wrap"><table>
+      <thead><tr><th>Year</th><th>Challenger US total</th><th>ATR US (live)</th><th>Challenger US AI</th><th>ATR US AI broad (live)</th><th>fyi tech</th><th>ATR tech (live)</th></tr></thead>
+      <tbody id="alt-bench-history"><tr><td colspan="7">Loading year-by-year comparison…</td></tr></tbody>
+    </table></div>
   </section>
   <section class="alt-health-section" id="alt-sec-collectors"><h2>Collector operations</h2><p>Last completed source attempt. Counts are raw candidate documents, not a claim of accepted events.</p><div class="alt-health-table-wrap"><table><thead><tr><th>Source</th><th>Coverage target</th><th>Cadence</th><th>Last pull</th><th>Result</th><th>Status / safe detail</th></tr></thead><tbody id="alt-health-sources"></tbody></table></div></section>
   <section class="alt-health-section" id="alt-sec-runs"><div class="alt-health-run-heading"><div><h2>Recent collector runs</h2><p>Append-only history from this health-ledger release onward. It records source attempts and raw candidates—not accepted events—and never reconstructs earlier runs.</p></div><label for="alt-health-run-days">Window <select id="alt-health-run-days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label></div><div class="alt-health-table-wrap"><table><thead><tr><th>When</th><th>Source</th><th>Status</th><th>Raw candidates</th><th>Safe detail</th></tr></thead><tbody id="alt-health-runs"></tbody></table></div></section>

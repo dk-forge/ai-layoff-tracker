@@ -92,6 +92,54 @@
   // permission).
   const FYI = { asOf: '2026-07-18', techTotal: 121326, techAI: 95829, history: ['2026-07-18'] };
   const CHAL_STATIC = { asOf: '2026-06 report', techTotal: 139156 };
+  // Verified 2026-07-19 from each publisher's own year pages/reports (see
+  // docs/QUALITY_ROADMAP_HANDOVER.md). fyi = worldwide tech, began Mar 2020.
+  const BENCH_HISTORY = {
+    2019: { chal: 592556, chalAI: null, fyi: null },
+    2020: { chal: 2304755, chalAI: null, fyi: 80998 },
+    2021: { chal: 321970, chalAI: null, fyi: 15823 },
+    2022: { chal: 363824, chalAI: null, fyi: 165269 },
+    2023: { chal: 721677, chalAI: 4247, fyi: 265660 },
+    2024: { chal: 761358, chalAI: 12742, fyi: 152922 },
+    2025: { chal: 1206374, chalAI: 54836, fyi: 122606 },
+    2026: { chal: null, chalAI: null, fyi: 121326 }, // 2026 Challenger cells fill from the stored YTD records
+  };
+  function renderBenchHistory() {
+    const body = document.getElementById('alt-bench-history');
+    if (!body) return;
+    const years = Object.keys(BENCH_HISTORY).sort().reverse();
+    const agg = p => fetch(api + 'aggregate?' + p, { headers: { Accept: 'application/json' } }).then(r => r.json()).catch(() => null);
+    Promise.all(years.map(y => Promise.all([
+      agg('years=' + y + '&country=United%20States'),
+      agg('years=' + y + '&industry=Technology'),
+    ]))).then(rows => {
+      const fmtN = v => (v == null ? '—' : Number(v).toLocaleString('en-US'));
+      const pctCell = (ours, bench) => fmtN(ours) + ((ours != null && bench > 0) ? ' <span class="alt-health-src-meta">' + Math.round(100 * ours / bench) + '%</span>' : '');
+      body.innerHTML = years.map((y, i) => {
+        const h = BENCH_HISTORY[y];
+        const us = rows[i][0] && rows[i][0].totals ? rows[i][0].totals : {};
+        const tech = rows[i][1] && rows[i][1].totals ? rows[i][1].totals : {};
+        return '<tr><td><b>' + y + '</b></td><td>' + fmtN(h.chal) + '</td><td>' + pctCell(us.jobs, h.chal) +
+          '</td><td>' + fmtN(h.chalAI) + '</td><td>' + pctCell(us.ai_broad_jobs, h.chalAI) +
+          '</td><td>' + fmtN(h.fyi) + '</td><td>' + pctCell(tech.jobs, h.fyi) + '</td></tr>';
+      }).join('');
+      // Fill 2026 Challenger cells from the stored reconciliation records
+      safeGet('benchmarks/challenger').then(chal => {
+        const latest = Array.isArray(chal) && chal.length ? chal[0] : null;
+        if (!latest) return;
+        const firstRow = body.querySelector('tr');
+        if (!firstRow) return;
+        const cells = firstRow.querySelectorAll('td');
+        if (cells.length >= 4) {
+          if (latest.challenger_total_jobs_ytd) cells[1].textContent = Number(latest.challenger_total_jobs_ytd).toLocaleString('en-US') + ' YTD';
+          if (latest.challenger_ai_jobs_ytd) cells[3].textContent = Number(latest.challenger_ai_jobs_ytd).toLocaleString('en-US') + ' YTD';
+        }
+      });
+    }).catch(() => {
+      body.innerHTML = '<tr><td colspan="7">Year-by-year comparison could not load this time — refresh to retry.</td></tr>';
+    });
+  }
+  renderBenchHistory();
   function renderBenchRace() {
     const body = document.getElementById('alt-bench-race');
     if (!body) return;
