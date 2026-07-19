@@ -580,12 +580,17 @@
         // not as "France +7" — the raw form confused readers.
         var countries = selectedList('alt-f-country');
         if (countries.length) {
+            // Up to four selections are named in full — "Australia +2 more"
+            // hid exactly the cross-reference the picker exists for. Five or
+            // more fall back to the compact form.
             parts.push(regionNameFor(countries) ||
-                (countries[0] + (countries.length > 1 ? ' +' + (countries.length - 1) + ' more' : '')));
+                (countries.length <= 4 ? countries.join(' · ')
+                    : countries.slice(0, 3).join(' · ') + ' +' + (countries.length - 3) + ' more'));
         }
         [['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
             var v = selectedList(p[0]);
-            if (v.length) parts.push((p[1] || '') + v[0] + (v.length > 1 ? ' +' + (v.length - 1) + ' more' : ''));
+            if (v.length) parts.push((p[1] || '') + (v.length <= 3 ? v.join(' · ')
+                : v.slice(0, 2).join(' · ') + ' +' + (v.length - 2) + ' more'));
         });
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
