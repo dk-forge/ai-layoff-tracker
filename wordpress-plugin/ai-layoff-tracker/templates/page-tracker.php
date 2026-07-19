@@ -50,7 +50,8 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
     <?php $alt_cov = alt_coverage_counts(); ?>
     <div class="alt-narrative" id="alt-narrative"></div>
-    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
+    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>every SEC 8-K filing, official WARN notices from 41 US states, and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
     <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -242,8 +243,8 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-countries">—</span>
-                <span class="alt-stat-label">Countries</span>
-                <span class="alt-stat-sub"></span>
+                <span class="alt-stat-label">Countries with events</span>
+                <span class="alt-stat-sub">we scan <?php echo number_format((int) $alt_scan_countries); ?> countries</span>
             </div>
         </div>
         <nav class="alt-stats-links" aria-label="About these results">
