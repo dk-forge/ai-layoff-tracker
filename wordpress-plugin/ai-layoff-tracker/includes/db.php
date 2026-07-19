@@ -2411,6 +2411,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'ai_verified_entries' => (int) $totals->ai_verified_entries,
             'ai_announced_jobs'    => (int) $totals->ai_announced_jobs,
             'ai_announced_entries' => (int) $totals->ai_announced_entries,
+            'ai_broad_jobs'        => (int) $totals->ai_broad_jobs,
+            'ai_broad_entries'     => (int) $totals->ai_broad_entries,
             'announced_entries' => (int) $totals->announced_entries,
             'announced_jobs'    => (int) $totals->announced_jobs,
             'ai_entries' => (int) $totals->ai_entries,
