@@ -90,7 +90,7 @@
   // the stored monthly reconciliation records; layoffs.fyi cells are dated
   // manual snapshots (leads-only policy — no automated pulls without their
   // permission).
-  const FYI = { asOf: '2026-07-18', techTotal: 121326, techAI: 95829 };
+  const FYI = { asOf: '2026-07-18', techTotal: 121326, techAI: 95829, history: ['2026-07-18'] };
   const CHAL_STATIC = { asOf: '2026-06 report', techTotal: 139156 };
   function renderBenchRace() {
     const body = document.getElementById('alt-bench-race');
@@ -101,7 +101,8 @@
       agg('years=2026&industry=Technology'),
       agg('years=2026'),
       safeGet('benchmarks/challenger'),
-    ]).then(([us, tech, world, chal]) => {
+      safeGet('source-runs?days=7&per_page=100'),
+    ]).then(([us, tech, world, chal, runsResp]) => {
       const fmtN = v => (v == null ? '—' : Number(v).toLocaleString('en-US'));
       const latest = Array.isArray(chal) && chal.length ? chal[0] : {};
       const chalTotalYtd = latest.challenger_total_jobs_ytd;
@@ -126,6 +127,20 @@
         row('Tech AI cuts, worldwide (broad · fyi as of ' + FYI.asOf + ')', '—', fmtN(FYI.techAI), fmtN(techBroad), pct(techBroad, FYI.techAI) + ' of fyi') +
         row('All industries worldwide', '—', '—', fmtN(worldJobs), '') +
         row('Worldwide AI (broad)', '—', '—', fmtN(worldBroad), '');
+      // Per-column update history: last 3 timestamps each, all live.
+      const fmtT = iso => { try { return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return iso; } };
+      const chalTimes = (Array.isArray(chal) ? chal : [])
+        .map(r2 => r2.recorded_at).filter(Boolean)
+        .sort().reverse().filter((v, i2, a) => a.indexOf(v) === i2).slice(0, 3).map(fmtT);
+      const atrTimes = ((runsResp && runsResp.runs) || [])
+        .filter(r2 => r2.status === 'ok' && r2.attempted_at)
+        .map(r2 => r2.attempted_at).sort().reverse().slice(0, 3).map(fmtT);
+      const upd = document.getElementById('alt-bench-race-updated');
+      if (upd) upd.innerHTML =
+        '<b>Column update history (last 3):</b> ' +
+        'ATR data pulls: ' + (atrTimes.join(' · ') || 'none in 7 days') +
+        ' &nbsp;|&nbsp; Challenger stored reports: ' + (chalTimes.join(' · ') || 'none yet') +
+        ' &nbsp;|&nbsp; layoffs.fyi manual snapshots: ' + FYI.history.join(' · ');
     }).catch(() => {
       body.innerHTML = '<tr><td colspan="5">Benchmark comparison could not load this time — refresh to retry.</td></tr>';
     });
