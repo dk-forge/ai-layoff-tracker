@@ -37,6 +37,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}
+          GDELT_PREFER_BQ: '1'
           WP_SITE_URL: https://asktherecruiter.com/blog
           # Bounds DeepSeek work and wall time. Manual historical backfills
           # remain uncapped unless their operator explicitly sets a limit.

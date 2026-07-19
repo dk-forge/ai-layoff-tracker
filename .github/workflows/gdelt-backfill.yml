@@ -34,6 +34,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}
+          GDELT_PREFER_BQ: '1'
         run: |
           missing=0
           for v in OPENROUTER_API_KEY WP_API_KEY; do

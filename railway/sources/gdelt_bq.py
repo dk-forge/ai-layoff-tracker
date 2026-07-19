@@ -88,7 +88,7 @@ def query_window_articles(start, end, terms):
                 LOWER(IFNULL(REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>'), '')),
                 @title_re)
           )
-        LIMIT @limit
+        LIMIT 900
     """
     job = client.query(sql, job_config=bigquery.QueryJobConfig(
         maximum_bytes_billed=MAX_BYTES_BILLED,
@@ -99,7 +99,6 @@ def query_window_articles(start, end, terms):
             bigquery.ScalarQueryParameter("window_start", "INT64", int(start.strftime("%Y%m%d%H%M%S"))),
             bigquery.ScalarQueryParameter("window_end", "INT64", int(end.strftime("%Y%m%d%H%M%S"))),
             bigquery.ScalarQueryParameter("title_re", "STRING", title_pattern(terms)),
-            bigquery.ScalarQueryParameter("limit", "INT64", RESULT_LIMIT),
         ],
     ))
     return rows_to_articles(dict(row) for row in job.result())

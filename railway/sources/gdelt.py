@@ -670,11 +670,14 @@ def _query_window(query, start, end, max_records):
 
 def pull_gdelt_between(start, end, max_records=250):
     """Return raw layoff-news entries (trusted domains) filed in [start, end]."""
-    # Prefer the BigQuery mirror when its credential is configured: same
-    # dataset, per-project quota, no shared-endpoint 429s, and no 250-record
-    # cap (which also makes the segment rotation unnecessary for the window).
-    # Any failure falls straight back to the public API path below.
-    if gdelt_bq.available():
+    # Quota policy (sandbox: 1 TB scanned/month): the BigQuery mirror is
+    # PREFERRED for historical sweeps (GDELT_PREFER_BQ=1 in those workflows —
+    # bounded windows, where shared-endpoint 429s actually lose data) and is
+    # the FALLBACK for live pulls when the public API abandons a window. Both
+    # directions keep monthly scans far inside quota; every query also has a
+    # hard bytes cap.
+    prefer_bq = os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
+    if gdelt_bq.available() and prefer_bq:
         try:
             from source_registry import discovery_terms as _terms
             bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
@@ -693,6 +696,14 @@ def pull_gdelt_between(start, end, max_records=250):
         # caller leaves the cursor in place and reports the source as
         # deferred, rather than classifying the final parser symptom as a
         # repository failure.
+        if gdelt_bq.available():
+            try:
+                from source_registry import discovery_terms as _terms
+                bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
+                print(f"GDELT public API abandoned; BigQuery mirror recovered {len(bq_articles)} article(s)")
+                return _fetch_trusted(bq_articles)
+            except Exception as e:
+                print(f"BigQuery fallback also failed: {e}")
         if saw_rate_limit:
             last_error = f"HTTP 429 (followed by upstream response error: {last_error or 'unknown error'})"
         raise RuntimeError(f"GDELT window abandoned after {QUERY_ATTEMPTS} attempts: {last_error or 'unknown error'}")
