@@ -599,8 +599,8 @@
         var countries = readControl('alt-f-country') || [];
         var usOnly = countries.length === 1 && countries[0] === 'United States';
         if (!usOnly || !data.ai_ytd) { note.style.display = 'none'; return; }
-        note.innerHTML = 'Challenger benchmark: ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
-            + monthLabel(data.ref_month) + ') · <a href="#alt-challenger-comparison">see US comparison</a>';
+        note.innerHTML = 'For scale: Challenger counts ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
+            + monthLabel(data.ref_month) + ') — their measure spans our verified + announced AI combined · <a href="#alt-challenger-comparison">see the like-for-like comparison</a>';
         note.style.display = '';
     }
 
@@ -978,8 +978,63 @@
         return out.length ? out : series;
     }
 
+    var CMP_SEQ = 0;
+    function compareSelections() {
+        var years = readControl('alt-f-years') || [];
+        var countries = readControl('alt-f-country') || [];
+        if (countries.length >= 2 && countries.length <= 5) return { dim: 'country', values: countries.slice(0, 5) };
+        if (years.length >= 2 && years.length <= 5) return { dim: 'years', values: years.slice().sort() };
+        return null;
+    }
+
+    // When several years or countries are selected, the trend chart breaks
+    // each one out as its own colored line instead of one merged blob, so
+    // selections can be cross-referenced directly.
+    function renderCompareTrend(cmp) {
+        var seq = ++CMP_SEQ;
+        Promise.all(cmp.values.map(function (v) {
+            var params = currentParams();
+            params[cmp.dim === 'years' ? 'years' : 'country'] = v;
+            return apiGet('aggregate', params).then(function (a) { return (a && a.series) || []; });
+        })).then(function (lists) {
+            if (seq !== CMP_SEQ) return;
+            var labels, datasets;
+            if (cmp.dim === 'years') {
+                var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                labels = monthNames;
+                datasets = cmp.values.map(function (y, i) {
+                    var by = {};
+                    lists[i].forEach(function (s) { by[parseInt(s.month.slice(5), 10)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+                    return { label: String(y), data: monthNames.map(function (_, m) { return by[m + 1] || 0; }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 };
+                });
+            } else {
+                var monthSet = {};
+                lists.forEach(function (l) { l.forEach(function (s) { monthSet[s.month] = 1; }); });
+                var months = Object.keys(monthSet).sort();
+                var nowKey = new Date().getFullYear() + '-' + pad2(new Date().getMonth() + 1);
+                months = months.filter(function (m) { return m <= nowKey; });
+                labels = months.map(monthLabel);
+                datasets = cmp.values.map(function (c, i) {
+                    var by = {};
+                    lists[i].forEach(function (s) { by[s.month] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+                    return { label: c, data: months.map(function (m) { return by[m] || 0; }),
+                        borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: months.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: false, tension: 0.3 };
+                });
+            }
+            var range = document.getElementById('alt-trend-range');
+            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — verified cuts';
+            var options = cloneOptions();
+            options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+            mountChart('alt-chart-weekly', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
+        }).catch(function () { /* combined view already rendered as fallback */ });
+    }
+
     function renderTrend(series) {
         if (!document.getElementById('alt-chart-weekly')) return;
+        var cmp = compareSelections();
+        if (cmp) { renderCompareTrend(cmp); return; }
         var futureJobs = futureDatedJobs(series);
         series = fillMonths(series);
         var range = document.getElementById('alt-trend-range');
