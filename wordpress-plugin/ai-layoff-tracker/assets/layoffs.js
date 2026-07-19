@@ -1038,6 +1038,23 @@
     // Austria 40), the small ones flatten into the axis on a linear scale.
     // Switch to log when the spread exceeds ~25x; zeros become gaps (log has
     // no zero), tooltips stay exact.
+    // Legend labels carry each compared series' total ("Canada (1,842)",
+    // "Austria (0)") so flat-at-zero lines are identifiable without hovering.
+    function labelWithTotals(datasets) {
+        datasets.forEach(function (d) {
+            var tot = d.data.reduce(function (a, v) { return a + (v || 0); }, 0);
+            d.label = d.label + ' (' + fmt(tot) + ')';
+        });
+    }
+
+    function labelWithFinal(datasets) {
+        datasets.forEach(function (d) {
+            var fin = 0;
+            d.data.forEach(function (v) { if (v != null) fin = v; });
+            d.label = d.label + ' (' + fmt(fin) + ')';
+        });
+    }
+
     function applyLogIfSpread(datasets, options) {
         var maxes = datasets.map(function (d) {
             return d.data.reduce(function (m, v) { return (v != null && v > m) ? v : m; }, 0);
@@ -1111,6 +1128,7 @@
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
             var logOn = applyLogIfSpread(datasets, options);
+            labelWithTotals(datasets);
             if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — verified cuts' + (logOn ? ' · log scale so small series stay visible' : '');
             mountChart('alt-chart-weekly', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
         }).catch(function () { /* combined view already rendered as fallback */ });
@@ -1189,6 +1207,7 @@
                 options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
                 options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
                 applyLogIfSpread(datasets, options);
+                labelWithTotals(datasets);
                 mountChart('alt-chart-yoy', { type: 'line', data: {
                     labels: mm.map(function (m) { return monthLabel('2000-' + m).split(' ')[0]; }), datasets: datasets
                 }, options: options });
@@ -1338,6 +1357,7 @@
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
             var logOn = applyLogIfSpread(datasets, options);
+            labelWithFinal(datasets);
             if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — cumulative verified AI cuts' + (logOn ? ' · log scale so small series stay visible' : '');
             mountChart('alt-chart-ai-cumulative', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
         }).catch(function () { /* merged view already rendered as fallback */ });
