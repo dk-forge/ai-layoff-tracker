@@ -214,7 +214,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
                 <span class="alt-stat-label">AI-linked, broad (Challenger-style)</span>
-                <span class="alt-stat-desc"><b>Counts AI the way Challenger and layoffs.fyi do.</b> Verified + announced + press-linked AI in this view.</span>
+                <span class="alt-stat-desc"><b>Counts AI the way Challenger and layoffs.fyi do.</b> Loose attributions included; with a country filter, counted by the employer's home country.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
             </div>
             <div class="alt-stat-card">

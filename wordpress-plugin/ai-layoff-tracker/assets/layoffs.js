@@ -621,8 +621,6 @@
             if (!broad) return;
             note.innerHTML = 'Challenger: <b>' + fmt(data.ai_ytd) + '</b> AI cuts YTD (through ' + monthLabel(data.ref_month) + ').<br>'
                 + 'Counted their way (by US employer): we track <b>' + fmt(broad) + '</b> · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
-            var bsub = document.getElementById('alt-stat-ai-broad-sub');
-            if (bsub && bsub.textContent.indexOf('US employer') === -1) bsub.textContent += ' · by US employer: ' + fmt(broad);
         }).catch(function () { /* keep the basic note */ });
     }
 
@@ -649,8 +647,35 @@
         var shareEarly = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
         var shareTxt = shareEarly == null ? '' : ' · ' + (shareEarly >= 10 ? Math.round(shareEarly) : shareEarly.toFixed(1)) + '% of verified';
         setText('alt-stat-ai-sub', when + shareTxt);
+        // The broad card is the Challenger-style measure, and Challenger
+        // counts by EMPLOYER: with a country filter active, refetch on the
+        // employer basis so the headline number is the comparable one
+        // (Oracle's 21K counts for the US even though its cuts span
+        // countries). Location-basis fills first so the card never sits
+        // empty; the employer figure replaces it when it arrives.
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
         setText('alt-stat-ai-broad-sub', when);
+        var broadSeq = (renderStats._broadSeq = (renderStats._broadSeq || 0) + 1);
+        if (selectedList('alt-f-country').length) {
+            var pEmp = currentParams();
+            pEmp.country_basis = 'employer';
+            apiGet('aggregate', pEmp).then(function (a) {
+                if (broadSeq !== renderStats._broadSeq) return;
+                var b = a && a.totals && a.totals.ai_broad_jobs;
+                if (b == null) return;
+                setText('alt-stat-ai-broad', fmt(b));
+                var sub = when + ' · by employer country';
+                var noteCard = document.querySelector('[data-challenger]');
+                var usOnlyScope = selectedList('alt-f-country').join(',') === 'United States';
+                if (usOnlyScope && noteCard) {
+                    try {
+                        var cd = JSON.parse(noteCard.getAttribute('data-challenger') || '{}');
+                        if (cd.ai_ytd) sub = when + ' · by US employer · ' + Math.round(100 * b / cd.ai_ytd) + '% of Challenger\u2019s ' + fmt(cd.ai_ytd);
+                    } catch (e) { /* keep generic sub */ }
+                }
+                setText('alt-stat-ai-broad-sub', sub);
+            }).catch(function () { /* location-basis figure stays */ });
+        }
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
