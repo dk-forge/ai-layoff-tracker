@@ -85,6 +85,52 @@
   // fetch renders as a visible gap in its own section instead of blanking the
   // entire page (observed live 2026-07-19).
   const safeGet = path => get(path).catch(() => get(path)).catch(() => null);
+
+  // Benchmark race: our cells are live aggregates; Challenger cells come from
+  // the stored monthly reconciliation records; layoffs.fyi cells are dated
+  // manual snapshots (leads-only policy — no automated pulls without their
+  // permission).
+  const FYI = { asOf: '2026-07-18', techTotal: 121326, techAI: 95829 };
+  const CHAL_STATIC = { asOf: '2026-06 report', techTotal: 139156 };
+  function renderBenchRace() {
+    const body = document.getElementById('alt-bench-race');
+    if (!body) return;
+    const agg = p => fetch(api + 'aggregate?' + p, { headers: { Accept: 'application/json' } }).then(r => r.json()).catch(() => null);
+    Promise.all([
+      agg('years=2026&country=United%20States'),
+      agg('years=2026&industry=Technology'),
+      agg('years=2026'),
+      safeGet('benchmarks/challenger'),
+    ]).then(([us, tech, world, chal]) => {
+      const fmtN = v => (v == null ? '—' : Number(v).toLocaleString('en-US'));
+      const latest = Array.isArray(chal) && chal.length ? chal[0] : {};
+      const chalTotalYtd = latest.challenger_total_jobs_ytd;
+      const chalAiYtd = latest.challenger_ai_jobs_ytd;
+      const chalTotalMo = latest.challenger_total_jobs_month;
+      const chalAiMo = latest.challenger_ai_jobs_month;
+      const refMonth = latest.reference_month || '';
+      const usJobs = us && us.totals ? us.totals.jobs : null;
+      const usBroad = us && us.totals ? us.totals.ai_broad_jobs : null;
+      const techJobs = tech && tech.totals ? tech.totals.jobs : null;
+      const techBroad = tech && tech.totals ? tech.totals.ai_broad_jobs : null;
+      const worldJobs = world && world.totals ? world.totals.jobs : null;
+      const worldBroad = world && world.totals ? world.totals.ai_broad_jobs : null;
+      const pct = (ours, bench) => (ours != null && bench > 0) ? Math.round(100 * ours / bench) + '%' : '—';
+      const row = (label, c, f, a, vs) => '<tr><td>' + label + '</td><td>' + c + '</td><td>' + f + '</td><td><b>' + a + '</b></td><td>' + vs + '</td></tr>';
+      body.innerHTML =
+        row('US total cuts, YTD', fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
+        row('US AI cuts, YTD (broad)', fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
+        row('US total cuts, latest report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalTotalMo), '—', '—', '—') +
+        row('US AI cuts, latest report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
+        row('Tech cuts, worldwide (Challenger sector, ' + CHAL_STATIC.asOf + ' · fyi as of ' + FYI.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal) + ' of fyi') +
+        row('Tech AI cuts, worldwide (broad · fyi as of ' + FYI.asOf + ')', '—', fmtN(FYI.techAI), fmtN(techBroad), pct(techBroad, FYI.techAI) + ' of fyi') +
+        row('All industries worldwide', '—', '—', fmtN(worldJobs), '') +
+        row('Worldwide AI (broad)', '—', '—', fmtN(worldBroad), '');
+    }).catch(() => {
+      body.innerHTML = '<tr><td colspan="5">Benchmark comparison could not load this time — refresh to retry.</td></tr>';
+    });
+  }
+  renderBenchRace();
   Promise.all(['quality-status', 'integrity-status', 'status', 'review-queue', 'benchmarks/challenger', 'benchmarks/recall', 'dataset-releases'].map(safeGet)).then(([q, i, s, r, c, rec, ledger]) => {
     q = q || { source_health: {}, workstreams: [], last_30_days_disclosed_changes: {} };
     i = i || { canonical_events: 0, source_reports: 0, source_report_hashes_remaining: 0, metadata_completeness: {}, canonical_events_without_linked_source_reports: 0 };
