@@ -187,11 +187,14 @@ def run():
         result = classify_reason_tags(row.get("excerpt") or "")
         if result is None:
             model_failures += 1
+            print(f"  model id={row['id']}: FAILED (retried on a later rotation)")
             continue
         if result["reason_tags"]:
             items.append({"id": int(row["id"]), "reason_tags": result["reason_tags"]})
+            print(f"  model id={row['id']}: {','.join(result['reason_tags'])}")
         else:
             model_skips += 1  # evidence names no reason — honestly left empty
+            print(f"  model id={row['id']}: evidence names no reason — left untagged")
         time.sleep(0.25)
 
     print(f"candidates={len(candidates)} template_taggable={deterministic_backlog} "
