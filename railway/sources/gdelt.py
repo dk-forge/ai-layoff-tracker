@@ -552,6 +552,11 @@ TRUSTED_DOMAINS = {
     "lnc.nc",                    # New Caledonia — Les Nouvelles Calédoniennes (only daily, online-only since Oct 2023; nickel-industry layoffs)
     "islandsbusiness.com",       # Pacific regional — Islands Business (Suva-based regional business magazine covering all Pacific islands)
     "techrepublic.com", "electrek.co", "gamedeveloper.com",   # tech/EV/games trade
+    # Games trade press — studio layoffs are a large, well-documented segment
+    # these editorial outlets cover first (added 2026-07-19 after the ZA/UM
+    # "up to 32" cuts appeared on IGN but nowhere in the then-allowlist).
+    "ign.com", "gamesindustry.biz", "pcgamer.com", "polygon.com",
+    "eurogamer.net", "kotaku.com", "videogameschronicle.com", "rockpapershotgun.com",
     "chicago.suntimes.com",                                   # Chicago daily
     "wral.com",                                               # Raleigh NC (WRAL TechWire)
     "mprnews.org",                                            # Minnesota Public Radio

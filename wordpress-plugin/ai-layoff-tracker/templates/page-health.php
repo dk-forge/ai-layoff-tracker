@@ -8,6 +8,7 @@
     <li><b>Denmark Jobindsats key:</b> send the drafted application (docs/outreach/); store as <code>JOBINDSATS_API_KEY_DK</code>.</li>
     <li><b>Quebec MESS courtesy notice:</b> send the drafted email; collector is pre-built.</li>
     <li><b>CourtListener token:</b> free signup; store as <code>COURTLISTENER_API_KEY</code>.</li>
+    <li><b>Aggregator lead-access emails:</b> send the drafted permission requests to layoffs.fyi and TrueUp (docs/outreach/aggregator-lead-access.md) — unlocks automated daily lead checks; until a yes, aggregator monitoring stays manual by policy.</li>
   </ul></div>
   <div class="alt-health-section"><h2>Operate — for maintainers &amp; agents</h2><ul class="alt-health-schedule">
     <li><a href="https://github.com/dk-forge/ai-layoff-tracker/actions" target="_blank" rel="noopener">GitHub Actions</a> — every scheduled job, manual dispatches, full run logs.</li>
