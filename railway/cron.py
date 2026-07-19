@@ -33,6 +33,16 @@ def _mark_phase(phase):
         print(f"phase ping failed: {e}")
 
 
+def _cvm_probe_newest(year):
+    """Probe the newest published CVM IPE yearly index (current, else prior)."""
+    try:
+        return len(cvm_br.list_filings_for_year(year).filings)
+    except cvm_br.CvmApiError as exc:
+        if getattr(exc, "kind", "") != "not_found":
+            raise
+        return len(cvm_br.list_filings_for_year(year - 1).filings)
+
+
 def run_discovery_probes():
     """Health-visible discovery probes for Japan EDINET, South Korea OpenDART,
     and Brazil CVM.
@@ -59,8 +69,12 @@ def run_discovery_probes():
         # CVM's open-data portal requires no API key, so this probe is keyless:
         # env gate is None and the "not configured" branch never applies. The
         # window is the current calendar year's Fato Relevante index.
+        # CVM publishes its yearly IPE file with a lag; an unpublished
+        # current-year file is the publisher's schedule, not a probe failure,
+        # so fall back to the newest published year (2026-07-19: 2026 was 404
+        # while 2025 served fine, which showed as a false 'degraded').
         ("cvm_br", None, str(current_year),
-         lambda: len(cvm_br.list_filings_for_year(current_year).filings)),
+         lambda: _cvm_probe_newest(current_year)),
     )
     for source, env_key, window, probe in probes:
         if env_key and not os.environ.get(env_key, ""):
