@@ -80,7 +80,7 @@ function alt_export_csv() {
     fputcsv($out, array(
         'company_name', 'ticker', 'job_count', 'layoff_date', 'industry',
         'country', 'state', 'roles', 'role_categories', 'source_type', 'verification_level', 'source_url',
-        'ai_explicit', 'ai_language', 'reason_tags', 'excerpt', 'source_attribution',
+        'source_list_url', 'ai_explicit', 'ai_language', 'reason_tags', 'excerpt', 'source_attribution',
     ));
 
     alt_export_walk(function ($row) use ($out) {
@@ -99,6 +99,8 @@ function alt_export_csv() {
             alt_csv_guard($row->source_type),
             alt_csv_guard($row->verification_level),
             alt_csv_guard((string) $row->source_url),
+            alt_csv_guard($row->source_type === 'warn' && function_exists('alt_state_warn_list_url')
+                ? alt_state_warn_list_url($row->state) : ''),
             $row->ai_explicit ? 'true' : 'false',
             alt_csv_guard((string) $row->ai_language),
             alt_csv_guard(implode('|', alt_db_unpack_tags($row->reason_tags))),

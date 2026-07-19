@@ -53,6 +53,15 @@
         // Per-notice URLs carry a record id / document path; landing pages don't.
         return /\/\d+\/?$|\.pdf($|\?)|record|lookups\/\d/i.test(url);
     }
+    // The official state WARN list page for a row, when it is distinct from the
+    // row's primary source_url (i.e. source_url points at an exact notice). For
+    // list-only states source_url already IS the list, so return '' — one link.
+    function warnListUrl(row) {
+        if (row.source_type !== 'warn') return '';
+        var list = safeUrl(row.source_list_url);
+        var primary = safeUrl(row.source_url);
+        return (list && list !== primary) ? list : '';
+    }
 
     /* ------------------------------------------------------------------ */
     /* Helpers                                                             */
@@ -1851,9 +1860,14 @@
                     var url = safeUrl(d);
                     if (!url) return escapeHtml(row.source_name || '—');
                     var exact = warnLinkIsExact(row);
+                    var listUrl = warnListUrl(row);
                     var title = exact ? 'Opens the primary source'
                         : 'Opens the state’s official WARN list. This notice is a row in it.';
-                    var suffix = exact ? '' : ' <span class="alt-muted" title="' + title + '">(list)</span>';
+                    // Exact notice + a distinct list page → show both links; the
+                    // list link stays a compact secondary so the cell reads clean.
+                    var suffix = listUrl
+                        ? ' <a href="' + escapeHtml(listUrl) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="The state’s official WARN list this notice is filed in">(list)</a>'
+                        : (exact ? '' : ' <span class="alt-muted" title="' + title + '">(list)</span>');
                     return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="' + escapeHtml(title) + '">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix;
                 } }
             ]
@@ -1903,10 +1917,17 @@
         if (tags) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Reasons cited</span><div>' + tags + '</div></div>');
         var url = safeUrl(row.source_url);
         var verif = row.verification_level ? ' · <span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(VERIF_LABELS[row.verification_level] || 'News') + '</span>' : '';
+        var listUrl = warnListUrl(row);
         var linkText = warnLinkIsExact(row)
             ? 'View primary source (' + (row.source_name || 'source') + ') ↗'
             : 'View the state’s official WARN list (this notice is a row in it) ↗';
         var src = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(linkText) + '</a>' : escapeHtml(row.source_name || '—');
+        // When source_url is the exact notice and the state also has a distinct
+        // list page, offer both — the specific record and the official index it
+        // sits in — the way a news row could cite both an article and a wire.
+        if (listUrl) {
+            src += ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(listUrl) + '" target="_blank" rel="noopener nofollow">State WARN list ↗</a>';
+        }
         parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div>' + src + verif + '</div></div>');
         return '<div class="alt-detail">' + (parts.join('') || 'No additional detail recorded.') + '</div>';
     }

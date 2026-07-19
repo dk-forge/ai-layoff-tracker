@@ -622,6 +622,12 @@ function alt_db_row_to_array($row) {
         'source_name'        => $row->source_name,
         'verification_level' => $row->verification_level,
         'source_url'         => $row->source_url,
+        // A WARN row always has an official state LIST page (derived from its
+        // state) in addition to whatever source_url holds. When source_url is
+        // an exact per-notice page, the front-end shows both; when it already
+        // IS the list, the two match and only one link renders.
+        'source_list_url'    => ($row->source_type === 'warn' && function_exists('alt_state_warn_list_url'))
+                                ? alt_state_warn_list_url($row->state) : '',
         'ai_explicit'        => (bool) $row->ai_explicit,
         'ai_causation'       => $row->ai_causation,
         'confidence'         => (int) $row->confidence,

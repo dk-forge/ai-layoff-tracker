@@ -58,7 +58,7 @@ STATE_WARN_URL = {
     "UT": "https://jobs.utah.gov/employer/business/warnnotices.html",
     "VA": "https://www.vec.virginia.gov/warn-notices",
     "VT": "https://www.vermontjoblink.com/search/warn_lookups",
-    "WA": "https://esd.wa.gov/about-employees/WARN",
+    "WA": "https://esd.wa.gov/employer-requirements/layoffs-and-employee-notifications/worker-adjustment-and-retraining-notification-warn-layoff-and-closure-database",
     "WI": "https://dwd.wisconsin.gov/dislocatedworker/warn/",
 }
 
