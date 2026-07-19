@@ -1984,7 +1984,7 @@ function alt_api_edit(WP_REST_Request $r) {
         return new WP_Error('alt_bad_request', 'edits must be an array of {id, fields}.', array('status' => 400));
     }
 
-    $allowed = array('company', 'job_count', 'layoff_date', 'industry', 'country', 'employer_country', 'state', 'ai_explicit', 'ai_causation', 'confidence', 'review_status', 'announced', 'source_url', 'excerpt');
+    $allowed = array('company', 'job_count', 'layoff_date', 'industry', 'country', 'employer_country', 'state', 'ai_explicit', 'ai_causation', 'confidence', 'review_status', 'announced', 'source_url', 'excerpt', 'reason_tags');
     $out = array('edited' => array(), 'not_found' => array(), 'rejected' => array());
 
     foreach ($edits as $e) {
@@ -2008,6 +2008,12 @@ function alt_api_edit(WP_REST_Request $r) {
                 case 'confidence':  $data[$k] = min(100, max(0, (int) $v)); break;
                 case 'ai_causation': $data[$k] = alt_normalize_ai_causation($v); break;
                 case 'review_status': $data[$k] = alt_normalize_review_status($v); break;
+                case 'reason_tags':
+                    $data[$k] = alt_db_pack_tags(array_values(array_intersect(
+                        array_map('sanitize_key', (array) $v),
+                        function_exists('alt_allowed_reason_tags') ? alt_allowed_reason_tags() : array()
+                    )));
+                    break;
                 default:            $data[$k] = (string) $v;
             }
         }
