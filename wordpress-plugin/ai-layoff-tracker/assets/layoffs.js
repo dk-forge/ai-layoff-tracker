@@ -1187,32 +1187,52 @@
         // Four labeled comparison series: Challenger vs AskTheRecruiter, for
         // all announced US cuts and for AI-attributed cuts. All-cuts lines
         // appear only once the reconciliation job has retained those fields.
-        function datasetsFor(suffix) {
+        // Five distinct colors — solid = AI pair, dashed = all-cuts pair,
+        // green = our observed AI (real holdings; not the strict comparator).
+        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#eda100' };
+        function datasetsFor(suffix, observed) {
             var sets = [
-                { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 },
-                { label: 'AskTheRecruiter — announced AI cuts (strict)', data: pick('tracker_' + suffix), borderColor: PALETTE[5], backgroundColor: 'rgba(227, 73, 72, 0.12)', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
+                { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: C.chalAI, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
+                { label: 'AskTheRecruiter — AI observed (verified + announced)', data: observed, borderColor: C.usObs, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
+                { label: 'AskTheRecruiter — strict comparator', data: pick('tracker_' + suffix), borderColor: C.usStrict, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
             ];
             if (hasAny('challenger_total_' + suffix)) {
-                sets.push({ label: 'Challenger — all cuts', data: pick('challenger_total_' + suffix), borderColor: SEQ_BLUE, borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
+                sets.push({ label: 'Challenger — all cuts', data: pick('challenger_total_' + suffix), borderColor: C.chalAll, borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
             }
             if (hasAny('tracker_all_' + suffix)) {
-                sets.push({ label: 'AskTheRecruiter — announced US cuts', data: pick('tracker_all_' + suffix), borderColor: PALETTE[5], borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
+                sets.push({ label: 'AskTheRecruiter — announced US cuts (strict)', data: pick('tracker_all_' + suffix), borderColor: C.usAll, borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
             }
             return sets;
         }
         var labels = points.map(function (p) { return monthLabel(p.period); });
-        if (monthlyCanvas && hasAny('challenger_month')) {
-            mountChart('alt-chart-challenger-monthly', {
-                type: 'line',
-                data: { labels: labels, datasets: datasetsFor('month') }, options: options()
-            });
+        var benchYear = (points[0] && points[0].period || '2026').slice(0, 4);
+        function mountBoth(obsMonth, obsYtd) {
+            if (monthlyCanvas && hasAny('challenger_month')) {
+                mountChart('alt-chart-challenger-monthly', {
+                    type: 'line',
+                    data: { labels: labels, datasets: datasetsFor('month', obsMonth) }, options: options()
+                });
+            }
+            if (ytdCanvas) {
+                mountChart('alt-chart-challenger-reconciliation', {
+                    type: 'line',
+                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd) }, options: options()
+                });
+            }
         }
-        if (ytdCanvas) {
-            mountChart('alt-chart-challenger-reconciliation', {
-                type: 'line',
-                data: { labels: labels, datasets: datasetsFor('ytd') }, options: options()
+        // Our observed AI by month (verified + announced) comes from the live
+        // aggregate so the comparison never reads as "we have nothing" when
+        // only the STRICT lines sit near zero.
+        apiGet('aggregate', { years: benchYear, country: 'United States' }).then(function (agg) {
+            var by = {};
+            ((agg && agg.series) || []).forEach(function (srow) {
+                by[srow.month] = (srow.ai_verified_jobs || 0) + (srow.ai_announced_jobs || 0);
             });
-        }
+            var run = 0;
+            var obsMonth = points.map(function (p) { return by[p.period] != null ? by[p.period] : null; });
+            var obsYtd = points.map(function (p) { run += (by[p.period] || 0); return run; });
+            mountBoth(obsMonth, obsYtd);
+        }).catch(function () { mountBoth(null, null); });
     }
 
     function renderBar(canvasId, entries, filterId, activeValue, tipPrefix) {
