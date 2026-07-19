@@ -682,6 +682,11 @@ SEGMENT_TERMS = (
     '"amid AI push"', '"to focus on AI"', '"AI-first" layoffs',
     '"AI reshapes"', '"invest in AI" jobs', '"AI transformation" cuts',
     '"AI restructuring"', '"shift to AI"',
+    # Dialect-synonym segments (rarer phrasings ride the rotation instead of
+    # the base OR-set): Commonwealth/African/Asian English + translated press
+    '"sackings"', '"job shedding"', '"shed jobs"', '"slash jobs"',
+    '"voluntary separation scheme"', '"mass termination"',
+    '"jobs terminated"', '"staff reduction"', '"retrenched workers"',
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
 

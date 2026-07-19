@@ -35,6 +35,13 @@ GLOBAL_TERMS = (
     "role eliminations", "workforce realignment", "organizational realignment",
     "restructuring plan", "collective redundancy", "collective dismissal",
     "plant closure", "site closure",
+    # Dialect synonyms (2026-07-19): "retrenchment" is the standard word in
+    # Indian, Singaporean, Malaysian, South African and Nigerian English
+    # press; "sacked"/"dismissals" dominate UK/AU/African headlines and
+    # machine-translated coverage. Expat and translated papers use these
+    # where US outlets say "layoffs".
+    "retrenchment", "retrenchments", "mass dismissal", "dismissals",
+    "sacked", "jobs axed",
 )
 
 
@@ -81,9 +88,10 @@ def discovery_terms() -> tuple[str, ...]:
     terms = list(GLOBAL_TERMS)
     for market in MARKETS.values():
         terms.extend(market.terms)
-    # GDELT queries become less reliable when needlessly huge; 36 terms is a
-    # deliberate ceiling and the global terms occupy the most valuable slots.
-    return tuple(dict.fromkeys(terms))[:36]
+    # GDELT queries become less reliable when needlessly huge; 42 terms is a
+    # deliberate ceiling (raised from 36 on 2026-07-19 for the dialect
+    # synonyms) and the global terms occupy the most valuable slots.
+    return tuple(dict.fromkeys(terms))[:42]
 
 
 def coverage_manifest() -> list[dict[str, object]]:
