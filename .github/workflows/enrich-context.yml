@@ -19,13 +19,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install openai requests
+      # google-cloud-bigquery powers the alternate-source finder; the worker
+      # fails soft to snapshot/primary-only behavior if it is ever missing.
+      - run: pip install openai requests google-cloud-bigquery
       - name: Enrich only exact source-supported context
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}
           CONTEXT_ENRICH_BATCH: ${{ github.event.inputs.batch || '5' }}
+          # The Wayback/alternate fallbacks add bounded per-row network work;
+          # the worker stops safely between rows before the job ceiling.
+          CONTEXT_DEADLINE_SECONDS: '900'
           # Prioritise source-linked US announced AI candidates for the public
           # Challenger comparator. Exact quotes remain mandatory for updates.
           CONTEXT_ENRICH_MODE: challenger_priority

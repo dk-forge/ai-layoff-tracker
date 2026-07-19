@@ -64,6 +64,55 @@ def rows_to_articles(rows):
     return articles
 
 
+def company_pattern(company) -> str:
+    """RE2 literal match for one employer name (lowercased, whitespace-normal)."""
+    name = re.sub(r"\s+", " ", (company or "").strip().lower())
+    return re.escape(name) if name else "$^"
+
+
+def query_company_articles(company, start, end, terms):
+    """Alternate coverage of one already-recorded event, narrowly matched.
+
+    Used by the evidence-enrichment worker when a row's cited article and its
+    archive snapshot are both unreadable: the page title must name the company
+    AND carry the shared layoff vocabulary, inside a bounded partition window.
+    The trusted-domain gate and the exact-quote evidence rules stay downstream
+    and unchanged — this helper only surfaces candidate URLs.
+    """
+    bigquery, client = _client()
+    sql = """
+        SELECT
+            DocumentIdentifier AS url,
+            LOWER(SourceCommonName) AS domain,
+            DATE AS date_int,
+            REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>') AS title
+        FROM `gdelt-bq.gdeltv2.gkg_partitioned`
+        WHERE _PARTITIONTIME >= TIMESTAMP(@day_start)
+          AND _PARTITIONTIME < TIMESTAMP(@day_end)
+          AND DATE >= @window_start AND DATE <= @window_end
+          AND REGEXP_CONTAINS(
+              LOWER(IFNULL(REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>'), '')),
+              @company_re)
+          AND REGEXP_CONTAINS(
+              LOWER(IFNULL(REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>'), '')),
+              @title_re)
+        LIMIT 60
+    """
+    job = client.query(sql, job_config=bigquery.QueryJobConfig(
+        maximum_bytes_billed=MAX_BYTES_BILLED,
+        query_parameters=[
+            bigquery.ScalarQueryParameter("day_start", "STRING", start.strftime("%Y-%m-%d")),
+            # exclusive end bound: the day AFTER the window's end date
+            bigquery.ScalarQueryParameter("day_end", "STRING", _next_day(end)),
+            bigquery.ScalarQueryParameter("window_start", "INT64", int(start.strftime("%Y%m%d%H%M%S"))),
+            bigquery.ScalarQueryParameter("window_end", "INT64", int(end.strftime("%Y%m%d%H%M%S"))),
+            bigquery.ScalarQueryParameter("company_re", "STRING", company_pattern(company)),
+            bigquery.ScalarQueryParameter("title_re", "STRING", title_pattern(terms)),
+        ],
+    ))
+    return rows_to_articles(dict(row) for row in job.result())
+
+
 def query_window_articles(start, end, terms):
     """All matching articles in [start, end] from the GKG mirror.
 

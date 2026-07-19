@@ -29,3 +29,18 @@ The register is manual/editorial. No automation may infer notice dates,
 exceptions, legal compliance, or liability. Corrections preserve sources. A
 SHA-256 hash protects the retained excerpt only; it is not an archive of a
 source page.
+
+## Stage 1: compliance-evidence builder
+
+[WARN_TRANSPARENCY_STAGE1.md](WARN_TRANSPARENCY_STAGE1.md) adds an offline
+builder (`railway/warn_transparency_evidence.py`) that computes notice-gap
+days by pure arithmetic on officially recorded notice/effective dates. Pure
+arithmetic on recorded fields is permitted; inference and imputation remain
+banned — rows missing either date are excluded, never guessed, and
+amended/revised notices use the earliest recorded notice date. Gaps under 60
+days are queued as `short_notice_candidate` timing observations with the
+official source URL as evidence and statutory context attached (60-day rule,
+faltering-company / unforeseeable-business-circumstances / natural-disaster
+exceptions, judicial-only enforcement). Candidates are editorial-review
+inputs, not register records: a human verifies the source before any keyed
+write, and no builder output ever labels an employer non-compliant.

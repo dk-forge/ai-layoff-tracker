@@ -249,6 +249,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <nav class="alt-stats-links" aria-label="About these results">
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
             <a class="alt-method-link" href="#alt-challenger-comparison">Why US figures differ from Challenger</a>
+            <a class="alt-method-link" href="#alt-data-sources">Where do we get this data?</a>
             <a class="alt-btn alt-btn-sm" href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Want to embed this tracker on your site? Get the free widget →</a>
         </nav>
     </section>
@@ -350,6 +351,26 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         </table>
     </div>
 
+
+    <details class="alt-methodology">
+        <summary>Live data-source status</summary>
+        <div class="alt-method-body">
+            <p id="alt-source-health-note">Checking the most recent collector status…</p>
+            <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
+            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs.</p>
+        </div>
+    </details>
+
+
+
+    <section class="alt-methodology alt-faq" itemscope>
+        <div class="alt-detail-h" role="heading" aria-level="2" style="font-size:19px;margin:0 0 10px">Frequently asked questions</div>
+        <?php foreach (alt_faq_items() as $qa) : ?>
+        <details class="alt-faq-item">
+            <summary><?php echo esc_html($qa[0]); ?></summary>
+            <div class="alt-method-body"><p><?php echo esc_html($qa[1]); ?></p></div>
+        </details>
+        <?php endforeach; ?>
     <details class="alt-methodology" id="alt-metric-definitions">
         <summary>Methodology &amp; sources (for journalists &amp; researchers)</summary>
         <div class="alt-method-body">
@@ -378,16 +399,17 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <p><b>Using the data.</b> Free with attribution to <b>asktherecruiter.com</b>. The CSV and JSON buttons download exactly what your current filters show (or the full dataset when unfiltered); each chart offers its own image or data download. Programmatic access: <code>GET /blog/wp-json/layoffs/v1/query</code> (paginated; filter params match the page: years, quarters, months, industry, country, state, sources, reasons, q, from, to) and <code>GET /blog/wp-json/layoffs/v1/aggregate</code> for totals and breakdowns. Corrections get priority via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or info@asktherecruiter.com, and every fix is disclosed in the corrections log below.</p>
         </div>
     </details>
-
-    <details class="alt-methodology">
-        <summary>Live data-source status</summary>
+    <details class="alt-methodology" id="alt-data-sources">
+        <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
-            <p id="alt-source-health-note">Checking the most recent collector status…</p>
-            <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
-            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs.</p>
+            <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from 44 US jurisdictions, Eurofound ERM for the EU, discovery probes for Japan, South Korea and Brazil), press-release wires and reviewed company IR feeds are monitored, and 499 reviewed news outlets across 198 countries surface coverage through GDELT's 65-language index and NewsAPI — allowlist-only, never crawled directly. Every published event links to its source.</p>
+            <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
         </div>
     </details>
-
+    <details class="alt-methodology">
+        <summary>Live data-source status</summary>
+        <div class="alt-method-body"><p>Real-time collector health, run-by-run history, evidence-integrity metrics and the public corrections trail live on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker Health page</a>. A degraded source is shown as a visible gap — never as a silent zero.</p></div>
+    </details>
     <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">
@@ -441,22 +463,12 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <?php endif; ?>
         </div>
     </details>
-
     <details class="alt-methodology">
         <summary>Which countries are in which region tab?</summary>
         <div class="alt-method-body" id="alt-region-defs">
             <p>The region tabs are views over the worldwide data. The full country list for each tab loads here.</p>
         </div>
     </details>
-
-    <section class="alt-methodology alt-faq" itemscope>
-        <div class="alt-detail-h" role="heading" aria-level="2" style="font-size:19px;margin:0 0 10px">Frequently asked questions</div>
-        <?php foreach (alt_faq_items() as $qa) : ?>
-        <details class="alt-faq-item">
-            <summary><?php echo esc_html($qa[0]); ?></summary>
-            <div class="alt-method-body"><p><?php echo esc_html($qa[1]); ?></p></div>
-        </details>
-        <?php endforeach; ?>
     </section>
 
     <details class="alt-methodology">
