@@ -72,7 +72,8 @@ rolls back on its own, but a half-written file from an unrelated crash cannot).
 **API returns stale numbers**
 Micro-cache holds 5 min. Any write bumps `alt_data_ver`; manual bump: run the `cleanup`
 workflow. Browser-side: check the Cloudflare cache rule's Browser TTL (must be
-"Respect origin" — origin sends `max-age=60`).
+"Respect origin" — origin sends `max-age=300` on the API since the `.htaccess`
+override; browsers may serve up to 5-min-old numbers by design).
 
 **Duplicate Cache-Control returns (API/page sends `public, max-age=…` AND `no-cache, no-store…`)**
 Bluehost's Apache injects the no-store trio after PHP's headers on every PHP response;
