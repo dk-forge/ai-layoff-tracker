@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.59
+ * Version: 2.18.60
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.59');
+define('ALT_VERSION', '2.18.60');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -401,6 +401,10 @@ function alt_faq_items() {
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Can journalists and researchers use this data?',
             'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
+        array('How often is the tracker updated?',
+            'Continuously. News and SEC filings are collected twice daily (morning and after US market close, ET); official WARN notices and Eurofound ERM records import daily; the daily summary, stats, charts and table read live data on every page load; and the US Challenger comparison updates automatically each month when their report publishes. The Tracker Health page shows every collector\'s latest run in real time.'),
+        array('What is the difference between "verified" and "announced" job cuts?',
+            'Verified cuts have a filing or independently reported source behind them: a WARN notice, an SEC filing, or a named outlet\'s report of cuts taking place. Announced cuts are company plans reported at announcement stage, tracked in their own labeled tier and never mixed into the verified totals, because announced plans can shrink, stretch over years, or partially happen through attrition.'),
         array('How do I report an error?',
             'Use the contact page or email info@asktherecruiter.com and corrections get priority. Every entry links to its primary source, so you can check any number against the underlying document.'),
     );

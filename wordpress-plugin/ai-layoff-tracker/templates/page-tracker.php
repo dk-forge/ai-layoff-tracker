@@ -352,17 +352,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </div>
 
 
-    <details class="alt-methodology">
-        <summary>Live data-source status</summary>
-        <div class="alt-method-body">
-            <p id="alt-source-health-note">Checking the most recent collector status…</p>
-            <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
-            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs.</p>
-        </div>
-    </details>
-
-
-
     <section class="alt-methodology alt-faq" itemscope>
         <div class="alt-detail-h" role="heading" aria-level="2" style="font-size:19px;margin:0 0 10px">Frequently asked questions</div>
         <?php foreach (alt_faq_items() as $qa) : ?>
@@ -408,7 +397,11 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </details>
     <details class="alt-methodology">
         <summary>Live data-source status</summary>
-        <div class="alt-method-body"><p>Real-time collector health, run-by-run history, evidence-integrity metrics and the public corrections trail live on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker Health page</a>. A degraded source is shown as a visible gap — never as a silent zero.</p></div>
+        <div class="alt-method-body">
+            <p id="alt-source-health-note">Checking the most recent collector status…</p>
+            <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
+            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs. Run-by-run history, evidence-integrity metrics and the public corrections trail live on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker Health page</a>.</p>
+        </div>
     </details>
     <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
@@ -469,7 +462,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <p>The region tabs are views over the worldwide data. The full country list for each tab loads here.</p>
         </div>
     </details>
-    </section>
 
     <details class="alt-methodology">
         <summary>How our numbers compare to other trackers</summary>
@@ -518,6 +510,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or to <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>, and they get priority.</p>
         </div>
     </details>
+    </section>
 
     <div class="alt-cite-box">
         <span class="alt-detail-h">Cite this tracker</span>

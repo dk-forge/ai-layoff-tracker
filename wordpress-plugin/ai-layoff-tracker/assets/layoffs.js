@@ -1264,13 +1264,17 @@
         try { points = JSON.parse(canvas.getAttribute('data-points') || '[]'); }
         catch (e) { return; }
         if (!Array.isArray(points) || points.length < 2) return;
-        function options() {
+        function options(step) {
             var result = cloneOptions();
             result.plugins.tooltip.callbacks = { label: function (ctx) {
                 return (ctx.dataset.label || 'Jobs') + ': ' + fmt(ctx.parsed.y);
             } };
             result.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
-            result.scales.y.ticks.callback = function (value) { return fmt(value); };
+            // Tall charts + fixed 10K/25K gridlines so the small strict lines
+            // near zero stay readable against Challenger's six-figure scale.
+            result.scales.y.ticks.stepSize = step;
+            result.scales.y.ticks.maxTicksLimit = 24;
+            result.scales.y.ticks.callback = function (value) { return value >= 1000 ? (value / 1000) + 'K' : value; };
             return result;
         }
         function pick(field) { return points.map(function (p) { return (p[field] === undefined || p[field] === null) ? null : p[field]; }); }
@@ -1301,13 +1305,13 @@
             if (monthlyCanvas && hasAny('challenger_month')) {
                 mountChart('alt-chart-challenger-monthly', {
                     type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('month', obsMonth) }, options: options()
+                    data: { labels: labels, datasets: datasetsFor('month', obsMonth) }, options: options(10000)
                 });
             }
             if (ytdCanvas) {
                 mountChart('alt-chart-challenger-reconciliation', {
                     type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd) }, options: options()
+                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd) }, options: options(25000)
                 });
             }
         }
@@ -1741,8 +1745,9 @@
         var pMonth = Object.assign({ from: y + '-' + pad2(now.getMonth() + 1) + '-01', to: iso(now), stage: 'verified' }, base);
         var pWeek = Object.assign({ from: iso(d7), to: iso(now), stage: 'verified' }, base);
         var pWeekPrev = Object.assign({ from: iso(d14), to: iso(d8), stage: 'verified' }, base);
-        Promise.all([apiGet('aggregate', pYear), apiGet('aggregate', pMonth), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev)]).then(function (r) {
-            var t = r[0].totals, m = r[1].totals, w = r[2].totals, wp = r[3].totals;
+        var pToday = Object.assign({ from: iso(now), to: iso(now), stage: 'verified' }, base);
+        Promise.all([apiGet('aggregate', pYear), apiGet('aggregate', pMonth), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev), apiGet('aggregate', pToday)]).then(function (r) {
+            var t = r[0].totals, m = r[1].totals, w = r[2].totals, wp = r[3].totals, td = (r[4] || {}).totals || {};
             var yLead = (r[0].leaders || [])[0], mLead = (r[1].leaders || [])[0], wLead = (r[2].leaders || [])[0];
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var tV = t.entries || 0, tJ = t.jobs || 0;
@@ -1751,8 +1756,20 @@
             var startOfYear = new Date(y, 0, 1);
             var daysElapsed = Math.max(1, Math.round((now - startOfYear) / 86400000) + 1);
             var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt() output
-            var largest = function (ld) { return (ld && ld.job_count) ? ' · largest: ' + b(ld.company_name) + ' (' + fmt(ld.job_count) + ')' : ''; };
-            var row = function (label, body) { return '<div class="alt-nrow"><span class="alt-nlabel">' + label + '</span><span>' + body + '</span></div>'; };
+            // Companies and period figures are click-to-filter: the company
+            // name sets the Company filter; a period's numbers set the date
+            // range (or year), so the whole page re-scopes to what was clicked.
+            var esc = function (v) { return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); };
+            var largest = function (ld) {
+                return (ld && ld.job_count)
+                    ? ' · largest: <a href="#" class="alt-nfilter" data-company="' + esc(ld.company_name) + '" title="Filter the page to this company">' + b(esc(ld.company_name)) + '</a> (' + fmt(ld.job_count) + ')'
+                    : '';
+            };
+            var row = function (label, body, filterAttrs) {
+                var open = filterAttrs ? '<a href="#" class="alt-nfilter" ' + filterAttrs + ' title="Filter the page to this period">' : '<span>';
+                var close = filterAttrs ? '</a>' : '</span>';
+                return '<div class="alt-nrow">' + open + '<span class="alt-nlabel">' + label + '</span>' + close + '<span>' + body + '</span></div>';
+            };
             // "events affecting N workers", never "layoffs with N people"
             // (readers mistook event counts for people counts). Every number
             // is scoped to the active tab's countries.
@@ -1762,19 +1779,28 @@
                 var delta = Math.round(100 * (wJ - wpJ) / wpJ);
                 weekDelta = delta >= 0 ? ' · up ' + b(delta + '%') + ' vs the week before' : ' · down ' + b(Math.abs(delta) + '%') + ' vs the week before';
             }
-            var rows = row('This week', wJ > 0
+            var rows = '';
+            var tdJ = td.jobs || 0, tdE = td.entries || 0;
+            if (tdJ > 0) {
+                rows += row('Today', b(fmt(tdJ)) + ' workers · ' + b(fmt(tdE)) + ' verified event' + (tdE === 1 ? '' : 's') + largest(((r[4] || {}).leaders || [])[0]),
+                    'data-from="' + iso(now) + '" data-to="' + iso(now) + '"');
+            }
+            rows += row('This week', wJ > 0
                 ? b(fmt(wJ)) + ' workers · ' + b(fmt(wE)) + ' verified event' + (wE === 1 ? '' : 's') + largest(wLead) + weekDelta
-                : 'no verified layoff events reported yet');
+                : 'no verified layoff events reported yet',
+                'data-from="' + iso(d7) + '" data-to="' + iso(now) + '"');
             var mJ = m.jobs || 0, mE = m.entries || 0;
             rows += row('This month', mJ > 0
                 ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified event' + (mE === 1 ? '' : 's') + largest(mLead)
-                : 'no verified layoff events reported yet');
+                : 'no verified layoff events reported yet',
+                'data-from="' + y + '-' + pad2(now.getMonth() + 1) + '-01" data-to="' + iso(now) + '"');
             rows += row(y + ' so far', tJ > 0
                 ? b(fmt(tJ)) + ' workers · ' + b(fmt(tV)) + ' verified event' + (tV === 1 ? '' : 's') +
                   ' (about ' + fmt(Math.round(tJ / daysElapsed)) + ' workers a day)' +
                   (tAI ? ' · explicitly blamed on AI: ' + b(fmt(tAI)) : '') + largest(yLead)
                 : 'no verified layoff events yet' + (ACTIVE_TAB !== 'world'
-                    ? ' — coverage for this region is still filling in; pick "All time" in the Years filter for earlier events' : ''));
+                    ? ' — coverage for this region is still filling in; pick "All time" in the Years filter for earlier events' : ''),
+                'data-years="' + y + '"');
             // Post-sized rewrite for the copy button: X counts any URL as 23
             // characters, and the weekly detail degrades in steps (full → no
             // delta → no largest event) to stay under 280.
@@ -1805,6 +1831,27 @@
             if (copyBtn) copyBtn.addEventListener('click', function () {
                 if (navigator.clipboard) navigator.clipboard.writeText(post).then(function () { copyBtn.textContent = 'Copied!'; setTimeout(function () { copyBtn.textContent = 'Copy as post'; }, 1500); });
             });
+            // onclick (not addEventListener): updateNarrative re-runs on every
+            // tab switch and must not stack duplicate handlers.
+            el.onclick = function (e) {
+                var a = e.target && e.target.closest ? e.target.closest('.alt-nfilter') : null;
+                if (!a) return;
+                e.preventDefault();
+                if (a.getAttribute('data-company')) writeControl('alt-f-company', a.getAttribute('data-company'));
+                if (a.getAttribute('data-from')) {
+                    writeControl('alt-f-from', a.getAttribute('data-from'));
+                    writeControl('alt-f-to', a.getAttribute('data-to'));
+                    writeControl('alt-f-years', []);
+                }
+                if (a.getAttribute('data-years')) {
+                    writeControl('alt-f-years', [a.getAttribute('data-years')]);
+                    writeControl('alt-f-from', '');
+                    writeControl('alt-f-to', '');
+                }
+                updateRangeLabel();
+                updateDropdownSummaries();
+                refreshAll();
+            };
         }).catch(function () { el.textContent = ''; });
     }
 

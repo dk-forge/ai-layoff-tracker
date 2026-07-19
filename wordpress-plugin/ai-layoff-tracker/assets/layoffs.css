@@ -1076,6 +1076,14 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-faq-item > summary::-webkit-details-marker { display: none; }
 .alt-faq-item > summary::before { content: "▸ "; color: var(--alt-muted); }
 .alt-faq-item[open] > summary::before { content: "▾ "; }
+/* Section-level details inside the FAQ render as the same flat rows as the
+   question items, so the whole list reads as one consistent accordion. */
+.alt-faq > .alt-methodology { border: 0; border-top: 1px solid var(--alt-border); border-radius: 0; margin: 0; background: none; overflow: visible; }
+.alt-faq > .alt-methodology > summary { padding: 11px 2px; font-size: 14px; font-weight: 600; color: var(--alt-ink); }
+.alt-faq > .alt-methodology > .alt-method-body { padding: 2px 2px 14px; }
+/* Click-to-filter links in the headline narrative */
+.alt-nfilter { color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(63, 97, 71, 0.5); cursor: pointer; }
+.alt-nfilter:hover { border-bottom-style: solid; background: rgba(217, 165, 20, 0.12); }
 .alt-faq-item .alt-method-body { padding: 0 2px 12px; }
 .alt-methodology[open] > summary { border-bottom: 1px solid var(--alt-grid); }
 .alt-method-body { padding: 14px 18px; font-size: 13px; line-height: 1.6; color: var(--alt-ink-2); }
@@ -1093,7 +1101,7 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-health-run-heading select { display: block; margin-top: 4px; min-width: 128px; }
 @media (max-width: 600px) { .alt-health-run-heading { display: block; } .alt-health-run-heading label { display: inline-block; margin: 8px 0; } }
 .alt-health-src-meta { display: block; margin-top: 2px; color: var(--alt-muted); font-size: .78rem; font-weight: 400; }
-.alt-challenger-chart { position: relative; height: 245px; margin: 14px 0 6px; }
+.alt-challenger-chart { position: relative; height: 470px; margin: 14px 0 6px; }
 .alt-source-ok td:nth-child(2) { color: #187449; font-weight: 700; }
 .alt-source-running td:nth-child(2) { color: #9a6700; font-weight: 700; }
 .alt-source-degraded td:nth-child(2) { color: #a12d2d; font-weight: 700; }
