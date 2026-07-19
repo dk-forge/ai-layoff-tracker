@@ -221,10 +221,20 @@
       const chalTotalMo = latest.challenger_total_jobs_month;
       const chalAiMo = latest.challenger_ai_jobs_month;
       const refMonth = latest.reference_month || '';
-      const usJobs = us && us.totals ? us.totals.jobs : null;
-      const usBroad = us && us.totals ? us.totals.ai_broad_jobs : null;
-      const usEmpJobs = usEmp && usEmp.totals ? usEmp.totals.jobs : null;
-      const usEmpBroad = usEmp && usEmp.totals ? usEmp.totals.ai_broad_jobs : null;
+      // Challenger's YTD runs through their reference month; comparing our
+      // FULL-year totals (July + future-dated plans included) against it
+      // overstated us. Sum our monthly series through that month instead.
+      const throughRef = (aggResp, field) => {
+        if (!aggResp || !aggResp.series) return aggResp && aggResp.totals ? aggResp.totals[field] : null;
+        if (!refMonth) return aggResp.totals ? aggResp.totals[field] : null;
+        let sum = 0;
+        aggResp.series.forEach(r2 => { if (r2.month <= refMonth) sum += r2[field] || 0; });
+        return sum;
+      };
+      const usJobs = throughRef(us, 'jobs');
+      const usBroad = throughRef(us, 'ai_broad_jobs');
+      const usEmpJobs = throughRef(usEmp, 'jobs');
+      const usEmpBroad = throughRef(usEmp, 'ai_broad_jobs');
       const techJobs = tech && tech.totals ? tech.totals.jobs : null;
       const techBroad = tech && tech.totals ? tech.totals.ai_broad_jobs : null;
       const worldJobs = world && world.totals ? world.totals.jobs : null;
@@ -239,12 +249,12 @@
       const group = label => '<tr class="alt-bench-group"><th colspan="5">' + label + '</th></tr>';
       body.innerHTML =
         group('ALL CUTS — United States') +
-        row('By US employer, YTD (Challenger-comparable)', fmtN(chalTotalYtd), '—', fmtN(usEmpJobs), pct(usEmpJobs, chalTotalYtd)) +
-        row('By US job location, YTD', fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
+        row('By US employer, through ' + (refMonth || 'YTD') + ' (Challenger-comparable)', fmtN(chalTotalYtd), '—', fmtN(usEmpJobs), pct(usEmpJobs, chalTotalYtd)) +
+        row('By US job location, through ' + (refMonth || 'YTD'), fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
         row('Latest Challenger report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalTotalMo), '—', '—', '—') +
         group('AI CUTS — United States') +
-        row('By US employer, broad (Challenger-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
-        row('By US job location, broad', fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
+        row('By US employer, broad, through ' + (refMonth || 'YTD') + ' (Challenger-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
+        row('By US job location, broad, through ' + (refMonth || 'YTD'), fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
         row('Latest Challenger report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
         group('TECH — worldwide (layoffs.fyi-comparable · fyi as of ' + FYI.asOf + ')') +
         row('Tech cuts (Challenger sector col, ' + CHAL_STATIC.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal)) +

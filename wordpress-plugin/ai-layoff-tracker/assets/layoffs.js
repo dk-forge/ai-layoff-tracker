@@ -670,7 +670,14 @@
                 if (usOnlyScope && noteCard) {
                     try {
                         var cd = JSON.parse(noteCard.getAttribute('data-challenger') || '{}');
-                        if (cd.ai_ytd) sub = when + ' · by US employer · ' + Math.round(100 * b / cd.ai_ytd) + '% of Challenger\u2019s ' + fmt(cd.ai_ytd);
+                        if (cd.ai_ytd && cd.ref_month && a.series) {
+                            // Their YTD ends at the reference month; sum our
+                            // months through it so the % compares like windows.
+                            var thru = 0;
+                            a.series.forEach(function (sr) { if (sr.month <= cd.ref_month) thru += sr.ai_broad_jobs || 0; });
+                            sub = when + ' · by US employer · through ' + monthLabel(cd.ref_month) + ': ' +
+                                Math.round(100 * thru / cd.ai_ytd) + '% of Challenger\u2019s ' + fmt(cd.ai_ytd);
+                        }
                     } catch (e) { /* keep generic sub */ }
                 }
                 setText('alt-stat-ai-broad-sub', sub);
