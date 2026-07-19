@@ -514,7 +514,10 @@
             liveEl.classList.remove('alt-status-dim');
             if (roo) roo.setAttribute('class', 'alt-roo roo-sleeping');
             if (wrap) wrap.className = 'alt-roo-wrap is-sleeping';
-            if (nextEl) nextEl.textContent = np ? ('Roo’s resting until the next update, ' + np) : '';
+            var lastTxt = (stats && stats.last_updated) ? fmtET(stats.last_updated) : '';
+            if (nextEl) nextEl.textContent =
+                (lastTxt ? ('Roo pulled the latest data ' + lastTxt + ' — resting until ' + (np || 'the next run')) 
+                         : (np ? ('Roo’s resting until the next update, ' + np) : ''));
         }
     }
 
