@@ -1,0 +1,37 @@
+name: Employer-domicile curated backfill
+
+# Manual, bounded, idempotent: fills ONLY blank employer_country fields on
+# 'Multiple countries' rows from the committed curated HQ registry
+# (railway/seed_data/employer_domicile.json). Re-running is a no-op.
+on:
+  workflow_dispatch:
+    inputs:
+      max_rows:
+        description: 'Largest multi-country rows to examine (registry match still required)'
+        required: false
+        default: '400'
+      dry_run:
+        description: 'Set to 1 to list matches without writing'
+        required: false
+        default: ''
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Backfill curated employer domicile
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          DOMICILE_BACKFILL_MAX_ROWS: ${{ github.event.inputs.max_rows || '400' }}
+          DOMICILE_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+        run: |
+          cd railway
+          python employer_domicile_backfill.py | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash -eo pipefail {0}

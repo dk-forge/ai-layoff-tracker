@@ -150,7 +150,11 @@
       agg('years=2026'),
       safeGet('benchmarks/challenger'),
       safeGet('source-runs?days=7&per_page=100'),
-    ]).then(([us, tech, world, chal, runsResp]) => {
+      // Employer basis: evidenced/curated US domicile, plus blank-domicile
+      // US-job-location fallback — the Challenger-comparable scope, which
+      // includes US-HQ multi-country events the plain US filter cannot see.
+      agg('years=2026&country=United%20States&country_basis=employer'),
+    ]).then(([us, tech, world, chal, runsResp, usEmp]) => {
       const fmtN = v => (v == null ? '—' : Number(v).toLocaleString('en-US'));
       const latest = Array.isArray(chal) && chal.length ? chal[0] : {};
       const chalTotalYtd = latest.challenger_total_jobs_ytd;
@@ -160,6 +164,8 @@
       const refMonth = latest.reference_month || '';
       const usJobs = us && us.totals ? us.totals.jobs : null;
       const usBroad = us && us.totals ? us.totals.ai_broad_jobs : null;
+      const usEmpJobs = usEmp && usEmp.totals ? usEmp.totals.jobs : null;
+      const usEmpBroad = usEmp && usEmp.totals ? usEmp.totals.ai_broad_jobs : null;
       const techJobs = tech && tech.totals ? tech.totals.jobs : null;
       const techBroad = tech && tech.totals ? tech.totals.ai_broad_jobs : null;
       const worldJobs = world && world.totals ? world.totals.jobs : null;
@@ -167,8 +173,10 @@
       const pct = (ours, bench) => (ours != null && bench > 0) ? Math.round(100 * ours / bench) + '%' : '—';
       const row = (label, c, f, a, vs) => '<tr><td>' + label + '</td><td>' + c + '</td><td>' + f + '</td><td><b>' + a + '</b></td><td>' + vs + '</td></tr>';
       body.innerHTML =
-        row('US total cuts, YTD', fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
-        row('US AI cuts, YTD (broad)', fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
+        row('US total cuts, YTD (job location)', fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
+        row('US total cuts, YTD — US-employer basis (Challenger-comparable)', fmtN(chalTotalYtd), '—', fmtN(usEmpJobs), pct(usEmpJobs, chalTotalYtd)) +
+        row('US AI cuts, YTD (broad, job location)', fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
+        row('US AI cuts, YTD — US-employer basis (broad, Challenger-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
         row('US total cuts, latest report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalTotalMo), '—', '—', '—') +
         row('US AI cuts, latest report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
         row('Tech cuts, worldwide (Challenger sector, ' + CHAL_STATIC.asOf + ' · fyi as of ' + FYI.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal) + ' of fyi') +

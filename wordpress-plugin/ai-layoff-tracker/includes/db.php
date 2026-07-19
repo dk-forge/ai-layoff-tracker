@@ -510,7 +510,26 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
         }
     };
     $str_in('industry', 'industry', 'industry');
-    $str_in('country', 'country', 'country');
+    // country_basis=employer mirrors date_basis: the country filter then
+    // matches the evidenced employer domicile where one is recorded, falling
+    // back to the stated job location only for rows with no recorded domicile.
+    // This is the Challenger-comparable employer basis (a US-HQ company's
+    // multi-country cut counts; a foreign-HQ company's US cut does not). The
+    // plain country param stays job-location, and employer_country stays
+    // domicile-only (the strict comparator's gate) — neither changes meaning.
+    if ($except !== 'country') {
+        $countries = array_filter(array_map('trim', explode(',', (string) $r->get_param('country'))), 'strlen');
+        if ($countries) {
+            $ph = implode(',', array_fill(0, count($countries), '%s'));
+            if ($r->get_param('country_basis') === 'employer') {
+                $where[] = "(employer_country IN ($ph) OR (employer_country = '' AND country IN ($ph)))";
+                foreach ($countries as $v) { $params[] = $v; }
+            } else {
+                $where[] = "country IN ($ph)";
+            }
+            foreach ($countries as $v) { $params[] = $v; }
+        }
+    }
     $str_in('employer_country', 'employer_country', 'employer_country');
     $str_in('state', 'state', 'state');
     if ($except !== 'reasons') {
@@ -535,6 +554,11 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     }
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
     if ($r->get_param('ai_primary') === '1' || $r->get_param('ai_primary') === 'true') { $where[] = "ai_causation = 'primary_cause'"; }
+    // ai_broad matches the ai_broad_jobs aggregate definition exactly: the
+    // explicit employer-quote tag OR the loose Challenger/layoffs.fyi-style
+    // ai_linked tier. It filters ROWS, unlike the always-present aggregate
+    // columns, so benchmark queries can scope totals to the broad AI basis.
+    if ($r->get_param('ai_broad') === '1' || $r->get_param('ai_broad') === 'true') { $where[] = "(ai_explicit = 1 OR ai_causation = 'ai_linked')"; }
     if (($status = sanitize_key((string) $r->get_param('review_status'))) !== '') { $where[] = "review_status = %s"; $params[] = $status; }
     if ($r->get_param('context_missing') === '1' || $r->get_param('context_missing') === 'true') {
         $where[] = "(employer_country = '' OR announcement_date IS NULL)";
@@ -1135,7 +1159,11 @@ function alt_api_enrich_context(WP_REST_Request $r) {
         if (!empty($row->post_id)) foreach ($data as $key => $value) update_post_meta((int) $row->post_id, $key, $value);
         $out['updated'][] = $id;
     }
-    if (!empty($out['updated'])) alt_log_correction('enriched', $out['updated'], 'Automated source-evidence context enrichment');
+    // Callers may label the batch (e.g. the curated employer-domicile
+    // registry) so the public corrections trail names the actual basis
+    // instead of implying a source-page re-read.
+    $reason = sanitize_text_field((string) $r->get_param('reason'));
+    if (!empty($out['updated'])) alt_log_correction('enriched', $out['updated'], $reason !== '' ? $reason : 'Automated source-evidence context enrichment');
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
 }

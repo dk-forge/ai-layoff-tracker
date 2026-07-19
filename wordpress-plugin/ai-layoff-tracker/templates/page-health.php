@@ -49,6 +49,7 @@
   </section>
   <section class="alt-health-section" id="alt-sec-benchmarks"><h2>Benchmark race — Challenger &amp; layoffs.fyi vs ATR</h2>
     <p>Our cells recompute from the live database on every page load, so each data pull moves this table. Challenger cells update automatically when the monthly reconciliation stores their new report. layoffs.fyi cells are manually verified snapshots (leads-only policy; no automated pulls without their permission) with the as-of date shown.</p>
+    <p><b>US-employer basis</b> rows count an event by its recorded employer headquarters country (source-evidenced or from the curated public-HQ registry), falling back to US job location only where no domicile is recorded. Challenger counts announced cuts by US-headquartered employers, so this is the Challenger-comparable scope: a US company's multi-country cut counts once, a foreign company's US cut does not. Ambiguous headquarters stay blank rather than guessed.</p>
     <div class="alt-health-table-wrap"><table>
       <thead><tr><th>Measure (2026)</th><th>Challenger</th><th>layoffs.fyi</th><th>ATR (live)</th><th>ATR vs benchmark</th></tr></thead>
       <tbody id="alt-bench-race"><tr><td colspan="5">Loading live benchmark comparison…</td></tr></tbody>

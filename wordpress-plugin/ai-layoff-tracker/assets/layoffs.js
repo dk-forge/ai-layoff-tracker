@@ -1334,11 +1334,16 @@
         // appear only once the reconciliation job has retained those fields.
         // Five distinct colors — solid = AI pair, dashed = all-cuts pair,
         // green = our observed AI (real holdings; not the strict comparator).
-        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#8b46c8', usBroad: '#0f9d9d' };
-        function datasetsFor(suffix, observed, broad) {
+        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#8b46c8', usBroad: '#0f9d9d', usEmp: '#d97b16' };
+        function datasetsFor(suffix, observed, broad, employer) {
             var sets = [
                 { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: C.chalAI, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
-                { label: 'AskTheRecruiter — AI-linked, broad (Challenger-style)', data: broad, borderColor: C.usBroad, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
+                // Employer basis = evidenced US domicile, falling back to US
+                // job location only where no domicile is recorded — so a US-HQ
+                // company's multi-country cut counts, the way Challenger
+                // counts it, and a foreign-HQ company's US cut does not.
+                { label: 'AskTheRecruiter — US-employer basis (Challenger-comparable)', data: employer, borderColor: C.usEmp, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
+                { label: 'AskTheRecruiter — AI-linked, broad (US job location)', data: broad, borderColor: C.usBroad, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
                 { label: 'AskTheRecruiter — AI observed (verified + announced)', data: observed, borderColor: C.usObs, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
                 { label: 'AskTheRecruiter — strict comparator', data: pick('tracker_' + suffix), borderColor: C.usStrict, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
             ];
@@ -1352,36 +1357,50 @@
         }
         var labels = points.map(function (p) { return monthLabel(p.period); });
         var benchYear = (points[0] && points[0].period || '2026').slice(0, 4);
-        function mountBoth(obsMonth, obsYtd, broadMonth, broadYtd) {
+        function mountBoth(obsMonth, obsYtd, broadMonth, broadYtd, empMonth, empYtd) {
             if (monthlyCanvas && hasAny('challenger_month')) {
                 mountChart('alt-chart-challenger-monthly', {
                     type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('month', obsMonth, broadMonth) }, options: options(10000)
+                    data: { labels: labels, datasets: datasetsFor('month', obsMonth, broadMonth, empMonth) }, options: options(10000)
                 });
             }
             if (ytdCanvas) {
                 mountChart('alt-chart-challenger-reconciliation', {
                     type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd, broadYtd) }, options: options(25000)
+                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd, broadYtd, empYtd) }, options: options(25000)
                 });
             }
         }
         // Our observed AI by month (verified + announced) comes from the live
         // aggregate so the comparison never reads as "we have nothing" when
-        // only the STRICT lines sit near zero.
-        apiGet('aggregate', { years: benchYear, country: 'United States' }).then(function (agg) {
-            var by = {}, byBroad = {};
+        // only the STRICT lines sit near zero. The second aggregate is the
+        // same scope on the employer basis (country_basis=employer): curated/
+        // evidenced US domicile plus blank-domicile US-job-location fallback.
+        // Each fetch degrades to null alone so one failure only drops its own
+        // lines instead of blanking the whole comparison.
+        Promise.all([
+            apiGet('aggregate', { years: benchYear, country: 'United States' }).catch(function () { return null; }),
+            apiGet('aggregate', { years: benchYear, country: 'United States', country_basis: 'employer' }).catch(function () { return null; })
+        ]).then(function (results) {
+            var agg = results[0], empAgg = results[1];
+            var by = {}, byBroad = {}, byEmp = {};
             ((agg && agg.series) || []).forEach(function (srow) {
                 by[srow.month] = (srow.ai_verified_jobs || 0) + (srow.ai_announced_jobs || 0);
                 byBroad[srow.month] = (srow.ai_broad_jobs != null) ? srow.ai_broad_jobs : by[srow.month];
             });
-            var run = 0, runB = 0;
-            var obsMonth = points.map(function (p) { return by[p.period] != null ? by[p.period] : null; });
-            var obsYtd = points.map(function (p) { run += (by[p.period] || 0); return run; });
-            var broadMonth = points.map(function (p) { return byBroad[p.period] != null ? byBroad[p.period] : null; });
-            var broadYtd = points.map(function (p) { runB += (byBroad[p.period] || 0); return runB; });
-            mountBoth(obsMonth, obsYtd, broadMonth, broadYtd);
-        }).catch(function () { mountBoth(null, null, null, null); });
+            ((empAgg && empAgg.series) || []).forEach(function (srow) {
+                byEmp[srow.month] = (srow.ai_broad_jobs != null) ? srow.ai_broad_jobs
+                    : ((srow.ai_verified_jobs || 0) + (srow.ai_announced_jobs || 0));
+            });
+            var run = 0, runB = 0, runE = 0;
+            var obsMonth = agg ? points.map(function (p) { return by[p.period] != null ? by[p.period] : null; }) : null;
+            var obsYtd = agg ? points.map(function (p) { run += (by[p.period] || 0); return run; }) : null;
+            var broadMonth = agg ? points.map(function (p) { return byBroad[p.period] != null ? byBroad[p.period] : null; }) : null;
+            var broadYtd = agg ? points.map(function (p) { runB += (byBroad[p.period] || 0); return runB; }) : null;
+            var empMonth = empAgg ? points.map(function (p) { return byEmp[p.period] != null ? byEmp[p.period] : null; }) : null;
+            var empYtd = empAgg ? points.map(function (p) { runE += (byEmp[p.period] || 0); return runE; }) : null;
+            mountBoth(obsMonth, obsYtd, broadMonth, broadYtd, empMonth, empYtd);
+        });
     }
 
     function renderBar(canvasId, entries, filterId, activeValue, tipPrefix) {
