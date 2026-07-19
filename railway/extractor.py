@@ -41,6 +41,22 @@ AI_CAUSATION = {
     "unknown",
 }
 
+# Fixed role-category vocabulary, shared verbatim with the WordPress side
+# (alt_role_categories). The server re-validates, but rejecting unknown slugs
+# here keeps a drifted model from burning a batch on rejected items.
+ROLE_CATEGORIES = {
+    "engineering",
+    "product_design",
+    "customer_support",
+    "sales_marketing",
+    "hr_recruiting",
+    "operations_warehouse",
+    "content_trust_safety",
+    "finance_admin",
+    "manufacturing",
+    "retail_staff",
+}
+
 SYSTEM_PROMPT = """You are a data extraction specialist for a verified AI layoff tracker.
 
 Your job is to extract structured layoff data from news articles and SEC filings.
@@ -265,6 +281,72 @@ TEXT:\n""" + raw_text
         out["announcement_date"] = announcement_date
         out["announcement_evidence"] = announcement_quote.strip()
     return out or None
+
+
+def _sanitize_role_categories(values):
+    """Order-preserving filter of model output onto the fixed vocabulary."""
+    if not isinstance(values, list):
+        return []
+    seen = []
+    for value in values:
+        slug = value.strip().lower() if isinstance(value, str) else ""
+        if slug in ROLE_CATEGORIES and slug not in seen:
+            seen.append(slug)
+    return seen
+
+
+def extract_role_categories(raw_text):
+    """Extract only explicitly stated affected-role categories.
+
+    Returns ``{"categories": [slugs], "evidence": "exact quote"}``. An empty
+    categories list means the supplied text does not state which roles were
+    affected — the caller marks the row checked-unknown so the bounded queue
+    drains. ``None`` means a model/parse failure only, so the row stays queued
+    for a later run. A claimed category whose evidence quote is not verbatim
+    in the text is treated as not stated, never trusted.
+    """
+    raw_text = (raw_text or "")[:6000]
+    if not raw_text.strip():
+        return {"categories": [], "evidence": ""}
+    prompt = """Read this layoff source text and return STRICT JSON only:
+{"categories":["zero or more of: engineering|product_design|customer_support|sales_marketing|hr_recruiting|operations_warehouse|content_trust_safety|finance_admin|manufacturing|retail_staff"],"evidence":"exact source phrase naming the affected roles/teams/departments, or null"}
+
+Category guide: engineering = software/IT/technical staff; product_design =
+product management, design, UX; customer_support = customer support/service/
+success staff, call centers; sales_marketing = sales, marketing, advertising;
+hr_recruiting = HR, people teams, recruiting; operations_warehouse =
+operations, warehouse, logistics, drivers; content_trust_safety = content,
+moderation, trust & safety, editorial; finance_admin = finance, accounting,
+legal, administrative; manufacturing = factory/production/assembly workers;
+retail_staff = store/retail staff.
+
+Rules: include a category ONLY when the text explicitly names the roles,
+teams or departments affected by THESE cuts. Company-wide or unspecified
+cuts return []. Never infer roles from the company's business (a retailer
+cutting "corporate staff" is NOT retail_staff). The evidence phrase must be
+copied exactly from TEXT and is REQUIRED whenever categories is non-empty.
+
+TEXT:\n""" + raw_text
+    try:
+        response = _get_client().chat.completions.create(
+            model=MODEL, max_tokens=250,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content if response.choices else ""
+        result = _parse_json_response(content or "")
+    except Exception as exc:
+        print(f"Role-category extraction failed: {exc}")
+        return None
+    if not isinstance(result, dict):
+        return None
+    categories = _sanitize_role_categories(result.get("categories"))
+    evidence = result.get("evidence")
+    if categories and not _quote_is_supported(evidence, raw_text):
+        return {"categories": [], "evidence": ""}
+    return {
+        "categories": categories,
+        "evidence": evidence.strip() if categories and isinstance(evidence, str) else "",
+    }
 
 
 _US_STATE_ABBR = {

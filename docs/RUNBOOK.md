@@ -30,6 +30,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | data-quality | Mondays 16:00 UTC + manual | Anomaly report: WARN notices ≥5K, same-company multi-state filings, weak links — READ THIS WEEKLY |
 | challenger-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official Challenger report; fails if variance exceeds 10% |
 | reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
+| enrich-roles | daily 04:23 UTC + manual | Bounded role-category extraction from already-stored row text (roles/excerpt/quotes, no external fetches); fills only blank role_categories, marks evidence-silent rows `unknown` so the queue drains |
 | historical-news-sweep | daily + manual | Rotates through one 14-day global GDELT history window per day; dedup makes retries safe |
 | announcement-lifecycle-review | daily + manual | Read-only summary of exact-count, source-supported announcement-to-later-record candidates; never auto-merges or changes sources |
 | quarterly-report | 7th day after quarter close + manual | Stores an immutable, server-generated State of Layoffs snapshot; accepts only quarter id/status, never client totals or editorial claims |

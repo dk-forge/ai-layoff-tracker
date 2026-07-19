@@ -908,6 +908,18 @@
             .sort(function (a, b) { return b[1] - a[1]; })
             .slice(0, 8);
         renderBarList('alt-bars-ai-intensity', intensity, null, [], null, '%');
+        // Roles most impacted: fixed-category jobs with the AI-attributed
+        // share as the orange segment — the AI-vs-all comparison per team.
+        // Coverage is partial by construction (only events whose sources name
+        // the affected teams carry categories), so the subtitle states the
+        // honest denominator instead of implying every event is categorized.
+        renderBarList('alt-bars-roles', agg.top_roles, null, []);
+        var rolesSub = document.getElementById('alt-roles-sub');
+        if (rolesSub) {
+            var rke = (agg.totals && agg.totals.roles_known_entries) || 0;
+            rolesSub.innerHTML = '<span class="alt-ai-key"></span> AI share · from ' + fmt(rke)
+                + ' events naming the teams cut · multi-team events count in each';
+        }
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
             return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
         }), null, []);
@@ -2212,6 +2224,7 @@
             'alt-bars-industries': ['top_industries', 'by-industry'],
             'alt-bars-states': ['top_states', 'by-us-state'],
             'alt-bars-countries': ['top_countries', 'by-country'],
+            'alt-bars-roles': ['top_roles', 'by-role'],
             'alt-bars-sourcetypes': ['source_types', 'by-data-source']
         };
         // Computed lists export exactly what the card shows for the current

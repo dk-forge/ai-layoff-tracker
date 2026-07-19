@@ -54,6 +54,8 @@ function alt_db_install() {
         ai_language TEXT NULL,
         reason_tags VARCHAR(255) NOT NULL DEFAULT '',
         roles TEXT NULL,
+        role_categories VARCHAR(255) NOT NULL DEFAULT '',
+        roles_evidence TEXT NULL,
         excerpt TEXT NULL,
         event_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
         PRIMARY KEY (id),
@@ -355,6 +357,15 @@ function alt_db_upsert(array $row) {
         'excerpt'            => (string) ($row['excerpt'] ?? ''),
     );
 
+    // Derive fixed-vocabulary role categories from the row's own stated roles
+    // text. When nothing is derivable the key is OMITTED, not blanked: a daily
+    // re-import (WARN/ERM rows carry no roles text) must not erase categories
+    // the evidence-only backfill extracted from the stored excerpt.
+    if (function_exists('alt_normalize_roles')) {
+        $derived_roles = alt_db_pack_tags(alt_normalize_roles((string) $data['roles']));
+        if ($derived_roles !== '') $data['role_categories'] = $derived_roles;
+    }
+
     // Editorially suppressed entries never come back through an import.
     if (alt_is_suppressed($data['dedup_hash'])) {
         return 0;
@@ -563,6 +574,13 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($r->get_param('context_missing') === '1' || $r->get_param('context_missing') === 'true') {
         $where[] = "(employer_country = '' OR announcement_date IS NULL)";
     }
+    // Role-extraction queue: rows never checked for role categories that have
+    // SOME stored text to read (a row with neither roles nor excerpt can never
+    // be evidence-enriched, so it never enters the bounded queue). Checked
+    // rows carry at least the ',unknown,' marker and drop out.
+    if ($r->get_param('roles_missing') === '1' || $r->get_param('roles_missing') === 'true') {
+        $where[] = "role_categories = '' AND (COALESCE(roles,'') <> '' OR COALESCE(excerpt,'') <> '')";
+    }
     // stage=announced -> announcement-stage only; stage=verified -> filed/reported only
     $stage = (string) $r->get_param('stage');
     if ($stage === 'announced') { $where[] = "announced = 1"; }
@@ -615,6 +633,10 @@ function alt_db_row_to_array($row) {
         'ai_language'        => $row->ai_language !== '' ? $row->ai_language : null,
         'reason_tags'        => alt_db_unpack_tags($row->reason_tags),
         'roles'              => $row->roles,
+        // Fixed-vocabulary role categories. 'unknown' is queue bookkeeping
+        // ("evidence checked, roles not stated"), not a public category.
+        'role_categories'    => array_values(array_diff(alt_db_unpack_tags($row->role_categories ?? ''), array('unknown'))),
+        'roles_evidence'     => ($row->roles_evidence ?? '') !== '' ? $row->roles_evidence : null,
         'excerpt'            => $row->excerpt,
         'permalink'          => $row->post_id ? get_permalink((int) $row->post_id) : '',
     );
@@ -711,6 +733,15 @@ function alt_register_query_routes() {
     // an existing value without a new exact source quote.
     register_rest_route('layoffs/v1', '/enrich-context', array(
         'methods' => 'POST', 'callback' => 'alt_api_enrich_context',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    // Key-protected, evidence-bounded role-category extraction. Like
+    // /enrich-context it only fills BLANK fields and never pins a row or
+    // suppresses a hash; unlike /edit it cannot touch counts, dates, sources
+    // or AI labels. 'unknown' marks a checked row whose stored evidence does
+    // not state the affected roles, so the bounded daily queue drains.
+    register_rest_route('layoffs/v1', '/enrich-roles', array(
+        'methods' => 'POST', 'callback' => 'alt_api_enrich_roles',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
     // Read-only public operational transparency, plus a key-protected writer
@@ -1165,6 +1196,55 @@ function alt_api_enrich_context(WP_REST_Request $r) {
     $reason = sanitize_text_field((string) $r->get_param('reason'));
     if (!empty($out['updated'])) alt_log_correction('enriched', $out['updated'], $reason !== '' ? $reason : 'Automated source-evidence context enrichment');
     if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
+}
+
+/**
+ * Fill only blank role_categories from already-stored source evidence.
+ * Items: {id, categories: [vocab slugs] or ['unknown'], evidence: "exact
+ * stored-text quote"}. Real categories require a non-trivial evidence quote;
+ * 'unknown' records "checked, source doesn't say" with no quote. Existing
+ * categories (extractor-stated or an earlier pass) are never overwritten.
+ */
+function alt_api_enrich_roles(WP_REST_Request $r) {
+    global $wpdb;
+    $items = $r->get_param('items');
+    if (!is_array($items)) return new WP_Error('alt_bad_request', 'items must be an array.', array('status' => 400));
+    $table = alt_db_table();
+    $vocab = function_exists('alt_role_categories') ? array_keys(alt_role_categories()) : array();
+    $out = array('updated' => array(), 'marked_unknown' => array(), 'not_found' => array(), 'rejected' => array());
+    foreach ($items as $item) {
+        $id = (int) ($item['id'] ?? 0);
+        $row = $id ? $wpdb->get_row($wpdb->prepare("SELECT id, post_id, role_categories FROM $table WHERE id = %d", $id)) : null;
+        if (!$row) { $out['not_found'][] = $id; continue; }
+        if ((string) $row->role_categories !== '') { $out['rejected'][] = $id; continue; }
+        $cats = array_values(array_unique(array_intersect(
+            array_map('sanitize_key', (array) ($item['categories'] ?? array())),
+            array_merge($vocab, array('unknown'))
+        )));
+        if (!$cats) { $out['rejected'][] = $id; continue; }
+        $real = array_values(array_diff($cats, array('unknown')));
+        $evidence = trim((string) ($item['evidence'] ?? ''));
+        // The same minimum-quote invariant as every other evidence field: no
+        // category claim is stored without its supporting stored-text phrase.
+        if ($real && strlen($evidence) < 12) { $out['rejected'][] = $id; continue; }
+        $data = array('role_categories' => alt_db_pack_tags($real ?: array('unknown')));
+        if ($real) $data['roles_evidence'] = sanitize_textarea_field($evidence);
+        if ($wpdb->update($table, $data, array('id' => $id)) === false) {
+            return new WP_Error('alt_db_error', 'Role enrichment failed on id ' . $id . ': ' . $wpdb->last_error, array('status' => 500));
+        }
+        if (!empty($row->post_id)) {
+            foreach ($data as $key => $value) update_post_meta((int) $row->post_id, $key, $value);
+        }
+        if ($real) { $out['updated'][] = $id; } else { $out['marked_unknown'][] = $id; }
+    }
+    $reason = sanitize_text_field((string) $r->get_param('reason'));
+    // Only rows given REAL categories enter the public corrections trail;
+    // 'unknown' markers are queue bookkeeping, not a data change.
+    if (!empty($out['updated'])) {
+        alt_log_correction('enriched', $out['updated'], $reason !== '' ? $reason : 'Automated role-category extraction from stored source evidence');
+    }
+    if ((!empty($out['updated']) || !empty($out['marked_unknown'])) && function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
 }
 
@@ -2201,6 +2281,23 @@ function alt_api_cleanup(WP_REST_Request $r) {
         }
     }
 
+    // Role categories for legacy rows whose STATED roles text is keyword-
+    // mappable (new rows derive at upsert time). One UPDATE per distinct
+    // freeform value; rows whose roles live only in the excerpt stay blank
+    // here — the bounded evidence-only backfill owns those.
+    if (function_exists('alt_normalize_roles')) {
+        $changed['role_categories'] = 0;
+        $role_values = $wpdb->get_col("SELECT DISTINCT roles FROM $table WHERE COALESCE(roles,'') <> '' AND role_categories = ''");
+        foreach ($role_values ?: array() as $roles_text) {
+            $packed = alt_db_pack_tags(alt_normalize_roles($roles_text));
+            if ($packed !== '') {
+                $changed['role_categories'] += (int) $wpdb->query($wpdb->prepare(
+                    "UPDATE $table SET role_categories = %s WHERE roles = %s AND role_categories = ''",
+                    $packed, $roles_text));
+            }
+        }
+    }
+
     // Date sanity: a filing typo like "2050-12-31" or "3030-03-30" must not
     // define the tracker's visible range. Implausible dates are cleared (the
     // entry stays listed, just undated). WARN effective dates run at most
@@ -2356,6 +2453,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN job_count END),0) ai_broad_jobs,
                 SUM(announced) announced_entries,
                 COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) announced_jobs,
+                SUM(CASE WHEN role_categories NOT IN ('', ',unknown,') THEN 1 ELSE 0 END) roles_known_entries,
+                COALESCE(SUM(CASE WHEN role_categories NOT IN ('', ',unknown,') THEN job_count END),0) roles_known_jobs,
                 COUNT(DISTINCT company_key) companies,
                 COUNT(DISTINCT NULLIF(industry,'')) industries,
                 COUNT(DISTINCT NULLIF(country,'')) countries,
@@ -2388,6 +2487,24 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             "SELECT COALESCE(SUM(job_count),0) FROM $table WHERE $rw AND reason_tags LIKE %s",
             array_merge($rp, array('%,' . $tag . ',%'))));
         if ($val > 0) $reasons[] = array($tag, $val);
+    }
+
+    // Role categories most impacted, one bounded SUM per fixed-vocabulary tag
+    // (same LIKE-over-packed-tags shape as the reasons breakdown — a row
+    // naming several teams counts in each). [label, jobs, AI-attributed jobs]
+    // matches the topN triple so the same bar list can chart AI-vs-all.
+    // 'unknown' (checked, roles not stated) is deliberately not charted.
+    $top_roles = array();
+    if (function_exists('alt_role_categories')) {
+        foreach (alt_role_categories() as $slug => $label) {
+            $row = $wpdb->get_row(alt_db_prep(
+                "SELECT COALESCE(SUM(job_count),0) v,
+                        COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
+                 FROM $table WHERE $where AND role_categories LIKE %s",
+                array_merge($params, array('%,' . $slug . ',%'))));
+            if ($row && (int) $row->v > 0) $top_roles[] = array($label, (int) $row->v, (int) $row->a);
+        }
+        usort($top_roles, function ($x, $y) { return $y[1] - $x[1]; });
     }
 
     // Monthly series (all jobs + AI jobs) for trend + cumulative charts.
@@ -2443,6 +2560,10 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'ai_broad_entries'     => (int) $totals->ai_broad_entries,
             'announced_entries' => (int) $totals->announced_entries,
             'announced_jobs'    => (int) $totals->announced_jobs,
+            // Coverage denominator for the roles chart: only events whose
+            // sources actually name the affected teams carry categories.
+            'roles_known_entries' => (int) $totals->roles_known_entries,
+            'roles_known_jobs'    => (int) $totals->roles_known_jobs,
             'ai_entries' => (int) $totals->ai_entries,
             'companies'  => (int) $totals->companies,
             'industries' => (int) $totals->industries,
@@ -2454,6 +2575,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         'top_industries' => $topN('industry', 'industry'),
         'top_countries'  => $topN('country', 'country'),
         'top_states'     => $topN('state', 'state'),
+        'top_roles'      => $top_roles,
         'source_types'   => $topN('source_type', 'sources'),
         'reasons'        => $reasons,
         'series'         => $series,
