@@ -676,9 +676,14 @@
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
         setText('alt-stat-ai', fmt(aiJ));
-        var shareEarly = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
-        var shareTxt = shareEarly == null ? '' : ' · ' + (shareEarly >= 10 ? Math.round(shareEarly) : shareEarly.toFixed(1)) + '% of verified';
-        setText('alt-stat-ai-sub', when + shareTxt);
+        var pctTxt = function (num, den) {
+            if (!(den > 0) || num == null) return null;
+            var pv = 100 * num / den;
+            return (pv >= 10 ? Math.round(pv) : pv.toFixed(1)) + '%';
+        };
+        setText('alt-stat-ai-sub', when);
+        var shareV = pctTxt(aiJ, verifiedJ);
+        setText('alt-stat-ai-share-line', shareV ? shareV + ' of verified jobs are impacted by AI' : '');
         // The broad card is the Challenger-style measure, and Challenger
         // counts by EMPLOYER: with a country filter active, refetch on the
         // employer basis so the headline number is the comparable one
@@ -687,6 +692,8 @@
         // empty; the employer figure replaces it when it arrives.
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
         setText('alt-stat-ai-broad-sub', when);
+        var shareB = pctTxt(t.ai_broad_jobs, t.jobs);
+        setText('alt-stat-ai-broad-share-line', shareB ? shareB + ' of all job cuts are AI-linked' : '');
         // The anticipated card is FIXED-SCOPE: current year, US employers,
         // broad AI — the like-for-like total against the US benchmark. It
         // deliberately ignores the page filters (its description says so).
@@ -698,6 +705,9 @@
             if (tot == null) return;
             setText('alt-stat-ai-anticipated', fmt(tot));
             setText('alt-stat-ai-anticipated-sub', yNow + ' YTD · US employers');
+            var shareA = (a.totals && a.totals.jobs > 0) ? (100 * tot / a.totals.jobs) : null;
+            setText('alt-stat-ai-anticipated-share-line',
+                shareA != null ? (shareA >= 10 ? Math.round(shareA) : shareA.toFixed(1)) + '% of all US job cuts are AI-linked' : '');
         }).catch(function () { setText('alt-stat-ai-anticipated', '—'); });
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
