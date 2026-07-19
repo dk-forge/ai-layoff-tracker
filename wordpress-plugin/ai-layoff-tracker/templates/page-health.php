@@ -13,7 +13,6 @@
   </nav>
   <section class="alt-health-summary" aria-label="Operational summary" id="alt-health-summary"></section>
   <section class="alt-health-grid" id="alt-sec-actions"><div class="alt-health-section"><h2>Operator actions — needs a human, once</h2><ul class="alt-health-schedule">
-    <li><b>Cloudflare cache rule</b> for <code>/blog/ai-layoff-tracker*</code> ("Eligible for cache") — cuts first paint from ~1.5s to ~200ms.</li>
     <li><b>Search Console:</b> submit <code>/blog/company-layoffs-sitemap.xml</code>.</li>
     <li><b>Denmark Jobindsats key:</b> send the drafted application (docs/outreach/); store as <code>JOBINDSATS_API_KEY_DK</code>.</li>
     <li><b>Quebec MESS courtesy notice:</b> send the drafted email; collector is pre-built.</li>
