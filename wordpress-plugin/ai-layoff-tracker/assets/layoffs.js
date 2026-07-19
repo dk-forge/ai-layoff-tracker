@@ -817,6 +817,15 @@
             return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0];
         });
         renderAiShare(agg.series);
+        renderYoY(agg.series);
+        // AI intensity: which industries' cuts are MOST AI-attributed (share
+        // of that industry's jobs, min 1,000 jobs so tiny bases don't rank).
+        var intensity = (agg.top_industries || [])
+            .filter(function (e) { return e[1] >= 1000 && e[2] > 0; })
+            .map(function (e) { return [e[0], Math.round(100 * e[2] / e[1]), Math.round(100 * e[2] / e[1])]; })
+            .sort(function (a, b) { return b[1] - a[1]; })
+            .slice(0, 8);
+        renderBarList('alt-bars-ai-intensity', intensity, null, [], null, '%');
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
             return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
         }), null, []);
@@ -839,7 +848,7 @@
     // "Where the cuts are" bars: name left, value right, a track whose blue
     // fill is scaled to the top bar, with an orange leading segment showing the
     // AI-attributed share. Rows are buttons that toggle the matching filter.
-    function renderBarList(containerId, entries, filterId, activeValues, onPick) {
+    function renderBarList(containerId, entries, filterId, activeValues, onPick, suffix) {
         var box = document.getElementById(containerId);
         if (!box) return;
         // Compact cards show a top-4 preview; expanded (or full-size dashboard
@@ -868,7 +877,7 @@
                 + ((filterId || onPick) ? '' : ' disabled')
                 + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
                 + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(label) + '</span>'
-                + '<span class="alt-barrow-val">' + fmt(jobs) + '</span></span>'
+                + '<span class="alt-barrow-val">' + fmt(jobs) + (suffix || '') + '</span></span>'
                 + '<span class="alt-bartrack">'
                 + (aiW > 0.4 ? '<span class="alt-barfill-ai" style="width:' + aiW.toFixed(1) + '%"></span>' : '')
                 + '<span class="alt-barfill" style="left:' + aiW.toFixed(1) + '%;width:' + Math.max(0, w - aiW).toFixed(1) + '%"></span>'
@@ -1009,6 +1018,40 @@
     }
 
     // Monthly AI share of verified cuts, as a percent line.
+    // Year-over-year: this selection's verified line vs the same filters one
+    // year earlier (dashed grey). Shown when exactly one year is in scope.
+    var YOY_SEQ = 0;
+    function renderYoY(series) {
+        var box = document.getElementById('alt-chart-yoy');
+        if (!box) return;
+        var years = readControl('alt-f-years') || [];
+        var year = years.length === 1 ? parseInt(years[0], 10)
+            : (!years.length ? new Date().getFullYear() : null);
+        if (!year) { clearChart('alt-chart-yoy'); return; }
+        var seq = ++YOY_SEQ;
+        var params = currentParams();
+        params.years = String(year - 1);
+        apiGet('aggregate', params).then(function (prev) {
+            if (seq !== YOY_SEQ) return;
+            var cur = {}, old = {};
+            (series || []).forEach(function (s) { cur[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+            ((prev && prev.series) || []).forEach(function (s) { old[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+            var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+            var nowKey = pad2(new Date().getMonth() + 1);
+            var labels = months.map(function (m) { return monthLabel(year + '-' + m).split(' ')[0]; });
+            var curData = months.map(function (m) { return (year === new Date().getFullYear() && m > nowKey) ? null : (cur[m] || 0); });
+            var oldData = months.map(function (m) { return old[m] || 0; });
+            if (!curData.some(function (v) { return v > 0; }) && !oldData.some(function (v) { return v > 0; })) { clearChart('alt-chart-yoy'); return; }
+            var options = cloneOptions();
+            options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+            mountChart('alt-chart-yoy', { type: 'line', data: { labels: labels, datasets: [
+                { label: String(year), data: curData, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 },
+                { label: String(year - 1), data: oldData, borderColor: '#9aa0ab', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 }
+            ] }, options: options });
+        }).catch(function () { clearChart('alt-chart-yoy'); });
+    }
+
     function renderAiShare(series) {
         if (!document.getElementById('alt-chart-ai-share-trend')) return;
         series = fillMonths(series);
