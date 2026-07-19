@@ -30,9 +30,9 @@ DEADLINE_SECONDS = max(60, min(1100, int(os.environ.get("RECLASSIFY_DEADLINE_SEC
 
 
 def clean_html(content):
-    text = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\\1>", " ", content)
+    text = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\1>", " ", content)
     text = re.sub(r"(?s)<[^>]+>", " ", text)
-    return re.sub(r"\\s+", " ", html.unescape(text)).strip()
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
 def fetch_text(url):
