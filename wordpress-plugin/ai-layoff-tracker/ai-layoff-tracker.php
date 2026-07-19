@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.58
+ * Version: 2.18.59
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.58');
+define('ALT_VERSION', '2.18.59');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -199,11 +199,21 @@ function alt_page_needs_assets() {
 function alt_enqueue_assets() {
     if (!apply_filters('alt_enqueue_assets', alt_page_needs_assets())) return;
 
-    wp_enqueue_style('alt-styles', ALT_PLUGIN_URL . 'assets/layoffs.css', array(), ALT_VERSION);
+    // Version our assets by ALT_VERSION + file mtime, not ALT_VERSION alone.
+    // FTPS deploys upload the main PHP (new version string) before the assets,
+    // so a request in that window used to let Autoptimize aggregate the OLD
+    // asset content under the NEW ver= key — and that stale mapping persisted
+    // for the whole release (incident 2026-07-19, v2.18.58). With mtime in the
+    // key, the finished upload always mints a fresh cache key by itself.
+    $alt_asset_ver = function ($rel) {
+        $t = @filemtime(ALT_PLUGIN_DIR . $rel);
+        return ALT_VERSION . ($t ? '.' . $t : '');
+    };
+    wp_enqueue_style('alt-styles', ALT_PLUGIN_URL . 'assets/layoffs.css', array(), $alt_asset_ver('assets/layoffs.css'));
     $alt_page_content = is_singular() ? get_post_field('post_content', get_queried_object_id()) : '';
     $is_health_page = $alt_page_content && (has_shortcode($alt_page_content, 'alt_tracker_health') || has_shortcode($alt_page_content, 'alt_publisher_tools'));
     if ($is_health_page) {
-        wp_enqueue_script('alt-health-js', ALT_PLUGIN_URL . 'assets/health.js', array(), ALT_VERSION, true);
+        wp_enqueue_script('alt-health-js', ALT_PLUGIN_URL . 'assets/health.js', array(), $alt_asset_ver('assets/health.js'), true);
         wp_localize_script('alt-health-js', 'altHealthData', array(
             'apiUrl' => esc_url_raw(rest_url('layoffs/v1/')),
             'widgetUrl' => esc_url_raw(home_url('/?alt_tracker_widget=1')),
@@ -241,7 +251,7 @@ function alt_enqueue_assets() {
         'alt-js',
         ALT_PLUGIN_URL . 'assets/layoffs.js',
         array('jquery', 'datatables-js', 'chartjs'),
-        ALT_VERSION,
+        $alt_asset_ver('assets/layoffs.js'),
         true
     );
 
