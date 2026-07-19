@@ -205,48 +205,47 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-desc">Filed or reported. The main number.</span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai">
-                <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                <span class="alt-stat-label">Explicitly AI-attributed</span>
-                <span class="alt-stat-desc"><b>This number is part of Verified job cuts.</b> Cuts the company openly blamed on AI.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
-            </div>
-            <div class="alt-stat-card alt-stat-card-ai">
-                <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
-                <span class="alt-stat-label">AI-linked, broad (Challenger-style)</span>
-                <span class="alt-stat-desc"><b>Counts AI the way Challenger and layoffs.fyi do.</b> Loose attributions included; with a country filter, counted by the employer's home country.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
-            </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts</span>
-                <span class="alt-stat-desc"><b>This number is not part of Verified job cuts.</b> Source-linked plans at announcement stage, dated in the selected period.</span>
+                <span class="alt-stat-desc">Company plans at announcement stage — not yet in Verified. Example: a filing says cuts start next quarter.</span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
+            </div>
+            <div class="alt-stat-card">
+                <span class="alt-stat-value" id="alt-stat-all">—</span>
+                <span class="alt-stat-label">All job cuts, incl. plans</span>
+                <span class="alt-stat-desc">Verified + Announced together — the full picture for the period.</span>
+                <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
+            </div>
+            <div class="alt-stat-card alt-stat-card-tall">
+                <span class="alt-stat-value" id="alt-stat-companies">—</span>
+                <span class="alt-stat-label">Companies</span>
+                <span class="alt-stat-desc">Coverage in this view.</span>
+                <span class="alt-stat-sub"><span id="alt-stat-industries">—</span> industries · <span id="alt-stat-countries">—</span> countries with events</span>
+                <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
+                <span class="alt-stat-sub">we scan <?php echo number_format((int) $alt_scan_countries); ?> countries</span>
+            </div>
+            <div class="alt-stat-card alt-stat-card-ai">
+                <span class="alt-stat-value" id="alt-stat-ai">—</span>
+                <span class="alt-stat-label">↳ blamed on AI by the company</span>
+                <span class="alt-stat-desc">Part of Verified, in the employer's own words. Example — Block: "smaller teams using AI to automate more work."</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai" data-challenger="<?php echo esc_attr(wp_json_encode(array(
                 'ai_ytd' => $alt_challenger_records ? (int) ($alt_challenger_records[0]['challenger_ai_jobs_ytd'] ?? 0) : 0,
                 'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
-                <span class="alt-stat-label">Announced AI job cuts</span>
-                <span class="alt-stat-desc"><b>This number is part of Announced job cuts.</b> Announced plans the company links to AI, dated in the selected period.</span>
+                <span class="alt-stat-label">↳ AI-linked announced plans</span>
+                <span class="alt-stat-desc">Part of Announced. Example — PayPal's 4,500-role plan while it "aggressively adopts AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-challenger-note" style="display:none"></span>
             </div>
-            <div class="alt-stat-card">
-                <span class="alt-stat-value" id="alt-stat-companies">—</span>
-                <span class="alt-stat-label">Companies</span>
-                <span class="alt-stat-sub" id="alt-stat-companies-sub"></span>
-            </div>
-            <div class="alt-stat-card">
-                <span class="alt-stat-value" id="alt-stat-industries">—</span>
-                <span class="alt-stat-label">Industries</span>
-                <span class="alt-stat-sub"></span>
-            </div>
-            <div class="alt-stat-card">
-                <span class="alt-stat-value" id="alt-stat-countries">—</span>
-                <span class="alt-stat-label">Countries with events</span>
-                <span class="alt-stat-sub">we scan <?php echo number_format((int) $alt_scan_countries); ?> countries</span>
+            <div class="alt-stat-card alt-stat-card-ai">
+                <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
+                <span class="alt-stat-label">↳ AI-linked, broad</span>
+                <span class="alt-stat-desc">Part of All job cuts: anything the company or press tied to AI. Example — Dell's 11,000, framed as an AI pivot. Counted like Challenger counts, by the employer's country.</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
             </div>
         </div>
         <nav class="alt-stats-links" aria-label="About these results">

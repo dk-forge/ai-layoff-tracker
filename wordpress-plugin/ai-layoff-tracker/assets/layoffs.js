@@ -666,6 +666,8 @@
         setText('alt-stat-total-entries', when);
         setText('alt-stat-announced', fmt(annJ));
         setText('alt-stat-announced-sub', whenAnnounced);
+        setText('alt-stat-all', fmt(t.jobs || 0));
+        setText('alt-stat-all-sub', whenAnnounced);
         // AI-attributed is the VERIFIED subset; announced-AI is the ANNOUNCED
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
