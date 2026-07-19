@@ -211,6 +211,12 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-desc"><b>This number is part of Verified job cuts.</b> Cuts the company openly blamed on AI.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
+            <div class="alt-stat-card alt-stat-card-ai">
+                <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
+                <span class="alt-stat-label">AI-linked, broad (Challenger-style)</span>
+                <span class="alt-stat-desc"><b>Counts AI the way Challenger and layoffs.fyi do.</b> Verified + announced + press-linked AI in this view.</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
+            </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts</span>
@@ -226,10 +232,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-desc"><b>This number is part of Announced job cuts.</b> Announced plans the company links to AI, dated in the selected period.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-challenger-note" style="display:none"></span>
-            </div>
-            <div class="alt-stat-card">
-                <span class="alt-stat-value" id="alt-stat-ai-share">—</span>
-                <span class="alt-stat-label">of Verified job cuts are AI-attributed</span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-companies">—</span>

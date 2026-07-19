@@ -104,6 +104,38 @@
     2025: { chal: 1206374, chalAI: 54836, fyi: 122606 },
     2026: { chal: null, chalAI: null, fyi: 121326 }, // 2026 Challenger cells fill from the stored YTD records
   };
+  function renderBenchMonthly() {
+    const body = document.getElementById('alt-bench-monthly');
+    if (!body) return;
+    const agg = p => fetch(api + 'aggregate?' + p, { headers: { Accept: 'application/json' } }).then(r => r.json()).catch(() => null);
+    Promise.all([
+      safeGet('benchmarks/challenger'),
+      agg('years=2026&country=United%20States&country_basis=employer'),
+    ]).then(([chal, usEmp]) => {
+      const fmtN = v => (v == null ? '—' : Number(v).toLocaleString('en-US'));
+      const pct = (ours, bench) => {
+        if (ours == null || !(bench > 0)) return '—';
+        const p2 = Math.round(100 * ours / bench);
+        const cls = p2 >= 90 ? 'alt-pct-good' : (p2 >= 60 ? 'alt-pct-mid' : 'alt-pct-low');
+        return '<span class="' + cls + '">' + p2 + '%</span>';
+      };
+      const byMonth = {};
+      ((usEmp && usEmp.series) || []).forEach(r2 => { byMonth[r2.month] = r2; });
+      const recs = (Array.isArray(chal) ? chal : []).filter(r2 => r2.reference_month)
+        .sort((a, b) => a.reference_month < b.reference_month ? -1 : 1);
+      if (!recs.length) { body.innerHTML = '<tr><td colspan="7">No stored Challenger months yet.</td></tr>'; return; }
+      body.innerHTML = recs.map(r2 => {
+        const m = byMonth[r2.reference_month] || {};
+        return '<tr><td><b>' + r2.reference_month + '</b></td>' +
+          '<td>' + fmtN(r2.challenger_total_jobs_month) + '</td><td>' + fmtN(m.jobs) + '</td><td>' + pct(m.jobs, r2.challenger_total_jobs_month) + '</td>' +
+          '<td>' + fmtN(r2.challenger_ai_jobs_month) + '</td><td>' + fmtN(m.ai_broad_jobs) + '</td><td>' + pct(m.ai_broad_jobs, r2.challenger_ai_jobs_month) + '</td></tr>';
+      }).join('');
+    }).catch(() => {
+      body.innerHTML = '<tr><td colspan="7">Monthly trend could not load this time — refresh to retry.</td></tr>';
+    });
+  }
+  renderBenchMonthly();
+
   function renderBenchHistory() {
     const body = document.getElementById('alt-bench-history');
     if (!body) return;

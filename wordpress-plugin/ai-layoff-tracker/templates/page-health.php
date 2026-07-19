@@ -38,7 +38,7 @@
       <article><span class="alt-health-status alt-health-active">Active</span><h3>US Challenger comparison</h3><p>A monthly, like-for-like US employer / announcement / AI-primary comparator publishes the measured gap without changing tracker totals to match it.</p></article>
       <article><span class="alt-health-status alt-health-active">Active</span><h3>High-impact editorial review</h3><p>Very large, AI-primary and multi-country events are surfaced for source-based review; nothing is silently auto-corrected.</p></article>
       <article><span class="alt-health-status alt-health-active">Active</span><h3>Durable evidence hashes</h3><p>Every retained excerpt is hashed: new excerpts at write time, and the legacy backlog completed its bounded backfill on July 18, 2026. Any newly pending hashes are reported live above.</p></article>
-      <article><span class="alt-health-status alt-health-in_progress">In progress</span><h3>Announcement-date and employer-domicile enrichment</h3><p>Daily, evidence-only enrichment improves strict Challenger comparison eligibility. Unknown fields remain blank rather than inferred.</p></article>
+      <article><span class="alt-health-status alt-health-in_progress">In progress</span><h3>Announcement-date and employer-domicile enrichment</h3><p>Employer-domicile shipped July 19, 2026: a curated, source-verifiable HQ registry powers the US-employer (Challenger-comparable) views. Daily evidence-only announcement-date enrichment continues; unknown fields remain blank rather than inferred.</p></article>
       <article><span class="alt-health-status alt-health-active">Active</span><h3>Measured country recall</h3><p>The first published sample: California WARN, June 2026 — 11 of 12 independently transcribed official notices matched a canonical tracker event (91.7% sample recall), measured through a three-actor review chain against a sealed official document. A sample is a spot measurement, never a completeness claim; further country-period samples follow the same protocol.</p></article>
       <article><span class="alt-health-status alt-health-pending_permission">Pending review</span><h3>Official national and company IR connectors</h3><p>The first five reviewed company-owned IR feeds (Intel, SAP, Cisco, Salesforce, Micron) were admitted to the versioned registry on July 18, 2026. Japan EDINET and South Korea OpenDART discovery probes now run on the twice-daily schedule and report health above — they list official filings only and ingest nothing. A country is claimed covered only after an evidence-gated extraction connector passes review.</p></article>
       <article><span class="alt-health-status alt-health-active">Active</span><h3>Embeddable US widgets</h3><p>A noindex, source-linked US national/state iframe widget links readers to its exact filtered tracker view. Build copyable code on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">publisher tools page</a>; metro variants remain deliberately out of scope.</p></article>
@@ -55,6 +55,15 @@
       <tbody id="alt-bench-race"><tr><td colspan="5">Loading live benchmark comparison…</td></tr></tbody>
     </table></div>
     <p id="alt-bench-race-updated" aria-live="polite">Loading update history…</p>
+    <h3>Month by month, 2026 — are we trending toward the benchmark?</h3>
+    <p>Challenger cells come from their stored monthly reports; ATR cells are live, on the US-employer (Challenger-comparable) basis.</p>
+    <div class="alt-health-table-wrap"><table class="alt-bench-table">
+      <thead>
+        <tr><th rowspan="2">Month</th><th colspan="3" class="alt-bench-grouphead">All US cuts</th><th colspan="3" class="alt-bench-grouphead">US AI cuts (broad)</th></tr>
+        <tr><th>Challenger</th><th>ATR</th><th>%</th><th>Challenger</th><th>ATR</th><th>%</th></tr>
+      </thead>
+      <tbody id="alt-bench-monthly"><tr><td colspan="7">Loading monthly trend…</td></tr></tbody>
+    </table></div>
     <h3>Year by year, as far back as both benchmarks publish</h3>
     <p>Challenger figures are from their own year-end reports (AI reason code began May 2023; the 2024 AI figure is Challenger's printed YTD, confirmed exact by their own cumulative arithmetic). layoffs.fyi is worldwide tech only and began tracking March 2020. ATR cells are live.</p>
     <div class="alt-health-table-wrap"><table class="alt-bench-table">

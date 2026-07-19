@@ -605,16 +605,16 @@
         // Challenger's number alone reads as a huge gap when we actually
         // exceed them on their own counting basis (broad AI attribution,
         // counted by US employer). Fetch that basis and say both plainly.
-        note.innerHTML = 'For scale: Challenger counts ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
-            + monthLabel(data.ref_month) + '). Counted their way — broad AI attribution, by US employer — we track <b>…</b> · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
+        note.innerHTML = 'Challenger: <b>' + fmt(data.ai_ytd) + '</b> AI cuts YTD (through ' + monthLabel(data.ref_month) + ') · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
         note.style.display = '';
         var y = new Date().getFullYear();
         apiGet('aggregate', { years: String(y), country: 'United States', country_basis: 'employer' }).then(function (a) {
             var broad = a && a.totals && a.totals.ai_broad_jobs;
             if (!broad) return;
-            note.innerHTML = 'For scale: Challenger counts ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
-                + monthLabel(data.ref_month) + '). Counted their way — broad AI attribution, by US employer — we track <b>'
-                + fmt(broad) + '</b>. The cards above are our stricter tier: the employer\u2019s own words, quote on file, by job location · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
+            note.innerHTML = 'Challenger: <b>' + fmt(data.ai_ytd) + '</b> AI cuts YTD (through ' + monthLabel(data.ref_month) + ').<br>'
+                + 'Counted their way (by US employer): we track <b>' + fmt(broad) + '</b> · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
+            var bsub = document.getElementById('alt-stat-ai-broad-sub');
+            if (bsub && bsub.textContent.indexOf('US employer') === -1) bsub.textContent += ' · by US employer: ' + fmt(broad);
         }).catch(function () { /* keep the basic note */ });
     }
 
@@ -638,17 +638,18 @@
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
         setText('alt-stat-ai', fmt(aiJ));
-        var broadJ = t.ai_broad_jobs || 0;
-        setText('alt-stat-ai-sub', when + (broadJ > aiJ ? ' · broad incl. AI-linked: ' + fmt(broadJ) : ''));
+        var shareEarly = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
+        var shareTxt = shareEarly == null ? '' : ' · ' + (shareEarly >= 10 ? Math.round(shareEarly) : shareEarly.toFixed(1)) + '% of verified';
+        setText('alt-stat-ai-sub', when + shareTxt);
+        setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
+        setText('alt-stat-ai-broad-sub', when);
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
         setText('alt-stat-ai-announced', fmt(aiAnnJ));
         setText('alt-stat-ai-announced-sub', whenAnnounced);
         renderChallengerNote();
-        var share = verifiedJ > 0 ? (100 * aiJ / verifiedJ) : null;
-        setText('alt-stat-ai-share', share == null ? '—'
-            : (share >= 10 ? Math.round(share) : share.toFixed(1)) + '%');
+
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));
         setText('alt-stat-countries', fmt(t.countries));
