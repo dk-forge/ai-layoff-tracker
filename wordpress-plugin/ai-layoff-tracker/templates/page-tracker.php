@@ -226,19 +226,19 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
                 <span class="alt-stat-label">AI-linked, specific (by the company)</span>
-                <span class="alt-stat-desc">Part of Verified, in the employer's own words — statements like "AI now handles this work" or "replaced by AI."</span>
+                <span class="alt-stat-desc">Part of Verified, in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
                 <span class="alt-stat-label">AI-linked, broad</span>
-                <span class="alt-stat-desc">Part of All job cuts — anything the company or press tied to AI, like "amid AI push" or "AI pivot."</span>
+                <span class="alt-stat-desc">Part of All job cuts: anything the company or press tied to AI, like "amid AI push" or "AI pivot."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
                 <span class="alt-stat-label">AI-linked announced plans</span>
-                <span class="alt-stat-desc">Part of Announced — plans citing AI, like "cutting roles as we adopt AI."</span>
+                <span class="alt-stat-desc">Part of Announced: plans citing AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai" data-challenger="<?php echo esc_attr(wp_json_encode(array(
