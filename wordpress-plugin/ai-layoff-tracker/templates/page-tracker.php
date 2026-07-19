@@ -198,19 +198,19 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     <section class="alt-results-summary" aria-labelledby="alt-results-summary-title">
         <div class="screen-reader-text" id="alt-results-summary-title" role="heading" aria-level="2">Results summary</div>
         <div class="alt-stats-bar" id="alt-stats-bar">
-            <div class="alt-stat-card">
+            <div class="alt-stat-card alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-total">—</span>
                 <span class="alt-stat-label">Verified job cuts</span>
                 <span class="alt-stat-desc">Filed or reported. The main number.</span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
             </div>
-            <div class="alt-stat-card">
+            <div class="alt-stat-card alt-fam-announced">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts (planned)</span>
                 <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
             </div>
-            <div class="alt-stat-card">
+            <div class="alt-stat-card alt-fam-all">
                 <span class="alt-stat-value" id="alt-stat-all">—</span>
                 <span class="alt-stat-label">Verified + announced job cuts</span>
                 <span class="alt-stat-desc">Both tiers together: everything filed, reported, or planned in the period.</span>
@@ -223,32 +223,32 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-line"><b id="alt-stat-countries">—</b> <span id="alt-stat-countries-label">countries</span></span>
                 <span class="alt-stat-line"><b id="alt-stat-states">—</b> <span id="alt-stat-states-label">US states</span></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai">
+            <div class="alt-stat-card alt-stat-card-ai alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                <span class="alt-stat-label">AI-linked verified cuts (specific)</span>
+                <span class="alt-stat-label">🤖 AI-linked verified cuts (specific)</span>
                 <span class="alt-stat-desc">Part of Verified, in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-share-line"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai">
+            <div class="alt-stat-card alt-stat-card-ai alt-fam-all">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
-                <span class="alt-stat-label">AI-linked, broad (verified + announced)</span>
+                <span class="alt-stat-label">🤖 AI-linked, broad (verified + announced)</span>
                 <span class="alt-stat-desc">Part of All job cuts: anything the company or press tied to AI, like "amid AI push" or "AI pivot."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai">
+            <div class="alt-stat-card alt-stat-card-ai alt-fam-announced">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
-                <span class="alt-stat-label">AI-linked planned cuts (announced)</span>
+                <span class="alt-stat-label">🤖 AI-linked planned cuts (announced)</span>
                 <span class="alt-stat-desc">Part of Announced: plans citing AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai" data-challenger="<?php echo esc_attr(wp_json_encode(array(
+            <div class="alt-stat-card alt-stat-card-ai alt-fam-us" data-challenger="<?php echo esc_attr(wp_json_encode(array(
                 'ai_ytd' => $alt_challenger_records ? (int) ($alt_challenger_records[0]['challenger_ai_jobs_ytd'] ?? 0) : 0,
                 'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
-                <span class="alt-stat-label">US AI job cuts, incl. planned</span>
+                <span class="alt-stat-label">🤖 US AI job cuts, incl. planned</span>
                 <span class="alt-stat-desc">Every AI cut by a US company this year: verified, announced, and press-linked combined. Always the full US year, no matter what filters are set.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-share-line"></span>

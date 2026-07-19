@@ -685,7 +685,7 @@
         };
         setText('alt-stat-ai-sub', when);
         var shareV = pctTxt(aiJ, verifiedJ);
-        setText('alt-stat-ai-share-line', shareV ? shareV + ' of verified jobs are impacted by AI' : '');
+        setText('alt-stat-ai-share-line', shareV ? shareV + ' of verified cuts were blamed on AI by the employer' : '');
         // The broad card is the Challenger-style measure, and Challenger
         // counts by EMPLOYER: with a country filter active, refetch on the
         // employer basis so the headline number is the comparable one
@@ -695,7 +695,7 @@
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
         setText('alt-stat-ai-broad-sub', when);
         var shareB = pctTxt(t.ai_broad_jobs, t.jobs);
-        setText('alt-stat-ai-broad-share-line', shareB ? shareB + ' of all job cuts are AI-linked' : '');
+        setText('alt-stat-ai-broad-share-line', shareB ? shareB + ' of all cuts in this view have an AI link' : '');
         // The anticipated card is FIXED-SCOPE: current year, US employers,
         // broad AI — the like-for-like total against the US benchmark. It
         // deliberately ignores the page filters (its description says so).
@@ -709,7 +709,7 @@
             setText('alt-stat-ai-anticipated-sub', yNow + ' YTD · US employers');
             var shareA = (a.totals && a.totals.jobs > 0) ? (100 * tot / a.totals.jobs) : null;
             setText('alt-stat-ai-anticipated-share-line',
-                shareA != null ? (shareA >= 10 ? Math.round(shareA) : shareA.toFixed(1)) + '% of all US job cuts are AI-linked' : '');
+                shareA != null ? (shareA >= 10 ? Math.round(shareA) : shareA.toFixed(1)) + '% of all US cuts this year have an AI link' : '');
         }).catch(function () { setText('alt-stat-ai-anticipated', '—'); });
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
