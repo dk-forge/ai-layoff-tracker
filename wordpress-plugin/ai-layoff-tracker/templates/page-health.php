@@ -1,6 +1,6 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <main class="alt-wrap alt-health-page" id="alt-health-page">
-  <header class="alt-health-hero"><p class="alt-eyebrow">AskTheRecruiter · public operations</p><h1>AI Tracker Health</h1><p>Live collector health, evidence integrity, coverage limits and active quality work. A degraded source is a visible gap—not a zero result.</p><p><a class="alt-btn alt-btn-sm" href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Want to embed this tracker on your site? Get the free widget →</a></p><p id="alt-health-updated" role="status">Loading live operational status…</p></header>
+  <header class="alt-health-hero"><p class="alt-eyebrow">AskTheRecruiter · public operations</p><h1>AI Tracker Health</h1><p>Live collector health, evidence integrity, coverage limits and active quality work. A degraded source is a visible gap—not a zero result.</p><p id="alt-health-updated" role="status">Loading live operational status…</p></header>
   <section class="alt-health-summary" aria-label="Operational summary" id="alt-health-summary"></section>
   <section class="alt-health-section alt-feature-list" aria-labelledby="alt-feature-list-heading">
     <div class="alt-feature-list-heading"><div><p class="alt-eyebrow">Product roadmap</p><h2 id="alt-feature-list-heading">Features list</h2></div><p>Released capabilities and their rollout state. Live collector status and errors are shown above; this list does not imply complete country coverage.</p></div>

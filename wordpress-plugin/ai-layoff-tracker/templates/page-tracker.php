@@ -249,6 +249,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <nav class="alt-stats-links" aria-label="About these results">
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
             <a class="alt-method-link" href="#alt-challenger-comparison">Why US figures differ from Challenger</a>
+            <a class="alt-btn alt-btn-sm" href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Want to embed this tracker on your site? Get the free widget →</a>
         </nav>
     </section>
 
