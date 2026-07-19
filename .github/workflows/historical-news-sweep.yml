@@ -51,8 +51,6 @@ jobs:
           GDELT_QUERY_ATTEMPTS: '6'
           GDELT_QUERY_BACKOFF_SECONDS: '90'
           OPENROUTER_TIMEOUT_SECONDS: '45'
-          GDELT_QUERY_ATTEMPTS: '3'
-          GDELT_QUERY_BACKOFF_SECONDS: '15'
           BACKFILL_DEADLINE_SECONDS: '600'
           HISTORICAL_START_OVERRIDE: ${{ github.event.inputs.start || '' }}
           HISTORICAL_END_OVERRIDE: ${{ github.event.inputs.end || '' }}
