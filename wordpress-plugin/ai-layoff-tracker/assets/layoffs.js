@@ -1684,8 +1684,15 @@
         entries = entries || [];
         if (!entries.length) { clearChart('alt-chart-reasons'); return; }
         var active = activeValues || [];
-        var colors = entries.map(function (e, i) {
-            var base = PALETTE[i % PALETTE.length];
+        // AI slices wear the AI accent hues used site-wide (vermillion for
+        // company-stated, orange for broad/possible); other reasons draw from
+        // the non-AI hues so the donut speaks the same color language as the
+        // cards and bar fills.
+        var REASON_COLORS = { ai_automation: '#D55E00', possible_ai: '#E69F00' };
+        var NEUTRAL_SEQ = ['#0072B2', '#009E73', '#CC79A7', '#56B4E9', '#000000', '#999999', '#7A6A52', '#4A5E7A'];
+        var neutralIdx = 0;
+        var colors = entries.map(function (e) {
+            var base = REASON_COLORS[e[0]] || NEUTRAL_SEQ[(neutralIdx++) % NEUTRAL_SEQ.length];
             return (active.length && active.indexOf(e[0]) === -1) ? '#d6d8de' : base;
         });
         var options = {
