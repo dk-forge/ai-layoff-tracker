@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       steps:
-        description: 'JSON array: [{"endpoint":"edit|merge-events|reclassify|enrich-context|add","body":{...},"expect":[200]}]'
+        description: 'JSON array: [{"endpoint":"edit|merge-events|reclassify|enrich-context|enrich-roles|add","body":{...},"expect":[200]}]'
         required: true
       reason:
         description: 'Dossier reference / why (shown in the run summary)'
@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           import json, os, sys, time, urllib.request
 
-          ALLOWED = {"edit", "merge-events", "reclassify", "enrich-context", "add"}
+          ALLOWED = {"edit", "merge-events", "reclassify", "enrich-context", "enrich-roles", "add"}
           steps = json.loads(os.environ["STEPS"])
           assert isinstance(steps, list) and steps, "steps must be a non-empty JSON array"
           summary_lines = ["## Data corrections", "", f"- Reason: {os.environ.get('REASON','')}", ""]

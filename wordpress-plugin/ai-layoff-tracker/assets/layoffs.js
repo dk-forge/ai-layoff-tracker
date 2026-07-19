@@ -914,6 +914,18 @@
             .sort(function (a, b) { return b[1] - a[1]; })
             .slice(0, 8);
         renderBarList('alt-bars-ai-intensity', intensity, null, [], null, '%');
+        // Roles most impacted: fixed-category jobs with the AI-attributed
+        // share as the orange segment — the AI-vs-all comparison per team.
+        // Coverage is partial by construction (only events whose sources name
+        // the affected teams carry categories), so the subtitle states the
+        // honest denominator instead of implying every event is categorized.
+        renderBarList('alt-bars-roles', agg.top_roles, null, []);
+        var rolesSub = document.getElementById('alt-roles-sub');
+        if (rolesSub) {
+            var rke = (agg.totals && agg.totals.roles_known_entries) || 0;
+            rolesSub.innerHTML = '<span class="alt-ai-key"></span> AI share · only the ' + fmt(rke)
+                + ' events naming the teams cut · a sample, not a breakdown of the total';
+        }
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
             return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
         }), null, []);
@@ -2122,12 +2134,20 @@
                 ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified event' + (mE === 1 ? '' : 's') + largest(mLead)
                 : 'no verified layoff events reported yet',
                 'data-from="' + y + '-' + pad2(now.getMonth() + 1) + '-01" data-to="' + iso(now) + '"');
+            // Most-affected roles appear only when the sources behind at least
+            // 20% of this scope's jobs name the teams cut — below that the
+            // sample is too thin to headline.
+            var rolesFrag = '';
+            var yRoles = r[0].top_roles || [];
+            if (tJ > 0 && ((t.roles_known_jobs || 0) / tJ) >= 0.2 && yRoles.length >= 2) {
+                rolesFrag = ' · roles hit hardest (where stated): ' + b(esc(yRoles[0][0])) + ' and ' + b(esc(yRoles[1][0]));
+            }
             rows += row(y + ' so far', tJ > 0
                 ? b(fmt(tJ)) + ' workers · ' + b(fmt(tV)) + ' verified event' + (tV === 1 ? '' : 's') +
                   ' (about ' + fmt(Math.round(tJ / daysElapsed)) + ' workers a day)' +
-                  (tAI ? ' · explicitly blamed on AI: ' + b(fmt(tAI)) : '') + largest(yLead)
+                  (tAI ? ' · explicitly blamed on AI: ' + b(fmt(tAI)) : '') + rolesFrag + largest(yLead)
                 : 'no verified layoff events yet' + (ACTIVE_TAB !== 'world'
-                    ? ' — coverage for this region is still filling in; pick "All time" in the Years filter for earlier events' : ''),
+                    ? ' · coverage for this region is still filling in; pick "All time" in the Years filter for earlier events' : ''),
                 'data-years="' + y + '"');
             // Post-sized rewrite for the copy button: X counts any URL as 23
             // characters, and the weekly detail degrades in steps (full → no
@@ -2135,7 +2155,7 @@
             var LINK = 'asktherecruiter.com/blog/ai-layoff-tracker/';
             var xLen = function (s2) { return s2.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
             var lead = 'AI layoffs, ' + today + ': ' + fmt(tJ) + ' workers across ' + fmt(tV) + ' verified layoff event' + (tV === 1 ? '' : 's') +
-                ' ' + tab.label + ' in ' + y + (tAI ? ' — ' + fmt(tAI) + ' cuts explicitly blamed on AI' : '') + '.';
+                ' ' + tab.label + ' in ' + y + (tAI ? ', ' + fmt(tAI) + ' explicitly blamed on AI' : '') + '.';
             var tail = ' Live tracker (AskTheRecruiter.com): ' + LINK + ' #Layoffs #AI';
             var post = lead + tail;
             if (wJ > 0) {
@@ -2345,6 +2365,7 @@
             'alt-bars-industries': ['top_industries', 'by-industry'],
             'alt-bars-states': ['top_states', 'by-us-state'],
             'alt-bars-countries': ['top_countries', 'by-country'],
+            'alt-bars-roles': ['top_roles', 'by-role'],
             'alt-bars-sourcetypes': ['source_types', 'by-data-source']
         };
         // Computed lists export exactly what the card shows for the current

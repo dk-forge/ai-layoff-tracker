@@ -1,6 +1,24 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-19 (plugin 2.19.7). Read this block first if
+Last updated: 2026-07-19 (plugin 2.19.14). Read this block first if
+you are a new agent (Codex or otherwise) taking over.
+
+**2.19.14 (2026-07-19): role-impact extraction is live** (built as 2.18.87 on a task branch, shipped in 2.19.14). Fixed 10-category
+role vocabulary (shared verbatim between `alt_role_categories()` and
+`extractor.ROLE_CATEGORIES`), `role_categories`/`roles_evidence` columns,
+keyed blank-fill-only `/enrich-roles` (never pins, never touches
+counts/dates/sources/AI; `unknown` = "checked, source doesn't say" and is
+excluded from every public surface), `roles_missing=1` query filter, daily
+bounded `enrich-roles.yml` worker (04:23 UTC, batch 40, deadline 900s,
+largest events first, reads ONLY already-stored row text — zero external
+fetches), `/aggregate` `top_roles` + `totals.roles_known_entries/jobs`, and
+the tracker's "Roles most impacted" card (AI-vs-all via the orange AI-share
+segment; honest coverage subtitle). Keyword-derivable stated-roles rows fill
+instantly at upsert and via the next `/cleanup` run — POST /cleanup once
+after this deploy to backfill legacy stated-roles rows. Guard tests:
+`railway/tests/test_role_enrichment_guards.py`.
+
+
 you are a new agent (Codex or otherwise) taking over.
 
 **2.19.7 (2026-07-19): reason-tag backfill is live.** A daily bounded job

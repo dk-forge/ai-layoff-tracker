@@ -283,6 +283,70 @@ function alt_normalize_industry($value) {
 }
 
 /**
+ * Fixed role-category vocabulary (slug => public label). Slugs are shared with
+ * the Python role-extraction worker; 'unknown' is a legal STORED marker
+ * ("checked, source doesn't say") but deliberately not part of this public
+ * vocabulary, so it can never appear on a chart.
+ */
+function alt_role_categories() {
+    return array(
+        'engineering'          => 'Engineering & IT',
+        'product_design'       => 'Product & design',
+        'customer_support'     => 'Customer support & success',
+        'sales_marketing'      => 'Sales & marketing',
+        'hr_recruiting'        => 'HR & recruiting',
+        'operations_warehouse' => 'Operations & warehouse',
+        'content_trust_safety' => 'Content & trust and safety',
+        'finance_admin'        => 'Finance & admin',
+        'manufacturing'        => 'Manufacturing & production',
+        'retail_staff'         => 'Retail staff',
+    );
+}
+
+/**
+ * Map the freeform "roles affected" text onto the fixed role-category
+ * vocabulary. Unlike industries, one source often names SEVERAL teams
+ * ("engineering, product and design"), so this returns EVERY matching
+ * category. Empty/unmatched text returns an empty array — nothing is ever
+ * guessed into a category (the evidence-only backfill handles rows whose
+ * roles are stated only in the stored excerpt).
+ */
+function alt_normalize_roles($value) {
+    $raw = trim((string) $value);
+    if ($raw === '') return array();
+    $k = strtolower($raw);
+    // "People Operations" is an HR org, not logistics — rewrite the compound
+    // before the generic 'operations' keyword can see it.
+    $k = str_replace(array('people operations', 'people ops'), 'human resources', $k);
+
+    $rules = array(
+        'engineering'          => array('engineer', 'developer', 'software', 'programmer', 'devops', 'data scientist', 'machine learning', 'infrastructure', 'information technology', 'it staff', 'it department', 'it workers', 'technical staff', 'quality assurance', 'qa', 'it'),
+        'product_design'       => array('product manag', 'product team', 'product and design', 'product, design', 'designer', 'design team', 'ux', 'ui'),
+        'customer_support'     => array('customer support', 'customer service', 'customer success', 'customer care', 'customer experience', 'call center', 'call centre', 'contact center', 'contact centre', 'help desk', 'helpdesk', 'support team', 'support staff', 'support agent'),
+        'sales_marketing'      => array('sales', 'marketing', 'advertis', 'business development', 'account manag', 'commercial team', 'go-to-market'),
+        'hr_recruiting'        => array('human resources', 'recruit', 'talent acquisition', 'people team', 'hr'),
+        'operations_warehouse' => array('operations', 'warehouse', 'logistics', 'fulfillment', 'fulfilment', 'driver', 'delivery', 'supply chain', 'distribution', 'dispatch'),
+        'content_trust_safety' => array('trust and safety', 'trust & safety', 'content moderat', 'moderation', 'content review', 'content team', 'editorial', 'journalist', 'newsroom', 'writer', 'curation'),
+        'finance_admin'        => array('finance', 'accounting', 'accountant', 'administrative', 'back office', 'back-office', 'payroll', 'legal', 'compliance', 'admin'),
+        'manufacturing'        => array('manufactur', 'production worker', 'production staff', 'production line', 'assembly', 'factory', 'plant worker', 'machinist', 'fabrication'),
+        'retail_staff'         => array('retail', 'store associate', 'store employee', 'store staff', 'store worker', 'cashier', 'shop floor', 'sales floor'),
+    );
+
+    $found = array();
+    foreach ($rules as $canonical => $keywords) {
+        foreach ($keywords as $kw) {
+            // Short keywords match on word boundaries only ('it' must not hit
+            // 'recruiting', 'qa' must not hit 'Qatar-adjacent' strings...).
+            $hit = strlen($kw) <= 4
+                ? (bool) preg_match('/\b' . preg_quote($kw, '/') . '\b/', $k)
+                : strpos($k, $kw) !== false;
+            if ($hit) { $found[] = $canonical; break; }
+        }
+    }
+    return $found;
+}
+
+/**
  * Return a 2-letter US state code, or '' if not a recognizable US state.
  * Accepts codes ("ca") or full names ("California").
  */

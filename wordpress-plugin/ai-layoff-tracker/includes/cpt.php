@@ -18,6 +18,8 @@ function alt_meta_fields() {
         'employer_country_evidence' => 'string',
         'announcement_evidence' => 'string',
         'roles'              => 'string',   // roles/departments affected, when stated
+        'role_categories'    => 'string',   // packed fixed-vocabulary role tags, derived/evidence-only
+        'roles_evidence'     => 'string',   // exact source phrase behind evidence-extracted categories
         'source_url'         => 'string',
         'source_type'        => 'string',   // "8K" | "press_release" | "news"
         'verification_level' => 'string',   // "gold" | "silver" | "bronze"

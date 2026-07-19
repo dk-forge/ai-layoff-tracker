@@ -25,7 +25,7 @@
   │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
-  │           /reclassify /enrich-context /source-health /event-migrate                     │
+  │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate       │
   │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
   │                                                                                      │
@@ -56,6 +56,7 @@ railway/
   challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
   reason_backfill.py         Daily bounded reason-tag backfill from STORED excerpts (fixed vocabulary; WARN excluded)
+  enrich_roles.py            Daily bounded role-category extraction from ALREADY-STORED row text (no fetches)
   canonical_event_migrate.py Resumable legacy event/source-report migration (no LLM)
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   announcement-lifecycle-review.yml Daily read-only exact-match lifecycle lead summary

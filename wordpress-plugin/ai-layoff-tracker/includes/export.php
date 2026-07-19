@@ -79,7 +79,7 @@ function alt_export_csv() {
 
     fputcsv($out, array(
         'company_name', 'ticker', 'job_count', 'layoff_date', 'industry',
-        'country', 'state', 'roles', 'source_type', 'verification_level', 'source_url',
+        'country', 'state', 'roles', 'role_categories', 'source_type', 'verification_level', 'source_url',
         'ai_explicit', 'ai_language', 'reason_tags', 'excerpt', 'source_attribution',
     ));
 
@@ -93,6 +93,9 @@ function alt_export_csv() {
             alt_csv_guard($row->country),
             alt_csv_guard($row->state),
             alt_csv_guard((string) $row->roles),
+            // Public categories only — the ',unknown,' checked-marker is
+            // queue bookkeeping, not data.
+            alt_csv_guard(implode('|', array_diff(alt_db_unpack_tags($row->role_categories ?? ''), array('unknown')))),
             alt_csv_guard($row->source_type),
             alt_csv_guard($row->verification_level),
             alt_csv_guard((string) $row->source_url),

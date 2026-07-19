@@ -1,0 +1,44 @@
+name: Extract affected-role categories
+
+# Bounded daily backfill: maps roles explicitly stated in already-stored row
+# text (roles/excerpt/quotes — no external fetches) onto the fixed category
+# vocabulary via the keyed /enrich-roles endpoint. Rows whose stored evidence
+# does not state the roles are marked checked-unknown so the queue drains;
+# nothing is ever guessed and no count/date/source/AI label can change.
+
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Rows to check (1-200; scheduled default is 40)'
+        required: false
+        default: '40'
+
+concurrency:
+  group: enrich-roles
+  cancel-in-progress: false
+
+jobs:
+  enrich-roles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openai requests
+      - name: Extract role categories from stored evidence only
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ROLES_BATCH: ${{ github.event.inputs.batch || '40' }}
+          # Stop safely between rows well before the 20-minute Actions limit.
+          ROLES_DEADLINE_SECONDS: '900'
+          OPENROUTER_TIMEOUT_SECONDS: '35'
+        run: |
+          cd railway
+          python enrich_roles.py
