@@ -1277,3 +1277,11 @@ body.admin-bar .alt-count-row { top: 32px; }
 .alt-conversion-card .alt-chart-box { height: 250px; }
 .alt-conversion-card .alt-chart-sub { max-width: 62em; }
 #alt-conversion-note { margin: 10px 0 0; font-size: 12px; }
+
+/* Column sorting is live on 7 columns; make it visible and inviting. */
+#alt-table thead th.sorting, #alt-table thead th.sorting_asc, #alt-table thead th.sorting_desc { cursor: pointer; position: relative; padding-right: 20px; }
+#alt-table thead th.sorting::after { content: '\2195'; position: absolute; right: 6px; opacity: .35; }
+#alt-table thead th.sorting_asc::after { content: '\2191'; position: absolute; right: 6px; opacity: 1; color: #0072B2; }
+#alt-table thead th.sorting_desc::after { content: '\2193'; position: absolute; right: 6px; opacity: 1; color: #0072B2; }
+/* Expanded bar cards show the long tail and scroll instead of truncating. */
+.alt-expanded .alt-barlist { max-height: 55vh; overflow-y: auto; padding-right: 4px; }

@@ -2384,7 +2384,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         $sql = "SELECT $col k, SUM(job_count) v,
                        COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
                 FROM $table
-                WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT 12";
+                WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT 24";
         $rows = $wpdb->get_results(alt_db_prep($sql, $p));
         $out = array();
         foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v, (int) $row->a); }
@@ -2447,7 +2447,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         "SELECT MAX(company) company, COUNT(*) n, COALESCE(SUM(job_count),0) jobs
          FROM $table WHERE $where AND company_key <> ''
          GROUP BY company_key HAVING COUNT(*) >= 2
-         ORDER BY n DESC, jobs DESC LIMIT 12", $params));
+         ORDER BY n DESC, jobs DESC LIMIT 24", $params));
     $repeat = array();
     foreach ($repeat_rows ?: array() as $rr) {
         $repeat[] = array($rr->company, (int) $rr->n, (int) $rr->jobs);

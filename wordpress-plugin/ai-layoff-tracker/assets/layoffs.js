@@ -945,7 +945,7 @@
         var mini = box.closest('.alt-mini');
         var compact = mini && !mini.classList.contains('alt-expanded');
         var fullCount = (entries || []).length;
-        var limit = compact ? 4 : 12;
+        var limit = compact ? 4 : 24;
         entries = (entries || []).slice(0, limit);
         if (!entries.length) {
             box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
