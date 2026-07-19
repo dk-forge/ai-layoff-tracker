@@ -196,6 +196,32 @@
                 o.plugins.tooltip.bodyFont = { size: 14 };
             }
         }
+        // Time-axis labels: compact cards show exactly three anchors —
+        // earliest, middle, latest — so the span reads at a glance and the
+        // latest month is always present; the expanded view shows every
+        // label, rotated vertical. Line charts only (bar lists need all
+        // their category names).
+        var xlabels = (config.data && config.data.labels) || [];
+        if (config.type === 'line' && xlabels.length > 8) {
+            var xo = config.options = config.options || {};
+            xo.scales = xo.scales || {};
+            xo.scales.x = xo.scales.x || {};
+            var tx = xo.scales.x.ticks = Object.assign({}, xo.scales.x.ticks);
+            if (canvas.closest && canvas.closest('.alt-expanded')) {
+                tx.autoSkip = xlabels.length > 40;
+                tx.maxTicksLimit = 40;
+                tx.minRotation = 60;
+                tx.maxRotation = 90;
+                delete tx.callback;
+            } else {
+                tx.autoSkip = false;
+                tx.maxRotation = 0;
+                var lastIdx = xlabels.length - 1, midIdx = Math.floor(lastIdx / 2);
+                tx.callback = function (val, idx) {
+                    return (idx === 0 || idx === lastIdx || idx === midIdx) ? xlabels[idx] : '';
+                };
+            }
+        }
         if (CHARTS[canvasId]) { CHARTS[canvasId].destroy(); delete CHARTS[canvasId]; }
         CHARTS[canvasId] = new Chart(canvas, config);
         return CHARTS[canvasId];
