@@ -28,7 +28,7 @@
     var INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9' };
 
     var REASON_LABELS = {
-        ai_automation: 'AI / automation', possible_ai: 'Possible AI',
+        ai_automation: 'AI: company-stated (specific)', possible_ai: 'AI-linked (broad)',
         revenue_decline: 'Revenue decline', restructuring: 'Restructuring',
         merger_acquisition: 'Merger / acquisition', offshoring: 'Offshoring',
         product_discontinuation: 'Product discontinued', cost_reduction: 'Cost reduction',
