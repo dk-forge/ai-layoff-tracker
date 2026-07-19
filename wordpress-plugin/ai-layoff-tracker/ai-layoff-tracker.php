@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.91
+ * Version: 2.18.92
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.91');
+define('ALT_VERSION', '2.18.92');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -283,6 +283,21 @@ function alt_enqueue_assets() {
     ));
 }
 add_action('wp_enqueue_scripts', 'alt_enqueue_assets');
+
+// Keep this plugin's assets OUT of Autoptimize. Each is already a single
+// file, so aggregation buys nothing — and during deploys AO's content-hashed
+// bundles go stale or get pruned while cached HTML still references them
+// (three broken-page incidents on 2026-07-19 alone). Raw asset URLs always
+// resolve: worst case a 5-minute-old page loads a 5-minute-old-but-working
+// script.
+function alt_autoptimize_exclude_js($exclude) {
+    return $exclude . ', ai-layoff-tracker/assets';
+}
+add_filter('autoptimize_filter_js_exclude', 'alt_autoptimize_exclude_js');
+function alt_autoptimize_exclude_css($exclude) {
+    return $exclude . ', ai-layoff-tracker/assets';
+}
+add_filter('autoptimize_filter_css_exclude', 'alt_autoptimize_exclude_css');
 
 /**
  * SEO for tracker pages: JSON-LD Dataset structured data (eligible for Google
