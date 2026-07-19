@@ -124,6 +124,9 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     margin: 0 0 18px;
 }
 .alt-stat-card-tall { grid-row: span 2; }
+.alt-stat-value-row { display: flex; align-items: baseline; gap: 8px; }
+.alt-stat-line { display: block; font-size: 13.5px; color: var(--alt-ink-2); margin: 5px 0; }
+.alt-stat-line b { color: var(--alt-ink); font-weight: 800; }
 @media (max-width: 980px) { .alt-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 460px) { .alt-stat-card-tall { grid-row: auto; } }
 @media (max-width: 460px) { .alt-stats-bar { grid-template-columns: 1fr; } }

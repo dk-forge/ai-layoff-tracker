@@ -217,11 +217,11 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
             </div>
             <div class="alt-stat-card">
-                <span class="alt-stat-value" id="alt-stat-companies">—</span>
-                <span class="alt-stat-label">Companies</span>
+                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies">—</span><span class="alt-stat-label">Companies</span></span>
                 <span class="alt-stat-desc">Coverage in this view.</span>
-                <span class="alt-stat-sub"><span id="alt-stat-industries">—</span> industries · <span id="alt-stat-countries">—</span> countries · <span id="alt-stat-companies-sub"></span></span>
-                <span class="alt-stat-sub">we scan <?php echo number_format((int) $alt_scan_countries); ?> countries</span>
+                <span class="alt-stat-line"><b id="alt-stat-industries">—</b> <span id="alt-stat-industries-label">industries</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-countries">—</b> <span id="alt-stat-countries-label">countries</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-states">—</b> <span id="alt-stat-states-label">US states</span></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
