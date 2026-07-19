@@ -625,3 +625,15 @@ dimension: append to the '{year} so far' row (or as its own row) a short
 aggregates, only when role coverage in the view is meaningful (>=20% of jobs
 tagged); otherwise omit the fragment entirely. Same plain-language style,
 no em dashes, and the roles chart's sample disclaimer applies.
+
+## AI exposure vs reality page (spec'd 2026-07-19, blocked on roles landing)
+
+Separate analysis page at /ai-layoff-tracker/ai-exposure/ comparing predicted
+occupation-level AI exposure (published O*NET-derived exposure scores such as
+the Felten/Raj/Seamans AIOE dataset, plus BLS 10-year employment projections)
+against our OBSERVED role-level cut shares from the roles extraction. Hard
+rules: projections NEVER enter the tracker's stat cards or totals; the page
+carries a prominent projections-vs-observed disclaimer; sources attributed
+with as-of dates; data stored as versioned JSON refreshed annually (both
+sources update yearly). The unique output: where reality diverges from the
+exposure predictions. Task chip exists (owner-startable).
