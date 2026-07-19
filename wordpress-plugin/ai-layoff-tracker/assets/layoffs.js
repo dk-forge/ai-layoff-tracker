@@ -1692,11 +1692,37 @@
             if (!tV && !pV && ACTIVE_TAB !== 'world') {
                 txt += ' Coverage for this region is still filling in from the worldwide press index. Pick "All time" in the Years filter to see earlier verified events.';
             }
-            el.innerHTML = txt + ' <button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy this summary as plain text">Copy as post</button>';
+            // The copy button composes a post-sized rewrite of the same
+            // numbers, not the full paragraph (which runs ~440 chars). X
+            // counts any URL as 23 characters, so the budget math swaps the
+            // link out before measuring, and the weekly detail degrades in
+            // steps (full → no delta → no largest event) to stay under 280.
+            var LINK = 'asktherecruiter.com/blog/ai-layoff-tracker/';
+            var xLen = function (s) { return s.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
+            var lead = 'AI layoffs, ' + today + ': ' + fmt(tV) + ' verified layoff event' + (tV === 1 ? '' : 's') +
+                ' ' + tab.label + ' in ' + y + ' — ' + fmt(tJ) + ' workers' +
+                (tAI ? ', ' + fmt(tAI) + ' cuts explicitly blamed on AI' : '') + '.';
+            var tail = ' Live tracker (AskTheRecruiter.com): ' + LINK + ' #Layoffs #AI';
+            var post = lead + tail;
+            if (wJ > 0) {
+                var wkBare = ' This week: ' + fmt(wJ) + ' workers across ' + fmt(wE) + ' event' + (wE === 1 ? '' : 's') + '.';
+                var wkLead = (wLead && wLead.job_count)
+                    ? wkBare.slice(0, -1) + ', largest at ' + wLead.company_name + ' (' + fmt(wLead.job_count) + ').'
+                    : '';
+                var wkFull = '';
+                if (wkLead && wpJ > 0) {
+                    var wd = Math.round(100 * (wJ - wpJ) / wpJ);
+                    wkFull = wkLead.slice(0, -1) + (wd >= 0 ? ', up ' + wd : ', down ' + Math.abs(wd)) + '% on last week.';
+                }
+                [wkFull, wkLead, wkBare].some(function (wk) {
+                    if (wk && xLen(lead + wk + tail) <= 278) { post = lead + wk + tail; return true; }
+                    return false;
+                });
+            }
+            el.innerHTML = txt + ' <button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button>';
             var copyBtn = el.querySelector('.alt-narrative-copy');
             if (copyBtn) copyBtn.addEventListener('click', function () {
-                var plain = el.textContent.replace('Copy as post', '').trim() + ' — via asktherecruiter.com/blog/ai-layoff-tracker/';
-                if (navigator.clipboard) navigator.clipboard.writeText(plain).then(function () { copyBtn.textContent = 'Copied!'; setTimeout(function () { copyBtn.textContent = 'Copy as post'; }, 1500); });
+                if (navigator.clipboard) navigator.clipboard.writeText(post).then(function () { copyBtn.textContent = 'Copied!'; setTimeout(function () { copyBtn.textContent = 'Copy as post'; }, 1500); });
             });
         }).catch(function () { el.textContent = ''; });
     }
