@@ -709,7 +709,7 @@
                             var thru = 0;
                             a.series.forEach(function (sr) { if (sr.month <= cd.ref_month) thru += sr.ai_broad_jobs || 0; });
                             sub = when + ' · by US employer · through ' + monthLabel(cd.ref_month) + ': ' +
-                                Math.round(100 * thru / cd.ai_ytd) + '% of Challenger\u2019s ' + fmt(cd.ai_ytd);
+                                Math.round(100 * thru / cd.ai_ytd) + '% of the US benchmark';
                         }
                     } catch (e) { /* keep generic sub */ }
                 }
@@ -721,7 +721,6 @@
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
         setText('alt-stat-ai-announced', fmt(aiAnnJ));
         setText('alt-stat-ai-announced-sub', whenAnnounced);
-        renderChallengerNote();
 
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));

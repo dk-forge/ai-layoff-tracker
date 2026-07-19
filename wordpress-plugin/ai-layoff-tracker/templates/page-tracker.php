@@ -228,7 +228,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
                 <span class="alt-stat-label">↳ blamed on AI by the company</span>
-                <span class="alt-stat-desc">Part of Verified, in the employer's own words. Example — Block: "smaller teams using AI to automate more work."</span>
+                <span class="alt-stat-desc">Part of Verified, in the employer's own words — statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai" data-challenger="<?php echo esc_attr(wp_json_encode(array(
@@ -237,14 +237,14 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
                 <span class="alt-stat-label">↳ AI-linked announced plans</span>
-                <span class="alt-stat-desc">Part of Announced. Example — PayPal's 4,500-role plan while it "aggressively adopts AI."</span>
+                <span class="alt-stat-desc">Part of Announced — plans citing AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-challenger-note" style="display:none"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
                 <span class="alt-stat-label">↳ AI-linked, broad</span>
-                <span class="alt-stat-desc">Part of All job cuts: anything the company or press tied to AI. Example — Dell's 11,000, framed as an AI pivot. Counted like Challenger counts, by the employer's country.</span>
+                <span class="alt-stat-desc">Part of All job cuts — anything the company or press tied to AI, like "amid AI push" or "AI pivot." Counted by the employer's home country.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
             </div>
         </div>
