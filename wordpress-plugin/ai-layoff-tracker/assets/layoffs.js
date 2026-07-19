@@ -895,7 +895,9 @@
         var wired = !!document.getElementById('alt-f-industry');
         renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
         renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
-        renderBarList('alt-bars-countries', agg.top_countries, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+        renderBarList('alt-bars-countries', (agg.top_countries || []).map(function (e) {
+            return [e[0], e[1], e[2], countryFlag(e[0]) + e[0]];
+        }), wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
         // Largest single events: name, jobs, AI segment when explicitly
         // attributed. Tapping toggles the company text filter.
         var companyBox = document.getElementById('alt-f-company');
@@ -937,6 +939,17 @@
     // "Where the cuts are" bars: name left, value right, a track whose blue
     // fill is scaled to the top bar, with an orange leading segment showing the
     // AI-attributed share. Rows are buttons that toggle the matching filter.
+    // Country name -> ISO2 for emoji flags on the country list. Covers the
+    // normalizer's vocabulary; unknown names simply render without a flag.
+    var COUNTRY_ISO = { 'United States':'US','United Kingdom':'GB','Germany':'DE','France':'FR','Netherlands':'NL','India':'IN','Israel':'IL','Japan':'JP','Sweden':'SE','Canada':'CA','Australia':'AU','Brazil':'BR','China':'CN','Ireland':'IE','Singapore':'SG','Indonesia':'ID','Denmark':'DK','Finland':'FI','Norway':'NO','Poland':'PL','Spain':'ES','Italy':'IT','Austria':'AT','Belgium':'BE','Switzerland':'CH','Portugal':'PT','Czech Republic':'CZ','Czechia':'CZ','South Korea':'KR','Kenya':'KE','Nigeria':'NG','South Africa':'ZA','Egypt':'EG','Mexico':'MX','Argentina':'AR','Chile':'CL','Colombia':'CO','United Arab Emirates':'AE','Saudi Arabia':'SA','Turkey':'TR','Russia':'RU','Ukraine':'UA','New Zealand':'NZ','Philippines':'PH','Malaysia':'MY','Thailand':'TH','Vietnam':'VN','Taiwan':'TW','Hong Kong':'HK','Greece':'GR','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Croatia':'HR','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Luxembourg':'LU','Iceland':'IS','Serbia':'RS','Pakistan':'PK','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','Cambodia':'KH','Myanmar':'MM','Laos':'LA','Mongolia':'MN','Kazakhstan':'KZ','Qatar':'QA','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Jordan':'JO','Lebanon':'LB','Iraq':'IQ','Iran':'IR','Morocco':'MA','Tunisia':'TN','Algeria':'DZ','Ghana':'GH','Ethiopia':'ET','Tanzania':'TZ','Uganda':'UG','Zambia':'ZM','Zimbabwe':'ZW','Botswana':'BW','Namibia':'NA','Mozambique':'MZ','Angola':'AO','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','Peru':'PE','Ecuador':'EC','Uruguay':'UY','Paraguay':'PY','Bolivia':'BO','Venezuela':'VE','Costa Rica':'CR','Panama':'PA','Guatemala':'GT','Dominican Republic':'DO','Jamaica':'JM','Trinidad and Tobago':'TT','Cuba':'CU','Haiti':'HT' };
+    function countryFlag(name) {
+        if (name === 'Multiple countries') return '\uD83C\uDF10 ';
+        var iso = COUNTRY_ISO[name];
+        if (!iso) return '';
+        var A = 0x1F1E6;
+        return String.fromCodePoint(A + iso.charCodeAt(0) - 65, A + iso.charCodeAt(1) - 65) + ' ';
+    }
+
     function renderBarList(containerId, entries, filterId, activeValues, onPick, suffix) {
         var box = document.getElementById(containerId);
         if (!box) return;
@@ -957,7 +970,7 @@
 
         var html = '';
         entries.forEach(function (e) {
-            var label = e[0], jobs = e[1], ai = e[2] || 0;
+            var label = e[0], jobs = e[1], ai = e[2] || 0, display = e[3] || e[0];
             var w = Math.max(2, Math.round(jobs / max * 100));
             var aiW = jobs > 0 ? (ai / jobs * w) : 0;
             var isActive = active.indexOf(label) !== -1;
@@ -965,7 +978,7 @@
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + ((filterId || onPick) ? '' : ' disabled')
                 + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
-                + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(label) + '</span>'
+                + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(display) + '</span>'
                 + '<span class="alt-barrow-val">' + fmt(jobs) + (suffix || '') + '</span></span>'
                 + '<span class="alt-bartrack">'
                 + (aiW > 0.4 ? '<span class="alt-barfill-ai" style="width:' + aiW.toFixed(1) + '%"></span>' : '')
