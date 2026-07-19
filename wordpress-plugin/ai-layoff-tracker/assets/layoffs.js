@@ -618,6 +618,10 @@
             if (v.length) parts.push((p[1] || '') + (v.length <= 6 ? v.join(' · ')
                 : v.slice(0, 5).join(' · ') + ' +' + (v.length - 5) + ' more'));
         });
+        // Narrowing toggles change what every card MEANS — say so on the
+        // cards themselves, or "Verified" silently becomes "verified AI".
+        if (readControl('alt-f-ai')) parts.push('AI-attributed rows only');
+        if (readControl('alt-f-announced')) parts.push('announced only');
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
 
@@ -694,7 +698,8 @@
                 setText('alt-stat-ai-broad', fmt(b));
                 var sub = when + ' · by employer country';
                 var noteCard = document.querySelector('[data-challenger]');
-                var usOnlyScope = selectedList('alt-f-country').join(',') === 'United States';
+                var usOnlyScope = selectedList('alt-f-country').join(',') === 'United States'
+                    && !readControl('alt-f-ai') && !readControl('alt-f-announced');
                 if (usOnlyScope && noteCard) {
                     try {
                         var cd = JSON.parse(noteCard.getAttribute('data-challenger') || '{}');

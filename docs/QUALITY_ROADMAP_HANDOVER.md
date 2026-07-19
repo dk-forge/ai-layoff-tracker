@@ -589,3 +589,10 @@ monthly reports, seed with named-outlet links, AI causations only with
 quotes). 2025 first, then 2024. AI columns for 2023-2025 already exceed
 Challenger (their AI reason-code undercounted; ours is the broad tier) —
 that is the honest state, not a defect to fix.
+
+## Roles-impacted chart: required disclaimer (2026-07-19)
+
+Role-level data exists ONLY where the source stated it. The chart MUST carry
+a short, plain caveat so readers never assume it covers every counted job.
+Required wording (or equivalent, keep it one line): "Only cuts whose reports
+named the affected roles — a sample of the total, not a breakdown of it."
