@@ -49,8 +49,9 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>
-    <p class="alt-lead">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them. <a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></p>
-
+    <div class="alt-narrative" id="alt-narrative"></div>
+    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
         <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
@@ -63,11 +64,10 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <button type="button" class="alt-tab alt-tab-asia" data-tab="asia">🌏 Asia</button>
         <button type="button" class="alt-tab alt-tab-aus" data-tab="aus">🇦🇺 Australia</button>
     </div>
-    <p class="alt-narrative" id="alt-narrative"></p>
+
 
     <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
 
-    <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">

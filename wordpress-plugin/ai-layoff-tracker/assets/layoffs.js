@@ -1732,72 +1732,56 @@
         var now = new Date();
         var y = now.getFullYear();
         var base = tab.countries.length ? { country: tab.countries.join(',') } : {};
-        var pThis = Object.assign({ years: String(y) }, base);
-        var pPrev = Object.assign({ years: String(y - 1) }, base);
         var iso = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
         var d7 = new Date(now.getTime() - 6 * 86400000), d14 = new Date(now.getTime() - 13 * 86400000), d8 = new Date(now.getTime() - 7 * 86400000);
-        // stage=verified keeps the weekly totals AND its largest-event pick
-        // on the same basis (an announced 50K plan must not headline a
-        // 9K verified week).
+        // Everything is stage=verified so the period totals AND each period's
+        // largest-event pick share one basis (an announced 50K plan must not
+        // headline a 9K verified week).
+        var pYear = Object.assign({ years: String(y), stage: 'verified' }, base);
+        var pMonth = Object.assign({ from: y + '-' + pad2(now.getMonth() + 1) + '-01', to: iso(now), stage: 'verified' }, base);
         var pWeek = Object.assign({ from: iso(d7), to: iso(now), stage: 'verified' }, base);
         var pWeekPrev = Object.assign({ from: iso(d14), to: iso(d8), stage: 'verified' }, base);
-        Promise.all([apiGet('aggregate', pThis), apiGet('aggregate', pPrev), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev)]).then(function (r) {
-            var t = r[0].totals, p = r[1].totals, w = r[2].totals, wp = r[3].totals;
-            var wLead = (r[2].leaders || [])[0];
+        Promise.all([apiGet('aggregate', pYear), apiGet('aggregate', pMonth), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev)]).then(function (r) {
+            var t = r[0].totals, m = r[1].totals, w = r[2].totals, wp = r[3].totals;
+            var yLead = (r[0].leaders || [])[0], mLead = (r[1].leaders || [])[0], wLead = (r[2].leaders || [])[0];
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
-            // Verified-only figures, so the narrative matches the "Verified job
-            // cuts" card exactly (announced cuts are stated separately).
-            var tV = t.entries - (t.announced_entries || 0), tJ = t.jobs - (t.announced_jobs || 0);
-            var pV = p.entries - (p.announced_entries || 0), pJ = p.jobs - (p.announced_jobs || 0);
-            var tAI = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
+            var tV = t.entries || 0, tJ = t.jobs || 0;
+            var tAI = t.ai_jobs || 0; // stage=verified scope, so ai_jobs is verified AI
             // Current-year averages are per day ELAPSED (year-to-date), not /365.
             var startOfYear = new Date(y, 0, 1);
             var daysElapsed = Math.max(1, Math.round((now - startOfYear) / 86400000) + 1);
-            var perDayNow = tJ ? Math.round(tJ / daysElapsed) : 0;
-            var perDayAI = tAI ? Math.round(tAI / daysElapsed) : 0;
-            var perDayPrev = pJ ? Math.round(pJ / 365) : 0;
             var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt() output
-            var perDay = function (n) { return n ? ' (about ' + b(fmt(n)) + ' a day)' : ''; };
-            // "layoff events affecting N workers", never "layoffs with N people"
+            var largest = function (ld) { return (ld && ld.job_count) ? ' · largest: ' + b(ld.company_name) + ' (' + fmt(ld.job_count) + ')' : ''; };
+            var row = function (label, body) { return '<div class="alt-nrow"><span class="alt-nlabel">' + label + '</span><span>' + body + '</span></div>'; };
+            // "events affecting N workers", never "layoffs with N people"
             // (readers mistook event counts for people counts). Every number
-            // here is scoped to the active tab's countries, so it is dynamic
-            // on every region tab.
-            var txt = 'Today, ' + b(today) + ': so far in ' + b(y) + ' we’ve verified ' + b(fmt(tV)) +
-                ' layoff event' + (tV === 1 ? '' : 's') + ' ' + tab.label +
-                ', affecting ' + b(fmt(tJ)) + ' workers' + perDay(perDayNow);
-            if (tAI) {
-                txt += '. Companies explicitly blamed AI for ' + b(fmt(tAI)) +
-                    ' of those cuts' + perDay(perDayAI);
+            // is scoped to the active tab's countries.
+            var wJ = w.jobs || 0, wE = w.entries || 0, wpJ = wp.jobs || 0;
+            var weekDelta = '';
+            if (wJ > 0 && wpJ > 0) {
+                var delta = Math.round(100 * (wJ - wpJ) / wpJ);
+                weekDelta = delta >= 0 ? ' · up ' + b(delta + '%') + ' vs the week before' : ' · down ' + b(Math.abs(delta) + '%') + ' vs the week before';
             }
-            txt += '. Across all of ' + b(y - 1) + ', ' + b(fmt(pV)) + ' verified event' +
-                (pV === 1 ? '' : 's') + ' affected ' + b(fmt(pJ)) + ' workers' + perDay(perDayPrev) + '.';
-            var wJ = w.jobs, wpJ = wp.jobs;
-            var wE = w.entries;
-            if (wJ > 0) {
-                txt += ' This week: ' + b(fmt(wJ)) + ' workers across ' + b(fmt(wE)) +
-                    ' verified event' + (wE === 1 ? '' : 's');
-                if (wLead && wLead.job_count) {
-                    txt += ' — the largest at ' + b(wLead.company_name) + ' (' + b(fmt(wLead.job_count)) + ')';
-                }
-                if (wpJ > 0) {
-                    var delta = Math.round(100 * (wJ - wpJ) / wpJ);
-                    txt += delta >= 0 ? ', up ' + b(delta + '%') + ' on the week before.'
-                                     : ', down ' + b(Math.abs(delta) + '%') + ' on the week before.';
-                } else { txt += '.'; }
-            }
-            if (!tV && !pV && ACTIVE_TAB !== 'world') {
-                txt += ' Coverage for this region is still filling in from the worldwide press index. Pick "All time" in the Years filter to see earlier verified events.';
-            }
-            // The copy button composes a post-sized rewrite of the same
-            // numbers, not the full paragraph (which runs ~440 chars). X
-            // counts any URL as 23 characters, so the budget math swaps the
-            // link out before measuring, and the weekly detail degrades in
-            // steps (full → no delta → no largest event) to stay under 280.
+            var rows = row('This week', wJ > 0
+                ? b(fmt(wJ)) + ' workers · ' + b(fmt(wE)) + ' verified event' + (wE === 1 ? '' : 's') + largest(wLead) + weekDelta
+                : 'no verified layoff events reported yet');
+            var mJ = m.jobs || 0, mE = m.entries || 0;
+            rows += row('This month', mJ > 0
+                ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified event' + (mE === 1 ? '' : 's') + largest(mLead)
+                : 'no verified layoff events reported yet');
+            rows += row(y + ' so far', tJ > 0
+                ? b(fmt(tJ)) + ' workers · ' + b(fmt(tV)) + ' verified event' + (tV === 1 ? '' : 's') +
+                  ' (about ' + fmt(Math.round(tJ / daysElapsed)) + ' workers a day)' +
+                  (tAI ? ' · explicitly blamed on AI: ' + b(fmt(tAI)) : '') + largest(yLead)
+                : 'no verified layoff events yet' + (ACTIVE_TAB !== 'world'
+                    ? ' — coverage for this region is still filling in; pick "All time" in the Years filter for earlier events' : ''));
+            // Post-sized rewrite for the copy button: X counts any URL as 23
+            // characters, and the weekly detail degrades in steps (full → no
+            // delta → no largest event) to stay under 280.
             var LINK = 'asktherecruiter.com/blog/ai-layoff-tracker/';
-            var xLen = function (s) { return s.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
-            var lead = 'AI layoffs, ' + today + ': ' + fmt(tV) + ' verified layoff event' + (tV === 1 ? '' : 's') +
-                ' ' + tab.label + ' in ' + y + ' — ' + fmt(tJ) + ' workers' +
-                (tAI ? ', ' + fmt(tAI) + ' cuts explicitly blamed on AI' : '') + '.';
+            var xLen = function (s2) { return s2.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
+            var lead = 'AI layoffs, ' + today + ': ' + fmt(tJ) + ' workers across ' + fmt(tV) + ' verified layoff event' + (tV === 1 ? '' : 's') +
+                ' ' + tab.label + ' in ' + y + (tAI ? ' — ' + fmt(tAI) + ' cuts explicitly blamed on AI' : '') + '.';
             var tail = ' Live tracker (AskTheRecruiter.com): ' + LINK + ' #Layoffs #AI';
             var post = lead + tail;
             if (wJ > 0) {
@@ -1815,7 +1799,8 @@
                     return false;
                 });
             }
-            el.innerHTML = txt + ' <button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button>';
+            el.innerHTML = '<div class="alt-narrative-head"><span>Today, ' + b(today) + ' · verified layoffs ' + tab.label + '</span>' +
+                '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>' + rows;
             var copyBtn = el.querySelector('.alt-narrative-copy');
             if (copyBtn) copyBtn.addEventListener('click', function () {
                 if (navigator.clipboard) navigator.clipboard.writeText(post).then(function () { copyBtn.textContent = 'Copied!'; setTimeout(function () { copyBtn.textContent = 'Copy as post'; }, 1500); });
