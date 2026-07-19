@@ -131,7 +131,8 @@
       const fmtT = iso => { try { return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return iso; } };
       const chalTimes = (Array.isArray(chal) ? chal : [])
         .map(r2 => r2.recorded_at).filter(Boolean)
-        .sort().reverse().filter((v, i2, a) => a.indexOf(v) === i2).slice(0, 3).map(fmtT);
+        .sort().reverse().map(fmtT)
+        .filter((v, i2, a) => a.indexOf(v) === i2).slice(0, 3);
       const atrTimes = ((runsResp && runsResp.runs) || [])
         .filter(r2 => r2.status === 'ok' && r2.attempted_at)
         .map(r2 => r2.attempted_at).sort().reverse().slice(0, 3).map(fmtT);
