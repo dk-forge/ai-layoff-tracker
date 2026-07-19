@@ -248,8 +248,8 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
-                <span class="alt-stat-label">All AI job cuts, incl. announced</span>
-                <span class="alt-stat-desc">All AI cuts by US companies this year: verified, announced, and press-linked combined. Always the full year, no matter what filters are set.</span>
+                <span class="alt-stat-label">US AI job cuts, incl. announced</span>
+                <span class="alt-stat-desc">Every AI cut by a US company this year: verified, announced, and press-linked combined. Always the full US year, no matter what filters are set.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-share-line"></span>
             </div>
