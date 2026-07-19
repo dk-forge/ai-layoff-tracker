@@ -58,3 +58,40 @@ saves us both time.
 
 Best regards,
 [owner name]
+
+---
+
+## 3. To The WARN Database (layoffdata.com) — admin@layoffdata.com
+
+Context: their notice table includes Missouri and New Mexico rows — states
+whose agencies publish nothing — because they pull manually each week
+(likely records requests / direct agency contact). They sell full-dataset
+downloads and API access (pricing page is app-rendered; no public tiers).
+A paid license is the sanctioned path to official-notice coverage beyond
+our 41-state scraper ceiling. Licensing must permit republishing derived
+counts with attribution before this is useful to us.
+
+Subject: API licensing inquiry from a free, source-linked layoff tracker
+
+Hello,
+
+I run the AI Layoff Tracker at asktherecruiter.com — a free, source-linked
+tracker of verified layoffs (SEC 8-K filings, state WARN notices we scrape
+directly from 41 state portals, and named press reports). For the states
+that publish nothing or omit headcounts (Missouri, New Mexico, Hawaii,
+Oklahoma), your manually-pulled coverage is the best official-notice source
+we know of.
+
+Two questions before we consider a subscription:
+
+1. Does an API plan license us to publish aggregate counts derived from
+   your notice data (with "WARN notice via The WARN Database" attribution
+   on every affected entry), on a free public tracker?
+2. Which states/territories does your feed currently include, and for the
+   non-publishing states, how current is the data typically?
+
+Happy to link you prominently from our methodology page either way.
+
+Best regards,
+[owner name]
+asktherecruiter.com/blog/ai-layoff-tracker/

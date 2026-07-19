@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.15
+ * Version: 2.19.16
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.15');
+define('ALT_VERSION', '2.19.16');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -82,6 +82,40 @@ function alt_flush_caches_on_deploy() {
     // 2026-07-15, v2.7.2). Old aggregates are harmless; AO prunes its own cache.
 }
 add_action('init', 'alt_flush_caches_on_deploy');
+
+// Newest column in the wp_alt_layoffs schema. UPDATE THIS on every schema
+// change: the guard below re-runs dbDelta until this column really exists,
+// because the version-gated flush can fire mid-FTP-upload and run against
+// the previous includes/db.php (deploy race, 2026-07-19: role_categories
+// never got created and every roles query silently returned nothing).
+define('ALT_SCHEMA_SENTINEL_COLUMN', 'role_categories');
+
+function alt_db_schema_verified() {
+    global $wpdb;
+    if (!function_exists('alt_db_table')) return false;
+    $col = $wpdb->get_var($wpdb->prepare(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+        alt_db_table(), ALT_SCHEMA_SENTINEL_COLUMN));
+    return !empty($col);
+}
+
+function alt_ensure_schema_once() {
+    if (get_option('alt_schema_ok_ver') === ALT_VERSION) return;
+    if (!function_exists('alt_db_install')) return;
+    if (!alt_db_schema_verified()) {
+        alt_db_install();
+        // Schema changed under cached responses: advance the data version so
+        // no five-minute-old empty result outlives the repair.
+        update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);
+    }
+    // Record success ONLY once verified; otherwise every request retries
+    // (the includes may still be mid-upload; a later request will succeed).
+    if (alt_db_schema_verified()) {
+        update_option('alt_schema_ok_ver', ALT_VERSION, false);
+    }
+}
+add_action('init', 'alt_ensure_schema_once');
 
 /**
  * Ensure the /contact page exists. Separate from the version-gated flush hook

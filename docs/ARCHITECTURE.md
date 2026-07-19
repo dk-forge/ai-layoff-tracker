@@ -138,4 +138,4 @@ resolves to, with `curl --resolve`).
    HEAD requests are never edge-cached (`cf-cache-status: DYNAMIC` is normal on HEAD; verify with GET).
 4. Browser: works only because `includes/htaccess.php` maintains a mod_headers block in the WP root
    `.htaccess` that strips the duplicate `no-cache, no-store` Cache-Control (+Pragma+Expires) that
-   Bluehost's Apache appends to every PHP response after PHP's own headers (v2.19.15; see TECHLOG).
+   Bluehost's Apache appends to every PHP response after PHP's own headers (v2.19.16; see TECHLOG).
