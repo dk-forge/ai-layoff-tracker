@@ -137,8 +137,21 @@
         if (!firstRow) return;
         const cells = firstRow.querySelectorAll('td');
         if (cells.length >= 7) {
-          if (latest.challenger_total_jobs_ytd) cells[1].textContent = Number(latest.challenger_total_jobs_ytd).toLocaleString('en-US') + ' YTD';
-          if (latest.challenger_ai_jobs_ytd) cells[4].textContent = Number(latest.challenger_ai_jobs_ytd).toLocaleString('en-US') + ' YTD';
+          const pctInto = (cell, oursTxt, bench) => {
+            const ours = Number(String(oursTxt).replace(/[^0-9]/g, ''));
+            if (!ours || !(bench > 0)) return;
+            const p2 = Math.round(100 * ours / bench);
+            const cls = p2 >= 90 ? 'alt-pct-good' : (p2 >= 60 ? 'alt-pct-mid' : 'alt-pct-low');
+            cell.innerHTML = '<span class="' + cls + '">' + p2 + '%</span>';
+          };
+          if (latest.challenger_total_jobs_ytd) {
+            cells[1].textContent = Number(latest.challenger_total_jobs_ytd).toLocaleString('en-US') + ' YTD';
+            pctInto(cells[3], cells[2].textContent, latest.challenger_total_jobs_ytd);
+          }
+          if (latest.challenger_ai_jobs_ytd) {
+            cells[4].textContent = Number(latest.challenger_ai_jobs_ytd).toLocaleString('en-US') + ' YTD';
+            pctInto(cells[6], cells[5].textContent, latest.challenger_ai_jobs_ytd);
+          }
         }
       });
     }).catch(() => {
