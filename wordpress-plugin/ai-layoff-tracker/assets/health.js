@@ -20,6 +20,7 @@
     press_releases: ['Reviewed company-controlled IR/newsroom feeds', 'Twice daily', 'Per reviewed company (US · DE)', 'Company RSS/Atom feeds'],
     eurofound_erm: ['Eurofound ERM restructuring announcements', 'Daily', 'European Union', 'Official monitor dataset'],
     context_enrichment: ['Existing source-linked records', 'Daily evidence-only', 'Internal', 'Evidence re-read'],
+    reason_backfill: ['Untagged non-WARN records; reason tags only', 'Daily evidence-only', 'Internal', 'Stored-excerpt classification'],
     edinet_jp: ['EDINET daily filing list — discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
     opendart_kr: ['OpenDART disclosure list — discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
     cvm_br: ['CVM Fato Relevante yearly index — discovery only, nothing ingested', 'Twice daily', 'Brazil', 'Official open-data portal'],

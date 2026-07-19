@@ -267,6 +267,59 @@ TEXT:\n""" + raw_text
     return out or None
 
 
+def classify_reason_tags(raw_text):
+    """Assign fixed-vocabulary reason tags from an event's STORED excerpt only.
+
+    This narrow reassessment cannot alter counts, dates, stages, sources or AI
+    labels — it returns tags for the corrections endpoint to write. An event
+    whose stored evidence names no reason honestly stays untagged: returning
+    {"reason_tags": []} is a definitive skip, while None is a model failure the
+    caller may retry on a later run.
+    """
+    raw_text = (raw_text or "")[:6000]
+    if not raw_text.strip():
+        return None
+    prompt = """Assign layoff reason tags for the text below. Return STRICT JSON only:
+{"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
+
+Rules:
+- Use ONLY the tag definitions from your instructions; a tag needs explicit
+  supporting language in this text. Multiple tags are allowed.
+- If the text states no reason for the cuts, return {"reason_tags":[],"ai_evidence":null}.
+- ai_automation ONLY when the employer itself states AI/automation/robots/
+  machine learning as a reason, with the exact quote in ai_evidence.
+- possible_ai when the text ties the cuts to AI without the employer stating
+  it (press framing, productivity/automation implications).
+- Never infer a reason from the company's industry, reputation, or anything
+  outside this text.
+
+TEXT:\n""" + raw_text
+    try:
+        response = _get_client().chat.completions.create(
+            model=MODEL, max_tokens=200,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content if response.choices else ""
+        result = _parse_json_response(content or "")
+    except Exception as exc:
+        print(f"Reason-tag classification failed: {exc}")
+        return None
+    return _validate_reason_result(result, raw_text)
+
+
+def _validate_reason_result(result, raw_text):
+    """Vocabulary + quote gates on a reason-tag reply (pure, unit-tested)."""
+    if not isinstance(result, dict) or not isinstance(result.get("reason_tags"), list):
+        return None
+    tags = list(dict.fromkeys(t for t in result["reason_tags"] if t in ALLOWED_REASON_TAGS))
+    # The strict tag needs the employer's own words in the supplied evidence;
+    # an unsupported claim is dropped rather than downgraded — possible_ai is
+    # the model's call to make, not a consolation default.
+    if "ai_automation" in tags and not _quote_is_supported(result.get("ai_evidence"), raw_text):
+        tags.remove("ai_automation")
+    return {"reason_tags": tags}
+
+
 _US_STATE_ABBR = {
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
     "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",

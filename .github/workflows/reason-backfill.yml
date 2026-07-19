@@ -1,0 +1,60 @@
+name: Reason-tag backfill
+
+# Bounded daily tagging of untagged non-WARN rows from their STORED excerpt
+# only (fixed vocabulary; ERM template rows map from Eurofound's recorded
+# restructuring type, freeform excerpts go to the model). Writes through the
+# corrections /edit endpoint, which pins rows against re-import reverts. It
+# never re-fetches sources, never touches counts/dates/stages/AI labels, and
+# never selects WARN rows (WARN notices state no reasons).
+on:
+  schedule:
+    - cron: '40 4 * * *'
+  workflow_dispatch:
+    inputs:
+      model_batch:
+        description: 'Freeform rows to model-classify (1-200; scheduled default 40)'
+        required: false
+        default: '40'
+      deterministic_cap:
+        description: 'ERM template rows to tag (0-1000; scheduled default 400)'
+        required: false
+        default: '400'
+      dry_run:
+        description: 'Set 1 to classify and print without writing'
+        required: false
+        default: ''
+
+# The /edit endpoint suppresses each row's original hash as it pins; two
+# overlapping runs would race the same untagged queue.
+concurrency:
+  group: reason-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openai requests
+      - name: Tag stored-evidence reasons
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          REASON_BACKFILL_BATCH: ${{ github.event.inputs.model_batch || '40' }}
+          REASON_BACKFILL_DETERMINISTIC_CAP: ${{ github.event.inputs.deterministic_cap || '400' }}
+          REASON_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+          # Stops safely between rows well below the job timeout; the daily
+          # rotation resumes where the queue left off.
+          REASON_BACKFILL_DEADLINE_SECONDS: '900'
+          OPENROUTER_TIMEOUT_SECONDS: '35'
+        # Data-changing jobs fail loudly: any failed /edit batch, health-write
+        # failure, or fully failed model pass exits non-zero above.
+        run: |
+          set -o pipefail
+          cd railway
+          python reason_backfill.py | tee -a "$GITHUB_STEP_SUMMARY"

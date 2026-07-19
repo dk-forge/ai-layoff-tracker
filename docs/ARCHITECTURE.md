@@ -55,6 +55,7 @@ railway/
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
+  reason_backfill.py         Daily bounded reason-tag backfill from STORED excerpts (fixed vocabulary; WARN excluded)
   canonical_event_migrate.py Resumable legacy event/source-report migration (no LLM)
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   announcement-lifecycle-review.yml Daily read-only exact-match lifecycle lead summary

@@ -1,7 +1,19 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-19 (plugin 2.18.72). Read this block first if
+Last updated: 2026-07-19 (plugin 2.19.7). Read this block first if
 you are a new agent (Codex or otherwise) taking over.
+
+**2.19.7 (2026-07-19): reason-tag backfill is live.** A daily bounded job
+(`railway/reason_backfill.py` + `reason-backfill.yml`, 04:40 UTC, health key
+`reason_backfill`) tags the ~7,400 untagged non-WARN rows from their STORED
+excerpts only, fixed vocabulary, written through /edit (rows get pinned;
+WARN excluded because WARN notices state no reasons). ERM template rows map
+deterministically from Eurofound's recorded restructuring type (~4,876
+taggable; Closure/Bankruptcy/etc. honestly stay untagged); ~120 freeform news
+rows go through DeepSeek with a local employer-quote gate on `ai_automation`.
+At the default caps (400 deterministic + 40 model rows/day) the backlog
+clears in ~2 weeks; watch the `reason_backfill` line on the health page and
+the Reasons chart, which will grow a large ERM-fed Restructuring bar.
 
 **2.18.72 (2026-07-19): employer-domicile basis is live.** `/aggregate` and
 `/query` accept `country_basis=employer` (country filter matches evidenced
