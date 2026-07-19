@@ -975,11 +975,20 @@
             var aiW = jobs > 0 ? (ai / jobs * w) : 0;
             var isActive = active.indexOf(label) !== -1;
             var dim = active.length && !isActive;
+            // AI breakdown: expanded rows spell it out (total · AI n · x%);
+            // compact rows keep the visual fill plus a hover tooltip, so the
+            // small cards stay scannable and the detail is one expand away.
+            var hasAi = !suffix && ai > 0 && ai <= jobs;
+            var aiPct = hasAi ? Math.round(100 * ai / jobs) : 0;
+            var valTxt = fmt(jobs) + (suffix || '');
+            if (hasAi && !compact) valTxt += ' · \uD83E\uDD16 ' + fmt(ai) + ' (' + aiPct + '%)';
+            var tip = hasAi ? (label + ': ' + fmt(jobs) + ' total · ' + fmt(ai) + ' AI-linked (' + aiPct + '%)') : '';
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + ((filterId || onPick) ? '' : ' disabled')
+                + (tip ? ' title="' + escapeHtml(tip) + '"' : '')
                 + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
                 + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(display) + '</span>'
-                + '<span class="alt-barrow-val">' + fmt(jobs) + (suffix || '') + '</span></span>'
+                + '<span class="alt-barrow-val">' + valTxt + '</span></span>'
                 + '<span class="alt-bartrack">'
                 + (aiW > 0.4 ? '<span class="alt-barfill-ai" style="width:' + aiW.toFixed(1) + '%"></span>' : '')
                 + '<span class="alt-barfill" style="left:' + aiW.toFixed(1) + '%;width:' + Math.max(0, w - aiW).toFixed(1) + '%"></span>'
