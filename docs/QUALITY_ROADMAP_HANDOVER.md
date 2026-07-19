@@ -577,3 +577,15 @@ layoffs.fyi (worldwide tech, began Mar 2020, per their year pages): 2020:
 2025: 122,606 · 2026 snapshot 2026-07-18: 121,326 (AI 95,829).
 These render in health.js BENCH_HISTORY with live ATR columns; update the
 constants when re-verified, with the as-of date.
+
+## Historical-year backfill (added 2026-07-19)
+
+The 2024 and 2025 year rows sit at 63% and 60% of Challenger totals for the
+same structural reason 2026 did before this weekend: announcement-level
+events are under-represented relative to WARN execution slices. The monthly
+work-backwards audit should therefore ALSO cover one historical year per
+run (verify-at-source against that year's aggregator pages and Challenger
+monthly reports, seed with named-outlet links, AI causations only with
+quotes). 2025 first, then 2024. AI columns for 2023-2025 already exceed
+Challenger (their AI reason-code undercounted; ours is the broad tier) —
+that is the honest state, not a defect to fix.

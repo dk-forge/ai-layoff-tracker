@@ -55,13 +55,13 @@
     </table></div>
     <p id="alt-bench-race-updated" aria-live="polite">Loading update history…</p>
     <h3>Month by month, 2026 — are we trending toward the benchmark?</h3>
-    <p>Challenger cells come from their stored monthly reports; ATR cells are live, on the US-employer (Challenger-comparable) basis.</p>
+    <p>Challenger cells come from their stored monthly reports; ATR cells are live, on the US-employer (Challenger-comparable) basis. Single months are noisy by nature — each tracker books the same event in a different month (we date Oracle's 21K to early April; Challenger spread its AI attribution across March–May) — so the <b>YTD %</b> columns are the trend that matters: timing noise cancels as the year accumulates.</p>
     <div class="alt-health-table-wrap"><table class="alt-bench-table">
       <thead>
-        <tr><th rowspan="2">Month</th><th colspan="3" class="alt-bench-grouphead">All US cuts</th><th colspan="3" class="alt-bench-grouphead">US AI cuts (broad)</th></tr>
-        <tr><th>Challenger</th><th>ATR</th><th>%</th><th>Challenger</th><th>ATR</th><th>%</th></tr>
+        <tr><th rowspan="2">Month</th><th colspan="4" class="alt-bench-grouphead">All US cuts</th><th colspan="4" class="alt-bench-grouphead">US AI cuts (broad)</th></tr>
+        <tr><th>Challenger</th><th>ATR</th><th>mo %</th><th>YTD %</th><th>Challenger</th><th>ATR</th><th>mo %</th><th>YTD %</th></tr>
       </thead>
-      <tbody id="alt-bench-monthly"><tr><td colspan="7">Loading monthly trend…</td></tr></tbody>
+      <tbody id="alt-bench-monthly"><tr><td colspan="9">Loading monthly trend…</td></tr></tbody>
     </table></div>
     <h3>Year by year, as far back as both benchmarks publish</h3>
     <p>Challenger figures are from their own year-end reports (AI reason code began May 2023; the 2024 AI figure is Challenger's printed YTD, confirmed exact by their own cumulative arithmetic). layoffs.fyi is worldwide tech only and began tracking March 2020. ATR cells are live.</p>

@@ -123,12 +123,20 @@
       ((usEmp && usEmp.series) || []).forEach(r2 => { byMonth[r2.month] = r2; });
       const recs = (Array.isArray(chal) ? chal : []).filter(r2 => r2.reference_month)
         .sort((a, b) => a.reference_month < b.reference_month ? -1 : 1);
-      if (!recs.length) { body.innerHTML = '<tr><td colspan="7">No stored Challenger months yet.</td></tr>'; return; }
+      if (!recs.length) { body.innerHTML = '<tr><td colspan="9">No stored Challenger months yet.</td></tr>'; return; }
+      // Running sums: single months are timing-noisy (each tracker books
+      // the same event in a different month); the cumulative % is the
+      // convergent signal.
+      let cChal = 0, cAtr = 0, cChalAi = 0, cAtrAi = 0;
       body.innerHTML = recs.map(r2 => {
         const m = byMonth[r2.reference_month] || {};
+        cChal += r2.challenger_total_jobs_month || 0;
+        cAtr += m.jobs || 0;
+        cChalAi += r2.challenger_ai_jobs_month || 0;
+        cAtrAi += m.ai_broad_jobs || 0;
         return '<tr><td><b>' + r2.reference_month + '</b></td>' +
-          '<td>' + fmtN(r2.challenger_total_jobs_month) + '</td><td>' + fmtN(m.jobs) + '</td><td>' + pct(m.jobs, r2.challenger_total_jobs_month) + '</td>' +
-          '<td>' + fmtN(r2.challenger_ai_jobs_month) + '</td><td>' + fmtN(m.ai_broad_jobs) + '</td><td>' + pct(m.ai_broad_jobs, r2.challenger_ai_jobs_month) + '</td></tr>';
+          '<td>' + fmtN(r2.challenger_total_jobs_month) + '</td><td>' + fmtN(m.jobs) + '</td><td>' + pct(m.jobs, r2.challenger_total_jobs_month) + '</td><td>' + pct(cAtr, cChal) + '</td>' +
+          '<td>' + fmtN(r2.challenger_ai_jobs_month) + '</td><td>' + fmtN(m.ai_broad_jobs) + '</td><td>' + pct(m.ai_broad_jobs, r2.challenger_ai_jobs_month) + '</td><td>' + pct(cAtrAi, cChalAi) + '</td></tr>';
       }).join('');
     }).catch(() => {
       body.innerHTML = '<tr><td colspan="7">Monthly trend could not load this time — refresh to retry.</td></tr>';
