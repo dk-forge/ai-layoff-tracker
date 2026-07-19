@@ -596,3 +596,11 @@ Role-level data exists ONLY where the source stated it. The chart MUST carry
 a short, plain caveat so readers never assume it covers every counted job.
 Required wording (or equivalent, keep it one line): "Only cuts whose reports
 named the affected roles — a sample of the total, not a breakdown of it."
+
+## Roles-impacted chart placement (2026-07-19)
+
+Place the roles chart in the AI story cluster: directly after "AI intensity
+by industry" and before "Cumulative AI-attributed cuts", so the reading order
+is: how much is AI (share trend), which industries (intensity), WHICH JOBS
+(roles), then the running total. Card sub must carry the sample disclaimer
+already specified. No em dashes in its copy.

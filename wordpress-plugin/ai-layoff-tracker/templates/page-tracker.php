@@ -105,7 +105,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
     <div class="alt-quickviews">
         <span class="alt-qv-label">Quick views:</span>
-        <button type="button" class="alt-qv" data-qv="ai">✦ AI-attributed</button>
         <button type="button" class="alt-qv" data-qv="month">This month</button>
         <button type="button" class="alt-qv" data-qv="largest">Largest cuts</button>
         <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
@@ -208,13 +207,13 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-announced">—</span>
                 <span class="alt-stat-label">Announced job cuts</span>
-                <span class="alt-stat-desc">Company plans at announcement stage — not yet in Verified.</span>
+                <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value" id="alt-stat-all">—</span>
                 <span class="alt-stat-label">All job cuts, incl. plans</span>
-                <span class="alt-stat-desc">Verified + Announced together — the full picture for the period.</span>
+                <span class="alt-stat-desc">Verified + Announced together: the full picture for the period.</span>
                 <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
             </div>
             <div class="alt-stat-card">
@@ -226,7 +225,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card alt-stat-card-ai">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                <span class="alt-stat-label">AI-linked, specific — by the company</span>
+                <span class="alt-stat-label">AI-linked, specific (by the company)</span>
                 <span class="alt-stat-desc">Part of Verified, in the employer's own words — statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
             </div>
@@ -248,7 +247,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             ))); ?>">
                 <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
                 <span class="alt-stat-label">AI cuts anticipated, YTD</span>
-                <span class="alt-stat-desc">Every AI-linked cut this year, counted by US employer — the like-for-like total against the US benchmark. Fixed scope: it does not follow the filters.</span>
+                <span class="alt-stat-desc">Every AI-linked cut this year, counted by US employer: the like-for-like total against the US benchmark. Fixed scope: it does not follow the filters.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
             </div>
         </div>
@@ -310,7 +309,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-barlist" id="alt-bars-sourcetypes"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts — select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts · select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">

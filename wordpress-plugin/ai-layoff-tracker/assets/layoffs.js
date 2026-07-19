@@ -542,7 +542,7 @@
             if (wrap) wrap.className = 'alt-roo-wrap is-sleeping';
             var lastTxt = (stats && stats.last_updated) ? fmtET(stats.last_updated) : '';
             if (nextEl) nextEl.textContent =
-                (lastTxt ? ('Roo pulled the latest data ' + lastTxt + ' — resting until ' + (np || 'the next run')) 
+                (lastTxt ? ('Roo pulled the latest data ' + lastTxt + ', resting until ' + (np || 'the next run')) 
                          : (np ? ('Roo’s resting until the next update, ' + np) : ''));
         }
     }
@@ -1156,7 +1156,7 @@
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
             var logOn = applyLogIfSpread(datasets, options);
             labelWithTotals(datasets);
-            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — verified cuts' + (logOn ? ' · log scale so small series stay visible' : '');
+            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' · verified cuts' + (logOn ? ' · log scale so small series stay visible' : '');
             mountChart('alt-chart-weekly', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
         }).catch(function () { /* combined view already rendered as fallback */ });
     }
@@ -1187,7 +1187,7 @@
             // STACKED band: announced plans sit on top of verified, so the
             // top edge of the amber band reads as verified + announced —
             // matching the intuition that plans "add to" the total.
-            datasets.push({ label: 'Announced plans — stacked on top of Verified', data: announced, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
+            datasets.push({ label: 'Announced plans, stacked on top of Verified', data: announced, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1385,7 +1385,7 @@
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
             var logOn = applyLogIfSpread(datasets, options);
             labelWithFinal(datasets);
-            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — cumulative verified AI cuts' + (logOn ? ' · log scale so small series stay visible' : '');
+            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' · cumulative verified AI cuts' + (logOn ? ' · log scale so small series stay visible' : '');
             mountChart('alt-chart-ai-cumulative', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
         }).catch(function () { /* merged view already rendered as fallback */ });
     }
@@ -1413,7 +1413,7 @@
         var dots = charted.length <= 2 ? 4 : 0;
         var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: ALT_RED, backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI plans — stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            datasets.push({ label: 'Announced AI plans, stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
