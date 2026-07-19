@@ -2434,7 +2434,20 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         );
     }
 
+    // Companies with multiple rounds in the filtered period: the serial-cuts
+    // view no aggregator offers (frequency, not size).
+    $repeat_rows = $wpdb->get_results(alt_db_prep(
+        "SELECT MAX(company) company, COUNT(*) n, COALESCE(SUM(job_count),0) jobs
+         FROM $table WHERE $where AND company_key <> ''
+         GROUP BY company_key HAVING COUNT(*) >= 2
+         ORDER BY n DESC, jobs DESC LIMIT 12", $params));
+    $repeat = array();
+    foreach ($repeat_rows ?: array() as $rr) {
+        $repeat[] = array($rr->company, (int) $rr->n, (int) $rr->jobs);
+    }
+
     return array(
+        'repeat_companies' => $repeat,
         'totals' => array(
             'jobs'       => (int) $totals->jobs,
             'entries'    => (int) $totals->entries,

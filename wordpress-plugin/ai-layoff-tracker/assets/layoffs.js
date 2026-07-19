@@ -21,8 +21,10 @@
     /* Palette + labels                                                    */
     /* ------------------------------------------------------------------ */
 
-    var PALETTE = ['#2a78d6', '#e34948', '#1baf7a', '#8b46c8', '#eda100', '#8c5a3b', '#e87ba4', '#5b6472'];
-    var ALT_RED = '#e34948', ALT_AMBER = '#eda100';
+    // Okabe-Ito colorblind-safe palette, ordered so neighbors differ in
+    // lightness as well as hue (yellow excluded: too weak on white for lines).
+    var PALETTE = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#000000', '#999999'];
+    var ALT_RED = '#D55E00', ALT_AMBER = '#E69F00';
     var SEQ_BLUE = '#2a78d6';
     var SEQ_BLUE_FILL = 'rgba(42, 120, 214, 0.18)';
     var INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9' };
@@ -916,6 +918,9 @@
         renderBarList('alt-bars-leaders', leaderEntries, null,
             companyBox && companyBox.value ? [companyBox.value] : [],
             companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null);
+        renderBarList('alt-bars-repeat', (agg.repeat_companies || []).map(function (e) { return [e[0], e[1], 0]; }), null,
+            companyBox && companyBox.value ? [companyBox.value] : [],
+            companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null, ' rounds');
         var countryTitle = document.getElementById('alt-country-chart-title');
         if (countryTitle) {
             countryTitle.innerHTML = selectedList('alt-f-country').length
@@ -1188,7 +1193,7 @@
             // STACKED band: announced plans sit on top of verified, so the
             // top edge of the amber band reads as verified + announced —
             // matching the intuition that plans "add to" the total.
-            datasets.push({ label: 'Announced plans, stacked on top of Verified', data: announced, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
+            datasets.push({ label: 'Announced plans, stacked on top of Verified', data: announced, borderColor: ALT_AMBER, backgroundColor: 'rgba(230, 159, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -1330,7 +1335,7 @@
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
         mountChart('alt-chart-ai-share-trend', { type: 'line', data: {
             labels: pts.map(function (p) { return monthLabel(p.month); }),
-            datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(227,73,72,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
+            datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(213,94,0,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
         }, options: options });
     }
 
@@ -1412,9 +1417,9 @@
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
         var dots = charted.length <= 2 ? 4 : 0;
-        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: ALT_RED, backgroundColor: 'rgba(227, 73, 72, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
+        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: ALT_RED, backgroundColor: 'rgba(213, 94, 0, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI plans, stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(237, 161, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            datasets.push({ label: 'Announced AI plans, stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(230, 159, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -2254,6 +2259,11 @@
             'alt-bars-leaders': function () {
                 return ((LAST_AGG && LAST_AGG.leaders) || []).map(function (l) {
                     return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0];
+                });
+            },
+            'alt-bars-repeat': function () {
+                return ((LAST_AGG && LAST_AGG.repeat_companies) || []).map(function (e) {
+                    return [e[0], e[1], e[2]];
                 });
             },
             'alt-bars-ai-intensity': function () {
