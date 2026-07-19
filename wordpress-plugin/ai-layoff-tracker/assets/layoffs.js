@@ -448,7 +448,7 @@
             });
         });
         var clr = document.getElementById('alt-af-clear');
-        if (clr) clr.addEventListener('click', function () { clearFilters(); refreshAll(); });
+        if (clr) clr.addEventListener('click', function () { clearFilters(); writeControl('alt-f-years', [String(new Date().getFullYear())]); updateDropdownSummaries(); refreshAll(); });
     }
 
     /* ------------------------------------------------------------------ */
@@ -583,14 +583,14 @@
             // Up to four selections are named in full — "Australia +2 more"
             // hid exactly the cross-reference the picker exists for. Five or
             // more fall back to the compact form.
-            parts.push(regionNameFor(countries) ||
-                (countries.length <= 4 ? countries.join(' · ')
-                    : countries.slice(0, 3).join(' · ') + ' +' + (countries.length - 3) + ' more'));
+            // Every hand-picked country is named — hiding any behind
+            // "+N more" defeats the cross-referencing the picker exists for.
+            parts.push(regionNameFor(countries) || countries.join(' · '));
         }
         [['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
             var v = selectedList(p[0]);
-            if (v.length) parts.push((p[1] || '') + (v.length <= 3 ? v.join(' · ')
-                : v.slice(0, 2).join(' · ') + ' +' + (v.length - 2) + ' more'));
+            if (v.length) parts.push((p[1] || '') + (v.length <= 6 ? v.join(' · ')
+                : v.slice(0, 5).join(' · ') + ' +' + (v.length - 5) + ' more'));
         });
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
@@ -1034,6 +1034,25 @@
         return out.length ? out : series;
     }
 
+    // When compared series differ by orders of magnitude (Australia 6,200 vs
+    // Austria 40), the small ones flatten into the axis on a linear scale.
+    // Switch to log when the spread exceeds ~25x; zeros become gaps (log has
+    // no zero), tooltips stay exact.
+    function applyLogIfSpread(datasets, options) {
+        var maxes = datasets.map(function (d) {
+            return d.data.reduce(function (m, v) { return (v != null && v > m) ? v : m; }, 0);
+        }).filter(function (v) { return v > 0; });
+        if (maxes.length < 2) return false;
+        var hi = Math.max.apply(null, maxes), lo = Math.min.apply(null, maxes);
+        if (!(lo > 0) || hi / lo <= 25) return false;
+        options.scales.y.type = 'logarithmic';
+        datasets.forEach(function (d) {
+            d.data = d.data.map(function (v) { return v === 0 ? null : v; });
+            d.spanGaps = true;
+        });
+        return true;
+    }
+
     var CMP_SEQ = 0;
     // Which compare dimension the visitor touched last. Without this, a
     // leftover multi-country selection silently swallowed every year pick
@@ -1088,10 +1107,11 @@
                 });
             }
             var range = document.getElementById('alt-trend-range');
-            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — verified cuts';
             var options = cloneOptions();
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+            var logOn = applyLogIfSpread(datasets, options);
+            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — verified cuts' + (logOn ? ' · log scale so small series stay visible' : '');
             mountChart('alt-chart-weekly', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
         }).catch(function () { /* combined view already rendered as fallback */ });
     }
@@ -1168,6 +1188,7 @@
                 var options = cloneOptions();
                 options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
                 options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+                applyLogIfSpread(datasets, options);
                 mountChart('alt-chart-yoy', { type: 'line', data: {
                     labels: mm.map(function (m) { return monthLabel('2000-' + m).split(' ')[0]; }), datasets: datasets
                 }, options: options });
@@ -1313,10 +1334,11 @@
                 clearChart('alt-chart-ai-cumulative');
                 return;
             }
-            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — cumulative verified AI cuts';
             var options = cloneOptions();
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+            var logOn = applyLogIfSpread(datasets, options);
+            if (range) range.textContent = 'comparing ' + cmp.values.join(' · ') + ' — cumulative verified AI cuts' + (logOn ? ' · log scale so small series stay visible' : '');
             mountChart('alt-chart-ai-cumulative', { type: 'line', data: { labels: labels, datasets: datasets }, options: options });
         }).catch(function () { /* merged view already rendered as fallback */ });
     }
@@ -1662,7 +1684,7 @@
             if (el.type === 'text' || el.type === 'number') el.addEventListener('input', onFilterChange);
         });
         var reset = document.getElementById('alt-f-reset');
-        if (reset) reset.addEventListener('click', function () { clearFilters(); refreshAll(); });
+        if (reset) reset.addEventListener('click', function () { clearFilters(); writeControl('alt-f-years', [String(new Date().getFullYear())]); updateDropdownSummaries(); refreshAll(); });
 
         // expand a row for the exact quote + source
         $(tableEl).on('click', 'tbody tr', function (e) {
