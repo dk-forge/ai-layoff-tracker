@@ -510,3 +510,18 @@ check-ins. Notify only for material deployments, operational failures,
 external permission/licensing requirements, or a decision that materially
 changes methodology. Be candid: ongoing monitoring is automated; unbuilt
 roadmap items are not already “running” merely because they are in this file.
+
+## Work-backwards audit protocol (first run 2026-07-19 — repeat monthly)
+
+An 8-agent web-research sweep compiles the largest publicly reported layoff
+events of the year (AI and general, by region/sector slice) and checks every
+one against the public /query API, returning missing / present-but-not-AI /
+count-differs lists. First run: 91 events checked, 21 announcement-stage
+events seeded via the data-corrections workflow, 2 AI reclassifications
+(employer-explicit quotes only). Key structural finding: WARN captures
+execution slices while announcement-level corporate events go missing —
+GDELT phrasing favors "layoff" over earnings-call "restructuring" language.
+Follow-ups in priority order: (1) Oregon WARN collector (Intel 2,392 absent),
+(2) add earnings-call/restructuring phrasings to the GDELT segment rotation,
+(3) re-run this audit monthly from the scheduled session and seed misses the
+same way (script + step-builder pattern in the 2026-07-19 session).
