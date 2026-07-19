@@ -3,6 +3,16 @@
 Last updated: 2026-07-18 night (plugin 2.18.35). Read this block first if
 you are a new agent (Codex or otherwise) taking over.
 
+**NEWEST (2026-07-19 00:18 UTC):** `GCP_BIGQUERY_CREDENTIALS_JSON` is live in
+GitHub secrets and VERIFIED working (credential smoke run 29666728674:
+dry-run against `gdelt-bq.gdeltv2.gkg_partitioned` authenticated, 0 bytes
+billed). NEXT HEADLINE BUILD: a BigQuery-backed GDELT collector path
+(prefer BigQuery when the secret exists, fall back to the public DOC API)
+— this permanently ends the 429 throttling. Confirm the same secret exists
+in Railway variables before wiring the cron path. CourtListener key + LSE
+RNS licence + Denmark Jobindsats key remain pending user actions (outreach
+drafts in docs/outreach/).
+
 **LATEST (2.18.33-2.18.35 + railway):**
 - **FIRST RECALL BENCHMARK PUBLISHED: 91.67% (11/12), United States,
   June 2026** — via the new `recall-benchmark-publish.yml` workflow, which
