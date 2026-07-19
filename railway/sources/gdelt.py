@@ -676,6 +676,12 @@ SEGMENT_TERMS = (
     '"job cuts" "earnings"', '"redundancy" "consultation"',
     '"voluntary separation"', '"reduction in force" employees',
     '"cut" "workforce" "announced"', '"eliminate" "positions"',
+    # AI-framing phrasings taken from how aggregator-tracked events were
+    # actually headlined (2026-07-19 diff): loose attributions surface with
+    # these words, feeding the ai_linked broad tier
+    '"amid AI push"', '"to focus on AI"', '"AI-first" layoffs',
+    '"AI reshapes"', '"invest in AI" jobs', '"AI transformation" cuts',
+    '"AI restructuring"', '"shift to AI"',
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
 
