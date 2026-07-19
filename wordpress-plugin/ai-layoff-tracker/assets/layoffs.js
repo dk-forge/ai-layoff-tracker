@@ -687,35 +687,30 @@
         // empty; the employer figure replaces it when it arrives.
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
         setText('alt-stat-ai-broad-sub', when);
-        var broadSeq = (renderStats._broadSeq = (renderStats._broadSeq || 0) + 1);
-        if (selectedList('alt-f-country').length) {
-            var pEmp = currentParams();
-            pEmp.country_basis = 'employer';
-            apiGet('aggregate', pEmp).then(function (a) {
-                if (broadSeq !== renderStats._broadSeq) return;
-                var b = a && a.totals && a.totals.ai_broad_jobs;
-                if (b == null) return;
-                setText('alt-stat-ai-broad', fmt(b));
-                var sub = when + ' · by employer country';
-                var noteCard = document.querySelector('[data-challenger]');
-                var usOnlyScope = selectedList('alt-f-country').join(',') === 'United States'
-                    && !readControl('alt-f-ai') && !readControl('alt-f-announced');
-                if (usOnlyScope && noteCard) {
-                    try {
-                        var cd = JSON.parse(noteCard.getAttribute('data-challenger') || '{}');
-                        if (cd.ai_ytd && cd.ref_month && a.series) {
-                            // Their YTD ends at the reference month; sum our
-                            // months through it so the % compares like windows.
-                            var thru = 0;
-                            a.series.forEach(function (sr) { if (sr.month <= cd.ref_month) thru += sr.ai_broad_jobs || 0; });
-                            sub = when + ' · by US employer · through ' + monthLabel(cd.ref_month) + ': ' +
-                                Math.round(100 * thru / cd.ai_ytd) + '% of the US benchmark';
-                        }
-                    } catch (e) { /* keep generic sub */ }
-                }
-                setText('alt-stat-ai-broad-sub', sub);
-            }).catch(function () { /* location-basis figure stays */ });
-        }
+        // The anticipated card is FIXED-SCOPE: current year, US employers,
+        // broad AI — the like-for-like total against the US benchmark. It
+        // deliberately ignores the page filters (its description says so).
+        var antSeq = (renderStats._antSeq = (renderStats._antSeq || 0) + 1);
+        var yNow = new Date().getFullYear();
+        apiGet('aggregate', { years: String(yNow), country: 'United States', country_basis: 'employer' }).then(function (a) {
+            if (antSeq !== renderStats._antSeq) return;
+            var tot = a && a.totals && a.totals.ai_broad_jobs;
+            if (tot == null) return;
+            setText('alt-stat-ai-anticipated', fmt(tot));
+            var sub = yNow + ' YTD · US employers';
+            var card = document.querySelector('[data-challenger]');
+            if (card) {
+                try {
+                    var cd = JSON.parse(card.getAttribute('data-challenger') || '{}');
+                    if (cd.ai_ytd && cd.ref_month && a.series) {
+                        var thru = 0;
+                        a.series.forEach(function (sr) { if (sr.month <= cd.ref_month) thru += sr.ai_broad_jobs || 0; });
+                        sub += ' · through ' + monthLabel(cd.ref_month) + ': ' + Math.round(100 * thru / cd.ai_ytd) + '% of the US benchmark';
+                    }
+                } catch (e) { /* generic sub */ }
+            }
+            setText('alt-stat-ai-anticipated-sub', sub);
+        }).catch(function () { setText('alt-stat-ai-anticipated', '—'); });
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
