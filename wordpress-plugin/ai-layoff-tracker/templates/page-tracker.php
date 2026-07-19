@@ -415,6 +415,14 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs. The full corrections trail is in the Data notes &amp; corrections log below.</p>
         </div>
     </details>
+    <div class="alt-mini alt-chart-card alt-conversion-card" id="alt-conversion-card">
+        <div class="alt-chart-head">
+            <div class="alt-chart-h">Do announced cuts actually happen? <span class="alt-chart-sub">share of each month's announced job cuts that show verified records (filings or sourced reports) from the same company within 6 months. Matches are capped per announcement, so a month can never exceed 100%.</span></div>
+            <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
+        </div>
+        <div class="alt-chart-box"><canvas id="alt-chart-conversion" aria-label="Announced-to-verified conversion by announcement month"></canvas></div>
+        <p class="alt-muted" id="alt-conversion-note" style="display:none"></p>
+    </div>
     <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">

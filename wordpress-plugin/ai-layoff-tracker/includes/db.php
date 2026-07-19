@@ -635,6 +635,13 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_aggregate',
         'permission_callback' => '__return_true',
     ));
+    // Announced-to-verified conversion series: per announcement month, how
+    // many announced jobs later show verified same-company records.
+    register_rest_route('layoffs/v1', '/conversion', array(
+        'methods'  => 'GET',
+        'callback' => 'alt_api_conversion',
+        'permission_callback' => '__return_true',
+    ));
     // Distinct filter values + date range, for populating dropdowns/period pills
     // without loading every row.
     register_rest_route('layoffs/v1', '/facets', array(
@@ -2255,7 +2262,7 @@ function alt_is_public_read_request() {
     if (is_user_logged_in()) return false;
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') return false;
     $uri = $_SERVER['REQUEST_URI'] ?? '';
-    foreach (array('query', 'aggregate', 'facets', 'stats', 'all') as $ep) {
+    foreach (array('query', 'aggregate', 'facets', 'stats', 'all', 'conversion') as $ep) {
         if (strpos($uri, 'layoffs/v1/' . $ep) !== false) return true;
     }
     return false;
@@ -2477,5 +2484,109 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         'reasons'        => $reasons,
         'series'         => $series,
         'leaders'        => $leaders,
+    );
+}
+
+function alt_api_conversion(WP_REST_Request $r) {
+    return alt_api_cached('conversion', $r, function () use ($r) {
+        return alt_api_conversion_compute($r);
+    });
+}
+
+/**
+ * Announced-to-verified conversion by announcement month.
+ *
+ * For every announced-tier row (a company's stated plan), sum the verified
+ * rows (announced = 0: filings and reported records) from the SAME normalized
+ * company dated AFTER the announcement anchor and within `window_months`.
+ * Matched jobs are capped at each announcement's own count, so one plan can
+ * never convert above 100%. Matching is deliberately company + date-window
+ * only — the same conservative screen family as the read-only lifecycle
+ * candidate queue — and this endpoint changes no rows, events or totals.
+ *
+ * Anchor: the source-evidenced announcement_date where one exists, otherwise
+ * the announced row's recorded date. Months whose full window has not elapsed
+ * are labeled `maturing`; future-dated plans are `pending` — a low figure
+ * there means "too early", never "plans abandoned".
+ */
+function alt_api_conversion_compute(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    $window = (int) ($r->get_param('window_months') ?: 6);
+    $window = min(24, max(1, $window));
+    $anchor = 'COALESCE(a.announcement_date, a.layoff_date)';
+
+    // Row filters (country/industry/state/ai/sources...) scope the ANNOUNCED
+    // side only. Verified matches stay unfiltered on purpose: execution of a
+    // multi-country plan can surface anywhere WARN/SEC/news records it.
+    // Date filters are excluded and re-applied against the anchor below.
+    list($fw, $params) = alt_db_where($r, 'date');
+    $conds = "a.announced = 1 AND a.company_key <> '' AND a.job_count > 0"
+        . " AND $anchor IS NOT NULL AND $anchor > '2000-01-01'";
+    $anchor_params = array();
+    $from = (string) $r->get_param('from');
+    $to = (string) $r->get_param('to');
+    if ($from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $conds .= " AND $anchor >= %s"; $anchor_params[] = $from; }
+    if ($to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) { $conds .= " AND $anchor <= %s"; $anchor_params[] = $to; }
+
+    // Parameter binding follows SQL text order: the correlated subquery's
+    // window (SELECT list) first, then the WHERE filters.
+    $all_params = array_merge(array($window), $anchor_params, $params);
+    $sql = "SELECT t.m,
+                COUNT(*) announced_entries,
+                COALESCE(SUM(t.announced_jobs),0) announced_jobs,
+                COALESCE(SUM(LEAST(t.announced_jobs, t.verified_after)),0) matched_jobs,
+                SUM(CASE WHEN t.verified_after > 0 THEN 1 ELSE 0 END) matched_entries
+            FROM (
+                SELECT CONCAT(YEAR($anchor),'-',LPAD(MONTH($anchor),2,'0')) m,
+                       a.job_count announced_jobs,
+                       (SELECT COALESCE(SUM(b.job_count),0)
+                          FROM $table b
+                         WHERE b.company_key = a.company_key
+                           AND b.announced = 0
+                           AND b.layoff_date > $anchor
+                           AND b.layoff_date <= DATE_ADD($anchor, INTERVAL %d MONTH)) verified_after
+                  FROM $table a
+                 WHERE $conds AND $fw
+            ) t
+            GROUP BY t.m
+            ORDER BY t.m ASC";
+    $rows = $wpdb->get_results(alt_db_prep($sql, $all_params)) ?: array();
+
+    $now_month = gmdate('Y-m');
+    $series = array();
+    foreach ($rows as $row) {
+        $announced = (int) $row->announced_jobs;
+        $matched = (int) $row->matched_jobs;
+        if ((string) $row->m > $now_month) {
+            $status = 'pending';
+        } elseif (strtotime($row->m . '-01 +' . (1 + $window) . ' months') <= time()) {
+            $status = 'complete';
+        } else {
+            $status = 'maturing';
+        }
+        $series[] = array(
+            'month' => $row->m,
+            'announced_entries' => (int) $row->announced_entries,
+            'announced_jobs' => $announced,
+            'matched_entries' => (int) $row->matched_entries,
+            'matched_jobs' => $matched,
+            'conversion_pct' => $announced > 0 ? round(100 * $matched / $announced, 1) : null,
+            'status' => $status,
+        );
+    }
+
+    return array(
+        'window_months' => $window,
+        'series' => $series,
+        'methodology' => array(
+            'question' => 'Of the jobs companies announced they would cut, how many later show verified follow-through?',
+            'matching' => 'Deliberately conservative: verified records (announced = 0: WARN filings, SEC filings, sourced reports) from the same normalized company, dated after the announcement anchor and within window_months. Matched jobs are capped at each announcement\'s own count, so no single plan can convert above 100%.',
+            'anchor' => 'The announcement month uses the source-evidenced announcement date where one exists, otherwise the announced row\'s recorded date (often the planned effective date), which can only understate conversion, never inflate it.',
+            'status_labels' => 'complete = the full window has elapsed for every announcement in the month; maturing = the window is still open, so the figure is expected to rise; pending = plans dated to a future month, which cannot have converted yet.',
+            'not_an_execution_audit' => 'A match is company-level corroboration inside a time window, not a per-person reconciliation. Unmatched announced jobs may still have happened through attrition, in geographies without filing systems, or below WARN thresholds; matched jobs can include an unrelated later round at the same company.',
+            'filters' => 'Row filters (country, industry, state, ai, sources, from, to) scope the announced side only; verified matches are intentionally unfiltered because execution can be recorded in a different place than the announcement.',
+        ),
+        'generated_at' => gmdate('c'),
     );
 }

@@ -1564,6 +1564,71 @@
         });
     }
 
+    /* Announced-to-verified conversion card ---------------------------- */
+
+    // The /conversion endpoint answers "do announced cuts actually happen?":
+    // per announcement month, the share of announced jobs with verified
+    // same-company records inside the window, capped per announcement. Not
+    // filter-wired (like the Challenger charts beside it): the question is
+    // about the whole announced tier, and recent months need their maturity
+    // labels regardless of the active view.
+    var CONVERSION_DATA = null;
+    function initConversionChart() {
+        if (!document.getElementById('alt-chart-conversion') || !chartsAvailable()) return;
+        apiGet('conversion', {}).then(function (data) {
+            CONVERSION_DATA = data;
+            renderConversionChart();
+        }).catch(function () { /* card stays empty; no fabricated series */ });
+    }
+    function renderConversionChart() {
+        var data = CONVERSION_DATA;
+        if (!data || !document.getElementById('alt-chart-conversion') || !chartsAvailable()) return;
+        var win = data.window_months || 6;
+        // Future-dated plans (pending) cannot have converted yet; charting
+        // them as 0% would read as broken promises. They stay in the CSV.
+        var rows = (data.series || []).filter(function (p) { return p.status !== 'pending' && p.conversion_pct !== null; });
+        if (rows.length < 2) return;
+        var labels = rows.map(function (p) { return monthLabel(p.month); });
+        function pickStatus(status) {
+            return rows.map(function (p) { return p.status === status ? p.conversion_pct : null; });
+        }
+        var options = cloneOptions();
+        options.scales.y.max = 100;
+        options.scales.y.ticks.callback = function (v) { return v + '%'; };
+        options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+        options.plugins.tooltip.callbacks = {
+            label: function (ctx) {
+                var p = rows[ctx.dataIndex];
+                if (!p) return '';
+                var lines = [
+                    p.conversion_pct + '% of announced jobs had verified records within ' + win + ' months',
+                    'Announced: ' + fmt(p.announced_jobs) + ' jobs in ' + fmt(p.announced_entries) + ' plans',
+                    'Matched: ' + fmt(p.matched_jobs) + ' verified jobs'
+                ];
+                if (p.status === 'maturing') lines.push('Still maturing: the ' + win + ' month window is not over yet');
+                return lines;
+            }
+        };
+        // Same-slot stacking: each month has exactly one non-null dataset, so
+        // the two datasets render as one bar per month while the legend
+        // explains the two colors.
+        options.scales.x.stacked = true;
+        options.scales.y.stacked = true;
+        mountChart('alt-chart-conversion', {
+            type: 'bar',
+            data: { labels: labels, datasets: [
+                { label: 'Window complete (' + win + ' months elapsed)', data: pickStatus('complete'), backgroundColor: '#0072B2', stack: 'conv' },
+                { label: 'Still maturing (expected to rise)', data: pickStatus('maturing'), backgroundColor: '#E69F00', stack: 'conv' }
+            ] },
+            options: options
+        });
+        var note = document.getElementById('alt-conversion-note');
+        if (note) {
+            note.style.display = '';
+            note.textContent = 'Counts verified filings and sourced reports from the same company after each announcement, capped at the announced size. Orange months are still maturing: those announcements have not had the full ' + win + ' months to show follow-through, so low bars there are expected to rise. This is company-level corroboration, not proof a specific plan was completed or dropped; unmatched jobs can still have happened through attrition or outside filing systems.';
+        }
+    }
+
     function renderBar(canvasId, entries, filterId, activeValue, tipPrefix) {
         if (!document.getElementById(canvasId)) return;
         entries = entries || [];
@@ -2292,6 +2357,24 @@
                     a.href = c.toDataURL('image/png');
                     a.download = 'ai-layoff-tracker-' + t.replace('alt-chart-', '') + '.png';
                     a.click();
+                } else if (t === 'alt-chart-conversion') {
+                    // Conversion CSV keeps its own columns (percentages,
+                    // maturity status) and includes the future-dated pending
+                    // months the chart deliberately leaves out.
+                    var crows = ((CONVERSION_DATA && CONVERSION_DATA.series) || []);
+                    if (!crows.length) return;
+                    var cwin = CONVERSION_DATA.window_months || 6;
+                    var ccsv = 'announcement_month,announced_jobs,announced_entries,matched_verified_jobs,matched_entries,conversion_pct,window_months,status\n'
+                        + crows.map(function (p) {
+                            return [p.month, p.announced_jobs, p.announced_entries, p.matched_jobs, p.matched_entries,
+                                (p.conversion_pct === null ? '' : p.conversion_pct), cwin, p.status].join(',');
+                        }).join('\n');
+                    var cblob = new Blob([ccsv], { type: 'text/csv' });
+                    var ca = document.createElement('a');
+                    ca.href = URL.createObjectURL(cblob);
+                    ca.download = 'ai-layoff-tracker-announced-to-verified-conversion.csv';
+                    ca.click();
+                    URL.revokeObjectURL(ca.href);
                 } else {
                     var meta = BAR_AGG_KEY[t];
                     var rows = BAR_ROWS_FN[t] ? BAR_ROWS_FN[t]() : ((meta && LAST_AGG && LAST_AGG[meta[0]]) || []);
@@ -2319,6 +2402,7 @@
                 btn.setAttribute('aria-label', on ? 'Collapse chart' : 'Expand chart');
                 btn.title = on ? 'Collapse' : 'Expand';
                 if (LAST_AGG) renderCharts(LAST_AGG);
+                renderConversionChart(); // standalone card; re-measures on toggle
             });
         });
 
@@ -2360,6 +2444,7 @@
             Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
             Chart.defaults.color = INK.muted;
             initChallengerReconciliationChart();
+            initConversionChart();
         }
         enhanceChallengerTable();
         DASH_PRESENT = !!document.querySelector('.alt-dashboard');
