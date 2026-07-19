@@ -250,12 +250,12 @@
     function saveFilters() {
         try {
             var s = {}; FILTER_IDS.forEach(function (id) { s[id] = readControl(id); });
-            window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(s));
+            window.sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(s));
         } catch (e) { /* private mode */ }
     }
     function restoreFilters() {
         try {
-            var raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
+            var raw = window.sessionStorage.getItem(FILTER_STORAGE_KEY);
             if (!raw) return;
             var s = JSON.parse(raw);
             FILTER_IDS.forEach(function (id) { writeControl(id, s[id]); });
@@ -289,7 +289,7 @@
             else if (el.multiple) Array.prototype.forEach.call(el.options, function (o) { o.selected = false; });
             else el.value = '';
         });
-        try { window.localStorage.removeItem(FILTER_STORAGE_KEY); } catch (e) { /* noop */ }
+        try { window.sessionStorage.removeItem(FILTER_STORAGE_KEY); } catch (e) { /* noop */ }
     }
 
     // Current filter state → REST query params. Multi-selects send comma lists.
@@ -1284,10 +1284,11 @@
         // appear only once the reconciliation job has retained those fields.
         // Five distinct colors — solid = AI pair, dashed = all-cuts pair,
         // green = our observed AI (real holdings; not the strict comparator).
-        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#8b46c8' };
-        function datasetsFor(suffix, observed) {
+        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#8b46c8', usBroad: '#0f9d9d' };
+        function datasetsFor(suffix, observed, broad) {
             var sets = [
                 { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: C.chalAI, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
+                { label: 'AskTheRecruiter — AI-linked, broad (Challenger-style)', data: broad, borderColor: C.usBroad, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
                 { label: 'AskTheRecruiter — AI observed (verified + announced)', data: observed, borderColor: C.usObs, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
                 { label: 'AskTheRecruiter — strict comparator', data: pick('tracker_' + suffix), borderColor: C.usStrict, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
             ];
@@ -1301,17 +1302,17 @@
         }
         var labels = points.map(function (p) { return monthLabel(p.period); });
         var benchYear = (points[0] && points[0].period || '2026').slice(0, 4);
-        function mountBoth(obsMonth, obsYtd) {
+        function mountBoth(obsMonth, obsYtd, broadMonth, broadYtd) {
             if (monthlyCanvas && hasAny('challenger_month')) {
                 mountChart('alt-chart-challenger-monthly', {
                     type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('month', obsMonth) }, options: options(10000)
+                    data: { labels: labels, datasets: datasetsFor('month', obsMonth, broadMonth) }, options: options(10000)
                 });
             }
             if (ytdCanvas) {
                 mountChart('alt-chart-challenger-reconciliation', {
                     type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd) }, options: options(25000)
+                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd, broadYtd) }, options: options(25000)
                 });
             }
         }
@@ -1319,15 +1320,18 @@
         // aggregate so the comparison never reads as "we have nothing" when
         // only the STRICT lines sit near zero.
         apiGet('aggregate', { years: benchYear, country: 'United States' }).then(function (agg) {
-            var by = {};
+            var by = {}, byBroad = {};
             ((agg && agg.series) || []).forEach(function (srow) {
                 by[srow.month] = (srow.ai_verified_jobs || 0) + (srow.ai_announced_jobs || 0);
+                byBroad[srow.month] = (srow.ai_broad_jobs != null) ? srow.ai_broad_jobs : by[srow.month];
             });
-            var run = 0;
+            var run = 0, runB = 0;
             var obsMonth = points.map(function (p) { return by[p.period] != null ? by[p.period] : null; });
             var obsYtd = points.map(function (p) { run += (by[p.period] || 0); return run; });
-            mountBoth(obsMonth, obsYtd);
-        }).catch(function () { mountBoth(null, null); });
+            var broadMonth = points.map(function (p) { return byBroad[p.period] != null ? byBroad[p.period] : null; });
+            var broadYtd = points.map(function (p) { runB += (byBroad[p.period] || 0); return runB; });
+            mountBoth(obsMonth, obsYtd, broadMonth, broadYtd);
+        }).catch(function () { mountBoth(null, null, null, null); });
     }
 
     function renderBar(canvasId, entries, filterId, activeValue, tipPrefix) {

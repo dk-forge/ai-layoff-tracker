@@ -2324,6 +2324,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
                 SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN 1 ELSE 0 END) ai_announced_entries,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN job_count END),0) ai_announced_jobs,
+                SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN 1 ELSE 0 END) ai_broad_entries,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN job_count END),0) ai_broad_jobs,
                 SUM(announced) announced_entries,
                 COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) announced_jobs,
                 COUNT(DISTINCT company_key) companies,
@@ -2370,7 +2372,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) verified_jobs,
                 COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) announced_jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
-                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN job_count END),0) ai_announced_jobs
+                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN job_count END),0) ai_announced_jobs,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN job_count END),0) ai_broad_jobs
          FROM $table WHERE $where AND layoff_date > '2000-01-01'
          GROUP BY m ORDER BY m ASC", $params));
     $series = array();
@@ -2379,6 +2382,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'month' => $row->m, 'jobs' => (int) $row->jobs, 'ai_jobs' => (int) $row->ai_jobs,
             'verified_jobs' => (int) $row->verified_jobs, 'announced_jobs' => (int) $row->announced_jobs,
             'ai_verified_jobs' => (int) $row->ai_verified_jobs, 'ai_announced_jobs' => (int) $row->ai_announced_jobs,
+            'ai_broad_jobs' => (int) $row->ai_broad_jobs,
         );
     }
 

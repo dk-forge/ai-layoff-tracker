@@ -557,6 +557,17 @@ TRUSTED_DOMAINS = {
     # "up to 32" cuts appeared on IGN but nowhere in the then-allowlist).
     "ign.com", "gamesindustry.biz", "pcgamer.com", "polygon.com",
     "eurogamer.net", "kotaku.com", "videogameschronicle.com", "rockpapershotgun.com",
+    # Sector trade press (added 2026-07-19 after the work-backwards audit:
+    # Acrisure/Cigna/Disney-scale announcements ran here first and nowhere in
+    # the then-allowlist). The Industry Dive network is corporate-announcement
+    # dense and low-noise.
+    "variety.com", "hollywoodreporter.com", "deadline.com",           # entertainment trade
+    "insurancejournal.com", "businessinsurance.com",                  # insurance trade
+    "hrexecutive.com", "hrdive.com", "cfodive.com", "ciodive.com",    # HR/finance/IT trade
+    "healthcaredive.com", "fiercehealthcare.com", "fiercebiotech.com",# healthcare trade
+    "beckershospitalreview.com", "beckerspayerissues.com",            # hospital/payer trade
+    "retaildive.com", "supplychaindive.com", "bankingdive.com",       # retail/logistics/banking trade
+    "utilitydive.com", "constructiondive.com",                        # utility/construction trade
     "chicago.suntimes.com",                                   # Chicago daily
     "wral.com",                                               # Raleigh NC (WRAL TechWire)
     "mprnews.org",                                            # Minnesota Public Radio
@@ -651,6 +662,14 @@ SEGMENT_TERMS = (
     # AI-attribution phrasings the broad vocabulary can rank too low
     '"AI layoffs"', '"replaced by AI"', '"because of AI"',
     '"artificial intelligence" "job cuts"', '"automation" "restructuring"',
+    # Corporate-announcement phrasings (2026-07-19 audit: Challenger-style
+    # events surface in earnings-call coverage that says "restructuring" or
+    # "workforce reduction", not "layoff" — these segments pull that slice
+    # above the maxrecords cutoff)
+    '"workforce reduction" percent', '"restructuring" "severance"',
+    '"job cuts" "earnings"', '"redundancy" "consultation"',
+    '"voluntary separation"', '"reduction in force" employees',
+    '"cut" "workforce" "announced"', '"eliminate" "positions"',
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
 

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.18.61
+ * Version: 2.18.62
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.18.61');
+define('ALT_VERSION', '2.18.62');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -121,6 +121,24 @@ function alt_ensure_publisher_page_once() {
 }
 add_action('init', 'alt_ensure_publisher_page_once', 20);
 
+function alt_ensure_press_page_once() {
+    if (get_page_by_path('ai-layoff-tracker/press')) return;
+    $parent = get_page_by_path('ai-layoff-tracker');
+    if (!$parent) return; // retry later; never create an orphaned page
+    wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
+        'post_parent' => (int) $parent->ID, 'post_title' => 'Press & Media',
+        'post_name' => 'press', 'post_content' => '[alt_press_media]'));
+}
+add_action('init', 'alt_ensure_press_page_once', 20);
+
+// The health page is an operations surface for maintainers, deliberately
+// unlinked from the public pages (2026-07-19) and kept out of search.
+function alt_health_page_noindex($robots) {
+    if (is_page('ai-tracker-health')) { $robots['noindex'] = true; $robots['follow'] = true; }
+    return $robots;
+}
+add_filter('wp_robots', 'alt_health_page_noindex');
+
 function alt_ensure_quarterly_report_page_once() {
     if (get_page_by_path('ai-layoff-tracker/state-of-layoffs')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
@@ -188,7 +206,7 @@ function alt_page_needs_assets() {
     $shortcodes = array(
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
-        'alt_contact',
+        'alt_contact', 'alt_press_media',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;

@@ -48,7 +48,12 @@ function alt_allowed_reason_tags() {
 }
 
 function alt_allowed_ai_causation() {
-    return array('primary_cause', 'contributing_cause', 'selection_or_operations',
+    // 'ai_linked' is the Challenger/layoffs.fyi-style BROAD bucket: cuts the
+    // company or press tied to AI loosely (funding an AI pivot, AI-driven
+    // market disruption, press AI framing). It never sets ai_explicit, so the
+    // strict verified-AI totals stay quote-gated; it only feeds the labeled
+    // broad comparison measure.
+    return array('primary_cause', 'contributing_cause', 'ai_linked', 'selection_or_operations',
         'context_only', 'explicitly_denied', 'unknown');
 }
 

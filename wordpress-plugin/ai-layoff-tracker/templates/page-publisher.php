@@ -9,5 +9,5 @@
     <div class="alt-widget-builder-actions"><button type="button" class="alt-btn alt-btn-sm" id="alt-widget-copy">Copy widget code</button><a id="alt-widget-tracker-link" href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>" target="_blank" rel="noopener">Preview exact tracker view</a></div>
     <p id="alt-widget-builder-note">The snippet contains only an iframe. If you add attribution outside it, you choose its link attributes; no backlink is requested or promised.</p><p id="alt-widget-copy-status" role="status" aria-live="polite"></p>
   </section>
-  <p class="alt-health-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health &amp; methodology</a></p>
+  <p class="alt-health-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a></p>
 </main>

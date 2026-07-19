@@ -50,7 +50,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
     <?php $alt_cov = alt_coverage_counts(); ?>
     <div class="alt-narrative" id="alt-narrative"></div>
-    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
     <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -400,13 +400,14 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <div class="alt-method-body">
             <p id="alt-source-health-note">Checking the most recent collector status…</p>
             <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
-            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs. Run-by-run history, evidence-integrity metrics and the public corrections trail live on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker Health page</a>.</p>
+            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs. The full corrections trail is in the Data notes &amp; corrections log below.</p>
         </div>
     </details>
     <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">
             <p><b>Why the figures differ.</b> The cards above are scoped by the job-location country filter, while Challenger measures announcements by US-based employers. They are therefore not a like-for-like Challenger total. This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. Two labeled pairs are compared, each updated automatically when Challenger publishes its monthly report: <b>Challenger AI cuts vs AskTheRecruiter announced AI cuts (strict)</b>, and <b>Challenger all announced cuts vs AskTheRecruiter announced US cuts</b>. The strict AskTheRecruiter figures include only canonical events with a source-evidenced announcement date, a US-based employer and announcement-stage status (plus AI as the primary stated cause for the AI pair). The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
+            <p><b>The teal "AI-linked, broad (Challenger-style)" line</b> measures AI the way Challenger and layoffs.fyi do: it adds events where the company or press tied the cuts to AI loosely, including layoffs made while funding an AI pivot and AI-driven market disruption. Our strict AI tag (the employer's own words, quote on file) stays separate and unchanged; the broad line exists so the two counting philosophies can be compared side by side on the same chart.</p>
             <?php if ($alt_challenger_records) : ?>
             <?php if (count($alt_challenger_chart) >= 2) : ?>
             <div class="alt-challenger-chart">
@@ -530,6 +531,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <span>Tracker release <b>v<?php echo esc_html(ALT_VERSION); ?></b></span>
         <span id="alt-provenance-quality" aria-live="polite">Dataset status loading…</span>
         <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a>
-        <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">Tracker health</a>
+        <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a>
     </footer>
 </div>

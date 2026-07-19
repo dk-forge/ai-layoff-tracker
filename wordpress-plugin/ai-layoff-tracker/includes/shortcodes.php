@@ -58,6 +58,11 @@ function alt_shortcode_publisher_tools() {
 }
 add_shortcode('alt_publisher_tools', 'alt_shortcode_publisher_tools');
 
+function alt_shortcode_press_media() {
+    return alt_template('page-press.php');
+}
+add_shortcode('alt_press_media', 'alt_shortcode_press_media');
+
 /**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article
