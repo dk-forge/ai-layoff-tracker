@@ -568,6 +568,12 @@ TRUSTED_DOMAINS = {
     "beckershospitalreview.com", "beckerspayerissues.com",            # hospital/payer trade
     "retaildive.com", "supplychaindive.com", "bankingdive.com",       # retail/logistics/banking trade
     "utilitydive.com", "constructiondive.com",                        # utility/construction trade
+    # Startup/tech press surfaced by the 2026-07-19 aggregator diff (their
+    # entries cited these outlets; most of the missed small/mid AI events
+    # ran here first)
+    "inc42.com",                 # India — startup/tech press (Paytm, GoKwik-class events)
+    "techinasia.com",            # Southeast Asia tech press (Tokopedia, Shopee-class events)
+    "skift.com",                 # travel-industry trade (Mews, lastminute-class events)
     "chicago.suntimes.com",                                   # Chicago daily
     "wral.com",                                               # Raleigh NC (WRAL TechWire)
     "mprnews.org",                                            # Minnesota Public Radio

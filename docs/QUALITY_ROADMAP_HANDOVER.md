@@ -525,3 +525,21 @@ Follow-ups in priority order: (1) Oregon WARN collector (Intel 2,392 absent),
 (2) add earnings-call/restructuring phrasings to the GDELT segment rotation,
 (3) re-run this audit monthly from the scheduled session and seed misses the
 same way (script + step-builder pattern in the 2026-07-19 session).
+
+## Aggregator diff backlog (2026-07-19 browser sweep, owner-authorized)
+
+A browser agent read layoffs.fyi (full Airtable incl. their per-row AI flag),
+layoffs.fyi/ai-layoffs (all 99 of their 2026 AI events) and trueup.io/layoffs,
+then checked 150 entries against /query: 23 present, 16 count-differs, 111
+missing (98 companies absent entirely). Their headline numbers for calibration:
+layoffs.fyi 2026 tech cuts 121,326 (AI: 95,829); TrueUp 2026: 167,720.
+Structural causes and fixes shipped same day: international tech press added
+to the allowlist (inc42, techinasia, skift; calcalistech/globes/betakit were
+already in), 19 sector trade outlets, 8 corporate-announcement GDELT segments,
+and the ai_linked broad tier. REMAINING BACKLOG for scheduled sessions:
+verify-at-source and seed the largest absentees (TikTok Dublin 300 AI,
+Thomson Reuters 500, CorroHealth 800, Wix 1000, ZoomInfo 600, Autodesk 1000,
+OpenText 400, Tokopedia 450, Paytm 400, Groupon 400, MyHeritage 75-vs-500
+count conflict, and the ~85 smaller companies in the agent's diff_final.json).
+POLICY REMINDER: their rows are leads only; every seed must cite the
+underlying named-outlet article, never the aggregator.
