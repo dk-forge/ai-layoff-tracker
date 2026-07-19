@@ -3,6 +3,16 @@
 Last updated: 2026-07-18 night (plugin 2.18.35). Read this block first if
 you are a new agent (Codex or otherwise) taking over.
 
+**IMMEDIATE NEXT ACTION (recorded 2026-07-19 ~01:15 UTC):** seed the four
+named June events via the R9 curated path (`seed_data/ai_layoffs.json` +
+`seed-ai.yml`; idempotent, exact quote + URL required): GitLab 350 [AI],
+Rackspace 750 [AI], Rivian 300, SAS Institute 300 — verified URLs are in
+docs/CHALLENGER_GAP_CLOSURE_PLAN.md (2026-06 row). Nine BigQuery sweep
+passes over the June windows all succeeded (429 era over) but their
+headlines lack the title vocabulary, so sweeps won't catch them; seeding
+is the designed mechanism. Also queue: re-supply the truncated Southern
+Africa newspaper section; CourtListener wiring when the key lands.
+
 **NEWEST (2026-07-19 00:18 UTC):** `GCP_BIGQUERY_CREDENTIALS_JSON` is live in
 GitHub secrets and VERIFIED working (credential smoke run 29666728674:
 dry-run against `gdelt-bq.gdeltv2.gkg_partitioned` authenticated, 0 bytes
