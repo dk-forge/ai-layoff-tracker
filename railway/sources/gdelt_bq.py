@@ -75,7 +75,7 @@ def query_window_articles(start, end, terms):
     sql = """
         SELECT
             DocumentIdentifier AS url,
-            LOWER(V2SourceCommonName) AS domain,
+            LOWER(SourceCommonName) AS domain,
             DATE AS date_int,
             REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>') AS title
         FROM `gdelt-bq.gdeltv2.gkg_partitioned`
