@@ -601,9 +601,21 @@
         var countries = readControl('alt-f-country') || [];
         var usOnly = countries.length === 1 && countries[0] === 'United States';
         if (!usOnly || !data.ai_ytd) { note.style.display = 'none'; return; }
+        // The cards above are the STRICT tier by job location, so quoting
+        // Challenger's number alone reads as a huge gap when we actually
+        // exceed them on their own counting basis (broad AI attribution,
+        // counted by US employer). Fetch that basis and say both plainly.
         note.innerHTML = 'For scale: Challenger counts ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
-            + monthLabel(data.ref_month) + ') — their measure spans our verified + announced AI combined · <a href="#alt-challenger-comparison">see the like-for-like comparison</a>';
+            + monthLabel(data.ref_month) + '). Counted their way — broad AI attribution, by US employer — we track <b>…</b> · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
         note.style.display = '';
+        var y = new Date().getFullYear();
+        apiGet('aggregate', { years: String(y), country: 'United States', country_basis: 'employer' }).then(function (a) {
+            var broad = a && a.totals && a.totals.ai_broad_jobs;
+            if (!broad) return;
+            note.innerHTML = 'For scale: Challenger counts ' + fmt(data.ai_ytd) + ' AI cuts YTD (through '
+                + monthLabel(data.ref_month) + '). Counted their way — broad AI attribution, by US employer — we track <b>'
+                + fmt(broad) + '</b>. The cards above are our stricter tier: the employer\u2019s own words, quote on file, by job location · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
+        }).catch(function () { /* keep the basic note */ });
     }
 
     function renderStats(t) {
@@ -626,7 +638,8 @@
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
         setText('alt-stat-ai', fmt(aiJ));
-        setText('alt-stat-ai-sub', when);
+        var broadJ = t.ai_broad_jobs || 0;
+        setText('alt-stat-ai-sub', when + (broadJ > aiJ ? ' · broad incl. AI-linked: ' + fmt(broadJ) : ''));
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
