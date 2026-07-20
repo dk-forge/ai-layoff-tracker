@@ -461,14 +461,15 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini.alt-expanded .alt-chart-h { font-size: 19px; }
 .alt-mini.alt-expanded .alt-chart-sub { font-size: 13.5px; }
 .alt-mini.alt-expanded .alt-chart-box { height: 420px; }
-.alt-chart-btns { display: inline-flex; gap: 6px; flex: 0 0 auto; }
-.alt-expand, .alt-chart-dl {
+.alt-chart-btns { display: inline-flex; gap: 6px; flex: 0 0 auto; position: relative; }
+.alt-expand, .alt-chart-dl, .alt-chart-share, .alt-chart-embed {
     flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
     width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
     background: var(--alt-surface-2); border: 1px solid var(--alt-grid); color: var(--alt-ink-2);
     transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
-.alt-expand:hover, .alt-chart-dl:hover { border-color: #2a78d6; color: #2a78d6; }
+.alt-expand:hover, .alt-chart-dl:hover, .alt-chart-share:hover, .alt-chart-embed:hover { border-color: #2a78d6; color: #2a78d6; }
+.alt-chart-share.alt-copied { border-color: var(--op-green, #4f7257); color: var(--op-green, #4f7257); }
 .alt-expanded .alt-expand { background: #2a78d6; border-color: #2a78d6; color: #fff; }
 
 /* Multi-select checkbox dropdowns (presentation over hidden native selects) */

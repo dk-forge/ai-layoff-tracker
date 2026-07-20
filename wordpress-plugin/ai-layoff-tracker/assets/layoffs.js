@@ -324,7 +324,7 @@
         var mappings = {
             years: 'alt-f-years', quarters: 'alt-f-quarters', months: 'alt-f-months',
             industry: 'alt-f-industry', country: 'alt-f-country', state: 'alt-f-state',
-            sources: 'alt-f-verification', reasons: 'alt-f-reasons'
+            sources: 'alt-f-verification', reasons: 'alt-f-reasons', roles: 'alt-f-roles'
         };
         Object.keys(mappings).forEach(function (key) {
             if (query.has(key)) writeControl(mappings[key], query.get(key).split(',').filter(Boolean));
@@ -2682,6 +2682,52 @@
         });
     }
 
+    // ---- Share per chart: copy a deep link that reproduces the current
+    // filter state, scrolled to the chart. (Embed lives on a dedicated
+    // frame-safe route — the tracker page itself is never framed, per the
+    // anti-clickjacking rule in ai-layoff-tracker.php.)
+    function copyText(txt, cb) {
+        var ok = function () { if (cb) cb(); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(ok, function () { fallbackCopy(txt); ok(); });
+        } else { fallbackCopy(txt); ok(); }
+    }
+    function fallbackCopy(txt) {
+        var ta = document.createElement('textarea'); ta.value = txt;
+        ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta);
+        ta.focus(); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove();
+    }
+    function shareBase() { return window.location.origin + window.location.pathname; }
+    function chartIdFor(btns) {
+        var dl = btns.querySelector('.alt-chart-dl[data-dl]');
+        return dl ? dl.getAttribute('data-dl') : null;
+    }
+    function flashBtn(btn) {
+        var title = btn.getAttribute('title');
+        btn.classList.add('alt-copied'); btn.setAttribute('title', 'Link copied ✓');
+        setTimeout(function () { btn.classList.remove('alt-copied'); btn.setAttribute('title', title); }, 1600);
+    }
+    var SHARE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+    function initShareEmbed() {
+        document.querySelectorAll('.alt-chart-card').forEach(function (card) {
+            var btns = card.querySelector('.alt-chart-btns');
+            if (!btns) return;
+            var id = chartIdFor(btns);
+            if (!id) return;
+            if (!card.id) card.id = 'card-' + id;
+            var sh = document.createElement('button');
+            sh.type = 'button'; sh.className = 'alt-chart-share'; sh.title = 'Copy a link to this filtered view';
+            sh.setAttribute('aria-label', 'Share this view'); sh.innerHTML = SHARE_SVG;
+            btns.insertBefore(sh, btns.firstChild);
+            sh.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var url = shareBase() + '?' + qs(currentParams()) + '#' + card.id;
+                if (navigator.share) { navigator.share({ title: 'AI Layoff Tracker', url: url }).then(function () { flashBtn(sh); }, function () { copyText(url, function () { flashBtn(sh); }); }); }
+                else copyText(url, function () { flashBtn(sh); });
+            });
+        });
+    }
+
     // Report one-pager exports: Print→PDF (zero-dep) + PNG (lazy html2canvas,
     // loaded only on click so the report page stays light).
     var _h2cPromise = null;
@@ -2746,6 +2792,7 @@
         }
         enhanceChallengerTable();
         DASH_PRESENT = !!document.querySelector('.alt-dashboard');
+        if (DASH_PRESENT) initShareEmbed();
 
         // Standalone AI / company pages don't use the shared filter surface.
         initAiTracker();
