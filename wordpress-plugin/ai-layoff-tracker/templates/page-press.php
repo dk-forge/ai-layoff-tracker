@@ -30,7 +30,7 @@ if (!is_array($alt_press_years)) {
   <div class="alt-health-table-wrap"><table class="alt-sources-table alt-angles-table">
     <thead><tr><th>The angle</th><th>Why it's a story</th></tr></thead>
     <tbody>
-      <tr><td><b>We beat the big surveys on AI</b></td><td>Challenger and the other headline trackers report one lump-sum layoff number and never break out AI. We do, from the employer's own words with the quote on file, and our AI-attributed total runs higher than theirs.</td></tr>
+      <tr><td><b>We break out the AI cuts</b></td><td>Most layoff trackers give you one lump-sum number and stop. We flag the cuts a company itself pinned on AI or automation, each with the employer's own quote on file, so "AI-attributed" becomes a figure a reporter can source instead of guess at.</td></tr>
       <tr><td><b>Every number is a receipt</b></td><td>Estimate-based trackers hand you a figure. We hand you the document behind it: an SEC filing, a WARN notice, or a named report. It's a floor you can prove, not a projection.</td></tr>
       <tr><td><b>We show where AI is cutting</b></td><td>A live world map, the teams hit hardest, and AI's rising share month over month: the geographic and functional detail a press release can't give a reporter.</td></tr>
       <tr><td><b>Nothing is hidden</b></td><td>A public corrections log, open methodology, the full source list, and an API anyone can reproduce. When we catch an error, we publish it.</td></tr>

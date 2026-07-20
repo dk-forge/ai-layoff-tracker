@@ -29,6 +29,7 @@ $alt_gap_states = array(
     array('Oklahoma', 'Posts some WARN notices without a headcount, same as Hawaii. Nothing to count without the number.', 'Headcount often missing'),
     array('Missouri', 'Does not publish layoff notices to the public at the individual-notice level at all.', 'Nothing published'),
     array('New Mexico', 'Does not publish layoff notices to the public at the individual-notice level at all.', 'Nothing published'),
+    array('Arkansas', 'Treats WARN filings as confidential employer records. The Division of Workforce Services receives them but is barred from releasing company-level data under the Arkansas FOIA exemption, so there is no public list to import. Arkansas cuts still reach the tracker when a company files with the SEC or a named outlet reports them.', 'Confidential by law'),
 );
 ?>
 <main class="alt-wrap alt-sources-page">
