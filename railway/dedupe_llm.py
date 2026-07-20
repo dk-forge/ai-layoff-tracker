@@ -67,7 +67,7 @@ def pair_window_days(lo, hi):
     if not hi:
         return WINDOW_DAYS
     ratio = lo / hi
-    if ratio >= 0.995 and hi >= 50:            # exact match, any size ≥50
+    if ratio >= 0.995 and hi >= 100:           # exact match, any size ≥100
         return WIDE_WINDOW_DAYS
     if ratio >= WIDE_WINDOW_SIMILARITY and hi >= WIDE_WINDOW_MIN_COUNT:
         return WIDE_WINDOW_DAYS

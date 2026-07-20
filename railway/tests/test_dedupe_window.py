@@ -33,8 +33,8 @@ class PairWindowTest(unittest.TestCase):
         self.assertEqual(d.pair_window_days(300, 300), d.WIDE_WINDOW_DAYS)
 
     def test_micro_exact_counts_keep_tight_window(self):
-        # Below the 50-worker floor, exact tiny counts stay tight (noise).
-        self.assertEqual(d.pair_window_days(20, 20), d.WINDOW_DAYS)
+        # Below the 100-worker floor, exact tiny counts stay tight (noise).
+        self.assertEqual(d.pair_window_days(50, 50), d.WINDOW_DAYS)
 
     def test_dissimilar_counts_keep_tight_window(self):
         # 4,000 vs 5,000 -> 80% similar: clusterable, but not "obviously the
