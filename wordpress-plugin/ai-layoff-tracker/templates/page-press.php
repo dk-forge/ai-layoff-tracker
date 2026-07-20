@@ -17,7 +17,7 @@ if (!is_array($alt_press_years)) {
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press &amp; Media Kit</h1>
   <p class="alt-lead"><span class="alt-lead-text">Everything a reporter needs to cite the AI Layoff Tracker: the boilerplate, live quotable figures, how the data is verified, brand assets, and a direct contact. Every number on this page is reproducible from our public API.</span></p>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a></p>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
 
   <h2>Boilerplate</h2>
   <p><b>AskTheRecruiter</b> is the open, evidence-based intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Its <b>AI Layoff Tracker</b> is a continuously updated, source-linked database of verified job cuts worldwide, purpose-built to flag which layoffs companies themselves attribute to AI or automation — every figure clickable back to a primary document.</p>
@@ -26,16 +26,19 @@ if (!is_array($alt_press_years)) {
   <h2>About the AI Layoff Tracker</h2>
   <p>The AI Layoff Tracker is a continuously updated database of verified job cuts worldwide, with a specific focus on flagging which layoffs companies attribute to AI or automation. Every entry links to a primary source: an SEC 8-K filing, a state WARN notice, or a named news report with a direct quote. Live editorial tracking began in January 2026; the database also carries historical records back to 2002 (Europe) and 2015 (US), built from official WARN filings, SEC disclosures and the EU's restructuring monitor, so year-over-year comparisons are possible.</p>
 
-  <h2>What makes it different (story angles)</h2>
-  <ul class="alt-method-list">
-    <li><b>It beats the big surveys on the AI question.</b> Announcement surveys (Challenger) don't itemize AI. We do — from the employer's own words, with the quote on file — and our AI-attributed count actually <em>exceeds</em> theirs.</li>
-    <li><b>Every number is a receipt.</b> Unlike estimate-based trackers, each figure links to a filing or named report. It's a documented floor, not a projection.</li>
-    <li><b>It shows where AI is really cutting.</b> A live map, roles-most-impacted, and AI-share-over-time — geographic and functional breakdowns no press-release count offers.</li>
-    <li><b>Radical transparency.</b> A public corrections log, open methodology, per-country source list, and reproducible API — the errors it caught are disclosed, not hidden.</li>
-  </ul>
+  <h2>Why it's worth citing</h2>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table alt-angles-table">
+    <thead><tr><th>The angle</th><th>Why it's a story</th></tr></thead>
+    <tbody>
+      <tr><td><b>We beat the big surveys on AI</b></td><td>Challenger and the other headline trackers report one lump-sum layoff number and never break out AI. We do, from the employer's own words with the quote on file, and our AI-attributed total runs higher than theirs.</td></tr>
+      <tr><td><b>Every number is a receipt</b></td><td>Estimate-based trackers hand you a figure. We hand you the document behind it: an SEC filing, a WARN notice, or a named report. It's a floor you can prove, not a projection.</td></tr>
+      <tr><td><b>We show where AI is cutting</b></td><td>A live world map, the teams hit hardest, and AI's rising share month over month: the geographic and functional detail a press release can't give a reporter.</td></tr>
+      <tr><td><b>Nothing is hidden</b></td><td>A public corrections log, open methodology, the full source list, and an API anyone can reproduce. When we catch an error, we publish it.</td></tr>
+    </tbody>
+  </table></div>
 
   <h2>Press contact</h2>
-  <p>For data requests, custom cuts of the dataset, corrections, or comment, use the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or email <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>. Corrections get priority review, and every correction to a published figure is logged publicly on the tracker.</p>
+  <p>For data requests, custom cuts of the dataset, corrections, or comment, use the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a>. Press and reporter requests get priority, and every correction to a published figure is logged publicly on the tracker.</p>
 
   <h2>Using our data</h2>
   <p>Free for editorial, research, and educational use under CC BY 4.0. Please attribute to asktherecruiter.com and link back where possible.</p>
@@ -43,11 +46,11 @@ if (!is_array($alt_press_years)) {
 
   <h2>Key stats by year</h2>
   <p>Live figures from the same database the tracker serves. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A broader Challenger-style measure is charted on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-challenger-comparison">US comparison</a> section.</p>
-  <div class="alt-health-table-wrap"><table>
-    <thead><tr><th>Year</th><th>Verified events</th><th>Job cuts recorded</th><th>AI-attributed cuts (strict)</th></tr></thead>
+  <div class="alt-health-table-wrap"><table class="alt-press-table">
+    <thead><tr><th>Year</th><th class="num">Verified layoffs</th><th class="num">Job cuts recorded</th><th class="num">AI-attributed (strict)</th></tr></thead>
     <tbody>
     <?php foreach ($alt_press_years as $alt_y) : ?>
-      <tr><td><?php echo (int) $alt_y['y']; ?></td><td><?php echo number_format((int) $alt_y['entries']); ?></td><td><?php echo number_format((int) $alt_y['jobs']); ?></td><td><?php echo number_format((int) $alt_y['ai_jobs']); ?></td></tr>
+      <tr><td><b><?php echo (int) $alt_y['y']; ?></b></td><td class="num"><?php echo number_format((int) $alt_y['entries']); ?></td><td class="num"><?php echo number_format((int) $alt_y['jobs']); ?></td><td class="num"><?php echo number_format((int) $alt_y['ai_jobs']); ?></td></tr>
     <?php endforeach; ?>
     </tbody>
   </table></div>
@@ -71,8 +74,5 @@ if (!is_array($alt_press_years)) {
       <li><span class="alt-swatch" style="background:#16181d"></span> Ink <code>#16181D</code></li>
     </ul>
   </div>
-  <p class="alt-muted">The wordmark and "atr" mark above may be used to credit the tracker in coverage. For high-resolution PNG/SVG logo files or a specific lockup, email <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a> and we'll send them same-day.</p>
-
-  <h2>Press contact</h2>
-  <p>For data requests, custom cuts, corrections, interviews or comment: <a href="mailto:info@asktherecruiter.com"><b>info@asktherecruiter.com</b></a> or the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a>. Corrections and reporter requests get priority.</p>
+  <p class="alt-muted">The wordmark and "atr" mark above may be used to credit the tracker in coverage. For high-resolution PNG or SVG logo files or a specific lockup, ask through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and we'll send them the same day.</p>
 </main>

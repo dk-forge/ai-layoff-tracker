@@ -563,7 +563,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <li><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure with only 2 RI employees affected, and the per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the event.</li>
                 <li><b>2026-07-15: Ten non-events removed.</b> These were SEC-filing extraction mistakes: severance dollar figures and workforce-reduction percentages misread as headcounts, WARN Act boilerplate clauses from acquisition agreements, and three duplicate rows of one Meta story carrying wrong dates.</li>
             </ul>
-            <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or to <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>, and they get priority.</p>
+            <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and they get priority.</p>
         </div>
     </details>
     </section>
