@@ -30,16 +30,19 @@ ksort($alt_state_urls);
 // Two honest buckets: (A) publishes public data we haven't wired an importer
 // for yet, and (B) no usable public register at all (confidential or unposted),
 // where cuts reach the tracker only via SEC filings and named news.
+// Each row: [state, reason, status, source URL, 2-letter code]. The code lets us
+// attach the official BLS unemployment rate (a separate context metric) below.
 $alt_gap_states = array(
     // (A) Publishes, but not fully countable
-    array('Hawaii', 'The Workforce Development Council posts WARN notices on per-calendar-year pages, but the listings omit headcounts and the linked notices are image scans with no text layer. We will not invent a number, so those notices cannot become countable rows — the importer will pick them up automatically if Hawaii ever publishes machine-readable counts.', 'Publishes — no usable headcounts', 'https://labor.hawaii.gov/wdc/real-time-warn-updates/'),
-    array('Oklahoma', 'The Employment Security Commission runs an interactive WARN dashboard (searchable by employer, city and region) rather than a downloadable file, and headcounts are frequently omitted. A connector is in progress.', 'Publishes (portal) — importer in progress', 'https://www.employoklahoma.gov/Participants/s/warnnotices'),
+    array('Hawaii', 'The Workforce Development Council posts WARN notices on per-calendar-year pages, but the listings omit headcounts and the linked notices are image scans with no text layer. We will not invent a number, so those notices cannot become countable rows. The importer will pick them up automatically if Hawaii ever publishes machine-readable counts.', 'Publishes, no usable headcounts', 'https://labor.hawaii.gov/wdc/real-time-warn-updates/', 'HI'),
+    array('Oklahoma', 'The Employment Security Commission runs an interactive WARN dashboard (searchable by employer, city and region) rather than a downloadable file, and headcounts are frequently omitted. A connector is in progress.', 'Publishes via portal, importer in progress', 'https://www.employoklahoma.gov/Participants/s/warnnotices', 'OK'),
     // (B) No usable public register
-    array('Arkansas', 'Treats WARN filings as confidential employer records. The Division of Workforce Services receives them but is barred from releasing company-level data under the Arkansas FOIA exemption, so there is no public list to import. Arkansas cuts still reach the tracker when a company files with the SEC or a named outlet reports them.', 'Confidential by law', 'https://dws.arkansas.gov/'),
-    array('Wyoming', 'The Department of Workforce Services tracks filings internally but does not host a public, centralized WARN register. Wyoming cuts reach the tracker through SEC filings and named regional news instead.', 'No public register', 'https://dws.wyo.gov/'),
-    array('New Hampshire', 'NH Employment Security handles WARN filings as internal business-compliance records and does not publish a usable public feed. New Hampshire cuts reach the tracker through SEC filings and named news instead.', 'No public register', 'https://www.nhes.nh.gov/'),
-    array('Missouri', 'Does not publish layoff notices to the public at the individual-notice level, so there is nothing to import at the notice level. Missouri cuts reach the tracker through SEC filings and named news.', 'Nothing published', 'https://jobs.mo.gov/warn'),
+    array('Arkansas', 'Treats WARN filings as confidential employer records. The Division of Workforce Services receives them but is barred from releasing company-level data under the Arkansas FOIA exemption, so there is no public list to import. Arkansas cuts still reach the tracker when a company files with the SEC or a named outlet reports them.', 'Confidential by law', 'https://dws.arkansas.gov/', 'AR'),
+    array('Wyoming', 'The Department of Workforce Services tracks filings internally but does not host a public, centralized WARN register. Wyoming cuts reach the tracker through SEC filings and named regional news instead.', 'No public register', 'https://dws.wyo.gov/', 'WY'),
+    array('New Hampshire', 'NH Employment Security handles WARN filings as internal business-compliance records and does not publish a usable public feed. New Hampshire cuts reach the tracker through SEC filings and named news instead.', 'No public register', 'https://www.nhes.nh.gov/', 'NH'),
+    array('Missouri', 'Does not publish layoff notices to the public at the individual-notice level, so there is nothing to import at the notice level. Missouri cuts reach the tracker through SEC filings and named news.', 'Nothing published', 'https://jobs.mo.gov/warn', 'MO'),
 );
+$alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment() : array();
 ?>
 <main class="alt-wrap alt-sources-page">
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
@@ -82,6 +85,12 @@ $alt_gap_states = array(
         <td><a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>BLS LAUS</b></td><td>US states without a public WARN register</td>
+        <td>Official monthly state unemployment rate from the Bureau of Labor Statistics. A separate context metric (not a layoff count), shown only for states that publish no usable notices, so every state carries an authoritative sourced number.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.bls.gov/lau/" target="_blank" rel="noopener">BLS LAUS &#8599;</a></td>
+      </tr>
+      <tr>
         <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
         <td>Official corporate-filing systems. Discovery probes only — <em>not live</em> until a stable interface, tests and health monitoring exist.</td>
         <td>Research candidate</td>
@@ -115,21 +124,24 @@ $alt_gap_states = array(
   <h2>States not yet in the automated WARN feed — and why</h2>
   <p>All 50 states already appear in the tracker through SEC filings and news. The gap is only in state WARN <em>notices</em>. Each state below links to where it publishes (or an explanation of why it doesn't), in plain terms:</p>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table alt-gap-table">
-    <thead><tr><th>State</th><th>Why it isn't in the WARN feed yet</th><th>Status</th><th>Where it publishes</th></tr></thead>
+    <thead><tr><th>State</th><th>Why it isn't in the WARN feed yet</th><th>Status</th><th>Where it publishes</th><th>Official unemployment (BLS)</th></tr></thead>
     <tbody>
     <?php foreach ($alt_gap_states as $alt_g) :
         $alt_gs = isset($alt_g[3]) ? $alt_g[3] : '';
+        $alt_code = isset($alt_g[4]) ? $alt_g[4] : '';
+        $alt_u = ($alt_code && isset($alt_unemp[$alt_code])) ? $alt_unemp[$alt_code] : null;
         $alt_cls = (strpos($alt_g[2], 'Publishes') === 0) ? 'alt-gap-progress' : 'alt-gap-none'; ?>
       <tr>
         <td><b><?php echo esc_html($alt_g[0]); ?></b></td>
         <td><?php echo esc_html($alt_g[1]); ?></td>
         <td><span class="alt-gap-status <?php echo $alt_cls; ?>"><?php echo esc_html($alt_g[2]); ?></span></td>
         <td><?php if ($alt_gs) : ?><a href="<?php echo esc_url($alt_gs); ?>" target="_blank" rel="noopener"><?php echo esc_html(preg_replace('#^https?://(www\.)?#', '', rtrim($alt_gs, '/'))); ?> &#8599;</a><?php else : ?>&mdash;<?php endif; ?></td>
+        <td class="alt-warn-cadence"><?php if ($alt_u) : ?><a href="https://www.bls.gov/eag/eag.<?php echo esc_attr(strtolower($alt_code)); ?>.htm" target="_blank" rel="noopener"><?php echo esc_html(number_format((float) $alt_u['rate'], 1)); ?>% <span class="alt-muted">(<?php echo esc_html($alt_u['period']); ?>)</span> &#8599;</a><?php else : ?>&mdash;<?php endif; ?></td>
       </tr>
     <?php endforeach; ?>
     </tbody>
   </table></div>
-  <p class="alt-muted"><b>"Publishes — importer in progress"</b> states post public data we're actively building importers for. <b>"No public register" / "Confidential by law"</b> states keep WARN filings internal, so those cuts reach the tracker through SEC filings and named news instead — never invented, never estimated.</p>
+  <p class="alt-muted"><b>"Publishes, importer in progress"</b> states post public data we're actively building importers for. <b>"No public register" / "Confidential by law"</b> states keep WARN filings internal, so those cuts reach the tracker through SEC filings and named news instead, never invented and never estimated. The <b>unemployment column is a separate official metric</b> (the state's monthly BLS rate, not a layoff count) shown so every state carries an authoritative, sourced number even where individual notices aren't public.</p>
 
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php')) include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
   <h2>Worldwide news — every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
