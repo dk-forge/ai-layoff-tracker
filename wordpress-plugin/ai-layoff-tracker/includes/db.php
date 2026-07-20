@@ -598,8 +598,14 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     // SOME stored text to read (a row with neither roles nor excerpt can never
     // be evidence-enriched, so it never enters the bounded queue). Checked
     // rows carry at least the ',unknown,' marker and drop out.
+    // EXCLUDE structured sources (WARN legal forms, Eurofound ERM templates):
+    // they state company/count/date/location but NEVER which teams were cut, so
+    // every one resolves to 'unknown' — leaving them in bloated the queue with
+    // ~45K futile rows and starved the news rows where roles can actually be
+    // found. Roles come only from free-text sources (news, SEC 8-K, press).
     if ($r->get_param('roles_missing') === '1' || $r->get_param('roles_missing') === 'true') {
-        $where[] = "role_categories = '' AND (COALESCE(roles,'') <> '' OR COALESCE(excerpt,'') <> '')";
+        $where[] = "role_categories = '' AND source_type NOT IN ('warn','erm')"
+                 . " AND (COALESCE(roles,'') <> '' OR COALESCE(excerpt,'') <> '')";
     }
     // Blank-industry candidates for the bounded classification backfill (and
     // anyone auditing the disclosed metadata backlog).
