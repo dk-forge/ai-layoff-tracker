@@ -280,7 +280,7 @@ if (function_exists('alt_faq_items')) {
     <div class="alt-minigrid">
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-linked cuts (sits inside) &middot; circle size = number of jobs &middot; hover for exact numbers, expand &#10530; for a bigger view</span></div>
+                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-linked cuts (sits inside) &middot; circle size = number of jobs &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
                 <span class="alt-chart-btns">
                     <span class="alt-map-toggle">
                         <button type="button" class="alt-map-scope alt-map-scope-on" data-scope="world">World</button>

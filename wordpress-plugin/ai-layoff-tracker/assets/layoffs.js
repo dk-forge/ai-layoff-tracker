@@ -1946,8 +1946,8 @@
             var viewTotal = (AIMAP.data.totals && AIMAP.data.totals.jobs) || 0;
             var place = scope === 'us' ? 'US states' : 'countries';
             total.textContent = points.length
-                ? fmt(mappedJobs) + ' job cuts mapped across ' + points.length + ' ' + place
-                    + ' · ' + fmt(mappedAi) + ' AI-linked · ' + fmt(viewTotal) + ' total in this view'
+                ? fmt(mappedJobs) + ' job cuts plotted (those with a named location, across ' + points.length + ' ' + place + ')'
+                    + ' · ' + fmt(mappedAi) + ' AI-linked · ' + fmt(viewTotal) + ' total in this view · ' + statPeriodLabel()
                 : '';
         }
 
