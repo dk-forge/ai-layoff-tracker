@@ -825,6 +825,30 @@ def pull_gdelt_between(start, end, max_records=250):
         print(f"GDELT segment {segment_query[-48:]}: {len(seg_articles)} article(s)")
         articles.extend(seg_articles)
 
+    # Standalone THEME sweep: GDELT's GKG topic classifier tags a story's subject
+    # matter independent of our keyword vocabulary, so it can catch a layoff piece
+    # phrased around our terms ("trimming its ranks", "workers will be let go").
+    # There is NO "ECON_LAYOFF" theme in GDELT's taxonomy (it returns nothing);
+    # the real layoff-semantic GKG themes are the dismissal/redundancy ones below.
+    # They are thin (rare tags) and macro themes like WB_2747_UNEMPLOYMENT are too
+    # broad to use, so this is a NARROW, strictly-additive recall lever: it runs on
+    # its OWN (not ANDed with the keyword set), the trusted-domain allowlist still
+    # gates every article downstream (_fetch_trusted), and the extractor validates
+    # each candidate — so it only widens what we NOTICE, never what we trust.
+    # Toggle off with GDELT_THEME_SWEEP=0 if it ever adds noise.
+    if os.environ.get("GDELT_THEME_SWEEP", "1") != "0":
+        theme_query = (
+            "(theme:WB_2806_DISMISSAL_PROCEDURES OR "
+            "theme:WB_2790_LABOR_REDUNDANCY OR "
+            "theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"
+        )
+        theme_articles, _, theme_error = _query_window(theme_query, start, end, max_records)
+        if theme_articles is None:
+            print(f"GDELT dismissal/redundancy theme sweep skipped ({theme_error})")
+        else:
+            print(f"GDELT dismissal/redundancy theme sweep: {len(theme_articles)} article(s)")
+            articles.extend(theme_articles)
+
     return _fetch_trusted(articles)
 
 
