@@ -448,6 +448,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     background: #0b0b0b; color: #fff; font-size: 12px; line-height: 1.35; padding: 7px 9px;
     border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.22); }
 .alt-map-tip b { color: #fff; }
+.alt-map-tip a { color: #8ec5ff; text-decoration: underline; font-weight: 600; }
 .alt-map-reset { position: absolute; top: 8px; right: 8px; z-index: 5;
     background: #fff; border: 1px solid var(--alt-border); border-radius: 6px;
     padding: 4px 9px; font-size: 11.5px; font-weight: 600; color: var(--alt-ink-2);

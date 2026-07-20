@@ -2018,16 +2018,96 @@
                 .style('cursor', 'pointer')
                 .on('click', function (event, d) { zoomToFeature(d); });
 
-            // Tooltip (HTML overlay; transient, so left out of the PNG).
+            // Tooltip (HTML overlay; transient, so left out of the PNG). The
+            // no-register panel reuses this element but can be "pinned" (made
+            // interactive) on click so its BLS link is reachable.
             var tip = d3.select(box).append('div').attr('class', 'alt-map-tip').style('display', 'none');
+            var hatchPinned = false;
 
-            function showTip(event, p) {
+            function placeTip(event) {
                 var m = d3.pointer(event, box);
-                tip.html(mapTipHtml(p)).style('display', 'block');
                 var tw = tip.node().offsetWidth, th = tip.node().offsetHeight;
                 var lx = Math.min(Math.max(6, m[0] + 14), w - tw - 6);
                 var ly = Math.max(6, m[1] - th - 12);
                 tip.style('left', lx + 'px').style('top', ly + 'px');
+            }
+            function hideTip() { hatchPinned = false; tip.style('display', 'none').style('pointer-events', 'none'); }
+            function showTip(event, p) {
+                hatchPinned = false;
+                tip.html(mapTipHtml(p)).style('display', 'block').style('pointer-events', 'none');
+                placeTip(event);
+            }
+
+            // US-only fallback: states with NO usable public WARN register get
+            // a hatched fill (clearly a different kind of thing from the layoff
+            // bubbles) and are labeled with the official BLS unemployment rate —
+            // a SEPARATE metric, never a layoff count. Guarded: the embed route
+            // may not ship altData.noRegister, in which case the layer is skipped.
+            var noReg = (scope === 'us' && window.altData && window.altData.noRegister) ? window.altData.noRegister : null;
+            var stateLabor = (window.altData && window.altData.stateLabor) || {};
+            var hasHatch = false, hatchLabelPts = [];
+            if (noReg) {
+                var FIPS2CODE = { '05': 'AR', '56': 'WY', '33': 'NH', '29': 'MO', '15': 'HI', '40': 'OK' };
+                var STATE_NAMES = { AR: 'Arkansas', WY: 'Wyoming', NH: 'New Hampshire', MO: 'Missouri', HI: 'Hawaii', OK: 'Oklahoma' };
+                var fmtRate = function (r) { return (typeof r === 'number' && isFinite(r)) ? r.toFixed(1) : null; };
+                var blsUrl = safeUrl(window.altData.blsUrl) || 'https://www.bls.gov/lau/';
+                var panelHtml = function (code) {
+                    var reason = String(noReg[code] || '').trim();
+                    var lab = stateLabor[code] || {};
+                    var rate = fmtRate(lab.rate);
+                    var s = '<b>' + escapeHtml(STATE_NAMES[code] || code) + ':</b> no public layoff register.';
+                    if (reason) s += ' ' + escapeHtml(reason);
+                    if (rate != null) s += ' Unemployment rate (BLS' + (lab.period ? ', ' + escapeHtml(lab.period) : '') + '): ' + rate + '%.';
+                    s += ' <a href="' + escapeHtml(blsUrl) + '" target="_top" rel="noopener">View at BLS ↗</a>';
+                    return s;
+                };
+
+                // Cross-hatch <pattern> (userSpaceOnUse so it renders identically
+                // in the rasterized PNG). Light gray, unmistakably not a bubble.
+                var defs = svg.append('defs');
+                var pat = defs.append('pattern').attr('id', 'alt-hatch')
+                    .attr('patternUnits', 'userSpaceOnUse').attr('width', 6).attr('height', 6)
+                    .attr('patternTransform', 'rotate(45)');
+                pat.append('rect').attr('width', 6).attr('height', 6).attr('fill', '#eceef3');
+                pat.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 6)
+                    .attr('stroke', '#b6bac6').attr('stroke-width', 1.5);
+
+                var hatchFeatures = outline.filter(function (f) {
+                    var code = FIPS2CODE[String(f.id)];
+                    return code && noReg[code];
+                });
+                hasHatch = hatchFeatures.length > 0;
+
+                gMap.selectAll('path.alt-hatch-state').data(hatchFeatures).join('path')
+                    .attr('class', 'alt-hatch-state')
+                    .attr('d', path)
+                    .attr('fill', 'url(#alt-hatch)')
+                    .attr('stroke', '#9aa0b0').attr('stroke-width', 0.7)
+                    .attr('vector-effect', 'non-scaling-stroke')
+                    .style('cursor', 'pointer')
+                    .on('mouseenter', function (event, f) {
+                        if (hatchPinned) return;
+                        tip.html(panelHtml(FIPS2CODE[String(f.id)])).style('display', 'block').style('pointer-events', 'none');
+                        placeTip(event);
+                    })
+                    .on('mousemove', function (event) { if (!hatchPinned) placeTip(event); })
+                    .on('mouseleave', function () { if (!hatchPinned) hideTip(); })
+                    .on('click', function (event, f) {
+                        event.stopPropagation();
+                        hatchPinned = true;
+                        tip.html(panelHtml(FIPS2CODE[String(f.id)])).style('display', 'block').style('pointer-events', 'auto');
+                        placeTip(event);
+                    });
+
+                // Centered "AR 4.2%" labels, kept constant screen-size in the
+                // overlay (re-placed with the zoom transform, like value labels).
+                hatchFeatures.forEach(function (f) {
+                    var c = path.centroid(f);
+                    if (!c || !isFinite(c[0])) return;
+                    var code = FIPS2CODE[String(f.id)];
+                    var rate = fmtRate((stateLabor[code] || {}).rate);
+                    hatchLabelPts.push({ x0: c[0], y0: c[1], text: code + (rate != null ? ' ' + rate + '%' : '') });
+                });
             }
 
             // Bubble groups: blue (all cuts) with red (AI-linked) nested inside.
@@ -2068,8 +2148,18 @@
                 .attr('paint-order', 'stroke').style('pointer-events', 'none')
                 .text(function (p) { return fmt(p.jobs); });
 
+            // "AR 4.2%" labels on the hatched no-register states.
+            var hatchLabel = gOverlay.selectAll('text.alt-hatch-lab').data(hatchLabelPts).join('text')
+                .attr('class', 'alt-hatch-lab')
+                .attr('text-anchor', 'middle')
+                .attr('font-size', 10.5).attr('font-weight', 700)
+                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif')
+                .attr('fill', '#5a5f6e').attr('stroke', '#fff').attr('stroke-width', 2.6)
+                .attr('paint-order', 'stroke').style('pointer-events', 'none')
+                .text(function (p) { return p.text; });
+
             // In-SVG legend (captured by the PNG export).
-            drawMapLegend(svg, w, h);
+            drawMapLegend(svg, w, h, hasHatch);
 
             // Zoom / pan (1x–8x). Base shapes ride the transform; bubbles and
             // labels are re-placed at constant screen size so clustered points
@@ -2078,6 +2168,7 @@
                 gMap.attr('transform', t.toString());
                 node.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + s[1] + ')'; });
                 label.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + (s[1] - p.r - 5) + ')'; });
+                hatchLabel.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + s[1] + ')'; });
             }
             var zoom = d3.zoom().scaleExtent([1, 8])
                 .on('zoom', function (event) {
@@ -2089,6 +2180,7 @@
             svg.call(zoom);
 
             function zoomToFeature(feature) {
+                hideTip();                         // dismiss any pinned no-register panel
                 var b;
                 try { b = path.bounds(feature); } catch (e) { return; }
                 if (!b || !isFinite(b[0][0])) return;
@@ -2120,9 +2212,11 @@
         });
     }
 
-    function drawMapLegend(svg, w, h) {
-        var g = svg.append('g').attr('class', 'alt-map-legend').attr('transform', 'translate(14,' + (h - 62) + ')');
-        g.append('rect').attr('x', -8).attr('y', -14).attr('width', 176).attr('height', 66).attr('rx', 7)
+    function drawMapLegend(svg, w, h, hasHatch) {
+        // Extra row (+20px taller box) when the US no-register layer is present.
+        var boxH = hasHatch ? 86 : 66;
+        var g = svg.append('g').attr('class', 'alt-map-legend').attr('transform', 'translate(14,' + (h - boxH + 4) + ')');
+        g.append('rect').attr('x', -8).attr('y', -14).attr('width', hasHatch ? 236 : 176).attr('height', boxH).attr('rx', 7)
             .attr('fill', 'rgba(255,255,255,0.9)').attr('stroke', MAP_LAND_LINE).attr('stroke-width', 1);
         var row = function (y, color, line, txt) {
             g.append('circle').attr('cx', 4).attr('cy', y).attr('r', 6).attr('fill', color).attr('stroke', line).attr('stroke-width', 1);
@@ -2131,7 +2225,17 @@
         };
         row(2, MAP_BLUE, MAP_BLUE_LINE, 'All job cuts');
         row(22, MAP_RED, MAP_RED_LINE, 'AI-linked cuts');
-        g.append('text').attr('x', -4).attr('y', 46).attr('font-size', 10.5)
+        var sizeY = 46;
+        if (hasHatch) {
+            // Small hatched swatch matching the state pattern.
+            g.append('rect').attr('x', -2).attr('y', 36).attr('width', 12).attr('height', 12).attr('rx', 2)
+                .attr('fill', 'url(#alt-hatch)').attr('stroke', '#9aa0b0').attr('stroke-width', 0.8);
+            g.append('text').attr('x', 18).attr('y', 46).attr('font-size', 11)
+                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#4a4d55')
+                .text('No layoff register (BLS unemployment shown)');
+            sizeY = 68;
+        }
+        g.append('text').attr('x', -4).attr('y', sizeY).attr('font-size', 10.5)
             .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#898781')
             .text('Circle size = number of jobs');
     }
