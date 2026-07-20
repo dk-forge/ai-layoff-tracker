@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.31
+ * Version: 2.19.32
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.31');
+define('ALT_VERSION', '2.19.32');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -327,11 +327,22 @@ function alt_enqueue_assets() {
         true
     );
 
+    // chartjs-chart-geo: the geographic bubble-map chart type for the "AI job
+    // loss map". Bundles topojson-client; depends on Chart.js. Deferred with the
+    // rest so it loads after Chart.js (dependency order is enforced by WP).
+    wp_enqueue_script(
+        'chartjs-geo',
+        'https://cdnjs.cloudflare.com/ajax/libs/chartjs-chart-geo/4.3.4/index.umd.min.js',
+        array('chartjs'),
+        '4.3.4',
+        true
+    );
+
     // Main JS
     wp_enqueue_script(
         'alt-js',
         ALT_PLUGIN_URL . 'assets/layoffs.js',
-        array('jquery', 'datatables-js', 'chartjs'),
+        array('jquery', 'datatables-js', 'chartjs', 'chartjs-geo'),
         $alt_asset_ver('assets/layoffs.js'),
         // Autoptimize defers our dependencies (jquery/datatables/chartjs).
         // Since our file is AO-excluded it MUST defer too, or it executes

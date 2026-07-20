@@ -401,6 +401,15 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 @media (max-width: 900px) { .alt-minigrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .alt-minigrid { grid-template-columns: 1fr; } }
 .alt-mini { padding: 13px 15px; }
+/* AI job-loss map: spans two of the three columns, taller box, world/US toggle. */
+.alt-map-card { grid-column: span 2; }
+@media (max-width: 900px) { .alt-map-card { grid-column: 1 / -1; } }
+.alt-mini .alt-map-box { height: 360px; }
+.alt-mini.alt-expanded .alt-map-box { height: 600px; }
+.alt-map-toggle { display: inline-flex; border: 1px solid var(--alt-border); border-radius: 7px; overflow: hidden; margin-right: 4px; }
+.alt-map-scope { background: #fff; border: 0; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--alt-ink-2); cursor: pointer; }
+.alt-map-scope + .alt-map-scope { border-left: 1px solid var(--alt-border); }
+.alt-map-scope-on { background: var(--alt-blue); color: #fff; }
 .alt-mini .alt-chart-h { font-size: 13.5px; }
 .alt-mini .alt-chart-sub { display: block; margin-left: 0; margin-top: 2px; font-size: 11px; }
 .alt-mini .alt-chart-box { height: 150px; }

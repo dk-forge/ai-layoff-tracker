@@ -267,6 +267,20 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
     <div class="alt-minigrid">
+        <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">The map of AI job loss <span class="alt-chart-sub">bubble size = AI-attributed cuts &middot; color = AI share of that place's cuts &middot; hover for detail, expand &#10530; for a bigger view</span></div>
+                <span class="alt-chart-btns">
+                    <span class="alt-map-toggle">
+                        <button type="button" class="alt-map-scope alt-map-scope-on" data-scope="world">World</button>
+                        <button type="button" class="alt-map-scope" data-scope="us">US states</button>
+                    </span>
+                    <button type="button" class="alt-chart-dl" data-dl="alt-chart-aimap" data-kind="png" aria-label="Download map as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?>
+                </span>
+            </div>
+            <div class="alt-chart-box alt-map-box"><canvas id="alt-chart-aimap" aria-label="AI-attributed layoffs by geography"></canvas></div>
+            <p class="alt-map-empty alt-muted" id="alt-map-note" style="display:none"></p>
+        </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub" id="alt-trend-range"></span></div>

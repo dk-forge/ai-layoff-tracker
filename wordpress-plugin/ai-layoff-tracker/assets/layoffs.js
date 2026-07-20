@@ -912,6 +912,7 @@
         renderBarList('alt-bars-countries', (agg.top_countries || []).map(function (e) {
             return [e[0], e[1], e[2], countryFlag(e[0]) + e[0]];
         }), wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+        AIMAP.data = agg; renderAiMap();
         // Largest single events: name, jobs, AI segment when explicitly
         // attributed. Tapping toggles the company text filter.
         var companyBox = document.getElementById('alt-f-company');
@@ -1967,6 +1968,142 @@
     }
 
     /* ------------------------------------------------------------------ */
+    /* The map of AI job loss — geographic bubble map (chartjs-chart-geo)   */
+    /* ------------------------------------------------------------------ */
+
+    // Centroids [lon, lat] for placing bubbles. Countries keyed by the exact
+    // label the aggregate returns; US states by 2-letter code. Only the places
+    // that actually appear in the data need an entry — anything missing is just
+    // skipped (with a console note), never an error.
+    var COUNTRY_CENTROIDS = {
+        'United States': [-98, 39], 'India': [79, 22], 'United Kingdom': [-1.5, 53], 'Germany': [10, 51],
+        'Canada': [-106, 56], 'Australia': [134, -25], 'France': [2, 47], 'China': [104, 35],
+        'Japan': [138, 37], 'Singapore': [103.8, 1.35], 'Netherlands': [5.7, 52], 'Sweden': [18, 62],
+        'Switzerland': [8, 47], 'Ireland': [-8, 53], 'Spain': [-4, 40], 'Italy': [12.5, 42],
+        'Brazil': [-52, -10], 'Mexico': [-102, 23], 'Israel': [35, 31], 'Poland': [19, 52],
+        'Norway': [9, 61], 'Denmark': [10, 56], 'Finland': [26, 64], 'Belgium': [4.5, 50.6],
+        'Austria': [14, 47.5], 'South Korea': [128, 36], 'Nigeria': [8, 10], 'South Africa': [24, -29],
+        'United Arab Emirates': [54, 24], 'Saudi Arabia': [45, 24], 'Indonesia': [113, -0.8],
+        'Philippines': [122, 12], 'Malaysia': [102, 4], 'Thailand': [101, 15], 'Vietnam': [106, 16],
+        'Turkey': [35, 39], 'Portugal': [-8, 39.5], 'New Zealand': [172, -41], 'Argentina': [-64, -34],
+        'Egypt': [30, 27], 'Kenya': [38, 0], 'Pakistan': [70, 30], 'Bangladesh': [90, 24],
+        'Russia': [90, 61], 'Ukraine': [32, 49], 'Greece': [22, 39], 'Romania': [25, 46],
+        'Czechia': [15.5, 49.8], 'Hungary': [19, 47], 'Colombia': [-73, 4], 'Chile': [-71, -30],
+        'Taiwan': [121, 23.7], 'Hong Kong': [114.1, 22.3]
+    };
+    var US_STATE_CENTROIDS = {
+        AL:[-86.8,32.8],AK:[-152,64],AZ:[-111.7,34.2],AR:[-92.4,34.8],CA:[-119.4,37.2],CO:[-105.5,39],
+        CT:[-72.7,41.6],DE:[-75.5,39],DC:[-77,38.9],FL:[-81.6,28.6],GA:[-83.4,32.6],HI:[-157,20.3],
+        ID:[-114.5,44.2],IL:[-89.2,40],IN:[-86.3,39.9],IA:[-93.5,42],KS:[-98.3,38.5],KY:[-84.9,37.5],
+        LA:[-92,31],ME:[-69.2,45.4],MD:[-76.6,39],MA:[-71.8,42.2],MI:[-84.6,44.3],MN:[-94.3,46.3],
+        MS:[-89.7,32.7],MO:[-92.5,38.4],MT:[-109.6,47],NE:[-99.8,41.5],NV:[-116.6,39.3],NH:[-71.6,43.7],
+        NJ:[-74.5,40.1],NM:[-106,34.4],NY:[-75.5,42.9],NC:[-79.4,35.6],ND:[-100.3,47.5],OH:[-82.8,40.3],
+        OK:[-97.5,35.6],OR:[-120.6,44],PA:[-77.6,40.9],RI:[-71.5,41.7],SC:[-80.9,33.9],SD:[-100.2,44.4],
+        TN:[-86.4,35.8],TX:[-99.3,31.5],UT:[-111.7,39.3],VT:[-72.7,44],VA:[-78.8,37.5],WA:[-120.5,47.4],
+        WV:[-80.6,38.6],WI:[-89.9,44.6],WY:[-107.5,43]
+    };
+    var TOPO_URL = {
+        world: 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json',
+        us: 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
+    };
+    var AIMAP = { scope: 'world', data: null, chart: null, outline: {}, loading: {} };
+
+    function geoReady() {
+        return typeof window.Chart !== 'undefined' && window.ChartGeo &&
+            (window.ChartGeo.topojson || (window.topojson));
+    }
+
+    function loadTopo(scope) {
+        if (AIMAP.outline[scope]) return Promise.resolve(AIMAP.outline[scope]);
+        if (AIMAP.loading[scope]) return AIMAP.loading[scope];
+        AIMAP.loading[scope] = fetch(TOPO_URL[scope]).then(function (r) { return r.json(); }).then(function (topo) {
+            var tj = (window.ChartGeo && window.ChartGeo.topojson) || window.topojson;
+            var obj = scope === 'us' ? topo.objects.states : topo.objects.countries;
+            var feats = tj.feature(topo, obj).features;
+            AIMAP.outline[scope] = feats;
+            return feats;
+        });
+        return AIMAP.loading[scope];
+    }
+
+    // Blue→red ramp for AI share (0%→100%): higher AI share = warmer.
+    function shareColor(share) {
+        var s = Math.max(0, Math.min(1, share || 0));
+        var r = Math.round(70 + s * 143), g = Math.round(120 - s * 60), b = Math.round(214 - s * 190);
+        return 'rgba(' + r + ',' + g + ',' + b + ',0.72)';
+    }
+
+    function aiMapBubbles(scope, agg) {
+        var rows = scope === 'us' ? (agg.top_states || []) : (agg.top_countries || []);
+        var lut = scope === 'us' ? US_STATE_CENTROIDS : COUNTRY_CENTROIDS;
+        var out = [];
+        rows.forEach(function (e) {
+            var label = e[0], jobs = e[1] || 0, ai = e[2] || 0;
+            if (ai <= 0) return;                       // AI-cut map: only places with AI cuts
+            var c = lut[label];
+            if (!c) return;                            // no centroid (e.g. "Multiple countries") — skip
+            var share = jobs > 0 ? ai / jobs : 0;
+            out.push({ longitude: c[0], latitude: c[1], value: ai, label: label, jobs: jobs,
+                       share: share, backgroundColor: shareColor(share) });
+        });
+        return out;
+    }
+
+    function renderAiMap() {
+        var canvas = document.getElementById('alt-chart-aimap');
+        var note = document.getElementById('alt-map-note');
+        if (!canvas || !AIMAP.data) return;
+        if (!geoReady()) {
+            if (note) { note.style.display = ''; note.textContent = 'Map library still loading…'; }
+            return;
+        }
+        var scope = AIMAP.scope;
+        var bubbles = aiMapBubbles(scope, AIMAP.data);
+        loadTopo(scope).then(function (outline) {
+            if (!bubbles.length) {
+                if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
+                if (note) { note.style.display = ''; note.textContent = 'No AI-attributed cuts with a known location in this view yet.'; }
+                return;
+            }
+            if (note) note.style.display = 'none';
+            if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
+            AIMAP.chart = new Chart(canvas, {
+                type: 'bubbleMap',
+                data: { labels: bubbles.map(function (b) { return b.label; }),
+                        datasets: [{ outline: outline, showOutline: true,
+                            outlineBackgroundColor: '#eef1f5', outlineBorderColor: '#d3d8e0', outlineBorderWidth: 0.5,
+                            backgroundColor: bubbles.map(function (b) { return b.backgroundColor; }),
+                            data: bubbles }] },
+                options: {
+                    maintainAspectRatio: false, showGraticule: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) {
+                        var b = ctx.raw || {};
+                        return b.label + ': ' + fmt(b.value) + ' AI-linked cuts (' + Math.round((b.share || 0) * 100) + '% of ' + fmt(b.jobs) + ')';
+                    } } } },
+                    scales: {
+                        projection: { axis: 'x', projection: scope === 'us' ? 'albersUsa' : 'equalEarth' },
+                        size: { axis: 'x', size: [4, scope === 'us' ? 34 : 44], mode: 'area' }
+                    }
+                }
+            });
+        }).catch(function (e) {
+            if (note) { note.style.display = ''; note.textContent = 'Map data could not be loaded.'; }
+        });
+    }
+
+    function initAiMap() {
+        document.querySelectorAll('.alt-map-scope').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (btn.classList.contains('alt-map-scope-on')) return;
+                document.querySelectorAll('.alt-map-scope').forEach(function (b) { b.classList.remove('alt-map-scope-on'); });
+                btn.classList.add('alt-map-scope-on');
+                AIMAP.scope = btn.getAttribute('data-scope');
+                renderAiMap();
+            });
+        });
+    }
+
+    /* ------------------------------------------------------------------ */
     /* AI displacement view + company history (bounded result sets)        */
     /* ------------------------------------------------------------------ */
 
@@ -2557,6 +2694,7 @@
         // Standalone AI / company pages don't use the shared filter surface.
         initAiTracker();
         initCompanyHistory();
+        if (document.getElementById('alt-chart-aimap')) initAiMap();
         initMethodologyAnchors();
         renderProvenance();
 
