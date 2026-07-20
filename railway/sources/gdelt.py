@@ -707,6 +707,16 @@ SEGMENT_TERMS = (
     '"state employees" "layoffs"', '"federal employees" "layoffs"',
     '"city workers" "laid off"', '"nonprofit" "layoffs"',
     '"hospital" "layoffs"', '"school" "positions eliminated"',
+    # More AI-attribution framings (2026-07-20) — broaden AI recall beyond the
+    # existing block; the employer's AI story surfaces in these phrasings too.
+    '"generative AI" "layoffs"', '"AI-driven" "job cuts"', '"AI efficiency"',
+    '"AI adoption" "jobs"', '"cost cutting" "AI"', '"AI investment" "workforce"',
+    '"agentic AI" "roles"', '"automate" "roles"',
+    # Buyouts / attrition / early-retirement — the announcement-survey slice
+    # that files no WARN/8-K yet is widely reported (helps close the coverage gap).
+    '"buyouts" "employees"', '"early retirement" "program"',
+    '"deferred resignation"', '"attrition" "reduce"', '"voluntary exit"',
+    '"hiring freeze" "cuts"',
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
 

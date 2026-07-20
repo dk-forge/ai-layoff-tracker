@@ -47,6 +47,14 @@ KEYWORDS = [
     "reduce its workforce",
     "job cuts",
     "involuntary separation",
+    # 2026-07-20 additions: restructuring/buyout 8-Ks that state the action in
+    # these words without "layoff". The LLM extractor still discards any that
+    # aren't actual job cuts, so broadening the net costs only candidate volume.
+    "restructuring plan",
+    "voluntary separation program",
+    "early retirement program",
+    "reduce headcount",
+    "eliminate positions",
 ]
 
 REQUEST_DELAY_SECONDS = 0.11  # stays under SEC's 10 req/s limit
