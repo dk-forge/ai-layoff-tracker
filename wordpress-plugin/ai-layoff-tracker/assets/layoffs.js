@@ -2137,16 +2137,42 @@
                 .attr('fill', MAP_RED).attr('stroke', MAP_RED_LINE).attr('stroke-width', 0.8)
                 .style('pointer-events', 'none');
 
-            // Value labels for the largest few (de-cluttered: top 5).
-            var labelPts = pts.slice().sort(function (a, b) { return b.jobs - a.jobs; }).slice(0, 5);
-            var label = gOverlay.selectAll('text.alt-map-lab').data(labelPts).join('text')
+            // Place-NAME labels (not raw counts): the biggest few places are
+            // always named, and as you zoom in the names of smaller places appear
+            // once they separate enough not to collide. The exact figure stays in
+            // the hover tooltip; the name answers "which place is this" at a glance.
+            var byJobs = pts.slice().sort(function (a, b) { return b.jobs - a.jobs; });
+            var BASE_LABELS = scope === 'us' ? 7 : 6;
+            var label = gOverlay.selectAll('text.alt-map-lab').data(byJobs, function (p) { return p.label; }).join('text')
                 .attr('class', 'alt-map-lab')
                 .attr('text-anchor', 'middle')
                 .attr('font-size', 11).attr('font-weight', 700)
                 .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif')
                 .attr('fill', '#0b0b0b').attr('stroke', '#fff').attr('stroke-width', 3)
                 .attr('paint-order', 'stroke').style('pointer-events', 'none')
-                .text(function (p) { return fmt(p.jobs); });
+                .text(function (p) { return p.label; });
+
+            // Choose which names to show for a zoom transform t: always the
+            // headline set, plus any in-view place once zoomed in, minus anything
+            // that would overlap a name already placed (biggest place wins the spot).
+            function placeLabels(t) {
+                var k = t.k || 1, placed = [];
+                byJobs.forEach(function (p, i) {
+                    var s = t.apply([p.x0, p.y0]);
+                    p._lx = s[0]; p._ly = s[1] - p.r - 5;
+                    var inView = s[0] > 6 && s[0] < w - 6 && s[1] > 10 && s[1] < h - 6;
+                    var show = inView && ((i < BASE_LABELS) || k > 1.6);
+                    if (show) {
+                        for (var j = 0; j < placed.length; j++) {
+                            if (Math.abs(placed[j][0] - p._lx) < 48 && Math.abs(placed[j][1] - p._ly) < 14) { show = false; break; }
+                        }
+                    }
+                    p._show = show;
+                    if (show) placed.push([p._lx, p._ly]);
+                });
+                label.attr('transform', function (p) { return 'translate(' + p._lx + ',' + p._ly + ')'; })
+                    .style('display', function (p) { return p._show ? null : 'none'; });
+            }
 
             // "AR 4.2%" labels on the hatched no-register states.
             var hatchLabel = gOverlay.selectAll('text.alt-hatch-lab').data(hatchLabelPts).join('text')
@@ -2167,7 +2193,7 @@
             function reposition(t) {
                 gMap.attr('transform', t.toString());
                 node.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + s[1] + ')'; });
-                label.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + (s[1] - p.r - 5) + ')'; });
+                placeLabels(t);
                 hatchLabel.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + s[1] + ')'; });
             }
             var zoom = d3.zoom().scaleExtent([1, 8])
@@ -2178,6 +2204,19 @@
                     svg.style('cursor', event.transform.k > 1 ? 'grab' : 'default');
                 });
             svg.call(zoom);
+
+            // Visible +/- zoom control (scroll-wheel, drag-pan and click-a-shape
+            // still work; the buttons make zoom discoverable and touch-friendly).
+            function zoomByFactor(f) {
+                svg.transition().duration(prefersReducedMotion() ? 0 : 250).call(zoom.scaleBy, f);
+            }
+            var zc = d3.select(box).append('div').attr('class', 'alt-map-zoom');
+            zc.append('button').attr('type', 'button').attr('class', 'alt-map-zbtn')
+                .attr('aria-label', 'Zoom in').attr('title', 'Zoom in').text('+')
+                .on('click', function (event) { event.stopPropagation(); zoomByFactor(1.6); });
+            zc.append('button').attr('type', 'button').attr('class', 'alt-map-zbtn')
+                .attr('aria-label', 'Zoom out').attr('title', 'Zoom out').text('−')
+                .on('click', function (event) { event.stopPropagation(); zoomByFactor(1 / 1.6); });
 
             function zoomToFeature(feature) {
                 hideTip();                         // dismiss any pinned no-register panel
