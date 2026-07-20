@@ -110,7 +110,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
         <button type="button" class="alt-qv" data-qv="announced">Announced only</button>
         <button type="button" class="alt-qv" data-qv="tech">Tech industry</button>
-        <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset alt-qv-reset">Reset all filters</button>
     </div>
 
     <div class="alt-filterbar">
@@ -194,6 +193,9 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <label for="alt-f-minjobs">Min job count</label>
                 <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
             </div>
+        </div>
+        <div class="alt-filterbar-reset">
+            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset all filters</button>
         </div>
         <!-- Hidden state holders: quick-view pills are the visible controls -->
         <input type="checkbox" id="alt-f-ai" hidden>

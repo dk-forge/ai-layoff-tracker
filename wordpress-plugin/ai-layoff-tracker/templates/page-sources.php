@@ -112,6 +112,15 @@ $alt_gap_states = array(
   </table></div>
   <p class="alt-muted">"Nothing published" and "no headcount" states can't be fixed with code — they need public-records requests to the state. The custom-scraper states are an engineering task we're working through.</p>
 
+  <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php')) include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
+  <h2>Worldwide news — every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
+  <p>Beyond official filings, we monitor a curated allowlist of reputable news outlets in every country, in 65+ languages, twice daily via GDELT and NewsAPI — never the open web. The full list is below, generated straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register (if any) we pull directly.</p>
+  <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php')) : ?>
+  <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
+  <?php else : ?>
+  <p class="alt-muted">The full country &amp; outlet list is being generated and will appear on the next update.</p>
+  <?php endif; ?>
+
   <h2>How verification works</h2>
   <div class="alt-health-table-wrap"><table class="alt-sources-table">
     <thead><tr><th>Source type</th><th>How it's handled</th></tr></thead>
