@@ -2726,6 +2726,12 @@
                 else copyText(url, function () { flashBtn(sh); });
             });
         });
+        // Card ids are assigned above (after render), so the browser's initial
+        // anchor jump missed them — honor a #card-… hash from a shared link now.
+        if (window.location.hash && /^#card-/.test(window.location.hash)) {
+            var target = document.getElementById(window.location.hash.slice(1));
+            if (target) setTimeout(function () { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 350);
+        }
     }
 
     // Report one-pager exports: Print→PDF (zero-dep) + PNG (lazy html2canvas,
