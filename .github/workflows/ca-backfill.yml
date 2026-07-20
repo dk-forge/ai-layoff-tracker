@@ -1,0 +1,39 @@
+name: CA WARN annual-PDF backfill (manual)
+
+# Backfills California WARN HISTORY from EDD annual-report PDFs (the live rolling
+# xlsx only holds the current fiscal year). Manual dispatch ONLY — never on a
+# schedule. Run once with dry_run=true to eyeball the parse, then dry_run=false
+# to upsert. Fails loudly if zero notices parse.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Parse + print a sample WITHOUT posting (validate first)'
+        required: false
+        type: boolean
+        default: true
+      pdf_urls:
+        description: 'Optional comma/newline list of EDD annual PDF URLs (overrides the built-in list)'
+        required: false
+        default: ''
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests pdfplumber
+      - name: Backfill CA WARN history
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          CA_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+          CA_BACKFILL_PDF_URLS: ${{ github.event.inputs.pdf_urls || '' }}
+        run: |
+          cd railway
+          set -o pipefail
+          python ca_backfill.py
