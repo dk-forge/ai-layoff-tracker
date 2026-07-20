@@ -45,7 +45,7 @@ if (!is_array($alt_press_years)) {
   <p><b>Suggested attribution:</b> "According to the AI Layoff Tracker by AskTheRecruiter.com..."</p>
 
   <h2>Key stats by year</h2>
-  <p>Live figures from the same database the tracker serves. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A broader Challenger-style measure is charted on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-challenger-comparison">US comparison</a> section.</p>
+  <p>Live figures from the same database the tracker serves. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A separate broader measure (looser AI-linked attributions) is available in the <code>ai_broad_jobs</code> API field.</p>
   <div class="alt-health-table-wrap"><table class="alt-press-table">
     <thead><tr><th>Year</th><th class="num">Verified layoffs</th><th class="num">Job cuts recorded</th><th class="num">AI-attributed (strict)</th></tr></thead>
     <tbody>

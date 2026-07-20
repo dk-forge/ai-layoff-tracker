@@ -6,45 +6,6 @@ $alt_csv  = admin_url('admin-post.php?action=alt_export_csv');
 $alt_json = admin_url('admin-post.php?action=alt_export_json');
 $alt_api  = rest_url('layoffs/v1/query');
 $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>';
-$alt_challenger_records = get_option('alt_challenger_benchmarks');
-$alt_challenger_records = is_array($alt_challenger_records) ? array_values($alt_challenger_records) : array();
-usort($alt_challenger_records, function($a, $b) {
-    $a_period = (string) (!empty($a['report_month']) ? $a['report_month'] : substr((string) ($a['recorded_at'] ?? ''), 0, 7));
-    $b_period = (string) (!empty($b['report_month']) ? $b['report_month'] : substr((string) ($b['recorded_at'] ?? ''), 0, 7));
-    return strcmp($b_period, $a_period);
-});
-// One retained reconciliation per official report month. A later write with an
-// explicit report_month supersedes an earlier setup record for that same month.
-$alt_challenger_by_period = array();
-foreach ($alt_challenger_records as $alt_challenger_record) {
-    $alt_period = !empty($alt_challenger_record['report_month'])
-        ? (string) $alt_challenger_record['report_month']
-        : substr((string) ($alt_challenger_record['recorded_at'] ?? ''), 0, 7);
-    if ($alt_period === '') $alt_period = 'recorded-' . count($alt_challenger_by_period);
-    if (!isset($alt_challenger_by_period[$alt_period]) || !empty($alt_challenger_record['report_month'])) {
-        $alt_challenger_by_period[$alt_period] = $alt_challenger_record;
-    }
-}
-$alt_challenger_records = array_values($alt_challenger_by_period);
-$alt_challenger_chart = array();
-foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
-    $alt_challenger_chart[] = array(
-        // Challenger publishes the prior month's announcements. Keep the
-        // announcement reference month separate from the report publication
-        // month so the chart cannot visually shift events a month late.
-        'period' => !empty($alt_challenger_record['reference_month']) ? $alt_challenger_record['reference_month'] : (!empty($alt_challenger_record['report_month']) ? $alt_challenger_record['report_month'] : substr((string) ($alt_challenger_record['recorded_at'] ?? ''), 0, 7)),
-        'challenger_month' => array_key_exists('challenger_ai_jobs_month', $alt_challenger_record) ? max(0, (int) $alt_challenger_record['challenger_ai_jobs_month']) : null,
-        'tracker_month' => array_key_exists('tracker_ai_primary_announced_us_employer_jobs_month', $alt_challenger_record) ? max(0, (int) $alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_month']) : null,
-        'challenger_ytd' => max(0, (int) ($alt_challenger_record['challenger_ai_jobs_ytd'] ?? 0)),
-        'tracker_ytd' => max(0, (int) ($alt_challenger_record['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0)),
-        // All-cuts comparator pair; null when a record predates the fields or
-        // the fail-soft Challenger totals parse was unavailable.
-        'challenger_total_month' => isset($alt_challenger_record['challenger_total_jobs_month']) && $alt_challenger_record['challenger_total_jobs_month'] !== null ? max(0, (int) $alt_challenger_record['challenger_total_jobs_month']) : null,
-        'challenger_total_ytd' => isset($alt_challenger_record['challenger_total_jobs_ytd']) && $alt_challenger_record['challenger_total_jobs_ytd'] !== null ? max(0, (int) $alt_challenger_record['challenger_total_jobs_ytd']) : null,
-        'tracker_all_month' => isset($alt_challenger_record['tracker_announced_us_employer_jobs_month']) && $alt_challenger_record['tracker_announced_us_employer_jobs_month'] !== null ? max(0, (int) $alt_challenger_record['tracker_announced_us_employer_jobs_month']) : null,
-        'tracker_all_ytd' => isset($alt_challenger_record['tracker_announced_us_employer_jobs_ytd']) && $alt_challenger_record['tracker_announced_us_employer_jobs_ytd'] !== null ? max(0, (int) $alt_challenger_record['tracker_announced_us_employer_jobs_ytd']) : null,
-    );
-}
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
@@ -259,7 +220,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card alt-stat-card-ai alt-stat-card-broad">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
                 <span class="alt-stat-label">🤖 AI-linked — broad (wider lens)</span>
-                <span class="alt-stat-desc"><b>A different, looser measure</b> — the Challenger/layoffs.fyi style that also counts press AI-framing ("amid AI push," "AI pivot"). It is intentionally larger than the total on the left, so it does <b>not</b> add up with the boxes above.</span>
+                <span class="alt-stat-desc"><b>A different, looser measure</b> — a wider lens that also counts press AI-framing ("amid AI push," "AI pivot"), not just the employer's own words. It is intentionally larger than the total on the left, so it does <b>not</b> add up with the boxes above.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>
@@ -267,7 +228,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <nav class="alt-stats-links alt-stats-links-box" aria-label="About these results">
             <span class="alt-stats-links-label">New here? Start with:</span>
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
-            <a class="alt-method-link" href="#alt-challenger-comparison">Why US figures differ from Challenger</a>
             <a class="alt-method-link" href="#alt-data-sources">Where do we get this data?</a>
             <a class="alt-method-link" href="#alt-corrections">How we catch &amp; fix errors</a>
         </nav>
@@ -421,14 +381,14 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
             <p><b>How entries are extracted and checked.</b> Discovery searches a dialect-aware vocabulary (layoffs, redundancies, retrenchment, dismissals, sackings, workforce reduction and more than thirty other phrasings) across GDELT's 65-language translated index, so coverage that never uses the word "layoff" still surfaces. News and filings are machine-extracted; core facts must appear in the source text. Counts parse conservatively (ranges resolve to the lower bound). Countries and industries normalize through fixed vocabularies; implausible values are rejected. New records carry an evidence confidence and publication status. Exact fingerprints, same-company guards and cross-source comparison prevent double counting; uncertain candidates remain provisional instead of silently inflating verified totals. WARN filings skip the language model and remain exempt from fuzzy dedup because one employer can legally file several distinct notices.</p>
 
-            <p><b>How the AI tag works.</b> We distinguish AI as a <em>primary cause</em>, a contributing cause, a selection/operations tool, background context, and an explicit denial. Only primary or contributing cause classifications may be AI-attributed, and each must carry an exact supporting quote found in the source text. AI investment, future automation projections, and AI used to select workers do not qualify by themselves. Alongside the strict tag we also maintain a separately labeled <b>AI-linked, broad (Challenger-style)</b> measure that counts loose attributions the way Challenger and layoffs.fyi do &mdash; cuts made while funding an AI pivot, AI-driven market disruption, and press AI framing. The broad measure appears only on the US comparison charts and in the <code>ai_broad_jobs</code> API field; it is never mixed into the strict verified-AI totals.</p>
+            <p><b>How the AI tag works.</b> We distinguish AI as a <em>primary cause</em>, a contributing cause, a selection/operations tool, background context, and an explicit denial. Only primary or contributing cause classifications may be AI-attributed, and each must carry an exact supporting quote found in the source text. AI investment, future automation projections, and AI used to select workers do not qualify by themselves. Alongside the strict tag we also maintain a separately labeled <b>AI-linked, broad</b> measure that counts looser attributions &mdash; cuts made while funding an AI pivot, AI-driven market disruption, and press AI framing. The broad measure is surfaced in the <code>ai_broad_jobs</code> API field; it is never mixed into the strict verified-AI totals.</p>
 
             <p><b>How "Roles most impacted" works.</b> When a source names which teams were cut (for example "laying off customer-support and recruiting staff"), a model reads that stored text and maps it to a fixed set of role categories; a second independent pass must agree, and a supporting quote must be present, before the category is stored. Nothing is inferred from a company's industry or guessed. Each bar shows the <b>total job cuts</b> attributed to that team, and the orange segment plus the 🤖 figure show how many of those were <b>AI-linked</b> — so a bar with no orange is job cuts we could not tie to AI, not an error. This chart covers <em>only</em> the minority of records whose source actually named the teams affected, so it is a sample of where cuts land, never a breakdown of the full total.</p>
             <p><b>Coverage and honest limitations.</b> US depth is greatest because of WARN and SEC sources. Europe has structured coverage of large announcements through Eurofound ERM. Outside those live collectors, country-level coverage is currently worldwide news discovery and any explicitly reviewed company newsroom feed; named filing systems such as SEDAR+, RNS, ASX, TDnet and HKEXnews are research candidates, not silently assumed feeds. WARN and ERM have their own thresholds and geography rules, so they should not be summed as if they were a complete national census. Multi-state and multi-country events can overlap; the entry and source fields disclose that risk. Entries dated in the future are announced or filed but not yet completed.</p>
 
             <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; forward-looking projections (e.g. "could cost X jobs by 2050") rather than announced or executed cuts; and retrospective summary articles that would double-count events already tracked.</p>
 
-            <p><b>Why our totals differ from other headline numbers.</b> Three kinds of trackers measure three different things. Government statistics (BLS) count <em>every</em> separation in the economy, millions per month, with no event-level detail. Announcement surveys (Challenger, Gray &amp; Christmas; the WSJ and TrueUp trackers) count corporate <em>intentions</em>: when a CEO announces "20,000 cuts over the next two years," the full 20,000 lands in their total that day, even though much of it may come through attrition, get scaled back, or never produce a single filing. This tracker counts only what has a <em>verifiable document or quoted primary source behind it</em>: the WARN notices and SEC filings that appear as those 20,000 cuts actually execute, plus reported cuts with a named-outlet source. A worked example: in the first half of 2026, announcement surveys reported roughly 443,600 US job cuts (Challenger, through June); verified filings and sourced reports here totaled <span id="alt-worked-ours">about 175,000</span> for the same period, both correct answers to different questions. Theirs answers "what are companies saying?" Ours answers "what can you prove?" Treat our verified figure as a documented floor: smaller than the estimates, but every single number is clickable back to a legal filing or named outlet. Since July 2026 we also track <em>announcement-stage</em> cuts as their own labeled tier ("Announced", tagged in the table and shown as a separate headline number) so both questions are answered on one page, and unlike the announcement surveys, every announcement here links to its source too.</p>
+            <p><b>Why our totals differ from other headline numbers.</b> Three kinds of trackers measure three different things. Government statistics (BLS) count <em>every</em> separation in the economy, millions per month, with no event-level detail. Announcement surveys count corporate <em>intentions</em>: when a CEO announces "20,000 cuts over the next two years," the full 20,000 lands in their total that day, even though much of it may come through attrition, get scaled back, or never produce a single filing. This tracker counts only what has a <em>verifiable document or quoted primary source behind it</em>: the WARN notices and SEC filings that appear as those 20,000 cuts actually execute, plus reported cuts with a named-outlet source. A worked example: in the first half of 2026, announcement surveys reported roughly 443,600 US job cuts; verified filings and sourced reports here totaled <span id="alt-worked-ours">about 175,000</span> for the same period, both correct answers to different questions. Theirs answers "what are companies saying?" Ours answers "what can you prove?" Treat our verified figure as a documented floor: smaller than the estimates, but every single number is clickable back to a legal filing or named outlet. Since July 2026 we also track <em>announcement-stage</em> cuts as their own labeled tier ("Announced", tagged in the table and shown as a separate headline number) so both questions are answered on one page, and unlike the announcement surveys, every announcement here links to its source too.</p>
 
             <p><b>Using the data.</b> Free with attribution to <b>asktherecruiter.com</b>. The CSV and JSON buttons download exactly what your current filters show (or the full dataset when unfiltered); each chart offers its own image or data download. Programmatic access: <code>GET /blog/wp-json/layoffs/v1/query</code> (paginated; filter params match the page: years, quarters, months, industry, country, state, sources, reasons, q, from, to) and <code>GET /blog/wp-json/layoffs/v1/aggregate</code> for totals and breakdowns. Corrections get priority via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a>, and every fix is disclosed in the corrections log below.</p>
         </div>
@@ -449,61 +409,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <p class="alt-muted" id="alt-conversion-note" style="display:none"></p>
         </div>
     </details>
-    <details class="alt-methodology" id="alt-challenger-comparison" open>
-        <summary>US AI-announcement reconciliation with Challenger</summary>
-        <div class="alt-method-body">
-            <p><b>Why the figures differ.</b> The cards above are scoped by the job-location country filter, while Challenger measures announcements by US-based employers. They are therefore not a like-for-like Challenger total. This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. Two labeled pairs are compared, each updated automatically when Challenger publishes its monthly report: <b>Challenger AI cuts vs AskTheRecruiter announced AI cuts (strict)</b>, and <b>Challenger all announced cuts vs AskTheRecruiter announced US cuts</b>. The strict AskTheRecruiter figures include only canonical events with a source-evidenced announcement date, a US-based employer and announcement-stage status (plus AI as the primary stated cause for the AI pair). The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
-            <p><b>The teal "AI-linked, broad (US job location)" line</b> measures AI the way Challenger and layoffs.fyi do: it adds events where the company or press tied the cuts to AI loosely, including layoffs made while funding an AI pivot and AI-driven market disruption. Our strict AI tag (the employer's own words, quote on file) stays separate and unchanged; the broad line exists so the two counting philosophies can be compared side by side on the same chart.</p>
-            <p><b>The orange "US-employer basis (Challenger-comparable)" line</b> fixes the remaining scope mismatch: Challenger counts announced cuts by US-headquartered employers, while our country filter is job location, so a US company's multi-country cut (for example Oracle's 21,000) is invisible to the plain US view. This line counts an event when its recorded employer domicile is the United States, and falls back to US job location only for events with no recorded domicile. Domicile comes from source-evidenced enrichment or from a curated registry of deterministic, publicly referenced headquarters facts; where the headquarters is genuinely ambiguous the field stays blank rather than guessed.</p>
-            <?php if ($alt_challenger_records) : ?>
-            <?php if (count($alt_challenger_chart) >= 2) : ?>
-            <div class="alt-challenger-chart">
-                <canvas id="alt-chart-challenger-monthly" data-points="<?php echo esc_attr(wp_json_encode($alt_challenger_chart)); ?>" aria-label="Monthly Challenger and strict tracker AI-announcement comparison"></canvas>
-            </div>
-            <p class="alt-muted">Monthly, source-linked announcement figures. This is a coverage reconciliation, not an accuracy score.</p>
-            <div class="alt-challenger-chart">
-                <canvas id="alt-chart-challenger-reconciliation" data-points="<?php echo esc_attr(wp_json_encode($alt_challenger_chart)); ?>" aria-label="Cumulative year-to-date Challenger and strict tracker AI-announcement comparison"></canvas>
-            </div>
-            <p class="alt-muted">Cumulative year-to-date values use the same reference months and official reports.</p>
-            <?php else : ?>
-            <p class="alt-muted">The first official comparison is retained below. A cumulative month-by-month trend will appear automatically after a second official report month is recorded.</p>
-            <?php endif; ?>
-            <div class="alt-source-health alt-challenger-table">
-                <table>
-                    <thead><tr><th>Announcement month</th><th>Challenger AI cuts (month)</th><th>AskTheRecruiter AI cuts, strict (month)</th><th>Monthly AI gap</th><th>Challenger AI cuts (YTD)</th><th>AskTheRecruiter AI cuts, strict (YTD)</th><th>YTD AI gap</th><th>Challenger all cuts (month)</th><th>AskTheRecruiter announced US cuts (month)</th><th>Official report</th></tr></thead>
-                    <tbody>
-                    <?php foreach ($alt_challenger_records as $alt_benchmark) :
-                        $alt_challenger_total = max(0, (int) ($alt_benchmark['challenger_ai_jobs_ytd'] ?? 0));
-                        $alt_tracker_total = max(0, (int) ($alt_benchmark['tracker_ai_primary_announced_us_employer_jobs_ytd'] ?? 0));
-                        $alt_gap = max(0, $alt_challenger_total - $alt_tracker_total);
-                        $alt_has_monthly = array_key_exists('challenger_ai_jobs_month', $alt_benchmark) && array_key_exists('tracker_ai_primary_announced_us_employer_jobs_month', $alt_benchmark);
-                        $alt_challenger_month = $alt_has_monthly ? max(0, (int) $alt_benchmark['challenger_ai_jobs_month']) : null;
-                        $alt_tracker_month = $alt_has_monthly ? max(0, (int) $alt_benchmark['tracker_ai_primary_announced_us_employer_jobs_month']) : null;
-                        $alt_monthly_gap = $alt_has_monthly ? max(0, $alt_challenger_month - $alt_tracker_month) : null;
-                        $alt_period = !empty($alt_benchmark['reference_month']) ? $alt_benchmark['reference_month'] : (!empty($alt_benchmark['report_month']) ? $alt_benchmark['report_month'] : substr((string) ($alt_benchmark['recorded_at'] ?? ''), 0, 10));
-                    ?>
-                        <tr>
-                            <td><?php echo esc_html($alt_period ?: 'Recorded comparison'); ?></td>
-                            <td><?php echo $alt_has_monthly ? number_format($alt_challenger_month) : '—'; ?></td>
-                            <td><?php echo $alt_has_monthly ? number_format($alt_tracker_month) : '—'; ?></td>
-                            <td><?php echo $alt_has_monthly ? number_format($alt_monthly_gap) . ' fewer qualifying tracker records' : '—'; ?></td>
-                            <td><?php echo number_format($alt_challenger_total); ?></td>
-                            <td><?php echo number_format($alt_tracker_total); ?></td>
-                            <td><?php echo number_format($alt_gap); ?> fewer qualifying tracker records</td>
-                            <td><?php echo isset($alt_benchmark['challenger_total_jobs_month']) && $alt_benchmark['challenger_total_jobs_month'] !== null ? number_format((int) $alt_benchmark['challenger_total_jobs_month']) : '—'; ?></td>
-                            <td><?php echo isset($alt_benchmark['tracker_announced_us_employer_jobs_month']) && $alt_benchmark['tracker_announced_us_employer_jobs_month'] !== null ? number_format((int) $alt_benchmark['tracker_announced_us_employer_jobs_month']) : '—'; ?></td>
-                            <td><?php if (!empty($alt_benchmark['benchmark_url'])) : ?><a href="<?php echo esc_url($alt_benchmark['benchmark_url']); ?>" target="_blank" rel="noopener">Challenger report</a><?php else : ?>—<?php endif; ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            <p>The current gap principally reflects incomplete source-evidenced announcement-date and employer-domicile enrichment, plus different source mixes. It does <b>not</b> mean that untracked events are false, that tracked events are wrong, or that the tracker is complete. Each monthly report remains available here even when the workflow flags a large gap for investigation.</p>
-            <?php else : ?>
-            <p>No retained Challenger comparison is available yet. This is a reporting setup state, not evidence of zero layoffs.</p>
-            <?php endif; ?>
-        </div>
-    </details>
     <details class="alt-methodology">
         <summary>Which countries are in which region tab?</summary>
         <div class="alt-method-body" id="alt-region-defs">
@@ -512,23 +417,23 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </details>
 
     <details class="alt-methodology">
-        <summary>Why our numbers differ from Challenger, layoffs.fyi &amp; other trackers</summary>
+        <summary>Why our numbers differ from other trackers</summary>
         <div class="alt-method-body">
-            <p><b>Every tracker measures a different thing — so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below Challenger's, and the gap is fully explainable — here is exactly why, and why we treat it as a feature, not a shortfall.</p>
+            <p><b>Every tracker measures a different thing — so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below the headline announcement estimates, and the gap is fully explainable — here is exactly why, and why we treat it as a feature, not a shortfall.</p>
 
-            <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years" (Citi, Dell), Challenger records all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap — their figure is a forecast, ours is an execution ledger.</p>
+            <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years," the announcement trackers record all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap — their figure is a forecast, ours is an execution ledger.</p>
 
-            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs — including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000–300,000 jobs</b> of Challenger's total alone. There is no document or named source to link, so we do not claim it.</p>
+            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs — including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000–300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
-            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em> — smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for — <b>layoffs companies attribute to AI</b> — our count actually <em>exceeds</em> Challenger's every year, because we surface AI attributions from primary sources they never itemize.</p>
+            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em> — smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for — <b>layoffs companies attribute to AI</b> — our count actually <em>exceeds</em> the headline announcement trackers every year, because we surface AI attributions from primary sources they never itemize.</p>
 
-            <p><b>Where each tracker fits:</b></p>
+            <p><b>Where each kind of tracker fits:</b></p>
             <ul class="alt-method-list">
-                <li><b><a href="https://www.challengergray.com/press/press-releases/" target="_blank" rel="noopener">Challenger, Gray &amp; Christmas</a></b> — monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Published as press releases; no per-event public database.</li>
-                <li><b><a href="https://www.wsj.com/economy/jobs" target="_blank" rel="noopener">WSJ layoffs coverage</a></b> — editorially selected major announcements with newsroom verification. No downloadable dataset; selective by design.</li>
-                <li><b><a href="https://www.trueup.io/layoffs" target="_blank" rel="noopener">TrueUp</a> &amp; <a href="https://layoffs.fyi" target="_blank" rel="noopener">layoffs.fyi</a></b> — technology-sector trackers built from announcements and crowdsourced reports. Their scope matches our <em>Technology</em> filter, not our all-industry total.</li>
+                <li><b>Announcement surveys</b> — monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Typically published as press releases; no per-event public database.</li>
+                <li><b>Editorial newsroom trackers</b> — selected major announcements with newsroom verification. No downloadable dataset; selective by design.</li>
+                <li><b>Sector trackers</b> — technology-focused trackers built from announcements and crowdsourced reports. Their scope matches our <em>Technology</em> filter, not our all-industry total.</li>
                 <li><b>Official statistics</b> — <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a>, <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS</a>, <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> count <em>all</em> separations economy-wide (millions/month) with no company detail. A different universe entirely.</li>
                 <li><b>This tracker</b> — verified events in the headline, announcement-stage figures in a separate labeled tier, corrections logged openly, data and code public. When our number differs, the difference is definitional — and both definitions are stated here so either can be cited correctly.</li>
             </ul>

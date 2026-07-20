@@ -671,35 +671,6 @@
         return parts.length ? ' · ' + parts.join(' · ') : '';
     }
 
-    // Shows the retained Challenger AI benchmark under the Announced-AI card
-    // ONLY when the view is scoped to the United States (their measure is
-    // US-only, so showing it against a world view would mislead). Reads the
-    // monthly-reconciliation record the server injects; updates itself when
-    // the next official report is retained.
-    function renderChallengerNote() {
-        var note = document.getElementById('alt-stat-challenger-note');
-        if (!note) return;
-        var card = note.closest('[data-challenger]');
-        var data;
-        try { data = JSON.parse(card.getAttribute('data-challenger') || '{}'); } catch (e) { data = {}; }
-        var countries = readControl('alt-f-country') || [];
-        var usOnly = countries.length === 1 && countries[0] === 'United States';
-        if (!usOnly || !data.ai_ytd) { note.style.display = 'none'; return; }
-        // The cards above are the STRICT tier by job location, so quoting
-        // Challenger's number alone reads as a huge gap when we actually
-        // exceed them on their own counting basis (broad AI attribution,
-        // counted by US employer). Fetch that basis and say both plainly.
-        note.innerHTML = 'Challenger: <b>' + fmt(data.ai_ytd) + '</b> AI cuts YTD (through ' + monthLabel(data.ref_month) + ') · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
-        note.style.display = '';
-        var y = new Date().getFullYear();
-        apiGet('aggregate', { years: String(y), country: 'United States', country_basis: 'employer' }).then(function (a) {
-            var broad = a && a.totals && a.totals.ai_broad_jobs;
-            if (!broad) return;
-            note.innerHTML = 'Challenger: <b>' + fmt(data.ai_ytd) + '</b> AI cuts YTD (through ' + monthLabel(data.ref_month) + ').<br>'
-                + 'Counted their way (by US employer): we track <b>' + fmt(broad) + '</b> · <a href="#alt-challenger-comparison">like-for-like comparison</a>';
-        }).catch(function () { /* keep the basic note */ });
-    }
-
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
@@ -730,12 +701,8 @@
         setText('alt-stat-ai-sub', when);
         var shareV = pctTxt(aiJ, verifiedJ);
         setText('alt-stat-ai-share-line', shareV ? shareV + ' of verified cuts were blamed on AI by the employer' : '');
-        // The broad card is the Challenger-style measure, and Challenger
-        // counts by EMPLOYER: with a country filter active, refetch on the
-        // employer basis so the headline number is the comparable one
-        // (Oracle's 21K counts for the US even though its cuts span
-        // countries). Location-basis fills first so the card never sits
-        // empty; the employer figure replaces it when it arrives.
+        // The broad card is the wider-lens AI measure. Location-basis fills
+        // first so the card never sits empty.
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
         setText('alt-stat-ai-broad-sub', when);
         var shareB = pctTxt(t.ai_broad_jobs, t.jobs);
@@ -760,12 +727,11 @@
         setText('alt-stat-countries-label', (t.countries === 1 ? 'country' : 'countries') + ' with reported layoffs');
         setText('alt-stat-states-label', t.states === 1 ? 'US state' : 'US states');
 
-        // The earliest and latest layoff dates actually present in this view.
+        // Only surface an explicit empty-state; the raw earliest/latest range
+        // reads as noise (a year filter trivially spans Jan 1–Dec 31).
         var note = document.getElementById('alt-range-note');
         if (note) {
-            note.textContent = (t.entries && t.min_date)
-                ? 'earliest ' + fmtDate(t.min_date) + ' · latest ' + fmtDate(t.max_date)
-                : 'no layoffs match the current filters';
+            note.textContent = (t.entries && t.min_date) ? '' : 'no layoffs match the current filters';
         }
     }
 
@@ -1519,142 +1485,13 @@
         });
     }
 
-    // The server-rendered reconciliation table shows the STRICT comparator,
-    // which reads as all-zeros until announcement-date enrichment completes.
-    // Enrich it live: inject a broad US-employer column with real monthly
-    // numbers, and say plainly what a strict zero means.
-    function enhanceChallengerTable() {
-        var table = document.querySelector('.alt-challenger-table table');
-        if (!table) return;
-        var head = table.querySelector('thead tr');
-        var rows = table.querySelectorAll('tbody tr');
-        if (!head || !rows.length) return;
-        var firstMonth = (rows[rows.length - 1].cells[0] || {}).textContent || '';
-        var yr = /^(\d{4})-/.test(firstMonth) ? firstMonth.slice(0, 4) : String(new Date().getFullYear());
-        apiGet('aggregate', { years: yr, country: 'United States', country_basis: 'employer' }).then(function (a) {
-            var by = {};
-            ((a && a.series) || []).forEach(function (sr) { by[sr.month] = sr.ai_broad_jobs || 0; });
-            var th = document.createElement('th');
-            th.textContent = 'AskTheRecruiter AI broad, US employer (month)';
-            head.insertBefore(th, head.cells[3]);
-            Array.prototype.forEach.call(rows, function (tr) {
-                var m = (tr.cells[0] || {}).textContent.trim();
-                var td = document.createElement('td');
-                var v = by[m];
-                td.innerHTML = (v != null) ? '<b>' + fmt(v) + '</b>' : '—';
-                tr.insertBefore(td, tr.cells[3]);
-            });
-            var note = document.createElement('p');
-            note.className = 'alt-muted';
-            note.textContent = 'A strict zero means no record has completed full announcement-date enrichment for that month yet, not zero AI cuts: the live broad column beside it carries the comparable monthly numbers.';
-            table.parentNode.parentNode.insertBefore(note, table.parentNode);
-        }).catch(function () { /* table stays as rendered */ });
-    }
-
-    function initChallengerReconciliationChart() {
-        var ytdCanvas = document.getElementById('alt-chart-challenger-reconciliation');
-        var monthlyCanvas = document.getElementById('alt-chart-challenger-monthly');
-        var canvas = ytdCanvas || monthlyCanvas;
-        if (!canvas || !chartsAvailable()) return;
-        var points;
-        try { points = JSON.parse(canvas.getAttribute('data-points') || '[]'); }
-        catch (e) { return; }
-        if (!Array.isArray(points) || points.length < 2) return;
-        function options(step) {
-            var result = cloneOptions();
-            result.plugins.tooltip.callbacks = { label: function (ctx) {
-                return (ctx.dataset.label || 'Jobs') + ': ' + fmt(ctx.parsed.y);
-            } };
-            result.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
-            // Tall charts + fixed 10K/25K gridlines so the small strict lines
-            // near zero stay readable against Challenger's six-figure scale.
-            result.scales.y.ticks.stepSize = step;
-            result.scales.y.ticks.maxTicksLimit = 24;
-            result.scales.y.ticks.callback = function (value) { return value >= 1000 ? (value / 1000) + 'K' : value; };
-            return result;
-        }
-        function pick(field) { return points.map(function (p) { return (p[field] === undefined || p[field] === null) ? null : p[field]; }); }
-        function hasAny(field) { return points.some(function (p) { return p[field] !== null && p[field] !== undefined; }); }
-        // Four labeled comparison series: Challenger vs AskTheRecruiter, for
-        // all announced US cuts and for AI-attributed cuts. All-cuts lines
-        // appear only once the reconciliation job has retained those fields.
-        // Five distinct colors — solid = AI pair, dashed = all-cuts pair,
-        // green = our observed AI (real holdings; not the strict comparator).
-        var C = { chalAI: '#2a78d6', chalAll: '#8f98a8', usObs: '#1baf7a', usStrict: '#e34948', usAll: '#8b46c8', usBroad: '#0f9d9d', usEmp: '#d97b16' };
-        function datasetsFor(suffix, observed, broad, employer) {
-            var sets = [
-                { label: 'Challenger — AI cuts', data: pick('challenger_' + suffix), borderColor: C.chalAI, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
-                // Employer basis = evidenced US domicile, falling back to US
-                // job location only where no domicile is recorded — so a US-HQ
-                // company's multi-country cut counts, the way Challenger
-                // counts it, and a foreign-HQ company's US cut does not.
-                { label: 'AskTheRecruiter — US-employer basis (Challenger-comparable)', data: employer, borderColor: C.usEmp, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
-                { label: 'AskTheRecruiter — AI-linked, broad (US job location)', data: broad, borderColor: C.usBroad, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
-                { label: 'AskTheRecruiter — AI observed (verified + announced)', data: observed, borderColor: C.usObs, borderWidth: 2.5, pointRadius: 3, fill: false, tension: 0.2 },
-                { label: 'AskTheRecruiter — strict comparator', data: pick('tracker_' + suffix), borderColor: C.usStrict, borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 }
-            ];
-            if (hasAny('challenger_total_' + suffix)) {
-                sets.push({ label: 'Challenger — all cuts', data: pick('challenger_total_' + suffix), borderColor: C.chalAll, borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
-            }
-            if (hasAny('tracker_all_' + suffix)) {
-                sets.push({ label: 'AskTheRecruiter — announced US cuts (strict)', data: pick('tracker_all_' + suffix), borderColor: C.usAll, borderDash: [6, 4], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.2 });
-            }
-            return sets;
-        }
-        var labels = points.map(function (p) { return monthLabel(p.period); });
-        var benchYear = (points[0] && points[0].period || '2026').slice(0, 4);
-        function mountBoth(obsMonth, obsYtd, broadMonth, broadYtd, empMonth, empYtd) {
-            if (monthlyCanvas && hasAny('challenger_month')) {
-                mountChart('alt-chart-challenger-monthly', {
-                    type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('month', obsMonth, broadMonth, empMonth) }, options: options(10000)
-                });
-            }
-            if (ytdCanvas) {
-                mountChart('alt-chart-challenger-reconciliation', {
-                    type: 'line',
-                    data: { labels: labels, datasets: datasetsFor('ytd', obsYtd, broadYtd, empYtd) }, options: options(25000)
-                });
-            }
-        }
-        // Our observed AI by month (verified + announced) comes from the live
-        // aggregate so the comparison never reads as "we have nothing" when
-        // only the STRICT lines sit near zero. The second aggregate is the
-        // same scope on the employer basis (country_basis=employer): curated/
-        // evidenced US domicile plus blank-domicile US-job-location fallback.
-        // Each fetch degrades to null alone so one failure only drops its own
-        // lines instead of blanking the whole comparison.
-        Promise.all([
-            apiGet('aggregate', { years: benchYear, country: 'United States' }).catch(function () { return null; }),
-            apiGet('aggregate', { years: benchYear, country: 'United States', country_basis: 'employer' }).catch(function () { return null; })
-        ]).then(function (results) {
-            var agg = results[0], empAgg = results[1];
-            var by = {}, byBroad = {}, byEmp = {};
-            ((agg && agg.series) || []).forEach(function (srow) {
-                by[srow.month] = (srow.ai_verified_jobs || 0) + (srow.ai_announced_jobs || 0);
-                byBroad[srow.month] = (srow.ai_broad_jobs != null) ? srow.ai_broad_jobs : by[srow.month];
-            });
-            ((empAgg && empAgg.series) || []).forEach(function (srow) {
-                byEmp[srow.month] = (srow.ai_broad_jobs != null) ? srow.ai_broad_jobs
-                    : ((srow.ai_verified_jobs || 0) + (srow.ai_announced_jobs || 0));
-            });
-            var run = 0, runB = 0, runE = 0;
-            var obsMonth = agg ? points.map(function (p) { return by[p.period] != null ? by[p.period] : null; }) : null;
-            var obsYtd = agg ? points.map(function (p) { run += (by[p.period] || 0); return run; }) : null;
-            var broadMonth = agg ? points.map(function (p) { return byBroad[p.period] != null ? byBroad[p.period] : null; }) : null;
-            var broadYtd = agg ? points.map(function (p) { runB += (byBroad[p.period] || 0); return runB; }) : null;
-            var empMonth = empAgg ? points.map(function (p) { return byEmp[p.period] != null ? byEmp[p.period] : null; }) : null;
-            var empYtd = empAgg ? points.map(function (p) { runE += (byEmp[p.period] || 0); return runE; }) : null;
-            mountBoth(obsMonth, obsYtd, broadMonth, broadYtd, empMonth, empYtd);
-        });
-    }
 
     /* Announced-to-verified conversion card ---------------------------- */
 
     // The /conversion endpoint answers "do announced cuts actually happen?":
     // per announcement month, the share of announced jobs with verified
     // same-company records inside the window, capped per announcement. Not
-    // filter-wired (like the Challenger charts beside it): the question is
+    // filter-wired: the question is
     // about the whole announced tier, and recent months need their maturity
     // labels regardless of the active view.
     var CONVERSION_DATA = null;
@@ -2818,10 +2655,8 @@
         if (chartsAvailable()) {
             Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
             Chart.defaults.color = INK.muted;
-            initChallengerReconciliationChart();
             initConversionChart();
         }
-        enhanceChallengerTable();
         DASH_PRESENT = !!document.querySelector('.alt-dashboard');
         if (DASH_PRESENT) initShareEmbed();
 

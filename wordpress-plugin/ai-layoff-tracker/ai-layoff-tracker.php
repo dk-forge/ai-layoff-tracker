@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.53
+ * Version: 2.19.54
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.53');
+define('ALT_VERSION', '2.19.54');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -532,12 +532,12 @@ function alt_faq_items() {
         array('What sources do you use?',
             'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . $f($n['states']) . ' US states (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated — every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
-        array('How is this different from the Challenger report or the WSJ and TrueUp layoff trackers?',
+        array('How is this different from other layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Can journalists and researchers use this data?',
             'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
         array('How often is the tracker updated?',
-            'Continuously. News and SEC filings are collected twice daily (morning and after US market close, ET); official WARN notices and Eurofound ERM records import daily; the daily summary, stats, charts and table read live data on every page load; and the US Challenger comparison updates automatically each month when their report publishes. The Tracker Health page shows every collector\'s latest run in real time.'),
+            'Continuously. News and SEC filings are collected twice daily (morning and after US market close, ET); official WARN notices and Eurofound ERM records import daily; and the daily summary, stats, charts and table read live data on every page load. The Tracker Health page shows every collector\'s latest run in real time.'),
         array('What is the difference between "verified" and "announced" job cuts?',
             'Verified cuts have a filing or independently reported source behind them: a WARN notice, an SEC filing, or a named outlet\'s report of cuts taking place. Announced cuts are company plans reported at announcement stage, tracked in their own labeled tier and never mixed into the verified totals, because announced plans can shrink, stretch over years, or partially happen through attrition.'),
         array('How do I report an error?',
