@@ -1958,6 +1958,18 @@
                 ] },
                 options: {
                     maintainAspectRatio: false, showGraticule: false,
+                    // Click a bubble to drill into that state (US view) or country
+                    // (world view); the whole dashboard re-filters to it.
+                    onClick: function (evt, els) {
+                        if (!els || !els.length || !AIMAP.chart) return;
+                        var ds = AIMAP.chart.data.datasets[els[0].datasetIndex];
+                        var d = ds && ds.data[els[0].index];
+                        if (!d || !d.label) return;
+                        if (scope === 'us') writeControl('alt-f-state', [d.label]);
+                        else writeControl('alt-f-country', [d.label]);
+                        if (typeof refreshAll === 'function') refreshAll();
+                    },
+                    onHover: function (evt, els) { if (evt.native && evt.native.target) evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
                     plugins: {
                         legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 11.5 } } },
                         tooltip: { callbacks: { label: tip } }
