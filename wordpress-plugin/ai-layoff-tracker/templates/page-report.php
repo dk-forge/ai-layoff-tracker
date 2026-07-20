@@ -77,10 +77,12 @@ endif;
 /* ===== SINGLE-PERIOD MODE =============================================== */
 // Allow letters so ISO-week 'W' survives sanitization.
 $alt_p = isset($_GET['period']) ? preg_replace('/[^0-9A-Za-z\-]/', '', (string) $_GET['period']) : '';
-$alt_is_year = false; $alt_is_week = false; $alt_y = 0; $alt_mo = 0; $alt_wknum = 0;
+$alt_is_year = false; $alt_is_week = false; $alt_is_quarter = false; $alt_y = 0; $alt_mo = 0; $alt_wknum = 0; $alt_q = 0;
 
 if (preg_match('/^(\d{4})-W(\d{1,2})$/i', $alt_p, $mm)) {
     $alt_is_week = true; $alt_y = (int) $mm[1]; $alt_wknum = max(1, min(53, (int) $mm[2]));
+} elseif (preg_match('/^(\d{4})-Q([1-4])$/i', $alt_p, $mm)) {
+    $alt_is_quarter = true; $alt_y = (int) $mm[1]; $alt_q = (int) $mm[2];
 } elseif (preg_match('/^(\d{4})-(\d{1,2})$/', $alt_p, $mm)) {
     $alt_y = (int) $mm[1]; $alt_mo = max(1, min(12, (int) $mm[2]));
 } elseif (preg_match('/^(\d{4})$/', $alt_p, $mm)) {
@@ -104,6 +106,21 @@ if ($alt_is_week) {
     $alt_prev_slug = $pw->format('o-\WW');
     $nw = clone $wd; $nw->modify('+7 days'); $alt_next_slug = $nw->format('o-\WW');
     $alt_kind = 'Weekly Pulse';
+} elseif ($alt_is_quarter) {
+    $alt_q_m = ($alt_q - 1) * 3 + 1;            // first month of the quarter
+    $alt_from = sprintf('%04d-%02d-01', $alt_y, $alt_q_m);
+    $alt_to = gmdate('Y-m-t', strtotime(sprintf('%04d-%02d-01', $alt_y, $alt_q_m + 2)));
+    $alt_label = 'Q' . $alt_q . ' ' . $alt_y;
+    $pq = $alt_q - 1; $pqy = $alt_y; if ($pq < 1) { $pq = 4; $pqy--; }
+    $pqm = ($pq - 1) * 3 + 1;
+    $alt_pfrom = sprintf('%04d-%02d-01', $pqy, $pqm);
+    $alt_pto = gmdate('Y-m-t', strtotime(sprintf('%04d-%02d-01', $pqy, $pqm + 2)));
+    $alt_plabel = 'Q' . $pq . ' ' . $pqy; $alt_pnoun = 'prior quarter';
+    $alt_slug = sprintf('%04d-Q%d', $alt_y, $alt_q);
+    $alt_prev_slug = sprintf('%04d-Q%d', $pqy, $pq);
+    $nq = $alt_q + 1; $nqy = $alt_y; if ($nq > 4) { $nq = 1; $nqy++; }
+    $alt_next_slug = sprintf('%04d-Q%d', $nqy, $nq);
+    $alt_kind = 'Quarterly';
 } elseif ($alt_is_year) {
     $alt_from = sprintf('%04d-01-01', $alt_y); $alt_to = sprintf('%04d-12-31', $alt_y);
     $alt_label = (string) $alt_y;
@@ -153,11 +170,6 @@ $alt_delta = $alt_pv > 0 ? round(100 * ($alt_v - $alt_pv) / $alt_pv) : null;
 // % of the headline (verified) number that the employer blamed on AI.
 $alt_ai_pct = $alt_v > 0 ? round(100 * $alt_ai_v / max(1, $alt_v)) : 0;
 
-// Challenger box is ALWAYS US-vs-US for the SAME period (Challenger has no
-// global figure); mixing scopes would be a data-integrity bug.
-$alt_us_stats = $alt_us ? $alt_cur : alt_report_period_stats($alt_from, $alt_to, true);
-$alt_us_verified = (int) ($alt_us_stats['verified_jobs'] ?? 0);
-
 $alt_largest = $wpdb->get_results($wpdb->prepare(
     "SELECT company, job_count, layoff_date, country, state, ai_explicit
      FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0$alt_geo
@@ -192,16 +204,6 @@ if ($alt_is_year) {
     }
 }
 
-/* ---- Challenger reconciliation for the same period (month only) --------- */
-$alt_ch = null;
-if (!$alt_is_year && !$alt_is_week) {
-    $alt_bench = get_option('alt_challenger_benchmarks');
-    if (is_array($alt_bench)) foreach ($alt_bench as $b) {
-        $ref = (string) ($b['reference_month'] ?? '');
-        if ($ref === $alt_slug && isset($b['challenger_total_jobs_month'])) { $alt_ch = (int) $b['challenger_total_jobs_month']; break; }
-    }
-}
-
 /* ---- tab periods ------------------------------------------------------- */
 $alt_years = range((int) gmdate('Y'), 2023);
 $alt_view_year = $alt_y;
@@ -227,10 +229,18 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
       <?php endforeach; ?>
     </div>
     <div class="alt-report-tabrow">
+      <span class="alt-report-tablabel">Quarter</span>
+      <?php for ($qi = 1; $qi <= 4; $qi++) :
+          if ($alt_view_year === (int) gmdate('Y') && $qi > (int) ceil(gmdate('n') / 3)) break;
+          $qon = ($alt_is_quarter && $qi === $alt_q); ?>
+        <a class="alt-report-tab<?php echo ($qon ? ' on' : ''); ?>" href="<?php echo $alt_url(sprintf('%04d-Q%d', $alt_view_year, $qi)); ?>">Q<?php echo $qi; ?></a>
+      <?php endfor; ?>
+    </div>
+    <div class="alt-report-tabrow">
       <span class="alt-report-tablabel"><?php echo $alt_view_year; ?></span>
       <?php for ($mi = 1; $mi <= 12; $mi++) :
           if ($alt_view_year === (int) gmdate('Y') && $mi > (int) gmdate('n')) break;
-          $on = (!$alt_is_year && !$alt_is_week && $mi === $alt_mo); ?>
+          $on = (!$alt_is_year && !$alt_is_week && !$alt_is_quarter && $mi === $alt_mo); ?>
         <a class="alt-report-tab<?php echo ($on ? ' on' : ''); ?>" href="<?php echo $alt_url(sprintf('%04d-%02d', $alt_view_year, $mi)); ?>"><?php echo substr($alt_MONTHS[$mi], 0, 3); ?></a>
       <?php endfor; ?>
       <a class="alt-report-tab<?php echo ($alt_is_year ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_view_year); ?>">Full year</a>
@@ -272,15 +282,8 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
           <div class="alt-op-boxnote">AI or automation named as a cause, in the company's own words.</div>
         </div>
       </div>
-      <div class="alt-op-sub"><?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> verified layoffs<?php echo $alt_us ? '' : ', ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?><?php echo ($alt_ai > $alt_ai_v) ? ' · ' . number_format($alt_ai) . ' AI-attributed incl. announced plans' : ''; ?></div>
+      <div class="alt-op-sub">Across <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> separate verified layoff events<?php echo $alt_us ? '' : ' in ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?><?php echo ($alt_ai > $alt_ai_v) ? ' · ' . number_format($alt_ai) . ' AI-attributed including announced plans' : ''; ?>.</div>
     </div>
-
-    <?php if ($alt_ch !== null) : ?>
-    <p class="alt-op-challenger<?php echo $alt_us ? '' : ' alt-op-challenger-aside'; ?>">
-      <b>US vs Challenger<?php echo $alt_us ? '' : ' <span class="alt-op-usonly">(US only — the headline above is worldwide)</span>'; ?>:</b>
-      <b><?php echo number_format($alt_us_verified); ?></b> US verified cuts vs Challenger's <b><?php echo number_format($alt_ch); ?></b> announced (US) for <?php echo esc_html($alt_label); ?>.
-      Ours is a <em>verified</em> count (every figure links to a filing or named report), so it runs below their announcement estimate by design — <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-challenger-comparison">why they differ</a>.</p>
-    <?php endif; ?>
 
     <?php if ($alt_is_year && $alt_months_series) : ?>
     <section class="alt-op-block alt-op-yearbars">
