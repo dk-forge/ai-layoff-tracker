@@ -31,7 +31,14 @@ if (!is_array($alt_sb_groups)) {
 
     // Query helpers (columns are fixed literals, not user input).
     $alt_stats = function ($from, $to, $cty) use ($wpdb, $alt_t) {
-        $sql = "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v, COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) aiv FROM $alt_t WHERE layoff_date BETWEEN %s AND %s";
+        // v = verified job cuts; aiv = strict AI (employer's own words); aib = the
+        // broad AI-linked measure (matches the ai_broad_jobs aggregate exactly:
+        // ai_explicit OR ai_causation='ai_linked'). Both AI measures share the
+        // verified-tier (announced=0) denominator so their percentages compare.
+        $sql = "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
+                       COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) aiv,
+                       COALESCE(SUM(CASE WHEN (ai_explicit=1 OR ai_causation='ai_linked') AND announced=0 THEN job_count END),0) aib
+                FROM $alt_t WHERE layoff_date BETWEEN %s AND %s";
         $a = array($from, $to); if ($cty !== '') { $sql .= " AND country = %s"; $a[] = $cty; }
         return $wpdb->get_row($wpdb->prepare($sql, $a));
     };
@@ -60,8 +67,9 @@ if (!is_array($alt_sb_groups)) {
     // Build one period's chart soundbites (worldwide).
     $alt_period_items = function ($from, $to, $when, $periodarg, $reportlink) use ($alt_stats, $alt_top, $alt_bigcut, $alt_toprole, $alt_lk, $alt_stmap) {
         $items = array();
-        $s = $alt_stats($from, $to, ''); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $pct = $v ? round(100 * $aiv / $v) : 0;
-        if ($v) $items[] = array('label' => 'Headline', 'text' => 'In ' . $when . ', the AI Layoff Tracker verified ' . number_format($v) . ' job cuts worldwide. ' . $pct . '% were attributed to AI or automation by the employer.', 'link' => $alt_lk($periodarg), 'linklabel' => 'the live total');
+        $s = $alt_stats($from, $to, ''); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
+        $pct = $v ? round(100 * $aiv / $v) : 0; $pctb = $v ? round(100 * $aib / $v) : 0;
+        if ($v) $items[] = array('label' => 'Headline', 'text' => 'In ' . $when . ', the AI Layoff Tracker verified ' . number_format($v) . ' job cuts worldwide. ' . $pct . '% named AI in the employer\'s own words (verified); a broader ' . $pctb . '% carry some AI link (broad measure).', 'link' => $alt_lk($periodarg), 'linklabel' => 'the live total');
         $ind = $alt_top('industry', $from, $to, '');
         if ($ind && $ind->k) $items[] = array('label' => 'Top industry', 'text' => $ind->k . ' was the hardest-hit industry in ' . $when . ', with ' . number_format((int) $ind->j) . ' recorded job cuts.', 'link' => $alt_lk(array_merge($periodarg, array('industry' => $ind->k))), 'linklabel' => 'the industry chart');
         $ctry = $alt_top('country', $from, $to, '');
@@ -94,8 +102,9 @@ if (!is_array($alt_sb_groups)) {
     );
     $geo_items = array();
     foreach ($alt_places as $p) {
-        $s = $alt_stats($alt_ytd_from, $alt_ytd_to, $p[1]); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $pct = $v ? round(100 * $aiv / $v) : 0;
-        if ($v > 0) $geo_items[] = array('label' => $p[0], 'text' => $p[2] . number_format($v) . ' job cuts have been recorded in ' . $alt_y . ', with ' . $pct . '% attributed to AI or automation by the employer.', 'link' => $alt_lk($p[1] === '' ? array('years' => $alt_y) : array('years' => $alt_y, 'country' => $p[1])), 'linklabel' => 'the data');
+        $s = $alt_stats($alt_ytd_from, $alt_ytd_to, $p[1]); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
+        $pct = $v ? round(100 * $aiv / $v) : 0; $pctb = $v ? round(100 * $aib / $v) : 0;
+        if ($v > 0) $geo_items[] = array('label' => $p[0], 'text' => $p[2] . number_format($v) . ' job cuts have been recorded in ' . $alt_y . ': ' . $pct . '% attributed to AI in the employer\'s own words (verified), ' . $pctb . '% under the broader AI-linked measure.', 'link' => $alt_lk($p[1] === '' ? array('years' => $alt_y) : array('years' => $alt_y, 'country' => $p[1])), 'linklabel' => 'the data');
     }
     if ($geo_items) $alt_sb_groups[] = array('id' => 'sb-geo', 'title' => 'By region and country (' . $alt_y . ')', 'items' => $geo_items);
 
@@ -182,6 +191,7 @@ if (!is_array($alt_sb_groups)) {
   <?php if ($alt_sb_groups) : ?>
   <h2 id="alt-soundbites">Ready-to-use soundbites</h2>
   <p>Live, source-backed one-liners a reporter can drop straight into a story. Every figure updates automatically from the tracker and links to the exact chart behind it. Copy, cite, done. Attribute to "the AI Layoff Tracker by AskTheRecruiter.com."</p>
+  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> counts only cuts where the employer named AI in its own words, with the quote on file. The <b>broad measure</b> also counts looser AI-linked cases (an AI pivot underway, press AI-framing) and is always larger. We show both so you can pick the standard your story needs; they are never merged, and both use the same verified-tier base.</p>
     <?php foreach ($alt_sb_groups as $alt_g) : ?>
   <h3 id="<?php echo esc_attr($alt_g['id']); ?>" class="alt-sb-grouptitle"><?php echo esc_html($alt_g['title']); ?></h3>
   <div class="alt-soundbites">
