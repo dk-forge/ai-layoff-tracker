@@ -1899,25 +1899,22 @@
         return 'rgba(' + r + ',' + g + ',' + b + ',0.72)';
     }
 
-    function aiMapBubbles(scope, agg) {
+    function aiMapPoints(scope, agg) {
         var rows = scope === 'us' ? (agg.map_states || agg.top_states || []) : (agg.map_countries || agg.top_countries || []);
         var lut = scope === 'us' ? US_STATE_CENTROIDS : COUNTRY_CENTROIDS;
         var out = [];
         rows.forEach(function (e) {
             var label = e[0], jobs = e[1] || 0, ai = e[2] || 0;
-            // Bubble SIZE = total job cuts (every place with layoffs shows up),
-            // COLOR = AI's share of them (the AI story). Sizing by AI cuts alone
-            // leaves the US map near-empty, because AI-attributed cuts are mostly
-            // national announcements that carry no US state.
             if (jobs <= 0) return;
             var c = lut[label];
             if (!c) return;                            // no centroid (e.g. "Multiple countries") — skip
-            var share = jobs > 0 ? ai / jobs : 0;
-            out.push({ longitude: c[0], latitude: c[1], value: jobs, label: label, jobs: jobs,
-                       ai: ai, share: share, backgroundColor: shareColor(share) });
+            out.push({ lon: c[0], lat: c[1], label: label, jobs: jobs, ai: ai });
         });
         return out;
     }
+
+    // Two clear layers: BLUE = all job cuts, RED = AI-linked cuts sitting inside.
+    var MAP_BLUE = 'rgba(47,111,208,0.50)', MAP_RED = 'rgba(208,67,26,0.82)';
 
     function renderAiMap() {
         var canvas = document.getElementById('alt-chart-aimap');
@@ -1928,44 +1925,46 @@
             return;
         }
         var scope = AIMAP.scope;
-        var bubbles = aiMapBubbles(scope, AIMAP.data);
-        // Global total caption: total mapped job cuts + how many places carry a
-        // location, plus the overall view total so the number is always shown.
+        var points = aiMapPoints(scope, AIMAP.data);
         var total = document.getElementById('alt-map-total');
         if (total) {
             var mappedJobs = 0, mappedAi = 0;
-            bubbles.forEach(function (b) { mappedJobs += b.jobs; mappedAi += b.ai; });
+            points.forEach(function (b) { mappedJobs += b.jobs; mappedAi += b.ai; });
             var viewTotal = (AIMAP.data.totals && AIMAP.data.totals.jobs) || 0;
             var place = scope === 'us' ? 'US states' : 'countries';
-            total.textContent = bubbles.length
-                ? fmt(mappedJobs) + ' job cuts mapped across ' + bubbles.length + ' ' + place
+            total.textContent = points.length
+                ? fmt(mappedJobs) + ' job cuts mapped across ' + points.length + ' ' + place
                     + ' · ' + fmt(mappedAi) + ' AI-linked · ' + fmt(viewTotal) + ' total in this view'
                 : '';
         }
         loadTopo(scope).then(function (outline) {
-            if (!bubbles.length) {
+            if (!points.length) {
                 if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
                 if (note) { note.style.display = ''; note.textContent = 'No cuts with a known location in this view yet.'; }
                 return;
             }
             if (note) note.style.display = 'none';
             if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
+            var allData = points.map(function (p) { return { longitude: p.lon, latitude: p.lat, value: p.jobs, label: p.label, jobs: p.jobs, ai: p.ai }; });
+            var aiData = points.filter(function (p) { return p.ai > 0; }).map(function (p) { return { longitude: p.lon, latitude: p.lat, value: p.ai, label: p.label, jobs: p.jobs, ai: p.ai }; });
+            var tip = function (ctx) { var b = ctx.raw || {}; return b.label + ': ' + fmt(b.jobs) + ' job cuts, ' + fmt(b.ai) + ' AI-linked (' + Math.round((b.jobs ? b.ai / b.jobs : 0) * 100) + '%)'; };
             AIMAP.chart = new Chart(canvas, {
                 type: 'bubbleMap',
-                data: { labels: bubbles.map(function (b) { return b.label; }),
-                        datasets: [{ outline: outline, showOutline: true,
-                            outlineBackgroundColor: '#eef1f5', outlineBorderColor: '#d3d8e0', outlineBorderWidth: 0.5,
-                            backgroundColor: bubbles.map(function (b) { return b.backgroundColor; }),
-                            data: bubbles }] },
+                data: { datasets: [
+                    { label: 'All job cuts', outline: outline, showOutline: true,
+                      outlineBackgroundColor: '#eef1f5', outlineBorderColor: '#d3d8e0', outlineBorderWidth: 0.5,
+                      backgroundColor: MAP_BLUE, borderColor: 'rgba(47,111,208,0.9)', borderWidth: 0.5, data: allData },
+                    { label: 'AI-linked cuts', backgroundColor: MAP_RED, borderColor: 'rgba(160,40,10,0.9)', borderWidth: 0.5, data: aiData }
+                ] },
                 options: {
                     maintainAspectRatio: false, showGraticule: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) {
-                        var b = ctx.raw || {};
-                        return b.label + ': ' + fmt(b.jobs) + ' job cuts · ' + fmt(b.ai) + ' AI-linked (' + Math.round((b.share || 0) * 100) + '%)';
-                    } } } },
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 11.5 } } },
+                        tooltip: { callbacks: { label: tip } }
+                    },
                     scales: {
                         projection: { axis: 'x', projection: scope === 'us' ? 'albersUsa' : 'equalEarth' },
-                        size: { axis: 'x', size: [4, scope === 'us' ? 34 : 44], mode: 'area' }
+                        size: { axis: 'x', size: [3, scope === 'us' ? 34 : 44], mode: 'area' }
                     }
                 }
             });
