@@ -446,7 +446,8 @@
     function fetchAndRenderAggregate() {
         if (!document.getElementById('alt-stats-bar') && !DASH_PRESENT) return;
         var seq = ++AGG_SEQ; // drop stale responses that resolve out of order
-        apiGet('aggregate', currentParams())
+        var aggParams = (window.altData && window.altData.embedParams) || currentParams();
+        apiGet('aggregate', aggParams)
             .then(function (agg) {
                 if (seq !== AGG_SEQ) return;
                 LAST_AGG = agg;
@@ -2573,6 +2574,32 @@
         setTimeout(function () { btn.classList.remove('alt-copied'); btn.setAttribute('title', title); }, 1600);
     }
     var SHARE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+    var EMBED_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>';
+    // Charts the frame-safe embed route (?alt_chart_embed) can render.
+    var EMBED_OK = { 'alt-chart-weekly':1, 'alt-chart-ai-share-trend':1, 'alt-chart-ai-cumulative':1, 'alt-chart-yoy':1, 'alt-chart-reasons':1, 'alt-chart-aimap':1, 'alt-bars-industries':1, 'alt-bars-states':1, 'alt-bars-countries':1, 'alt-bars-roles':1 };
+    function embedSnippet(id) {
+        var f = qs(currentParams());
+        var src = shareBase() + '?alt_chart_embed=1&chart=' + encodeURIComponent(id) + (f ? '&' + f : '');
+        var h = id === 'alt-chart-aimap' ? 470 : 360;
+        return '<iframe src="' + src + '" width="100%" height="' + h + '" style="border:1px solid #e5e7eb;border-radius:12px;max-width:640px" title="AI Layoff Tracker" loading="lazy"></iframe>';
+    }
+    function closeEmbedPops(except) { document.querySelectorAll('.alt-embed-pop').forEach(function (p) { if (p !== except) p.remove(); }); }
+    function openEmbedPop(btns, id) {
+        var existing = btns.querySelector('.alt-embed-pop');
+        closeEmbedPops(existing);
+        if (existing) { existing.remove(); return; }
+        var pop = document.createElement('div'); pop.className = 'alt-embed-pop';
+        pop.innerHTML = '<h4>Embed this chart</h4><textarea readonly></textarea>' +
+            '<button type="button" class="alt-btn alt-btn-sm alt-embed-copy">Copy embed code</button>' +
+            '<p class="alt-embed-hint">Reflects the filters active right now.</p>';
+        var ta = pop.querySelector('textarea'); ta.value = embedSnippet(id);
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        pop.querySelector('.alt-embed-copy').addEventListener('click', function () {
+            ta.focus(); ta.select();
+            copyText(ta.value, function () { var b = pop.querySelector('.alt-embed-copy'); b.textContent = 'Copied ✓'; setTimeout(function () { b.textContent = 'Copy embed code'; }, 1500); });
+        });
+        btns.appendChild(pop);
+    }
     function initShareEmbed() {
         document.querySelectorAll('.alt-chart-card').forEach(function (card) {
             var btns = card.querySelector('.alt-chart-btns');
@@ -2590,7 +2617,15 @@
                 if (navigator.share) { navigator.share({ title: 'AI Layoff Tracker', url: url }).then(function () { flashBtn(sh); }, function () { copyText(url, function () { flashBtn(sh); }); }); }
                 else copyText(url, function () { flashBtn(sh); });
             });
+            if (EMBED_OK[id]) {
+                var em = document.createElement('button');
+                em.type = 'button'; em.className = 'alt-chart-embed'; em.title = 'Get an embed code';
+                em.setAttribute('aria-label', 'Embed this chart'); em.innerHTML = EMBED_SVG;
+                btns.insertBefore(em, sh.nextSibling);
+                em.addEventListener('click', function (e) { e.stopPropagation(); openEmbedPop(btns, id); });
+            }
         });
+        document.addEventListener('click', function () { closeEmbedPops(null); });
         // Card ids are assigned above (after render), so the browser's initial
         // anchor jump missed them — honor a #card-… hash from a shared link.
         // Charts render async and shift layout, so retry as it settles and bail
@@ -2648,6 +2683,19 @@
     }
 
     $(function () {
+        // Embed mode: a single frame-safe chart driven by URL filter params
+        // (window.altData.embedParams). Render only the one chart present and
+        // skip the whole filter/table/tabs surface.
+        if (window.altData && window.altData.embed) {
+            if (chartsAvailable()) {
+                Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+                Chart.defaults.color = INK.muted;
+            }
+            DASH_PRESENT = true;
+            if (document.getElementById('alt-chart-aimap')) initAiMap();
+            fetchAndRenderAggregate();
+            return;
+        }
         initReportExports();
         var citeDate = document.getElementById('alt-cite-date');
         if (citeDate) citeDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

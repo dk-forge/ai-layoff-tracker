@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.57
+ * Version: 2.19.58
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.57');
+define('ALT_VERSION', '2.19.58');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -272,6 +272,38 @@ function alt_render_widget_route() {
     exit;
 }
 add_action('template_redirect', 'alt_render_widget_route', 1);
+
+// Per-chart embed: a second intentionally-embeddable, frame-safe, noindex route
+// that renders ONE filtered chart. Like the widget it has no cookies/forms/
+// account state — this does NOT relax frame protection for the tracker page.
+function alt_is_chart_embed_request() {
+    return isset($_GET['alt_chart_embed']);
+}
+function alt_chart_embed_response_headers($headers) {
+    if (alt_is_chart_embed_request()) {
+        unset($headers['X-Frame-Options']);
+        $headers['Content-Security-Policy'] = 'frame-ancestors *';
+    }
+    return $headers;
+}
+add_filter('wp_headers', 'alt_chart_embed_response_headers');
+function alt_chart_embed_remove_frame_header() {
+    if (!alt_is_chart_embed_request()) return;
+    header_remove('X-Frame-Options');
+    header('Content-Security-Policy: frame-ancestors *', true);
+}
+add_action('send_headers', 'alt_chart_embed_remove_frame_header', PHP_INT_MAX);
+function alt_render_chart_embed_route() {
+    if (!alt_is_chart_embed_request()) return;
+    status_header(200);
+    header('X-Robots-Tag: noindex, nofollow', true);
+    header_remove('X-Frame-Options');
+    header('Content-Security-Policy: frame-ancestors *', true);
+    nocache_headers();
+    include ALT_PLUGIN_DIR . 'templates/page-chart-embed.php';
+    exit;
+}
+add_action('template_redirect', 'alt_render_chart_embed_route', 1);
 
 /**
  * Only load DataTables/Chart.js on pages that actually use a plugin shortcode

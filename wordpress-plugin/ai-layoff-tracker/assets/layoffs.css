@@ -470,7 +470,14 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
 .alt-expand:hover, .alt-chart-dl:hover, .alt-chart-share:hover, .alt-chart-embed:hover { border-color: #2a78d6; color: #2a78d6; }
-.alt-chart-share.alt-copied { border-color: var(--op-green, #4f7257); color: var(--op-green, #4f7257); }
+.alt-chart-share.alt-copied, .alt-chart-embed.alt-copied { border-color: var(--op-green, #4f7257); color: var(--op-green, #4f7257); }
+.alt-embed-pop { position: absolute; top: 32px; right: 0; z-index: 40; width: min(340px, 78vw);
+    background: #fff; border: 1px solid var(--alt-grid); border-radius: 10px; box-shadow: 0 8px 24px rgba(16,24,40,.16); padding: 10px; text-align: left; }
+.alt-embed-pop h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); }
+.alt-embed-pop textarea { width: 100%; height: 66px; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    border: 1px solid var(--alt-grid); border-radius: 7px; padding: 7px; resize: none; box-sizing: border-box; color: var(--alt-ink); background: var(--alt-surface-2); }
+.alt-embed-pop .alt-embed-copy { margin-top: 7px; width: 100%; }
+.alt-embed-pop .alt-embed-hint { margin: 6px 0 0; font-size: 11px; color: var(--alt-muted); }
 
 /* Report headline: two boxes side by side (Overall vs AI-attributed) */
 .alt-op-twobox { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px; }
