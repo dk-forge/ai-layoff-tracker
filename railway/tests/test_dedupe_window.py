@@ -27,10 +27,14 @@ class PairWindowTest(unittest.TestCase):
         # 9,600 vs 10,000 -> 96% similar, both material.
         self.assertEqual(d.pair_window_days(9600, 10000), d.WIDE_WINDOW_DAYS)
 
-    def test_tiny_identical_counts_keep_tight_window(self):
-        # Two "50 employees" WARN-adjacent figures are often distinct filings;
-        # do not widen below the material-size floor.
-        self.assertEqual(d.pair_window_days(50, 50), d.WINDOW_DAYS)
+    def test_exact_small_counts_get_wide_window(self):
+        # Commonwealth Bank 300 in Jan and again in July (196 days): exact match
+        # at a material size (>=50) must cluster so the model can judge it.
+        self.assertEqual(d.pair_window_days(300, 300), d.WIDE_WINDOW_DAYS)
+
+    def test_micro_exact_counts_keep_tight_window(self):
+        # Below the 50-worker floor, exact tiny counts stay tight (noise).
+        self.assertEqual(d.pair_window_days(20, 20), d.WINDOW_DAYS)
 
     def test_dissimilar_counts_keep_tight_window(self):
         # 4,000 vs 5,000 -> 80% similar: clusterable, but not "obviously the

@@ -56,11 +56,20 @@ SRC_RANK = {"8K": 3, "warn": 3, "press_release": 2, "erm": 2, "news": 1}
 def pair_window_days(lo, hi):
     """Max day-gap at which two same-company counts may still be one event.
 
-    Near-identical material counts get WIDE_WINDOW_DAYS; everything else keeps
-    WINDOW_DAYS. Widening only the near-identical/large case keeps the change
-    conservative — it never loosens clustering for dissimilar counts, it only
-    lets an obvious re-reported figure reach the model's judgment."""
-    if hi and lo / hi >= WIDE_WINDOW_SIMILARITY and hi >= WIDE_WINDOW_MIN_COUNT:
+    Two cases get the WIDE window (the model still makes the final call — this
+    only decides which pairs it gets to see):
+      * EXACT identical counts (same company, same number) at any material size
+        — a small figure re-reported months apart is almost always one event
+        (Commonwealth Bank 300 in Jan and again in July, 196 days apart, was
+        missed because 300 < the material-size floor for near-matches).
+      * NEAR-identical counts (≥95%) at a material size (≥1,000).
+    Everything else keeps the tight WINDOW_DAYS."""
+    if not hi:
+        return WINDOW_DAYS
+    ratio = lo / hi
+    if ratio >= 0.995 and hi >= 50:            # exact match, any size ≥50
+        return WIDE_WINDOW_DAYS
+    if ratio >= WIDE_WINDOW_SIMILARITY and hi >= WIDE_WINDOW_MIN_COUNT:
         return WIDE_WINDOW_DAYS
     return WINDOW_DAYS
 
