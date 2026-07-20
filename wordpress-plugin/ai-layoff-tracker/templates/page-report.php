@@ -1,42 +1,117 @@
 <?php if (!defined('ABSPATH')) exit;
 /**
  * One-pager report: a static, citable, print/social-ready summary for a single
- * reporting period (a month like 2026-06, or a full year like 2026). Rendered
- * SERVER-SIDE so the numbers are in the HTML — citable, indexable, and
- * screenshot-ready without waiting on JS. Period comes from ?p=YYYY-MM / ?p=YYYY
- * (default = latest COMPLETE month, so a reporter never lands on an in-progress
- * total). This is the "compete with Challenger" flagship: one dominant number,
- * a tight supporting hierarchy, and a fixed methodology/citation footer.
+ * reporting period. Rendered SERVER-SIDE so the numbers are in the HTML —
+ * citable, indexable, screenshot-ready without waiting on JS.
  *
- * v1 renders live from the fast table (a complete past month is already stable);
- * the frozen-snapshot + PDF + social-PNG generation is the next phase.
+ * Periods (all via ?period=, since 'p' is WP's reserved post-ID var):
+ *   ?period=YYYY-MM     a month   (default = latest COMPLETE month)
+ *   ?period=YYYY        a full year → the "Year in Review" wrap-up
+ *   ?period=YYYY-Www    an ISO week → the "Weekly Pulse"
+ *   ?view=archive       the index of every available report
+ * Scope: ?scope=us (default worldwide, our differentiator).
  */
 global $wpdb; $alt_t = alt_db_table();
 
-/* ---- period parsing ---------------------------------------------------- */
 $alt_MONTHS = array(1=>'January','February','March','April','May','June','July','August','September','October','November','December');
-// NB: 'p' is WordPress's reserved post-ID query var (triggers a canonical
-// redirect), so the period param is 'period'.
-$alt_p = isset($_GET['period']) ? preg_replace('/[^0-9\-]/', '', (string) $_GET['period']) : '';
-$alt_is_year = false; $alt_y = 0; $alt_mo = 0;
+$alt_report_url = home_url('/ai-layoff-tracker/report/');
 
-if (preg_match('/^(\d{4})-(\d{1,2})$/', $alt_p, $mm)) {
+/* ---- URL builder (shared by every mode) -------------------------------- */
+$alt_us = isset($_GET['scope']) && $_GET['scope'] === 'us';
+$alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
+    $args = array('period' => (string) $period);
+    $s = $scope !== null ? $scope : ($alt_us ? 'us' : 'world');
+    if ($s === 'us') $args['scope'] = 'us';
+    return esc_url(add_query_arg($args, $alt_report_url));
+};
+$alt_arch_url = function () use ($alt_report_url, $alt_us) {
+    $args = array('view' => 'archive');
+    if ($alt_us) $args['scope'] = 'us';
+    return esc_url(add_query_arg($args, $alt_report_url));
+};
+
+/* ===== ARCHIVE / INDEX MODE ============================================== */
+if (isset($_GET['view']) && $_GET['view'] === 'archive') :
+    $alt_now_y = (int) gmdate('Y'); $alt_now_m = (int) gmdate('n');
+    // ISO week label for the "this week" shortcut
+    $alt_wk = new DateTime('now', new DateTimeZone('UTC'));
+    $alt_wk_slug = $alt_wk->format('o-\WW');
+    ?>
+    <main class="alt-wrap alt-report-page">
+      <nav class="alt-report-tabs" aria-label="Report views">
+        <div class="alt-report-tabrow">
+          <span class="alt-report-tablabel">Scope</span>
+          <a class="alt-report-tab<?php echo (!$alt_us ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg(array('view'=>'archive'), $alt_report_url)); ?>">🌐 World</a>
+          <a class="alt-report-tab<?php echo ($alt_us ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg(array('view'=>'archive','scope'=>'us'), $alt_report_url)); ?>">🇺🇸 US only</a>
+        </div>
+      </nav>
+      <article class="alt-onepager alt-report-archive">
+        <header class="alt-op-masthead">
+          <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AskTheRecruiter.com</span>
+          <span class="alt-op-period">Job Cuts Reports · full archive · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
+          <span class="alt-op-asof">Every month, quarter and year — each a standalone, citable page.</span>
+        </header>
+        <p class="alt-arch-intro">Pick any period below. Every report renders live from the same verified database and carries its own methodology and citation line. Start with the <a href="<?php echo $alt_url($alt_wk_slug); ?>">latest weekly pulse</a>.</p>
+        <div class="alt-arch-grid">
+        <?php for ($yy = $alt_now_y; $yy >= 2023; $yy--) :
+            $m_hi = ($yy === $alt_now_y) ? $alt_now_m : 12; ?>
+          <section class="alt-arch-col">
+            <h3><a href="<?php echo $alt_url($yy); ?>"><?php echo $yy; ?> <span class="alt-arch-year-tag">Year in review →</span></a></h3>
+            <ul class="alt-arch-months">
+            <?php for ($mi = $m_hi; $mi >= 1; $mi--) : ?>
+              <li><a href="<?php echo $alt_url(sprintf('%04d-%02d', $yy, $mi)); ?>"><?php echo esc_html($alt_MONTHS[$mi]); ?></a></li>
+            <?php endfor; ?>
+            </ul>
+          </section>
+        <?php endfor; ?>
+        </div>
+        <footer class="alt-op-footer">
+          <p><b>Cite as:</b> "AskTheRecruiter.com Job Cuts Report, [period]." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+        </footer>
+      </article>
+    </main>
+    <?php
+    return; // archive mode is self-contained
+endif;
+
+/* ===== SINGLE-PERIOD MODE =============================================== */
+// Allow letters so ISO-week 'W' survives sanitization.
+$alt_p = isset($_GET['period']) ? preg_replace('/[^0-9A-Za-z\-]/', '', (string) $_GET['period']) : '';
+$alt_is_year = false; $alt_is_week = false; $alt_y = 0; $alt_mo = 0; $alt_wknum = 0;
+
+if (preg_match('/^(\d{4})-W(\d{1,2})$/i', $alt_p, $mm)) {
+    $alt_is_week = true; $alt_y = (int) $mm[1]; $alt_wknum = max(1, min(53, (int) $mm[2]));
+} elseif (preg_match('/^(\d{4})-(\d{1,2})$/', $alt_p, $mm)) {
     $alt_y = (int) $mm[1]; $alt_mo = max(1, min(12, (int) $mm[2]));
 } elseif (preg_match('/^(\d{4})$/', $alt_p, $mm)) {
     $alt_is_year = true; $alt_y = (int) $mm[1];
 } else {
-    // default: latest COMPLETE month (first of this month minus a day)
     $alt_last = strtotime(gmdate('Y-m-01') . ' -1 day');
     $alt_y = (int) gmdate('Y', $alt_last); $alt_mo = (int) gmdate('n', $alt_last);
 }
 if ($alt_y < 2015 || $alt_y > (int) gmdate('Y') + 1) { $alt_y = (int) gmdate('Y'); }
 
-if ($alt_is_year) {
+if ($alt_is_week) {
+    // ISO week → Monday..Sunday. setISODate handles year boundaries + overflow.
+    $wd = new DateTime('now', new DateTimeZone('UTC')); $wd->setISODate($alt_y, $alt_wknum);
+    $alt_from = $wd->format('Y-m-d');
+    $we = clone $wd; $we->modify('+6 days'); $alt_to = $we->format('Y-m-d');
+    $alt_label = 'Week of ' . $wd->format('M j, Y');
+    $pw = clone $wd; $pw->modify('-7 days');
+    $alt_pfrom = $pw->format('Y-m-d'); $pe = clone $pw; $pe->modify('+6 days'); $alt_pto = $pe->format('Y-m-d');
+    $alt_plabel = 'week of ' . $pw->format('M j'); $alt_pnoun = 'prior week';
+    $alt_slug = $wd->format('o-\WW');           // canonical ISO slug (week-year aware)
+    $alt_prev_slug = $pw->format('o-\WW');
+    $nw = clone $wd; $nw->modify('+7 days'); $alt_next_slug = $nw->format('o-\WW');
+    $alt_kind = 'Weekly Pulse';
+} elseif ($alt_is_year) {
     $alt_from = sprintf('%04d-01-01', $alt_y); $alt_to = sprintf('%04d-12-31', $alt_y);
     $alt_label = (string) $alt_y;
     $alt_pfrom = sprintf('%04d-01-01', $alt_y - 1); $alt_pto = sprintf('%04d-12-31', $alt_y - 1);
     $alt_plabel = (string) ($alt_y - 1); $alt_pnoun = 'prior year';
     $alt_slug = (string) $alt_y;
+    $alt_prev_slug = (string) ($alt_y - 1); $alt_next_slug = (string) ($alt_y + 1);
+    $alt_kind = 'Year in Review';
 } else {
     $alt_from = sprintf('%04d-%02d-01', $alt_y, $alt_mo);
     $alt_to = gmdate('Y-m-t', strtotime($alt_from));
@@ -45,6 +120,9 @@ if ($alt_is_year) {
     $alt_pfrom = gmdate('Y-m-01', $alt_pt); $alt_pto = gmdate('Y-m-t', $alt_pt);
     $alt_plabel = $alt_MONTHS[(int) gmdate('n', $alt_pt)] . ' ' . gmdate('Y', $alt_pt); $alt_pnoun = 'prior month';
     $alt_slug = sprintf('%04d-%02d', $alt_y, $alt_mo);
+    $alt_prev_slug = gmdate('Y-m', $alt_pt);
+    $nt = strtotime($alt_from . ' +1 month'); $alt_next_slug = gmdate('Y-m', $nt);
+    $alt_kind = 'Monthly';
 }
 
 /* ---- period stats (verified = announced=0; AI = strict ai_explicit) ----- */
@@ -63,10 +141,7 @@ function alt_report_period_stats($from, $to, $us_only = false) {
 }
 } // end function_exists guard
 
-// Scope: World (default — worldwide coverage is the differentiator) or US-only.
-$alt_us = isset($_GET['scope']) && $_GET['scope'] === 'us';
 $alt_geo = $alt_us ? " AND country = 'United States'" : '';
-
 $alt_cur = alt_report_period_stats($alt_from, $alt_to, $alt_us);
 $alt_prev = alt_report_period_stats($alt_pfrom, $alt_pto, $alt_us);
 $alt_v = (int) ($alt_cur['verified_jobs'] ?? 0);
@@ -75,10 +150,8 @@ $alt_ai = (int) ($alt_cur['ai_jobs'] ?? 0);
 $alt_delta = $alt_pv > 0 ? round(100 * ($alt_v - $alt_pv) / $alt_pv) : null;
 $alt_ai_pct = $alt_v > 0 ? round(100 * $alt_ai / max(1, (int) $alt_cur['all_jobs'])) : 0;
 
-// The Challenger box is ALWAYS US-vs-US for the SAME period, no matter what the
-// headline scope is — Challenger has no global figure, so mixing scopes (world
-// headline vs US announced) would be a data-integrity bug. This is the US
-// verified total for the exact same month/year the box will cite.
+// Challenger box is ALWAYS US-vs-US for the SAME period (Challenger has no
+// global figure); mixing scopes would be a data-integrity bug.
 $alt_us_stats = $alt_us ? $alt_cur : alt_report_period_stats($alt_from, $alt_to, true);
 $alt_us_verified = (int) ($alt_us_stats['verified_jobs'] ?? 0);
 
@@ -92,9 +165,33 @@ $alt_inds = $wpdb->get_results($wpdb->prepare(
      GROUP BY industry ORDER BY j DESC LIMIT 5", $alt_from, $alt_to), ARRAY_A) ?: array();
 $alt_ind_max = 0; foreach ($alt_inds as $i) { $alt_ind_max = max($alt_ind_max, (int) $i['j']); }
 
-/* ---- Challenger reconciliation for the same period (if on file) --------- */
+/* ---- Year in Review extras: top companies (aggregated) + month-by-month - */
+$alt_top_co = array(); $alt_months_series = array(); $alt_mseries_max = 0;
+if ($alt_is_year) {
+    $alt_top_co = $wpdb->get_results($wpdb->prepare(
+        "SELECT company, COALESCE(SUM(job_count),0) j, COUNT(*) n,
+                MAX(ai_explicit) any_ai
+         FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND company <> ''$alt_geo
+         GROUP BY company ORDER BY j DESC LIMIT 8", $alt_from, $alt_to), ARRAY_A) ?: array();
+    $alt_top_co_max = 0; foreach ($alt_top_co as $c) { $alt_top_co_max = max($alt_top_co_max, (int) $c['j']); }
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT MONTH(layoff_date) m,
+                COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai
+         FROM $alt_t WHERE layoff_date BETWEEN %s AND %s$alt_geo
+         GROUP BY MONTH(layoff_date)", $alt_from, $alt_to), ARRAY_A) ?: array();
+    $by_m = array(); foreach ($rows as $r) { $by_m[(int) $r['m']] = $r; }
+    $m_hi = ($alt_y === (int) gmdate('Y')) ? (int) gmdate('n') : 12;
+    for ($mi = 1; $mi <= $m_hi; $mi++) {
+        $v = (int) ($by_m[$mi]['v'] ?? 0); $ai = (int) ($by_m[$mi]['ai'] ?? 0);
+        $alt_months_series[] = array('m' => $mi, 'v' => $v, 'ai' => $ai);
+        $alt_mseries_max = max($alt_mseries_max, $v);
+    }
+}
+
+/* ---- Challenger reconciliation for the same period (month only) --------- */
 $alt_ch = null;
-if (!$alt_is_year) {
+if (!$alt_is_year && !$alt_is_week) {
     $alt_bench = get_option('alt_challenger_benchmarks');
     if (is_array($alt_bench)) foreach ($alt_bench as $b) {
         $ref = (string) ($b['reference_month'] ?? '');
@@ -103,20 +200,18 @@ if (!$alt_is_year) {
 }
 
 /* ---- tab periods ------------------------------------------------------- */
-$alt_report_url = home_url('/ai-layoff-tracker/report/');
 $alt_years = range((int) gmdate('Y'), 2023);
 $alt_view_year = $alt_y;
-// Tab/scope link builder — preserves the current scope (World/US) across tabs,
-// and lets the scope toggle keep the current period.
-$alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
-    $args = array('period' => (string) $period);
-    $s = $scope !== null ? $scope : ($alt_us ? 'us' : 'world');
-    if ($s === 'us') $args['scope'] = 'us';
-    return esc_url(add_query_arg($args, $alt_report_url));
-};
+// This-week slug for the weekly tab.
+$alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
 ?>
 <main class="alt-wrap alt-report-page">
   <nav class="alt-report-tabs" aria-label="Report period">
+    <div class="alt-report-tabrow">
+      <span class="alt-report-tablabel">View</span>
+      <a class="alt-report-tab<?php echo ($alt_is_week ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_thisweek); ?>">Weekly pulse</a>
+      <a class="alt-report-tab" href="<?php echo $alt_arch_url(); ?>">🗓 All reports</a>
+    </div>
     <div class="alt-report-tabrow">
       <span class="alt-report-tablabel">Scope</span>
       <a class="alt-report-tab<?php echo (!$alt_us ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_slug, 'world'); ?>">🌐 World</a>
@@ -125,30 +220,39 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
     <div class="alt-report-tabrow">
       <span class="alt-report-tablabel">Year</span>
       <?php foreach ($alt_years as $yy) : ?>
-        <a class="alt-report-tab<?php echo ($yy === $alt_view_year ? ' on' : ''); ?>" href="<?php echo $alt_url($yy); ?>"><?php echo $yy; ?></a>
+        <a class="alt-report-tab<?php echo (($yy === $alt_view_year && $alt_is_year) ? ' on' : ''); ?>" href="<?php echo $alt_url($yy); ?>"><?php echo $yy; ?></a>
       <?php endforeach; ?>
     </div>
     <div class="alt-report-tabrow">
       <span class="alt-report-tablabel"><?php echo $alt_view_year; ?></span>
       <?php for ($mi = 1; $mi <= 12; $mi++) :
           if ($alt_view_year === (int) gmdate('Y') && $mi > (int) gmdate('n')) break;
-          $on = (!$alt_is_year && $mi === $alt_mo); ?>
+          $on = (!$alt_is_year && !$alt_is_week && $mi === $alt_mo); ?>
         <a class="alt-report-tab<?php echo ($on ? ' on' : ''); ?>" href="<?php echo $alt_url(sprintf('%04d-%02d', $alt_view_year, $mi)); ?>"><?php echo substr($alt_MONTHS[$mi], 0, 3); ?></a>
       <?php endfor; ?>
       <a class="alt-report-tab<?php echo ($alt_is_year ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_view_year); ?>">Full year</a>
     </div>
   </nav>
 
-  <article class="alt-onepager">
+  <div class="alt-report-nav">
+    <a class="alt-report-pn" href="<?php echo $alt_url($alt_prev_slug); ?>" rel="prev">← <?php echo esc_html(ucfirst($alt_pnoun)); ?></a>
+    <div class="alt-report-exports" data-report-exports>
+      <button type="button" class="alt-btn alt-report-print">⬇ PDF</button>
+      <button type="button" class="alt-btn alt-report-png">🖼 PNG</button>
+    </div>
+    <a class="alt-report-pn alt-report-pn-next" href="<?php echo $alt_url($alt_next_slug); ?>" rel="next">Next →</a>
+  </div>
+
+  <article class="alt-onepager" id="alt-report-card" data-slug="<?php echo esc_attr($alt_slug); ?>">
     <header class="alt-op-masthead">
       <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AskTheRecruiter.com</span>
-      <span class="alt-op-period"><?php echo ($alt_is_year ? 'Annual' : 'Monthly'); ?> Job Cuts Report · <?php echo esc_html($alt_label); ?> · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
+      <span class="alt-op-period"><?php echo esc_html($alt_kind); ?> Job Cuts Report · <?php echo esc_html($alt_label); ?> · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
       <span class="alt-op-asof">Data as of <?php echo esc_html(gmdate('M j, Y')); ?> · AskTheRecruiter.com</span>
     </header>
 
     <div class="alt-op-headline">
       <div class="alt-op-big"><?php echo number_format($alt_v); ?></div>
-      <div class="alt-op-biglabel"><?php echo $alt_us ? 'US ' : 'worldwide '; ?>verified job cuts in <?php echo esc_html($alt_label); ?>
+      <div class="alt-op-biglabel"><?php echo $alt_us ? 'US ' : 'worldwide '; ?>verified job cuts<?php echo $alt_is_week ? ' this week' : ' in ' . esc_html($alt_label); ?>
         <?php if ($alt_delta !== null) : ?>
           <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
         <?php endif; ?>
@@ -156,21 +260,39 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
       <div class="alt-op-sub">🤖 <b><?php echo number_format($alt_ai); ?></b> explicitly blamed on AI by the employer (<?php echo $alt_ai_pct; ?>% of cuts) · <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> verified layoffs<?php echo $alt_us ? '' : ', ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?></div>
     </div>
 
-    <?php
-    // Data-integrity QA: Challenger is US-only, so this box is ALWAYS US-vs-US
-    // for the SAME period — $alt_us_verified is the US verified total for the
-    // exact month the Challenger figure ($alt_ch, keyed on $alt_slug) covers.
-    // We never compare Challenger against the worldwide headline.
-    if ($alt_ch !== null) : ?>
+    <?php if ($alt_ch !== null) : ?>
     <p class="alt-op-challenger<?php echo $alt_us ? '' : ' alt-op-challenger-aside'; ?>">
       <b>US vs Challenger<?php echo $alt_us ? '' : ' <span class="alt-op-usonly">(US only — the headline above is worldwide)</span>'; ?>:</b>
       <b><?php echo number_format($alt_us_verified); ?></b> US verified cuts vs Challenger's <b><?php echo number_format($alt_ch); ?></b> announced (US) for <?php echo esc_html($alt_label); ?>.
       Ours is a <em>verified</em> count (every figure links to a filing or named report), so it runs below their announcement estimate by design — <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-challenger-comparison">why they differ</a>.</p>
     <?php endif; ?>
 
+    <?php if ($alt_is_year && $alt_months_series) : ?>
+    <section class="alt-op-block alt-op-yearbars">
+      <h3>Month by month — verified cuts in <?php echo esc_html($alt_label); ?></h3>
+      <div class="alt-op-bars">
+      <?php foreach ($alt_months_series as $ms) :
+          $w = $alt_mseries_max > 0 ? max(2, round(100 * $ms['v'] / $alt_mseries_max)) : 0;
+          $aiw = $ms['v'] > 0 ? min(100, round(100 * $ms['ai'] / max(1, $ms['v']))) : 0; ?>
+        <div class="alt-op-bar"><span class="alt-op-barname"><?php echo substr($alt_MONTHS[$ms['m']], 0, 3); ?></span>
+          <span class="alt-op-bartrack"><span class="alt-op-barfill" style="width:<?php echo $w; ?>%"></span></span>
+          <span class="alt-op-barval"><?php echo number_format($ms['v']); ?><?php echo $ms['ai'] > 0 ? ' <span class="alt-op-barai">🤖' . $aiw . '%</span>' : ''; ?></span></div>
+      <?php endforeach; ?>
+      </div>
+    </section>
+    <?php endif; ?>
+
     <div class="alt-op-grid">
       <section class="alt-op-block">
-        <h3>Biggest single cuts</h3>
+        <h3><?php echo $alt_is_year ? 'Biggest employers cut (full year)' : 'Biggest single cuts'; ?></h3>
+        <?php if ($alt_is_year && $alt_top_co) : ?>
+        <table class="alt-op-table"><tbody>
+        <?php foreach ($alt_top_co as $c) : ?>
+          <tr><td class="alt-op-co"><?php echo esc_html($c['company']); ?><?php echo ((int) $c['n'] > 1) ? ' <span class="alt-muted">· ' . (int) $c['n'] . ' events</span>' : ''; ?><?php echo !empty($c['any_ai']) ? ' 🤖' : ''; ?></td>
+              <td class="alt-op-num"><?php echo number_format((int) $c['j']); ?></td></tr>
+        <?php endforeach; ?>
+        </tbody></table>
+        <?php else : ?>
         <table class="alt-op-table"><tbody>
         <?php foreach ($alt_largest as $r) :
             $loc = alt_short_location($r['state'], $r['country']); ?>
@@ -179,6 +301,7 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
         <?php endforeach; ?>
         <?php if (!$alt_largest) : ?><tr><td colspan="2" class="alt-muted">No cuts recorded for this period.</td></tr><?php endif; ?>
         </tbody></table>
+        <?php endif; ?>
       </section>
 
       <section class="alt-op-block">
@@ -196,7 +319,7 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
 
     <footer class="alt-op-footer">
       <p><b>Methodology:</b> Verified cuts have a primary source behind each figure — an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
-      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo ($alt_is_year ? 'Annual' : 'Monthly'); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y')); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y')); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
     </footer>
   </article>
 </main>

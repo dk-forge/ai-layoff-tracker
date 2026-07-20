@@ -2682,7 +2682,46 @@
         });
     }
 
+    // Report one-pager exports: Print→PDF (zero-dep) + PNG (lazy html2canvas,
+    // loaded only on click so the report page stays light).
+    var _h2cPromise = null;
+    function loadHtml2Canvas() {
+        if (window.html2canvas) return Promise.resolve(window.html2canvas);
+        if (_h2cPromise) return _h2cPromise;
+        _h2cPromise = new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+            s.onload = function () { window.html2canvas ? resolve(window.html2canvas) : reject(new Error('h2c missing')); };
+            s.onerror = function () { reject(new Error('h2c load failed')); };
+            document.head.appendChild(s);
+        });
+        return _h2cPromise;
+    }
+    function initReportExports() {
+        var card = document.getElementById('alt-report-card');
+        if (!card) return;
+        var printBtn = document.querySelector('.alt-report-print');
+        if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
+        var pngBtn = document.querySelector('.alt-report-png');
+        if (pngBtn) pngBtn.addEventListener('click', function () {
+            if (pngBtn.disabled) return;
+            pngBtn.disabled = true; var orig = pngBtn.textContent; pngBtn.textContent = 'Rendering…';
+            loadHtml2Canvas().then(function (h2c) {
+                return h2c(card, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
+            }).then(function (canvas) {
+                var a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = 'asktherecruiter-report-' + (card.getAttribute('data-slug') || 'card') + '.png';
+                document.body.appendChild(a); a.click(); a.remove();
+                pngBtn.textContent = 'Saved ✓'; setTimeout(function () { pngBtn.textContent = orig; pngBtn.disabled = false; }, 1600);
+            }).catch(function () {
+                pngBtn.textContent = 'Use PDF instead'; setTimeout(function () { pngBtn.textContent = orig; pngBtn.disabled = false; }, 2200);
+            });
+        });
+    }
+
     $(function () {
+        initReportExports();
         var citeDate = document.getElementById('alt-cite-date');
         if (citeDate) citeDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         var citeCopy = document.getElementById('alt-cite-copy');

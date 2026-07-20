@@ -1385,6 +1385,42 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
    global comparison), with an explicit "(US only)" tag so scopes can't be mixed. */
 .alt-op-challenger-aside { font-size: 12.5px; background: #fff; border-style: dashed; color: var(--alt-ink-2); }
 .alt-op-usonly { font-weight: 600; color: var(--alt-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+
+/* Report prev/next + export bar */
+.alt-report-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 720px; margin: 0 auto 14px; }
+.alt-report-pn { font-weight: 600; color: var(--op-green, #4f7257); text-decoration: none; font-size: 14px; white-space: nowrap; }
+.alt-report-pn:hover { text-decoration: underline; }
+.alt-report-pn-next { text-align: right; }
+.alt-report-exports { display: flex; gap: 8px; }
+.alt-report-exports .alt-btn { padding: 6px 12px; font-size: 13px; }
+.alt-report-png[disabled] { opacity: .6; cursor: progress; }
+
+/* Year-in-review month-by-month bars + AI badge */
+.alt-op-yearbars { grid-column: 1 / -1; margin-bottom: 6px; }
+.alt-op-barai { color: var(--op-green, #4f7257); font-weight: 700; font-size: 11px; margin-left: 4px; }
+
+/* Report archive / index */
+.alt-report-archive { max-width: 900px; }
+.alt-arch-intro { color: var(--alt-ink-2); margin: 4px 0 18px; }
+.alt-arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px 28px; margin-bottom: 22px; }
+.alt-arch-col h3 { margin: 0 0 8px; font-size: 17px; }
+.alt-arch-col h3 a { text-decoration: none; color: var(--alt-ink); }
+.alt-arch-col h3 a:hover { color: var(--op-green, #4f7257); }
+.alt-arch-year-tag { font-size: 12px; font-weight: 600; color: var(--op-green, #4f7257); white-space: nowrap; }
+.alt-arch-months { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 16px; }
+.alt-arch-months li { margin: 0 0 4px; break-inside: avoid; }
+.alt-arch-months a { text-decoration: none; color: var(--alt-ink-2); font-size: 14px; }
+.alt-arch-months a:hover { color: var(--op-green, #4f7257); text-decoration: underline; }
+
+/* Print → clean one-pager PDF: hide everything but the card. */
+@media print {
+  body * { visibility: hidden !important; }
+  #alt-report-card, #alt-report-card * { visibility: visible !important; }
+  #alt-report-card { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; margin: 0 !important; }
+  .alt-report-tabs, .alt-report-nav { display: none !important; }
+  @page { margin: 12mm; }
+}
+
 /* Press kit tables: right-aligned numbers, tidy angle table. */
 .alt-press-table td.num, .alt-press-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .alt-angles-table td:first-child { white-space: nowrap; vertical-align: top; }
