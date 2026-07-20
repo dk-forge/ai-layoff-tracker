@@ -48,7 +48,7 @@ $alt_gap_states = array(
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-metric-definitions">Methodology</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code</a></p>
 
   <h2>Every source at a glance</h2>
-  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+  <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
     <thead><tr><th>Source</th><th>Region / scope</th><th>What it is</th><th>Tier it feeds</th><th>Link</th></tr></thead>
     <tbody>
       <tr>
@@ -94,7 +94,7 @@ $alt_gap_states = array(
   <h2 id="alt-state-warn">US state WARN registries (<?php echo count($alt_state_urls); ?> states)</h2>
   <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page — the exact source our importer reads.</p>
   <?php if ($alt_state_urls) : ?>
-  <div class="alt-health-table-wrap"><table class="alt-sources-table alt-warn-table">
+  <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table alt-warn-table">
     <thead><tr><th>State</th><th>Official WARN registry (direct link)</th><th>We re-import</th></tr></thead>
     <tbody>
     <?php foreach ($alt_state_urls as $alt_code => $alt_url) :
@@ -114,7 +114,7 @@ $alt_gap_states = array(
 
   <h2>States not yet in the automated WARN feed — and why</h2>
   <p>All 50 states already appear in the tracker through SEC filings and news. The gap is only in state WARN <em>notices</em>. Each state below links to where it publishes (or an explanation of why it doesn't), in plain terms:</p>
-  <div class="alt-health-table-wrap"><table class="alt-sources-table alt-gap-table">
+  <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table alt-gap-table">
     <thead><tr><th>State</th><th>Why it isn't in the WARN feed yet</th><th>Status</th><th>Where it publishes</th></tr></thead>
     <tbody>
     <?php foreach ($alt_gap_states as $alt_g) :
@@ -141,7 +141,7 @@ $alt_gap_states = array(
   <?php endif; ?>
 
   <h2>How verification works</h2>
-  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+  <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
     <thead><tr><th>Source type</th><th>How it's handled</th></tr></thead>
     <tbody>
       <tr><td>WARN &amp; ERM (structured)</td><td>Imported as-is with <b>no AI processing</b> — company, count and date come straight off the official record.</td></tr>
@@ -150,4 +150,45 @@ $alt_gap_states = array(
     </tbody>
   </table></div>
   <p>Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">tracker health page</a>; the running corrections log is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-data-sources">tracker itself</a>.</p>
+  <p class="alt-muted" style="margin-top:8px">Tip: click any column header to sort a table.</p>
 </main>
+<style>
+  .alt-sources-page { font-size: 15.5px; line-height: 1.6; }
+  .alt-sources-page h2 { font-size: 21px; margin: 30px 0 10px; scroll-margin-top: 80px; }
+  .alt-sources-page .alt-health-table-wrap { border: 1px solid var(--alt-grid); border-radius: 10px; overflow: auto; max-height: 660px; margin: 6px 0 16px; }
+  .alt-sources-page table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .alt-sources-page table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); font-weight: 700; padding: 9px 14px; border-bottom: 2px solid var(--alt-grid); background: var(--alt-surface-2); position: sticky; top: 0; z-index: 1; }
+  .alt-sources-page table td { padding: 10px 14px; border-bottom: 1px solid var(--alt-grid); vertical-align: top; line-height: 1.5; }
+  .alt-sources-page table tbody tr:hover { background: var(--alt-surface-2); }
+  .alt-sortable thead th:not([data-nosort]) { cursor: pointer; }
+  .alt-sortable thead th:not([data-nosort])::after { content: ' \2195'; opacity: .3; font-size: 10px; }
+  .alt-sortable thead th[data-sort="asc"]::after { content: ' \2191'; opacity: 1; }
+  .alt-sortable thead th[data-sort="desc"]::after { content: ' \2193'; opacity: 1; }
+</style>
+<script>
+(function () {
+  function num(s) { var n = parseFloat((s || '').replace(/[^0-9.\-]/g, '')); return isNaN(n) ? null : n; }
+  document.querySelectorAll('table.alt-sortable').forEach(function (table) {
+    var ths = table.querySelectorAll('thead th');
+    ths.forEach(function (th, ci) {
+      if (th.hasAttribute('data-nosort')) return;
+      th.addEventListener('click', function () {
+        var tb = table.querySelector('tbody'); if (!tb) return;
+        var rows = Array.prototype.slice.call(tb.querySelectorAll('tr'));
+        var asc = th.getAttribute('data-sort') !== 'asc';
+        ths.forEach(function (o) { if (o !== th) o.removeAttribute('data-sort'); });
+        th.setAttribute('data-sort', asc ? 'asc' : 'desc');
+        rows.sort(function (a, b) {
+          var av = (a.cells[ci] ? a.cells[ci].textContent : '').trim();
+          var bv = (b.cells[ci] ? b.cells[ci].textContent : '').trim();
+          var an = num(av), bn = num(bv), cmp;
+          if (an !== null && bn !== null) cmp = an - bn;
+          else cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' });
+          return asc ? cmp : -cmp;
+        });
+        rows.forEach(function (r) { tb.appendChild(r); });
+      });
+    });
+  });
+})();
+</script>

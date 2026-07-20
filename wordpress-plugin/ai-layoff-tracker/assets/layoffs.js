@@ -1834,7 +1834,7 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* The map of AI job loss — geographic bubble map (chartjs-chart-geo)   */
+    /* The map of AI job loss — d3 proportional-symbol map (d3 + topojson)  */
     /* ------------------------------------------------------------------ */
 
     // Centroids [lon, lat] for placing bubbles. Countries keyed by the exact
@@ -1872,31 +1872,22 @@
         world: 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json',
         us: 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
     };
-    var AIMAP = { scope: 'world', data: null, chart: null, outline: {}, loading: {} };
+    var AIMAP = { scope: 'world', data: null, outline: {}, loading: {}, transform: null, transformScope: null, retries: 0 };
 
-    function geoReady() {
-        return typeof window.Chart !== 'undefined' && window.ChartGeo &&
-            (window.ChartGeo.topojson || (window.topojson));
-    }
+    // d3 v7 (window.d3) + topojson-client (window.topojson) power the map now.
+    // Both are plain UMD globals loaded just before this file (tracker + embed).
+    function d3Ready() { return typeof window.d3 !== 'undefined' && typeof window.topojson !== 'undefined'; }
 
     function loadTopo(scope) {
         if (AIMAP.outline[scope]) return Promise.resolve(AIMAP.outline[scope]);
         if (AIMAP.loading[scope]) return AIMAP.loading[scope];
         AIMAP.loading[scope] = fetch(TOPO_URL[scope]).then(function (r) { return r.json(); }).then(function (topo) {
-            var tj = (window.ChartGeo && window.ChartGeo.topojson) || window.topojson;
             var obj = scope === 'us' ? topo.objects.states : topo.objects.countries;
-            var feats = tj.feature(topo, obj).features;
+            var feats = window.topojson.feature(topo, obj).features;
             AIMAP.outline[scope] = feats;
             return feats;
         });
         return AIMAP.loading[scope];
-    }
-
-    // Blue→red ramp for AI share (0%→100%): higher AI share = warmer.
-    function shareColor(share) {
-        var s = Math.max(0, Math.min(1, share || 0));
-        var r = Math.round(70 + s * 143), g = Math.round(120 - s * 60), b = Math.round(214 - s * 190);
-        return 'rgba(' + r + ',' + g + ',' + b + ',0.72)';
     }
 
     function aiMapPoints(scope, agg) {
@@ -1914,18 +1905,40 @@
     }
 
     // Two clear layers: BLUE = all job cuts, RED = AI-linked cuts sitting inside.
-    var MAP_BLUE = 'rgba(47,111,208,0.50)', MAP_RED = 'rgba(208,67,26,0.82)';
+    var MAP_BLUE = 'rgba(47,111,208,0.52)', MAP_BLUE_LINE = 'rgba(28,92,171,0.95)';
+    var MAP_RED = 'rgba(208,67,26,0.85)', MAP_RED_LINE = 'rgba(150,38,10,0.95)';
+    var MAP_LAND = '#eef1f5', MAP_LAND_LINE = '#d3d8e0';
 
+    function prefersReducedMotion() {
+        try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+        catch (e) { return false; }
+    }
+    function mapTipHtml(b) {
+        var pct = Math.round((b.jobs ? b.ai / b.jobs : 0) * 100);
+        return '<b>' + escapeHtml(b.label) + '</b><br>' + fmt(b.jobs) + ' job cuts'
+            + ' &middot; ' + fmt(b.ai) + ' AI-linked (' + pct + '%)';
+    }
+
+    // NYT-style proportional-symbol map on an SVG: gray base geography, a blue
+    // "all cuts" bubble with the red "AI-linked" bubble nested inside, smooth
+    // d3.zoom pan/zoom, hover tooltip, click-to-filter, value labels on the
+    // biggest few, an in-SVG legend, and a reset affordance. Rebuilt on every
+    // filter change; the zoom transform is preserved within a scope.
     function renderAiMap() {
-        var canvas = document.getElementById('alt-chart-aimap');
+        var box = document.getElementById('alt-chart-aimap');
         var note = document.getElementById('alt-map-note');
-        if (!canvas || !AIMAP.data) return;
-        if (!geoReady()) {
+        if (!box || !AIMAP.data) return;
+        if (!d3Ready()) {
             if (note) { note.style.display = ''; note.textContent = 'Map library still loading…'; }
+            if ((AIMAP.retries = (AIMAP.retries || 0) + 1) <= 20) setTimeout(renderAiMap, 300);
             return;
         }
+        AIMAP.retries = 0;
+        var d3 = window.d3;
         var scope = AIMAP.scope;
         var points = aiMapPoints(scope, AIMAP.data);
+
+        // Caption (unchanged behavior): mapped jobs / AI / view total.
         var total = document.getElementById('alt-map-total');
         if (total) {
             var mappedJobs = 0, mappedAi = 0;
@@ -1937,52 +1950,222 @@
                     + ' · ' + fmt(mappedAi) + ' AI-linked · ' + fmt(viewTotal) + ' total in this view'
                 : '';
         }
+
         loadTopo(scope).then(function (outline) {
             if (!points.length) {
-                if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
+                box.innerHTML = '';
                 if (note) { note.style.display = ''; note.textContent = 'No cuts with a known location in this view yet.'; }
                 return;
             }
             if (note) note.style.display = 'none';
-            if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
-            var allData = points.map(function (p) { return { longitude: p.lon, latitude: p.lat, value: p.jobs, label: p.label, jobs: p.jobs, ai: p.ai }; });
-            var aiData = points.filter(function (p) { return p.ai > 0; }).map(function (p) { return { longitude: p.lon, latitude: p.lat, value: p.ai, label: p.label, jobs: p.jobs, ai: p.ai }; });
-            var tip = function (ctx) { var b = ctx.raw || {}; return b.label + ': ' + fmt(b.jobs) + ' job cuts, ' + fmt(b.ai) + ' AI-linked (' + Math.round((b.jobs ? b.ai / b.jobs : 0) * 100) + '%)'; };
-            AIMAP.chart = new Chart(canvas, {
-                type: 'bubbleMap',
-                data: { datasets: [
-                    { label: 'All job cuts', outline: outline, showOutline: true,
-                      outlineBackgroundColor: '#eef1f5', outlineBorderColor: '#d3d8e0', outlineBorderWidth: 0.5,
-                      backgroundColor: MAP_BLUE, borderColor: 'rgba(47,111,208,0.9)', borderWidth: 0.5, data: allData },
-                    { label: 'AI-linked cuts', backgroundColor: MAP_RED, borderColor: 'rgba(160,40,10,0.9)', borderWidth: 0.5, data: aiData }
-                ] },
-                options: {
-                    maintainAspectRatio: false, showGraticule: false,
-                    // Click a bubble to drill into that state (US view) or country
-                    // (world view); the whole dashboard re-filters to it.
-                    onClick: function (evt, els) {
-                        if (!els || !els.length || !AIMAP.chart) return;
-                        var ds = AIMAP.chart.data.datasets[els[0].datasetIndex];
-                        var d = ds && ds.data[els[0].index];
-                        if (!d || !d.label) return;
-                        if (scope === 'us') writeControl('alt-f-state', [d.label]);
-                        else writeControl('alt-f-country', [d.label]);
-                        if (typeof refreshAll === 'function') refreshAll();
-                    },
-                    onHover: function (evt, els) { if (evt.native && evt.native.target) evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
-                    plugins: {
-                        legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 11.5 } } },
-                        tooltip: { callbacks: { label: tip } }
-                    },
-                    scales: {
-                        projection: { axis: 'x', projection: scope === 'us' ? 'albersUsa' : 'equalEarth' },
-                        size: { axis: 'x', size: [3, scope === 'us' ? 34 : 44], mode: 'area' }
-                    }
-                }
+
+            var rect = box.getBoundingClientRect();
+            var w = Math.max(320, Math.round(rect.width || box.clientWidth || 640));
+            var h = Math.max(240, Math.round(rect.height || box.clientHeight || 360));
+
+            var proj = (scope === 'us' ? d3.geoAlbersUsa() : d3.geoNaturalEarth1())
+                .fitSize([w, h], { type: 'FeatureCollection', features: outline });
+            var path = d3.geoPath(proj);
+
+            // Project centroids once; drop any the projection can't place
+            // (geoAlbersUsa returns null outside the US inset).
+            var pts = [];
+            points.forEach(function (p) {
+                var xy = proj([p.lon, p.lat]);
+                if (!xy) return;
+                p.x0 = xy[0]; p.y0 = xy[1];
+                pts.push(p);
             });
-        }).catch(function (e) {
+            if (!pts.length) {
+                box.innerHTML = '';
+                if (note) { note.style.display = ''; note.textContent = 'No cuts with a known location in this view yet.'; }
+                return;
+            }
+            // Draw big→small so small bubbles land on top and stay clickable.
+            pts.sort(function (a, b) { return b.jobs - a.jobs; });
+
+            var maxJobs = d3.max(pts, function (p) { return p.jobs; }) || 1;
+            var maxR = scope === 'us' ? 30 : 38;
+            var rScale = d3.scaleSqrt().domain([0, maxJobs]).range([0, maxR]);
+            var rOf = function (v) { return v > 0 ? Math.max(2.2, rScale(v)) : 0; };
+            pts.forEach(function (p) { p.r = rOf(p.jobs); p.ra = rOf(p.ai); });
+
+            box.innerHTML = '';
+            box.style.position = 'relative';
+
+            var svg = d3.select(box).append('svg')
+                .attr('class', 'alt-map-svg')
+                .attr('viewBox', '0 0 ' + w + ' ' + h)
+                .attr('preserveAspectRatio', 'xMidYMid meet')
+                .attr('width', '100%').attr('height', '100%')
+                .attr('role', 'img')
+                .attr('aria-label', 'Map of job cuts by ' + (scope === 'us' ? 'US state' : 'country'))
+                .style('display', 'block')
+                .style('touch-action', 'none')
+                .style('background', '#fff')
+                .style('cursor', 'grab');
+
+            var gMap = svg.append('g').attr('class', 'alt-map-geo');   // zoomed: base shapes
+            var gOverlay = svg.append('g').attr('class', 'alt-map-pts'); // screen-space: bubbles + labels
+
+            // Base geography — click a shape to zoom toward it.
+            gMap.selectAll('path').data(outline).join('path')
+                .attr('d', path)
+                .attr('fill', MAP_LAND)
+                .attr('stroke', MAP_LAND_LINE)
+                .attr('stroke-width', 0.5)
+                .attr('vector-effect', 'non-scaling-stroke')
+                .style('cursor', 'pointer')
+                .on('click', function (event, d) { zoomToFeature(d); });
+
+            // Tooltip (HTML overlay; transient, so left out of the PNG).
+            var tip = d3.select(box).append('div').attr('class', 'alt-map-tip').style('display', 'none');
+
+            function showTip(event, p) {
+                var m = d3.pointer(event, box);
+                tip.html(mapTipHtml(p)).style('display', 'block');
+                var tw = tip.node().offsetWidth, th = tip.node().offsetHeight;
+                var lx = Math.min(Math.max(6, m[0] + 14), w - tw - 6);
+                var ly = Math.max(6, m[1] - th - 12);
+                tip.style('left', lx + 'px').style('top', ly + 'px');
+            }
+
+            // Bubble groups: blue (all cuts) with red (AI-linked) nested inside.
+            var node = gOverlay.selectAll('g.alt-bub').data(pts).join('g')
+                .attr('class', 'alt-bub')
+                .style('cursor', 'pointer')
+                .on('mouseenter', function (event, p) {
+                    d3.select(this).raise().select('.b-all').attr('stroke-width', 1.6);
+                    showTip(event, p);
+                })
+                .on('mousemove', function (event, p) { showTip(event, p); })
+                .on('mouseleave', function () {
+                    d3.select(this).select('.b-all').attr('stroke-width', 0.8);
+                    tip.style('display', 'none');
+                })
+                .on('click', function (event, p) {
+                    event.stopPropagation();
+                    if (scope === 'us') writeControl('alt-f-state', [p.label]);
+                    else writeControl('alt-f-country', [p.label]);
+                    if (typeof refreshAll === 'function') refreshAll();
+                });
+            node.append('circle').attr('class', 'b-all')
+                .attr('r', function (p) { return p.r; })
+                .attr('fill', MAP_BLUE).attr('stroke', MAP_BLUE_LINE).attr('stroke-width', 0.8);
+            node.filter(function (p) { return p.ra > 0; }).append('circle').attr('class', 'b-ai')
+                .attr('r', function (p) { return p.ra; })
+                .attr('fill', MAP_RED).attr('stroke', MAP_RED_LINE).attr('stroke-width', 0.8)
+                .style('pointer-events', 'none');
+
+            // Value labels for the largest few (de-cluttered: top 5).
+            var labelPts = pts.slice().sort(function (a, b) { return b.jobs - a.jobs; }).slice(0, 5);
+            var label = gOverlay.selectAll('text.alt-map-lab').data(labelPts).join('text')
+                .attr('class', 'alt-map-lab')
+                .attr('text-anchor', 'middle')
+                .attr('font-size', 11).attr('font-weight', 700)
+                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif')
+                .attr('fill', '#0b0b0b').attr('stroke', '#fff').attr('stroke-width', 3)
+                .attr('paint-order', 'stroke').style('pointer-events', 'none')
+                .text(function (p) { return fmt(p.jobs); });
+
+            // In-SVG legend (captured by the PNG export).
+            drawMapLegend(svg, w, h);
+
+            // Zoom / pan (1x–8x). Base shapes ride the transform; bubbles and
+            // labels are re-placed at constant screen size so clustered points
+            // separate as you zoom instead of ballooning.
+            function reposition(t) {
+                gMap.attr('transform', t.toString());
+                node.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + s[1] + ')'; });
+                label.attr('transform', function (p) { var s = t.apply([p.x0, p.y0]); return 'translate(' + s[0] + ',' + (s[1] - p.r - 5) + ')'; });
+            }
+            var zoom = d3.zoom().scaleExtent([1, 8])
+                .on('zoom', function (event) {
+                    AIMAP.transform = event.transform;
+                    AIMAP.transformScope = scope;
+                    reposition(event.transform);
+                    svg.style('cursor', event.transform.k > 1 ? 'grab' : 'default');
+                });
+            svg.call(zoom);
+
+            function zoomToFeature(feature) {
+                var b;
+                try { b = path.bounds(feature); } catch (e) { return; }
+                if (!b || !isFinite(b[0][0])) return;
+                var dx = b[1][0] - b[0][0], dy = b[1][1] - b[0][1];
+                var cx = (b[0][0] + b[1][0]) / 2, cy = (b[0][1] + b[1][1]) / 2;
+                var k = Math.max(1, Math.min(8, 0.82 / Math.max(dx / w, dy / h || 1e-6)));
+                var t = d3.zoomIdentity.translate(w / 2 - k * cx, h / 2 - k * cy).scale(k);
+                svg.transition().duration(prefersReducedMotion() ? 0 : 600).call(zoom.transform, t);
+            }
+            AIMAP.resetZoom = function () {
+                svg.transition().duration(prefersReducedMotion() ? 0 : 450).call(zoom.transform, d3.zoomIdentity);
+            };
+
+            // "Reset view" affordance (HTML overlay).
+            var reset = d3.select(box).append('button')
+                .attr('type', 'button').attr('class', 'alt-map-reset').attr('title', 'Reset view')
+                .html('Reset view')
+                .on('click', function (event) { event.stopPropagation(); AIMAP.resetZoom(); });
+            reset.node().style.display = 'none';
+
+            // Restore the prior transform within a scope; otherwise start fresh.
+            var t0 = (AIMAP.transform && AIMAP.transformScope === scope) ? AIMAP.transform : d3.zoomIdentity;
+            svg.call(zoom.transform, t0);
+            var syncReset = function () { reset.node().style.display = (AIMAP.transform && AIMAP.transform.k > 1.001) ? 'block' : 'none'; };
+            zoom.on('zoom.reset', function () { syncReset(); });
+            syncReset();
+        }).catch(function () {
             if (note) { note.style.display = ''; note.textContent = 'Map data could not be loaded.'; }
         });
+    }
+
+    function drawMapLegend(svg, w, h) {
+        var g = svg.append('g').attr('class', 'alt-map-legend').attr('transform', 'translate(14,' + (h - 62) + ')');
+        g.append('rect').attr('x', -8).attr('y', -14).attr('width', 176).attr('height', 66).attr('rx', 7)
+            .attr('fill', 'rgba(255,255,255,0.9)').attr('stroke', MAP_LAND_LINE).attr('stroke-width', 1);
+        var row = function (y, color, line, txt) {
+            g.append('circle').attr('cx', 4).attr('cy', y).attr('r', 6).attr('fill', color).attr('stroke', line).attr('stroke-width', 1);
+            g.append('text').attr('x', 18).attr('y', y + 4).attr('font-size', 11.5)
+                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#4a4d55').text(txt);
+        };
+        row(2, MAP_BLUE, MAP_BLUE_LINE, 'All job cuts');
+        row(22, MAP_RED, MAP_RED_LINE, 'AI-linked cuts');
+        g.append('text').attr('x', -4).attr('y', 46).attr('font-size', 10.5)
+            .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#898781')
+            .text('Circle size = number of jobs');
+    }
+
+    // Serialize the live map SVG to a PNG. Interactive HTML overlays (tooltip,
+    // reset button) are deliberately excluded; the legend lives inside the SVG
+    // and so is captured.
+    function exportMapPng() {
+        var box = document.getElementById('alt-chart-aimap');
+        var svg = box && box.querySelector('svg.alt-map-svg');
+        if (!svg) return;
+        var vb = (svg.getAttribute('viewBox') || '0 0 640 360').split(/\s+/);
+        var w = parseFloat(vb[2]) || 640, h = parseFloat(vb[3]) || 360;
+        var scale = 2;
+        var clone = svg.cloneNode(true);
+        clone.setAttribute('width', w);
+        clone.setAttribute('height', h);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        var xml = new XMLSerializer().serializeToString(clone);
+        var url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+        var img = new Image();
+        img.onload = function () {
+            var c = document.createElement('canvas');
+            c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+            var ctx = c.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            var a = document.createElement('a');
+            try { a.href = c.toDataURL('image/png'); } catch (e) { return; }
+            a.download = 'ai-layoff-tracker-map.png';
+            a.click();
+        };
+        img.onerror = function () { /* offline / blocked — silently no-op */ };
+        img.src = url;
     }
 
     function initAiMap() {
@@ -1992,9 +2175,22 @@
                 document.querySelectorAll('.alt-map-scope').forEach(function (b) { b.classList.remove('alt-map-scope-on'); });
                 btn.classList.add('alt-map-scope-on');
                 AIMAP.scope = btn.getAttribute('data-scope');
+                AIMAP.transform = null;              // switching scope resets the view
                 renderAiMap();
             });
         });
+        // Re-fit the SVG to the card when it resizes (expand toggle, window).
+        if (window.ResizeObserver && !AIMAP._ro) {
+            var box = document.getElementById('alt-chart-aimap');
+            if (box) {
+                var tmr = null;
+                AIMAP._ro = new ResizeObserver(function () {
+                    clearTimeout(tmr);
+                    tmr = setTimeout(function () { if (AIMAP.data) renderAiMap(); }, 180);
+                });
+                AIMAP._ro.observe(box);
+            }
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -2479,7 +2675,13 @@
                 e.stopPropagation();
                 var t = btn.getAttribute('data-dl');
                 var kind = btn.getAttribute('data-kind');
-                if (kind === 'png') {
+                if (kind === 'png' && t === 'alt-chart-aimap') {
+                    // The map is now an SVG (not a Chart.js canvas), so rasterize
+                    // it: serialize → data-URL → draw onto an offscreen canvas
+                    // over a white ground → PNG. Self-contained (inline styles,
+                    // no external images) so toDataURL stays untainted.
+                    exportMapPng();
+                } else if (kind === 'png') {
                     var ch = CHARTS[t];
                     if (!ch) return;
                     var src = ch.canvas;

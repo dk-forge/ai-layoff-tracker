@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.68
+ * Version: 2.19.69
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.68');
+define('ALT_VERSION', '2.19.69');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -445,17 +445,25 @@ function alt_enqueue_assets() {
         true
     );
 
-    // chartjs-chart-geo: the geographic bubble-map chart type for the "AI job
-    // loss map". Bundles topojson-client; depends on Chart.js. Deferred with the
-    // rest so it loads after Chart.js (dependency order is enforced by WP).
+    // d3 v7 + topojson-client: the "map of job cuts" is a hand-built d3
+    // proportional-symbol map on an SVG (pan/zoom, hover, click-to-filter),
+    // which chartjs-chart-geo's bubbleMap could not do. d3's default bundle
+    // ships geo + zoom + scale; topojson-client decodes the same world-atlas /
+    // us-atlas topojson the map already fetches. Both are dependency-free UMD
+    // globals (window.d3 / window.topojson); only Chart.js drives the other
+    // charts now. cdnjs does not mirror these cleanly, so jsdelivr's npm build.
     wp_enqueue_script(
-        'chartjs-geo',
-        // cdnjs does NOT host this package; jsdelivr's npm mirror does. UMD
-        // build exposes window.ChartGeo (incl. ChartGeo.topojson) and registers
-        // the bubbleMap chart type on Chart.js.
-        'https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.4/build/index.umd.min.js',
-        array('chartjs'),
-        '4.3.4',
+        'd3',
+        'https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js',
+        array(),
+        '7.9.0',
+        true
+    );
+    wp_enqueue_script(
+        'topojson-client',
+        'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js',
+        array(),
+        '3.1.0',
         true
     );
 
@@ -463,7 +471,7 @@ function alt_enqueue_assets() {
     wp_enqueue_script(
         'alt-js',
         ALT_PLUGIN_URL . 'assets/layoffs.js',
-        array('jquery', 'datatables-js', 'chartjs', 'chartjs-geo'),
+        array('jquery', 'datatables-js', 'chartjs', 'd3', 'topojson-client'),
         $alt_asset_ver('assets/layoffs.js'),
         // Autoptimize defers our dependencies (jquery/datatables/chartjs).
         // Since our file is AO-excluded it MUST defer too, or it executes

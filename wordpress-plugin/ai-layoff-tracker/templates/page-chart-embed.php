@@ -69,7 +69,7 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
     <?php if ($alt_ctype === 'canvas') : ?>
       <div class="alt-chart-box"><canvas id="<?php echo esc_attr($alt_chart); ?>"></canvas></div>
     <?php elseif ($alt_ctype === 'map') : ?>
-      <div class="alt-chart-box alt-map-box"><canvas id="alt-chart-aimap"></canvas></div>
+      <div class="alt-chart-box alt-map-box"><div id="alt-chart-aimap"></div></div>
       <p class="alt-map-total alt-muted" id="alt-map-total"></p>
       <p class="alt-map-empty alt-muted" id="alt-map-note" style="display:none"></p>
     <?php else : ?>
@@ -82,7 +82,8 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
 <script src="<?php echo esc_url(includes_url('js/jquery/jquery.min.js')); ?>"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <?php if ($alt_need_geo) : ?>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.4/build/index.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <?php endif; ?>
 <script src="<?php echo esc_url(ALT_PLUGIN_URL . 'assets/layoffs.js?ver=' . ALT_VERSION); ?>"></script>
 </body></html>
