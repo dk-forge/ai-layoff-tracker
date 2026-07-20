@@ -296,7 +296,9 @@ def pull_warn(states, min_employees=0, start_date=""):
                     "state": st,
                     "roles": None,
                     "excerpt": excerpt,
-                    "reason_tags": [],
+                    # Tag permanent shutdowns so "Closures only" is filterable
+                    # (dedup_hash excludes reason_tags, so dedup is unaffected).
+                    "reason_tags": (["closure"] if kind and "clos" in kind.lower() else []),
                     "ai_explicit": False,
                     "ai_language": None,
                     "source_url": detail or STATE_WARN_URL.get(st, ""),

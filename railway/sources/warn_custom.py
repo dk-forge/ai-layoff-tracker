@@ -54,7 +54,9 @@ def _entry(st, company, jobs, date, city="", kind="", detail_url=""):
         "state": st,
         "roles": None,
         "excerpt": excerpt,
-        "reason_tags": [],
+        # Tag permanent shutdowns so "Closures only" is filterable. dedup_hash
+        # excludes reason_tags, so this never affects dedup/upsert.
+        "reason_tags": (["closure"] if kind and "clos" in kind.lower() else []),
         "ai_explicit": False,
         "ai_language": None,
         "source_url": detail_url or STATE_WARN_URL.get(st, ""),

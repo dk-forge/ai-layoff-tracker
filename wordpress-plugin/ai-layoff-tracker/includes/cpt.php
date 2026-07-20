@@ -46,6 +46,7 @@ function alt_allowed_reason_tags() {
         'cost_reduction',
         'macroeconomic',
         'possible_ai',
+        'closure',
     );
 }
 
