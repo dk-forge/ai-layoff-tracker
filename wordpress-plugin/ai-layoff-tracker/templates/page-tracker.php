@@ -6,7 +6,47 @@ $alt_csv  = admin_url('admin-post.php?action=alt_export_csv');
 $alt_json = admin_url('admin-post.php?action=alt_export_json');
 $alt_api  = rest_url('layoffs/v1/query');
 $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>';
+
+// --- Structured data (Schema.org) so search + answer engines (Google AI
+// Overviews, ChatGPT, Perplexity) can cite the dataset WITH attribution. ---
+$alt_now_ld = gmdate('Y-m-d');
+$alt_org_ld = array('@type' => 'Organization', 'name' => 'AskTheRecruiter', 'url' => home_url('/'));
+$alt_ld = array();
+$alt_ld[] = array(
+    '@context' => 'https://schema.org', '@type' => 'Dataset',
+    'name' => 'AI Layoff Tracker', 'alternateName' => 'AskTheRecruiter AI Layoff Tracker',
+    'description' => 'A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document: an SEC filing, a state WARN notice, or a named news report.',
+    'url' => home_url('/ai-layoff-tracker/'),
+    'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
+    'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
+    'creator' => $alt_org_ld, 'publisher' => $alt_org_ld,
+    'temporalCoverage' => '2015-01-01/' . $alt_now_ld, 'dateModified' => $alt_now_ld,
+    'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
+    'variableMeasured' => array(
+        array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a primary source document behind each figure.'),
+        array('@type' => 'PropertyValue', 'name' => 'AI-attributed job cuts', 'description' => 'Layoffs the employer named AI or automation as a cause, with a supporting quote on file.'),
+        array('@type' => 'PropertyValue', 'name' => 'Announced job cuts', 'description' => 'Company plans at announcement stage, in a separate labeled tier.'),
+    ),
+    'distribution' => array(
+        array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => rest_url('layoffs/v1/query')),
+        array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv', 'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
+    ),
+);
+if (function_exists('alt_faq_items')) {
+    $alt_qa_ld = array();
+    foreach (alt_faq_items() as $alt_f) {
+        $alt_q = is_array($alt_f) ? (string) ($alt_f[0] ?? '') : '';
+        $alt_a = is_array($alt_f) ? (string) ($alt_f[1] ?? '') : '';
+        if ($alt_q !== '' && $alt_a !== '') $alt_qa_ld[] = array('@type' => 'Question',
+            'name' => wp_strip_all_tags($alt_q),
+            'acceptedAnswer' => array('@type' => 'Answer', 'text' => wp_strip_all_tags($alt_a)));
+    }
+    if ($alt_qa_ld) $alt_ld[] = array('@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => $alt_qa_ld);
+}
 ?>
+<?php foreach ($alt_ld as $alt_block) : ?>
+<script type="application/ld+json"><?php echo wp_json_encode($alt_block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
+<?php endforeach; ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>
