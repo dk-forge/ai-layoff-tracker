@@ -12,12 +12,95 @@ if (!is_array($alt_press_years)) {
          GROUP BY YEAR(layoff_date) ORDER BY y DESC", ARRAY_A) ?: array();
     set_transient('alt_press_year_stats', $alt_press_years, HOUR_IN_SECONDS);
 }
+
+// Data-backed soundbites — one live, source-reproducible sentence per chart,
+// each linking to the exact filtered view behind it. Cached hourly. Raw text is
+// stored (no HTML); the template esc_html()s at render.
+$alt_soundbites = get_transient('alt_press_soundbites');
+if (!is_array($alt_soundbites)) {
+    global $wpdb; $alt_t = alt_db_table();
+    $alt_tk = home_url('/ai-layoff-tracker/');
+    $alt_y = (int) gmdate('Y');
+    $alt_ytd_from = sprintf('%04d-01-01', $alt_y); $alt_ytd_to = gmdate('Y-m-d');
+    $alt_lm = strtotime(gmdate('Y-m-01') . ' -1 day');
+    $alt_m_from = gmdate('Y-m-01', $alt_lm); $alt_m_to = gmdate('Y-m-t', $alt_lm);
+    $alt_m_label = gmdate('F Y', $alt_lm);
+    $alt_lk = function ($args) use ($alt_tk) { return esc_url(add_query_arg($args, $alt_tk)); };
+    $alt_soundbites = array();
+
+    $alt_tot = $wpdb->get_row($wpdb->prepare(
+        "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) aiv
+         FROM $alt_t WHERE layoff_date BETWEEN %s AND %s", $alt_ytd_from, $alt_ytd_to));
+    $alt_v = (int) ($alt_tot->v ?? 0); $alt_aiv = (int) ($alt_tot->aiv ?? 0);
+    $alt_aipct = $alt_v ? round(100 * $alt_aiv / $alt_v) : 0;
+    if ($alt_v) $alt_soundbites[] = array('label' => 'Headline · ' . $alt_y . ' so far',
+        'text' => 'So far in ' . $alt_y . ', the AI Layoff Tracker has verified ' . number_format($alt_v) . ' job cuts worldwide — ' . $alt_aipct . '% of them attributed to AI or automation by the employer.',
+        'link' => $alt_lk(array('years' => $alt_y)), 'linklabel' => 'the live total');
+
+    $alt_ind = $wpdb->get_row($wpdb->prepare("SELECT industry, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND industry <> '' GROUP BY industry ORDER BY j DESC LIMIT 1", $alt_ytd_from, $alt_ytd_to));
+    if ($alt_ind && $alt_ind->industry) $alt_soundbites[] = array('label' => 'By industry · ' . $alt_y,
+        'text' => $alt_ind->industry . ' is the hardest-hit industry in ' . $alt_y . ', with ' . number_format((int) $alt_ind->j) . ' recorded job cuts.',
+        'link' => $alt_lk(array('years' => $alt_y, 'industry' => $alt_ind->industry)), 'linklabel' => 'the industry chart');
+
+    $alt_ctry = $wpdb->get_row($wpdb->prepare("SELECT country, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND country <> '' GROUP BY country ORDER BY j DESC LIMIT 1", $alt_ytd_from, $alt_ytd_to));
+    if ($alt_ctry && $alt_ctry->country) $alt_soundbites[] = array('label' => 'By country · ' . $alt_y,
+        'text' => $alt_ctry->country . ' leads the world in recorded job cuts in ' . $alt_y . ', with ' . number_format((int) $alt_ctry->j) . '.',
+        'link' => $alt_lk(array('years' => $alt_y, 'country' => $alt_ctry->country)), 'linklabel' => 'the world map');
+
+    $alt_st = $wpdb->get_row($wpdb->prepare("SELECT state, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND country = 'United States' AND state <> '' GROUP BY state ORDER BY j DESC LIMIT 1", $alt_ytd_from, $alt_ytd_to));
+    if ($alt_st && $alt_st->state) $alt_soundbites[] = array('label' => 'By US state · ' . $alt_y,
+        'text' => 'In the US, ' . $alt_st->state . ' has the most recorded layoffs in ' . $alt_y . ' (' . number_format((int) $alt_st->j) . ').',
+        'link' => $alt_lk(array('years' => $alt_y, 'country' => 'United States', 'state' => $alt_st->state)), 'linklabel' => 'the US map');
+
+    if (function_exists('alt_role_categories')) {
+        $alt_best_role = null; $alt_best_j = 0; $alt_best_slug = '';
+        foreach (alt_role_categories() as $alt_slug => $alt_rlabel) {
+            $alt_rj = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(job_count),0) FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND role_categories LIKE %s", $alt_ytd_from, $alt_ytd_to, '%,' . $alt_slug . ',%'));
+            if ($alt_rj > $alt_best_j) { $alt_best_j = $alt_rj; $alt_best_role = $alt_rlabel; $alt_best_slug = $alt_slug; }
+        }
+        if ($alt_best_role && $alt_best_j > 0) $alt_soundbites[] = array('label' => 'Roles hit hardest · ' . $alt_y,
+            'text' => $alt_best_role . ' is the job function hit hardest by layoffs in ' . $alt_y . ', across ' . number_format($alt_best_j) . ' cuts where the source named the team affected.',
+            'link' => $alt_lk(array('years' => $alt_y, 'roles' => $alt_best_slug)), 'linklabel' => 'the roles chart');
+    }
+
+    $alt_big = $wpdb->get_row($wpdb->prepare("SELECT company, job_count FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0 ORDER BY job_count DESC, id DESC LIMIT 1", $alt_ytd_from, $alt_ytd_to));
+    if ($alt_big && $alt_big->company) $alt_soundbites[] = array('label' => 'Largest single cut · ' . $alt_y,
+        'text' => 'The single largest layoff of ' . $alt_y . ' so far is ' . $alt_big->company . ' (' . number_format((int) $alt_big->job_count) . ' jobs).',
+        'link' => $alt_lk(array('years' => $alt_y, 'company' => $alt_big->company)), 'linklabel' => 'the event');
+
+    $alt_mind = $wpdb->get_row($wpdb->prepare("SELECT industry, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND industry <> '' GROUP BY industry ORDER BY j DESC LIMIT 1", $alt_m_from, $alt_m_to));
+    $alt_mbig = $wpdb->get_row($wpdb->prepare("SELECT company, job_count FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0 ORDER BY job_count DESC, id DESC LIMIT 1", $alt_m_from, $alt_m_to));
+    if ($alt_mind && $alt_mind->industry && $alt_mbig && $alt_mbig->company) $alt_soundbites[] = array('label' => 'Latest month · ' . $alt_m_label,
+        'text' => 'In ' . $alt_m_label . ', ' . $alt_mind->industry . ' led job cuts with ' . number_format((int) $alt_mind->j) . ', and the biggest single cut was ' . $alt_mbig->company . ' (' . number_format((int) $alt_mbig->job_count) . ').',
+        'link' => esc_url(home_url('/ai-layoff-tracker/report/?period=' . gmdate('Y-m', $alt_lm))), 'linklabel' => 'the monthly report');
+
+    set_transient('alt_press_soundbites', $alt_soundbites, HOUR_IN_SECONDS);
+}
 ?>
 <main class="alt-wrap alt-press-page">
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press &amp; Media Kit</h1>
   <p class="alt-lead"><span class="alt-lead-text">Everything a reporter needs to cite the AI Layoff Tracker: the boilerplate, live quotable figures, how the data is verified, brand assets, and a direct contact. Every number on this page is reproducible from our public API.</span></p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
+
+  <?php if ($alt_soundbites) : ?>
+  <h2 id="alt-soundbites">Ready-to-use soundbites</h2>
+  <p>Live, source-backed one-liners a reporter can drop straight into a story — each figure updates automatically from the tracker and links to the exact chart behind it. Copy, cite, done. (Every number is reproducible from our public API.)</p>
+  <div class="alt-soundbites">
+    <?php foreach ($alt_soundbites as $alt_sb) : ?>
+    <figure class="alt-soundbite">
+      <span class="alt-sb-label"><?php echo esc_html($alt_sb['label']); ?></span>
+      <blockquote class="alt-sb-text">“<?php echo esc_html($alt_sb['text']); ?>”</blockquote>
+      <figcaption class="alt-sb-actions">
+        <button type="button" class="alt-btn alt-btn-sm alt-sb-copy">Copy</button>
+        <a class="alt-sb-link" href="<?php echo $alt_sb['link']; ?>">📊 See <?php echo esc_html($alt_sb['linklabel']); ?> &rarr;</a>
+      </figcaption>
+    </figure>
+    <?php endforeach; ?>
+  </div>
+  <p class="alt-muted">Attribution: “According to the AI Layoff Tracker by AskTheRecruiter.com.” Figures shown are the current live values and change as new sources are verified.</p>
+  <?php endif; ?>
 
   <h2>Boilerplate</h2>
   <p><b>AskTheRecruiter</b> is the open, evidence-based intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Its <b>AI Layoff Tracker</b> is a continuously updated, source-linked database of verified job cuts worldwide, purpose-built to flag which layoffs companies themselves attribute to AI or automation — every figure clickable back to a primary document.</p>

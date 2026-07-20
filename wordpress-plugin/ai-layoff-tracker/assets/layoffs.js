@@ -2697,6 +2697,17 @@
             return;
         }
         initReportExports();
+        document.querySelectorAll('.alt-sb-copy').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var fig = btn.closest('.alt-soundbite');
+                var q = fig && fig.querySelector('.alt-sb-text');
+                if (!q) return;
+                copyText(q.textContent.replace(/[“”"]/g, '').trim(), function () {
+                    var o = btn.textContent; btn.textContent = 'Copied ✓';
+                    setTimeout(function () { btn.textContent = o; }, 1500);
+                });
+            });
+        });
         var citeDate = document.getElementById('alt-cite-date');
         if (citeDate) citeDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         var citeCopy = document.getElementById('alt-cite-copy');
