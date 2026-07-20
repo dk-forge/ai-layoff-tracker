@@ -135,6 +135,7 @@ function alt_report_period_stats($from, $to, $us_only = false) {
                 COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) verified_jobs,
                 SUM(CASE WHEN announced=0 THEN 1 ELSE 0 END) verified_events,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
                 COALESCE(SUM(job_count),0) all_jobs,
                 COUNT(DISTINCT NULLIF(country,'')) countries
          FROM $t WHERE layoff_date BETWEEN %s AND %s$geo", $from, $to), ARRAY_A);
@@ -147,8 +148,10 @@ $alt_prev = alt_report_period_stats($alt_pfrom, $alt_pto, $alt_us);
 $alt_v = (int) ($alt_cur['verified_jobs'] ?? 0);
 $alt_pv = (int) ($alt_prev['verified_jobs'] ?? 0);
 $alt_ai = (int) ($alt_cur['ai_jobs'] ?? 0);
+$alt_ai_v = (int) ($alt_cur['ai_verified_jobs'] ?? 0);   // AI ∩ verified (clean subset)
 $alt_delta = $alt_pv > 0 ? round(100 * ($alt_v - $alt_pv) / $alt_pv) : null;
-$alt_ai_pct = $alt_v > 0 ? round(100 * $alt_ai / max(1, (int) $alt_cur['all_jobs'])) : 0;
+// % of the headline (verified) number that the employer blamed on AI.
+$alt_ai_pct = $alt_v > 0 ? round(100 * $alt_ai_v / max(1, $alt_v)) : 0;
 
 // Challenger box is ALWAYS US-vs-US for the SAME period (Challenger has no
 // global figure); mixing scopes would be a data-integrity bug.
@@ -247,17 +250,29 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
     <header class="alt-op-masthead">
       <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AskTheRecruiter.com</span>
       <span class="alt-op-period"><?php echo esc_html($alt_kind); ?> Job Cuts Report · <?php echo esc_html($alt_label); ?> · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
-      <span class="alt-op-asof">Data as of <?php echo esc_html(gmdate('M j, Y')); ?> · AskTheRecruiter.com</span>
+      <span class="alt-op-asof">Data as of <?php echo esc_html(gmdate('M j, Y · H:i')); ?> UTC · AskTheRecruiter.com</span>
     </header>
 
     <div class="alt-op-headline">
-      <div class="alt-op-big"><?php echo number_format($alt_v); ?></div>
-      <div class="alt-op-biglabel"><?php echo $alt_us ? 'US ' : 'worldwide '; ?>verified job cuts<?php echo $alt_is_week ? ' this week' : ' in ' . esc_html($alt_label); ?>
-        <?php if ($alt_delta !== null) : ?>
-          <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
-        <?php endif; ?>
+      <div class="alt-op-twobox">
+        <div class="alt-op-box alt-op-box-overall">
+          <div class="alt-op-big"><?php echo number_format($alt_v); ?></div>
+          <div class="alt-op-boxlabel"><?php echo $alt_us ? 'US ' : 'Worldwide '; ?>verified job cuts<?php echo $alt_is_week ? ' this week' : ''; ?>
+            <?php if ($alt_delta !== null) : ?>
+              <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
+            <?php endif; ?>
+          </div>
+          <div class="alt-op-boxnote">The main number — every figure traces to a filing or named report.</div>
+        </div>
+        <div class="alt-op-box alt-op-box-ai">
+          <div class="alt-op-big alt-op-big-ai"><?php echo number_format($alt_ai_v); ?></div>
+          <div class="alt-op-boxlabel">🤖 blamed on AI by the employer
+            <span class="alt-op-aipct"><?php echo $alt_ai_pct; ?>% of the total</span>
+          </div>
+          <div class="alt-op-boxnote">AI or automation named as a cause, in the company's own words.</div>
+        </div>
       </div>
-      <div class="alt-op-sub">🤖 <b><?php echo number_format($alt_ai); ?></b> explicitly blamed on AI by the employer (<?php echo $alt_ai_pct; ?>% of cuts) · <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> verified layoffs<?php echo $alt_us ? '' : ', ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?></div>
+      <div class="alt-op-sub"><?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> verified layoffs<?php echo $alt_us ? '' : ', ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?><?php echo ($alt_ai > $alt_ai_v) ? ' · ' . number_format($alt_ai) . ' AI-attributed incl. announced plans' : ''; ?></div>
     </div>
 
     <?php if ($alt_ch !== null) : ?>
@@ -319,7 +334,7 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
 
     <footer class="alt-op-footer">
       <p><b>Methodology:</b> Verified cuts have a primary source behind each figure — an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
-      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y')); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y · H:i')); ?> UTC)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
     </footer>
   </article>
 </main>

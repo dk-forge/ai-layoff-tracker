@@ -470,6 +470,18 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 }
 .alt-expand:hover, .alt-chart-dl:hover, .alt-chart-share:hover, .alt-chart-embed:hover { border-color: #2a78d6; color: #2a78d6; }
 .alt-chart-share.alt-copied { border-color: var(--op-green, #4f7257); color: var(--op-green, #4f7257); }
+
+/* Report headline: two boxes side by side (Overall vs AI-attributed) */
+.alt-op-twobox { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px; }
+.alt-op-box { border: 1px solid var(--alt-grid); border-radius: 12px; padding: 16px 18px; background: var(--alt-surface-2); }
+.alt-op-box-overall { border-left: 4px solid var(--op-green, #4f7257); }
+.alt-op-box-ai { border-left: 4px solid #d0431a; }
+.alt-op-box .alt-op-big { font-size: 40px; line-height: 1.02; }
+.alt-op-big-ai { color: #d0431a; }
+.alt-op-boxlabel { font-size: 13.5px; font-weight: 600; color: var(--alt-ink); margin-top: 4px; }
+.alt-op-aipct { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #fbe3da; color: #b6360f; font-size: 12px; font-weight: 700; }
+.alt-op-boxnote { font-size: 11.5px; color: var(--alt-muted); margin-top: 6px; line-height: 1.4; }
+@media (max-width: 560px) { .alt-op-twobox { grid-template-columns: 1fr; } }
 .alt-expanded .alt-expand { background: #2a78d6; border-color: #2a78d6; color: #fff; }
 
 /* Multi-select checkbox dropdowns (presentation over hidden native selects) */
