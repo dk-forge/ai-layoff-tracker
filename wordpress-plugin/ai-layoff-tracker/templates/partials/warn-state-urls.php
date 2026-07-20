@@ -29,6 +29,7 @@ function alt_state_warn_urls() {
         'KS' => 'https://www.kansasworks.com/search/warn_lookups',
         'KY' => 'https://kcc.ky.gov/employer/Pages/Business-Downsizing-Assistance---WARN.aspx',
         'LA' => 'https://www.laworks.net/Downloads/Downloads_WFD.asp',
+        'MA' => 'https://www.mass.gov/info-details/worker-adjustment-and-retraining-notification-act-warn-layoff-and-closure-updates',
         'MD' => 'https://www.dllr.state.md.us/employment/warn.shtml',
         'ME' => 'https://joblink.maine.gov/search/warn_lookups',
         'MI' => 'https://milmi.org/warn/',
