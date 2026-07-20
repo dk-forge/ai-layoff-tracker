@@ -945,11 +945,19 @@
         // honest denominator instead of implying every event is categorized.
         renderBarList('alt-bars-roles', agg.top_roles, null, []);
         var rolesSub = document.getElementById('alt-roles-sub');
+        var rolesCard = document.getElementById('alt-roles-card');
         if (rolesSub) {
             var rke = (agg.totals && agg.totals.roles_known_entries) || 0;
-            rolesSub.innerHTML = 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
-                + ' and 🤖 number are the AI-linked share. From only the ' + fmt(rke)
-                + ' reports that named which teams were cut — a sample, not the whole total.';
+            // Small-sample guard: only a minority of sources name the teams cut,
+            // so make the caveat unmissable when the base is thin — a reporter
+            // must not read this as representative of the whole dataset.
+            var small = rke < 100;
+            if (rolesCard) rolesCard.classList.toggle('alt-small-sample', small);
+            rolesSub.innerHTML = (small ? '<span class="alt-sample-warn">⚠ Small sample — illustrative only.</span> ' : '')
+                + 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
+                + ' and 🤖 number are the AI-linked share. Built from only the <b>' + fmt(rke)
+                + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> records whose source named which teams were cut'
+                + ' — a non-representative sample of where cuts land, <b>not</b> a breakdown of the total.';
         }
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
             return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];

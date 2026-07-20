@@ -43,6 +43,20 @@
 }
 .alt-stats-links-label { font-weight: 700; color: #3c5a41; }
 .alt-stats-links-box a { color: #2f5a37; }
+/* Data-quality confidence note right under the headline numbers. */
+.alt-quality-note { margin: 8px 2px 0; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2); }
+/* Roles chart small-sample state: amber flag + a subtle tint so it never reads
+   as a representative, thousands-of-events chart. */
+.alt-sample-warn { color: #b45309; font-weight: 700; }
+.alt-small-sample { outline: 1px dashed #e6b866; outline-offset: -1px; }
+/* Press-kit brand block */
+.alt-brand-kit { display: flex; flex-wrap: wrap; align-items: center; gap: 26px; margin: 10px 0 6px; }
+.alt-brand-lockup { display: inline-flex; align-items: center; gap: 12px; }
+.alt-brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 12px; background: #4f7257; color: #fff; font-weight: 800; font-size: 20px; letter-spacing: 1px; }
+.alt-brand-word { font-size: 22px; font-weight: 800; color: #16181d; }
+.alt-brand-colors { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.alt-brand-colors li { display: inline-flex; align-items: center; gap: 7px; }
+.alt-swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(0,0,0,.12); display: inline-block; }
 .alt-stats-links a {
     color: var(--alt-blue-dark);
     font-weight: 650;

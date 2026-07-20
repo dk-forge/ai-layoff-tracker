@@ -14,11 +14,25 @@ if (!is_array($alt_press_years)) {
 }
 ?>
 <main class="alt-wrap alt-press-page">
-  <p class="alt-eyebrow">AskTheRecruiter · press &amp; media</p>
-  <h1>Press &amp; Media</h1>
+  <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
+  <h1>Press &amp; Media Kit</h1>
+  <p class="alt-lead"><span class="alt-lead-text">Everything a reporter needs to cite the AI Layoff Tracker: the boilerplate, live quotable figures, how the data is verified, brand assets, and a direct contact. Every number on this page is reproducible from our public API.</span></p>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a></p>
+
+  <h2>Boilerplate</h2>
+  <p><b>AskTheRecruiter</b> is the open, evidence-based intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Its <b>AI Layoff Tracker</b> is a continuously updated, source-linked database of verified job cuts worldwide, purpose-built to flag which layoffs companies themselves attribute to AI or automation — every figure clickable back to a primary document.</p>
+  <p class="alt-muted"><b>One-line version:</b> "The AI Layoff Tracker by AskTheRecruiter.com — a source-linked database of layoffs worldwide, flagging the ones companies blame on AI."</p>
 
   <h2>About the AI Layoff Tracker</h2>
-  <p>The AI Layoff Tracker is a continuously updated database of verified job cuts worldwide, with a specific focus on flagging which layoffs companies attribute to AI or automation. Every entry links to a primary source: an SEC 8-K filing, a state WARN notice, or a named news report with a direct quote. Live editorial tracking began in January 2026; the database also carries historical records back to 2015, built from official WARN filings and SEC disclosures, so year-over-year comparisons are possible.</p>
+  <p>The AI Layoff Tracker is a continuously updated database of verified job cuts worldwide, with a specific focus on flagging which layoffs companies attribute to AI or automation. Every entry links to a primary source: an SEC 8-K filing, a state WARN notice, or a named news report with a direct quote. Live editorial tracking began in January 2026; the database also carries historical records back to 2002 (Europe) and 2015 (US), built from official WARN filings, SEC disclosures and the EU's restructuring monitor, so year-over-year comparisons are possible.</p>
+
+  <h2>What makes it different (story angles)</h2>
+  <ul class="alt-method-list">
+    <li><b>It beats the big surveys on the AI question.</b> Announcement surveys (Challenger) don't itemize AI. We do — from the employer's own words, with the quote on file — and our AI-attributed count actually <em>exceeds</em> theirs.</li>
+    <li><b>Every number is a receipt.</b> Unlike estimate-based trackers, each figure links to a filing or named report. It's a documented floor, not a projection.</li>
+    <li><b>It shows where AI is really cutting.</b> A live map, roles-most-impacted, and AI-share-over-time — geographic and functional breakdowns no press-release count offers.</li>
+    <li><b>Radical transparency.</b> A public corrections log, open methodology, per-country source list, and reproducible API — the errors it caught are disclosed, not hidden.</li>
+  </ul>
 
   <h2>Press contact</h2>
   <p>For data requests, custom cuts of the dataset, corrections, or comment, use the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> or email <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a>. Corrections get priority review, and every correction to a published figure is logged publicly on the tracker.</p>
@@ -44,4 +58,21 @@ if (!is_array($alt_press_years)) {
 
   <h2>Access the full dataset</h2>
   <p>Filtered or full CSV and JSON exports are on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">tracker page</a>. The public REST API serves the same data live: <code>GET /blog/wp-json/layoffs/v1/query</code> and <code>GET /blog/wp-json/layoffs/v1/aggregate</code>. Company pages with stable, linkable URLs live under <code>/company-layoffs/</code> (for example, a reporter can cite one company's full source-linked history at a permanent address).</p>
+
+  <h2>Brand assets</h2>
+  <div class="alt-brand-kit">
+    <span class="alt-brand-lockup">
+      <span class="alt-brand-mark" aria-hidden="true">atr</span>
+      <span class="alt-brand-word">Ask The Recruiter</span>
+    </span>
+    <ul class="alt-brand-colors">
+      <li><span class="alt-swatch" style="background:#4f7257"></span> Primary green <code>#4F7257</code></li>
+      <li><span class="alt-swatch" style="background:#d4a574"></span> Accent <code>#D4A574</code></li>
+      <li><span class="alt-swatch" style="background:#16181d"></span> Ink <code>#16181D</code></li>
+    </ul>
+  </div>
+  <p class="alt-muted">The wordmark and "atr" mark above may be used to credit the tracker in coverage. For high-resolution PNG/SVG logo files or a specific lockup, email <a href="mailto:info@asktherecruiter.com">info@asktherecruiter.com</a> and we'll send them same-day.</p>
+
+  <h2>Press contact</h2>
+  <p>For data requests, custom cuts, corrections, interviews or comment: <a href="mailto:info@asktherecruiter.com"><b>info@asktherecruiter.com</b></a> or the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a>. Corrections and reporter requests get priority.</p>
 </main>

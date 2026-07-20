@@ -2528,10 +2528,19 @@ function alt_api_query_compute(WP_REST_Request $r) {
 
     $total = (int) $wpdb->get_var(alt_db_prep("SELECT COUNT(*) FROM $table WHERE $where", $params));
     // Undated rows always sort LAST (MySQL would otherwise put NULLs first on
-    // ascending date sorts, burying real oldest entries under blanks).
-    $order = ($sort === 'layoff_date')
-        ? "(layoff_date IS NULL) ASC, layoff_date $dir, id DESC"
-        : "$sort $dir, id DESC";
+    // ascending date sorts, burying real oldest entries under blanks). On the
+    // default "newest first" (DESC), FUTURE-effective rows (upcoming WARN dates,
+    // announced plans dated months out) also sort LAST — otherwise a 2026-12-31
+    // effective date tops the table and a skimming reporter mistakes a future
+    // plan for today's news. They stay visible (and flagged "upcoming"), just
+    // below the most recent layoffs that have actually happened.
+    if ($sort === 'layoff_date') {
+        $order = ($dir === 'DESC')
+            ? "(layoff_date IS NULL) ASC, (layoff_date > CURDATE()) ASC, layoff_date DESC, id DESC"
+            : "(layoff_date IS NULL) ASC, layoff_date ASC, id DESC";
+    } else {
+        $order = "$sort $dir, id DESC";
+    }
     $rows = $wpdb->get_results(alt_db_prep(
         "SELECT * FROM $table WHERE $where ORDER BY $order LIMIT %d OFFSET %d",
         array_merge($params, array($per, $offset))

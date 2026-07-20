@@ -268,7 +268,9 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
             <a class="alt-method-link" href="#alt-challenger-comparison">Why US figures differ from Challenger</a>
             <a class="alt-method-link" href="#alt-data-sources">Where do we get this data?</a>
+            <a class="alt-method-link" href="#alt-corrections">How we catch &amp; fix errors</a>
         </nav>
+        <p class="alt-quality-note">Every figure links to a primary source. Machine-extracted numbers are double-checked by a second independent pass, numeric changes and removals always require a human, and <b>every correction is disclosed in the <a href="#alt-corrections">open log</a></b> &mdash; nothing is quietly edited.</p>
     </section>
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
@@ -346,7 +348,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts blamed on AI · industries under 1,000 cuts excluded</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-ai-intensity"></div>
         </div>
-        <div class="alt-mini alt-chart-card">
+        <div class="alt-mini alt-chart-card" id="alt-roles-card">
             <div class="alt-chart-head"><div class="alt-chart-h">Roles most impacted <span class="alt-chart-sub" id="alt-roles-sub">Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part and 🤖 number are the AI-linked share. From only the reports that named which teams were cut.</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-roles" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-roles"></div>
         </div>
@@ -446,7 +448,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <p class="alt-muted" id="alt-conversion-note" style="display:none"></p>
         </div>
     </details>
-    <details class="alt-methodology" id="alt-challenger-comparison">
+    <details class="alt-methodology" id="alt-challenger-comparison" open>
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">
             <p><b>Why the figures differ.</b> The cards above are scoped by the job-location country filter, while Challenger measures announcements by US-based employers. They are therefore not a like-for-like Challenger total. This is a transparent coverage comparison, not an accuracy score and not a command to change our totals. Two labeled pairs are compared, each updated automatically when Challenger publishes its monthly report: <b>Challenger AI cuts vs AskTheRecruiter announced AI cuts (strict)</b>, and <b>Challenger all announced cuts vs AskTheRecruiter announced US cuts</b>. The strict AskTheRecruiter figures include only canonical events with a source-evidenced announcement date, a US-based employer and announcement-stage status (plus AI as the primary stated cause for the AI pair). The wider job-location/any-AI figure is diagnostic only and is not comparable to Challenger.</p>
@@ -541,7 +543,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         </div>
     </details>
 
-    <details class="alt-methodology">
+    <details class="alt-methodology" id="alt-corrections" open>
         <summary>Data notes &amp; corrections log</summary>
         <div class="alt-method-body">
             <p>Errors are corrected openly, not silently. Every correction to published figures is dated and described here, newest first, and corrected rows are also flagged <code>edited: true</code> in the API. The list scrolls, because it grows a little every day as the data self-corrects.</p>
