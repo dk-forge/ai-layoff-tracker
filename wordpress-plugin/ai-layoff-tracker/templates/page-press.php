@@ -48,9 +48,10 @@ if (!is_array($alt_soundbites)) {
         'text' => $alt_ctry->country . ' leads the world in recorded job cuts in ' . $alt_y . ', with ' . number_format((int) $alt_ctry->j) . '.',
         'link' => $alt_lk(array('years' => $alt_y, 'country' => $alt_ctry->country)), 'linklabel' => 'the world map');
 
+    $alt_stmap = array('AL'=>'Alabama','AK'=>'Alaska','AZ'=>'Arizona','AR'=>'Arkansas','CA'=>'California','CO'=>'Colorado','CT'=>'Connecticut','DE'=>'Delaware','DC'=>'Washington, D.C.','FL'=>'Florida','GA'=>'Georgia','HI'=>'Hawaii','ID'=>'Idaho','IL'=>'Illinois','IN'=>'Indiana','IA'=>'Iowa','KS'=>'Kansas','KY'=>'Kentucky','LA'=>'Louisiana','ME'=>'Maine','MD'=>'Maryland','MA'=>'Massachusetts','MI'=>'Michigan','MN'=>'Minnesota','MS'=>'Mississippi','MO'=>'Missouri','MT'=>'Montana','NE'=>'Nebraska','NV'=>'Nevada','NH'=>'New Hampshire','NJ'=>'New Jersey','NM'=>'New Mexico','NY'=>'New York','NC'=>'North Carolina','ND'=>'North Dakota','OH'=>'Ohio','OK'=>'Oklahoma','OR'=>'Oregon','PA'=>'Pennsylvania','RI'=>'Rhode Island','SC'=>'South Carolina','SD'=>'South Dakota','TN'=>'Tennessee','TX'=>'Texas','UT'=>'Utah','VT'=>'Vermont','VA'=>'Virginia','WA'=>'Washington','WV'=>'West Virginia','WI'=>'Wisconsin','WY'=>'Wyoming');
     $alt_st = $wpdb->get_row($wpdb->prepare("SELECT state, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND country = 'United States' AND state <> '' GROUP BY state ORDER BY j DESC LIMIT 1", $alt_ytd_from, $alt_ytd_to));
     if ($alt_st && $alt_st->state) $alt_soundbites[] = array('label' => 'By US state · ' . $alt_y,
-        'text' => 'In the US, ' . $alt_st->state . ' has the most recorded layoffs in ' . $alt_y . ' (' . number_format((int) $alt_st->j) . ').',
+        'text' => 'In the US, ' . (isset($alt_stmap[$alt_st->state]) ? $alt_stmap[$alt_st->state] : $alt_st->state) . ' has the most recorded layoffs in ' . $alt_y . ' (' . number_format((int) $alt_st->j) . ').',
         'link' => $alt_lk(array('years' => $alt_y, 'country' => 'United States', 'state' => $alt_st->state)), 'linklabel' => 'the US map');
 
     if (function_exists('alt_role_categories')) {

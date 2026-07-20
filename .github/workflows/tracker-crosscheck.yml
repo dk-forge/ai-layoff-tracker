@@ -1,19 +1,24 @@
-name: Coverage cross-check (manual)
+name: Coverage cross-check (weekly QA)
 
-# Works BACKWARDS from a provided reference checklist (company + date + approx
-# count) to find events we're MISSING, and emits targeted news-search queries so
-# the news -> DeepSeek pipeline can find a PRIMARY SOURCE for each gap. It never
-# writes data (every number must trace to a receipt). Manual dispatch only.
+# Works BACKWARDS from a reference checklist of notable layoffs to find events
+# we're MISSING, and emits targeted news-search queries so the news -> DeepSeek
+# pipeline can find a PRIMARY SOURCE for each gap. It never writes data (every
+# number must trace to a receipt). Runs weekly against the committed checklist
+# (railway/seed_data/crosscheck_checklist.csv); a manual dispatch can point it at
+# any other checklist URL instead.
 on:
+  schedule:
+    - cron: '0 9 * * 2'   # Tuesdays 09:00 UTC
   workflow_dispatch:
     inputs:
       checklist_url:
-        description: 'URL to a CSV/JSON checklist of {company,date,approx_count}'
-        required: true
+        description: 'Optional checklist URL (CSV/JSON of company,date,count). Blank = use the committed checklist.'
+        required: false
+        default: ''
       window_days:
         description: 'Match window in days around each reference date'
         required: false
-        default: '45'
+        default: '60'
 
 jobs:
   crosscheck:
@@ -25,15 +30,20 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install requests
-      - name: Fetch checklist + report coverage gaps
+      - name: Report coverage gaps (feed the sourcing pipeline)
+        working-directory: railway
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
-          CROSSCHECK_WINDOW_DAYS: ${{ github.event.inputs.window_days || '45' }}
+          CROSSCHECK_WINDOW_DAYS: ${{ github.event.inputs.window_days || '60' }}
+          CHECKLIST_URL: ${{ github.event.inputs.checklist_url || '' }}
         run: |
-          cd railway
           set -o pipefail
-          curl -fsSL "${{ github.event.inputs.checklist_url }}" -o /tmp/checklist_input
-          CROSSCHECK_INPUT=/tmp/checklist_input python tracker_crosscheck.py
+          if [ -n "$CHECKLIST_URL" ]; then
+            curl -fsSL "$CHECKLIST_URL" -o /tmp/checklist_input
+            CROSSCHECK_INPUT=/tmp/checklist_input python tracker_crosscheck.py
+          else
+            CROSSCHECK_INPUT=seed_data/crosscheck_checklist.csv python tracker_crosscheck.py
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
