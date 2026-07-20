@@ -2727,10 +2727,20 @@
             });
         });
         // Card ids are assigned above (after render), so the browser's initial
-        // anchor jump missed them — honor a #card-… hash from a shared link now.
+        // anchor jump missed them — honor a #card-… hash from a shared link.
+        // Charts render async and shift layout, so retry as it settles and bail
+        // the moment the recipient takes over scrolling.
         if (window.location.hash && /^#card-/.test(window.location.hash)) {
             var target = document.getElementById(window.location.hash.slice(1));
-            if (target) setTimeout(function () { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 350);
+            if (target) {
+                var userScrolled = false;
+                var yield_ = function () { userScrolled = true; };
+                window.addEventListener('wheel', yield_, { passive: true, once: true });
+                window.addEventListener('touchmove', yield_, { passive: true, once: true });
+                [450, 1600, 3200].forEach(function (ms) {
+                    setTimeout(function () { if (!userScrolled) target.scrollIntoView({ behavior: ms > 600 ? 'smooth' : 'auto', block: 'start' }); }, ms);
+                });
+            }
         }
     }
 
