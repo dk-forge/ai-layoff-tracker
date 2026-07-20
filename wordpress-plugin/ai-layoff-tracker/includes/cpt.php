@@ -50,7 +50,7 @@ function alt_allowed_reason_tags() {
 }
 
 function alt_allowed_ai_causation() {
-    // 'ai_linked' is the Challenger/layoffs.fyi-style BROAD bucket: cuts the
+    // 'ai_linked' is the Survey/sector trackers-style BROAD bucket: cuts the
     // company or press tied to AI loosely (funding an AI pivot, AI-driven
     // market disruption, press AI framing). It never sets ai_explicit, so the
     // strict verified-AI totals stay quote-gated; it only feeds the labeled

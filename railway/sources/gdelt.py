@@ -154,9 +154,9 @@ TRUSTED_DOMAINS = {
     "dailynewsegypt.com",                                     # Egypt
     "kommersant.ru", "rbc.ru", "thebell.io",                  # Russia
     "epravda.com.ua",                                         # Ukraine
-    # --- 2026-07-18 Challenger gap-closure R4 (docs/CHALLENGER_GAP_CLOSURE_PLAN.md):
+    # --- 2026-07-18 Survey gap-closure R4 (docs/SURVEY_GAP_CLOSURE_PLAN.md):
     # reviewed US trade/regional outlets that carried missed-event coverage.
-    # Healthcare trade press is the motivating sector (Challenger Jan
+    # Healthcare trade press is the motivating sector (Survey Jan
     # healthcare 17,107 vs ~400 in named events). xtalks.com was reviewed and
     # rejected (marketing/webinar site, not a newsroom).
     "healthcaredive.com", "fiercepharma.com",                 # healthcare trade
@@ -197,7 +197,7 @@ TRUSTED_DOMAINS = {
     "wbur.org",                   # Boston NPR (biotech)
     "kqed.org",                   # SF Bay NPR (tech)
     # Corporate press-release wires: PRIMARY announcement text, the exact
-    # channel Challenger monitors. Allowlist-only — GDELT/NewsAPI surface the
+    # channel Survey monitors. Allowlist-only — GDELT/NewsAPI surface the
     # releases; we never crawl the wires directly.
     "prnewswire.com", "businesswire.com", "globenewswire.com", "prweb.com",
     # --- 2026-07-18 worldwide papers-of-record expansion: built from the
@@ -681,7 +681,7 @@ SEGMENT_TERMS = (
     # AI-attribution phrasings the broad vocabulary can rank too low
     '"AI layoffs"', '"replaced by AI"', '"because of AI"',
     '"artificial intelligence" "job cuts"', '"automation" "restructuring"',
-    # Corporate-announcement phrasings (2026-07-19 audit: Challenger-style
+    # Corporate-announcement phrasings (2026-07-19 audit: Survey-style
     # events surface in earnings-call coverage that says "restructuring" or
     # "workforce reduction", not "layoff" — these segments pull that slice
     # above the maxrecords cutoff)
@@ -700,7 +700,7 @@ SEGMENT_TERMS = (
     '"sackings"', '"job shedding"', '"shed jobs"', '"slash jobs"',
     '"voluntary separation scheme"', '"mass termination"',
     '"jobs terminated"', '"staff reduction"', '"retrenched workers"',
-    # Public-sector and education segments (2026-07-19 Challenger sector
+    # Public-sector and education segments (2026-07-19 Survey sector
     # decomposition: government + education + nonprofit are ~9% of their
     # total and never file WARN or 8-K — but the big events make the press)
     '"school district" "layoffs"', '"university" "job cuts"',

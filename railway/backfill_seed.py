@@ -3,7 +3,7 @@ layoff events (seed_data/backfill_2023_2024.json by default) via the same
 idempotent, dedup-guarded path as seed_ai.py.
 
 These are events forensic research found MISSING from the tracker vs the
-Challenger benchmark for the thin historical years (2023-2024). Each carries a
+Survey benchmark for the thin historical years (2023-2024). Each carries a
 real source URL; none is AI-attributed (verified separately), so this raises the
 broad US all-cuts coverage only, never the AI line. Idempotent: re-running
 re-posts nothing (company+date+count dedup hash is checked server-side).

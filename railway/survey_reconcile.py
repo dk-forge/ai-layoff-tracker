@@ -1,6 +1,6 @@
-"""Retain a source-linked US AI-announcement comparison with Challenger.
+"""Retain a source-linked US AI-announcement comparison with Survey.
 
-Challenger's event-level corpus is not public.  This worker therefore measures
+Survey's event-level corpus is not public.  This worker therefore measures
 coverage against its monthly published aggregates; it never changes tracker
 events merely to match those aggregates.  It records both the individual
 reference-month comparison and the cumulative year-to-date comparison so a
@@ -24,7 +24,7 @@ FEED = "https://www.challengergray.com/blog/category/job-cuts-report/feed/"
 
 # These historical figures are transcribed from the linked official 2026
 # monthly reports.  Keeping the source URL next to each figure makes the
-# starting benchmark reproducible without pretending Challenger publishes a
+# starting benchmark reproducible without pretending Survey publishes a
 # downloadable event-level database.  New months are parsed from its official
 # feed and appended automatically below.
 HISTORICAL_REPORTS = {
@@ -81,7 +81,7 @@ def latest_report():
             except (TypeError, ValueError, IndexError):
                 report_month = date.today().strftime("%Y-%m")
             return {"reference_month": previous_month(report_month), "report_month": report_month, "benchmark_url": url}
-    raise RuntimeError("No report URL found in Challenger job-cuts feed")
+    raise RuntimeError("No report URL found in Survey job-cuts feed")
 
 
 def _first_number(text, patterns, label):
@@ -89,10 +89,10 @@ def _first_number(text, patterns, label):
         match = re.search(pattern, text, re.I)
         if match:
             return int(match.group(1).replace(",", ""))
-    raise RuntimeError(f"Could not extract Challenger {label} AI total")
+    raise RuntimeError(f"Could not extract Survey {label} AI total")
 
 
-def challenger_ai_totals(url, reference_month, page_text=None):
+def survey_ai_totals(url, reference_month, page_text=None):
     """Parse a new official report.  Historical records stay source-cited above."""
     text = page_text if page_text is not None else _fetch_report_text(url)
     month_name = MONTH_NAMES[int(reference_month[5:7]) - 1]
@@ -116,8 +116,8 @@ def _fetch_report_text(url):
     return _strip(response.text)
 
 
-def challenger_all_cut_totals(url, reference_month, page_text=None):
-    """Fail-soft parse of Challenger's headline TOTAL announced cuts.
+def survey_all_cut_totals(url, reference_month, page_text=None):
+    """Fail-soft parse of Survey's headline TOTAL announced cuts.
 
     The AI figures above remain strict (a parse failure fails the run); the
     all-cuts pair is an additional labeled comparator, so a wording change in
@@ -150,7 +150,7 @@ def challenger_all_cut_totals(url, reference_month, page_text=None):
         ), "YTD total")
     except Exception as exc:
         print(f"WARNING: YTD all-cuts total unavailable for {reference_month}: {exc}")
-    # Plausibility floors: Challenger headline totals are always tens of
+    # Plausibility floors: Survey headline totals are always tens of
     # thousands, and a YTD figure can never be below its own month. A number
     # failing these is a mis-parse — storing null is honest; storing a wrong
     # benchmark figure is not.
@@ -172,11 +172,11 @@ def reports_for_year(year):
     if year == date.today().year:
         latest = latest_report()
         if latest["reference_month"] not in known_months:
-            monthly, ytd = challenger_ai_totals(latest["benchmark_url"], latest["reference_month"])
+            monthly, ytd = survey_ai_totals(latest["benchmark_url"], latest["reference_month"])
             latest.update({"ai_jobs_month": monthly, "ai_jobs_ytd": ytd})
             reports.append(latest)
     if not reports:
-        raise RuntimeError(f"No reviewed Challenger report manifest exists for {year}")
+        raise RuntimeError(f"No reviewed Survey report manifest exists for {year}")
     return sorted(reports, key=lambda item: item["reference_month"])
 
 
@@ -194,7 +194,7 @@ def tracker_comparison_totals(site, reference_month):
         "strict": {"employer_country": "United States", "ai_primary": "1"},
         "observed": {"country": "United States", "ai": "1"},
         # All-cuts comparator: identical strict gates minus the AI
-        # requirement, against Challenger's headline total announced cuts.
+        # requirement, against Survey's headline total announced cuts.
         "strict_all": {"employer_country": "United States"},
     }
     totals = {}
@@ -214,28 +214,28 @@ def publish_record(site, payload):
     key = os.environ.get("WP_API_KEY", "")
     if not key:
         raise RuntimeError("WP_API_KEY is required to retain the public reconciliation record")
-    response = requests.post(site.rstrip("/") + "/wp-json/layoffs/v1/benchmarks/challenger",
+    response = requests.post(site.rstrip("/") + "/wp-json/layoffs/v1/benchmarks/survey",
         json=payload, headers={**UA, "X-Layoff-API-Key": key}, timeout=60)
     response.raise_for_status()
 
 
 def payload_for_report(site, report, allowed):
     totals, urls = tracker_comparison_totals(site, report["reference_month"])
-    challenger_ytd = int(report["ai_jobs_ytd"])
-    challenger_month = int(report["ai_jobs_month"])
-    total_month, total_ytd = challenger_all_cut_totals(report["benchmark_url"], report["reference_month"])
-    variance = (totals["strict_ytd"] - challenger_ytd) / challenger_ytd if challenger_ytd else 0.0
-    monthly_variance = (totals["strict_month"] - challenger_month) / challenger_month if challenger_month else 0.0
+    survey_ytd = int(report["ai_jobs_ytd"])
+    survey_month = int(report["ai_jobs_month"])
+    total_month, total_ytd = survey_all_cut_totals(report["benchmark_url"], report["reference_month"])
+    variance = (totals["strict_ytd"] - survey_ytd) / survey_ytd if survey_ytd else 0.0
+    monthly_variance = (totals["strict_month"] - survey_month) / survey_month if survey_month else 0.0
     return {
-        "challenger_total_jobs_month": total_month, "challenger_total_jobs_ytd": total_ytd,
+        "survey_total_jobs_month": total_month, "survey_total_jobs_ytd": total_ytd,
         "tracker_announced_us_employer_jobs_month": totals["strict_all_month"],
         "tracker_announced_us_employer_jobs_ytd": totals["strict_all_ytd"],
         "tracker_all_month_query": urls["strict_all_month"],
         "tracker_all_query": urls["strict_all_ytd"],
         "year": int(report["reference_month"][:4]), "reference_month": report["reference_month"],
-        "report_month": report["report_month"], "benchmark": "Challenger, Gray & Christmas",
-        "benchmark_url": report["benchmark_url"], "challenger_ai_jobs_month": challenger_month,
-        "challenger_ai_jobs_ytd": challenger_ytd,
+        "report_month": report["report_month"], "benchmark": "Announcement survey",
+        "benchmark_url": report["benchmark_url"], "survey_ai_jobs_month": survey_month,
+        "survey_ai_jobs_ytd": survey_ytd,
         "tracker_strict_month_query": urls["strict_month"],
         "tracker_ai_primary_announced_us_employer_jobs_month": totals["strict_month"],
         "tracker_strict_query": urls["strict_ytd"],
@@ -246,7 +246,7 @@ def payload_for_report(site, report, allowed):
         "tracker_ai_cited_announced_us_job_location_jobs_ytd": totals["observed_ytd"],
         "monthly_variance": round(monthly_variance, 4), "variance": round(variance, 4),
         "allowed_variance": allowed,
-        "definition": "Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Challenger AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Challenger total announced cuts. Diagnostic figure is US job location + any explicit AI citation and is not Challenger-comparable.",
+        "definition": "Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Survey AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Survey total announced cuts. Diagnostic figure is US job location + any explicit AI citation and is not Survey-comparable.",
     }
 
 
@@ -256,8 +256,8 @@ def main():
         print("WP_SITE_URL is required")
         return 1
     year = int(os.environ.get("BENCHMARK_YEAR") or date.today().year)
-    allowed = float(os.environ.get("CHALLENGER_ALLOWED_VARIANCE") or "0.10")
-    fail_on_gap = os.environ.get("CHALLENGER_FAIL_ON_GAP", "").lower() in {"1", "true", "yes"}
+    allowed = float(os.environ.get("SURVEY_ALLOWED_VARIANCE") or "0.10")
+    fail_on_gap = os.environ.get("SURVEY_FAIL_ON_GAP", "").lower() in {"1", "true", "yes"}
     payloads = [payload_for_report(site, report, allowed) for report in reports_for_year(year)]
     for payload in payloads:
         publish_record(site, payload)

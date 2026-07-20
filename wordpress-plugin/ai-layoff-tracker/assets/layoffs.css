@@ -1184,7 +1184,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-health-run-heading select { display: block; margin-top: 4px; min-width: 128px; }
 @media (max-width: 600px) { .alt-health-run-heading { display: block; } .alt-health-run-heading label { display: inline-block; margin: 8px 0; } }
 .alt-health-src-meta { display: block; margin-top: 2px; color: var(--alt-muted); font-size: .78rem; font-weight: 400; }
-.alt-challenger-chart { position: relative; height: 470px; margin: 14px 0 6px; }
+.alt-survey-chart { position: relative; height: 470px; margin: 14px 0 6px; }
 .alt-source-ok td:nth-child(2) { color: #187449; font-weight: 700; }
 .alt-source-running td:nth-child(2) { color: #9a6700; font-weight: 700; }
 .alt-source-degraded td:nth-child(2) { color: #a12d2d; font-weight: 700; }
@@ -1341,7 +1341,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 @media print{.alt-quarterly-report{max-width:none;padding:0}.alt-report-hero,.alt-report-metrics article,.alt-report-grid>div{border-color:#999;background:#fff}.alt-report-alert{border-color:#999;background:#fff}}
 
 /* Announced-to-verified conversion card: a standalone full-width chart card
-   sitting beside the Challenger comparison, outside the chart grid. */
+   sitting beside the Survey comparison, outside the chart grid. */
 .alt-conversion-card { margin: 0 0 16px; }
 .alt-conversion-card .alt-chart-box { height: 250px; }
 .alt-conversion-card .alt-chart-sub { max-width: 62em; }
@@ -1377,7 +1377,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-op-delta.up { color: #b02a1a; background: #fdeeea; }
 .alt-op-delta.down { color: #1f7a4d; background: #e9f6ef; }
 .alt-op-sub { font-size: 13.5px; color: var(--alt-ink-2); margin-top: 8px; }
-.alt-op-challenger { background: var(--alt-surface-2); border: 1px solid var(--alt-border); border-radius: 9px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 18px; }
+.alt-op-survey { background: var(--alt-surface-2); border: 1px solid var(--alt-border); border-radius: 9px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 18px; }
 .alt-op-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 18px; }
 @media (max-width: 620px) { .alt-op-grid { grid-template-columns: 1fr; } }
 .alt-op-block h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--alt-muted); margin: 0 0 8px; }
@@ -1395,9 +1395,9 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 
 .alt-report-star { font-weight: 800; color: #b8860b; }
 .alt-report-star:hover { color: #8a6508; }
-/* Challenger box in World mode: visually demoted (it's a US-only aside, not a
+/* Survey box in World mode: visually demoted (it's a US-only aside, not a
    global comparison), with an explicit "(US only)" tag so scopes can't be mixed. */
-.alt-op-challenger-aside { font-size: 12.5px; background: #fff; border-style: dashed; color: var(--alt-ink-2); }
+.alt-op-survey-aside { font-size: 12.5px; background: #fff; border-style: dashed; color: var(--alt-ink-2); }
 .alt-op-usonly { font-weight: 600; color: var(--alt-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
 
 /* Report prev/next + export bar */

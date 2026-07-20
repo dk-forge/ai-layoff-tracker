@@ -33,8 +33,8 @@ jobs:
           # the worker stops safely between rows before the job ceiling.
           CONTEXT_DEADLINE_SECONDS: '900'
           # Prioritise source-linked US announced AI candidates for the public
-          # Challenger comparator. Exact quotes remain mandatory for updates.
-          CONTEXT_ENRICH_MODE: challenger_priority
+          # Survey comparator. Exact quotes remain mandatory for updates.
+          CONTEXT_ENRICH_MODE: survey_priority
         run: |
           cd railway
           python enrich_context.py

@@ -531,7 +531,7 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     // country_basis=employer mirrors date_basis: the country filter then
     // matches the evidenced employer domicile where one is recorded, falling
     // back to the stated job location only for rows with no recorded domicile.
-    // This is the Challenger-comparable employer basis (a US-HQ company's
+    // This is the Survey-comparable employer basis (a US-HQ company's
     // multi-country cut counts; a foreign-HQ company's US cut does not). The
     // plain country param stays job-location, and employer_country stays
     // domicile-only (the strict comparator's gate) — neither changes meaning.
@@ -586,7 +586,7 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
     if ($r->get_param('ai_primary') === '1' || $r->get_param('ai_primary') === 'true') { $where[] = "ai_causation = 'primary_cause'"; }
     // ai_broad matches the ai_broad_jobs aggregate definition exactly: the
-    // explicit employer-quote tag OR the loose Challenger/layoffs.fyi-style
+    // explicit employer-quote tag OR the loose Survey/sector trackers-style
     // ai_linked tier. It filters ROWS, unlike the always-present aggregate
     // columns, so benchmark queries can scope totals to the broad AI basis.
     if ($r->get_param('ai_broad') === '1' || $r->get_param('ai_broad') === 'true') { $where[] = "(ai_explicit = 1 OR ai_causation = 'ai_linked')"; }
@@ -881,9 +881,9 @@ function alt_register_query_routes() {
         'methods' => 'GET', 'callback' => 'alt_api_announcement_lifecycle_candidates', 'permission_callback' => '__return_true',
         'args' => array('per_page' => array('type' => 'integer', 'default' => 50)),
     ));
-    register_rest_route('layoffs/v1', '/benchmarks/challenger', array(
-        array('methods' => 'GET', 'callback' => 'alt_api_challenger_benchmarks', 'permission_callback' => '__return_true'),
-        array('methods' => 'POST', 'callback' => 'alt_api_challenger_benchmark_post',
+    register_rest_route('layoffs/v1', '/benchmarks/survey', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_survey_benchmarks', 'permission_callback' => '__return_true'),
+        array('methods' => 'POST', 'callback' => 'alt_api_survey_benchmark_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
     // Country-period recall samples are public methodology records, not a
@@ -1597,7 +1597,7 @@ function alt_api_quality_status() {
             array('id' => 'operational_monitoring', 'status' => 'active', 'scope' => 'Collector health, integrity and workflow failures'),
             array('id' => 'canonical_source_evidence', 'status' => 'complete', 'scope' => 'Canonical events retain all known source reports'),
             array('id' => 'durable_evidence_retention', 'status' => 'active', 'scope' => 'SHA-256 retained-excerpt hashes; bounded legacy backfill, not publisher-page archiving'),
-            array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Public monthly strict US benchmark; source-evidenced announcement-date backfill continues'),
+            array('id' => 'survey_reconciliation', 'status' => 'active', 'scope' => 'Public monthly strict US benchmark; source-evidenced announcement-date backfill continues'),
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
             array('id' => 'industry_and_job_location_metadata', 'status' => 'active', 'scope' => 'Public completeness telemetry identifies blank industry and affected-job-state fields; a bounded daily backfill classifies blank industries from company identity and the retained excerpt only (fixed vocabulary, double-confirmed, blank when uncertain), while job-location state still requires source evidence and never headquarters inference'),
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
@@ -1878,14 +1878,14 @@ function alt_api_announcement_lifecycle_candidates(WP_REST_Request $r) {
 }
 
 /** Public retained reconciliation history; never a command to alter totals. */
-function alt_api_challenger_benchmarks() {
-    $records = get_option('alt_challenger_benchmarks');
+function alt_api_survey_benchmarks() {
+    $records = get_option('alt_survey_benchmarks');
     if (!is_array($records)) return rest_ensure_response(array());
     // Legacy setup records predate report_month. Present one authoritative
     // record per official report month, preferring the newer record that
     // explicitly names that month. This does not rewrite history or totals;
     // it prevents an API consumer from mistaking a setup duplicate for a
-    // second independent Challenger publication.
+    // second independent Survey publication.
     $by_month = array();
     foreach ($records as $record) {
         if (!is_array($record)) continue;
@@ -1903,43 +1903,43 @@ function alt_api_challenger_benchmarks() {
     return rest_ensure_response(array_values($by_month));
 }
 
-function alt_api_challenger_benchmark_post(WP_REST_Request $r) {
+function alt_api_survey_benchmark_post(WP_REST_Request $r) {
     $year = (int) $r->get_param('year');
     $report_month = (string) $r->get_param('report_month');
     if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $report_month)) $report_month = gmdate('Y-m');
     $reference_month = (string) $r->get_param('reference_month');
     if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $reference_month)) $reference_month = $report_month;
-    $benchmark = max(0, (int) $r->get_param('challenger_ai_jobs_ytd'));
-    $benchmark_month = max(0, (int) $r->get_param('challenger_ai_jobs_month'));
+    $benchmark = max(0, (int) $r->get_param('survey_ai_jobs_ytd'));
+    $benchmark_month = max(0, (int) $r->get_param('survey_ai_jobs_month'));
     $tracker = max(0, (int) $r->get_param('tracker_ai_primary_announced_us_employer_jobs_ytd'));
     $tracker_month = max(0, (int) $r->get_param('tracker_ai_primary_announced_us_employer_jobs_month'));
     $url = esc_url_raw($r->get_param('benchmark_url'));
     if ($year < 2015 || $year > 2100 || !$benchmark || !$url) {
-        return new WP_Error('alt_bad_request', 'year, benchmark URL and positive Challenger total are required.', array('status' => 400));
+        return new WP_Error('alt_bad_request', 'year, benchmark URL and positive Survey total are required.', array('status' => 400));
     }
-    $records = get_option('alt_challenger_benchmarks');
+    $records = get_option('alt_survey_benchmarks');
     if (!is_array($records)) $records = array();
     // One retained public comparator per official report month.
     $key = $report_month;
     $records[$key] = array(
-        'year' => $year, 'reference_month' => $reference_month, 'report_month' => $report_month, 'recorded_at' => gmdate('c'), 'benchmark' => 'Challenger, Gray & Christmas',
-        'benchmark_url' => $url, 'challenger_ai_jobs_ytd' => $benchmark,
-        'challenger_ai_jobs_month' => $benchmark_month,
+        'year' => $year, 'reference_month' => $reference_month, 'report_month' => $report_month, 'recorded_at' => gmdate('c'), 'benchmark' => 'Announcement survey',
+        'benchmark_url' => $url, 'survey_ai_jobs_ytd' => $benchmark,
+        'survey_ai_jobs_month' => $benchmark_month,
         'tracker_ai_primary_announced_us_employer_jobs_month' => $tracker_month,
         'tracker_ai_primary_announced_us_employer_jobs_ytd' => $tracker,
         'tracker_ai_cited_announced_us_job_location_jobs_month' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_month')),
         'tracker_ai_cited_announced_us_job_location_jobs_ytd' => max(0, (int) $r->get_param('tracker_ai_cited_announced_us_job_location_jobs_ytd')),
-        // All-cuts comparator pair (nullable: Challenger totals parse
+        // All-cuts comparator pair (nullable: Survey totals parse
         // fail-soft, and older records predate these fields).
-        'challenger_total_jobs_month' => $r->get_param('challenger_total_jobs_month') === null ? null : max(0, (int) $r->get_param('challenger_total_jobs_month')),
-        'challenger_total_jobs_ytd' => $r->get_param('challenger_total_jobs_ytd') === null ? null : max(0, (int) $r->get_param('challenger_total_jobs_ytd')),
+        'survey_total_jobs_month' => $r->get_param('survey_total_jobs_month') === null ? null : max(0, (int) $r->get_param('survey_total_jobs_month')),
+        'survey_total_jobs_ytd' => $r->get_param('survey_total_jobs_ytd') === null ? null : max(0, (int) $r->get_param('survey_total_jobs_ytd')),
         'tracker_announced_us_employer_jobs_month' => $r->get_param('tracker_announced_us_employer_jobs_month') === null ? null : max(0, (int) $r->get_param('tracker_announced_us_employer_jobs_month')),
         'tracker_announced_us_employer_jobs_ytd' => $r->get_param('tracker_announced_us_employer_jobs_ytd') === null ? null : max(0, (int) $r->get_param('tracker_announced_us_employer_jobs_ytd')),
         'monthly_variance' => $benchmark_month ? round(($tracker_month - $benchmark_month) / $benchmark_month, 4) : null,
         'variance' => round(($tracker - $benchmark) / $benchmark, 4),
-        'definition' => 'Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Challenger AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Challenger total announced cuts. Diagnostic figure is not Challenger-comparable.',
+        'definition' => 'Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Survey AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Survey total announced cuts. Diagnostic figure is not Survey-comparable.',
     );
-    krsort($records); update_option('alt_challenger_benchmarks', array_slice($records, 0, 24, true), false);
+    krsort($records); update_option('alt_survey_benchmarks', array_slice($records, 0, 24, true), false);
     return rest_ensure_response($records[$key]);
 }
 

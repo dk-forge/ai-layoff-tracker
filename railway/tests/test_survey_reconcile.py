@@ -1,4 +1,4 @@
-"""Guards for the source-linked monthly Challenger reconciliation worker."""
+"""Guards for the source-linked monthly Survey reconciliation worker."""
 import sys
 import unittest
 from pathlib import Path
@@ -8,10 +8,10 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.modules.setdefault("requests", SimpleNamespace())
 
-import challenger_reconcile as subject
+import survey_reconcile as subject
 
 
-class ChallengerReconcileTests(unittest.TestCase):
+class SurveyReconcileTests(unittest.TestCase):
     def test_reviewed_manifest_is_monthly_and_source_linked(self):
         reports = subject.HISTORICAL_REPORTS[2026]
         self.assertEqual([item["reference_month"] for item in reports], [
@@ -29,11 +29,11 @@ class ChallengerReconcileTests(unittest.TestCase):
         response = SimpleNamespace(text=text)
         response.raise_for_status = lambda: None
         with patch.object(subject.requests, "get", return_value=response, create=True):
-            self.assertEqual(subject.challenger_ai_totals("https://example.test/report", "2026-06"), (14029, 101743))
+            self.assertEqual(subject.survey_ai_totals("https://example.test/report", "2026-06"), (14029, 101743))
 
     def test_gap_is_an_alert_not_a_processing_failure_by_default(self):
-        worker = (Path(__file__).resolve().parents[1] / "challenger_reconcile.py").read_text()
-        self.assertIn('CHALLENGER_FAIL_ON_GAP", "").lower()', worker)
+        worker = (Path(__file__).resolve().parents[1] / "survey_reconcile.py").read_text()
+        self.assertIn('SURVEY_FAIL_ON_GAP", "").lower()', worker)
         self.assertIn("return 2 if outside and fail_on_gap else 0", worker)
 
 

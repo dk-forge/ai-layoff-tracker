@@ -1,6 +1,6 @@
-name: Reconcile US AI announcements with Challenger
+name: Reconcile US AI announcements with Survey
 
-# Challenger publishes a monthly public report but not its per-event database.
+# Survey publishes a monthly public report but not its per-event database.
 # This workflow measures the gap; it never changes data merely to match a
 # benchmark. A threshold miss fails loudly so the autonomous backfill and
 # classification jobs can be investigated.
@@ -38,15 +38,15 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           BENCHMARK_YEAR: ${{ github.event.inputs.year || '2026' }}
-          CHALLENGER_ALLOWED_VARIANCE: ${{ github.event.inputs.allowed_variance || '0.10' }}
-          CHALLENGER_FAIL_ON_GAP: ${{ github.event.inputs.fail_on_gap || 'false' }}
+          SURVEY_ALLOWED_VARIANCE: ${{ github.event.inputs.allowed_variance || '0.10' }}
+          SURVEY_FAIL_ON_GAP: ${{ github.event.inputs.fail_on_gap || 'false' }}
         run: |
           cd railway
           set -o pipefail
-          python challenger_reconcile.py | tee challenger-reconciliation.json
-          cp challenger-reconciliation.json "$GITHUB_STEP_SUMMARY"
+          python survey_reconcile.py | tee survey-reconciliation.json
+          cp survey-reconciliation.json "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: challenger-reconciliation
-          path: railway/challenger-reconciliation.json
+          name: survey-reconciliation
+          path: railway/survey-reconciliation.json

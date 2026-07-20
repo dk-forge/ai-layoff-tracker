@@ -55,7 +55,7 @@ def query_params(batch, mode="default"):
         "context_missing": "1", "per_page": batch, "page": 1,
         "sort": "id", "dir": "asc",
     }
-    if mode == "challenger_priority":
+    if mode == "survey_priority":
         # These are candidates for the strict US-announcement comparator, not
         # pre-judged US employers or AI-primary events. The worker still needs
         # exact source text before it can fill either context field.

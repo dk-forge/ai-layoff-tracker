@@ -46,7 +46,7 @@ GLOBAL_TERMS = (
 
 
 MARKETS = {
-    "US": Market("US", "reconciled", "Challenger, Gray & Christmas",
+    "US": Market("US", "reconciled", "Announcement survey",
                  ("WARN notice", "mass layoff", "workforce reduction"),
                  ("state WARN notices", "SEC EDGAR 8-K/6-K", "company IR"), ()),
     "EU": Market("EU", "structured_official", "European Restructuring Monitor (Eurofound)",

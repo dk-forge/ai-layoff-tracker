@@ -1,6 +1,6 @@
 """Bounded, curated employer-domicile backfill for multi-country events.
 
-Challenger counts announced cuts by US-headquartered employer; the tracker's
+Survey counts announced cuts by US-headquartered employer; the tracker's
 `country` field is job location. Multi-country events (Oracle 21,000, Block
 4,000, ...) therefore sit in 'Multiple countries' and are invisible to any
 US-employer comparison. This worker fills ONLY the blank `employer_country`
@@ -164,7 +164,7 @@ def main():
 
     registry, exact, prefixes = load_registry()
     # Two bounded passes over the ambiguity bucket: the largest events of all
-    # time, plus every current-year row (the Challenger-comparison year), so
+    # time, plus every current-year row (the Survey-comparison year), so
     # small current-year AI events (BitGo 90, Kraken 150) are not crowded out
     # by decade-old giants.
     base = {"country": "Multiple countries", "sort": "job_count", "dir": "desc"}

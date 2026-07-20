@@ -97,7 +97,7 @@ class EvidenceGuardTests(unittest.TestCase):
         self.assertTrue({10, 11}.issubset(selected_ids))
 
     def test_context_priority_is_narrow_and_rotates_batches(self):
-        params = query_params(5, "challenger_priority")
+        params = query_params(5, "survey_priority")
         self.assertEqual(params["country"], "United States")
         self.assertEqual(params["stage"], "announced")
         self.assertEqual(params["ai"], "1")
