@@ -63,6 +63,11 @@ function alt_shortcode_press_media() {
 }
 add_shortcode('alt_press_media', 'alt_shortcode_press_media');
 
+function alt_shortcode_sources() {
+    return alt_template('page-sources.php');
+}
+add_shortcode('alt_sources', 'alt_shortcode_sources');
+
 /**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article
@@ -74,7 +79,7 @@ function alt_page_is_plugin_surface() {
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
     $post = get_post();
     if (!$post || empty($post->post_content)) return false;
-    foreach (array('alt_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker', 'alt_company_history') as $shortcode) {
+    foreach (array('alt_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker', 'alt_company_history', 'alt_sources') as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
     }
     return false;

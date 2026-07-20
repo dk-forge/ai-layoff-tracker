@@ -9,8 +9,8 @@
  */
 if (!defined('ABSPATH')) exit;
 
-function alt_state_warn_list_url($state) {
-    static $map = array(
+function alt_state_warn_urls() {
+    return array(
         'AK' => 'https://jobs.alaska.gov/RR/WARN_notices.htm',
         'AL' => 'https://www.madeinalabama.com/warn-list/',
         'AZ' => 'https://www.azcommerce.com/arizona-warn-notices',
@@ -53,6 +53,10 @@ function alt_state_warn_list_url($state) {
         'WA' => 'https://esd.wa.gov/employer-requirements/layoffs-and-employee-notifications/worker-adjustment-and-retraining-notification-warn-layoff-and-closure-database',
         'WI' => 'https://dwd.wisconsin.gov/dislocatedworker/warn/',
     );
+}
+
+function alt_state_warn_list_url($state) {
+    $map = alt_state_warn_urls();
     $state = strtoupper(trim((string) $state));
     return isset($map[$state]) ? $map[$state] : '';
 }

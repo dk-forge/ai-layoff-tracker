@@ -2527,6 +2527,34 @@ function alt_api_query_compute(WP_REST_Request $r) {
 }
 
 /**
+ * A short human location for a row: "City, ST" (US, city known) / "ST" (US) /
+ * "City, Country" or "Country" (non-US). The city, when present, is parsed
+ * from the stored excerpt — WARN excerpts read "…at COMPANY in CITY. N
+ * employees affected…" — since there is no dedicated city column. Returns ''
+ * when nothing better than the plain country is known, so callers can omit it.
+ */
+function alt_short_location($excerpt, $state, $country) {
+    $state = strtoupper(trim((string) $state));
+    $country = trim((string) $country);
+    $city = '';
+    // "in <City>. <N> employees affected" — the WARN excerpt shape. Kept tight
+    // (stops at the first period, caps length) so a prose news excerpt can't
+    // paste a whole clause in as a "city".
+    if (preg_match('/\bin ([A-Za-z][A-Za-z .\'\-]{1,38}?)\.\s+[\d,]+ employees/', (string) $excerpt, $m)) {
+        $city = trim($m[1]);
+    }
+    $parts = array();
+    if ($city !== '') $parts[] = $city;
+    if ($state !== '') {
+        $parts[] = $state;
+    } elseif ($country !== '' && strcasecmp($country, 'United States') !== 0
+              && strcasecmp($country, 'Multiple countries') !== 0) {
+        $parts[] = $country;
+    }
+    return implode(', ', $parts);
+}
+
+/**
  * Attach each row's OTHER retained sources for the same event as
  * `additional_sources` (so a merged event shows, e.g., the official WARN
  * notice AND the news article that corroborated it — not just the one primary
@@ -2682,10 +2710,12 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         );
     }
 
-    // Largest single events
+    // Largest single events. Location is surfaced so several rows for the same
+    // company (e.g. a company that legally filed WARN notices in six different
+    // cities/states) read as the distinct events they are, not as duplicates.
     list($w2, $p2) = alt_db_where($r);
     $top_events = $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country, excerpt
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 10", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
@@ -2693,6 +2723,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'company_name' => $row->company, 'job_count' => (int) $row->job_count,
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,
+            'location' => alt_short_location($row->excerpt, $row->state, $row->country),
         );
     }
 

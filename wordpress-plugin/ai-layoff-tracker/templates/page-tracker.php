@@ -51,7 +51,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     <?php $alt_cov = alt_coverage_counts(); ?>
     <div class="alt-narrative" id="alt-narrative"></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
-    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>every SEC 8-K filing, official WARN notices from 41 US states, and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology &amp; sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>every SEC 8-K filing, official WARN notices from 41 US states, and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
     <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -201,7 +201,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-stat-card alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-total">—</span>
                 <span class="alt-stat-label">Verified job cuts</span>
-                <span class="alt-stat-desc">Filed or reported. The main number.</span>
+                <span class="alt-stat-desc">Filed or reported. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Why this is verified &rarr;</a></span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
             </div>
             <div class="alt-stat-card alt-fam-announced">
@@ -373,7 +373,10 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <?php foreach (alt_faq_items() as $qa) : ?>
         <details class="alt-faq-item">
             <summary><?php echo esc_html($qa[0]); ?></summary>
-            <div class="alt-method-body"><p><?php echo esc_html($qa[1]); ?></p></div>
+            <div class="alt-method-body"><p><?php echo esc_html($qa[1]); ?><?php
+                if (isset($qa[2]) && is_array($qa[2])) {
+                    echo ' <a href="' . esc_url(home_url('/' . ltrim($qa[2][0], '/'))) . '">' . wp_kses($qa[2][1], array()) . '</a>';
+                } ?></p></div>
         </details>
         <?php endforeach; ?>
     <details class="alt-methodology" id="alt-metric-definitions">
@@ -409,14 +412,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <div class="alt-method-body">
             <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from 44 US jurisdictions, Eurofound ERM for the EU, discovery probes for Japan, South Korea and Brazil), press-release wires and reviewed company IR feeds are monitored, and 499 reviewed news outlets across 198 countries surface coverage through GDELT's 65-language index and NewsAPI — allowlist-only, never crawled directly. Every published event links to its source.</p>
             <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
-        </div>
-    </details>
-    <details class="alt-methodology">
-        <summary>Live data-source status</summary>
-        <div class="alt-method-body">
-            <p id="alt-source-health-note">Checking the most recent collector status…</p>
-            <div id="alt-source-health" class="alt-source-health" aria-live="polite"></div>
-            <p>“Healthy” means the collector completed and reports how many candidate documents it found; it does not mean the source is a complete census. “Running” means collection is in progress. “Degraded” means the most recent attempt failed, so that source should not be interpreted as reporting zero layoffs. The full corrections trail is in the Data notes &amp; corrections log below.</p>
         </div>
     </details>
     <div class="alt-mini alt-chart-card alt-conversion-card" id="alt-conversion-card">
@@ -502,14 +497,10 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </details>
 
     <details class="alt-methodology">
-        <summary>Databases &amp; sources we pull, by region</summary>
+        <summary>Known gaps &amp; why the country count changes</summary>
         <div class="alt-method-body">
-            <p><b>United States and SEC-reporting foreign issuers.</b> <a href="https://efts.sec.gov/LATEST/search-index?q=%22reduction%20in%20force%22&dateRange=custom&forms=8-K" target="_blank" rel="noopener">SEC EDGAR full-text search</a> for 8-K and 6-K filings, searched twice daily across layoff phrasings, plus official state <b>WARN notices from 41 states</b>, imported daily. The complete per-state list of portals and parsers is public in <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">our source code</a>. The remaining states publish no usable per-notice data: HI and OK omit headcounts, and MO and NM publish nothing.</p>
-            <p><b>European Union, Norway, and the UK historically.</b> The <a href="https://apps.eurofound.europa.eu/restructuring-events/" target="_blank" rel="noopener">European Restructuring Monitor</a> from Eurofound, an EU agency. These are per-company restructuring announcements compiled by national correspondents who screen 58 designated business media titles daily. We import them daily with attribution. Because ERM records announcement-stage figures, its entries feed our Announced tier.</p>
-            <p><b>Worldwide, every country.</b> The <a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">GDELT global news index</a> machine-translates press coverage from 65+ languages (Le Monde, Handelsblatt, Nikkei, Globo and thousands more) and we search it twice daily for layoff coverage in any country, alongside <a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI</a>. Only articles from an editorially maintained trusted-outlet list are ingested, and that list is also public in the repository.</p>
-            <p><b>What the AI does and does not do.</b> WARN and ERM records are imported with <em>no AI processing</em>, because they are already structured. For press articles, the DeepSeek-V3 model reads the article text and extracts the company, the count, the date, the country, and any explicit AI attribution. Countries and industries then normalize through fixed vocabularies, counts and dates pass hard validation rules, and duplicates are checked against the existing data. A second, independent model pass audits classifications every day, and a full-dataset audit runs monthly. Label corrections apply only when two independent passes agree. Numeric changes and removals always require a human. Every correction discloses itself in the log below.</p>
-            <p><b>Why 41 US states and not 50.</b> All 50 states appear in the tracker through SEC filings and news, but WARN <em>notices</em> come from 41 states because that is how many publish usable per-notice data. The rest cannot be included through no fault of ours: Hawaii and Oklahoma publish WARN notices without headcounts, and Missouri and New Mexico publish nothing citable at the notice level. Oregon is included but publishes some employers anonymized as facility or street names in its own official list; we record those rows faithfully rather than guessing the employer. 41 is the ceiling of what US states actually make public, and we are at it.</p>
-            <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As events occur and as we add more trusted local outlets (the list grew from 106 to 153 in July 2026), the count rises on its own. This is honest by design: we show the countries where verifiable events exist, not a padded list.</p>
+            <p>The full directory of every pipeline — the SEC, all state WARN registries with live links, Eurofound ERM, and the news index — lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>. The disclosures below cover what is <em>not</em> yet included.</p>
+            <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As events occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable events exist, not a padded list.</p>
             <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE; they are maintained as official-source research candidates and will be named as live only after a stable public interface, tests and source-health monitoring exist. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Events too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
         </div>
     </details>

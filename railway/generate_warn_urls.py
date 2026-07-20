@@ -33,14 +33,18 @@ def render_php(mapping):
         " */",
         "if (!defined('ABSPATH')) exit;",
         "",
-        "function alt_state_warn_list_url($state) {",
-        "    static $map = array(",
+        "function alt_state_warn_urls() {",
+        "    return array(",
     ]
     for st in sorted(mapping):
         url = mapping[st].replace("'", "\\'")
         lines.append(f"        '{st}' => '{url}',")
     lines += [
         "    );",
+        "}",
+        "",
+        "function alt_state_warn_list_url($state) {",
+        "    $map = alt_state_warn_urls();",
         "    $state = strtoupper(trim((string) $state));",
         "    return isset($map[$state]) ? $map[$state] : '';",
         "}",

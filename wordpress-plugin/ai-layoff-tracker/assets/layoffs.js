@@ -920,8 +920,12 @@
         // Largest single events: name, jobs, AI segment when explicitly
         // attributed. Tapping toggles the company text filter.
         var companyBox = document.getElementById('alt-f-company');
+        // entry[0] stays the bare company name (the tap-to-filter key); entry[3]
+        // is the display label with the event's location appended, so multiple
+        // filings by one company read as the distinct places they are.
         var leaderEntries = (agg.leaders || []).map(function (l) {
-            return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0];
+            var display = l.company_name + (l.location ? ' · ' + l.location : '');
+            return [l.company_name, l.job_count, l.ai_explicit ? l.job_count : 0, display];
         });
         renderAiShare(agg.series);
         renderYoY(agg.series);

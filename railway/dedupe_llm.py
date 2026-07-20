@@ -31,13 +31,38 @@ from datetime import date
 import urllib.request
 from collections import defaultdict
 
+from source_health import report_source_health
+
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
 OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 MAX_CLUSTERS = int(os.environ.get("DEDUPE_MAX_CLUSTERS") or 60)
 WINDOW_DAYS = 120
+# Two NEAR-IDENTICAL counts for a material layoff are almost always the same
+# plan re-reported — a strategic round-number figure ("50,000 job cuts") recurs
+# in coverage for many months, well past the 120-day window. Those pairs get a
+# wider window so the model at least gets to adjudicate them; merely-similar
+# counts (5–25% apart) keep the tight window, where a same-quarter re-report is
+# likely but a half-year-apart pair is more often a genuinely distinct round.
+# (Incident 2026-07-19: VW "50,000" appeared twice, 125 days apart — 5 days past
+# the flat window — so the deep scan never even compared them.)
+WIDE_WINDOW_DAYS = int(os.environ.get("DEDUPE_WIDE_WINDOW_DAYS") or 365)
+WIDE_WINDOW_MIN_COUNT = int(os.environ.get("DEDUPE_WIDE_WINDOW_MIN_COUNT") or 1000)
+WIDE_WINDOW_SIMILARITY = 0.95
 SRC_RANK = {"8K": 3, "warn": 3, "press_release": 2, "erm": 2, "news": 1}
+
+
+def pair_window_days(lo, hi):
+    """Max day-gap at which two same-company counts may still be one event.
+
+    Near-identical material counts get WIDE_WINDOW_DAYS; everything else keeps
+    WINDOW_DAYS. Widening only the near-identical/large case keeps the change
+    conservative — it never loosens clustering for dissimilar counts, it only
+    lets an obvious re-reported figure reach the model's judgment."""
+    if hi and lo / hi >= WIDE_WINDOW_SIMILARITY and hi >= WIDE_WINDOW_MIN_COUNT:
+        return WIDE_WINDOW_DAYS
+    return WINDOW_DAYS
 
 
 def api(path):
@@ -107,7 +132,7 @@ def candidate_clusters(rows):
                     continue
                 hi = max(a["job_count"], b["job_count"]) or 1
                 lo = min(a["job_count"], b["job_count"])
-                if lo / hi >= 0.75 and days_between(a["layoff_date"] or "", b["layoff_date"] or "") <= WINDOW_DAYS:
+                if lo / hi >= 0.75 and days_between(a["layoff_date"] or "", b["layoff_date"] or "") <= pair_window_days(lo, hi):
                     group.append(b)
                     used.add(b["id"])
             if len(group) > 1:
@@ -261,6 +286,23 @@ def main():
             fails += 1
             print(f"  merge batch failed (will retry next run): {e}")
     print(f"\nDone: {merged} merged, {fails} batch(es) deferred, {skipped} cluster(s) skipped")
+
+    # Observability: publish what the dedup pass did to the same public health
+    # ledger every other collector reports to, so "is dedup working?" is answered
+    # by a live number instead of a guess. `remaining` = candidate clusters still
+    # awaiting review across the whole backlog (the rotation works through them
+    # over successive days); a persistently large `remaining` is the signal that
+    # the cap or window needs attention.
+    remaining = max(0, len(all_clusters) - len(clusters))
+    detail = (f"{merged} duplicate row(s) merged this run from {len(clusters)} reviewed "
+              f"cluster(s); {len(all_clusters)} candidate clusters total, ~{remaining} "
+              f"awaiting a later rotation; {skipped} skipped, {fails} batch(es) deferred")
+    status = "degraded" if (fails or (clusters and skipped == len(clusters))) else "ok"
+    try:
+        report_source_health("dedupe_llm", status, merged, detail)
+    except Exception as e:  # health is observability, never the reason a cleanup run "fails"
+        print(f"  dedup health write failed (non-fatal): {e}")
+
     # Only fail the run if literally nothing could be processed.
     if clusters and not merges and skipped == len(clusters):
         sys.exit(1)

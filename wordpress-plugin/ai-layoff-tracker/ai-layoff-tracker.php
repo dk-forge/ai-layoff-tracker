@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.21
+ * Version: 2.19.22
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.21');
+define('ALT_VERSION', '2.19.22');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -36,6 +36,9 @@ if (is_readable($alt_warn_urls_partial)) {
 }
 if (!function_exists('alt_state_warn_list_url')) {
     function alt_state_warn_list_url($state) { return ''; }
+}
+if (!function_exists('alt_state_warn_urls')) {
+    function alt_state_warn_urls() { return array(); }
 }
 
 /**
@@ -160,6 +163,16 @@ function alt_ensure_tracker_health_page_once() {
         'post_name' => 'ai-tracker-health', 'post_content' => '[alt_tracker_health]'));
 }
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
+
+function alt_ensure_sources_page_once() {
+    if (get_page_by_path('ai-layoff-tracker/sources')) return;
+    $parent = get_page_by_path('ai-layoff-tracker');
+    if (!$parent) return; // retry later; never create an orphaned sources page
+    wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
+        'post_parent' => (int) $parent->ID, 'post_title' => 'Data Sources',
+        'post_name' => 'sources', 'post_content' => '[alt_sources]'));
+}
+add_action('init', 'alt_ensure_sources_page_once', 20);
 
 function alt_ensure_publisher_page_once() {
     if (get_page_by_path('ai-layoff-tracker/publisher-tools')) return;
@@ -484,6 +497,9 @@ function alt_faq_items() {
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
             'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+        array('What sources do you use?',
+            'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . $f($n['states']) . ' US states (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated — every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
+            array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
         array('How is this different from the Challenger report or the WSJ and TrueUp layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Can journalists and researchers use this data?',
