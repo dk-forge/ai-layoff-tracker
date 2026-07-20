@@ -110,6 +110,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
         <button type="button" class="alt-qv" data-qv="announced">Announced only</button>
         <button type="button" class="alt-qv" data-qv="tech">Tech industry</button>
+        <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset alt-qv-reset">Reset all filters</button>
     </div>
 
     <div class="alt-filterbar">
@@ -173,6 +174,14 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                     <option value="macroeconomic">Macroeconomic</option>
                 </select>
             </div>
+            <div class="alt-filter" data-dd="Roles" data-empty="All roles">
+                <label for="alt-f-roles">Roles most impacted</label>
+                <select id="alt-f-roles" multiple>
+                    <?php foreach (alt_role_categories() as $alt_rk => $alt_rlabel) : ?>
+                    <option value="<?php echo esc_attr($alt_rk); ?>"><?php echo esc_html($alt_rlabel); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="alt-filter">
                 <label for="alt-f-company">Company</label>
                 <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
@@ -184,10 +193,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-filter">
                 <label for="alt-f-minjobs">Min job count</label>
                 <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
-            </div>
-            <div class="alt-filter alt-filter-reset">
-                <label>&nbsp;</label>
-                <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset all filters</button>
             </div>
         </div>
         <!-- Hidden state holders: quick-view pills are the visible controls -->
@@ -243,16 +248,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai alt-fam-us" data-challenger="<?php echo esc_attr(wp_json_encode(array(
-                'ai_ytd' => $alt_challenger_records ? (int) ($alt_challenger_records[0]['challenger_ai_jobs_ytd'] ?? 0) : 0,
-                'ref_month' => $alt_challenger_records ? (string) ($alt_challenger_records[0]['reference_month'] ?? '') : '',
-            ))); ?>">
-                <span class="alt-stat-value" id="alt-stat-ai-anticipated">—</span>
-                <span class="alt-stat-label">🤖 US AI job cuts, incl. planned</span>
-                <span class="alt-stat-desc">Every AI cut by a US company this year: verified, announced, and press-linked combined. Always the full US year, no matter what filters are set.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-anticipated-sub"></span>
-                <span class="alt-stat-sub" id="alt-stat-ai-anticipated-share-line"></span>
-            </div>
         </div>
         <nav class="alt-stats-links" aria-label="About these results">
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
@@ -300,7 +295,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-barlist" id="alt-bars-countries"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">Largest single events <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-leaders" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">Largest single job cuts <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-leaders" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-leaders"></div>
         </div>
         <div class="alt-mini">
@@ -324,7 +319,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <div class="alt-barlist" id="alt-bars-ai-intensity"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">Roles most impacted <span class="alt-chart-sub" id="alt-roles-sub"><span class="alt-ai-key"></span> AI share · events naming the teams cut only</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-roles" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">Roles most impacted <span class="alt-chart-sub" id="alt-roles-sub">Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part and 🤖 number are the AI-linked share. From only the reports that named which teams were cut.</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-roles" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-roles"></div>
         </div>
         <div class="alt-mini alt-chart-card">
@@ -398,6 +393,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
 
             <p><b>How the AI tag works.</b> We distinguish AI as a <em>primary cause</em>, a contributing cause, a selection/operations tool, background context, and an explicit denial. Only primary or contributing cause classifications may be AI-attributed, and each must carry an exact supporting quote found in the source text. AI investment, future automation projections, and AI used to select workers do not qualify by themselves. Alongside the strict tag we also maintain a separately labeled <b>AI-linked, broad (Challenger-style)</b> measure that counts loose attributions the way Challenger and layoffs.fyi do &mdash; cuts made while funding an AI pivot, AI-driven market disruption, and press AI framing. The broad measure appears only on the US comparison charts and in the <code>ai_broad_jobs</code> API field; it is never mixed into the strict verified-AI totals.</p>
 
+            <p><b>How "Roles most impacted" works.</b> When a source names which teams were cut (for example "laying off customer-support and recruiting staff"), a model reads that stored text and maps it to a fixed set of role categories; a second independent pass must agree, and a supporting quote must be present, before the category is stored. Nothing is inferred from a company's industry or guessed. Each bar shows the <b>total job cuts</b> attributed to that team, and the orange segment plus the 🤖 figure show how many of those were <b>AI-linked</b> — so a bar with no orange is job cuts we could not tie to AI, not an error. This chart covers <em>only</em> the minority of records whose source actually named the teams affected, so it is a sample of where cuts land, never a breakdown of the full total.</p>
             <p><b>Coverage and honest limitations.</b> US depth is greatest because of WARN and SEC sources. Europe has structured coverage of large announcements through Eurofound ERM. Outside those live collectors, country-level coverage is currently worldwide news discovery and any explicitly reviewed company newsroom feed; named filing systems such as SEDAR+, RNS, ASX, TDnet and HKEXnews are research candidates, not silently assumed feeds. WARN and ERM have their own thresholds and geography rules, so they should not be summed as if they were a complete national census. Multi-state and multi-country events can overlap; the entry and source fields disclose that risk. Entries dated in the future are announced or filed but not yet completed.</p>
 
             <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; forward-looking projections (e.g. "could cost X jobs by 2050") rather than announced or executed cuts; and retrospective summary articles that would double-count events already tracked.</p>

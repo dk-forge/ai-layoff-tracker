@@ -407,6 +407,9 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini.alt-expanded { grid-column: 1 / -1; }
 .alt-mini.alt-expanded .alt-chart-box { height: 320px; }
 .alt-mini .alt-barlist { gap: 5px; }
+/* Compact cards show every row inside a short scroll box, so all items are
+   reachable without expanding (expanding removes the cap, see .alt-expanded). */
+.alt-mini:not(.alt-expanded) .alt-barlist { max-height: 208px; overflow-y: auto; padding-right: 4px; }
 .alt-mini .alt-barrow { padding: 5px 7px; }
 .alt-mini .alt-barrow-top { margin-bottom: 4px; }
 .alt-mini .alt-barrow-name { font-size: 13px; }

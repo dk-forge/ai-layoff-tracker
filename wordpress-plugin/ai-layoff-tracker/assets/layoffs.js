@@ -37,6 +37,14 @@
         macroeconomic: 'Macroeconomic'
     };
     var VERIF_LABELS = { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' };
+    // Mirrors alt_role_categories() (api.php); used by the Roles filter chip.
+    var ROLE_LABELS = {
+        engineering: 'Engineering & IT', product_design: 'Product & design',
+        customer_support: 'Customer support & success', sales_marketing: 'Sales & marketing',
+        hr_recruiting: 'HR & recruiting', operations_warehouse: 'Operations & warehouse',
+        content_trust_safety: 'Content & trust and safety', finance_admin: 'Finance & admin',
+        manufacturing: 'Manufacturing & production', retail_staff: 'Retail staff'
+    };
     var AI_CAUSATION_LABELS = {
         primary_cause: 'AI primary cause', contributing_cause: 'AI contributing cause',
         selection_or_operations: 'AI used in selection / operations', context_only: 'AI context only',
@@ -274,7 +282,7 @@
 
     var FILTER_STORAGE_KEY = 'altTrackerFilters:v2';
     var FILTER_IDS = ['alt-search', 'alt-f-from', 'alt-f-to', 'alt-f-years', 'alt-f-quarters',
-        'alt-f-months', 'alt-f-industry', 'alt-f-country', 'alt-f-state', 'alt-f-reasons',
+        'alt-f-months', 'alt-f-industry', 'alt-f-country', 'alt-f-state', 'alt-f-reasons', 'alt-f-roles',
         'alt-f-verification', 'alt-f-company', 'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai', 'alt-f-announced'];
 
     function readControl(id) {
@@ -358,6 +366,7 @@
         if ((v = multiParam('alt-f-country'))) p.country = v;
         if ((v = multiParam('alt-f-state'))) p.state = v;
         if ((v = multiParam('alt-f-reasons'))) p.reasons = v;
+        if ((v = multiParam('alt-f-roles'))) p.roles = v;
         if ((v = multiParam('alt-f-verification'))) p.sources = v;
         if ((v = (readControl('alt-search') || '').trim())) p.q = v;
         if ((v = (readControl('alt-f-company') || '').trim())) p.company = v;
@@ -449,6 +458,7 @@
         { id: 'alt-f-country', label: 'Country', kind: 'multi', color: 'orange' },
         { id: 'alt-f-state', label: 'State', kind: 'multi', color: 'pink' },
         { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS, color: 'slate' },
+        { id: 'alt-f-roles', label: 'Role', kind: 'multi', map: ROLE_LABELS, color: 'teal' },
         { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: VERIF_LABELS, color: 'gold' },
         { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only', color: 'red' },
         { id: 'alt-f-announced', label: '', kind: 'bool', on: 'Announced only', color: 'gold' }
@@ -715,21 +725,6 @@
         setText('alt-stat-ai-broad-sub', when);
         var shareB = pctTxt(t.ai_broad_jobs, t.jobs);
         setText('alt-stat-ai-broad-share-line', shareB ? shareB + ' of all cuts in this view have an AI link' : '');
-        // The anticipated card is FIXED-SCOPE: current year, US employers,
-        // broad AI — the like-for-like total against the US benchmark. It
-        // deliberately ignores the page filters (its description says so).
-        var antSeq = (renderStats._antSeq = (renderStats._antSeq || 0) + 1);
-        var yNow = new Date().getFullYear();
-        apiGet('aggregate', { years: String(yNow), country: 'United States', country_basis: 'employer' }).then(function (a) {
-            if (antSeq !== renderStats._antSeq) return;
-            var tot = a && a.totals && a.totals.ai_broad_jobs;
-            if (tot == null) return;
-            setText('alt-stat-ai-anticipated', fmt(tot));
-            setText('alt-stat-ai-anticipated-sub', yNow + ' YTD · US employers');
-            var shareA = (a.totals && a.totals.jobs > 0) ? (100 * tot / a.totals.jobs) : null;
-            setText('alt-stat-ai-anticipated-share-line',
-                shareA != null ? (shareA >= 10 ? Math.round(shareA) : shareA.toFixed(1)) + '% of all US cuts this year have an AI link' : '');
-        }).catch(function () { setText('alt-stat-ai-anticipated', '—'); });
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
@@ -946,8 +941,9 @@
         var rolesSub = document.getElementById('alt-roles-sub');
         if (rolesSub) {
             var rke = (agg.totals && agg.totals.roles_known_entries) || 0;
-            rolesSub.innerHTML = '<span class="alt-ai-key"></span> AI share · only the ' + fmt(rke)
-                + ' events naming the teams cut · a sample, not a breakdown of the total';
+            rolesSub.innerHTML = 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
+                + ' and 🤖 number are the AI-linked share. From only the ' + fmt(rke)
+                + ' reports that named which teams were cut — a sample, not the whole total.';
         }
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
             return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
@@ -993,7 +989,10 @@
         var mini = box.closest('.alt-mini');
         var compact = mini && !mini.classList.contains('alt-expanded');
         var fullCount = (entries || []).length;
-        var limit = compact ? 4 : 24;
+        // Compact cards render all rows too (up to 24) and scroll inside a
+        // short box (CSS: .alt-mini .alt-barlist), so every item is reachable
+        // without expanding — expanding just gives it more room.
+        var limit = 24;
         entries = (entries || []).slice(0, limit);
         if (!entries.length) {
             box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
@@ -1518,7 +1517,7 @@
             });
             var note = document.createElement('p');
             note.className = 'alt-muted';
-            note.textContent = 'A strict zero means no event has completed full announcement-date enrichment for that month yet, not zero AI cuts: the live broad column beside it carries the comparable monthly numbers.';
+            note.textContent = 'A strict zero means no record has completed full announcement-date enrichment for that month yet, not zero AI cuts: the live broad column beside it carries the comparable monthly numbers.';
             table.parentNode.parentNode.insertBefore(note, table.parentNode);
         }).catch(function () { /* table stays as rendered */ });
     }
@@ -1962,7 +1961,7 @@
                 return '<a href="' + escapeHtml(safeUrl(s.source_url)) + '" target="_blank" rel="noopener nofollow">' +
                     escapeHtml(s.source_name || 'source') + '</a> <span class="alt-muted">(' + escapeHtml(lbl) + ')</span>';
             }).join('<br>');
-            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Other sources for this event</span><div>' + links + '</div></div>');
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Other sources for this layoff</span><div>' + links + '</div></div>');
         }
         return '<div class="alt-detail">' + (parts.join('') || 'No additional detail recorded.') + '</div>';
     }
@@ -1985,7 +1984,7 @@
             });
             var list = Object.keys(companies).map(function (k) { return companies[k]; }).sort(function (a, b) { return b.jobs - a.jobs; });
             setText('alt-ai-hero-jobs', fmt(totalJobs));
-            setText('alt-ai-hero-sub', 'across ' + fmt(aiRows.length) + ' events at ' + fmt(list.length) + ' companies');
+            setText('alt-ai-hero-sub', 'across ' + fmt(aiRows.length) + ' layoffs at ' + fmt(list.length) + ' companies');
             if (!aiRows.length) { setStatus('alt-ai-status', 'No explicitly AI-attributed layoffs recorded yet.'); return; }
             setStatus('alt-ai-status', chartsAvailable() ? null : 'Chart library failed to load (CDN blocked?). Charts unavailable.', !chartsAvailable());
 
@@ -2005,7 +2004,7 @@
                 var byInd = {};
                 aiRows.forEach(function (r) { if (r.industry) byInd[r.industry] = (byInd[r.industry] || 0) + 1; });
                 var indEntries = Object.keys(byInd).map(function (k) { return [k, byInd[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10);
-                renderBar('alt-chart-ai-industries', indEntries, null, null, 'Events: ');
+                renderBar('alt-chart-ai-industries', indEntries, null, null, 'Layoffs: ');
             }
             initQuoteWall(aiRows);
             var chips = document.getElementById('alt-ai-companies');
@@ -2043,9 +2042,9 @@
         apiGet('query', { company: target, per_page: 200, sort: 'layoff_date', dir: 'asc' }).then(function (res) {
             var matches = res.data || [];
             var summary = document.getElementById('alt-company-summary');
-            if (!matches.length) { if (summary) summary.textContent = 'No recorded layoff events for this company yet.'; return; }
+            if (!matches.length) { if (summary) summary.textContent = 'No recorded layoff rounds for this company yet.'; return; }
             var totalJobs = matches.reduce(function (s, r) { return s + r.job_count; }, 0);
-            if (summary) summary.textContent = fmt(matches.length) + ' recorded events · ' + fmt(totalJobs) + ' total jobs cut';
+            if (summary) summary.textContent = fmt(matches.length) + ' recorded rounds · ' + fmt(totalJobs) + ' total jobs cut';
             if (document.getElementById('alt-chart-company') && chartsAvailable()) {
                 var options = cloneOptions();
                 options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Jobs: ' + fmt(ctx.parsed.y); } };
@@ -2178,17 +2177,17 @@
             var rows = '';
             var tdJ = td.jobs || 0, tdE = td.entries || 0;
             if (tdJ > 0) {
-                rows += row('Today', b(fmt(tdJ)) + ' workers · ' + b(fmt(tdE)) + ' verified event' + (tdE === 1 ? '' : 's') + largest(((r[4] || {}).leaders || [])[0]),
+                rows += row('Today', b(fmt(tdJ)) + ' workers · ' + b(fmt(tdE)) + ' verified layoff' + (tdE === 1 ? '' : 's') + largest(((r[4] || {}).leaders || [])[0]),
                     'data-from="' + iso(now) + '" data-to="' + iso(now) + '"');
             }
             rows += row('This week', wJ > 0
-                ? b(fmt(wJ)) + ' workers · ' + b(fmt(wE)) + ' verified event' + (wE === 1 ? '' : 's') + largest(wLead) + weekDelta
-                : 'no verified layoff events reported yet',
+                ? b(fmt(wJ)) + ' workers · ' + b(fmt(wE)) + ' verified layoff' + (wE === 1 ? '' : 's') + largest(wLead) + weekDelta
+                : 'no verified job cuts reported yet',
                 'data-from="' + iso(d7) + '" data-to="' + iso(now) + '"');
             var mJ = m.jobs || 0, mE = m.entries || 0;
             rows += row('This month', mJ > 0
-                ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified event' + (mE === 1 ? '' : 's') + largest(mLead)
-                : 'no verified layoff events reported yet',
+                ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified layoff' + (mE === 1 ? '' : 's') + largest(mLead)
+                : 'no verified job cuts reported yet',
                 'data-from="' + y + '-' + pad2(now.getMonth() + 1) + '-01" data-to="' + iso(now) + '"');
             // Most-affected roles appear only when the sources behind at least
             // 20% of this scope's jobs name the teams cut — below that the
@@ -2199,23 +2198,23 @@
                 rolesFrag = ' · roles hit hardest (where stated): ' + b(esc(yRoles[0][0])) + ' and ' + b(esc(yRoles[1][0]));
             }
             rows += row(y + ' so far', tJ > 0
-                ? b(fmt(tJ)) + ' workers · ' + b(fmt(tV)) + ' verified event' + (tV === 1 ? '' : 's') +
+                ? b(fmt(tJ)) + ' workers · ' + b(fmt(tV)) + ' verified layoff' + (tV === 1 ? '' : 's') +
                   ' (about ' + fmt(Math.round(tJ / daysElapsed)) + ' workers a day)' +
                   (tAI ? ' · explicitly blamed on AI: ' + b(fmt(tAI)) : '') + rolesFrag + largest(yLead)
-                : 'no verified layoff events yet' + (ACTIVE_TAB !== 'world'
-                    ? ' · coverage for this region is still filling in; pick "All time" in the Years filter for earlier events' : ''),
+                : 'no verified job cuts yet' + (ACTIVE_TAB !== 'world'
+                    ? ' · coverage for this region is still filling in; pick "All time" in the Years filter for earlier layoffs' : ''),
                 'data-years="' + y + '"');
             // Post-sized rewrite for the copy button: X counts any URL as 23
             // characters, and the weekly detail degrades in steps (full → no
             // delta → no largest event) to stay under 280.
             var LINK = 'asktherecruiter.com/blog/ai-layoff-tracker/';
             var xLen = function (s2) { return s2.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
-            var lead = 'AI layoffs, ' + today + ': ' + fmt(tJ) + ' workers across ' + fmt(tV) + ' verified layoff event' + (tV === 1 ? '' : 's') +
+            var lead = 'AI layoffs, ' + today + ': ' + fmt(tJ) + ' workers across ' + fmt(tV) + ' verified layoff' + (tV === 1 ? '' : 's') +
                 ' ' + tab.label + ' in ' + y + (tAI ? ', ' + fmt(tAI) + ' explicitly blamed on AI' : '') + '.';
             var tail = ' Live tracker (AskTheRecruiter.com): ' + LINK + ' #Layoffs #AI';
             var post = lead + tail;
             if (wJ > 0) {
-                var wkBare = ' This week: ' + fmt(wJ) + ' workers across ' + fmt(wE) + ' event' + (wE === 1 ? '' : 's') + '.';
+                var wkBare = ' This week: ' + fmt(wJ) + ' workers across ' + fmt(wE) + ' layoff' + (wE === 1 ? '' : 's') + '.';
                 var wkLead = (wLead && wLead.job_count)
                     ? wkBare.slice(0, -1) + ', largest at ' + wLead.company_name + ' (' + fmt(wLead.job_count) + ').'
                     : '';

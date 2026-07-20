@@ -37,7 +37,7 @@ if (!defined('ABSPATH')) exit;
             <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
         </div>
         <div class="alt-chart-card">
-            <div class="alt-chart-h">Largest single events <span class="alt-chart-sub">all time</span></div>
+            <div class="alt-chart-h">Largest single job cuts <span class="alt-chart-sub">all time</span></div>
             <div id="alt-leaderboard" class="alt-leaderboard"></div>
         </div>
     </div>

@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) exit;
             <div class="alt-chart-box"><canvas id="alt-chart-ai-monthly"></canvas></div>
         </div>
         <div class="alt-chart-card">
-            <h3>Industries citing AI most <span class="alt-chart-sub">by number of events</span></h3>
+            <h3>Industries citing AI most <span class="alt-chart-sub">by number of layoffs</span></h3>
             <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-industries"></canvas></div>
         </div>
         <div class="alt-chart-card">

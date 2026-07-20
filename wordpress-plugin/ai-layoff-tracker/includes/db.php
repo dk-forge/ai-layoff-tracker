@@ -558,6 +558,19 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
             $where[] = '(' . implode(' OR ', $ors) . ')';
         }
     }
+    // `roles` filters by fixed role-category slug (packed as ',slug,' in
+    // role_categories, same shape as reason_tags). Multi-select is OR'd: a row
+    // that named ANY of the chosen teams matches. 'unknown' is queue
+    // bookkeeping and is never an accepted filter value.
+    if ($except !== 'roles') {
+        $roles = array_filter(array_map('sanitize_key', explode(',', (string) $r->get_param('roles'))),
+                              function ($s) { return $s !== '' && $s !== 'unknown'; });
+        if ($roles) {
+            $ors = array();
+            foreach ($roles as $slug) { $ors[] = "role_categories LIKE %s"; $params[] = '%,' . $slug . ',%'; }
+            $where[] = '(' . implode(' OR ', $ors) . ')';
+        }
+    }
     // `sources` accepts BOTH vocabularies a consumer can see: verification
     // tiers (gold/silver/bronze/warn — what the UI dropdown sends) AND the
     // source_type values every /query row exposes (news/8K/warn/press_release).
@@ -2527,31 +2540,20 @@ function alt_api_query_compute(WP_REST_Request $r) {
 }
 
 /**
- * A short human location for a row: "City, ST" (US, city known) / "ST" (US) /
- * "City, Country" or "Country" (non-US). The city, when present, is parsed
- * from the stored excerpt — WARN excerpts read "…at COMPANY in CITY. N
- * employees affected…" — since there is no dedicated city column. Returns ''
- * when nothing better than the plain country is known, so callers can omit it.
+ * A short human location for a row: the US state code where present, otherwise
+ * the (non-US) country. Deliberately NOT city-level — state + country is enough
+ * to show that several rows for one company are distinct filings. Returns ''
+ * when only a generic country is known, so callers can omit it.
  */
-function alt_short_location($excerpt, $state, $country) {
+function alt_short_location($state, $country) {
     $state = strtoupper(trim((string) $state));
     $country = trim((string) $country);
-    $city = '';
-    // "in <City>. <N> employees affected" — the WARN excerpt shape. Kept tight
-    // (stops at the first period, caps length) so a prose news excerpt can't
-    // paste a whole clause in as a "city".
-    if (preg_match('/\bin ([A-Za-z][A-Za-z .\'\-]{1,38}?)\.\s+[\d,]+ employees/', (string) $excerpt, $m)) {
-        $city = trim($m[1]);
+    if ($state !== '') return $state;
+    if ($country !== '' && strcasecmp($country, 'United States') !== 0
+        && strcasecmp($country, 'Multiple countries') !== 0) {
+        return $country;
     }
-    $parts = array();
-    if ($city !== '') $parts[] = $city;
-    if ($state !== '') {
-        $parts[] = $state;
-    } elseif ($country !== '' && strcasecmp($country, 'United States') !== 0
-              && strcasecmp($country, 'Multiple countries') !== 0) {
-        $parts[] = $country;
-    }
-    return implode(', ', $parts);
+    return '';
 }
 
 /**
@@ -2715,7 +2717,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // cities/states) read as the distinct events they are, not as duplicates.
     list($w2, $p2) = alt_db_where($r);
     $top_events = $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country, excerpt
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 10", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
@@ -2723,7 +2725,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'company_name' => $row->company, 'job_count' => (int) $row->job_count,
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,
-            'location' => alt_short_location($row->excerpt, $row->state, $row->country),
+            'location' => alt_short_location($row->state, $row->country),
         );
     }
 

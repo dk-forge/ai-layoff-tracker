@@ -11,7 +11,7 @@ if (!isset($company)) $company = '';
     <div class="alt-company-summary" id="alt-company-summary">Loading…</div>
 
     <div class="alt-chart-card alt-chart-card-wide">
-        <h3>Events over time</h3>
+        <h3>Layoff rounds over time</h3>
         <div class="alt-chart-box"><canvas id="alt-chart-company"></canvas></div>
     </div>
 
