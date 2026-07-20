@@ -25,10 +25,8 @@ $alt_state_urls = function_exists('alt_state_warn_urls') ? alt_state_warn_urls()
 ksort($alt_state_urls);
 // States we cannot fully cover, in plain English — so the gap is disclosed, not hidden.
 $alt_gap_states = array(
-    array('Massachusetts', 'Publishes WARN data, but in a format the shared open-source scraper does not read yet. We are building a custom reader for it.', 'Custom scraper in progress'),
-    array('Minnesota', 'Publishes WARN data, but in a format the shared open-source scraper does not read yet. We are building a custom reader for it.', 'Custom scraper in progress'),
-    array('Hawaii', 'Posts its WARN notices without saying how many people are affected. We will not invent a headcount, so these cannot become countable rows.', 'No headcount published'),
-    array('Oklahoma', 'Posts its WARN notices without a headcount, same as Hawaii. Nothing to count without the number.', 'No headcount published'),
+    array('Hawaii', 'Posts some WARN notices without saying how many people are affected. We will not invent a headcount, so those cannot become countable rows.', 'Headcount often missing'),
+    array('Oklahoma', 'Posts some WARN notices without a headcount, same as Hawaii. Nothing to count without the number.', 'Headcount often missing'),
     array('Missouri', 'Does not publish layoff notices to the public at the individual-notice level at all.', 'Nothing published'),
     array('New Mexico', 'Does not publish layoff notices to the public at the individual-notice level at all.', 'Nothing published'),
 );

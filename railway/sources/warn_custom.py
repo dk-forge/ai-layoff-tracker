@@ -654,14 +654,72 @@ def fetch_nv():
 # Radware bot-walls mn.gov HTML pages but NOT /deed/assets/*.pdf — discovery
 # of the unpredictable tcm1045 ids falls back to the Wayback CDX index, and a
 # seed list keeps known history importable through a total discovery outage.
-_MN_SEED_PDFS = [  # verified-live 2026-07-15; CDX discovery adds the rest
+_MN_SEED_PDFS = [  # verified-live 2026-07-19; CDX discovery adds the rest
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-report-2023_tcm1045-663809.pdf",
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-october-2025_tcm1045-712065.pdf",
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-january_tcm1045-722872.pdf",
+    "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-june_tcm1045-758364.pdf",
+    # keep recent months here until CDX archives them or a JS-render discovery lands
 ]
 
+
+def _mn_parse_table(table):
+    """(company, jobs, date, city) rows from one MN report table, template-agnostic.
+
+    DEED changed the monthly template mid-2026: multi-word headers now wrap
+    across TWO physical rows ('Affected' / 'Workers'), a leading blank column
+    and a trailing 'Layoff Count' column appear, and 'Account: City' became
+    'City'. The old parser matched whole header strings in single cells, so it
+    silently returned 0 rows on every new-template report. This merges a wrapped
+    continuation header row before keyword-matching, handling both layouts."""
+    def cell(row, j):
+        return re.sub(r"\s+", " ", (row[j] or "")).strip() if j < len(row) else ""
+    hdr_i = next((i for i, r in enumerate(table[:3])
+                  if any("Layoff Name" in (c or "") for c in r)), None)
+    if hdr_i is None:
+        return []
+    ncol = len(table[hdr_i])
+    combined = []
+    for j in range(ncol):
+        h = cell(table[hdr_i], j)
+        if hdr_i + 1 < len(table):
+            nxt = cell(table[hdr_i + 1], j)
+            if nxt and not re.search(r"\d", nxt) and len(nxt) <= 12 and not _to_iso_date(nxt):
+                h = f"{h} {nxt}".strip()
+        combined.append(h.lower())
+
+    def find(*keys):
+        return next((j for j, h in enumerate(combined) if any(k in h for k in keys)), None)
+    ci_name = find("layoff name")
+    ci_city = find("city")
+    ci_date = find("layoff start")
+    ci_recv = find("warn received")
+    ci_jobs = find("affected worker")
+    if ci_name is None or ci_jobs is None:
+        return []
+    start = hdr_i + 1
+    if start < len(table):
+        first = [cell(table[start], j) for j in range(ncol)]
+        if not any(re.search(r"\d", x) for x in first):
+            start += 1  # skip the wrapped-continuation header row
+    out = []
+    for row in table[start:]:
+        cells = [cell(row, j) for j in range(ncol)]
+        name = re.sub(r"\s+20\d\d$", "", cells[ci_name] if ci_name < len(cells) else "")
+        if not name or name.lower().startswith(("total", "rr start", "count")):
+            continue
+        jobs = _count(cells[ci_jobs]) if ci_jobs < len(cells) else 0
+        date = _to_iso_date(cells[ci_date]) if (ci_date is not None and ci_date < len(cells)) else ""
+        if not date and ci_recv is not None and ci_recv < len(cells):
+            date = _to_iso_date(cells[ci_recv])
+        city = cells[ci_city] if (ci_city is not None and ci_city < len(cells)) else ""
+        out.append((name, jobs, date, city))
+    return out
+
+
 def fetch_mn():
-    """MN DEED monthly/annual report PDFs (assets bypass the bot wall)."""
+    """MN DEED monthly/annual report PDFs (assets bypass the bot wall).
+    Discovery = seed list + Wayback CDX; parsing via template-agnostic table map."""
     import pdfplumber
     urls = set(_MN_SEED_PDFS)
     for attempt in range(2):  # Wayback CDX is slow and flaky — retry once
@@ -689,23 +747,8 @@ def fetch_mn():
         with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
             for page in pdf.pages:
                 for table in page.extract_tables() or []:
-                    idx = None
-                    for row in table:
-                        # header cells wrap ('Affected\nWorkers') — normalize
-                        cells = [re.sub(r"\s+", " ", (c or "")).strip() for c in row]
-                        if idx is None:
-                            if any("Layoff Name" in c for c in cells):
-                                idx = {name: i for i, c in enumerate(cells)
-                                       for name in ("Layoff Name", "Account: City", "Layoff Start",
-                                                    "WARN Received", "Affected Workers") if name in c}
-                            continue
-                        if len(idx) < 3 or not cells[0] or cells[0].startswith(("RR Start", "Count")):
-                            continue
-                        get = lambda k: cells[idx[k]] if k in idx and idx[k] < len(cells) else ""
-                        company = re.sub(r"\s+20\d\d$", "", get("Layoff Name"))
-                        e = _entry("MN", company, _count(get("Affected Workers")),
-                                   _to_iso_date(get("Layoff Start")) or _to_iso_date(get("WARN Received")),
-                                   get("Account: City"), detail_url=url)
+                    for company, jobs, date, city in _mn_parse_table(table):
+                        e = _entry("MN", company, jobs, date, city, detail_url=url)
                         if e:
                             out.append(e)
     return out

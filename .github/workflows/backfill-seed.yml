@@ -1,0 +1,36 @@
+name: Historical backfill seed
+
+# One-shot, manually-triggered ingest of the curated verified-events backfill
+# (railway/seed_data/backfill_2023_2024.json). Idempotent + dedup-guarded, so
+# it's safe to re-run. Dispatch-only — never scheduled.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set 1 to print what would post without writing'
+        required: false
+        default: ''
+
+concurrency:
+  group: backfill-seed
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Ingest curated backfill events
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+        run: |
+          set -o pipefail
+          cd railway
+          python backfill_seed.py | tee -a "$GITHUB_STEP_SUMMARY"
