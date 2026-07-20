@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.70
+ * Version: 2.19.71
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.70');
+define('ALT_VERSION', '2.19.71');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -74,6 +74,64 @@ function alt_output_jsonld($blocks) {
     foreach ((array) $blocks as $b) {
         echo '<script type="application/ld+json">' . wp_json_encode($b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
     }
+}
+
+/**
+ * The US states with no usable public WARN register, and WHY. These stay dark on
+ * the layoff map; we instead show their official BLS unemployment rate (a clearly
+ * separate metric) so the map is complete and the gap is explained on click.
+ */
+function alt_no_register_states() {
+    return array(
+        'AR' => 'Arkansas treats WARN filings as confidential employer records under its FOIA exemption, so there is no public list to import.',
+        'WY' => 'Wyoming tracks filings internally and does not host a public, centralized WARN register.',
+        'NH' => 'New Hampshire handles WARN filings as internal business-compliance records, with no usable public feed.',
+        'MO' => 'Missouri does not publish layoff notices to the public at the individual-notice level.',
+        'HI' => 'Hawaii posts notices as image scans with no headcounts, so they cannot become countable rows.',
+        'OK' => 'Oklahoma publishes only through an interactive portal that frequently omits headcounts.',
+    );
+}
+
+/**
+ * Official monthly state unemployment rate (BLS LAUS, seasonally adjusted) for the
+ * no-register states — a SEPARATE metric from our verified layoff counts, shown
+ * only to give the dark states an authoritative number and a source link. One
+ * keyless BLS request (6 series), cached ~2 weeks. Empty on failure (the map then
+ * shows the reason + BLS link without a number).
+ */
+function alt_state_unemployment() {
+    $cached = get_transient('alt_state_unemp');
+    if (is_array($cached)) return $cached;
+    // FIPS-coded BLS LAUS unemployment-rate series -> state code.
+    $series = array(
+        'LASST050000000000003' => 'AR', 'LASST560000000000003' => 'WY',
+        'LASST330000000000003' => 'NH', 'LASST290000000000003' => 'MO',
+        'LASST150000000000003' => 'HI', 'LASST400000000000003' => 'OK',
+    );
+    $y = (int) gmdate('Y');
+    $resp = wp_remote_post('https://api.bls.gov/publicAPI/v1/timeseries/data/', array(
+        'timeout' => 20,
+        'headers' => array('Content-Type' => 'application/json'),
+        'body' => wp_json_encode(array('seriesid' => array_keys($series),
+            'startyear' => (string) ($y - 1), 'endyear' => (string) $y)),
+    ));
+    $out = array();
+    if (!is_wp_error($resp)) {
+        $data = json_decode(wp_remote_retrieve_body($resp), true);
+        if (isset($data['Results']['series']) && is_array($data['Results']['series'])) {
+            foreach ($data['Results']['series'] as $s) {
+                $code = isset($series[$s['seriesID']]) ? $series[$s['seriesID']] : '';
+                if (!$code || empty($s['data'][0])) continue;
+                $latest = $s['data'][0]; // BLS returns most-recent first
+                $out[$code] = array(
+                    'rate'   => (float) $latest['value'],
+                    'period' => trim(($latest['periodName'] ?? '') . ' ' . ($latest['year'] ?? '')),
+                );
+            }
+        }
+    }
+    set_transient('alt_state_unemp', $out, 15 * DAY_IN_SECONDS);
+    return $out;
 }
 
 /**
@@ -487,6 +545,11 @@ function alt_enqueue_assets() {
         'nonce'     => wp_create_nonce('alt_nonce'),
         'exportCsv' => admin_url('admin-post.php?action=alt_export_csv'),
         'exportJson'=> admin_url('admin-post.php?action=alt_export_json'),
+        // No-register US states: reason + official BLS unemployment rate, so the
+        // map can show a labeled (separate-metric) block and explain the gap.
+        'noRegister' => alt_no_register_states(),
+        'stateLabor' => alt_state_unemployment(),
+        'blsUrl'     => 'https://www.bls.gov/lau/',
     ));
 }
 add_action('wp_enqueue_scripts', 'alt_enqueue_assets');
