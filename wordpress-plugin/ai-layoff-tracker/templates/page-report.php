@@ -209,6 +209,8 @@ $alt_years = range((int) gmdate('Y'), 2023);
 $alt_view_year = $alt_y;
 // This-week slug for the weekly tab.
 $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
+// Reports are stamped in New York (Eastern) time — the newsroom-standard zone.
+$alt_stamp = (new DateTime('now', new DateTimeZone('America/New_York')))->format('M j, Y · g:i A T');
 ?>
 <main class="alt-wrap alt-report-page">
   <nav class="alt-report-tabs" aria-label="Report period">
@@ -260,7 +262,7 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
     <header class="alt-op-masthead">
       <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AskTheRecruiter.com</span>
       <span class="alt-op-period"><?php echo esc_html($alt_kind); ?> Job Cuts Report · <?php echo esc_html($alt_label); ?> · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
-      <span class="alt-op-asof">Data as of <?php echo esc_html(gmdate('M j, Y · H:i')); ?> UTC · AskTheRecruiter.com</span>
+      <span class="alt-op-asof">Data as of <?php echo esc_html($alt_stamp); ?> · AskTheRecruiter.com</span>
     </header>
 
     <div class="alt-op-headline">
@@ -337,7 +339,7 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
 
     <footer class="alt-op-footer">
       <p><b>Methodology:</b> Verified cuts have a primary source behind each figure — an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
-      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y · H:i')); ?> UTC)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html($alt_stamp); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
     </footer>
   </article>
 </main>

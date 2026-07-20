@@ -1434,6 +1434,13 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
   @page { margin: 12mm; }
 }
 
+/* Sources: gap-state table + status pills */
+.alt-gap-table td { vertical-align: top; line-height: 1.5; }
+.alt-gap-table td:first-child { white-space: nowrap; }
+.alt-gap-status { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; line-height: 1.5; }
+.alt-gap-progress { background: #e7f3ec; color: #2f6b45; }
+.alt-gap-none { background: #f3f0e8; color: #8a6d3b; }
+
 /* Press kit tables: right-aligned numbers, tidy angle table. */
 .alt-press-table td.num, .alt-press-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .alt-angles-table td:first-child { white-space: nowrap; vertical-align: top; }
