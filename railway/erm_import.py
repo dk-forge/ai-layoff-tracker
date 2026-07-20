@@ -40,7 +40,11 @@ CSV_URL = "https://apps.eurofound.europa.eu/restructuring-events/factsheetscsv"
 DETAIL_URL = "https://apps.eurofound.europa.eu/restructuring-events/detail/{id}"
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 BATCH = 500
-MIN_DATE = "2015-01-01"
+# Eurofound curates ERM back to 2002 — the one source with reliable, structured
+# pre-2015 data (US state WARN sites purge old years; pre-2015 news dates are
+# extraction errors, so those floors stay). Overridable via ERM_MIN_DATE to
+# scope a run. Lowered from 2015 to pull the full EU/UK restructuring history.
+MIN_DATE = os.environ.get("ERM_MIN_DATE") or "2002-01-01"
 
 # ERM's 20-sector scheme -> the tracker's fixed industry taxonomy
 SECTOR_MAP = {

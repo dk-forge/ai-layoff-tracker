@@ -267,7 +267,7 @@ def pull_warn(states, min_employees=0, start_date=""):
                     continue
                 # Guard against source data-entry typos (e.g. "3030-03-30").
                 # WARN effective dates are at most ~a year out from filing.
-                if date < "2015-01-01" or date > "2028-12-31":
+                if date < "2002-01-01" or date > "2028-12-31":
                     continue
                 if min_employees and jobs < min_employees:
                     continue
