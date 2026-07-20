@@ -53,6 +53,23 @@ page: accurate gap table + hyperlinked outlets + dynamic counts.
    undercount (shows 8k/0-strict). Fix: infer state from HQ registry / article
    text, conservative, dispatch-only backfill.
 
+## RESOLVED (2026-07-20)
+- **GDELT theme sweep** — shipped in `sources/gdelt.py::pull_gdelt_between`.
+  Finding: GDELT's GKG taxonomy has NO layoff-event topic — `ECON_LAYOFF`
+  does not exist (DOC API returns 0). Authoritative LOOKUP-GKGTHEMES.TXT: the
+  only layoff-semantic themes are `WB_2806_DISMISSAL_PROCEDURES` (3.5k lifetime),
+  `WB_2790_LABOR_REDUNDANCY` (95), `WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES`
+  (57); macro themes (`WB_2747_UNEMPLOYMENT` 11M, `WB_2670_JOBS` 125M) are far
+  too broad to use. Shipped a NARROW standalone OR sweep of the three specific
+  themes, gated GDELT_THEME_SWEEP (default on). Runs ONLY on the healthy live
+  DOC-API path (skipped when GDELT_PREFER_BQ=1 / BQ fallback), strictly additive,
+  trusted-domain + extractor still gate everything. Theme names + `theme:` syntax
+  confirmed valid; recent-recall COUNT not yet measured — local IP was throttled
+  ("high-volume" cooldown) during dev, so it self-validates on the next Railway
+  2x/day cron via its log line "GDELT dismissal/redundancy theme sweep: N".
+  If it never adds real rows, it's a cheap no-op; the real recall lever remains
+  SEGMENT_TERMS expansion (already broadened this session).
+
 ## OPTIONAL / NOT STARTED
 - JSON-LD renders twice (WP shortcode quirk) — cosmetic; engines dedupe.
 - OK importer (Salesforce portal, harder); HI stays 0 until HI publishes counts.
