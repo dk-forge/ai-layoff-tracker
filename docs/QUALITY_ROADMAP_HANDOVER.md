@@ -44,9 +44,9 @@ tests) backfilled 251 blank-domicile 'Multiple countries' rows via
 `/enrich-context` (run 29695840127; `employer-domicile-backfill.yml` is
 idempotent and re-runnable — re-run it after new multi-country events land,
 or grow the registry). Live effect on US 2026: total 347,415 (job-location)
-→ 406,692 employer basis (92% of Challenger 443,604); AI-broad 57,156 (56%)
-→ 114,278 (112% of Challenger 101,743). The tracker Challenger charts have
-an orange "US-employer basis (Challenger-comparable)" line; the health
+→ 406,692 employer basis (92% of the announcement survey's 443,604); AI-broad 57,156 (56%)
+→ 114,278 (112% of the survey's 101,743). The tracker announcement-survey charts have
+an orange "US-employer basis (survey-comparable)" line; the health
 benchmark race table has employer-basis total/AI rows. The strict
 comparator's gates are UNCHANGED; `/enrich-context` now takes an optional
 `reason` so curated batches are honestly labelled in the corrections trail.
@@ -58,7 +58,7 @@ coverage is meaningful.
 named June events via the R9 curated path (`seed_data/ai_layoffs.json` +
 `seed-ai.yml`; idempotent, exact quote + URL required): GitLab 350 [AI],
 Rackspace 750 [AI], Rivian 300, SAS Institute 300 — verified URLs are in
-docs/CHALLENGER_GAP_CLOSURE_PLAN.md (2026-06 row). Nine BigQuery sweep
+docs/COVERAGE_GAP_CLOSURE_PLAN.md (2026-06 row). Nine BigQuery sweep
 passes over the June windows all succeeded (429 era over) but their
 headlines lack the title vocabulary, so sweeps won't catch them; seeding
 is the designed mechanism. Also queue: re-supply the truncated Southern
@@ -113,10 +113,10 @@ drafts in docs/outreach/).
   surfaces via its filters + :has() CSS fallback, and plugin surfaces go
   full-viewport-width under 700px (theme padding stacked to ~220px content
   on a 375px phone).
-- **Challenger four-line comparison is live end-to-end** with plausibility
+- **Announcement-survey four-line comparison is live end-to-end** with plausibility
   floors on the fail-soft all-cuts parser (a YTD below its own month or a
   total under 5,000 stores null, never a wrong benchmark figure). Stored
-  months now carry challenger_total_jobs_month for Jan-Jun (YTD null for
+  months now carry survey_total_jobs_month for Jan-Jun (YTD null for
   Jan-Mar where old wording defeats the parser — acceptable).
 - **Gap-closure execution (late 2026-07-18):** R2+R8 corrections all
   EXECUTED and live-verified (Intuit 17→3,000 AI-denied; Meta Mar 100→700;
@@ -163,17 +163,17 @@ drafts in docs/outreach/).
    plugin's index via BOTH `wpseo_sitemap_index` and
    `rank_math/sitemap/index` filters (same dual-hook pattern as the file's
    robots/canonical/title filters).
-3. *Challenger four-line comparison.* `challenger_reconcile.py` now also
-   parses Challenger's headline TOTAL announced cuts (fail-soft: a parse
+3. *Announcement-survey four-line comparison.* `survey_reconcile.py` now also
+   parses the survey's headline TOTAL announced cuts (fail-soft: a parse
    miss prints a warning and stores null — the AI figures remain
    fail-loudly) and computes the strict announced-US tracker comparator
    without the AI gate (`strict_all` group). New nullable benchmark fields:
-   `challenger_total_jobs_month/ytd`,
+   `survey_total_jobs_month/ytd`,
    `tracker_announced_us_employer_jobs_month/ytd` (+ query URLs). The
-   tracker page charts show four labeled series (Challenger/AskTheRecruiter
+   tracker page charts show four labeled series (Announcement-survey/AskTheRecruiter
    x AI/all-cuts, dashed = all-cuts pair) with a visible legend; the
    comparison table adds the all-cuts month columns. Monthly cron updates
-   everything automatically; a manual `challenger-reconcile.yml` dispatch
+   everything automatically; a manual `survey-reconcile.yml` dispatch
    backfills the new fields for already-recorded months.
 4. */aggregate* monthly `series` rows now carry `verified_jobs`,
    `announced_jobs`, `ai_verified_jobs`, `ai_announced_jobs` alongside the
@@ -194,21 +194,21 @@ drafts in docs/outreach/).
    NOT naturally idempotent).
 6. *Context enrichment:* 12 manual batch-9 passes all succeeded today on
    top of the daily job; announcement-date evidence is what moves the
-   strict Challenger comparator (Coinbase 700 already moved the diagnostic
+   strict announcement-survey comparator (Coinbase 700 already moved the diagnostic
    YTD from 0 -> 700).
 
 **User priorities (2026-07-18, explicit):** US data quality first — target
-is the strict comparator within 5-10% of Challenger — then worldwide;
+is the strict comparator within 5-10% of the announcement survey — then worldwide;
 regional order after the US: Europe (all countries), then Asia, then the
 rest. Everything must run unattended: collectors (Railway 2x daily), WARN
-daily, autopilot weekly, Challenger monthly, quarterly report, bounded
+daily, autopilot weekly, announcement-survey reconciliation monthly, quarterly report, bounded
 hash/enrichment jobs daily, years/facets/widget dropdowns all derive from
 data — no manual steps. The user must never need to remind or trigger
 anything.
 
 **Why June 2026 US shows 0 AI-attributed:** genuinely no June-dated US
 event carries an explicit AI attribution yet (the 13 AI+US 2026 events date
-to Jan/Feb/Mar/Apr/May/Jul). Challenger's June AI figure is 14,029 — that
+to Jan/Feb/Mar/Apr/May/Jul). The announcement survey's June AI figure is 14,029 — that
 delta is the recall+classification gap the enrichment/classification/recall
 workstreams exist to close; do not fabricate attributions to fill it.
 
@@ -235,7 +235,7 @@ GDELT pacing is patient (5s delay, five attempts, 40s base backoff) to
 convert 429 degraded runs into ok runs without extra request volume; the
 CA June 2026 recall sample passed its independent transcription review with
 a rule-conformance correction, and the legacy evidence-hash backlog is being
-finished through sequential bounded runs. Earlier: plugin 2.18.28 adds source-linked January–June 2026 monthly and cumulative Challenger reconciliation history, keeps the announcement reference month separate from report-publication month, and treats an expected coverage gap as a visible alert rather than a repository failure; source/authentication/parse/write errors remain failures and a manual threshold gate remains available. Plugin 2.18.27 adds a copyable US national/state widget builder, frozen quarterly JSON/CSV appendices, a discovery-only OpenDART metadata client, and the recall publication independence gate; 2.18.26 corrects public failed/running collector wording so an unavailable query is never displayed as “0 found”; 2.18.25 fixes the first quarterly report page render before publication hand-off; 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
+finished through sequential bounded runs. Earlier: plugin 2.18.28 adds source-linked January–June 2026 monthly and cumulative announcement-survey reconciliation history, keeps the announcement reference month separate from report-publication month, and treats an expected coverage gap as a visible alert rather than a repository failure; source/authentication/parse/write errors remain failures and a manual threshold gate remains available. Plugin 2.18.27 adds a copyable US national/state widget builder, frozen quarterly JSON/CSV appendices, a discovery-only OpenDART metadata client, and the recall publication independence gate; 2.18.26 corrects public failed/running collector wording so an unavailable query is never displayed as “0 found”; 2.18.25 fixes the first quarterly report page render before publication hand-off; 2.18.24 integrates the guarded company-directory, immutable quarterly-report and separate WARN-transparency foundations; 2.18.23 adds public 7/30/90-day collector-run history windows; 2.18.22 makes the ledger self-heal an FTP schema-upload race and makes manual catch-ups fail loudly on a health-write failure; 2.18.21 adds the ledger; 2.18.20 expands bounded, duplicate-safe NewsAPI discovery with a separate AI/automation announcement query; the EDINET discovery-only metadata client, Companies House identity foundation and recall draft are documented; evidence-hash backfill runs twice daily at 1,000). This is the continuation brief for the AI Layoff
 Tracker quality, transparency and research-product roadmap. Read
 `ARCHITECTURE.md`, `TECHLOG.md` and `RUNBOOK.md` first; this document records
 the active programme and its non-negotiable safeguards.
@@ -244,7 +244,7 @@ the active programme and its non-negotiable safeguards.
 
 The tracker aims to be a globally useful, source-linked research database. It
 must never claim complete worldwide coverage or alter totals to imitate
-Challenger, Gray & Christmas. Challenger is the US announcement benchmark—not
+the announcement survey. The announcement survey is the US announcement benchmark—not
 a global gold standard—and the public tracker must make scope differences
 visible.
 
@@ -319,7 +319,7 @@ benchmarking live.
 - `.github/workflows/enrich-context.yml` runs daily at 03:41 UTC. Its scheduled
   batch is **5** because the first ten-record smoke test took 19m22s. It now
   prioritises announced, AI-tagged US job-location candidates by count for the
-  Challenger comparator and rotates its result page daily, so unreadable
+  announcement-survey comparator and rotates its result page daily, so unreadable
   sources cannot starve smaller candidates. This is a priority order only:
   domicile, announcement date and AI-primary status still require exact source
   evidence. Manual runs can select 1–50 deliberately.
@@ -329,7 +329,7 @@ benchmarking live.
 
 ### Benchmark rule
 
-`railway/challenger_reconcile.py` now passes `date_basis=announcement` to the
+`railway/survey_reconcile.py` now passes `date_basis=announcement` to the
 strict US-employer/AI-primary/announcement query. Rows without an exact
 source-supported public announcement date are excluded; never substitute their
 effective layoff date. The strict metric can legitimately be zero while
@@ -340,7 +340,7 @@ The initial retained June 2026 record reports 101,743 YTD AI-attributed cuts;
 the strict tracker comparator is 0 while announcement-date/domicile enrichment
 is early. Plugin 2.18.28 backfills the official January–June 2026 reference
 months (7,624; 4,680; 15,341; 21,490; 38,579; 14,029) and their retained YTD
-figures, each linked to the original Challenger release. The scheduled worker
+figures, each linked to the original announcement-survey release. The scheduled worker
 adds the next official feed item automatically. It records the same-month and
 cumulative strict query URLs, figures and coverage gaps. A large gap is a
 visible `coverage_alert`, not a failed processing job; authentication, fetch,
@@ -350,12 +350,12 @@ operator deliberately needs CI enforcement.
 
 ## Active and pending work
 
-1. **Finish context enrichment and maintain the monthly Challenger panel.**
+1. **Finish context enrichment and maintain the monthly announcement-survey panel.**
    - Persisted reconciliation records live at
-     `GET /blog/wp-json/layoffs/v1/benchmarks/challenger` and on the tracker
+     `GET /blog/wp-json/layoffs/v1/benchmarks/survey` and on the tracker
      page. New records retain the official report month, strict qualifying
      figure, official report URL and a coverage gap—never an "accuracy" claim.
-   - Do not display a percentage as “accuracy” or copy Challenger's total.
+   - Do not display a percentage as “accuracy” or copy the announcement survey's total.
    - The current monthly records are public through the endpoint, tracker-page
      monthly and cumulative charts/table, and health page. The worker retains
      the real announcement reference month separately from the later report
@@ -537,7 +537,7 @@ operator deliberately needs CI enforcement.
 ```bash
 # Relevant tests (PHP is not installed locally)
 python3 -m unittest railway/tests/test_extractor_guards.py
-python3 -m py_compile railway/extractor.py railway/enrich_context.py railway/challenger_reconcile.py
+python3 -m py_compile railway/extractor.py railway/enrich_context.py railway/survey_reconcile.py
 node --check wordpress-plugin/ai-layoff-tracker/assets/layoffs.js
 git diff --check
 
@@ -579,11 +579,11 @@ same way (script + step-builder pattern in the 2026-07-19 session).
 
 ## Aggregator diff backlog (2026-07-19 browser sweep, owner-authorized)
 
-A browser agent read layoffs.fyi (full Airtable incl. their per-row AI flag),
-layoffs.fyi/ai-layoffs (all 99 of their 2026 AI events) and trueup.io/layoffs,
+A browser agent read a technology-sector tracker (full Airtable incl. their per-row AI flag),
+its AI-layoffs view (all 99 of their 2026 AI events) and a second sector tracker,
 then checked 150 entries against /query: 23 present, 16 count-differs, 111
 missing (98 companies absent entirely). Their headline numbers for calibration:
-layoffs.fyi 2026 tech cuts 121,326 (AI: 95,829); TrueUp 2026: 167,720.
+the first sector tracker's 2026 tech cuts 121,326 (AI: 95,829); the second sector tracker's 2026: 167,720.
 Structural causes and fixes shipped same day: international tech press added
 to the allowlist (inc42, techinasia, skift; calcalistech/globes/betakit were
 already in), 19 sector trade outlets, 8 corporate-announcement GDELT segments,
@@ -597,12 +597,12 @@ underlying named-outlet article, never the aggregator.
 
 ## Verified benchmark histories (researched 2026-07-19, on the health page)
 
-Challenger annual US totals from their own year-end reports: 2019: 592,556 ·
+Announcement-survey annual US totals from their own year-end reports: 2019: 592,556 ·
 2020: 2,304,755 (COVID) · 2021: 321,970 · 2022: 363,824 · 2023: 721,677 (AI
 4,247; AI reason code began May 2023) · 2024: 761,358 (AI 12,742 — their
 printed Sept-2024 YTD, confirmed exact by Dec-2025 cumulative arithmetic:
 71,825 - 54,836 - 4,247 = 12,742) · 2025: 1,206,374 (AI 54,836).
-layoffs.fyi (worldwide tech, began Mar 2020, per their year pages): 2020:
+A technology-sector tracker (worldwide tech, began Mar 2020, per their year pages): 2020:
 80,998 · 2021: 15,823 · 2022: 165,269 · 2023: 265,660 · 2024: 152,922 ·
 2025: 122,606 · 2026 snapshot 2026-07-18: 121,326 (AI 95,829).
 These render in health.js BENCH_HISTORY with live ATR columns; update the
@@ -611,17 +611,17 @@ constants when re-verified, with the as-of date.
 ## Historical-year backfill (added 2026-07-19; 2025 EXECUTED same day)
 
 **2025 run complete (see TECHLOG audit entry for full detail).** Outcome:
-US 2025 moved 726,686 → 670,658 (55.6% of Challenger). The old 60% was
+US 2025 moved 726,686 → 670,658 (55.6% of the announcement survey). The old 60% was
 inflated: ~152K of double counting (UPS ×2 + superseded April stage, HHS ×4
 + its own sub-slices, IRS ×2, Microsoft program overlap, Intel wrong-year
 phantom, Recruit ×3, more) was merged/corrected, and 34 verified missing
 events were seeded (+97,582 US, incl. Rite Aid 24.5K, Joann 19K, VA 30K,
-SSA 7K). ai_broad US 2025 is now 52,259 = 95% of Challenger's 54,836 (the
+SSA 7K). ai_broad US 2025 is now 52,259 = 95% of the announcement survey's 54,836 (the
 old 128,759/235% rode on dup rows). 14 AI reclassifications applied
 (Salesforce primary_cause with the Benioff "agentic layer" verbatim;
 Microsoft/Meta-600/IBM honestly downgraded to ai_linked).
 
-**Key methodology finding: 90% of Challenger 2025 is not honestly
+**Key methodology finding: 90% of the announcement survey's 2025 total is not honestly
 reachable.** ~250–300K of their total is voluntary federal separations
 (75K deferred-resignation acceptances + attrition-heavy agency programs).
 The DRP 75K is deliberately NOT seeded: those acceptances are already
@@ -637,7 +637,7 @@ The in-session dispatch was permission-blocked.
 
 **Next: 2024 (63% row), same protocol.** Known 2024 leads from this run:
 Intel 2024 keeper is row 301 (its Dec-2024 TheHindu-newsletter dup 70471
-was already merged); watch for the same Challenger-roundup-article
+was already merged); watch for the same announcement-survey-roundup-article
 extraction pattern that duplicated UPS. ERM-vs-US-news group overlaps
 (Intel 24.5K ERM, Microsoft 9K ERM Jul-2025, TCS) remain documented skips
 per the Telia/Nissan precedent — a cross-source group-event reconciler is

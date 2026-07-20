@@ -16,7 +16,7 @@ WARN coverage) · 22 countries · 2015→present, refreshed daily.
 
 Three kinds of trackers measure three different things. Government statistics
 (BLS JOLTS) count every separation with no event detail. Announcement surveys
-(Challenger; the WSJ and TrueUp trackers) count corporate *intentions* the day
+(the WSJ tracker and technology-sector trackers) count corporate *intentions* the day
 they're announced. This tracker counts what has a **verifiable document or
 quoted primary source behind it** — a documented floor, where every number is
 clickable back to a filing or named outlet. Announcement-stage cuts are also
@@ -59,7 +59,7 @@ source registry, autonomous publication policy, reconciliation definition and
 Claude handoff are in [docs/AUTONOMOUS_DATA_QUALITY.md](docs/AUTONOMOUS_DATA_QUALITY.md).
 
 The U.S. AI-primary announcement metric is reconciled monthly against the
-latest public Challenger report. It is a diagnostic for missing or duplicated
+latest public announcement-survey report. It is a diagnostic for missing or duplicated
 events, never a reason to force the tracker total to match a benchmark.
 
 ## Repository layout

@@ -53,7 +53,7 @@ railway/
   extractor.py               DeepSeek prompt + post-processing; source-quote guard and AI causal taxonomy
   source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
-  challenger_reconcile.py    Monthly like-for-like US AI-announcement benchmark check
+  survey_reconcile.py        Monthly like-for-like US AI-announcement benchmark check
   reclassify_legacy_ai.py    Daily bounded source-evidence reassessment of legacy AI flags
   reason_backfill.py         Daily bounded reason-tag backfill from STORED excerpts (fixed vocabulary; WARN excluded)
   enrich_roles.py            Daily bounded role-category extraction from ALREADY-STORED row text (no fetches)
@@ -100,9 +100,9 @@ automatable or licensed for reuse.
   not permission to infer values: WARN notices often
   omit industry, and a national announcement remains state-unspecified unless a source identifies affected
   job locations. Employer HQ/domicile and office footprint must never be used as job-state substitutes.
-- **Challenger comparison:** the on-page country filter is job location, not employer domicile. The monthly
+- **Announcement-survey comparison:** the on-page country filter is job location, not employer domicile. The monthly
   strict comparator uses US employer domicile + announcement stage + AI-primary + canonical events. A separate
-  visible US-job-location/any-AI figure is diagnostic only and is never represented as Challenger-comparable.
+  visible US-job-location/any-AI figure is diagnostic only and is never represented as survey-comparable.
 - **Announcement lifecycle candidates:** a read-only queue can surface an exact-count, same-company,
   same-job-location-country announcement followed within 365 days by a later non-announced record. It is
   deliberately an editorial lead, never an auto-merge rule; confirmation uses retained sources and the

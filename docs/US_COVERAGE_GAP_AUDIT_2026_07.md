@@ -215,7 +215,7 @@ Verified facts (all against `https://efts.sec.gov/LATEST/search-index`, UA per S
 ## 5. Federal RIF notices (post-2025)
 
 - **No public event-level feed exists.** RIF notices go to employees, unions, and *state dislocated-worker units* — which means federal RIFs partially surface in the state WARN/dislocation lists already ingested (states log federal-agency notices in the same lists). OPM publishes only policy/guidance: https://www.opm.gov/policy-data-oversight/workforce-restructuring/reductions-in-force-rif/ (200). A 2026 proposed RIF rule exists on federalregister.gov (doc 2026-04377; site bot-walls curl, content unverified here).
-- **FedScope has moved**: `fedscope.opm.gov` now redirects to **https://data.opm.gov/** — a Blazor server app, *not* Socrata/CKAN (CKAN API probe returned nothing). Quarterly separations data (with a RIF separation category) exists there but no documented machine API was found. **Verdict: needs-build at best**, as a Challenger-style aggregate reconciliation series (pattern: `challenger_reconcile.py`), and only after a manual interface/licence check of data.opm.gov's download endpoints.
+- **FedScope has moved**: `fedscope.opm.gov` now redirects to **https://data.opm.gov/** — a Blazor server app, *not* Socrata/CKAN (CKAN API probe returned nothing). Quarterly separations data (with a RIF separation category) exists there but no documented machine API was found. **Verdict: needs-build at best**, as an announcement-survey-style aggregate reconciliation series (pattern: `survey_reconcile.py`), and only after a manual interface/licence check of data.opm.gov's download endpoints.
 - Event-level federal RIF coverage remains **news-fallback-only** (plus court dockets via §4's CourtListener when RIFs are litigated).
 
 ---

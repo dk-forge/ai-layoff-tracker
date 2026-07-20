@@ -17,7 +17,7 @@ covered without a tested permitted connector.
 |---|--------|-----|-----------------------------------------------|
 | 1 | **Brazil — CVM IPE filings index** (dados.cvm.gov.br, ODbL) | Company-level Fatos Relevantes, weekly CSV/ZIP since 2003 — a true 8-K analog with an explicit commercial license | Discovery-only client on the yearly CSV index; fixture = one real CSV slice with a Fato Relevante row; test = category filter + doc-URL construction + ODbL attribution string; health gate = index fetched AND row count > 0 per run; persist cursor only after full index parse; PT-language prompt fixture for the extractor |
 | 2 | **Canada (Quebec) — MESS monthly licenciements collectifs PDF** | Only Canadian WARN analog with employer names + enterprise numbers; predictable URL pattern verified 2024-09→2026-05 | PDF-parser collector (warn_import-style bulk upsert); fixture = one committed real monthly PDF; test = parser extracts employer/address/date rows and fails loudly on layout drift; health gate = current-month PDF exists at pattern URL; send licensing-courtesy email to avislicenciementcollectif@mess.gouv.qc.ca before go-live |
-| 3 | **Singapore — MOM retrenchment stats via data.gov.sg** | Singapore Open Data Licence explicitly permits commercial reuse; keyless datastore JSON API | Challenger-style reconciliation series (not events); fixture = recorded datastore_search JSON; test = quarterly aggregate parse + attribution link; health gate = latest quarter present within expected lag |
+| 3 | **Singapore — MOM retrenchment stats via data.gov.sg** | Singapore Open Data Licence explicitly permits commercial reuse; keyless datastore JSON API | announcement-survey-style reconciliation series (not events); fixture = recorded datastore_search JSON; test = quarterly aggregate parse + attribution link; health gate = latest quarter present within expected lag |
 | 4 | **Taiwan — MOL mass-layoff open data (datasets 27505/27508)** | OGDL v1 (commercial OK), verified working JSON REST endpoints | Annual-aggregate stats collector; fixture = downloaded JSON; test = year/firms/headcount schema guard (it must NOT be mistaken for company-level); health gate = endpoint 200 + newest year ≥ last seen |
 | 5 | **Italy — INPS CIG open data** | CC-BY 4.0 via dati.gov.it, monthly CSV/XML authorized-hours by region/sector | Reconciliation/context series; fixture = one monthly CSV; test = region/sector aggregation totals; health gate = new month within ~45 days |
 | 6 | **Italy — Ministero del Lavoro weekly CIGS decree lists** (conditional) | Only company-level official EU source in the set; weekly, per-company causale/decree/period | Blocked on: license confirmation with ministry + labeling decrees as "restructuring precursor," not layoff counts; fixture = one committed UTF-16 Word-HTML file; test = tolerant parser that hard-fails on structure drift; health gate = weekly index updated in last 10 days |
@@ -92,17 +92,17 @@ Honorable mentions (watchlist, not shortlist): Mexico IMSS open data (permitted 
 
 ## 4. Existing-pattern mapping (which collector each candidate resembles)
 
-Existing patterns in `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/`: **EDINET JP** = keyed official document-list API, discovery-only, cursor after complete list call; **OpenDART KR** = keyed paged disclosure-list API with non-English docs + evidence-only doc stage; **Companies House UK** = keyed read-only enrichment lookup, never creates events. Two keyless patterns also apply: `warn_import.py` (official-notice bulk upsert, no LLM) and `challenger_reconcile.py` (aggregate reconciliation series).
+Existing patterns in `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/`: **EDINET JP** = keyed official document-list API, discovery-only, cursor after complete list call; **OpenDART KR** = keyed paged disclosure-list API with non-English docs + evidence-only doc stage; **Companies House UK** = keyed read-only enrichment lookup, never creates events. Two keyless patterns also apply: `warn_import.py` (official-notice bulk upsert, no LLM) and `survey_reconcile.py` (aggregate reconciliation series).
 
 | Candidate | Closest pattern | Notes |
 |---|---|---|
 | Brazil CVM IPE | **EDINET JP** | Dated filing-list index → doc URLs → LLM extraction; keyless, weekly CSV instead of daily JSON; needs PT fixtures like OpenDART's Korean ones |
 | Quebec MESS | **warn_import.py** (none of the three) | Keyless official-notice bulk upsert; WARN dedup-exemption logic likely applies |
-| Singapore data.gov.sg | **challenger_reconcile.py** | Keyless JSON API; EDINET-shaped list call but stats, not events |
-| Taiwan MOL open data | **challenger_reconcile.py** | Keyless REST, annual aggregates |
-| Italy INPS CIG | **challenger_reconcile.py** | Keyless CSV downloads |
+| Singapore data.gov.sg | **survey_reconcile.py** | Keyless JSON API; EDINET-shaped list call but stats, not events |
+| Taiwan MOL open data | **survey_reconcile.py** | Keyless REST, annual aggregates |
+| Italy INPS CIG | **survey_reconcile.py** | Keyless CSV downloads |
 | Italy CIGS decrees | **warn_import.py** with EDINET-style index→doc split | Keyless scrape of official bulletin; fragile-format hard-fail required |
-| Norway NAV | **challenger_reconcile.py** | Keyless monthly Excel |
+| Norway NAV | **survey_reconcile.py** | Keyless monthly Excel |
 | Belgium FOD | **warn_import.py** (degraded: PDF + human review) | Keyless quarterly bulletin |
 | Madrid ERE | **Companies House UK** | Enrichment-only, never creates events, keyless |
 | Denmark Jobindsats | **OpenDART KR / EDINET JP** | The only true credential match: env-var API key, secret-free error classification, keyed JSON list endpoint |
@@ -186,7 +186,7 @@ Existing patterns in `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources
 | South Africa | News fallback: Moneyweb (moneyweb.co.za) + Business Day / BusinessLIVE (businesslive.co.za) | reputable_newspaper | free | research_further — allowlist both; s189/s189A retrenchments at named companies are reliably reported in both outlets. |
 | Spain | Comunidad de Madrid open data — Expedientes de Regulación de Empleo (record-level) | official_api | free | research_further — permitted and machine-readable but anonymized (no company names) and regional; unusable for named entries, possible enrichment only |
 | Spain | Ministerio de Trabajo y Economía Social — Estadística de Regulación de Empleo (REG) | statistical_agency | free | research_further — aggregate-only; company names must come from news (Expansión expansion.com, Cinco Días cincodias.elpais.com); TLS quirk would need pinning/workaround |
-| Sweden | Arbetsförmedlingen — statistik om varsel (notified redundancies) | statistical_agency | free | research_further — aggregate-only (good Challenger-style reconciliation series, not entries); company names for Sweden must come from news (Dagens Industri di.se, SvD Näringsliv svd.se) |
+| Sweden | Arbetsförmedlingen — statistik om varsel (notified redundancies) | statistical_agency | free | research_further — aggregate-only (good announcement-survey-style reconciliation series, not entries); company names for Sweden must come from news (Dagens Industri di.se, SvD Näringsliv svd.se) |
 | Sweden | Dagens Industri (di.se) / SvD Näringsliv (svd.se) | reputable_newspaper | paid | research_further — use via existing GDELT/NewsAPI ingest only |
 | Switzerland | Neue Zürcher Zeitung (nzz.ch) / Handelszeitung (handelszeitung.ch) | reputable_newspaper | paid | research_further — use via existing GDELT/NewsAPI ingest only |
 | Switzerland | No central register — cantonal mass-dismissal notifications (art. 335f/g CO); SECO labour-marke | statistical_agency | free | do_not_ingest — no public register; news fallback NZZ (nzz.ch), Handelszeitung (handelszeitung.ch) |

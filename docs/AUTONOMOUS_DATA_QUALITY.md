@@ -114,17 +114,17 @@ specific "No reviewed ... feeds configured" detail. This means no direct IR
 coverage is claimed; it is not an upstream outage. Invalid or incomplete
 entries fail closed before any feed is requested.
 
-## Challenger reconciliation (United States)
+## Announcement-survey reconciliation (United States)
 
 The comparable metric is:
 
 `U.S.-based employer + announced cuts + AI primary cause + announcement month
 + canonical event`
 
-Do not compare Challenger’s number against all US job-location records or all
+Do not compare the announcement survey’s number against all US job-location records or all
 AI mentions. Each month persist a reconciliation record containing:
 
-- Challenger report URL and published AI total;
+- announcement-survey report URL and published AI total;
 - tracker query/version used;
 - tracker comparable total and variance;
 - confirmed missing events;
@@ -135,11 +135,11 @@ AI mentions. Each month persist a reconciliation record containing:
 
 Success target: three finalized consecutive months within ±10%, with all
 high-impact events source-linked and no unresolved duplicate in the benchmark
-set. Challenger does not publish an event-level public database, so an exact
+set. The announcement survey does not publish an event-level public database, so an exact
 match is neither expected nor a reason to alter data without evidence.
 
-`railway/challenger_reconcile.py` and the monthly
-`challenger-reconcile` workflow fetch the latest official Challenger job-cuts
+`railway/survey_reconcile.py` and the monthly
+`survey-reconcile` workflow fetch the latest official announcement-survey job-cuts
 report, extract its YTD AI figure, and compare the strict tracker query. A
 threshold miss fails loudly; it is a discovery/reclassification signal, never
 permission to force the tracker total.
@@ -147,7 +147,7 @@ permission to force the tracker total.
 The comparator requests `date_basis=announcement`, so rows without an exact
 source-supported announcement date are excluded rather than silently grouped
 by effective layoff date. Its coverage gap is therefore a quality signal, not
-a claim of complete Challenger parity.
+a claim of complete announcement-survey parity.
 
 ## Regression and operational checks
 

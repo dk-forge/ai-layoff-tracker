@@ -1,6 +1,6 @@
 # Aggregator lead-access outreach (drafts — send from info@asktherecruiter.com)
 
-Policy context: layoffs.fyi and TrueUp compile from public press reports and
+Policy context: technology-sector trackers compile from public press reports and
 crowdsourced tips. Our standing rule is **leads-only, verify-at-source, never
 copy their dataset** — and no automated scraping of either site without the
 operator's permission. These drafts request sanctioned access so a daily
@@ -11,15 +11,15 @@ catch on 2026-07-19) close holes the allowlist reveals.
 
 ---
 
-## 1. To Roger Lee (layoffs.fyi) — hi@layoffs.fyi / LinkedIn
+## 1. To a technology-sector tracker (crowdsourced) — [contact email] / LinkedIn
 
 Subject: Data-access request from a source-linked layoff tracker (attribution guaranteed)
 
-Hi Roger,
+Hi [name],
 
 I run the AI Layoff Tracker at asktherecruiter.com — a free, source-linked
 tracker of verified layoffs (SEC 8-K filings, state WARN notices, and named
-press reports; every entry links to its primary document). Layoffs.fyi has
+press reports; every entry links to its primary document). Your tracker has
 been an inspiration for the category, and we deliberately do not copy your
 data.
 
@@ -27,7 +27,7 @@ I'd like to ask permission for a narrow, automated use: reading the company
 names (only) on your public tracker once daily, so we can check each name
 against our own sources and independently verify any event we missed at its
 primary source. Nothing from your dataset would be republished; where your
-tracker surfaced a lead we'd credit "first seen via Layoffs.fyi" on the
+tracker surfaced a lead we'd credit "first seen via [your tracker]" on the
 methodology page if you'd like the attribution.
 
 If you'd prefer a different arrangement (an export, an API, or a flat no),
@@ -39,19 +39,19 @@ asktherecruiter.com/blog/ai-layoff-tracker/
 
 ---
 
-## 2. To TrueUp — support@trueup.io
+## 2. To a technology-sector tracker — [contact email]
 
-Subject: Permission request: daily company-name lead check against the TrueUp layoff tracker
+Subject: Permission request: daily company-name lead check against the sector layoff tracker
 
-Hello TrueUp team,
+Hello [team],
 
 We operate a free, source-linked layoff tracker (asktherecruiter.com/blog/
 ai-layoff-tracker/) built on official filings and named press reports. We do
 not copy other trackers' datasets, and your terms are why we're asking first:
 we'd like permission to read the company names on your public layoffs page
 once per day, purely as leads to verify independently at their primary
-sources. No TrueUp figures would be stored or republished, and we're glad to
-credit TrueUp as the lead source on our methodology page.
+sources. No third-party figures would be stored or republished, and we're glad to
+credit your tracker as the lead source on our methodology page.
 
 If that's not something you allow, no hard feelings — a reply either way
 saves us both time.

@@ -28,7 +28,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | migrate | manual | Re-mirror all CPT posts into the fast table |
 | trash-entries | manual | **Editorial removal** (post_ids/row_ids + required reason). Log it in TECHLOG + site corrections log |
 | data-quality | Mondays 16:00 UTC + manual | Anomaly report: WARN notices ≥5K, same-company multi-state filings, weak links — READ THIS WEEKLY |
-| challenger-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official Challenger report; fails if variance exceeds 10% |
+| survey-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official announcement-survey report; fails if variance exceeds 10% |
 | reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
 | reason-backfill | daily 04:40 UTC + manual | Tags untagged non-WARN rows from their STORED excerpt only (fixed vocabulary; ERM template rows map from Eurofound's recorded type, freeform rows via DeepSeek). Writes via /edit (pins rows). Inputs: model_batch, deterministic_cap, dry_run |
 | enrich-roles | daily 04:23 UTC + manual | Bounded role-category extraction from already-stored row text (roles/excerpt/quotes, no external fetches); fills only blank role_categories, marks evidence-silent rows `unknown` so the queue drains |
@@ -148,14 +148,14 @@ the dedup hash — corrected counts need the purge path, plain re-import duplica
 2. Compare every retained source report for both events; confirm the scope, geography and timeline describe the same underlying cut.
 3. Only then use the keyed `/merge-events` route with an editorial reason. Never merge from company name or an LLM suggestion alone. The merge keeps every source report.
 
-**Challenger reconciliation fails**
+**Announcement-survey reconciliation fails**
 1. Do not change the tracker total to match the benchmark. The comparison is only valid for US-based employers,
    announced cuts, AI-primary cause and canonical events.
-2. Open the uploaded `challenger-reconciliation` artifact. Record the Challenger report URL, tracker query and
+2. Open the uploaded `survey-reconciliation` artifact. Record the announcement-survey report URL, tracker query and
    variance in the monthly reconciliation log.
 3. Re-run recent GDELT/news/IR overlapping windows, then classification/dedup audits. Missing, duplicate,
    date/count and definition differences must remain separately identifiable.
-4. If the official Challenger site changes its markup, update `railway/challenger_reconcile.py` with a regression
+4. If the official announcement-survey site changes its markup, update `railway/survey_reconcile.py` with a regression
    fixture; do not replace it with a guessed hard-coded total.
 
 **Quarterly report needs correction or rerun**
@@ -183,7 +183,7 @@ Mitigations, in order: (1) Cloudflare cache rule serving the API from edge (chec
 - GDELT DOC 2.0 API: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ (keyless; ~gentle rate limits, 429s happen)
 - SEC EDGAR full-text search: https://efts.sec.gov/LATEST/search-index?q= (declare a User-Agent per SEC policy)
 - Extraction model: `deepseek/deepseek-chat` via OpenRouter (openai SDK, `base_url` override) — see `railway/extractor.py`
-- Comparable trackers for editorial judgment: layoffs.fyi (crowdsourced), Challenger Gray monthly reports, WARN databases by ProPublica/USA Today
+- Comparable trackers for editorial judgment: technology-sector trackers (crowdsourced), announcement-survey monthly reports, WARN databases by ProPublica/USA Today
 
 ## Accepted risks / known limitations (documented, not bugs)
 - ~98% of WARN links are state LIST pages — most states publish no per-notice URL
