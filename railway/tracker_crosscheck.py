@@ -231,14 +231,30 @@ def main():
             covered += 1
             continue
 
+        # Fallback: approximate checklist dates make the windowed query miss
+        # events we DO have at a slightly different date. Requery company-only
+        # (no date window); if the company is present at all, it's covered — not
+        # a gap. Only flag a TRUE gap when the company is entirely absent.
+        if date:
+            wide = query_our_tracker(_search_company_term(company), "", "")
+            if wide:
+                for r in wide:
+                    rk = company_key(r.get("company_name", ""))
+                    if rk == key or (key and key in rk):
+                        match = r
+                        break
+            if match:
+                covered += 1
+                continue
+
         gaps.append({
             "company": company,
             "reference_date": date,
             "reference_count": row["approx_count"],
             "status": "missing",
             "suggested_query": suggested_query(company, date),
-            "note": "no matching event within window; use the query to find a "
-                    "primary source (do NOT import the reference figure directly)",
+            "note": "company entirely absent from the tracker; use the query to "
+                    "find a primary source (do NOT import the reference figure)",
         })
 
     report = {
