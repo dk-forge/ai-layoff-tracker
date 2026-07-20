@@ -269,7 +269,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     <div class="alt-minigrid">
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">The map of AI job loss <span class="alt-chart-sub">bubble size = AI-attributed cuts &middot; color = AI share of that place's cuts &middot; hover for detail, expand &#10530; for a bigger view</span></div>
+                <div class="alt-chart-h">The map of AI job loss <span class="alt-chart-sub">bubble size = total job cuts &middot; <b style="color:#d0431a">red</b> = high AI share, <b style="color:#3f6fd0">blue</b> = low &middot; hover for detail, expand &#10530; for a bigger view</span></div>
                 <span class="alt-chart-btns">
                     <span class="alt-map-toggle">
                         <button type="button" class="alt-map-scope alt-map-scope-on" data-scope="world">World</button>

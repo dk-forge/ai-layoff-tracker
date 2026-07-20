@@ -2039,12 +2039,16 @@
         var out = [];
         rows.forEach(function (e) {
             var label = e[0], jobs = e[1] || 0, ai = e[2] || 0;
-            if (ai <= 0) return;                       // AI-cut map: only places with AI cuts
+            // Bubble SIZE = total job cuts (every place with layoffs shows up),
+            // COLOR = AI's share of them (the AI story). Sizing by AI cuts alone
+            // leaves the US map near-empty, because AI-attributed cuts are mostly
+            // national announcements that carry no US state.
+            if (jobs <= 0) return;
             var c = lut[label];
             if (!c) return;                            // no centroid (e.g. "Multiple countries") — skip
             var share = jobs > 0 ? ai / jobs : 0;
-            out.push({ longitude: c[0], latitude: c[1], value: ai, label: label, jobs: jobs,
-                       share: share, backgroundColor: shareColor(share) });
+            out.push({ longitude: c[0], latitude: c[1], value: jobs, label: label, jobs: jobs,
+                       ai: ai, share: share, backgroundColor: shareColor(share) });
         });
         return out;
     }
@@ -2078,7 +2082,7 @@
                     maintainAspectRatio: false, showGraticule: false,
                     plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) {
                         var b = ctx.raw || {};
-                        return b.label + ': ' + fmt(b.value) + ' AI-linked cuts (' + Math.round((b.share || 0) * 100) + '% of ' + fmt(b.jobs) + ')';
+                        return b.label + ': ' + fmt(b.jobs) + ' job cuts · ' + fmt(b.ai) + ' AI-linked (' + Math.round((b.share || 0) * 100) + '%)';
                     } } } },
                     scales: {
                         projection: { axis: 'x', projection: scope === 'us' ? 'albersUsa' : 'equalEarth' },
