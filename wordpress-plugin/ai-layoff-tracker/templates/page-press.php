@@ -109,6 +109,8 @@ if (!is_array($alt_sb_groups)) {
   <p class="alt-lead"><span class="alt-lead-text">Everything a reporter needs to cite the AI Layoff Tracker: the boilerplate, live quotable figures, how the data is verified, brand assets, and a direct contact. Every number on this page is reproducible from our public API.</span></p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
 
+  <p class="alt-verify-cta"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>"><b>How we verify every number:</b> read the full methodology and source list &rarr;</a></p>
+
   <nav class="alt-press-toc" aria-label="On this page">
     <span class="alt-toc-label">On this page</span>
     <a href="#alt-boilerplate">Boilerplate</a>
@@ -133,6 +135,7 @@ if (!is_array($alt_sb_groups)) {
       <tr><td><b>We break out the AI cuts</b></td><td>Most layoff trackers give you one lump-sum number and stop. We flag the cuts a company itself pinned on AI or automation, each with the employer's own quote on file, so "AI-attributed" becomes a figure a reporter can source instead of guess at.</td></tr>
       <tr><td><b>Every number is a receipt</b></td><td>Estimate-based trackers hand you a figure. We hand you the document behind it: an SEC filing, a WARN notice, or a named report. It's a floor you can prove, not a projection.</td></tr>
       <tr><td><b>We show where AI is cutting</b></td><td>A live world map, the teams hit hardest, and AI's rising share month over month: the geographic and functional detail a press release can't give a reporter.</td></tr>
+      <tr><td><b>We audit our own completeness</b></td><td>We keep a standing checklist of 51 of the most significant layoffs major outlets have covered and re-check our database against it every week. We currently carry every one of them. Any gap is a finding we chase and backfill, not a number we quietly round up to.</td></tr>
       <tr><td><b>Nothing is hidden</b></td><td>A public corrections log, open methodology, the full source list, and an API anyone can reproduce. When we catch an error, we publish it.</td></tr>
     </tbody>
   </table></div>

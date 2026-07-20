@@ -1472,6 +1472,10 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-press-toc .alt-toc-label { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; color: var(--alt-muted); }
 .alt-press-toc a { color: var(--op-green, #4f7257); text-decoration: none; }
 .alt-press-toc a:hover { text-decoration: underline; }
+.alt-verify-cta { margin: 12px 0 4px; padding: 12px 16px; border: 1px solid var(--alt-blue); border-left-width: 4px; border-radius: 10px; background: var(--alt-blue-tint); font-size: 15px; }
+.alt-verify-cta a { color: var(--alt-blue-dark); text-decoration: none; }
+.alt-verify-cta a:hover { text-decoration: underline; }
+.alt-verify-cta a:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 3px; }
 .alt-sb-grouptitle { margin: 22px 0 8px; font-size: 16px; scroll-margin-top: 80px; }
 
 /* Press: data-backed soundbites */
