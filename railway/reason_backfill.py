@@ -106,6 +106,12 @@ def fetch_candidates():
         params = {"sources": NON_WARN_SOURCES, "sort": "id", "dir": "asc",
                   "per_page": PAGE_SIZE, "page": page}
         response = requests.get(f"{SITE}/wp-json/layoffs/v1/query", params=params, headers=UA, timeout=60)
+        # WP returns 404 for a page past the last row; between our sequential
+        # page requests the candidate set shrinks (rows get tagged), so the
+        # final page can 404 even though the scan succeeded. End-of-data, not a
+        # failure. A 404 on page 1 is a real endpoint problem and still raises.
+        if response.status_code == 404 and page > 1:
+            break
         response.raise_for_status()
         payload = response.json()
         rows = payload.get("data", [])
