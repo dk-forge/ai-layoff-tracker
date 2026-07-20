@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.20
+ * Version: 2.19.21
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.20');
+define('ALT_VERSION', '2.19.21');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -23,7 +23,20 @@ require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
-require_once ALT_PLUGIN_DIR . 'templates/partials/warn-state-urls.php';
+// GUARDED: FTP deploys upload files one at a time, so this main plugin file can
+// land BEFORE the generated partial does (the mid-upload race the iron rules
+// warn about). A hard `require` of a not-yet-uploaded file fatals the ENTIRE
+// plugin on every request until the partial arrives (WP recovery-mode email,
+// 2.19.20). Include it only if present, and always define the accessor as a
+// stub fallback so no caller ever hits an undefined function — WARN rows simply
+// omit the state-list link until the real map lands on the next request/deploy.
+$alt_warn_urls_partial = ALT_PLUGIN_DIR . 'templates/partials/warn-state-urls.php';
+if (is_readable($alt_warn_urls_partial)) {
+    require_once $alt_warn_urls_partial;
+}
+if (!function_exists('alt_state_warn_list_url')) {
+    function alt_state_warn_list_url($state) { return ''; }
+}
 
 /**
  * Activation: register the CPT + custom feed before flushing rewrite rules,
