@@ -257,11 +257,11 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>
         </div>
-        <nav class="alt-stats-links" aria-label="About these results">
+        <nav class="alt-stats-links alt-stats-links-box" aria-label="About these results">
+            <span class="alt-stats-links-label">New here? Start with:</span>
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
             <a class="alt-method-link" href="#alt-challenger-comparison">Why US figures differ from Challenger</a>
             <a class="alt-method-link" href="#alt-data-sources">Where do we get this data?</a>
-            <a class="alt-btn alt-btn-sm" href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Want to embed this tracker on your site? Get the free widget →</a>
         </nav>
     </section>
 

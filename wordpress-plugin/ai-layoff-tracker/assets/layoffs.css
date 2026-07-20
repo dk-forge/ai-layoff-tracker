@@ -34,6 +34,15 @@
     gap: 8px 16px;
     font-size: 13px;
 }
+/* "Start here" helper box: soft green, a touch bigger, so newcomers find the
+   explainers before scrolling past them. */
+.alt-stats-links-box {
+    align-items: center; gap: 8px 18px; font-size: 14.5px;
+    background: #eef5ee; border: 1px solid #cfe2cf; border-radius: 10px;
+    padding: 11px 15px; margin-top: 4px;
+}
+.alt-stats-links-label { font-weight: 700; color: #3c5a41; }
+.alt-stats-links-box a { color: #2f5a37; }
 .alt-stats-links a {
     color: var(--alt-blue-dark);
     font-weight: 650;
