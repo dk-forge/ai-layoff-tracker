@@ -111,10 +111,10 @@ def main():
         customs = [e for e in customs if e["layoff_date"] >= start]
     entries.extend(customs)
 
-    # Newly-added importers (MS, WV, HI, NM) — live-smoke-validated but GATED
-    # behind WARN_NEW_STATES=1 so the daily cron never auto-runs them until one
-    # dispatch confirms them in this environment. Once confirmed, drop the gate.
-    if os.environ.get("WARN_NEW_STATES") == "1":
+    # Newly-added importers (MS, WV, HI, NM) — validated live on 2026-07-20
+    # (MS 129 / WV 24 / NM 11 notices; HI 0 by design). Now part of the daily
+    # sweep; set WARN_SKIP_NEW_STATES=1 to disable if a source ever breaks.
+    if os.environ.get("WARN_SKIP_NEW_STATES") != "1":
         try:
             from sources.warn_new_states import NEW_CUSTOM_STATES
         except Exception as exc:
