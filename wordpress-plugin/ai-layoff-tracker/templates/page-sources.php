@@ -1,12 +1,11 @@
 <?php if (!defined('ABSPATH')) exit;
 /**
  * Public "Data Sources" page — the verifiable directory of every pipeline the
- * tracker pulls from. Built for journalists and researchers: each US state
- * WARN registry is a live link (rendered straight from the same
- * alt_state_warn_urls() map the importer stamps onto notices, so it can never
- * drift from what we actually scrape), alongside the federal, EU, and news
- * sources. Linked from the tracker headline ("why this is verified") and the
- * methodology FAQ.
+ * tracker pulls from, rendered as scannable tables. The US state WARN registry
+ * links come straight from the same alt_state_warn_urls() map the importer
+ * stamps onto notices, so they can never drift from what we actually scrape.
+ * Linked from the tracker headline ("why this is verified"), the lead bar, and
+ * the methodology FAQ.
  */
 $alt_state_names = array(
     'AK' => 'Alaska', 'AL' => 'Alabama', 'AZ' => 'Arizona', 'CA' => 'California',
@@ -24,18 +23,68 @@ $alt_state_names = array(
 );
 $alt_state_urls = function_exists('alt_state_warn_urls') ? alt_state_warn_urls() : array();
 ksort($alt_state_urls);
+// States we cannot fully cover, in plain English — so the gap is disclosed, not hidden.
+$alt_gap_states = array(
+    array('Massachusetts', 'Publishes WARN data, but in a format the shared open-source scraper does not read yet. We are building a custom reader for it.', 'Custom scraper in progress'),
+    array('Minnesota', 'Publishes WARN data, but in a format the shared open-source scraper does not read yet. We are building a custom reader for it.', 'Custom scraper in progress'),
+    array('Hawaii', 'Posts its WARN notices without saying how many people are affected. We will not invent a headcount, so these cannot become countable rows.', 'No headcount published'),
+    array('Oklahoma', 'Posts its WARN notices without a headcount, same as Hawaii. Nothing to count without the number.', 'No headcount published'),
+    array('Missouri', 'Does not publish layoff notices to the public at the individual-notice level at all.', 'Nothing published'),
+    array('New Mexico', 'Does not publish layoff notices to the public at the individual-notice level at all.', 'Nothing published'),
+);
 ?>
 <main class="alt-wrap alt-sources-page">
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>Data Sources</h1>
-  <p class="alt-lead"><span class="alt-lead-text">Every number in the tracker traces back to one of the sources below — an official government filing, a legally required layoff notice, an EU restructuring record, or a named news report. Nothing is estimated or modeled into existence. This page lists each pipeline, with a live link so you can check the raw source yourself.</span></p>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-metric-definitions">Methodology</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code (state parsers)</a></p>
+  <p class="alt-lead"><span class="alt-lead-text">Every number in the tracker traces back to one of the sources below — an official government filing, a legally required layoff notice, an EU restructuring record, or a named news report. Nothing is estimated or modeled into existence. Each row links to the raw source so you can check it yourself.</span></p>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-metric-definitions">Methodology</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code</a></p>
 
-  <h2>United States — federal filings</h2>
-  <p><b>SEC EDGAR full-text search.</b> We search <a href="https://efts.sec.gov/LATEST/search-index?q=%22reduction%20in%20force%22&forms=8-K" target="_blank" rel="noopener">every 8-K and 6-K filing</a> twice daily across layoff phrasings, including Item 2.05 exit-cost disclosures. SEC filings are structured and are imported with no AI processing. All 50 states are represented in the tracker through these filings and through news, even where a state publishes no WARN data of its own.</p>
+  <h2>Every source at a glance</h2>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+    <thead><tr><th>Source</th><th>Region / scope</th><th>What it is</th><th>Tier it feeds</th><th>Link</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>SEC EDGAR</b></td><td>US public companies + foreign filers</td>
+        <td>Every 8-K / 6-K filing, searched twice daily for layoff language (incl. Item 2.05 exit costs). Structured — no AI processing.</td>
+        <td>Verified</td>
+        <td><a href="https://efts.sec.gov/LATEST/search-index?q=%22reduction%20in%20force%22&forms=8-K" target="_blank" rel="noopener">Full-text search &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>State WARN notices</b></td><td><?php echo count($alt_state_urls); ?> US states + DC</td>
+        <td>Official mass-layoff notices employers must file with the state. Imported daily, no AI processing. Full list below.</td>
+        <td>Verified</td>
+        <td><a href="#alt-state-warn">See all <?php echo count($alt_state_urls); ?> &darr;</a></td>
+      </tr>
+      <tr>
+        <td><b>Eurofound ERM</b></td><td>EU27, Norway, UK (historically)</td>
+        <td>The EU's official European Restructuring Monitor — per-company restructuring announcements from national correspondents.</td>
+        <td>Announced</td>
+        <td><a href="https://apps.eurofound.europa.eu/restructuring-events/" target="_blank" rel="noopener">ERM database &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>GDELT news index</b></td><td>Worldwide, every country</td>
+        <td>Global news in 65+ languages, searched twice daily. Allowlist of trusted outlets only — never open-web crawling.</td>
+        <td>Verified (named report)</td>
+        <td><a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">About GDELT &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>NewsAPI</b></td><td>Worldwide</td>
+        <td>Supplements GDELT for recent English-language coverage, same trusted-outlet allowlist.</td>
+        <td>Verified (named report)</td>
+        <td><a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI &#8599;</a></td>
+      </tr>
+      <tr>
+        <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
+        <td>Official corporate-filing systems. Discovery probes only — <em>not live</em> until a stable interface, tests and health monitoring exist.</td>
+        <td>Research candidate</td>
+        <td><a href="https://disclosure2.edinet-fsa.go.jp/" target="_blank" rel="noopener">EDINET &#8599;</a></td>
+      </tr>
+    </tbody>
+  </table></div>
+  <p class="alt-muted"><b>Verified</b> = a filing or named report is behind it (the headline number). <b>Announced</b> = a company plan reported at announcement stage, kept in a separate tier and never mixed into the verified total.</p>
 
-  <h2>United States — state WARN registries (<?php echo count($alt_state_urls); ?> states)</h2>
-  <p>The federal WARN Act requires large employers to file advance notice of mass layoffs and plant closings with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link below is the state's own official WARN program or database page — the exact source our importer reads.</p>
+  <h2 id="alt-state-warn">US state WARN registries (<?php echo count($alt_state_urls); ?> states)</h2>
+  <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page — the exact source our importer reads.</p>
   <?php if ($alt_state_urls) : ?>
   <div class="alt-health-table-wrap"><table class="alt-sources-table">
     <thead><tr><th>State</th><th>Official WARN registry</th></tr></thead>
@@ -52,17 +101,27 @@ ksort($alt_state_urls);
   <?php else : ?>
   <p class="alt-muted">The state WARN registry list is being generated and will appear on the next update.</p>
   <?php endif; ?>
-  <p><b>Why <?php echo count($alt_state_urls); ?> states and not 50.</b> These are the states that publish citable per-notice WARN data. The rest cannot be included through no fault of ours: Hawaii and Oklahoma publish WARN notices without headcounts, and Missouri and New Mexico publish nothing at the notice level. Oregon anonymizes some employers as facility or street names in its own official list; we record those rows faithfully rather than guessing the employer. This is the ceiling of what US states actually make public.</p>
 
-  <h2>European Union, Norway &amp; the UK (historically)</h2>
-  <p><b>European Restructuring Monitor (Eurofound).</b> The <a href="https://apps.eurofound.europa.eu/restructuring-events/" target="_blank" rel="noopener">ERM</a>, run by the EU agency Eurofound, records per-company restructuring announcements compiled by national correspondents who screen 58 designated business-media titles daily. We import them daily with attribution. Because ERM records announcement-stage figures, its entries feed our <b>Announced</b> tier, not the verified headline.</p>
-
-  <h2>Worldwide — news coverage, every country</h2>
-  <p><b>GDELT global news index.</b> <a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">GDELT</a> machine-translates press coverage from 65+ languages (Le Monde, Handelsblatt, Nikkei, Globo and thousands more), searched twice daily for layoff coverage in any country. <b>NewsAPI</b> supplements it. Only articles from an editorially maintained trusted-outlet allowlist are ingested — we never crawl the open web. That allowlist is public in the <a href="https://github.com/dk-forge/ai-layoff-tracker" target="_blank" rel="noopener">repository</a>. Press articles are read by the DeepSeek-V3 model, which extracts company, count, date, country and any explicit AI attribution; countries and industries then normalize through fixed vocabularies, counts and dates pass hard validation, and duplicates are checked against the existing data.</p>
-
-  <h2>Official-source research (not yet live)</h2>
-  <p>Discovery probes exist for Japan (<a href="https://disclosure2.edinet-fsa.go.jp/" target="_blank" rel="noopener">EDINET</a>), South Korea (<a href="https://opendart.fss.or.kr/" target="_blank" rel="noopener">OpenDART</a>) and Brazil (CVM). These are maintained as official-source candidates and are named as live only after a stable public interface, tests and source-health monitoring exist. Countries such as Canada (SEDAR+), the UK (RNS), Australia (ASX), India (NSE/BSE), Hong Kong (HKEXnews), Singapore (SGXNet) and others are on the same roadmap. Until then, layoffs in those countries surface through GDELT news coverage in local languages.</p>
+  <h2>States we can't fully cover yet — and why</h2>
+  <p>All 50 states already appear in the tracker through SEC filings and news. The gap is only in state WARN <em>notices</em>, and here is exactly why, in plain terms:</p>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+    <thead><tr><th>State</th><th>Why it isn't in the WARN list</th><th>Status</th></tr></thead>
+    <tbody>
+    <?php foreach ($alt_gap_states as $alt_g) : ?>
+      <tr><td><b><?php echo esc_html($alt_g[0]); ?></b></td><td><?php echo esc_html($alt_g[1]); ?></td><td><?php echo esc_html($alt_g[2]); ?></td></tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table></div>
+  <p class="alt-muted">"Nothing published" and "no headcount" states can't be fixed with code — they need public-records requests to the state. The custom-scraper states are an engineering task we're working through.</p>
 
   <h2>How verification works</h2>
-  <p>WARN and ERM records are imported with <b>no AI processing</b> because they are already structured. For news, the model extracts the facts and a second independent model pass audits classifications daily, with a full-dataset audit monthly. Label corrections apply only when two independent passes agree; numeric changes and removals always require a human. Every correction discloses itself in the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-data-sources">corrections log</a>. The live status of each collector is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">tracker health page</a>.</p>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+    <thead><tr><th>Source type</th><th>How it's handled</th></tr></thead>
+    <tbody>
+      <tr><td>WARN &amp; ERM (structured)</td><td>Imported as-is with <b>no AI processing</b> — company, count and date come straight off the official record.</td></tr>
+      <tr><td>News &amp; SEC (text)</td><td>A model extracts the facts; a second independent model pass must agree, and a supporting quote must be present. Countries/industries normalize to fixed lists; counts and dates pass hard validation.</td></tr>
+      <tr><td>Corrections</td><td>Label fixes need two passes to agree; <b>numeric changes and removals always require a human</b>. Every correction is logged publicly.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">tracker health page</a>; the running corrections log is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-data-sources">tracker itself</a>.</p>
 </main>
