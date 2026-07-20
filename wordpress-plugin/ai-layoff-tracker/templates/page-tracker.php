@@ -248,6 +248,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
                 </span>
             </div>
             <div class="alt-chart-box alt-map-box"><canvas id="alt-chart-aimap" aria-label="AI-attributed layoffs by geography"></canvas></div>
+            <p class="alt-map-total alt-muted" id="alt-map-total"></p>
             <p class="alt-map-empty alt-muted" id="alt-map-note" style="display:none"></p>
         </div>
         <div class="alt-mini alt-chart-card">

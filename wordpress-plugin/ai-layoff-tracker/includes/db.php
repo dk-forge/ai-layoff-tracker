@@ -2661,12 +2661,12 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
 
     // Top-N helpers (each slicer ignores its own dimension). Each entry is
     // [label, total jobs, AI-attributed jobs] so bars can show the AI share.
-    $topN = function ($col, $except) use ($wpdb, $table, $r) {
+    $topN = function ($col, $except, $limit = 24) use ($wpdb, $table, $r) {
         list($w, $p) = alt_db_where($r, $except);
         $sql = "SELECT $col k, SUM(job_count) v,
                        COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
                 FROM $table
-                WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT 24";
+                WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT " . max(1, (int) $limit);
         $rows = $wpdb->get_results(alt_db_prep($sql, $p));
         $out = array();
         foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v, (int) $row->a); }
@@ -2787,6 +2787,10 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         'top_industries' => $topN('industry', 'industry'),
         'top_countries'  => $topN('country', 'country'),
         'top_states'     => $topN('state', 'state'),
+        // Uncapped-ish sets for the map so every state/country with data shows
+        // a bubble (the top-24 lists above are for the ranked bar cards).
+        'map_states'     => $topN('state', 'state', 60),
+        'map_countries'  => $topN('country', 'country', 260),
         'top_roles'      => $top_roles,
         'source_types'   => $topN('source_type', 'sources'),
         'reasons'        => $reasons,

@@ -440,6 +440,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-map-scope { background: #fff; border: 0; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--alt-ink-2); cursor: pointer; }
 .alt-map-scope + .alt-map-scope { border-left: 1px solid var(--alt-border); }
 .alt-map-scope-on { background: var(--alt-blue); color: #fff; }
+.alt-map-total { text-align: center; font-size: 12.5px; font-weight: 600; margin: 6px 0 0; color: var(--alt-ink-2); }
 .alt-mini .alt-chart-h { font-size: 13.5px; }
 .alt-mini .alt-chart-sub { display: block; margin-left: 0; margin-top: 2px; font-size: 11px; }
 .alt-mini .alt-chart-box { height: 150px; }
@@ -1433,6 +1434,11 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
   .alt-report-tabs, .alt-report-nav { display: none !important; }
   @page { margin: 12mm; }
 }
+
+/* Sources: WARN registry table cadence column */
+.alt-warn-table td:first-child { white-space: nowrap; }
+.alt-warn-cadence { white-space: nowrap; color: var(--alt-ink-2); font-size: 12.5px; font-weight: 600; }
+.alt-sources-table a { word-break: break-word; }
 
 /* Sources: gap-state table + status pills */
 .alt-gap-table td { vertical-align: top; line-height: 1.5; }

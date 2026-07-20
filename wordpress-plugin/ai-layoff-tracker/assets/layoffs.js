@@ -1899,7 +1899,7 @@
     }
 
     function aiMapBubbles(scope, agg) {
-        var rows = scope === 'us' ? (agg.top_states || []) : (agg.top_countries || []);
+        var rows = scope === 'us' ? (agg.map_states || agg.top_states || []) : (agg.map_countries || agg.top_countries || []);
         var lut = scope === 'us' ? US_STATE_CENTROIDS : COUNTRY_CENTROIDS;
         var out = [];
         rows.forEach(function (e) {
@@ -1928,10 +1928,23 @@
         }
         var scope = AIMAP.scope;
         var bubbles = aiMapBubbles(scope, AIMAP.data);
+        // Global total caption: total mapped job cuts + how many places carry a
+        // location, plus the overall view total so the number is always shown.
+        var total = document.getElementById('alt-map-total');
+        if (total) {
+            var mappedJobs = 0, mappedAi = 0;
+            bubbles.forEach(function (b) { mappedJobs += b.jobs; mappedAi += b.ai; });
+            var viewTotal = (AIMAP.data.totals && AIMAP.data.totals.jobs) || 0;
+            var place = scope === 'us' ? 'US states' : 'countries';
+            total.textContent = bubbles.length
+                ? fmt(mappedJobs) + ' job cuts mapped across ' + bubbles.length + ' ' + place
+                    + ' · ' + fmt(mappedAi) + ' AI-linked · ' + fmt(viewTotal) + ' total in this view'
+                : '';
+        }
         loadTopo(scope).then(function (outline) {
             if (!bubbles.length) {
                 if (AIMAP.chart) { AIMAP.chart.destroy(); AIMAP.chart = null; }
-                if (note) { note.style.display = ''; note.textContent = 'No AI-attributed cuts with a known location in this view yet.'; }
+                if (note) { note.style.display = ''; note.textContent = 'No cuts with a known location in this view yet.'; }
                 return;
             }
             if (note) note.style.display = 'none';

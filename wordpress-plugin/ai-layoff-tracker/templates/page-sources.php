@@ -97,18 +97,20 @@ $alt_gap_states = array(
   <h2 id="alt-state-warn">US state WARN registries (<?php echo count($alt_state_urls); ?> states)</h2>
   <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page — the exact source our importer reads.</p>
   <?php if ($alt_state_urls) : ?>
-  <div class="alt-health-table-wrap"><table class="alt-sources-table">
-    <thead><tr><th>State</th><th>Official WARN registry</th></tr></thead>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table alt-warn-table">
+    <thead><tr><th>State</th><th>Official WARN registry (direct link)</th><th>We re-import</th></tr></thead>
     <tbody>
     <?php foreach ($alt_state_urls as $alt_code => $alt_url) :
         $alt_name = isset($alt_state_names[$alt_code]) ? $alt_state_names[$alt_code] : $alt_code; ?>
       <tr>
         <td><?php echo esc_html($alt_name); ?> <span class="alt-muted">(<?php echo esc_html($alt_code); ?>)</span></td>
-        <td><a href="<?php echo esc_url($alt_url); ?>" target="_blank" rel="noopener"><?php echo esc_html(preg_replace('#^https?://(www\.)?#', '', $alt_url)); ?></a></td>
+        <td><a href="<?php echo esc_url($alt_url); ?>" target="_blank" rel="noopener"><?php echo esc_html(preg_replace('#^https?://(www\.)?#', '', rtrim($alt_url, '/'))); ?> &#8599;</a></td>
+        <td class="alt-warn-cadence">Daily · 11am ET</td>
       </tr>
     <?php endforeach; ?>
     </tbody>
   </table></div>
+  <p class="alt-muted">Each state publishes on its own schedule (some rolling daily, some weekly, some quarterly); we re-import every state <b>daily at 11am ET</b>, so a state's newest posted notices appear here within a day. Where a state offers a per-notice page, each entry links straight to it; otherwise the link goes to the state's official WARN list or data file.</p>
   <?php else : ?>
   <p class="alt-muted">The state WARN registry list is being generated and will appear on the next update.</p>
   <?php endif; ?>
