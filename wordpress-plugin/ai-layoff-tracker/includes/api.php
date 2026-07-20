@@ -227,26 +227,12 @@ function alt_industry_override($company) {
     return '';
 }
 
-/**
- * Map freeform extracted industry strings onto a fixed taxonomy so the filter
- * dropdown doesn't fill with near-duplicates ("IT" vs "Information Technology",
- * "Airline" vs "Airlines", lowercase variants...). Keyword rules, checked in
- * order; unmatched values fall back to Title Case of the original.
- */
-function alt_normalize_industry($value) {
-    $raw = trim((string) $value);
-    if ($raw === '') return '';
-    $k = strtolower($raw);
-
-    // Exact-value shortcuts that keyword rules can't safely catch
-    // (a bare "it" substring would match half the alphabet).
-    $exact = array('it' => 'Technology', 'ai' => 'Technology', 'ml' => 'Technology');
-    if (isset($exact[$k])) return $exact[$k];
-
+/** Canonical industry label => match keywords, shared by the normalizer and vocabulary. */
+function alt_industry_rules() {
     // Order matters: specific compound sectors (biotech, fintech, edtech) must
     // be matched BEFORE the generic Technology rule, whose 'tech' keyword would
     // otherwise swallow them.
-    $rules = array(
+    return array(
         'Healthcare & Pharma'    => array('pharma', 'biotech', 'bio-tech', 'health', 'medical', 'genomic', 'dermatolog', 'biopharma', 'life science', 'regenerative'),
         'Finance & Insurance'    => array('bank', 'fintech', 'fin-tech', 'insurtech', 'financ', 'insurance', 'investment', 'crypto', 'payments', 'lending', 'mortgage'),
         'Education'              => array('education', 'university', 'school', 'edtech', 'ed-tech', 'learning'),
@@ -267,8 +253,35 @@ function alt_normalize_industry($value) {
         'Agriculture'            => array('agricultur', 'farm'),
         'Government & Nonprofit' => array('government', 'public sector', 'nonprofit', 'non-profit'),
     );
+}
 
-    foreach ($rules as $canonical => $keywords) {
+/**
+ * The closed set of canonical industry labels. The /industry-backfill writer
+ * accepts ONLY these values: alt_normalize_industry()'s Title-Case fallback is
+ * fine for source-supplied freeform sectors, but an automated classifier must
+ * never mint a new label. Mirrored in railway/industry_backfill.py.
+ */
+function alt_industry_vocabulary() {
+    return array_keys(alt_industry_rules());
+}
+
+/**
+ * Map freeform extracted industry strings onto a fixed taxonomy so the filter
+ * dropdown doesn't fill with near-duplicates ("IT" vs "Information Technology",
+ * "Airline" vs "Airlines", lowercase variants...). Keyword rules, checked in
+ * order; unmatched values fall back to Title Case of the original.
+ */
+function alt_normalize_industry($value) {
+    $raw = trim((string) $value);
+    if ($raw === '') return '';
+    $k = strtolower($raw);
+
+    // Exact-value shortcuts that keyword rules can't safely catch
+    // (a bare "it" substring would match half the alphabet).
+    $exact = array('it' => 'Technology', 'ai' => 'Technology', 'ml' => 'Technology');
+    if (isset($exact[$k])) return $exact[$k];
+
+    foreach (alt_industry_rules() as $canonical => $keywords) {
         foreach ($keywords as $kw) {
             // Short keywords match on word boundaries only, so 'oil' can't hit
             // 'Boiler', 'gas' can't hit 'Gastroenterology', 'rail' 'Trailer'...

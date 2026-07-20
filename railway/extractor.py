@@ -57,6 +57,36 @@ ROLE_CATEGORIES = {
     "retail_staff",
 }
 
+# The closed industry vocabulary, mirrored verbatim from the WordPress side
+# (alt_industry_rules() keys / alt_industry_vocabulary()). The /industry-backfill
+# endpoint re-validates against alt_industry_vocabulary() and rejects anything
+# outside it, but constraining the model here keeps a drifted classifier from
+# burning a batch on server-rejected labels. Order matches the PHP map so the
+# parity test (tests/test_industry_backfill.py) can catch any drift in either
+# direction. Kept as a tuple: the prompt lists them and the worker validates
+# membership.
+INDUSTRY_VOCABULARY = (
+    "Healthcare & Pharma",
+    "Finance & Insurance",
+    "Education",
+    "Aerospace & Defense",
+    "Airlines & Travel",
+    "Automotive",
+    "Technology",
+    "Telecom",
+    "Media & Entertainment",
+    "Retail & E-commerce",
+    "Food & Hospitality",
+    "Energy",
+    "Logistics & Transport",
+    "Real Estate & Construction",
+    "Manufacturing",
+    "Consumer Goods",
+    "Professional Services",
+    "Agriculture",
+    "Government & Nonprofit",
+)
+
 SYSTEM_PROMPT = """You are a data extraction specialist for a verified AI layoff tracker.
 
 Your job is to extract structured layoff data from news articles and SEC filings.
@@ -334,6 +364,64 @@ def _validate_reason_result(result, raw_text):
     if "ai_automation" in tags and not _quote_is_supported(result.get("ai_evidence"), raw_text):
         tags.remove("ai_automation")
     return {"reason_tags": tags}
+
+
+def _validate_industry_result(result):
+    """Map a model reply to exactly one canonical industry label, or "".
+
+    Pure and unit-tested. The model is asked to answer with a single label from
+    INDUSTRY_VOCABULARY or "unknown"; anything not an exact vocabulary member
+    (including "unknown", empty, or a hallucinated label) collapses to "" — a
+    definitive "the evidence doesn't place this company", not a guess. Returns
+    None only for a malformed (non-dict) reply so the caller can retry it.
+    """
+    if not isinstance(result, dict):
+        return None
+    label = result.get("industry")
+    label = label.strip() if isinstance(label, str) else ""
+    return {"industry": label if label in INDUSTRY_VOCABULARY else ""}
+
+
+def classify_industry(company, raw_text):
+    """Classify one blank-industry row into the closed industry vocabulary.
+
+    Uses ONLY the row's own company name + stored excerpt — no external fetch.
+    Never invents a label: an ambiguous or unstated sector returns
+    {"industry": ""} (a definitive skip that leaves the row in the visible
+    backlog), while a model/transport failure returns None (a retry on a later
+    daily rotation). This narrow call cannot touch counts, dates, sources or AI
+    labels; the /industry-backfill endpoint additionally re-validates the label
+    and writes it only when the field is still blank.
+    """
+    company = (company or "").strip()[:200]
+    raw_text = (raw_text or "")[:6000]
+    if not company and not raw_text.strip():
+        return {"industry": ""}
+    vocab = "\n".join("- " + label for label in INDUSTRY_VOCABULARY)
+    prompt = (
+        "Classify the employer's PRIMARY industry from the company name and the "
+        "layoff excerpt below. Return STRICT JSON only:\n"
+        '{"industry":"exactly one label from the list, or \\"unknown\\""}\n\n'
+        "Rules:\n"
+        "- Choose the SINGLE best-fit label from this closed list; copy it verbatim:\n"
+        f"{vocab}\n"
+        "- Base the call on what the company actually does. The company name is "
+        "strong evidence; the excerpt may add sector context.\n"
+        "- If the company's sector is genuinely unclear from the given text, "
+        'answer {"industry":"unknown"}. Never guess to fill the field.\n\n'
+        f"COMPANY: {company}\nEXCERPT: {raw_text}"
+    )
+    try:
+        response = _get_client().chat.completions.create(
+            model=MODEL, max_tokens=40,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content if response.choices else ""
+        result = _parse_json_response(content or "")
+    except Exception as exc:
+        print(f"Industry classification failed: {exc}")
+        return None
+    return _validate_industry_result(result)
 
 
 def _sanitize_role_categories(values):

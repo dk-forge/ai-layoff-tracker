@@ -1,0 +1,60 @@
+name: Industry backfill
+
+# Bounded daily classification of blank-industry rows from each row's own
+# company name + STORED excerpt only (fixed vocabulary; two independent model
+# passes must agree before a fill is written). Writes through the blank-only
+# /industry-backfill endpoint, which re-validates the label, never overwrites a
+# set industry, and never pins a row. It never re-fetches sources and never
+# touches counts/dates/stages/sources/AI labels.
+on:
+  schedule:
+    - cron: '55 4 * * *'
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Rows to classify this run (1-200; scheduled default 40)'
+        required: false
+        default: '40'
+      dry_run:
+        description: 'Set 1 to classify and print without writing'
+        required: false
+        default: ''
+      single_pass:
+        description: 'Set 1 to disable the second confirmation pass (spot checks only)'
+        required: false
+        default: ''
+
+# The endpoint fills blank rows idempotently, but two overlapping runs would
+# waste model calls racing the same rotation slice.
+concurrency:
+  group: industry-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openai requests
+      - name: Classify blank industries
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '40' }}
+          INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+          INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
+          # Stops safely between rows well below the job timeout; the daily
+          # rotation resumes where the queue left off.
+          INDUSTRY_BACKFILL_DEADLINE_SECONDS: '900'
+          OPENROUTER_TIMEOUT_SECONDS: '35'
+        # Data-changing jobs fail loudly: a rejected label (vocabulary drift),
+        # a health-write failure, or a fully failed model pass exits non-zero.
+        run: |
+          set -o pipefail
+          cd railway
+          python industry_backfill.py | tee -a "$GITHUB_STEP_SUMMARY"

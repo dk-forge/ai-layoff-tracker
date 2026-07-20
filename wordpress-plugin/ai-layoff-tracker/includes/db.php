@@ -394,6 +394,13 @@ function alt_db_upsert(array $row) {
         if (!empty($existing->edited)) {
             return (int) $existing->id;
         }
+        // An import that carries NO industry (structured WARN rows never do)
+        // must not blank a value already on the row — the daily WARN upsert
+        // would otherwise erase every /industry-backfill fill overnight.
+        // Clearing an industry deliberately goes through /edit (pinned).
+        if ($data['industry'] === '') {
+            unset($data['industry']);
+        }
         $wpdb->update($table, $data, array('id' => (int) $existing->id));
         return (int) $existing->id;
     }
@@ -581,6 +588,11 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($r->get_param('roles_missing') === '1' || $r->get_param('roles_missing') === 'true') {
         $where[] = "role_categories = '' AND (COALESCE(roles,'') <> '' OR COALESCE(excerpt,'') <> '')";
     }
+    // Blank-industry candidates for the bounded classification backfill (and
+    // anyone auditing the disclosed metadata backlog).
+    if ($r->get_param('industry_missing') === '1' || $r->get_param('industry_missing') === 'true') {
+        $where[] = "industry = ''";
+    }
     // stage=announced -> announcement-stage only; stage=verified -> filed/reported only
     $stage = (string) $r->get_param('stage');
     if ($stage === 'announced') { $where[] = "announced = 1"; }
@@ -755,6 +767,14 @@ function alt_register_query_routes() {
     // not state the affected roles, so the bounded daily queue drains.
     register_rest_route('layoffs/v1', '/enrich-roles', array(
         'methods' => 'POST', 'callback' => 'alt_api_enrich_roles',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    // Key-protected, blank-only industry fill restricted to the closed
+    // canonical vocabulary. It never overwrites a non-blank industry, never
+    // pins rows or touches dedup hashes, and rejects any label outside
+    // alt_industry_vocabulary() — an automated classifier must not mint labels.
+    register_rest_route('layoffs/v1', '/industry-backfill', array(
+        'methods' => 'POST', 'callback' => 'alt_api_industry_backfill',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
     // Read-only public operational transparency, plus a key-protected writer
@@ -1261,6 +1281,52 @@ function alt_api_enrich_roles(WP_REST_Request $r) {
     return rest_ensure_response($out);
 }
 
+/**
+ * Fill ONLY blank industries with canonical-vocabulary labels. The daily
+ * worker (railway/industry_backfill.py) classifies from company identity +
+ * the retained excerpt and double-confirms with an independent model pass;
+ * this endpoint enforces the parts the server can enforce: blank-only, closed
+ * vocabulary, no other field touched. Rows are NOT pinned — the fill survives
+ * the daily WARN upsert because alt_db_upsert no longer blanks industry, and
+ * a purge-reload simply returns the row to the visible backlog.
+ */
+function alt_api_industry_backfill(WP_REST_Request $r) {
+    global $wpdb;
+    $items = $r->get_param('items');
+    if (!is_array($items)) return new WP_Error('alt_bad_request', 'items must be an array of {id, industry}.', array('status' => 400));
+    if (count($items) > 2000) return new WP_Error('alt_bad_request', 'at most 2000 items per call.', array('status' => 400));
+    $vocabulary = function_exists('alt_industry_vocabulary') ? alt_industry_vocabulary() : array();
+    if (!$vocabulary) return new WP_Error('alt_server_error', 'industry vocabulary unavailable.', array('status' => 500));
+    $table = alt_db_table();
+    $out = array('filled' => array(), 'skipped_not_blank' => array(), 'rejected' => array(), 'not_found' => array());
+    foreach ($items as $item) {
+        $id = (int) ($item['id'] ?? 0);
+        $row = $id ? $wpdb->get_row($wpdb->prepare("SELECT id, post_id, industry FROM $table WHERE id = %d", $id)) : null;
+        if (!$row) { $out['not_found'][] = $id; continue; }
+        if ($row->industry !== '') { $out['skipped_not_blank'][] = $id; continue; }
+        $industry = function_exists('alt_normalize_industry')
+            ? alt_normalize_industry(sanitize_text_field((string) ($item['industry'] ?? '')))
+            : '';
+        // The normalizer's Title-Case fallback is for source-supplied sectors;
+        // model-classified fills must land exactly on a canonical label.
+        if ($industry === '' || !in_array($industry, $vocabulary, true)) { $out['rejected'][] = $id; continue; }
+        // FAIL LOUDLY (iron rule): a silent false must not report success.
+        if ($wpdb->update($table, array('industry' => $industry), array('id' => (int) $row->id)) === false) {
+            return new WP_Error('alt_db_error', 'Industry backfill failed on id ' . $id . ': ' . $wpdb->last_error,
+                array('status' => 500, 'filled_so_far' => $out['filled']));
+        }
+        if (!empty($row->post_id)) update_post_meta((int) $row->post_id, 'industry', $industry);
+        $out['filled'][] = $id;
+    }
+    $out['remaining_blank'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE industry = ''");
+    if (!empty($out['filled'])) {
+        alt_log_correction('enriched', $out['filled'],
+            'Automated industry classification: company identity + retained excerpt, double-confirmed by two model passes, fixed vocabulary, blank fields only');
+        if (function_exists('alt_flush_caches')) alt_flush_caches();
+    }
+    return rest_ensure_response($out);
+}
+
 function alt_api_source_health_get() {
     $health = get_option('alt_source_health');
     return rest_ensure_response(is_array($health) ? $health : array());
@@ -1359,9 +1425,11 @@ function alt_api_integrity_status() {
     $hashable_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> ''");
     $hashed_reports = (int) $wpdb->get_var("SELECT COUNT(*) FROM $reports WHERE excerpt <> '' AND evidence_hash <> ''");
     // These are deliberately completeness counters, not inferred values.
-    // A blank industry is common in structured WARN notices. A blank US state
-    // means the source did not identify the affected-job location; never use
-    // an employer HQ, office footprint, or brand knowledge to fill it.
+    // A blank industry is common in structured WARN notices; the bounded daily
+    // /industry-backfill worker fills them conservatively (company identity +
+    // retained excerpt, closed vocabulary, blank-when-uncertain). A blank US
+    // state means the source did not identify the affected-job location; never
+    // use an employer HQ, office footprint, or brand knowledge to fill it.
     $missing_industry = (int) $wpdb->get_var("SELECT COUNT(*) FROM $layoffs WHERE industry = ''");
     $us_job_location_rows = (int) $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM $layoffs WHERE country = %s", 'United States'));
@@ -1392,7 +1460,7 @@ function alt_api_integrity_status() {
         'migration_complete' => $total === $migrated,
         'metadata_completeness' => array(
             'rows_missing_industry' => $missing_industry,
-            'industry_rule' => 'Industry remains blank unless the source supports it or a reviewed, cited official entity mapping is available; structured WARN notices commonly omit it.',
+            'industry_rule' => 'Industry is filled only from the company identity and retained source excerpt, restricted to the fixed vocabulary, double-confirmed by two independent model passes, and left blank when uncertain; structured WARN notices commonly omit it, so a visible backlog remains until the bounded daily backfill reaches those rows. Fills are disclosed in the public corrections trail.',
             'us_job_location_rows' => $us_job_location_rows,
             'us_rows_with_known_job_location_state' => max(0, $us_job_location_rows - $us_rows_missing_state),
             'us_rows_missing_job_location_state' => $us_rows_missing_state,
@@ -1512,7 +1580,7 @@ function alt_api_quality_status() {
             array('id' => 'durable_evidence_retention', 'status' => 'active', 'scope' => 'SHA-256 retained-excerpt hashes; bounded legacy backfill, not publisher-page archiving'),
             array('id' => 'challenger_reconciliation', 'status' => 'active', 'scope' => 'Public monthly strict US benchmark; source-evidenced announcement-date backfill continues'),
             array('id' => 'announcement_and_domicile_enrichment', 'status' => 'active', 'scope' => 'Daily exact-source-quote enrichment; legacy rows are never inferred'),
-            array('id' => 'industry_and_job_location_metadata', 'status' => 'active', 'scope' => 'Public completeness telemetry identifies blank industry and affected-job-state fields; enrichment requires source evidence or a reviewed cited official entity mapping, never headquarters inference'),
+            array('id' => 'industry_and_job_location_metadata', 'status' => 'active', 'scope' => 'Public completeness telemetry identifies blank industry and affected-job-state fields; a bounded daily backfill classifies blank industries from company identity and the retained excerpt only (fixed vocabulary, double-confirmed, blank when uncertain), while job-location state still requires source evidence and never headquarters inference'),
             array('id' => 'country_recall_benchmarks', 'status' => 'active', 'scope' => 'Public country-period recall protocol and retained samples; no country completeness claim'),
             array('id' => 'high_impact_editorial_review', 'status' => 'active', 'scope' => 'Read-only queue for very large, AI-primary and multi-country events; editorial decisions remain manual'),
             array('id' => 'dataset_release_ledger', 'status' => 'active', 'scope' => 'Immutable release snapshots from this deployment forward; no invented legacy addition counts'),
