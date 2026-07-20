@@ -1,7 +1,65 @@
 # Quality roadmap handover
 
-Last updated: 2026-07-19 (plugin 2.19.14). Read this block first if
-you are a new agent (Codex or otherwise) taking over.
+Last updated: 2026-07-20 (plugin 2.19.68). Read this block first if
+you are a new agent (Codex or otherwise) taking over. The authoritative
+real-time record is `git log` (every change is one commit with a detailed
+message + a version bump); this block is the human summary.
+
+## 2026-07-20 session (2.19.44 → 2.19.68) — SHIPPED + LIVE
+
+**Reports & UX.** Report build-out: weekly (`?period=YYYY-Www`), quarterly
+(`?period=YYYY-Qn`), Year-in-Review, archive index (`?view=archive`),
+prev/next nav, two-box headline (Overall verified + AI-attributed + % of
+total), PDF (print CSS) + PNG (lazy html2canvas) export, New York/ET
+timestamps. ALL competitor comparison removed from reports (ours-only).
+Share-per-chart (deep link reproducing filters) + Embed-per-chart
+(frame-safe `?alt_chart_embed` route; never frames the tracker, per the
+anti-clickjacking rule). Map uncapped (`map_states`=60/`map_countries`=260 in
+/aggregate, was top-24) + global-total caption, then two-layer red(AI)/blue(all)
+bubbles + legend + click-to-drill. AI-broad reason-filter fix ("AI-linked
+(broad)" checkbox now emits `ai_broad=1`, matching the card).
+
+**Data coverage.** New state importers `railway/sources/warn_new_states.py`
+(MS/WV/HI/NM), wired UN-GATED into `warn_import.py` (daily cron); validated
+live 2026-07-20 (MS 129 / WV 24 / NM 11; HI 0 = image scans). MS+WV added to
+`STATE_WARN_URL` (map 42→44). CA history backfill `railway/ca_backfill.py` +
+`ca-backfill.yml` RAN LIVE (7,108 EDD annual-PDF notices; CA now ~21,900).
+Closure filter (WARN importers tag reason `closure`; vocab in cpt.php/db.php +
+JS filter). Weekly cross-check `railway/tracker_crosscheck.py` +
+`tracker-crosscheck.yml` (Tuesdays) vs `railway/seed_data/crosscheck_checklist.csv`
+— reports gaps + news-queries, never writes. Wayback archival
+`railway/archive_sources.py` + `archive-sources.yml` (Mondays).
+AR/WY/NH/MO documented as no-public-register (SEC+news only).
+
+**Brand / SEO.** Competitor names (Challenger/layoffs.fyi/TrueUp) removed from
+ALL public surfaces AND the whole repo (538→0). Benchmark subsystem renamed
+`challenger`→`survey` across railway+workflows+WP (route `/benchmarks/survey`,
+option `alt_survey_benchmarks`, files `survey_reconcile.py` +
+`survey-reconcile.yml`); functional `challengergray.com` scrape URLs preserved.
+Press page "Ready-to-use soundbites" library (grouped YTD + month + per-region;
+cached `alt_press_sb_groups`), TOC, cleaned tables. Schema.org JSON-LD
+(`alt_dataset_jsonld()` Dataset + FAQPage) on tracker/press/report for
+AI-answer-engine citation. `/blog/llms.txt` route exists but a generic static
+llms.txt wins — owner must add the tracker section to the root file. Sources
+page: accurate gap table + hyperlinked outlets + dynamic counts.
+
+## OPEN / IN FLIGHT (2026-07-20)
+1. **d3 interactive map** — an agent is building a d3-geo proportional-symbol
+   map (zoom/pan, hover, labels, click-to-drill, red/blue) to replace
+   chartjs-chart-geo (no zoom). NOT deployed; lead reviews + deploys + verifies.
+2. **State-enrichment for AI rows** (task_395dc30c, separate session) — root
+   cause: 33,826 US AI-broad jobs are stateless (news/SEC name company+country,
+   not state) + WARN carries no AI signal, so `state=CA` AI views badly
+   undercount (shows 8k/0-strict). Fix: infer state from HQ registry / article
+   text, conservative, dispatch-only backfill.
+
+## OPTIONAL / NOT STARTED
+- JSON-LD renders twice (WP shortcode quirk) — cosmetic; engines dedupe.
+- OK importer (Salesforce portal, harder); HI stays 0 until HI publishes counts.
+- Grow cross-check checklist; Europe-aggregate + weekly soundbite groups.
+
+---
+
 
 **2.19.14 (2026-07-19): role-impact extraction is live** (built as 2.18.87 on a task branch, shipped in 2.19.14). Fixed 10-category
 role vocabulary (shared verbatim between `alt_role_categories()` and
