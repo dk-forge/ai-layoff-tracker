@@ -15,7 +15,9 @@ global $wpdb; $alt_t = alt_db_table();
 
 /* ---- period parsing ---------------------------------------------------- */
 $alt_MONTHS = array(1=>'January','February','March','April','May','June','July','August','September','October','November','December');
-$alt_p = isset($_GET['p']) ? preg_replace('/[^0-9\-]/', '', (string) $_GET['p']) : '';
+// NB: 'p' is WordPress's reserved post-ID query var (triggers a canonical
+// redirect), so the period param is 'period'.
+$alt_p = isset($_GET['period']) ? preg_replace('/[^0-9\-]/', '', (string) $_GET['period']) : '';
 $alt_is_year = false; $alt_y = 0; $alt_mo = 0;
 
 if (preg_match('/^(\d{4})-(\d{1,2})$/', $alt_p, $mm)) {
@@ -46,6 +48,7 @@ if ($alt_is_year) {
 }
 
 /* ---- period stats (verified = announced=0; AI = strict ai_explicit) ----- */
+if (!function_exists('alt_report_period_stats')) {
 function alt_report_period_stats($from, $to) {
     global $wpdb; $t = alt_db_table();
     return $wpdb->get_row($wpdb->prepare(
@@ -57,6 +60,7 @@ function alt_report_period_stats($from, $to) {
                 COUNT(DISTINCT NULLIF(country,'')) countries
          FROM $t WHERE layoff_date BETWEEN %s AND %s", $from, $to), ARRAY_A);
 }
+} // end function_exists guard
 $alt_cur = alt_report_period_stats($alt_from, $alt_to);
 $alt_prev = alt_report_period_stats($alt_pfrom, $alt_pto);
 $alt_v = (int) ($alt_cur['verified_jobs'] ?? 0);
@@ -95,7 +99,7 @@ $alt_view_year = $alt_y;
     <div class="alt-report-tabrow">
       <span class="alt-report-tablabel">Year</span>
       <?php foreach ($alt_years as $yy) : ?>
-        <a class="alt-report-tab<?php echo ($yy === $alt_view_year ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('p', $yy, $alt_report_url)); ?>"><?php echo $yy; ?></a>
+        <a class="alt-report-tab<?php echo ($yy === $alt_view_year ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('period', $yy, $alt_report_url)); ?>"><?php echo $yy; ?></a>
       <?php endforeach; ?>
     </div>
     <div class="alt-report-tabrow">
@@ -103,9 +107,9 @@ $alt_view_year = $alt_y;
       <?php for ($mi = 1; $mi <= 12; $mi++) :
           if ($alt_view_year === (int) gmdate('Y') && $mi > (int) gmdate('n')) break;
           $on = (!$alt_is_year && $mi === $alt_mo); ?>
-        <a class="alt-report-tab<?php echo ($on ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('p', sprintf('%04d-%02d', $alt_view_year, $mi), $alt_report_url)); ?>"><?php echo substr($alt_MONTHS[$mi], 0, 3); ?></a>
+        <a class="alt-report-tab<?php echo ($on ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('period', sprintf('%04d-%02d', $alt_view_year, $mi), $alt_report_url)); ?>"><?php echo substr($alt_MONTHS[$mi], 0, 3); ?></a>
       <?php endfor; ?>
-      <a class="alt-report-tab<?php echo ($alt_is_year ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('p', $alt_view_year, $alt_report_url)); ?>">Full year</a>
+      <a class="alt-report-tab<?php echo ($alt_is_year ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('period', $alt_view_year, $alt_report_url)); ?>">Full year</a>
     </div>
   </nav>
 
