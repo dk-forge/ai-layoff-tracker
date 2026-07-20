@@ -53,6 +53,25 @@ page: accurate gap table + hyperlinked outlets + dynamic counts.
    undercount (shows 8k/0-strict). Fix: infer state from HQ registry / article
    text, conservative, dispatch-only backfill.
 
+## RESOLVED (2026-07-20, later)
+- **Backfill 404 crash (industry + reason)** — `industry_backfill.py` / `reason_backfill.py`
+  paginate every `*_missing` page; WP 404s a page past the last row, and the set
+  shrinks between requests, so the final page 404s on a healthy scan and
+  `raise_for_status()` failed the whole daily job ("All jobs have failed"). Fix:
+  404 on page>1 = end-of-data (stop); 404 on page 1 still raises. Validated: the
+  dispatched industry run went green (9m42s) where it used to die at ~4min.
+- **Soundbites show BOTH AI measures** (2.19.77) — every soundbite AI stat now
+  reports verified (employer's own words) AND broad (ai_explicit OR
+  ai_causation='ai_linked'), both on the verified-tier base, labeled, with a
+  standing disclaimer. `$alt_stats` gained `aib`. Fixes the "US 2%" single-measure
+  confusion. (Results-summary already did broad/verified; map got period label +
+  located-subset note in 2.19.76.)
+- **Private benchmark** — built as a PRIVATE claude.ai artifact (NOT on the site,
+  NOT in the repo; file in scratchpad only). Competitors codenamed ("C Data" =
+  Challenger, Fyi/T/WARN Data). Owner decision: health page stays as-is (its
+  coded benchmark infra in health.js remains deliberately dormant); benchmark is
+  private-artifact-only. Repo confirmed free of literal competitor names.
+
 ## RESOLVED (2026-07-20)
 - **GDELT theme sweep** — shipped in `sources/gdelt.py::pull_gdelt_between`.
   Finding: GDELT's GKG taxonomy has NO layoff-event topic — `ECON_LAYOFF`
