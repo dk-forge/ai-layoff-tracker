@@ -1,0 +1,50 @@
+name: WARN new-state importers (MS/WV/HI/NM) — validate & activate
+
+# The new importers (MS, WV, HI, NM) are GATED out of the daily cron by default.
+# This manual dispatch runs ONLY them (WARN_NEW_STATES=1) so their parse can be
+# confirmed against the live sources before trusting them. They post via /bulk,
+# which is idempotent by hash, and WARN rows are dedup-exempt — so a re-run is
+# safe. First run: keep the small limit; once the output looks right, raise/clear
+# the limit, then remove the daily-cron gate in warn_import.py.
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: 'Which new states (comma list, or "all" for MS,WV,HI,NM)'
+        required: false
+        default: 'all'
+      limit:
+        description: 'Max posts this run (small for a first validation; blank = no cap)'
+        required: false
+        default: '60'
+
+jobs:
+  warn-new:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secret
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: '[ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }'
+      - name: Install deps
+        working-directory: railway
+        run: |
+          pip install -r requirements.txt
+          pip install pdfplumber
+          BASE=https://raw.githubusercontent.com/biglocalnews/warn-scraper/f7b3dd26af1f3ad700762504bd7c5c0d23979507
+          SCRAPERS_DIR=$(python -c "import warn.scrapers, os; print(os.path.dirname(warn.scrapers.__file__))")
+          curl -sSf "$BASE/warn/scrapers/nd.py" -o "$SCRAPERS_DIR/nd.py" || true
+      - name: Run new-state importers (gated)
+        working-directory: railway
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WARN_NEW_STATES: '1'
+          WARN_STATES: ${{ github.event.inputs.states == 'all' && 'MS,WV,HI,NM' || github.event.inputs.states }}
+          WARN_LIMIT: ${{ github.event.inputs.limit || '' }}
+        run: python warn_import.py

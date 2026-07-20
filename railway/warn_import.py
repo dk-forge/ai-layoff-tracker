@@ -110,6 +110,32 @@ def main():
     if start:
         customs = [e for e in customs if e["layoff_date"] >= start]
     entries.extend(customs)
+
+    # Newly-added importers (MS, WV, HI, NM) — live-smoke-validated but GATED
+    # behind WARN_NEW_STATES=1 so the daily cron never auto-runs them until one
+    # dispatch confirms them in this environment. Once confirmed, drop the gate.
+    if os.environ.get("WARN_NEW_STATES") == "1":
+        try:
+            from sources.warn_new_states import NEW_CUSTOM_STATES
+        except Exception as exc:
+            NEW_CUSTOM_STATES = {}
+            print(f"WARN new-states module unavailable: {exc}")
+        scrape_all = len(states) == 1 and str(states[0]).lower() == "all"
+        wanted = list(NEW_CUSTOM_STATES) if scrape_all else [s.upper() for s in states if s.upper() in NEW_CUSTOM_STATES]
+        new_entries = []
+        for st in wanted:
+            try:
+                got = NEW_CUSTOM_STATES[st]()
+                print(f"WARN {st} (new importer): {len(got)} notices kept")
+                new_entries.extend(got)
+            except Exception as exc:
+                print(f"WARN {st} (new importer) failed: {exc}")
+        if min_emp:
+            new_entries = [e for e in new_entries if e["job_count"] >= min_emp]
+        if start:
+            new_entries = [e for e in new_entries if e["layoff_date"] >= start]
+        entries.extend(new_entries)
+
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
     if limit:
         entries = entries[:limit]
