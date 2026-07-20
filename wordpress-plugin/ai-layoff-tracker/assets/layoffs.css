@@ -514,21 +514,29 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 /* Count row is sticky so the active filters + counts stay visible while
    scrolling a long table (works with the WP admin bar offset too). */
 .alt-count-row {
-    position: sticky; top: 0; z-index: 40;
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 10px; margin: 0 0 10px; padding: 10px 12px;
-    background: rgba(252, 252, 251, 0.92);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: var(--alt-surface-2);
     border: 1px solid var(--alt-border); border-radius: 10px;
 }
-body.admin-bar .alt-count-row { top: 32px; }
-@media (max-width: 782px) { body.admin-bar .alt-count-row { top: 46px; } }
+/* The active-filter summary docks under the filter controls and pins to the
+   top of the viewport as soon as the filters scroll out of view, re-docking on
+   the way back up (native position: sticky — no scroll listeners). */
+.alt-active-filters--sticky {
+    position: sticky; top: 0; z-index: 40;
+    margin: 0 0 16px; padding: 9px 12px;
+    background: rgba(252, 252, 251, 0.94);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--alt-border); border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(16, 18, 24, 0.06);
+}
+body.admin-bar .alt-active-filters--sticky { top: 32px; }
+@media (max-width: 782px) { body.admin-bar .alt-active-filters--sticky { top: 46px; } }
 @media (max-width: 600px) {
     /* WP's admin bar is absolute (scrolls away) below 600px */
-    body.admin-bar .alt-count-row { top: 0; }
+    body.admin-bar .alt-active-filters--sticky { top: 0; }
     /* Chips scroll sideways instead of stacking the pinned bar several rows tall */
-    .alt-count-left { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .alt-count-left .alt-active-filters { flex-wrap: nowrap; }
+    .alt-active-filters--sticky { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .alt-af-chip { white-space: nowrap; }
 }
 .alt-count-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }

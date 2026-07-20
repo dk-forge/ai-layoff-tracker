@@ -200,6 +200,12 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
         <input type="checkbox" id="alt-f-announced" hidden>
     </div>
 
+    <!-- Active-filter summary. Sits directly under the filter controls and
+         sticks to the top as you scroll down past them (so what's filtered
+         stays visible through the whole page), then re-docks here on the way
+         back up. Empty (display:none) when no filters are set. -->
+    <div id="alt-active-filters" class="alt-active-filters alt-active-filters--sticky" style="display:none"></div>
+
     <section class="alt-results-summary" aria-labelledby="alt-results-summary-title">
         <div class="screen-reader-text" id="alt-results-summary-title" role="heading" aria-level="2">Results summary</div>
         <div class="alt-stats-bar" id="alt-stats-bar">
@@ -334,7 +340,6 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     <div class="alt-count-row" id="alt-count-row">
         <div class="alt-count-left">
             <span id="alt-table-count" class="alt-count-strong">Loading…</span>
-            <div id="alt-active-filters" class="alt-active-filters" style="display:none"></div>
         </div>
         <div class="alt-toolbar-actions">
             <a class="alt-btn alt-btn-sm" id="alt-export-csv" href="<?php echo esc_url($alt_csv); ?>"><?php echo $alt_dl; ?> <span id="alt-export-csv-label">CSV</span></a>
