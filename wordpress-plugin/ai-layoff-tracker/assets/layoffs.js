@@ -1947,6 +1947,19 @@
             src = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>' : escapeHtml(row.source_name || '—');
         }
         parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div>' + src + verif + '</div></div>');
+        // Corroboration: when this event was recorded from more than one source
+        // (e.g. an official WARN filing AND the news article that reported it,
+        // or two independent outlets), surface those other links too — the
+        // primary link above is only one of them.
+        var extra = (row.additional_sources || []).filter(function (s) { return s && safeUrl(s.source_url); });
+        if (extra.length) {
+            var links = extra.map(function (s) {
+                var lbl = SOURCE_TYPE_LABELS[s.source_type] || s.source_type || 'source';
+                return '<a href="' + escapeHtml(safeUrl(s.source_url)) + '" target="_blank" rel="noopener nofollow">' +
+                    escapeHtml(s.source_name || 'source') + '</a> <span class="alt-muted">(' + escapeHtml(lbl) + ')</span>';
+            }).join('<br>');
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Other sources for this event</span><div>' + links + '</div></div>');
+        }
         return '<div class="alt-detail">' + (parts.join('') || 'No additional detail recorded.') + '</div>';
     }
 

@@ -2522,8 +2522,60 @@ function alt_api_query_compute(WP_REST_Request $r) {
         'total'    => $total,
         'page'     => $page,
         'per_page' => $per,
-        'data'     => array_map('alt_db_row_to_array', $rows ?: array()),
+        'data'     => alt_attach_event_sources(array_map('alt_db_row_to_array', $rows ?: array())),
     );
+}
+
+/**
+ * Attach each row's OTHER retained sources for the same event as
+ * `additional_sources` (so a merged event shows, e.g., the official WARN
+ * notice AND the news article that corroborated it — not just the one primary
+ * link). One batched query over the page's event_ids (the company-directory
+ * pattern), never a per-row query. A source is "additional" when its URL is
+ * non-empty and differs from the row's own primary source_url (and its state
+ * WARN list URL, which already renders separately); duplicate URLs collapse.
+ */
+function alt_attach_event_sources(array $data) {
+    if (!$data) return $data;
+    global $wpdb;
+    $reports = alt_source_reports_table();
+    $event_ids = array();
+    foreach ($data as $row) {
+        if (!empty($row['event_id'])) $event_ids[(int) $row['event_id']] = true;
+    }
+    if (!$event_ids) return $data;
+    $ids = array_keys($event_ids);
+    $ph = implode(',', array_fill(0, count($ids), '%d'));
+    $found = $wpdb->get_results($wpdb->prepare(
+        "SELECT event_id, source_name, source_type, source_url FROM $reports
+          WHERE event_id IN ($ph) AND source_url <> '' ORDER BY id ASC", $ids), ARRAY_A) ?: array();
+    $by_event = array();
+    foreach ($found as $rep) {
+        $by_event[(int) $rep['event_id']][] = $rep;
+    }
+    foreach ($data as &$row) {
+        $row['additional_sources'] = array();
+        $eid = (int) ($row['event_id'] ?? 0);
+        if (!$eid || empty($by_event[$eid])) continue;
+        // The row's own primary link and (for WARN) its state list link already
+        // render on their own; don't repeat them in the corroboration list.
+        $seen = array();
+        foreach (array($row['source_url'] ?? '', $row['source_list_url'] ?? '') as $u) {
+            if ($u !== '') $seen[$u] = true;
+        }
+        foreach ($by_event[$eid] as $rep) {
+            $url = (string) $rep['source_url'];
+            if ($url === '' || isset($seen[$url])) continue;
+            $seen[$url] = true;
+            $row['additional_sources'][] = array(
+                'source_name' => (string) $rep['source_name'],
+                'source_type' => (string) $rep['source_type'],
+                'source_url'  => $url,
+            );
+        }
+    }
+    unset($row);
+    return $data;
 }
 
 function alt_api_aggregate(WP_REST_Request $r) {
