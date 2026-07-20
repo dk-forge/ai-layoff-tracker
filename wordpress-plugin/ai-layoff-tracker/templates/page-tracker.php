@@ -44,9 +44,11 @@ if (function_exists('alt_faq_items')) {
     if ($alt_qa_ld) $alt_ld[] = array('@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => $alt_qa_ld);
 }
 ?>
-<?php foreach ($alt_ld as $alt_block) : ?>
-<script type="application/ld+json"><?php echo wp_json_encode($alt_block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
-<?php endforeach; ?>
+<?php if (!defined('ALT_TRACKER_LD_DONE')) { define('ALT_TRACKER_LD_DONE', 1); // emit once even if the shortcode renders twice
+    foreach ($alt_ld as $alt_block) {
+        echo '<script type="application/ld+json">' . wp_json_encode($alt_block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+    }
+} ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>
