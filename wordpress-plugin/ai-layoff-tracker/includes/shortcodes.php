@@ -68,6 +68,11 @@ function alt_shortcode_sources() {
 }
 add_shortcode('alt_sources', 'alt_shortcode_sources');
 
+function alt_shortcode_report() {
+    return alt_template('page-report.php');
+}
+add_shortcode('alt_report', 'alt_shortcode_report');
+
 /**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article
