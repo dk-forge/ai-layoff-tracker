@@ -49,8 +49,9 @@ if ($alt_is_year) {
 
 /* ---- period stats (verified = announced=0; AI = strict ai_explicit) ----- */
 if (!function_exists('alt_report_period_stats')) {
-function alt_report_period_stats($from, $to) {
+function alt_report_period_stats($from, $to, $us_only = false) {
     global $wpdb; $t = alt_db_table();
+    $geo = $us_only ? " AND country = 'United States'" : '';
     return $wpdb->get_row($wpdb->prepare(
         "SELECT COUNT(*) events,
                 COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) verified_jobs,
@@ -58,24 +59,36 @@ function alt_report_period_stats($from, $to) {
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
                 COALESCE(SUM(job_count),0) all_jobs,
                 COUNT(DISTINCT NULLIF(country,'')) countries
-         FROM $t WHERE layoff_date BETWEEN %s AND %s", $from, $to), ARRAY_A);
+         FROM $t WHERE layoff_date BETWEEN %s AND %s$geo", $from, $to), ARRAY_A);
 }
 } // end function_exists guard
-$alt_cur = alt_report_period_stats($alt_from, $alt_to);
-$alt_prev = alt_report_period_stats($alt_pfrom, $alt_pto);
+
+// Scope: World (default — worldwide coverage is the differentiator) or US-only.
+$alt_us = isset($_GET['scope']) && $_GET['scope'] === 'us';
+$alt_geo = $alt_us ? " AND country = 'United States'" : '';
+
+$alt_cur = alt_report_period_stats($alt_from, $alt_to, $alt_us);
+$alt_prev = alt_report_period_stats($alt_pfrom, $alt_pto, $alt_us);
 $alt_v = (int) ($alt_cur['verified_jobs'] ?? 0);
 $alt_pv = (int) ($alt_prev['verified_jobs'] ?? 0);
 $alt_ai = (int) ($alt_cur['ai_jobs'] ?? 0);
 $alt_delta = $alt_pv > 0 ? round(100 * ($alt_v - $alt_pv) / $alt_pv) : null;
 $alt_ai_pct = $alt_v > 0 ? round(100 * $alt_ai / max(1, (int) $alt_cur['all_jobs'])) : 0;
 
+// The Challenger box is ALWAYS US-vs-US for the SAME period, no matter what the
+// headline scope is — Challenger has no global figure, so mixing scopes (world
+// headline vs US announced) would be a data-integrity bug. This is the US
+// verified total for the exact same month/year the box will cite.
+$alt_us_stats = $alt_us ? $alt_cur : alt_report_period_stats($alt_from, $alt_to, true);
+$alt_us_verified = (int) ($alt_us_stats['verified_jobs'] ?? 0);
+
 $alt_largest = $wpdb->get_results($wpdb->prepare(
     "SELECT company, job_count, layoff_date, country, state, ai_explicit
-     FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0
+     FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0$alt_geo
      ORDER BY job_count DESC, id DESC LIMIT 5", $alt_from, $alt_to), ARRAY_A) ?: array();
 $alt_inds = $wpdb->get_results($wpdb->prepare(
     "SELECT industry, COALESCE(SUM(job_count),0) j FROM $alt_t
-     WHERE layoff_date BETWEEN %s AND %s AND industry <> ''
+     WHERE layoff_date BETWEEN %s AND %s AND industry <> ''$alt_geo
      GROUP BY industry ORDER BY j DESC LIMIT 5", $alt_from, $alt_to), ARRAY_A) ?: array();
 $alt_ind_max = 0; foreach ($alt_inds as $i) { $alt_ind_max = max($alt_ind_max, (int) $i['j']); }
 
@@ -93,13 +106,26 @@ if (!$alt_is_year) {
 $alt_report_url = home_url('/ai-layoff-tracker/report/');
 $alt_years = range((int) gmdate('Y'), 2023);
 $alt_view_year = $alt_y;
+// Tab/scope link builder — preserves the current scope (World/US) across tabs,
+// and lets the scope toggle keep the current period.
+$alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
+    $args = array('period' => (string) $period);
+    $s = $scope !== null ? $scope : ($alt_us ? 'us' : 'world');
+    if ($s === 'us') $args['scope'] = 'us';
+    return esc_url(add_query_arg($args, $alt_report_url));
+};
 ?>
 <main class="alt-wrap alt-report-page">
   <nav class="alt-report-tabs" aria-label="Report period">
     <div class="alt-report-tabrow">
+      <span class="alt-report-tablabel">Scope</span>
+      <a class="alt-report-tab<?php echo (!$alt_us ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_slug, 'world'); ?>">🌐 World</a>
+      <a class="alt-report-tab<?php echo ($alt_us ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_slug, 'us'); ?>">🇺🇸 US only</a>
+    </div>
+    <div class="alt-report-tabrow">
       <span class="alt-report-tablabel">Year</span>
       <?php foreach ($alt_years as $yy) : ?>
-        <a class="alt-report-tab<?php echo ($yy === $alt_view_year ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('period', $yy, $alt_report_url)); ?>"><?php echo $yy; ?></a>
+        <a class="alt-report-tab<?php echo ($yy === $alt_view_year ? ' on' : ''); ?>" href="<?php echo $alt_url($yy); ?>"><?php echo $yy; ?></a>
       <?php endforeach; ?>
     </div>
     <div class="alt-report-tabrow">
@@ -107,31 +133,39 @@ $alt_view_year = $alt_y;
       <?php for ($mi = 1; $mi <= 12; $mi++) :
           if ($alt_view_year === (int) gmdate('Y') && $mi > (int) gmdate('n')) break;
           $on = (!$alt_is_year && $mi === $alt_mo); ?>
-        <a class="alt-report-tab<?php echo ($on ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('period', sprintf('%04d-%02d', $alt_view_year, $mi), $alt_report_url)); ?>"><?php echo substr($alt_MONTHS[$mi], 0, 3); ?></a>
+        <a class="alt-report-tab<?php echo ($on ? ' on' : ''); ?>" href="<?php echo $alt_url(sprintf('%04d-%02d', $alt_view_year, $mi)); ?>"><?php echo substr($alt_MONTHS[$mi], 0, 3); ?></a>
       <?php endfor; ?>
-      <a class="alt-report-tab<?php echo ($alt_is_year ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg('period', $alt_view_year, $alt_report_url)); ?>">Full year</a>
+      <a class="alt-report-tab<?php echo ($alt_is_year ? ' on' : ''); ?>" href="<?php echo $alt_url($alt_view_year); ?>">Full year</a>
     </div>
   </nav>
 
   <article class="alt-onepager">
     <header class="alt-op-masthead">
       <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AI Layoff Tracker</span>
-      <span class="alt-op-period"><?php echo esc_html($alt_label); ?> report</span>
+      <span class="alt-op-period"><?php echo esc_html($alt_label); ?> report · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
       <span class="alt-op-asof">Data as of <?php echo esc_html(gmdate('M j, Y')); ?> · AskTheRecruiter.com</span>
     </header>
 
     <div class="alt-op-headline">
       <div class="alt-op-big"><?php echo number_format($alt_v); ?></div>
-      <div class="alt-op-biglabel">verified job cuts in <?php echo esc_html($alt_label); ?>
+      <div class="alt-op-biglabel"><?php echo $alt_us ? 'US ' : 'worldwide '; ?>verified job cuts in <?php echo esc_html($alt_label); ?>
         <?php if ($alt_delta !== null) : ?>
           <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
         <?php endif; ?>
       </div>
-      <div class="alt-op-sub">🤖 <b><?php echo number_format($alt_ai); ?></b> explicitly blamed on AI by the employer (<?php echo $alt_ai_pct; ?>% of cuts) · <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> verified layoffs, <?php echo number_format((int) ($alt_cur['countries'] ?? 0)); ?> countries</div>
+      <div class="alt-op-sub">🤖 <b><?php echo number_format($alt_ai); ?></b> explicitly blamed on AI by the employer (<?php echo $alt_ai_pct; ?>% of cuts) · <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> verified layoffs<?php echo $alt_us ? '' : ', ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?></div>
     </div>
 
-    <?php if ($alt_ch !== null) : ?>
-    <p class="alt-op-challenger"><b>How this compares:</b> Challenger, Gray &amp; Christmas reported <b><?php echo number_format($alt_ch); ?></b> announced US cuts for <?php echo esc_html($alt_label); ?>. Ours is a <em>verified</em> count (every figure links to a filing or named report), so it runs below their announcement estimate by design — <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-challenger-comparison">why they differ</a>.</p>
+    <?php
+    // Data-integrity QA: Challenger is US-only, so this box is ALWAYS US-vs-US
+    // for the SAME period — $alt_us_verified is the US verified total for the
+    // exact month the Challenger figure ($alt_ch, keyed on $alt_slug) covers.
+    // We never compare Challenger against the worldwide headline.
+    if ($alt_ch !== null) : ?>
+    <p class="alt-op-challenger<?php echo $alt_us ? '' : ' alt-op-challenger-aside'; ?>">
+      <b>US vs Challenger<?php echo $alt_us ? '' : ' <span class="alt-op-usonly">(US only — the headline above is worldwide)</span>'; ?>:</b>
+      <b><?php echo number_format($alt_us_verified); ?></b> US verified cuts vs Challenger's <b><?php echo number_format($alt_ch); ?></b> announced (US) for <?php echo esc_html($alt_label); ?>.
+      Ours is a <em>verified</em> count (every figure links to a filing or named report), so it runs below their announcement estimate by design — <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-challenger-comparison">why they differ</a>.</p>
     <?php endif; ?>
 
     <div class="alt-op-grid">

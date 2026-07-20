@@ -1381,3 +1381,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 
 .alt-report-star { font-weight: 800; color: #b8860b; }
 .alt-report-star:hover { color: #8a6508; }
+/* Challenger box in World mode: visually demoted (it's a US-only aside, not a
+   global comparison), with an explicit "(US only)" tag so scopes can't be mixed. */
+.alt-op-challenger-aside { font-size: 12.5px; background: #fff; border-style: dashed; color: var(--alt-ink-2); }
+.alt-op-usonly { font-weight: 600; color: var(--alt-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
