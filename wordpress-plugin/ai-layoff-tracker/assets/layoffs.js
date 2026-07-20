@@ -334,6 +334,7 @@
             if (query.has(pair[0])) writeControl(pair[1], query.get(pair[0]));
         });
         if (query.get('ai') === '1') writeControl('alt-f-ai', true);
+        if (query.get('ai_broad') === '1') writeControl('alt-f-reasons', ['possible_ai']);
         if (query.get('stage') === 'announced') writeControl('alt-f-announced', true);
     }
     function clearFilters() {
@@ -365,7 +366,21 @@
         if ((v = multiParam('alt-f-industry'))) p.industry = v;
         if ((v = multiParam('alt-f-country'))) p.country = v;
         if ((v = multiParam('alt-f-state'))) p.state = v;
-        if ((v = multiParam('alt-f-reasons'))) p.reasons = v;
+        // The two AI reason options must agree with the AI stat cards, which are
+        // driven by the ai_explicit / ai_causation flag columns — NOT by
+        // reason_tags. Translate them to the ai / ai_broad params so checking
+        // "AI-linked (broad)" reproduces the broad card total exactly, instead of
+        // the smaller reason-tagged subset. Broad supersedes specific (it
+        // already includes every ai_explicit row). Non-AI reasons filter as before.
+        var reasonsSel = (multiParam('alt-f-reasons') || '').split(',').filter(Boolean);
+        if (reasonsSel.length) {
+            var hasBroadAI = reasonsSel.indexOf('possible_ai') !== -1;
+            var hasSpecificAI = reasonsSel.indexOf('ai_automation') !== -1;
+            var restReasons = reasonsSel.filter(function (r) { return r !== 'possible_ai' && r !== 'ai_automation'; });
+            if (hasBroadAI) p.ai_broad = '1';
+            else if (hasSpecificAI) p.ai = '1';
+            if (restReasons.length) p.reasons = restReasons.join(',');
+        }
         if ((v = multiParam('alt-f-roles'))) p.roles = v;
         if ((v = multiParam('alt-f-verification'))) p.sources = v;
         if ((v = (readControl('alt-search') || '').trim())) p.q = v;
