@@ -1,0 +1,23 @@
+name: Archive WARN sources to Wayback
+
+# Snapshots every official WARN source document (state registries + CA EDD PDFs +
+# the live xlsx) to the Internet Archive so citations never rot when a state
+# deletes a file. Weekly + manual. Fail-soft per URL; only a total wipeout fails.
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # Mondays 08:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Snapshot WARN sources to the Wayback Machine
+        working-directory: railway
+        run: python archive_sources.py
