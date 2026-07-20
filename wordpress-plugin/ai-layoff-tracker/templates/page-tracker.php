@@ -51,7 +51,7 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     <?php $alt_cov = alt_coverage_counts(); ?>
     <div class="alt-narrative" id="alt-narrative"></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
-    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>every SEC 8-K filing, all 50 US states (WARN notices from 41), and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a class="alt-method-link" href="#alt-challenger-comparison">US comparison</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>every SEC 8-K filing, all 50 US states (WARN notices from 41), and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
     <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -415,14 +415,15 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
         </div>
     </details>
-    <div class="alt-mini alt-chart-card alt-conversion-card" id="alt-conversion-card">
-        <div class="alt-chart-head">
-            <div class="alt-chart-h">Do announced cuts actually happen? <span class="alt-chart-sub">share of each month's announced job cuts that show verified records (filings or sourced reports) from the same company within 6 months. Matches are capped per announcement, so a month can never exceed 100%.</span></div>
-            <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
+    <details class="alt-methodology alt-conversion-card" id="alt-conversion-card" open>
+        <summary>Do announced cuts actually happen?</summary>
+        <div class="alt-method-body">
+            <p class="alt-muted" style="margin-top:0">Share of each month's announced job cuts that show verified records (filings or sourced reports) from the same company within 6 months. Matches are capped per announcement, so a month can never exceed 100%.</p>
+            <div class="alt-chart-box"><canvas id="alt-chart-conversion" aria-label="Announced-to-verified conversion by announcement month"></canvas></div>
+            <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button></span>
+            <p class="alt-muted" id="alt-conversion-note" style="display:none"></p>
         </div>
-        <div class="alt-chart-box"><canvas id="alt-chart-conversion" aria-label="Announced-to-verified conversion by announcement month"></canvas></div>
-        <p class="alt-muted" id="alt-conversion-note" style="display:none"></p>
-    </div>
+    </details>
     <details class="alt-methodology" id="alt-challenger-comparison">
         <summary>US AI-announcement reconciliation with Challenger</summary>
         <div class="alt-method-body">
@@ -486,14 +487,26 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
     </details>
 
     <details class="alt-methodology">
-        <summary>How our numbers compare to other trackers</summary>
+        <summary>Why our numbers differ from Challenger, layoffs.fyi &amp; other trackers</summary>
         <div class="alt-method-body">
-            <p>Different trackers measure different things. Here are the factual differences, so you can pick the right number for your purpose.</p>
-            <p><b><a href="https://www.challengergray.com/press/press-releases/" target="_blank" rel="noopener">Challenger, Gray &amp; Christmas</a></b> reports monthly totals of <em>announced</em> US job cuts, compiled from press reports and company statements, including estimates and multi-year plans. It is published as monthly press releases with no per-event public database. Because announcements exceed executed cuts, Challenger's totals run above any verified-event count, including ours.</p>
-            <p><b><a href="https://www.wsj.com/economy/jobs" target="_blank" rel="noopener">WSJ layoffs coverage</a></b> is editorially selected major announcements with newsroom verification. There is no downloadable dataset, and coverage is selective by design.</p>
-            <p><b><a href="https://www.trueup.io/layoffs" target="_blank" rel="noopener">TrueUp</a></b> and <b><a href="https://layoffs.fyi" target="_blank" rel="noopener">Layoffs.fyi</a></b> are technology-sector trackers built from announcements and crowdsourced reports, and they are downloadable. Their scope corresponds to our <em>Technology industry</em> filter, not our all-industry total.</p>
-            <p><b>Official statistics</b> such as <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a> (all separations economy-wide, millions per month), <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS redundancies</a>, and <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> are survey-based aggregates with no company-level detail. Event trackers measure a different universe and will not match them.</p>
-            <p><b>This tracker</b> puts verified events only in the headline totals (filings and sourced reports, each one linked), keeps announcement-stage figures in a separately labeled tier, discloses corrections automatically below, and publishes its data and code. When our number differs from a tracker above, the difference is definitional, and both definitions are stated here so either number can be used correctly.</p>
+            <p><b>Every tracker measures a different thing — so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below Challenger's, and the gap is fully explainable — here is exactly why, and why we treat it as a feature, not a shortfall.</p>
+
+            <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years" (Citi, Dell), Challenger records all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap — their figure is a forecast, ours is an execution ledger.</p>
+
+            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs — including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000–300,000 jobs</b> of Challenger's total alone. There is no document or named source to link, so we do not claim it.</p>
+
+            <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
+
+            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em> — smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for — <b>layoffs companies attribute to AI</b> — our count actually <em>exceeds</em> Challenger's every year, because we surface AI attributions from primary sources they never itemize.</p>
+
+            <p><b>Where each tracker fits:</b></p>
+            <ul class="alt-method-list">
+                <li><b><a href="https://www.challengergray.com/press/press-releases/" target="_blank" rel="noopener">Challenger, Gray &amp; Christmas</a></b> — monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Published as press releases; no per-event public database.</li>
+                <li><b><a href="https://www.wsj.com/economy/jobs" target="_blank" rel="noopener">WSJ layoffs coverage</a></b> — editorially selected major announcements with newsroom verification. No downloadable dataset; selective by design.</li>
+                <li><b><a href="https://www.trueup.io/layoffs" target="_blank" rel="noopener">TrueUp</a> &amp; <a href="https://layoffs.fyi" target="_blank" rel="noopener">layoffs.fyi</a></b> — technology-sector trackers built from announcements and crowdsourced reports. Their scope matches our <em>Technology</em> filter, not our all-industry total.</li>
+                <li><b>Official statistics</b> — <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a>, <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS</a>, <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> count <em>all</em> separations economy-wide (millions/month) with no company detail. A different universe entirely.</li>
+                <li><b>This tracker</b> — verified events in the headline, announcement-stage figures in a separate labeled tier, corrections logged openly, data and code public. When our number differs, the difference is definitional — and both definitions are stated here so either can be cited correctly.</li>
+            </ul>
         </div>
     </details>
 
