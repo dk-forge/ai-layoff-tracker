@@ -45,8 +45,7 @@ function alt_shortcode_contact() {
     <div class="alt-wrap alt-contact-wrap">
         <?php if ($sent) : ?>
             <div class="alt-status alt-contact-ok" role="status">
-                <strong>Thanks — your message is on its way.</strong>
-                We read everything and reply to corrections fastest.
+                <strong>Thanks, your message is on its way.</strong>
             </div>
         <?php elseif ($error && isset($messages[$error])) : ?>
             <div class="alt-status alt-status-error" role="alert"><?php echo esc_html($messages[$error]); ?></div>
@@ -92,14 +91,20 @@ function alt_shortcode_contact() {
                     <textarea id="alt-c-msg" name="alt_message" required rows="6" maxlength="5000" placeholder="Tell us what you need. For corrections, include what the figure should be and the source it comes from."></textarea>
                 </div>
                 <div class="alt-filter">
-                    <label for="alt-c-captcha">Spam check: what is <?php echo (int) $a; ?> + <?php echo (int) $b; ?>?</label>
+                <?php if (defined('ALT_RECAPTCHA_SITE_KEY') && ALT_RECAPTCHA_SITE_KEY) : ?>
+                    <label>Quick check to keep bots out</label>
+                    <div class="g-recaptcha" data-sitekey="<?php echo esc_attr(ALT_RECAPTCHA_SITE_KEY); ?>"></div>
+                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                <?php else : ?>
+                    <label for="alt-c-captcha">Quick check to keep bots out: what is <?php echo (int) $a; ?> + <?php echo (int) $b; ?>?</label>
                     <input type="number" id="alt-c-captcha" name="alt_captcha" required inputmode="numeric" autocomplete="off">
+                <?php endif; ?>
                 </div>
                 <div class="alt-filter alt-contact-submit">
                     <button type="submit" class="alt-btn alt-btn-primary">Send message</button>
                 </div>
             </div>
-            <p class="alt-contact-note">We reply within 3 business days — corrections get priority, and fixes are logged publicly on the tracker. You can also email <a href="mailto:<?php echo esc_attr(ALT_CONTACT_TO); ?>"><?php echo esc_html(ALT_CONTACT_TO); ?></a> directly.</p>
+            <p class="alt-contact-note">We usually reply within 3 business days, and corrections get looked at first. Anything we fix gets logged publicly on the tracker, so you can see it was handled.</p>
         </form>
     </div>
     <?php
@@ -124,12 +129,26 @@ function alt_contact_submit() {
     $ts = (int) ($_POST['alt_ts'] ?? 0);
     if (!$ts || (time() - $ts) < 3) $fail('spam');
 
-    // Arithmetic challenge (answer stored server-side under the token).
-    $token = preg_replace('/[^a-zA-Z0-9]/', '', (string) ($_POST['alt_token'] ?? ''));
-    $expected = get_transient('alt_captcha_' . $token);
-    delete_transient('alt_captcha_' . $token); // single use
-    if ($expected === false) $fail('expired');
-    if ((int) ($_POST['alt_captcha'] ?? -1) !== (int) $expected) $fail('spam');
+    if (defined('ALT_RECAPTCHA_SECRET') && ALT_RECAPTCHA_SECRET) {
+        // Google reCAPTCHA v2 verification (enabled by defining the keys).
+        $rc = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+            'timeout' => 8,
+            'body' => array(
+                'secret'   => ALT_RECAPTCHA_SECRET,
+                'response' => (string) ($_POST['g-recaptcha-response'] ?? ''),
+                'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            )));
+        $rc_ok = false;
+        if (!is_wp_error($rc)) { $rc_body = json_decode((string) wp_remote_retrieve_body($rc), true); $rc_ok = !empty($rc_body['success']); }
+        if (!$rc_ok) $fail('spam');
+    } else {
+        // Arithmetic challenge (answer stored server-side under the token).
+        $token = preg_replace('/[^a-zA-Z0-9]/', '', (string) ($_POST['alt_token'] ?? ''));
+        $expected = get_transient('alt_captcha_' . $token);
+        delete_transient('alt_captcha_' . $token); // single use
+        if ($expected === false) $fail('expired');
+        if ((int) ($_POST['alt_captcha'] ?? -1) !== (int) $expected) $fail('spam');
+    }
 
     // Per-IP rate limit: 3 messages/hour.
     $ip = sanitize_text_field($_SERVER['REMOTE_ADDR'] ?? '');
@@ -173,6 +192,10 @@ add_action('admin_post_nopriv_alt_contact', 'alt_contact_submit');
  * can't create WP pages, so the plugin does it on the first request after a
  * version bump — same trigger as the cache flush).
  */
+function alt_contact_intro_html() {
+    return "<!-- wp:paragraph --><p>Got a question, a correction, a press request, or a layoff we should be tracking? Fill out the form below and it comes straight to us.</p><!-- /wp:paragraph -->\n\n<!-- wp:shortcode -->[alt_contact]<!-- /wp:shortcode -->";
+}
+
 function alt_ensure_contact_page() {
     if (get_page_by_path('contact')) return;
     wp_insert_post(array(
@@ -180,6 +203,21 @@ function alt_ensure_contact_page() {
         'post_status'  => 'publish',
         'post_title'   => 'Contact',
         'post_name'    => 'contact',
-        'post_content' => "<!-- wp:paragraph --><p>Questions, corrections, press inquiries, or a layoff we should be tracking — use the form below and it goes straight to our inbox.</p><!-- /wp:paragraph -->\n\n<!-- wp:shortcode -->[alt_contact]<!-- /wp:shortcode -->",
+        'post_content' => alt_contact_intro_html(),
     ));
 }
+
+/**
+ * One-time: refresh the stored /contact intro to the current copy (the create
+ * hook won't touch an existing page). Guarded so a later owner edit is safe.
+ */
+function alt_contact_intro_migrate() {
+    if (get_option('alt_contact_intro_v2')) return;
+    $p = get_page_by_path('contact');
+    if (!$p) return;
+    if (strpos((string) $p->post_content, 'goes straight to our inbox') !== false) {
+        wp_update_post(array('ID' => $p->ID, 'post_content' => alt_contact_intro_html()));
+    }
+    update_option('alt_contact_intro_v2', 1, false);
+}
+add_action('init', 'alt_contact_intro_migrate', 21);

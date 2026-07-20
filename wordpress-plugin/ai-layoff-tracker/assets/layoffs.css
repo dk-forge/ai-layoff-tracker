@@ -1239,7 +1239,8 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     --atr-green: #537a5c;    /* rgb(83,122,92)   */
     --atr-green-dark: #47694f;
     max-width: 640px !important;
-    margin-left: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
     font-family: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
     color: var(--atr-ink);
 }
