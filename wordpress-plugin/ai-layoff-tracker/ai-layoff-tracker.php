@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.32
+ * Version: 2.19.33
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.32');
+define('ALT_VERSION', '2.19.33');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -332,7 +332,10 @@ function alt_enqueue_assets() {
     // rest so it loads after Chart.js (dependency order is enforced by WP).
     wp_enqueue_script(
         'chartjs-geo',
-        'https://cdnjs.cloudflare.com/ajax/libs/chartjs-chart-geo/4.3.4/index.umd.min.js',
+        // cdnjs does NOT host this package; jsdelivr's npm mirror does. UMD
+        // build exposes window.ChartGeo (incl. ChartGeo.topojson) and registers
+        // the bubbleMap chart type on Chart.js.
+        'https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.4/build/index.umd.min.js',
         array('chartjs'),
         '4.3.4',
         true
