@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.42
+ * Version: 2.19.43
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.42');
+define('ALT_VERSION', '2.19.43');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -165,11 +165,19 @@ function alt_ensure_tracker_health_page_once() {
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
 
 function alt_ensure_report_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/report')) return;
+    $existing = get_page_by_path('ai-layoff-tracker/report');
+    if ($existing) {
+        // One-time rename of the original "Monthly Report" title.
+        if ($existing->post_title === 'Monthly Report' && !get_option('alt_report_title_v2')) {
+            wp_update_post(array('ID' => $existing->ID, 'post_title' => 'Monthly Job Cuts Report'));
+            update_option('alt_report_title_v2', 1, false);
+        }
+        return;
+    }
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned report page
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => 'Monthly Report',
+        'post_parent' => (int) $parent->ID, 'post_title' => 'Monthly Job Cuts Report',
         'post_name' => 'report', 'post_content' => '[alt_report]'));
 }
 add_action('init', 'alt_ensure_report_page_once', 20);

@@ -141,8 +141,8 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
 
   <article class="alt-onepager">
     <header class="alt-op-masthead">
-      <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AI Layoff Tracker</span>
-      <span class="alt-op-period"><?php echo esc_html($alt_label); ?> report · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
+      <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AskTheRecruiter.com</span>
+      <span class="alt-op-period"><?php echo ($alt_is_year ? 'Annual' : 'Monthly'); ?> Job Cuts Report · <?php echo esc_html($alt_label); ?> · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
       <span class="alt-op-asof">Data as of <?php echo esc_html(gmdate('M j, Y')); ?> · AskTheRecruiter.com</span>
     </header>
 
@@ -196,7 +196,7 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
 
     <footer class="alt-op-footer">
       <p><b>Methodology:</b> Verified cuts have a primary source behind each figure — an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
-      <p><b>Cite as:</b> "AI Layoff Tracker, AskTheRecruiter.com — <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y')); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+      <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo ($alt_is_year ? 'Annual' : 'Monthly'); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html(gmdate('M j, Y')); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
     </footer>
   </article>
 </main>
