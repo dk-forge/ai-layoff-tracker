@@ -80,7 +80,7 @@ def render(countries):
         if not official and country in EU:
             official = "Eurofound ERM (EU-wide, daily)"
         if not official:
-            official = "— (no permitted public register; see research docs)"
+            official = "News monitoring only — no public government filing register"
         rows.append(
             "<tr><th>{c}</th><td>{o}</td><td>{n}</td>"
             "<td>Active · 2×/day (13:00 &amp; 22:00 UTC)</td></tr>".format(
