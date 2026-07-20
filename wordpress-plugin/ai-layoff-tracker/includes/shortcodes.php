@@ -84,7 +84,7 @@ function alt_page_is_plugin_surface() {
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
     $post = get_post();
     if (!$post || empty($post->post_content)) return false;
-    foreach (array('alt_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker', 'alt_company_history', 'alt_sources') as $shortcode) {
+    foreach (array('alt_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker', 'alt_company_history', 'alt_sources', 'alt_report') as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
     }
     return false;
