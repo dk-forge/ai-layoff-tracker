@@ -103,6 +103,7 @@ if (!is_array($alt_sb_groups)) {
 }
 ?>
 <main class="alt-wrap alt-press-page">
+  <?php if (function_exists('alt_dataset_jsonld') && !defined('ALT_PRESS_LD_DONE')) { define('ALT_PRESS_LD_DONE', 1); alt_output_jsonld(array(alt_dataset_jsonld())); } ?>
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press &amp; Media Kit</h1>
   <p class="alt-lead"><span class="alt-lead-text">Everything a reporter needs to cite the AI Layoff Tracker: the boilerplate, live quotable figures, how the data is verified, brand assets, and a direct contact. Every number on this page is reproducible from our public API.</span></p>

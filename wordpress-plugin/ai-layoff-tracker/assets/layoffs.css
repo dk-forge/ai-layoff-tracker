@@ -1472,5 +1472,18 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 
 /* Press kit tables: right-aligned numbers, tidy angle table. */
 .alt-press-table td.num, .alt-press-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Press page: readable body + cleaner tables */
+.alt-press-page { font-size: 15.5px; line-height: 1.62; }
+.alt-press-page h1 { font-size: 30px; }
+.alt-press-page h2 { font-size: 21px; margin: 30px 0 10px; scroll-margin-top: 80px; }
+.alt-press-page h3 { font-size: 16px; }
+.alt-press-page p { margin: 0 0 12px; }
+.alt-press-page table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.alt-press-page table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); font-weight: 700; padding: 9px 14px; border-bottom: 2px solid var(--alt-grid); background: var(--alt-surface-2); }
+.alt-press-page table td { padding: 10px 14px; border-bottom: 1px solid var(--alt-grid); vertical-align: top; line-height: 1.5; }
+.alt-press-page table tbody tr:last-child td { border-bottom: 0; }
+.alt-press-page .alt-health-table-wrap { border: 1px solid var(--alt-grid); border-radius: 10px; overflow: hidden; margin: 6px 0 14px; }
+.alt-press-page .alt-angles-table td:first-child { width: 34%; }
 .alt-angles-table td:first-child { white-space: nowrap; vertical-align: top; }
 .alt-angles-table td { line-height: 1.5; }

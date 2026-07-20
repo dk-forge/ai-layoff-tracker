@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.65
+ * Version: 2.19.66
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.65');
+define('ALT_VERSION', '2.19.66');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -40,6 +40,72 @@ if (!function_exists('alt_state_warn_list_url')) {
 if (!function_exists('alt_state_warn_urls')) {
     function alt_state_warn_urls() { return array(); }
 }
+
+/**
+ * Schema.org Dataset markup so search + answer engines (Google AI Overviews,
+ * ChatGPT, Perplexity) can cite the dataset WITH attribution. Shared by the
+ * tracker, press and report pages.
+ */
+function alt_dataset_jsonld() {
+    $now = gmdate('Y-m-d');
+    $org = array('@type' => 'Organization', 'name' => 'AskTheRecruiter', 'url' => home_url('/'));
+    return array(
+        '@context' => 'https://schema.org', '@type' => 'Dataset',
+        'name' => 'AI Layoff Tracker', 'alternateName' => 'AskTheRecruiter AI Layoff Tracker',
+        'description' => 'A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document: an SEC filing, a state WARN notice, or a named news report.',
+        'url' => home_url('/ai-layoff-tracker/'),
+        'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
+        'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
+        'creator' => $org, 'publisher' => $org,
+        'temporalCoverage' => '2015-01-01/' . $now, 'dateModified' => $now,
+        'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
+        'variableMeasured' => array(
+            array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a primary source document behind each figure.'),
+            array('@type' => 'PropertyValue', 'name' => 'AI-attributed job cuts', 'description' => 'Layoffs the employer named AI or automation as a cause, with a supporting quote on file.'),
+            array('@type' => 'PropertyValue', 'name' => 'Announced job cuts', 'description' => 'Company plans at announcement stage, in a separate labeled tier.'),
+        ),
+        'distribution' => array(
+            array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => rest_url('layoffs/v1/query')),
+            array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv', 'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
+        ),
+    );
+}
+function alt_output_jsonld($blocks) {
+    foreach ((array) $blocks as $b) {
+        echo '<script type="application/ld+json">' . wp_json_encode($b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    }
+}
+
+/**
+ * Serve /blog/llms.txt — a plain-text map of the dataset + API for LLMs (an
+ * emerging convention). The site root's robots.txt already invites AI input.
+ */
+function alt_serve_llms_txt() {
+    $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+    if (!preg_match('#/llms\.txt/?($|\?)#', $uri)) return;
+    header('Content-Type: text/plain; charset=utf-8');
+    header('X-Robots-Tag: noindex');
+    $tk = home_url('/ai-layoff-tracker/');
+    echo "# AI Layoff Tracker — AskTheRecruiter.com\n\n";
+    echo "> A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document (SEC filing, state WARN notice, or named news report). License: CC BY 4.0. Attribute to \"the AI Layoff Tracker by AskTheRecruiter.com\".\n\n";
+    echo "## Key pages\n";
+    echo "- Live tracker: $tk\n";
+    echo "- Monthly / quarterly / yearly reports: {$tk}report/\n";
+    echo "- Data sources & methodology: {$tk}sources/\n";
+    echo "- Press kit with ready-to-cite figures: {$tk}press/\n\n";
+    echo "## Public API (same data, live)\n";
+    echo "- Query rows: " . rest_url('layoffs/v1/query') . " (params: years, quarters, months, industry, country, state, sources, reasons, roles, company, from, to, ai, ai_broad)\n";
+    echo "- Aggregates & totals: " . rest_url('layoffs/v1/aggregate') . "\n\n";
+    echo "## Metric definitions\n";
+    echo "- Verified: a filing or named report is behind each figure (the headline number).\n";
+    echo "- AI-attributed (strict): the employer named AI or automation as a cause, quote on file.\n";
+    echo "- AI-linked (broad): a wider lens that also counts press AI-framing; intentionally larger.\n";
+    echo "- Announced: company plans at announcement stage, in a separate labeled tier, never mixed into verified.\n\n";
+    echo "## How to cite\n";
+    echo "\"According to the AI Layoff Tracker by AskTheRecruiter.com.\" Figures are live and change as new sources are verified.\n";
+    exit;
+}
+add_action('init', 'alt_serve_llms_txt', 0);
 
 /**
  * Activation: register the CPT + custom feed before flushing rewrite rules,

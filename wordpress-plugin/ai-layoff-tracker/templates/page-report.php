@@ -38,6 +38,7 @@ if (isset($_GET['view']) && $_GET['view'] === 'archive') :
     $alt_wk_slug = $alt_wk->format('o-\WW');
     ?>
     <main class="alt-wrap alt-report-page">
+  <?php if (function_exists("alt_dataset_jsonld") && !defined("ALT_REPORT_LD_DONE")) { define("ALT_REPORT_LD_DONE", 1); alt_output_jsonld(array(alt_dataset_jsonld())); } ?>
       <nav class="alt-report-tabs" aria-label="Report views">
         <div class="alt-report-tabrow">
           <span class="alt-report-tablabel">Scope</span>
@@ -213,6 +214,7 @@ $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
 $alt_stamp = (new DateTime('now', new DateTimeZone('America/New_York')))->format('M j, Y · g:i A T');
 ?>
 <main class="alt-wrap alt-report-page">
+  <?php if (function_exists("alt_dataset_jsonld") && !defined("ALT_REPORT_LD_DONE")) { define("ALT_REPORT_LD_DONE", 1); alt_output_jsonld(array(alt_dataset_jsonld())); } ?>
   <nav class="alt-report-tabs" aria-label="Report period">
     <div class="alt-report-tabrow">
       <span class="alt-report-tablabel">View</span>
