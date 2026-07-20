@@ -238,21 +238,27 @@ foreach (array_reverse($alt_challenger_records) as $alt_challenger_record) {
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                <span class="alt-stat-label">🤖 AI-linked verified cuts (specific)</span>
-                <span class="alt-stat-desc">Part of Verified, in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
+                <span class="alt-stat-label">🤖 AI cuts — verified (specific)</span>
+                <span class="alt-stat-desc">Verified-tier cuts in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-share-line"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-announced">
                 <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
-                <span class="alt-stat-label">🤖 AI-linked planned cuts (announced)</span>
-                <span class="alt-stat-desc">Part of Announced: plans citing AI, like "cutting roles as we adopt AI."</span>
+                <span class="alt-stat-label">🤖 AI cuts — announced (planned)</span>
+                <span class="alt-stat-desc">Announced-tier plans that cite AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai alt-fam-all">
+            <div class="alt-stat-card alt-stat-card-ai alt-fam-total">
+                <span class="alt-stat-value" id="alt-stat-ai-total">—</span>
+                <span class="alt-stat-label">🤖 AI cuts — total (specific)</span>
+                <span class="alt-stat-desc">Verified + announced added together — cuts the employer or plan explicitly named AI for. This is the two boxes to the left, summed.</span>
+                <span class="alt-stat-sub" id="alt-stat-ai-total-sub"></span>
+            </div>
+            <div class="alt-stat-card alt-stat-card-ai alt-stat-card-broad">
                 <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
-                <span class="alt-stat-label">🤖 AI-linked, broad (verified + announced)</span>
-                <span class="alt-stat-desc">Part of All job cuts: anything the company or press tied to AI, like "amid AI push" or "AI pivot."</span>
+                <span class="alt-stat-label">🤖 AI-linked — broad (wider lens)</span>
+                <span class="alt-stat-desc"><b>A different, looser measure</b> — the Challenger/layoffs.fyi style that also counts press AI-framing ("amid AI push," "AI pivot"). It is intentionally larger than the total on the left, so it does <b>not</b> add up with the boxes above.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>

@@ -173,14 +173,21 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-stat-card-ai .alt-stat-value { color: var(--alt-red); }
 /* Family accents: a parent tier and its AI child share one color, so the
    grid's relationships are visible before a word is read. Okabe-Ito hues. */
+/* Two tier colors only — blue = Verified, amber = Announced. A "total" (the two
+   summed) is deliberately NEUTRAL so it doesn't read as a third category, and
+   the broad card is set apart entirely (it's a different, looser measure). */
 .alt-fam-verified::before { background: #0072B2; }
 .alt-fam-announced::before { background: #E69F00; }
-.alt-fam-all::before { background: #009E73; }
-.alt-fam-us::before { background: #CC79A7; }
+.alt-fam-all::before, .alt-fam-total::before { background: var(--alt-ink-2); }
 .alt-stat-card-ai.alt-fam-verified .alt-stat-value { color: #0072B2; }
 .alt-stat-card-ai.alt-fam-announced .alt-stat-value { color: #B87A00; }
-.alt-stat-card-ai.alt-fam-all .alt-stat-value { color: #009E73; }
-.alt-stat-card-ai.alt-fam-us .alt-stat-value { color: #A85A85; }
+.alt-stat-card-ai.alt-fam-total .alt-stat-value { color: var(--alt-ink); }
+/* Broad = "wider lens": dashed accent + muted value, visually apart so no one
+   expects it to sum with the strict boxes. */
+.alt-stat-card-broad { background: var(--alt-surface-2); }
+.alt-stat-card-broad::before { background: repeating-linear-gradient(180deg, #9aa0aa 0 5px, transparent 5px 9px); }
+.alt-stat-card-broad .alt-stat-value { color: var(--alt-ink-2); }
+.alt-stat-card-broad .alt-stat-label { color: var(--alt-ink-2); }
 .alt-stat-label { font-size: 13.5px; font-weight: 700; color: var(--alt-ink-2); }
 .alt-stat-desc { font-size: 11.5px; line-height: 1.4; color: #3f6147; margin: 1px 0 2px; }
 .alt-stat-desc b { color: var(--alt-ink-2); font-weight: 700; }

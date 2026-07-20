@@ -730,6 +730,11 @@
             : Math.max(0, (t.ai_jobs || 0) - aiJ);
         setText('alt-stat-ai-announced', fmt(aiAnnJ));
         setText('alt-stat-ai-announced-sub', whenAnnounced);
+        // Strict AI total = verified + announced (these DO add up; the broad
+        // card is a separate, looser measure and deliberately does not).
+        var aiTotal = aiJ + aiAnnJ;
+        setText('alt-stat-ai-total', fmt(aiTotal));
+        setText('alt-stat-ai-total-sub', fmt(aiJ) + ' verified + ' + fmt(aiAnnJ) + ' announced');
 
         setText('alt-stat-companies', fmt(t.companies));
         setText('alt-stat-industries', fmt(t.industries));
