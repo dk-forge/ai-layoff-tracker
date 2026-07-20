@@ -34,6 +34,7 @@ function alt_state_warn_urls() {
         'ME' => 'https://joblink.maine.gov/search/warn_lookups',
         'MI' => 'https://www.michigan.gov/leo/bureaus-agencies/wd/data-public-notices/warn-notices',
         'MO' => 'https://jobs.mo.gov/warn',
+        'MS' => 'https://mdes.ms.gov/information-center/warn-information/',
         'MT' => 'https://wsd.dli.mt.gov/wioa/related-links/warn-notice-page',
         'NE' => 'https://dol.nebraska.gov/ReemploymentServices/LayoffServices/LayoffsAndDownsizingWARN',
         'NJ' => 'https://www.nj.gov/labor/employer-services/warn/',
@@ -53,6 +54,7 @@ function alt_state_warn_urls() {
         'VT' => 'https://www.vermontjoblink.com/search/warn_lookups',
         'WA' => 'https://esd.wa.gov/employer-requirements/layoffs-and-employee-notifications/worker-adjustment-and-retraining-notification-warn-layoff-and-closure-database',
         'WI' => 'https://dwd.wisconsin.gov/dislocatedworker/warn/',
+        'WV' => 'https://workforcewv.org/job-seeker/layoffs-downsizing/warn-listing/',
     );
 }
 
