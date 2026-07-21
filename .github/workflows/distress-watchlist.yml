@@ -1,0 +1,43 @@
+name: Distress watchlist feeder (bankruptcy + insolvency)
+
+# CourtListener US bankruptcy + Companies House UK insolvency -> distressed
+# company names -> the same targeted-news + extractor + dedup + poster as the
+# watchlist sweep. Filings signal distress but carry no job count, so only a
+# real sourced layoff is ever posted. Ships DORMANT per source.
+#
+# Secrets: COURTLISTENER_API_KEY and/or COMPANIES_HOUSE_API_KEY_UK,
+#          NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  schedule:
+    - cron: '40 15 * * 2'   # weekly, Tue 11:40 AM ET
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to 1 to log candidates without posting'
+        required: false
+        default: ''
+
+jobs:
+  distress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run distress feeder
+        working-directory: railway
+        env:
+          COURTLISTENER_API_KEY: ${{ secrets.COURTLISTENER_API_KEY }}
+          COMPANIES_HOUSE_API_KEY_UK: ${{ secrets.COMPANIES_HOUSE_API_KEY_UK }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          DISTRESS_DRY: ${{ github.event.inputs.dry_run }}
+        run: python distress_watchlist.py
