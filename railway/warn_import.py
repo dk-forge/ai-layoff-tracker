@@ -105,6 +105,25 @@ def main():
     # (TX, FL, GA, OH, MI, CO, ID, LA, NC, NV, MN, MA) plus the retired NY
     # history database (dedup hashes absorb the warn-scraper overlap).
     customs = pull_warn_custom(states)
+    # Structural-drift tripwire for the LEGACY custom scrapers (parity with the
+    # new-states check below): these are high-volume states (TX, FL, GA, ...), so
+    # a requested state returning 0 almost always means its page changed and the
+    # parser silently broke. Surface it on the health page instead of a silent gap.
+    try:
+        from sources.warn_custom import CUSTOM_STATES as _LEGACY_CUSTOM
+    except Exception:
+        _LEGACY_CUSTOM = {}
+    _scrape_all_c = len(states) == 1 and str(states[0]).lower() == "all"
+    _expected_c = list(_LEGACY_CUSTOM) if _scrape_all_c else [s.upper() for s in states if s.upper() in _LEGACY_CUSTOM]
+    _got_by_state = {}
+    for e in customs:
+        _st = (e.get("state") or "").upper()
+        _got_by_state[_st] = _got_by_state.get(_st, 0) + 1
+    _legacy_drift = [st for st in _expected_c if _got_by_state.get(st, 0) == 0]
+    if _legacy_drift:
+        print(f"::warning:: WARN legacy custom scraper(s) returned 0 notices — likely site drift: {', '.join(_legacy_drift)}")
+        report_source_health("warn_custom_legacy", "degraded", 0,
+                             "Legacy custom WARN scraper(s) returned 0 — likely site drift: " + ", ".join(_legacy_drift))
     if min_emp:
         customs = [e for e in customs if e["job_count"] >= min_emp]
     if start:

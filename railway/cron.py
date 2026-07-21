@@ -140,7 +140,12 @@ def run():
         report_source_health("gdelt", "degraded", 0, str(e))
         print(f"GDELT source failed: {e}")
 
-    run_discovery_probes()
+    # Discovery probes are diagnostics only; an error here must never abort the
+    # cron cycle after entries were already collected (it logs per-probe itself).
+    try:
+        run_discovery_probes()
+    except Exception as e:
+        print(f"discovery probes failed (non-fatal): {e}")
 
     print(f"Pulled {len(entries)} raw entries")
 

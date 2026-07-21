@@ -56,9 +56,12 @@ def _load_tickers():
 
 
 def _raw(source_name, title, url, content):
+    # The extractor reads ONLY `raw_text` and returns None if it is empty, so this
+    # MUST be set (mirrors sources/newsapi.py) or every article silently drops.
+    body = " ".join(filter(None, [title, content])) or title or ""
     return {"source_type": "news", "source_name": source_name or "news",
-            "source_url": url, "title": title or "", "content": content or title or "",
-            "text": content or title or ""}
+            "verification_level": "bronze", "source_url": url, "title": title or "",
+            "raw_text": body, "content": body, "text": body}
 
 
 def _ingest(label, articles):

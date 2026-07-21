@@ -2,13 +2,12 @@
 Custom WARN collectors for four states the open-source warn-scraper does not
 cover: MS, WV, HI, NM.
 
-STATUS: UNVALIDATED. These parsers were written from a live recon of each
-state's pages/PDFs (2026-07-20), but their OUTPUT has NOT yet been spot-checked
-against the source documents by a human. They are intentionally NOT wired into
-`CUSTOM_STATES` in warn_custom.py, so the daily cron never calls them. Gate them
-in only after a manual run (`python3 -m sources.warn_new_states`) confirms each
-fetcher returns sane company/count/date rows. Every entry flows through the same
-`_entry(...)` factory as warn_custom.py, so hashes/dedup match the rest of WARN.
+STATUS: LIVE. Validated live on 2026-07-20 (MS 129 / WV 24 / NM 11 notices;
+HI 0 by design) and wired into the daily sweep via `warn_import.py`, which calls
+`NEW_CUSTOM_STATES` and guards each with a zero-result drift tripwire. Set
+`WARN_SKIP_NEW_STATES=1` to disable if a source ever breaks. Every entry flows
+through the same `_entry(...)` factory as warn_custom.py, so hashes/dedup match
+the rest of WARN.
 
 Design notes / parsing assumptions per state (see each fetcher docstring for the
 gory details):
