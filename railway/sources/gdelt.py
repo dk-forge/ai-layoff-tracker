@@ -707,6 +707,12 @@ SEGMENT_TERMS = (
     '"state employees" "layoffs"', '"federal employees" "layoffs"',
     '"city workers" "laid off"', '"nonprofit" "layoffs"',
     '"hospital" "layoffs"', '"school" "positions eliminated"',
+    # Government-sector expansion (#31): federal RIFs, agencies, and local
+    # government cuts leave no WARN/8-K, so press rotation is the only channel.
+    '"federal agency" "job cuts"', '"public sector" "layoffs"',
+    '"reduction in force" "federal"', '"government agency" "workforce"',
+    '"municipal" "layoffs"', '"county" "job cuts"',
+    '"public employees" "laid off"', '"agency" "eliminate positions"',
     # More AI-attribution framings (2026-07-20) — broaden AI recall beyond the
     # existing block; the employer's AI story surfaces in these phrasings too.
     '"generative AI" "layoffs"', '"AI-driven" "job cuts"', '"AI efficiency"',
