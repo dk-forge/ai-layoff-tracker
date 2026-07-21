@@ -369,7 +369,62 @@ def fetch_nm():
 
 
 # Gated: intentionally separate from warn_custom.CUSTOM_STATES until validated.
-NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "HI": fetch_hi, "NM": fetch_nm}
+# --- Washington (ESD "fortress" GridView, per-notice PDF links) -------------
+# WA is served here (not via generic warn-scraper) so each entry's source_url is
+# the notice's OWN DownloadFile PDF, not just the ESD landing page. source_list_url
+# stays the landing page (set server-side from STATE_WARN_URL). Re-imports upsert
+# by dedup_hash (URL-independent), so existing area-only WA rows get their PDF
+# link retroactively. Verified live: 81 2026 notices, all unique real PDFs.
+_WA_SEARCH = "https://fortress.wa.gov/esd/file/WARN/Public/SearchWARN.aspx"
+_WA_BASE = "https://fortress.wa.gov"
+
+
+def _wa_city(loc):
+    loc = re.sub(r"\s+", " ", (loc or "").strip())
+    return "" if (not loc or re.search(r"various|statewide|multiple|throughout|remote", loc, re.I)) else loc
+
+
+def fetch_wa(max_pages=200):
+    """WA ESD WARN via the fortress ASP.NET GridView. Newest-first by received
+    date; each row carries its own PDF link. _entry drops pre-2015 rows (coverage
+    floor), so old pages yield nothing and we stop after two dry pages."""
+    from bs4 import BeautifulSoup  # provided by warn-scraper's deps
+    s = requests.Session()
+    r = s.get(_WA_SEARCH, headers=UA, timeout=TIMEOUT); r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    out, seen, page, dry = [], set(), 1, 0
+    while page <= max_pages:
+        gv = soup.find("table", id="ucPSW_gvMain")
+        kept_this_page = 0
+        for tr in (gv.find_all("tr") if gv else []):
+            tds = tr.find_all("td", recursive=False)
+            if len(tds) != 8:
+                continue
+            link = tds[7].find("a", href=lambda h: h and "DownloadFile" in h)
+            if not link:
+                continue
+            url = link["href"] if link["href"].startswith("http") else _WA_BASE + link["href"]
+            if url in seen:
+                continue
+            date = _to_iso_date(tds[2].get_text(strip=True)) or _to_iso_date(tds[6].get_text(strip=True))
+            e = _entry("WA", tds[0].get_text(strip=True), _count(tds[3].get_text(strip=True)),
+                       date, _wa_city(tds[1].get_text()), detail_url=url)
+            if e:
+                seen.add(url); out.append(e); kept_this_page += 1
+        dry = dry + 1 if kept_this_page == 0 else 0
+        if dry >= 2:
+            break
+        nxt = "Page$%d" % (page + 1)
+        if not any(nxt in a.get("href", "") for a in soup.find_all("a")):
+            break
+        form = {i.get("name"): i.get("value", "") for i in soup.find_all("input", type="hidden") if i.get("name")}
+        form["__EVENTTARGET"] = "ucPSW$gvMain"; form["__EVENTARGUMENT"] = nxt; form["ucPSW$txtSearch"] = ""
+        r = s.post(_WA_SEARCH, data=form, headers={**UA, "Referer": _WA_SEARCH}, timeout=TIMEOUT)
+        r.raise_for_status(); soup = BeautifulSoup(r.text, "html.parser"); page += 1
+    return out
+
+
+NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "HI": fetch_hi, "NM": fetch_nm, "WA": fetch_wa}
 
 
 if __name__ == "__main__":

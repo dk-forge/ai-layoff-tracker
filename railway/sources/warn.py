@@ -197,7 +197,9 @@ ALL_STATES = [
     "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
     "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
     "NJ", "NM", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
-    "VA", "VT", "WA", "WI",
+    "VA", "VT", "WI",
+    # WA moved to the custom fortress scraper (per-notice PDF links) — see
+    # warn_new_states.fetch_wa. Excluded here so it isn't double-run.
 ]
 
 
