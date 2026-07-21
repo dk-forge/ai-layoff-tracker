@@ -39,6 +39,38 @@ DEFAULT_MAX_AGE = 10
 SOFT_DEGRADED = {"gdelt_historical"}  # historical recovery is rate-limit prone
 
 
+def _email_alert(stale, degraded):
+    """POST an actionable breakage email to the owner via the site's /alert."""
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return
+    names = [s for s, _, _ in stale] + [s for s, _ in degraded]
+    subject = f"{len(names)} data source(s) need attention: {', '.join(names[:4])}"
+    lines = ["The weekly health check found collectors that stopped or degraded.\n"]
+    for s, a, m in stale:
+        lines.append(f"STALE — {s}: last reported {a} days ago (expected within {m}). It likely stopped running.")
+    for s, d in degraded:
+        lines.append(f"DEGRADED — {s}: {str(d)[:160]}")
+    lines.append(
+        "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n"
+        f'  "The health digest flagged these sources: {", ".join(names)}. '
+        'For each, find its collector in railway/ (or railway/sources/), check whether the '
+        'third-party site changed, and fix the parser; a scraper returning 0 usually means the '
+        'page layout changed. Then dry-run it to confirm."\n'
+        "\nMost breakages are a government/state site changing its page layout — the fix is a "
+        "quick re-recon of that one scraper.")
+    body = "\n".join(lines)
+    try:
+        requests.post(f"{site}/wp-json/layoffs/v1/alert",
+                      json={"subject": subject, "body": body},
+                      headers={"X-Layoff-API-Key": key, "User-Agent": UA["User-Agent"]},
+                      timeout=25)
+        print("alert email sent to owner")
+    except Exception as exc:
+        print(f"alert email failed: {exc}")
+
+
 def _age_days(checked_at, now):
     if not checked_at:
         return None
@@ -96,6 +128,10 @@ def main():
             report_source_health("health_digest", "degraded" if (stale or degraded) else "ok", ok, detail)
         except Exception as exc:
             print(f"(digest health post skipped: {exc})")
+        # Email the owner ONLY when something is actually broken, with a
+        # ready-to-paste instruction so acting on it is one copy + paste.
+        if stale or degraded:
+            _email_alert(stale, degraded)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.

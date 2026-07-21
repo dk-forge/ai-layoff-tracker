@@ -51,6 +51,15 @@ function alt_register_routes() {
         'permission_callback' => 'alt_api_permission',
     ));
 
+    // Operational alert: a collector reports a breakage (drift/stale) and this
+    // emails the owner a specific, actionable notice. API-key gated so only the
+    // pipeline can trigger it.
+    register_rest_route('layoffs/v1', '/alert', array(
+        'methods'             => 'POST',
+        'callback'            => 'alt_api_alert',
+        'permission_callback' => 'alt_api_permission',
+    ));
+
     register_rest_route('layoffs/v1', '/check-duplicate', array(
         'methods'             => 'GET',
         'callback'            => 'alt_api_check_duplicate',
@@ -634,6 +643,26 @@ function alt_api_status_get() {
 /* ------------------------------------------------------------------ */
 /* Route callbacks                                                     */
 /* ------------------------------------------------------------------ */
+
+function alt_api_alert($request) {
+    $subject = sanitize_text_field((string) $request->get_param('subject'));
+    $body    = (string) $request->get_param('body');
+    if ($subject === '' || trim($body) === '') {
+        return new WP_REST_Response(array('ok' => false, 'error' => 'subject and body required'), 400);
+    }
+    // De-dupe: a persistent breakage would otherwise email every run. Only
+    // re-send the same alert (keyed on subject) once every 3 days.
+    $key = 'alt_alert_' . md5($subject);
+    if (get_transient($key)) {
+        return new WP_REST_Response(array('ok' => true, 'sent' => false, 'reason' => 'suppressed (alerted within 3 days)'), 200);
+    }
+    $to = defined('ALT_CONTACT_TO') ? ALT_CONTACT_TO : get_option('admin_email');
+    $sent = wp_mail($to, '[AI Layoff Tracker] ' . $subject, wp_strip_all_tags($body));
+    if ($sent) {
+        set_transient($key, 1, 3 * DAY_IN_SECONDS);
+    }
+    return new WP_REST_Response(array('ok' => (bool) $sent, 'sent' => (bool) $sent), 200);
+}
 
 function alt_api_add($request) {
     $meta_in = $request->get_param('meta');
