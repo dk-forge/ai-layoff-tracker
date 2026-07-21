@@ -83,7 +83,9 @@ def _ingest(label, articles):
 # NewsData.io uses OR/AND keywords; Marketaux uses | for OR (the word "OR"
 # gets treated as a literal term). Keep two query spellings so each provider
 # actually parses the terms instead of silently matching nothing.
-NEWSDATA_Q = QUERY  # OR-keyword syntax
+# NewsData.io free tier caps q at 100 chars, so use a compact multilingual set
+# (English + German + French + Spanish + Italian core terms), still <=100 chars.
+NEWSDATA_Q = "layoffs OR redundancies OR Stellenabbau OR licenciements OR despidos OR licenziamenti"
 MARKETAUX_Q = QUERY.replace(" OR ", " | ")
 
 

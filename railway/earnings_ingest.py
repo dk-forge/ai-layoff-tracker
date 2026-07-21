@@ -58,11 +58,17 @@ _DIAG_DONE = False
 
 
 def latest_transcript(ticker):
-    """Most recent transcript for a ticker (FMP shape). Returns text or ''."""
+    """Most recent transcript for a ticker (FMP shape). Returns text or ''.
+
+    FMP retired the v3 /earning_call_transcript path (legacy, pre-Aug-2025
+    accounts only). The current path is the `stable` API: earning-call-transcript
+    ?symbol=. Transcripts remain a premium feature, so a free key may still 403 —
+    the diagnostic below surfaces exactly that instead of a silent 0.
+    """
     global _DIAG_DONE
     try:
-        r = requests.get(f"{API_BASE}/earning_call_transcript/{ticker}",
-                         params={"apikey": API_KEY}, headers=UA, timeout=40)
+        r = requests.get("https://financialmodelingprep.com/stable/earning-call-transcript",
+                         params={"symbol": ticker, "apikey": API_KEY}, headers=UA, timeout=40)
         # Log the first response verbatim so a paywalled/empty free tier is
         # visible in the run log instead of looking like "no layoffs found".
         if not _DIAG_DONE:
