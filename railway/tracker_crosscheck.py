@@ -216,14 +216,17 @@ def main():
             })
             continue
 
-        # Match: any returned row sharing the normalized company key. The API
-        # already constrained the date window server-side (when we had a date),
-        # so presence in `results` is sufficient; we re-check the key because the
-        # `company` LIKE filter is a loose substring match.
+        # Match on WHOLE-WORD tokens, never substrings. An earlier `key in
+        # company_key(...)` substring test made short names false-match — "HP"
+        # matched "Nort(hp)oint", "Intel" matched "(Intel)liPower" — which hid
+        # real gaps by reporting we had companies we don't. Require every
+        # significant token of the reference name to appear as a complete token
+        # in the stored name (so "Meta" still matches "Meta Platforms Inc").
+        ref_tokens = key.split()
         match = None
         for r in results:
-            if company_key(r.get("company_name", "")) == key or (
-                    key and key in company_key(r.get("company_name", ""))):
+            row_tokens = set(company_key(r.get("company_name", "")).split())
+            if ref_tokens and all(t in row_tokens for t in ref_tokens):
                 match = r
                 break
 
