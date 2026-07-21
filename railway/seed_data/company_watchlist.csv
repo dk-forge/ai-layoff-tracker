@@ -1,0 +1,208 @@
+company
+# Seed watchlist for the automated company-watchlist sweep. One big employer per
+# row. The sweep checks each ~weekly against our own data and, if we have no
+# current-year entry, searches our news net for a layoff and adds the verified
+# one. Grow this list freely — every added name is monitored forever, for free.
+# US tech
+Amazon
+Microsoft
+Meta
+Google
+Alphabet
+Oracle
+Dell Technologies
+HP Inc
+Hewlett Packard Enterprise
+Intel
+IBM
+Cisco
+Salesforce
+Workday
+Intuit
+Autodesk
+Cloudflare
+Snap
+Pinterest
+Coinbase
+PayPal
+Block
+Robinhood
+Electronic Arts
+Unity Technologies
+Zoom
+Twilio
+Okta
+Atlassian
+ServiceNow
+Adobe
+Nvidia
+Qualcomm
+Broadcom
+Dropbox
+DocuSign
+Spotify
+Uber
+Lyft
+DoorDash
+Instacart
+Stripe
+# US non-tech
+UPS
+FedEx
+Boeing
+Lockheed Martin
+RTX
+Northrop Grumman
+Nike
+3M
+Chevron
+ExxonMobil
+ConocoPhillips
+Halliburton
+Tyson Foods
+Goodyear
+Whirlpool
+Kraft Heinz
+Conagra Brands
+General Mills
+Cleveland-Cliffs
+Nucor
+Ford
+General Motors
+Stellantis
+Rivian
+Lucid Motors
+Home Depot
+Lowe's
+Macy's
+Kohl's
+JCPenney
+Kroger
+Walgreens
+CVS Health
+Walmart
+Target
+Best Buy
+GameStop
+Saks Global
+Nordstrom
+Wells Fargo
+Citigroup
+JPMorgan Chase
+Goldman Sachs
+Morgan Stanley
+Bank of America
+UnitedHealth
+Optum
+Cigna
+Humana
+Pfizer
+Merck
+Bristol Myers Squibb
+Johnson & Johnson
+AbbVie
+Amgen
+Gilead Sciences
+Biogen
+Moderna
+Medtronic
+Boston Scientific
+Baxter International
+Becton Dickinson
+Estee Lauder
+Peloton
+Wayfair
+Walt Disney
+Warner Bros Discovery
+Paramount Skydance
+NBCUniversal
+iHeartMedia
+Verizon
+AT&T
+T-Mobile
+Comcast
+Charter Communications
+Chegg
+ADP
+Starbucks
+McDonald's
+Spirit Airlines
+Southwest Airlines
+American Airlines
+United Airlines
+Delta Air Lines
+# Europe
+SAP
+Bayer
+GSK
+AstraZeneca
+Novartis
+Roche
+Sanofi
+BioNTech
+Nestle
+Unilever
+Heineken
+Diageo
+Deutsche Bank
+Commerzbank
+UBS
+Barclays
+HSBC
+Lloyds Banking
+NatWest
+BNP Paribas
+Societe Generale
+Santander
+Telefonica
+Vodafone
+Nokia
+Ericsson
+Volkswagen
+Mercedes-Benz
+BMW
+Porsche
+Audi
+Bosch
+Continental
+ZF Friedrichshafen
+Schaeffler
+Michelin
+BASF
+Siemens
+Philips
+ASML
+Lufthansa
+Air France-KLM
+Intesa Sanpaolo
+UniCredit
+Virgin Media O2
+Thyssenkrupp
+# Asia / other
+Tata Consultancy Services
+Infosys
+Wipro
+HCL Technologies
+Tech Mahindra
+Cognizant
+Accenture
+Samsung Electronics
+LG Electronics
+SK Hynix
+Panasonic
+Sony
+Takeda
+Nissan
+Honda
+Toyota
+BYD
+Alibaba
+Tencent
+Baidu
+ByteDance
+Rakuten
+SoftBank
+WiseTech Global
+Telstra
+Sea Limited
+Grab

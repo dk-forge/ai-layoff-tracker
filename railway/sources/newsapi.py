@@ -58,7 +58,11 @@ def _segment_queries_for_now():
     return [f'(layoffs OR "job cuts" OR "workforce reduction") AND {term}' for term in picked]
 
 
-def pull_news_articles(days_back=2):
+def pull_news_articles(days_back=2, queries=None):
+    """Pull layoff coverage from trusted outlets. `queries` overrides the
+    standard discovery/segment set — the company-watchlist sweep passes
+    company-targeted queries here to reuse all of this fetch/domain/shaping
+    logic. When None, the daily broad discovery set is used."""
     api_key = os.environ.get("NEWSAPI_KEY")
     if not api_key:
         print("NewsAPI: no NEWSAPI_KEY found, skipping")

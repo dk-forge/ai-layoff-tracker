@@ -1,0 +1,59 @@
+name: Company watchlist sweep
+
+# Automated "work backwards from the big employers": each run checks a rotating
+# slice of the watchlist against our own data and, for any big company we have
+# no current-year entry for, fires a company-targeted news query, extracts via
+# DeepSeek, and adds the verified layoff. Runs on our own NewsAPI net (Reuters/
+# Bloomberg/FT cover big European cuts in English), NOT any metered web-search.
+# Daily with rotation → each company revisited ~weekly; fresh cuts surface in a day.
+#
+# Required secrets: NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  schedule:
+    - cron: '35 15 * * *'   # 11:35 AM ET — after the morning ingest + dedup settle
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Companies checked this run (default 60)'
+        required: false
+        default: '60'
+      dry_run:
+        description: 'Set to 1 to log candidates without posting'
+        required: false
+        default: ''
+
+jobs:
+  watchlist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secrets
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          missing=0
+          for v in NEWSAPI_KEY OPENROUTER_API_KEY WP_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set."; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || { echo "Add the missing secret(s) and re-run."; exit 1; }
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run watchlist sweep
+        working-directory: railway
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WATCHLIST_BATCH: ${{ github.event.inputs.batch || '60' }}
+          WATCHLIST_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          WATCHLIST_DEADLINE_SECONDS: '1500'
+        run: python company_watchlist.py
