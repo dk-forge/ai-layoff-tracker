@@ -39,6 +39,19 @@ DEFAULT_MAX_AGE = 10
 SOFT_DEGRADED = {"gdelt_historical"}  # historical recovery is rate-limit prone
 
 
+# States with no public WARN register: a custom scraper returning 0 for them is
+# correct, not drift, so a drift-detail naming ONLY these is benign.
+_BENIGN_STATES = {"HI", "AR", "WY", "NH"}
+
+
+def _benign_degraded(detail):
+    import re
+    # Two-letter codes named in the drift detail. Benign ONLY if every code is a
+    # no-public-register state; any other code (a real state, or "AI") -> alert.
+    codes = re.findall(r"\b([A-Z]{2})\b", str(detail))
+    return bool(codes) and all(c in _BENIGN_STATES for c in codes)
+
+
 def _email_alert(stale, degraded):
     """POST an actionable breakage email to the owner via the site's /alert."""
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -128,10 +141,12 @@ def main():
             report_source_health("health_digest", "degraded" if (stale or degraded) else "ok", ok, detail)
         except Exception as exc:
             print(f"(digest health post skipped: {exc})")
-        # Email the owner ONLY when something is actually broken, with a
-        # ready-to-paste instruction so acting on it is one copy + paste.
-        if stale or degraded:
-            _email_alert(stale, degraded)
+        # Email ONLY on real breakage, with a ready-to-paste fix instruction.
+        # Drop benign flags first (Hawaii has no WARN register by design, so its
+        # custom scraper is *expected* to return 0) so the alert never cries wolf.
+        real_degraded = [(s, d) for s, d in degraded if not _benign_degraded(d)]
+        if stale or real_degraded:
+            _email_alert(stale, real_degraded)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.
