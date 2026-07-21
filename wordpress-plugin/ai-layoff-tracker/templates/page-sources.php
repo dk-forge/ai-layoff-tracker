@@ -162,6 +162,19 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     </tbody>
   </table></div>
   <p>Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">tracker health page</a>; the running corrections log is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-data-sources">tracker itself</a>.</p>
+
+  <h2 id="alt-ai-rubric">How we classify an "AI-attributed" layoff (the rubric)</h2>
+  <p>Because this is the number most likely to be quoted, here is the exact, testable standard behind it. We report <b>what the employer said</b>, not our own judgment of cause &mdash; we never assert in our own voice that AI caused a layoff.</p>
+  <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
+    <thead><tr><th>Tier</th><th>What qualifies</th><th>Example language</th><th>Counts as&hellip;</th></tr></thead>
+    <tbody>
+      <tr><td><b>Verified (strict)</b></td><td>The employer names AI/automation as a <b>primary or contributing cause</b> of the cut, and we hold the <b>exact quote</b> from a primary source.</td><td>&ldquo;these roles are being eliminated as AI now performs this work&rdquo;; &ldquo;automation has reduced our need for&hellip;&rdquo;</td><td>Verified AI &#10003;</td></tr>
+      <tr><td><b>Broad (wider lens)</b></td><td>Looser AI framing tied to the cut: cutting <i>while</i> funding an AI pivot, or press describing it as AI-driven, without a clean causal quote.</td><td>&ldquo;restructuring to invest in AI&rdquo;; &ldquo;reallocating toward AI priorities&rdquo;; press: &ldquo;amid its AI push&rdquo;</td><td>Broad only (labeled separately, never merged)</td></tr>
+      <tr><td>Not counted</td><td>AI investment, future automation projections, or AI used to <i>select</i> who to cut &mdash; none of these is a stated cause of the reduction.</td><td>&ldquo;we&rsquo;re hiring for AI roles&rdquo;; &ldquo;used an algorithm to rank performance&rdquo;</td><td>Neither</td></tr>
+      <tr><td>Denied</td><td>The employer explicitly says the cuts were <b>not</b> due to AI.</td><td>&ldquo;this is unrelated to AI&rdquo;</td><td>Neither (recorded as denial)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="alt-muted">Two honest caveats: (1) &ldquo;restructuring around AI&rdquo; is sometimes PR cover for ordinary cost-cutting &mdash; the <b>broad</b> tier records the framing, it does not verify the cause. (2) Companies rarely say &ldquo;replaced by AI&rdquo; outright, so the strict measure is deliberately conservative; the broad measure exists precisely to show the wider, looser universe alongside it. The two are always reported separately and never summed.</p>
   <p class="alt-muted" style="margin-top:8px">Tip: click any column header to sort a table.</p>
 </main>
 <style>

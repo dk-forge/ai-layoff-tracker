@@ -349,7 +349,7 @@ if (function_exists('alt_faq_items')) {
             <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts blamed on AI · industries under 1,000 cuts excluded</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts the employer attributed to AI · industries under 1,000 cuts excluded</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-ai-intensity"></div>
         </div>
         <div class="alt-mini alt-chart-card" id="alt-roles-card">
