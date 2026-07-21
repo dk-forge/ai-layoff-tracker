@@ -31,6 +31,15 @@ ritual simply can't run from a blocked environment; report that plainly. Ask the
 owner to allowlist `asktherecruiter.com` if cloud sessions should verify the live
 surfaces directly.
 
+**IMPORTANT — you CAN still update the live site while egress-blocked.** Deploying
+does not require reaching `asktherecruiter.com`: `git push` to main triggers the
+"Deploy WordPress plugin" GitHub Actions workflow, which FTPS-uploads to the host
+**server-side**. You only need GitHub (reachable). So edit the plugin, bump
+`Version:` + `ALT_VERSION`, push, then confirm the deploy landed with
+`gh run view <deploy-run-id> --log` (a green "Deploy WordPress plugin" run = the
+new files are live). The only thing the block prevents is the final visual
+`curl ver=` check — the green deploy run is reliable confirmation in its place.
+
 ## Standing rules (self-contained — these do NOT rely on local memory)
 - **Never write a DB row directly.** A source builds a raw dict (MUST set
   `raw_text` — the extractor reads only that and drops the row if empty) and
