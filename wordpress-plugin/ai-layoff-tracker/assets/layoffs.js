@@ -431,7 +431,11 @@
     // filters ride along as query params and the label says which it is.
     function updateExportLinks() {
         if (!window.altData) return;
-        var qsStr = qs(currentParams());
+        // Export matches the on-screen table (inclusive country basis), so a
+        // downloaded "United States" CSV includes US-HQ global cuts too.
+        var ep = currentParams();
+        if (ep.country) ep.country_basis = 'any';
+        var qsStr = qs(ep);
         [['alt-export-csv', window.altData.exportCsv, 'CSV'],
          ['alt-export-json', window.altData.exportJson, 'JSON']].forEach(function (p) {
             var a = document.getElementById(p[0]);
@@ -1672,6 +1676,11 @@
             },
             ajax: function (dtData, callback) {
                 var p = currentParams();
+                // Table uses the inclusive country basis so a US-HQ company's
+                // global cut (labeled "Multiple countries") surfaces under a US
+                // filter. The headline stats (/aggregate, currentParams) stay on
+                // the strict job-location basis, so the US total isn't inflated.
+                if (p.country) p.country_basis = 'any';
                 p.per_page = dtData.length;
                 p.page = Math.floor(dtData.start / dtData.length) + 1;
                 var ord = dtData.order && dtData.order[0];

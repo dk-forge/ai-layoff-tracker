@@ -545,6 +545,15 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
             if ($r->get_param('country_basis') === 'employer') {
                 $where[] = "(employer_country IN ($ph) OR (employer_country = '' AND country IN ($ph)))";
                 foreach ($countries as $v) { $params[] = $v; }
+            } elseif ($r->get_param('country_basis') === 'any') {
+                // Inclusive/discovery basis (the front-end default): a country
+                // matches if the jobs are located there OR the employer is
+                // domiciled there. This is what surfaces a US-HQ company's
+                // global cut (labeled "Multiple countries") under a US filter,
+                // instead of hiding it. Each row keeps its true country label,
+                // so a global figure is never silently recounted as US-only.
+                $where[] = "(country IN ($ph) OR employer_country IN ($ph))";
+                foreach ($countries as $v) { $params[] = $v; }
             } else {
                 $where[] = "country IN ($ph)";
             }
