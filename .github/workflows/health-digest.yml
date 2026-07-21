@@ -1,0 +1,34 @@
+name: Weekly health digest (autonomy tripwire)
+
+# Reads the source-health ledger and fails RED if any collector has gone stale
+# (silently stopped reporting) or degraded. The last line of defence for
+# unattended operation — a broken scraper surfaces within a week.
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'   # Mondays 8 AM ET
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to 1 to skip posting the digest to the ledger'
+        required: false
+        default: ''
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Run health digest
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          HEALTH_DIGEST_DRY: ${{ github.event.inputs.dry_run }}
+        run: python health_digest.py

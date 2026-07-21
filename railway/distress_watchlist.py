@@ -73,13 +73,21 @@ def courtlistener_debtors():
             print(f"courtlistener HTTP {r.status_code}: {r.text[:180]}")
             return []
         results = r.json().get("results", [])
-        print(f"courtlistener: {len(results)} recent bankruptcy dockets")
+        kept = 0
         for it in results:
-            co = _clean_company(it.get("caseName") or it.get("case_name"))
+            case = str(it.get("caseName") or it.get("case_name") or "")
+            # Only actual bankruptcy PETITIONS are captioned "In re <Debtor>".
+            # Adversary proceedings ("X v. Y") and motions name creditors/parties
+            # (that's how Microsoft/Oracle leaked in as false debtors) — skip them.
+            if not re.match(r"\s*in\s+re\b", case, re.I):
+                continue
+            co = _clean_company(case)
             k = co.lower()
             if co and k not in seen:
                 seen.add(k)
                 out.append(co)
+                kept += 1
+        print(f"courtlistener: {len(results)} dockets, {kept} bankruptcy-petition debtors kept")
     except Exception as exc:
         print(f"courtlistener fetch failed: {exc}")
     return out
