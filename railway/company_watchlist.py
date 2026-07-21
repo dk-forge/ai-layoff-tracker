@@ -35,7 +35,11 @@ from source_health import report_source_health
 SITE = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 BATCH = max(1, int(os.environ.get("WATCHLIST_BATCH", "60")))
-DAYS_BACK = max(7, int(os.environ.get("WATCHLIST_DAYS_BACK", "120")))
+# NewsAPI's free plan only serves ~30 days; a longer window is silently rejected.
+# 28 days + the ~weekly rotation gives heavy overlapping coverage, so a new cut
+# at any watchlisted company surfaces within days. (Backfilling OLDER misses is a
+# separate path — GDELT / direct add — since free NewsAPI can't reach them.)
+DAYS_BACK = max(7, min(28, int(os.environ.get("WATCHLIST_DAYS_BACK", "28"))))
 DEADLINE = max(60, int(os.environ.get("WATCHLIST_DEADLINE_SECONDS", "900")))
 DRY_RUN = os.environ.get("WATCHLIST_DRY_RUN", "").lower() in {"1", "true", "yes"}
 WATCHLIST_PATH = os.path.join(os.path.dirname(__file__), "seed_data", "company_watchlist.csv")
