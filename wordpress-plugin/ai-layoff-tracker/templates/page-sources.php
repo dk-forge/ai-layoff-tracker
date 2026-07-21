@@ -85,7 +85,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
+        <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Marketaux · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
         <td>Extends the news net into non-English outlets (German, French, Dutch, Spanish, Italian) so European cuts surface without waiting for English coverage. Every candidate runs through the same extraction, de-duplication and verification as the rest.</td>
         <td>Verified (named report)</td>
         <td><a href="https://newsdata.io" target="_blank" rel="noopener">NewsData.io &#8599;</a></td>
