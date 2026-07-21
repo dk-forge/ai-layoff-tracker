@@ -619,6 +619,27 @@ function alt_api_add($request) {
         return new WP_Error('alt_duplicate', 'A same-company entry within ~30 days already exists.', array('status' => 409));
     }
 
+    // Zombie/rebadge guard: content farms republish OLD layoffs stamped with a
+    // fresh date (Zoom's Feb-2023 "1,300 / 15%" resurfaced labeled "Feb 2026").
+    // Same company + IDENTICAL count as an entry >180 days older is almost never
+    // a new event, so reject loudly — a fake receipt must not enter the dataset.
+    // Genuine repeat rounds nearly always differ in count; a true identical-count
+    // recurrence can still be added via /edit after human review. WARN is exempt
+    // (legal filings carry authoritative dates and repeat counts legitimately).
+    if ($incoming_source !== 'warn' && $job_count > 0) {
+        global $wpdb;
+        $alt_prior = $wpdb->get_var($wpdb->prepare(
+            "SELECT layoff_date FROM " . alt_db_table() .
+            " WHERE company_key = %s AND job_count = %d AND layoff_date < DATE_SUB(%s, INTERVAL 180 DAY)"
+            . " ORDER BY layoff_date DESC LIMIT 1",
+            alt_company_key($company), (int) $job_count, $layoff_date));
+        if ($alt_prior) {
+            return new WP_Error('alt_rebadge_suspect',
+                sprintf('Same company with identical count (%d) already recorded on %s — likely a republished old event, not a new one.', (int) $job_count, $alt_prior),
+                array('status' => 409));
+        }
+    }
+
     $verification = sanitize_text_field($meta_in['verification_level'] ?? '');
     if (!in_array($verification, alt_allowed_verification_levels(), true)) {
         $verification = 'bronze';

@@ -96,7 +96,7 @@ CRITICAL RULES:
 2. Classify AI causation carefully. `primary_cause` means the company/source says AI, automation, machine learning or robots caused the reduction. `contributing_cause` means it is one stated cause. `selection_or_operations` means AI was used to select, monitor or manage workers; this is NOT a cause. `context_only` means AI investment, strategy or a passing mention is not stated as a cause. `explicitly_denied` means the source says the cuts were not because of AI. Use `unknown` if the source is unclear.
 3. For ai_explicit: true ONLY for `primary_cause` or `contributing_cause`, and only with an exact supporting phrase. Never infer it from a company's AI investment, a future automation projection, or AI use during selection.
 4. For ai_language: copy the EXACT supporting phrase from the source. If none, return null.
-5. For job_count: use the exact number stated. If a range is given, use the lower bound. Never turn a percentage, dollar figure, future work-equivalence, or projected automation number into a layoff count.
+5. For job_count: the total for THIS newly announced event only. TIMELINE TRAP: articles cite older layoffs for context ("after cutting 10,000 last year, X announced 500 new cuts") — NEVER use a historical/contextual number; use the number for the new announcement (500 here). SUBSET TRAP: if a division figure and a companywide total for the SAME new announcement both appear ("500 in cloud, part of 3,000 overall"), use the companywide total (3,000). If a range is given, use the lower bound. Never turn a percentage, dollar figure, future work-equivalence, or projected automation number into a layoff count.
 6. For reason_tags: only assign tags that are supported by explicit language in the source.
 7. If you cannot determine a required field with confidence, return null for that field.
 8. Return ONLY valid JSON. No preamble. No explanation. No markdown.
@@ -190,6 +190,30 @@ def _percent_only_mention(job_count, raw_text):
     as_percent = re.search(rf"\b{job_count}\s*(%|percent\b)", raw_text, re.I)
     as_count = re.search(rf"\b{job_count}\b(?!\s*(%|percent))", raw_text, re.I)
     return bool(as_percent and not as_count)
+
+
+def _count_in_text(job_count, raw_text):
+    """True when the extracted count literally appears in the source text.
+
+    The AI quote already requires a verbatim receipt; the headcount itself did
+    not, so a model misread (e.g. deriving 4,000 from "10% of 40,000 staff")
+    could publish with a receipt attached — the worst failure class, because it
+    looks audited. Accepts common written variants: 12000 / 12,000 / 12 000 /
+    12.000 (EU) / 12k. Counts the model derived rather than read fail here and
+    are rejected loudly (never silently), matching the "never derive" rule.
+    """
+    if not raw_text or not job_count:
+        return False
+    n = int(job_count)
+    grouped = f"{n:,}"
+    variants = {str(n), grouped, grouped.replace(",", " "), grouped.replace(",", "."),
+                grouped.replace(",", " ")}
+    if n % 1000 == 0 and n >= 1000:
+        variants.update({f"{n // 1000}k", f"{n // 1000}K"})
+    return any(
+        re.search(rf"(?<![\d.,]){re.escape(v)}(?![\d])", raw_text)
+        for v in variants
+    )
 
 
 def _coerce_job_count(value):
@@ -592,6 +616,10 @@ TEXT:
     if _percent_only_mention(job_count, raw_text):
         print(f"Extraction rejected: job_count {job_count} appears only as a percentage "
               f"— source: {raw_entry.get('source_url')}")
+        return None
+    if raw_text and not _count_in_text(job_count, raw_text):
+        print(f"Extraction rejected: job_count {job_count} not found verbatim in source "
+              f"(model likely derived it) — source: {raw_entry.get('source_url')}")
         return None
     extracted["job_count"] = job_count
 

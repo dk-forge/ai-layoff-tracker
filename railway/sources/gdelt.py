@@ -849,6 +849,30 @@ def pull_gdelt_between(start, end, max_records=250):
             print(f"GDELT dismissal/redundancy theme sweep: {len(theme_articles)} article(s)")
             articles.extend(theme_articles)
 
+    # Standalone EUROPEAN-LANGUAGE sweep: works-council-driven cuts (a Spanish
+    # ERE, German Stellenabbau, French plan social) surface in national business
+    # press before/without English coverage — and European HQs never file an SEC
+    # 8-K, so this is the catchable signal for them. These terms must run
+    # STANDALONE (the segment matrix ANDs terms with the English base QUERY,
+    # which would strangle non-English text). One language per run to respect
+    # the shared rate limit; the trusted-domain allowlist (Handelsblatt,
+    # Les Echos, El Pais, Corriere, ...) still gates every article downstream,
+    # and the extractor validates each candidate. Toggle: GDELT_EURO_SWEEP=0.
+    if os.environ.get("GDELT_EURO_SWEEP", "1") != "0":
+        euro_queries = (
+            '"Stellenabbau" OR "Entlassungen" OR "Arbeitsplätze streichen"',
+            '"plan social" OR "licenciements" OR "suppressions de postes"',
+            '"expediente de regulación de empleo" OR "despidos colectivos"',
+            '"licenziamenti" OR "esuberi"',
+        )
+        eq = euro_queries[datetime.now(timezone.utc).timetuple().tm_yday % len(euro_queries)]
+        euro_articles, _, euro_error = _query_window(eq, start, end, max_records)
+        if euro_articles is None:
+            print(f"GDELT European-language sweep skipped ({euro_error})")
+        else:
+            print(f"GDELT European-language sweep: {len(euro_articles)} article(s)")
+            articles.extend(euro_articles)
+
     return _fetch_trusted(articles)
 
 
