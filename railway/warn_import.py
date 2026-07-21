@@ -123,13 +123,26 @@ def main():
         scrape_all = len(states) == 1 and str(states[0]).lower() == "all"
         wanted = list(NEW_CUSTOM_STATES) if scrape_all else [s.upper() for s in states if s.upper() in NEW_CUSTOM_STATES]
         new_entries = []
+        drift_states = []
         for st in wanted:
             try:
                 got = NEW_CUSTOM_STATES[st]()
                 print(f"WARN {st} (new importer): {len(got)} notices kept")
                 new_entries.extend(got)
+                # Structural-drift tripwire: a custom scraper normally returns
+                # notices; a sudden 0 almost always means the state redesigned
+                # its page and our parser silently broke. Surface it LOUDLY on
+                # the health page instead of publishing a silent gap.
+                if len(got) == 0:
+                    drift_states.append(st)
+                    print(f"::warning:: WARN {st} custom scraper returned 0 notices — likely structural drift (page changed). Check the scraper.")
             except Exception as exc:
+                drift_states.append(st)
                 print(f"WARN {st} (new importer) failed: {exc}")
+        if drift_states:
+            report_source_health("warn_custom_states", "degraded", 0,
+                                  "Custom WARN scraper(s) returned 0 / errored — likely site drift: "
+                                  + ", ".join(drift_states))
         if min_emp:
             new_entries = [e for e in new_entries if e["job_count"] >= min_emp]
         if start:

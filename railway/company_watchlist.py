@@ -48,15 +48,42 @@ _STOP = {"inc", "corp", "co", "ltd", "plc", "llc", "lp", "group", "holdings", "t
 
 
 def load_watchlist():
-    names = []
+    names, seen = [], set()
+
+    def _add(name):
+        name = (name or "").strip()
+        if name and not name.startswith("#") and name.lower() not in seen:
+            seen.add(name.lower())
+            names.append(name)
+
     try:
         with open(WATCHLIST_PATH, newline="") as f:
             for row in csv.DictReader(f):
-                name = (row.get("company") or "").strip()
-                if name and not name.startswith("#"):
-                    names.append(name)
+                _add(row.get("company"))
     except FileNotFoundError:
         print(f"watchlist not found: {WATCHLIST_PATH}")
+
+    # Auto-grow (dormant): merge live index constituents at RUN TIME so the list
+    # self-maintains and stays geography-balanced without a git commit. Point
+    # WATCHLIST_INDEX_URLS (comma-separated) at CSV/JSON lists of company names
+    # (e.g. S&P 500 / STOXX 600 constituents). Unset -> just the seed file.
+    for url in [u.strip() for u in (os.environ.get("WATCHLIST_INDEX_URLS") or "").split(",") if u.strip()]:
+        try:
+            r = requests.get(url, headers={"User-Agent": "AiLayoffTracker/1.0"}, timeout=30)
+            if r.status_code != 200:
+                continue
+            body = r.text
+            if body.lstrip()[:1] in ("[", "{"):
+                import json as _json
+                data = _json.loads(body)
+                rows = data if isinstance(data, list) else (data.get("data") or [])
+                for x in rows:
+                    _add(x.get("company") or x.get("name") or x.get("Security") if isinstance(x, dict) else x)
+            else:
+                for row in csv.DictReader(__import__("io").StringIO(body)):
+                    _add(row.get("company") or row.get("Name") or row.get("Security") or row.get("name"))
+        except Exception as exc:
+            print(f"watchlist index merge failed ({url[:40]}...): {exc}")
     return names
 
 
