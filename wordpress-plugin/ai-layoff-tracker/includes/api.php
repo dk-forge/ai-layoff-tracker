@@ -114,7 +114,42 @@ function alt_company_key($name) {
     $k = strtolower((string) $name);
     $k = preg_replace('/[^a-z0-9 ]/', ' ', $k);
     $k = preg_replace('/\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|group|holdings|holding|technologies|technology|systems|solutions|the|com)\b/', ' ', $k);
-    return trim(preg_replace('/\s+/', ' ', $k));
+    $k = trim(preg_replace('/\s+/', ' ', $k));
+    return alt_canonical_company($k);
+}
+
+/**
+ * Entity resolution: fold aliases/subsidiaries/rebrands onto ONE canonical key so
+ * "Alphabet" and "Google", "Meta" and "Facebook", or a subsidiary and its parent
+ * dedupe as the same employer instead of two separate events (the review's
+ * "Google vs Alphabet double-count"). Keyed on the already-suffix-stripped key.
+ * Extend freely — every pair added prevents a class of double-count forever.
+ */
+function alt_canonical_company($stripped_key) {
+    static $map = null;
+    if ($map === null) {
+        $map = array(
+            'google' => 'alphabet', 'youtube' => 'alphabet', 'waymo' => 'alphabet',
+            'facebook' => 'meta', 'meta platforms' => 'meta', 'instagram' => 'meta', 'whatsapp' => 'meta',
+            'twitter' => 'x', 'x twitter' => 'x',
+            'amazon com' => 'amazon', 'amazon web services' => 'amazon', 'aws' => 'amazon', 'twitch' => 'amazon',
+            'aws amazon' => 'amazon', 'amazon fresh' => 'amazon',
+            'optum' => 'unitedhealth', 'unitedhealth' => 'unitedhealth', 'unitedhealthcare' => 'unitedhealth', 'united health' => 'unitedhealth',
+            'block square' => 'block', 'square' => 'block', 'cash app' => 'block',
+            'linkedin' => 'microsoft', 'github' => 'microsoft', 'xbox' => 'microsoft', 'activision blizzard' => 'microsoft', 'bungie' => 'microsoft',
+            'hewlett packard' => 'hp', 'hewlett-packard' => 'hp', 'hp inc' => 'hp',
+            'paramount skydance' => 'paramount', 'paramount global' => 'paramount', 'cbs' => 'paramount',
+            'warner bros discovery' => 'warner bros', 'wbd' => 'warner bros', 'cnn' => 'warner bros', 'hbo' => 'warner bros',
+            'nbcuniversal' => 'comcast', 'nbc universal' => 'comcast', 'xfinity' => 'comcast', 'versant' => 'comcast',
+            'saks fifth avenue' => 'saks', 'saks global' => 'saks', 'neiman marcus' => 'saks',
+            'blueoval sk' => 'ford', 'blueoval' => 'ford', 'bosk' => 'ford',
+            'ultium cells' => 'general motors', 'factory zero' => 'general motors', 'gm' => 'general motors',
+            'tata consultancy services' => 'tcs',
+            'bristol myers squibb' => 'bristol myers', 'bristol-myers squibb' => 'bristol myers', 'bms' => 'bristol myers',
+            'alphabet' => 'alphabet', 'meta' => 'meta',
+        );
+    }
+    return $map[$stripped_key] ?? $stripped_key;
 }
 
 /**
