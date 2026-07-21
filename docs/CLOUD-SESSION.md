@@ -18,6 +18,19 @@ Then read `CLAUDE.md` (mental model + iron rules) and `docs/RUNBOOK.md` (fix /
 add / tune / enhance any source). `docs/ARCHITECTURE.md` = system map;
 `docs/TECHLOG.md` = change history.
 
+### If the live site is unreachable (egress-blocked cloud environments)
+Some cloud/sandbox environments block outbound traffic to `asktherecruiter.com`
+(a `403` on the proxy CONNECT). `ops_status.py` detects this and exits **3**
+("CANNOT REACH … network egress policy") — this is **NOT an outage and NOT
+action-needed**. Do **not** route around the block. Instead verify the product
+via **GitHub Actions**, which is reachable: `gh run list --limit 15`. If today's
+`Deploy WordPress plugin`, `WARN notice import`, `ERM import`, `Supplemental
+news`, and the other crons are green, the pipeline is healthy — a `cancelled`
+run is a concurrency-supersede, not a failure. The "verify live" half of the
+ritual simply can't run from a blocked environment; report that plainly. Ask the
+owner to allowlist `asktherecruiter.com` if cloud sessions should verify the live
+surfaces directly.
+
 ## Standing rules (self-contained — these do NOT rely on local memory)
 - **Never write a DB row directly.** A source builds a raw dict (MUST set
   `raw_text` — the extractor reads only that and drops the row if empty) and

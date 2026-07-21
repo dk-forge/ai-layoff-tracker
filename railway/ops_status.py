@@ -52,7 +52,8 @@ def _low_volume_warn(src, detail):
 
 
 def main():
-    issues = []
+    issues = []    # real problems that need a human
+    blocked = []   # host unreachable — usually a network policy, NOT an outage
     print("=" * 64)
     print("AI LAYOFF TRACKER — OPS STATUS")
     print("=" * 64)
@@ -65,7 +66,7 @@ def main():
         print(f"\n[1] LIVE TRACKER  ver={ver}  (https://asktherecruiter.com/blog/ai-layoff-tracker/)")
     except Exception as exc:
         print(f"\n[1] LIVE TRACKER  UNREACHABLE: {exc}")
-        issues.append("live tracker unreachable")
+        blocked.append("live tracker")
 
     # 2. Health triage
     print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")
@@ -98,7 +99,7 @@ def main():
         print(f"    {ok} source(s) OK.")
     except Exception as exc:
         print(f"    HEALTH UNREACHABLE: {exc}")
-        issues.append("health endpoint unreachable")
+        blocked.append("health endpoint")
 
     # 3+4. Surfaces to keep current
     print("\n[3] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
@@ -107,6 +108,19 @@ def main():
     print("      -> refresh vs-competitor read; every table shows ours + theirs.")
 
     print("\n" + "-" * 64)
+    if blocked:
+        # Can't reach the host at all — almost always a network EGRESS POLICY in a
+        # cloud/sandbox environment (a 403 on CONNECT), NOT an outage. Do not treat
+        # as "action needed" and do NOT route around it (see the proxy README).
+        print(f"CANNOT REACH asktherecruiter.com ({', '.join(blocked)}).")
+        print("This is almost certainly a NETWORK EGRESS POLICY in this environment,")
+        print("not an outage — do NOT route around it. The 'verify live' ritual can't")
+        print("run here. VERIFY INSTEAD via GitHub Actions (reachable): if today's")
+        print("cron runs are green, the product is healthy:")
+        print("    gh run list --limit 15")
+        print("Ask the owner to allowlist asktherecruiter.com if cloud sessions should")
+        print("verify the live surfaces directly.")
+        return 3  # unverifiable-from-here — distinct from 2 (real action needed)
     if issues:
         print(f"ACTION NEEDED: {len(issues)} item(s) -> {', '.join(issues)}")
         print("See docs/RUNBOOK.md 'a data source broke (START HERE)'.")
