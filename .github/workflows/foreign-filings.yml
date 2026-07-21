@@ -1,0 +1,42 @@
+name: Foreign filings ingest (EDINET JP + OpenDART KR)
+
+# Downloads recent JP/KR official filings, and when one carries a STRONG layoff
+# vocabulary match, routes the excerpt through the same extractor + guards +
+# poster as every other source (so a misread filing posts nothing). Low yield
+# by nature; ships DORMANT per market. Keys already exist.
+#
+# Secrets: EDINET_API_KEY_JP and/or OPENDART_API_KEY_KR, OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  schedule:
+    - cron: '30 13 * * *'   # 9:30 AM ET (after JP/KR filing days close)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to 1 to log candidates without posting'
+        required: false
+        default: ''
+
+jobs:
+  foreign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run foreign filings ingest
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          EDINET_API_KEY_JP: ${{ secrets.EDINET_API_KEY_JP }}
+          OPENDART_API_KEY_KR: ${{ secrets.OPENDART_API_KEY_KR }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          FOREIGN_DRY: ${{ github.event.inputs.dry_run }}
+        run: python foreign_filings_ingest.py
