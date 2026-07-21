@@ -67,7 +67,10 @@ def fetch_candidates():
     candidates = []
     page = 1
     while page <= MAX_PAGES:
-        params = {"industry_missing": "1", "sort": "id", "dir": "asc",
+        # Newest layoffs first: the current-year rows drive the live sector
+        # numbers (and the benchmark), so they should be tagged before the
+        # decade-old backlog. Pagination/dedup are order-independent.
+        params = {"industry_missing": "1", "sort": "layoff_date", "dir": "desc",
                   "per_page": PAGE_SIZE, "page": page}
         response = requests.get(f"{SITE}/wp-json/layoffs/v1/query", params=params, headers=UA, timeout=60)
         # WP returns 404 for a page past the last row. Between our sequential
