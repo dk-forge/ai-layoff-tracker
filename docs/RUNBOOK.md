@@ -36,6 +36,13 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | announcement-lifecycle-review | daily + manual | Read-only summary of exact-count, source-supported announcement-to-later-record candidates; never auto-merges or changes sources |
 | quarterly-report | 7th day after quarter close + manual | Stores an immutable, server-generated State of Layoffs snapshot; accepts only quarter id/status, never client totals or editorial claims |
 | canonical-event-migrate | daily + manual | Resumable no-LLM conversion of legacy rows into canonical events with retained source reports |
+| company-watchlist | daily + manual | Sweeps big employers with no current-year entry; targeted news search → extractor → poster. Auto-grows via `WATCHLIST_INDEX_URLS`. Inputs: dry_run |
+| supplemental-news | daily 14:05 UTC + manual | NewsData.io + Marketaux + Finnhub (non-English/EU news). Dormant per key. Inputs: dry_run |
+| distress-watchlist | weekly Tue + manual | CourtListener bankruptcy + Companies House insolvency → distressed names → watchlist news search. Dormant per key. Inputs: dry_run |
+| foreign-filings | daily 13:30 UTC + manual | EDINET (JP) + OpenDART (KR) filing bodies → extractor (guards reject non-layoffs). Dormant per key. Low yield by design. Inputs: dry_run |
+| recall-precision | weekly + manual | Measures recall (gold set) + count precision + **AI-attribution precision** (quotable-AI-statement rate). Read-only. Inputs: RP_PRECISION_SAMPLE |
+| health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
+| tracker-diff | dormant (`COMPETITOR_FEED_URLS`) | Compares against a private competitor feed to surface gap events. Never stores competitor names |
 
 The advisory DeepSeek spot-check inside `data-quality` retries temporary
 network/model failures and writes an explicit warning to the Actions summary
@@ -43,11 +50,45 @@ without failing the whole report. A failed attempted automatic correction still
 fails loudly, because that is a data-changing operation.
 
 Secrets (repo → Settings → Actions): `WP_API_KEY` (from wp-admin → Tools → AI Layoff
-Tracker), `OPENROUTER_API_KEY`, `FTP_USER`/`FTP_PASSWORD`/`FTP_HOST`.
+Tracker), `OPENROUTER_API_KEY`, `FTP_USER`/`FTP_PASSWORD`/`FTP_HOST`, `NEWSAPI_KEY`,
+`GCP_BIGQUERY_CREDENTIALS_JSON`.
 Railway env: `OPENROUTER_API_KEY`, `WP_API_KEY`, `WP_SITE_URL=https://asktherecruiter.com/blog`.
 Optional Railway env: `PRESS_RELEASE_FEEDS` (JSON array of reviewed official company RSS/Atom feeds; see `.env.example`).
 
+**Dormant-source keys** (each collector runs only when its key is present; add in
+repo → Settings → Actions → Secrets, exact name):
+| Secret | Activates | Status / notes |
+|---|---|---|
+| `NEWSDATA_API_KEY` | supplemental-news (NewsData.io) | Free tier caps `q` at 100 chars; endpoint is `/api/1/latest` |
+| `MARKETAUX_API_KEY` | supplemental-news (Marketaux) | Search syntax uses `|` for OR, not the word "OR" |
+| `FINNHUB_API_KEY` | supplemental-news (Finnhub) | Ticker-based; reuses `seed_data/earnings_tickers.csv` |
+| `COURTLISTENER_API_KEY` | distress-watchlist (US bankruptcy) | Only "In re <Debtor>" petition captions kept |
+| `COMPANIES_HOUSE_API_KEY_UK` | distress-watchlist (UK insolvency) | HTTP Basic (key as username) |
+| `EDINET_API_KEY_JP` | foreign-filings (Japan) | Low yield; extractor guards protect quality |
+| `OPENDART_API_KEY_KR` | foreign-filings (Korea) | Low yield; `list_disclosures` needs (start,end) dates |
+| ~~`FMP_API_KEY`~~ | (dropped) | Transcripts are paid-only (HTTP 402) — earnings ingest removed |
+
+Every dormant source ships DORMANT and exits clean when its key is absent, so
+adding a key is the only step to activate it. First run each in `dry_run=1` and
+read the diagnostics (they log the raw API status) before trusting live output.
+
 ## "X is broken" playbooks
+
+**A data source broke — you got a "data source(s) need attention" email (START HERE)**
+The weekly `health-digest` emails info@asktherecruiter.com when a collector goes
+STALE (stopped reporting) or degraded (usually a scraper returning 0 because a
+third-party site changed its layout). The email names the source and includes a
+paste-ready instruction. To fix:
+1. **Identify the collector.** Source id → file:
+   - `warn_custom_states` / `warn_custom_legacy` → a state scraper in `railway/sources/warn_new_states.py` or `railway/sources/warn_custom.py` (the email/detail names the state code).
+   - `warn_us` → `railway/sources/warn.py` (the open `warn-scraper` lib) + `railway/warn_import.py`.
+   - `gdelt` → `railway/sources/gdelt.py`; `newsapi` → `railway/sources/newsapi.py`; `edgar` → `railway/sources/edgar.py`; `eurofound_erm` → `railway/erm_import.py`.
+   - `supplemental_news` → `railway/supplemental_news.py`; `company_watchlist` → `railway/company_watchlist.py`; distress/foreign → `railway/distress_watchlist.py` / `railway/foreign_filings_ingest.py`.
+2. **Confirm the breakage.** Run that workflow with `dry_run=1` (Actions tab → the workflow → Run workflow) and read the log. A `0 notices`/`HTTP 4xx`/`::warning::` line confirms drift.
+3. **Re-recon the site.** `curl` the state's official WARN URL (from the Sources page or `warn.py`/`warn_new_states.py`) and diff the HTML/PDF structure against what the parser expects (selectors, table columns, download links). State sites redesign a couple times a year — the fix is almost always updating the parse selectors or the fetch URL.
+4. **Fix + verify.** Update the parser, `python3 -m py_compile` it, re-run `dry_run=1`, confirm sane company/count/date rows, then let the scheduled run post live. Dedup makes re-runs safe (WARN is hash-idempotent).
+5. **If a state has genuinely gone dark** (site retired, data now confidential): move it to the gap-states list in `templates/page-sources.php` with an honest reason, and add its code to `_BENIGN_STATES` in `railway/health_digest.py` so it stops alerting.
+Transient degradeds (`gdelt_historical` HTTP 429) self-retry and are excluded from the email (SOFT_DEGRADED) — no action needed.
 
 **Page shows an old design / changes not visible**
 1. It's almost always cache. Hard-refresh (Cmd+Shift+R). 2. Confirm what the server
@@ -177,6 +218,70 @@ Per-request floor is ~1.2s WP bootstrap on shared hosting; origin ceiling ≈8 r
 Mitigations, in order: (1) Cloudflare cache rule serving the API from edge (check
 `cf-cache-status: HIT` on `/aggregate`); (2) page HTML is already super-cached (~0.4s);
 (3) if sustained, upgrade hosting — the plugin itself scales (indexed table, micro-cache).
+
+## How to ADD a new source (the pattern every collector follows)
+Never write to the DB directly. Every source produces "raw entries" and hands
+them to the shared pipeline, so it inherits dedup + entity-alias + country/
+industry normalization + verbatim-count guard + AI-attribution + quote gate for
+free. Steps:
+1. **Write a collector** in `railway/` (or `railway/sources/`). Fetch with a
+   browser-ish `User-Agent` and a `timeout=`. For each candidate build a raw
+   dict with AT MINIMUM `raw_text` (the extractor reads ONLY this and returns
+   None if empty — the #1 bug that made a whole source silently post nothing),
+   plus `source_type`, `source_name`, `verification_level`, `source_url`.
+   Mirror `sources/newsapi.py`'s dict shape exactly.
+2. **Route through the guards**: `from extractor import extract_layoff_data`
+   then `from wp_poster import post_to_wordpress`. `ex = extract_layoff_data(raw)`;
+   if `ex`, `post_to_wordpress(ex)`. That's it — never assemble a row yourself.
+   (WARN-style structured feeds that already have company/count/date skip the LLM
+   and bulk-upsert via `/bulk`; see `warn_import.py`.)
+3. **Ship it DORMANT** if it needs a key: read `os.environ.get("YOUR_KEY")` and
+   return early when absent. Add diagnostic logging of the raw API status so the
+   first `dry_run=1` reveals shape/auth problems (see `supplemental_news.py`).
+4. **Report health**: call `report_source_health(name, "ok"|"degraded", posted, detail)`
+   so it appears in the ledger and the weekly digest. Add a matching label in
+   `assets/health.js` `meta{}` and, if it's a real public source, a row on
+   `templates/page-sources.php`.
+5. **Add a workflow** in `.github/workflows/` (copy `supplemental-news.yml`):
+   pass the key + `OPENROUTER_API_KEY` + `WP_API_KEY` + `WP_SITE_URL`, set
+   `PYTHONUNBUFFERED: '1'`, a `timeout-minutes`, and a `dry_run` input. Add a
+   wall-clock deadline in the script if it does per-item news searches (they can
+   exceed the job timeout — see `distress_watchlist.py`).
+6. Document it: add a row to the workflow table + dormant-key table above, and a
+   TECHLOG entry.
+
+## How to FINE-TUNE (env knobs, no code change)
+- **Extraction quality**: the AI rubric + guards live in `railway/extractor.py`
+  (`_count_in_text` verbatim guard, the timeline/subset prompt). AI precision is
+  measured weekly by `recall-precision` (AI-attribution quote-rate); `reclassify-
+  legacy-ai` (bump `batch`) downgrades vague legacy AI tags.
+- **Coverage breadth**: GDELT segment rotation is `SEGMENT_TERMS` in
+  `sources/gdelt.py` (`GDELT_SEGMENT_QUERIES` per run); European sweep toggles
+  with `GDELT_EURO_SWEEP`. Watchlist size/window: `WATCHLIST_BATCH`,
+  `WATCHLIST_DAYS_BACK`; auto-grow with `WATCHLIST_INDEX_URLS`.
+- **Dormant-source limits**: `DISTRESS_MAX`/`DISTRESS_DEADLINE_SECONDS`,
+  `FOREIGN_MAX`, `RECLASSIFY_BATCH`, `RP_PRECISION_SAMPLE`.
+- **Alert sensitivity**: `railway/health_digest.py` — `MAX_AGE_DAYS` (per-source
+  staleness window), `SOFT_DEGRADED` (transient sources that don't email),
+  `_BENIGN_STATES` (no-register states that shouldn't alert).
+- **Country filter meaning**: `country_basis=any` (table/exports, employer-HQ
+  inclusive) vs strict job-location (headline stats). Set in `assets/layoffs.js`.
+
+## How to ENHANCE (bigger moves + their honest ceilings)
+- **US WARN**: 48 states + DC already scraped; AR/NH/WY have no public register.
+  This lever is maxed.
+- **Europe**: per-company data is Eurofound ERM (running) + multilingual news;
+  NL/FR/DE publish NO public per-company register (confidential) — not buildable.
+- **Benchmark refresh** (Challenger baselines in the private `gen.py`/`bm-live.html`):
+  MUST stay local — competitor names/numbers may never enter the public repo or
+  GitHub logs (standalone-brand rule; competitor URLs go in `COMPETITOR_FEED_URLS`
+  secret only). A cloud cron would leak them.
+- **New-source discovery**: event-gap discovery is automatable (`tracker-diff`,
+  needs `COMPETITOR_FEED_URLS`); discovering brand-new source *types* is a human
+  judgment call, not a cron.
+- **Autonomy ceiling**: ~99%. The irreducible human sliver = repairing a scraper
+  when a third-party site redesigns (now auto-detected + emailed), refreshing the
+  private benchmark, and novel-source judgment. Do not claim "100% automated".
 
 ## Research pointers
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)

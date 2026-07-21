@@ -23,6 +23,13 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
    extraction via OpenRouter → POST `/add`. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 11AM ET GitHub cron).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
+4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental
+   news, distress/bankruptcy, foreign filings) funnels into the SAME `extract_layoff_data`
+   → `post_to_wordpress` pipeline, so all guards apply once. `report_source_health(...)`
+   feeds a ledger; the weekly **`health_digest.py`** emails info@asktherecruiter.com (via the
+   keyed `/alert` endpoint) when a scraper breaks, with a **paste-ready fix instruction**.
+   So the human loop is: get email → paste one line here → fix the one scraper. Full
+   "add a source / tune it / fix a breakage" guide is in **docs/RUNBOOK.md**.
 
 ## Iron rules learned the hard way (details in TECHLOG)
 - Every network request to the WP host MUST send a browser-ish `User-Agent` (ModSecurity blocks `python-requests`; use `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`).
@@ -33,6 +40,10 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
 - Changing an entry's job count changes its dedup hash → corrections need `/bulk-purge` + full re-import, not plain upsert.
 - Data-changing jobs must FAIL LOUDLY (non-zero exit on any failed batch; `curl --fail-with-body` in workflows).
 - Bump the plugin `Version:` + `ALT_VERSION` on EVERY deploy — it cache-busts assets and triggers the flush.
+- **Never write a row directly.** A new source builds a raw dict and calls `extract_layoff_data` → `post_to_wordpress`. The raw dict MUST set `raw_text` (the extractor reads ONLY that and returns None if empty — the bug that made supplemental news silently post zero). Mirror `sources/newsapi.py`. Ship key-gated sources DORMANT with dry-run diagnostics. See RUNBOOK "add a new source".
+- **Competitor data stays private** (standalone brand): never put Challenger/layoffs.fyi/TrueUp names or numbers in the repo or GitHub logs. Benchmark refresh (`gen.py`/`bm-live.html`) runs LOCAL only; competitor URLs go in the `COMPETITOR_FEED_URLS` secret.
+- **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
+- **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 
 ## Verify a change is actually live
 ```bash

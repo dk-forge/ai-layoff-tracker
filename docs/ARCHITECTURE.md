@@ -22,9 +22,9 @@
   │      └── mirrored into the table on save (alt_db_sync_post)                          │
   │                                                                                      │
   │  REST layoffs/v1:                                                                    │
-  │   PUBLIC  /query /aggregate /facets /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
+  │   PUBLIC  /query /aggregate /facets /reconciliation /source-health(GET) /source-runs /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
-  │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup          │
+  │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup /source-health(POST) /alert(emails owner on breakage) │
   │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate       │
   │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
@@ -61,7 +61,14 @@ railway/
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   announcement-lifecycle-review.yml Daily read-only exact-match lifecycle lead summary
   sources/{edgar,gdelt,newsapi,warn,companies_house}.py
-  warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload)
+  warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload); drift tripwires for new + legacy custom scrapers
+  company_watchlist.py       Daily targeted sweep of big employers with no current-year entry (news → extractor → poster); auto-grows via WATCHLIST_INDEX_URLS
+  supplemental_news.py       DORMANT: NewsData.io + Marketaux + Finnhub non-English/EU news (per-key)
+  distress_watchlist.py      DORMANT: CourtListener bankruptcy + Companies House insolvency → watchlist news search (per-key)
+  foreign_filings_ingest.py  DORMANT: EDINET JP + OpenDART KR filing bodies → extractor (guards reject non-layoffs)
+  recall_precision.py        Weekly recall (gold set) + count precision + AI-attribution precision (quote-rate)
+  health_digest.py           Weekly autonomy tripwire: reads health ledger, emails owner via /alert on STALE/degraded source
+  sources/{edinet,opendart,cvm_br,layoff_language}.py   JP/KR/BR filing clients + JP/KR layoff vocabulary
   backfill.py gdelt_backfill.py news_catchup.py seed_ai.py   one-off runners
 .github/workflows/           see RUNBOOK for the full table
 docs/                        this documentation
