@@ -80,18 +80,32 @@ def _ingest(label, articles):
     return posted, ai
 
 
+# NewsData.io uses OR/AND keywords; Marketaux uses | for OR (the word "OR"
+# gets treated as a literal term). Keep two query spellings so each provider
+# actually parses the terms instead of silently matching nothing.
+NEWSDATA_Q = QUERY  # OR-keyword syntax
+MARKETAUX_Q = QUERY.replace(" OR ", " | ")
+
+
 def pull_newsdata():
     key = os.environ.get("NEWSDATA_API_KEY")
     if not key:
         return []
     out = []
     try:
-        r = requests.get("https://newsdata.io/api/1/news",
-                         params={"apikey": key, "q": QUERY, "category": "business",
+        # /api/1/latest is the current free-tier endpoint (/api/1/news is legacy).
+        r = requests.get("https://newsdata.io/api/1/latest",
+                         params={"apikey": key, "q": NEWSDATA_Q,
                                  "language": "en,de,fr,es,it"}, headers=UA, timeout=30)
-        for a in (r.json().get("results") or []) if r.status_code == 200 else []:
-            out.append(_raw(a.get("source_id"), a.get("title"), a.get("link"),
-                            a.get("description") or a.get("content")))
+        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        if r.status_code != 200 or body.get("status") == "error":
+            msg = body.get("results", {}).get("message") if isinstance(body.get("results"), dict) else body
+            print(f"newsdata.io HTTP {r.status_code}: {str(msg)[:200]}")
+        else:
+            print(f"newsdata.io totalResults={body.get('totalResults')}")
+            for a in (body.get("results") or []):
+                out.append(_raw(a.get("source_id"), a.get("title"), a.get("link"),
+                                a.get("description") or a.get("content")))
     except Exception as exc:
         print(f"newsdata fetch failed: {exc}")
     print(f"newsdata.io: {len(out)} article(s)")
@@ -105,11 +119,16 @@ def pull_marketaux():
     out = []
     try:
         r = requests.get("https://api.marketaux.com/v1/news/all",
-                         params={"api_token": key, "search": QUERY, "language": "en,de,fr,es,it",
-                                 "filter_entities": "false", "limit": 50}, headers=UA, timeout=30)
-        for a in (r.json().get("data") or []) if r.status_code == 200 else []:
-            out.append(_raw(a.get("source"), a.get("title"), a.get("url"),
-                            a.get("description") or a.get("snippet")))
+                         params={"api_token": key, "search": MARKETAUX_Q, "language": "en,de,fr,es,it",
+                                 "filter_entities": "false", "limit": 3}, headers=UA, timeout=30)
+        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        if r.status_code != 200 or body.get("error"):
+            print(f"marketaux HTTP {r.status_code}: {str(body.get('error') or body)[:200]}")
+        else:
+            print(f"marketaux found={body.get('meta', {}).get('found')}")
+            for a in (body.get("data") or []):
+                out.append(_raw(a.get("source"), a.get("title"), a.get("url"),
+                                a.get("description") or a.get("snippet")))
     except Exception as exc:
         print(f"marketaux fetch failed: {exc}")
     print(f"marketaux: {len(out)} article(s)")

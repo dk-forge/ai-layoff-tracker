@@ -54,11 +54,20 @@ def load_tickers():
     return out
 
 
+_DIAG_DONE = False
+
+
 def latest_transcript(ticker):
     """Most recent transcript for a ticker (FMP shape). Returns text or ''."""
+    global _DIAG_DONE
     try:
         r = requests.get(f"{API_BASE}/earning_call_transcript/{ticker}",
                          params={"apikey": API_KEY}, headers=UA, timeout=40)
+        # Log the first response verbatim so a paywalled/empty free tier is
+        # visible in the run log instead of looking like "no layoffs found".
+        if not _DIAG_DONE:
+            _DIAG_DONE = True
+            print(f"FMP diag [{ticker}]: HTTP {r.status_code}, body starts: {r.text[:220]}")
         if r.status_code != 200:
             return ""
         data = r.json()
