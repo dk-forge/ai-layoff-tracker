@@ -103,6 +103,65 @@ function alt_register_routes() {
     register_rest_route('layoffs/v1', '/event/(?P<id>\d+)/sources', array(
         'methods' => 'GET', 'callback' => 'alt_api_event_sources', 'permission_callback' => '__return_true',
     ));
+
+    // Announced-vs-executed reconciliation — the moat product. Per employer:
+    // what was ANNOUNCED (news/SEC) vs what was legally EXECUTED (WARN filings),
+    // with follow-through % and announcement->execution lag. No competitor can
+    // build this — it needs both tiers source-linked.
+    register_rest_route('layoffs/v1', '/reconciliation', array(
+        'methods' => 'GET', 'callback' => 'alt_api_reconciliation', 'permission_callback' => '__return_true',
+    ));
+}
+
+/**
+ * Announced (news/SEC) vs executed (WARN) per employer, for a year. Entity keys
+ * are alias-normalized, so a company's global announcement and its US WARN
+ * filings roll up together. Honest caveat returned inline: WARN is US-only and
+ * threshold-limited, so follow-through is a FLOOR, not a completion rate — the
+ * value is the relative signal + the lag, not an absolute percentage.
+ */
+function alt_api_reconciliation($r) {
+    global $wpdb;
+    $t = alt_db_table();
+    $year = (int) ($r->get_param('year') ?: gmdate('Y'));
+    if ($year < 2015 || $year > (int) gmdate('Y') + 2) $year = (int) gmdate('Y');
+    $limit = max(1, min(200, (int) ($r->get_param('limit') ?: 60)));
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT company_key,
+                SUBSTRING_INDEX(GROUP_CONCAT(company ORDER BY job_count DESC SEPARATOR '||'), '||', 1) AS company,
+                COALESCE(SUM(CASE WHEN source_type IN ('news','sec') THEN job_count END),0) AS announced_jobs,
+                COALESCE(SUM(CASE WHEN source_type='warn' THEN job_count END),0) AS executed_jobs,
+                MIN(CASE WHEN source_type IN ('news','sec') THEN COALESCE(announcement_date, layoff_date) END) AS first_announced,
+                MIN(CASE WHEN source_type='warn' THEN layoff_date END) AS first_executed
+         FROM $t
+         WHERE YEAR(layoff_date) = %d AND company_key <> ''
+         GROUP BY company_key
+         HAVING announced_jobs > 0 AND executed_jobs > 0
+         ORDER BY announced_jobs DESC
+         LIMIT %d", $year, $limit), ARRAY_A);
+    $out = array();
+    foreach ((array) $rows as $row) {
+        $ann = (int) $row['announced_jobs'];
+        $exe = (int) $row['executed_jobs'];
+        $lag = null;
+        if (!empty($row['first_announced']) && !empty($row['first_executed'])) {
+            $lag = (int) round((strtotime($row['first_executed']) - strtotime($row['first_announced'])) / DAY_IN_SECONDS);
+        }
+        $out[] = array(
+            'company'            => $row['company'],
+            'announced_jobs'     => $ann,
+            'executed_warn_jobs' => $exe,
+            'warn_coverage_pct'  => $ann ? round(100 * min($exe, $ann) / $ann) : null,
+            'announced_date'     => $row['first_announced'] ?: null,
+            'first_warn_date'    => $row['first_executed'] ?: null,
+            'lag_days'           => $lag,
+        );
+    }
+    return rest_ensure_response(array(
+        'year'    => $year,
+        'note'    => 'WARN is US-only and only captures large single-site filings, so warn_coverage_pct is a FLOOR, not a completion rate. Use it as a relative signal + lag, not an absolute follow-through.',
+        'rows'    => $out,
+    ));
 }
 add_action('rest_api_init', 'alt_register_routes');
 
