@@ -154,9 +154,104 @@ def post_fills(items):
     return filled, skipped, not_found
 
 
+# --- deterministic pre-classifier -----------------------------------------
+# A company's sector is usually a fact readable from its name, so most of the
+# blank-industry backlog can be filled instantly and for free, reserving the
+# 2-pass LLM for genuinely ambiguous names. Every label MUST be in
+# INDUSTRY_VOCABULARY; a returned label is re-checked against it before use, so
+# vocabulary drift can only under-fill (safe), never mis-post.
+_DET_KNOWN = {
+    "oracle": "Technology", "dell": "Technology", "meta": "Technology",
+    "microsoft": "Technology", "google": "Technology", "alphabet": "Technology",
+    "intel": "Technology", "cisco": "Technology", "ibm": "Technology",
+    "salesforce": "Technology", "workday": "Technology", "netapp": "Technology",
+    "autodesk": "Technology", "intuit": "Technology", "snap": "Technology",
+    "pinterest": "Technology", "linkedin": "Technology", "hewlett": "Technology",
+    "hp inc": "Technology", "nvidia": "Technology", "qualcomm": "Technology",
+    "paypal": "Finance & Insurance", "block": "Finance & Insurance",
+    "robinhood": "Finance & Insurance", "coinbase": "Finance & Insurance",
+    "wells fargo": "Finance & Insurance", "citigroup": "Finance & Insurance",
+    "jpmorgan": "Finance & Insurance", "prudential": "Finance & Insurance",
+    "tyson": "Food & Hospitality", "starbucks": "Food & Hospitality",
+    "aramark": "Food & Hospitality", "canteen": "Food & Hospitality",
+    "home depot": "Retail & E-commerce", "macy": "Retail & E-commerce",
+    "kroger": "Retail & E-commerce", "walgreens": "Retail & E-commerce",
+    "gamestop": "Retail & E-commerce", "albertsons": "Retail & E-commerce",
+    "disney": "Media & Entertainment", "verizon": "Telecom", "t-mobile": "Telecom",
+    "goodyear": "Manufacturing", "cleveland-cliffs": "Manufacturing",
+    "harley": "Automotive", "lucid": "Automotive", "rivian": "Automotive",
+    "electrolux": "Consumer Goods", "expeditors": "Logistics & Transport",
+    "transdev": "Logistics & Transport", "american express": "Finance & Insurance",
+    "general mills": "Food & Hospitality",
+    "abbvie": "Healthcare & Pharma", "pfizer": "Healthcare & Pharma",
+    "merck": "Healthcare & Pharma", "novartis": "Healthcare & Pharma",
+    "takeda": "Healthcare & Pharma", "medtronic": "Healthcare & Pharma",
+    "gilead": "Healthcare & Pharma", "baxter": "Healthcare & Pharma",
+    "genentech": "Healthcare & Pharma", "bristol myers": "Healthcare & Pharma",
+    "cigna": "Healthcare & Pharma",
+}
+_DET_KW = [
+    (r"hospital|health system|healthcare|\bpharma|biotech|therapeutic|dental|medic(al|ine)|surgical|nursing|\bclinic", "Healthcare & Pharma"),
+    (r"\bbank\b|bancorp|financial|insurance|\bcapital\b|mortgage|securities|\binvest(ment|ing)|savings|credit union", "Finance & Insurance"),
+    (r"\bfoods?\b|restaurant|\bgrill\b|dairy|brewing|beverage|grocery|bakery|\bmeat\b|vending|catering|\bcafe|coffee|\bpizza\b|\bdeli\b|snack", "Food & Hospitality"),
+    (r"\bmotors\b|automotive|auto parts", "Automotive"),
+    (r"\bairlines?\b|\bhotels?\b|\bresort\b|\bcasino\b", "Airlines & Travel"),
+    (r"\bschool district\b|universit|\bcollege\b|academy|\beducation\b|\binstitute\b|\bisd\b", "Education"),
+    (r"aerospace|aviation|\bdefense\b|aircraft", "Aerospace & Defense"),
+    (r"\bmedia\b|entertainment|\bstudios?\b|broadcast|publishing|\brecords\b|\bradio\b", "Media & Entertainment"),
+    (r"telecom|wireless|communications", "Telecom"),
+    (r"logistics|freight|trucking|distribution|\bwarehouse|shipping|\bcargo\b|fulfillment|\bexpress\b", "Logistics & Transport"),
+    (r"manufactur|\bindustries\b|\bsteel\b|\bmetal(s|works)?\b|plastics|\bfactory\b|\bmills?\b|fabricat|foundry|machining|bottling", "Manufacturing"),
+    (r"construction|\bbuilders\b|realty|real estate|properties", "Real Estate & Construction"),
+    (r"\bfarms?\b|agricultur|\borchard|\bgrowers?\b", "Agriculture"),
+    (r"\bcounty\b|city of |department of |municipal|nonprofit|non-profit|\bymca\b", "Government & Nonprofit"),
+    (r"\benergy\b|petroleum|\bsolar\b|\boil (and|&) gas\b|electric power|power (company|generation|plant|utility)", "Energy"),
+    (r"software|technolog|semiconductor|robotics|cybersecurity", "Technology"),
+    (r"\bstores?\b|\bretail\b|\bmart\b|apparel|\boutfitters\b|\bboutique\b", "Retail & E-commerce"),
+]
+
+
+def classify_deterministic(name):
+    """Return a valid INDUSTRY_VOCABULARY label for `name`, or None if unsure.
+    Conservative on purpose: ambiguous names fall through to the LLM."""
+    n = (name or "").lower()
+    if not n.strip():
+        return None
+    for key, lab in _DET_KNOWN.items():
+        if key in n:
+            return lab if lab in INDUSTRY_VOCABULARY else None
+    for pat, lab in _DET_KW:
+        if re.search(pat, n):
+            return lab if lab in INDUSTRY_VOCABULARY else None
+    return None
+
+
 def run():
     candidates = fetch_candidates()
-    queue = rotating_slice(candidates, BATCH, date.today().toordinal())
+
+    # Deterministic pre-pass: instant + free, fills the high-confidence bulk of
+    # the backlog (blank-fill only, vocabulary re-validated) so the LLM only
+    # spends its budget on genuinely ambiguous names. Bounded per run so a
+    # single invocation stays inside the deadline; the rest drains next run.
+    det_cap = max(0, int(os.environ.get("INDUSTRY_DET_MAX", "6000")))
+    det_items, remaining = [], []
+    for row in candidates:
+        lab = classify_deterministic(row.get("company_name") or "") if len(det_items) < det_cap else None
+        if lab:
+            det_items.append({"id": int(row["id"]), "industry": lab})
+        else:
+            remaining.append(row)
+    det_filled = []
+    if det_items:
+        if DRY_RUN:
+            print(f"DRY RUN deterministic: would fill {len(det_items)} row(s); e.g.:")
+            for it in det_items[:15]:
+                print(f"  det id={it['id']}: {it['industry']}")
+        else:
+            det_filled, det_skip, det_nf = post_fills(det_items)
+            print(f"deterministic pre-pass: {len(det_filled)} filled / {len(det_items)} matched "
+                  f"(skipped_not_blank={len(det_skip)}, not_found={len(det_nf)})")
+    queue = rotating_slice(remaining, BATCH, date.today().toordinal())
     items, confirmed, unconfirmed, failures, checked = [], 0, 0, 0, 0
     started_at = time.monotonic()
     for row in queue:
@@ -200,17 +295,21 @@ def run():
             print(f"WARNING: ids not found: {not_found}")
 
     # A fully failed attempted pass must be visible in Actions rather than
-    # reading as a quiet no-op day (reason_backfill / reclassify rule).
-    if checked and failures == checked and not items:
+    # reading as a quiet no-op day (reason_backfill / reclassify rule). The
+    # deterministic pre-pass filling rows keeps a bad-LLM day from reading as
+    # total failure.
+    if checked and failures == checked and not items and not det_filled:
         raise RuntimeError(f"All {checked} attempted industry classifications failed")
 
-    pending = max(0, len(candidates) - len(filled))
-    detail = (f"{len(filled)} industries filled (2-pass confirmed, fixed vocabulary, "
-              f"blank fields only); {unconfirmed} left blank as unconfirmed/unknown; "
-              f"{failures} model failures; ~{pending} blank-industry rows pending")
-    if not report_source_health("industry_backfill", "ok", len(filled), detail):
+    total_filled = len(det_filled) + len(filled)
+    pending = max(0, len(candidates) - total_filled)
+    detail = (f"{total_filled} industries filled ({len(det_filled)} deterministic + "
+              f"{len(filled)} 2-pass LLM, fixed vocabulary, blank fields only); "
+              f"{unconfirmed} left blank as unconfirmed/unknown; {failures} model "
+              f"failures; ~{pending} blank-industry rows pending")
+    if not report_source_health("industry_backfill", "ok", total_filled, detail):
         raise RuntimeError("Could not publish industry_backfill completion health status")
-    return {"filled": len(filled), "checked": checked, "failures": failures}
+    return {"filled": total_filled, "checked": checked, "failures": failures}
 
 
 def main():
