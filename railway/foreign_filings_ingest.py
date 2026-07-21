@@ -38,7 +38,7 @@ def _ingest(cfg, key):
     posted = ai = scanned = candidates = 0
     try:
         target = cfg["latest_date"]()
-        listing = cfg["list_fn"](target, api_key=key)
+        listing = cfg["list_fn"](*cfg["list_args"](target), api_key=key)
         docs = list(getattr(listing, cfg["list_attr"], ()) or ())
     except Exception as exc:
         print(f"{label}: list failed: {exc}", flush=True)
@@ -96,11 +96,11 @@ def _ingest(cfg, key):
 MARKETS = [
     {"env": "EDINET_API_KEY_JP", "label": "edinet_jp", "source_name": "EDINET filing (Japan)",
      "latest_date": edinet.latest_complete_list_date, "list_fn": edinet.list_documents_for_date,
-     "list_attr": "documents", "evidence_fn": edinet.fetch_document_evidence,
+     "list_args": lambda t: (t,), "list_attr": "documents", "evidence_fn": edinet.fetch_document_evidence,
      "doc_key": "document_id", "name_keys": ["filer_name"]},
     {"env": "OPENDART_API_KEY_KR", "label": "opendart_kr", "source_name": "OpenDART filing (Korea)",
      "latest_date": opendart.latest_complete_list_date, "list_fn": opendart.list_disclosures,
-     "list_attr": "disclosures", "evidence_fn": opendart.fetch_document_evidence,
+     "list_args": lambda t: (t, t), "list_attr": "disclosures", "evidence_fn": opendart.fetch_document_evidence,
      "doc_key": "filing_number", "name_keys": ["corporation_name", "filer_name"]},
 ]
 
