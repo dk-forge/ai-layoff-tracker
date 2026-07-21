@@ -1,10 +1,11 @@
-name: Supplemental news ingest (NewsData.io + Marketaux)
+name: Supplemental news ingest (NewsData.io + Marketaux + Finnhub)
 
 # Widens the net into non-English / global outlets NewsAPI misses (targets the
-# measured European gap). Runs each provider only if its key is set; both feed
+# measured European gap). Runs each provider only if its key is set; all feed
 # the same DeepSeek extractor + dedup + poster. Ships DORMANT per provider.
 #
-# Secrets: NEWSDATA_API_KEY and/or MARKETAUX_API_KEY, OPENROUTER_API_KEY, WP_API_KEY
+# Secrets: NEWSDATA_API_KEY and/or MARKETAUX_API_KEY and/or FINNHUB_API_KEY,
+#          OPENROUTER_API_KEY, WP_API_KEY
 
 on:
   schedule:
@@ -33,6 +34,7 @@ jobs:
         env:
           NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
           MARKETAUX_API_KEY: ${{ secrets.MARKETAUX_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog

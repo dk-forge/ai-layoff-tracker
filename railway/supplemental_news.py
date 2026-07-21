@@ -1,18 +1,23 @@
-"""Supplemental news ingest — NewsData.io + Marketaux.
+"""Supplemental news ingest — NewsData.io + Marketaux + Finnhub.
 
 Widens the net beyond NewsAPI (US-heavy, English, ~30-day) into NON-ENGLISH and
 broader global coverage — directly targeting the European miss the recall harness
-measured. Each provider runs only if its key is present; both feed the SAME
-DeepSeek extractor + dedup + poster, so nothing bypasses our verify rules.
+measured. NewsData.io + Marketaux are keyword/search based; Finnhub is ticker
+based (per-company news, sieved on a layoff keyword regex). Each provider runs
+only if its key is present; all feed the SAME DeepSeek extractor + dedup +
+poster, so nothing bypasses our verify rules.
 
 Ships DORMANT per provider: no key -> that provider is skipped. Add the secret
-(NEWSDATA_API_KEY / MARKETAUX_API_KEY) to light it up.
+(NEWSDATA_API_KEY / MARKETAUX_API_KEY / FINNHUB_API_KEY) to light it up.
 
-Env: NEWSDATA_API_KEY, MARKETAUX_API_KEY, SUPP_NEWS_DRY=1.
+Env: NEWSDATA_API_KEY, MARKETAUX_API_KEY, FINNHUB_API_KEY, SUPP_NEWS_DRY=1.
 """
+import csv
 import os
+import re
 import sys
 import time
+from datetime import date, timedelta
 
 import requests
 
@@ -26,6 +31,28 @@ DRY = os.environ.get("SUPP_NEWS_DRY", "").lower() in {"1", "true", "yes"}
 # Native-language + English layoff terms so non-English outlets surface (the EU gap).
 QUERY = ('layoffs OR "job cuts" OR redundancies OR Stellenabbau OR "plan social" '
          'OR licenciements OR despidos OR licenziamenti OR Entlassungen')
+
+# Finnhub is TICKER-based (per-company news), so it sieves on a keyword regex
+# rather than a search string. Reuses the earnings ticker list; rotates a slice
+# each run so every company is revisited ~weekly while a fresh cut surfaces daily.
+_SIEVE = re.compile(
+    r"\b(layoff|laid off|job cuts?|headcount|redundanc|restructur|workforce reduc|"
+    r"cut(ting)? \d|slash(ing)? jobs|role eliminat|right ?siz|severance)\w*", re.I)
+TICKERS_PATH = os.path.join(os.path.dirname(__file__), "seed_data", "earnings_tickers.csv")
+FINNHUB_BATCH = max(1, int(os.environ.get("FINNHUB_BATCH", "60")))
+
+
+def _load_tickers():
+    out = []
+    try:
+        with open(TICKERS_PATH, newline="") as f:
+            for row in csv.DictReader(f):
+                t = (row.get("ticker") or "").strip().upper()
+                if t and not t.startswith("#"):
+                    out.append(t)
+    except FileNotFoundError:
+        pass
+    return out
 
 
 def _raw(source_name, title, url, content):
@@ -89,14 +116,48 @@ def pull_marketaux():
     return out
 
 
+def pull_finnhub():
+    key = os.environ.get("FINNHUB_API_KEY")
+    if not key:
+        return []
+    tickers = _load_tickers()
+    if not tickers:
+        return []
+    pages = max(1, (len(tickers) + FINNHUB_BATCH - 1) // FINNHUB_BATCH)
+    start = (date.today().toordinal() % pages) * FINNHUB_BATCH
+    todays = tickers[start:start + FINNHUB_BATCH]
+    frm = (date.today() - timedelta(days=28)).isoformat()
+    to = date.today().isoformat()
+    out = []
+    for tk in todays:
+        try:
+            r = requests.get("https://finnhub.io/api/v1/company-news",
+                             params={"symbol": tk, "from": frm, "to": to, "token": key},
+                             headers=UA, timeout=30)
+            items = r.json() if r.status_code == 200 else []
+        except Exception as exc:
+            print(f"finnhub {tk} failed: {exc}")
+            continue
+        for a in items if isinstance(items, list) else []:
+            blob = f"{a.get('headline','')} {a.get('summary','')}"
+            if _SIEVE.search(blob):
+                out.append(_raw(a.get("source"), a.get("headline"), a.get("url"),
+                                a.get("summary")))
+        time.sleep(0.3)
+    print(f"finnhub: {len(out)} layoff-relevant article(s) across {len(todays)} tickers")
+    return out
+
+
 def run():
     providers = []
     if os.environ.get("NEWSDATA_API_KEY"):
         providers.append(("newsdata", pull_newsdata))
     if os.environ.get("MARKETAUX_API_KEY"):
         providers.append(("marketaux", pull_marketaux))
+    if os.environ.get("FINNHUB_API_KEY"):
+        providers.append(("finnhub", pull_finnhub))
     if not providers:
-        print("Neither NEWSDATA_API_KEY nor MARKETAUX_API_KEY set — supplemental news dormant.")
+        print("No NEWSDATA_API_KEY / MARKETAUX_API_KEY / FINNHUB_API_KEY set — supplemental news dormant.")
         return
     total_posted = total_ai = 0
     for label, fn in providers:
