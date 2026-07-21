@@ -1,0 +1,43 @@
+name: Tracker-diff discovery tripwire
+
+# Diffs competitor tracker feeds against our data; anything they list that we
+# lack becomes a company-targeted primary-source query -> extractor -> add. We
+# never cite them — their list is only a discovery signal pointing at a primary
+# source. Ships DORMANT: with COMPETITOR_FEED_URLS unset it exits clean, so the
+# repo holds zero competitor URLs (per the standalone-brand rule). Add the
+# secret to activate.
+#
+# Secrets: COMPETITOR_FEED_URLS (activates it), NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  schedule:
+    - cron: '50 15 * * *'   # 11:50 AM ET, after the watchlist sweep
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to 1 to log candidates without posting'
+        required: false
+        default: ''
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run tracker-diff
+        working-directory: railway
+        env:
+          COMPETITOR_FEED_URLS: ${{ secrets.COMPETITOR_FEED_URLS }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          TRACKER_DIFF_DRY: ${{ github.event.inputs.dry_run }}
+        run: python tracker_diff.py
