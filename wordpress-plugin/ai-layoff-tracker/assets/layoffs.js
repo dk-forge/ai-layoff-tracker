@@ -59,7 +59,10 @@
         if (row.source_type !== 'warn') return true;
         var url = String(row.source_url || '');
         // Per-notice URLs carry a record id / document path; landing pages don't.
-        return /\/\d+\/?$|\.pdf($|\?)|record|lookups\/\d/i.test(url);
+        // Note .pdf may sit INSIDE a query string (WA fortress serves the notice
+        // as DownloadFile.aspx?file=<guid>.pdf&download=1), so match .pdf before
+        // & as well as ? / end, plus the file-download shapes states actually use.
+        return /\/\d+\/?$|\.pdf($|[?&])|downloadfile|[?&]file=|record|lookups\/\d/i.test(url);
     }
     // The row's official state WARN list page (derived fresh from its state).
     function warnListUrl(row) {
@@ -1796,7 +1799,14 @@
 
     function formatDetail(row) {
         var parts = [];
-        if (row.ai_causation) {
+        if (row.source_type === 'warn' && !row.ai_explicit) {
+            // A WARN notice is a legal headcount filing: it records the layoff's
+            // size, date and location, never its cause. Saying "AI classification
+            // pending" implies a verdict is coming; there is nothing in the filing
+            // to classify. Where the SAME cut was reported with a company-stated
+            // reason, that reason lives on the separate news / SEC entry.
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">AI attribution status</span><p>Not stated in this filing. A WARN notice records a layoff’s size, date and location — not its cause. When the same cut is reported with a company-stated reason, that appears as a separate news or SEC entry for this employer.</p></div>');
+        } else if (row.ai_causation) {
             var aiDetail = AI_CAUSATION_LABELS[row.ai_causation] || row.ai_causation;
             if (row.confidence != null && Number(row.confidence) > 0) aiDetail += ' · evidence confidence ' + fmt(row.confidence) + '/100';
             if (row.review_status) aiDetail += ' · ' + String(row.review_status).replace(/_/g, ' ');
