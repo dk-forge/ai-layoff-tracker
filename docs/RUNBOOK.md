@@ -78,7 +78,16 @@ read the diagnostics (they log the raw API status) before trusting live output.
 The weekly `health-digest` emails info@asktherecruiter.com when a collector goes
 STALE (stopped reporting) or degraded (usually a scraper returning 0 because a
 third-party site changed its layout). The email names the source and includes a
-paste-ready instruction. To fix:
+paste-ready instruction.
+
+**First, rule out an environment egress block (30 seconds).** If you landed here
+because `ops_status.py` said the live tracker / health endpoint is "UNREACHABLE",
+check whether it printed `ENVIRONMENT BLOCK` / exited 3 — that means THIS cloud
+environment's network policy denies `asktherecruiter.com` (a proxy 403/tunnel
+CONNECT that never reaches the site). That is NOT a broken source and this
+playbook does not apply; you can still deploy (see docs/CLOUD-SESSION.md). A real
+source breakage is flagged as `STALE`/`DEGRADED` per-source (exit 2), or arrives
+by the health-digest email. Only then continue below. To fix:
 1. **Identify the collector.** Source id → file:
    - `warn_custom_states` / `warn_custom_legacy` → a state scraper in `railway/sources/warn_new_states.py` or `railway/sources/warn_custom.py` (the email/detail names the state code).
    - `warn_us` → `railway/sources/warn.py` (the open `warn-scraper` lib) + `railway/warn_import.py`.

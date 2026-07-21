@@ -30,6 +30,7 @@ ALLOWED_REASON_TAGS = {
     "cost_reduction",
     "macroeconomic",
     "possible_ai",
+    "closure",
 }
 
 AI_CAUSATION = {

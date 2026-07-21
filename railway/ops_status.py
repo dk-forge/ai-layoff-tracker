@@ -3,13 +3,21 @@
 
 Read-only. No dependencies (stdlib only), no keys needed. Prints the live
 version, the source-health triage (what's degraded/stale and what to DO about
-it), and the four surfaces to keep current. Exits non-zero if something needs a
-human, so it doubles as a CI check.
+it), and the four surfaces to keep current.
+
+Exit codes:
+    0  ALL CLEAR — healthy, nothing needs a human.
+    2  A source needs a human -> RUNBOOK 'a data source broke'. (Doubles as a
+       CI check; CI can reach the site, so it never hits code 3.)
+    3  The site is unreachable FROM THIS ENVIRONMENT only (egress/network-policy
+       block, e.g. a cloud session denied asktherecruiter.com) — NOT a source
+       outage. Deploys still work via git push; see docs/CLOUD-SESSION.md.
 
     python3 railway/ops_status.py
 """
 import json
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
@@ -36,6 +44,25 @@ def _get(url, browser=False):
     return urllib.request.urlopen(req, timeout=40)
 
 
+def _is_egress_block(exc):
+    """True when the failure is THIS ENVIRONMENT's egress/network policy denying
+    the host (a proxy 403/407 CONNECT, tunnel failure, DNS/route block) — the
+    request never reached the site, so it is NOT a source outage. Some cloud
+    sessions can't reach asktherecruiter.com but can still deploy (git push ->
+    Actions FTPS is server-side). See docs/CLOUD-SESSION.md.
+
+    An HTTPError means the site actually answered (a real HTTP status), so it is
+    a real problem, never an egress block — hence the isinstance short-circuit."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return False
+    s = str(exc).lower()
+    return any(m in s for m in (
+        "tunnel connection failed", "connect tunnel", "connect", "forbidden",
+        "proxy", "connection refused", "network is unreachable", "no route to host",
+        "name or service not known", "temporary failure in name resolution",
+        "nodename nor servname", "407", "403"))
+
+
 def _benign_states_only(detail):
     import re
     codes = re.findall(r"\b([A-Z]{2})\b", str(detail))
@@ -52,8 +79,8 @@ def _low_volume_warn(src, detail):
 
 
 def main():
-    issues = []    # real problems that need a human
-    blocked = []   # host unreachable — usually a network policy, NOT an outage
+    issues = []
+    egress_blocked = []
     print("=" * 64)
     print("AI LAYOFF TRACKER — OPS STATUS")
     print("=" * 64)
@@ -66,7 +93,7 @@ def main():
         print(f"\n[1] LIVE TRACKER  ver={ver}  (https://asktherecruiter.com/blog/ai-layoff-tracker/)")
     except Exception as exc:
         print(f"\n[1] LIVE TRACKER  UNREACHABLE: {exc}")
-        blocked.append("live tracker")
+        (egress_blocked if _is_egress_block(exc) else issues).append("live tracker unreachable")
 
     # 2. Health triage
     print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")
@@ -99,7 +126,7 @@ def main():
         print(f"    {ok} source(s) OK.")
     except Exception as exc:
         print(f"    HEALTH UNREACHABLE: {exc}")
-        blocked.append("health endpoint")
+        (egress_blocked if _is_egress_block(exc) else issues).append("health endpoint unreachable")
 
     # 3+4. Surfaces to keep current
     print("\n[3] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
@@ -108,23 +135,24 @@ def main():
     print("      -> refresh vs-competitor read; every table shows ours + theirs.")
 
     print("\n" + "-" * 64)
-    if blocked:
-        # Can't reach the host at all — almost always a network EGRESS POLICY in a
-        # cloud/sandbox environment (a 403 on CONNECT), NOT an outage. Do not treat
-        # as "action needed" and do NOT route around it (see the proxy README).
-        print(f"CANNOT REACH asktherecruiter.com ({', '.join(blocked)}).")
-        print("This is almost certainly a NETWORK EGRESS POLICY in this environment,")
-        print("not an outage — do NOT route around it. The 'verify live' ritual can't")
-        print("run here. VERIFY INSTEAD via GitHub Actions (reachable): if today's")
-        print("cron runs are green, the product is healthy:")
-        print("    gh run list --limit 15")
-        print("Ask the owner to allowlist asktherecruiter.com if cloud sessions should")
-        print("verify the live surfaces directly.")
-        return 3  # unverifiable-from-here — distinct from 2 (real action needed)
     if issues:
+        if egress_blocked:
+            print(f"(also unreachable from this environment, likely egress-blocked: "
+                  f"{', '.join(egress_blocked)} — see docs/CLOUD-SESSION.md)")
         print(f"ACTION NEEDED: {len(issues)} item(s) -> {', '.join(issues)}")
         print("See docs/RUNBOOK.md 'a data source broke (START HERE)'.")
         return 2
+    if egress_blocked:
+        print(f"ENVIRONMENT BLOCK: {len(egress_blocked)} surface(s) unreachable FROM THIS "
+              f"ENVIRONMENT")
+        print(f"    ({', '.join(egress_blocked)}) — an egress/network-policy block, NOT a "
+              f"source outage.")
+        print("    A proxy 403/407 tunnel CONNECT never reaches the site, so this is not an")
+        print("    incident. You can still DEPLOY: edit -> bump Version:/ALT_VERSION -> git push")
+        print("    (Actions FTPS-uploads server-side); confirm via a green 'Deploy WordPress")
+        print("    plugin' run. To restore the visual curl check, allowlist asktherecruiter.com")
+        print("    in this environment's egress policy. See docs/CLOUD-SESSION.md.")
+        return 3
     print("ALL CLEAR — system healthy, all surfaces current. Nothing needs a human.")
     return 0
 

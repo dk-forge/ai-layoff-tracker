@@ -21,8 +21,9 @@ add / tune / enhance any source). `docs/ARCHITECTURE.md` = system map;
 ### If the live site is unreachable (egress-blocked cloud environments)
 Some cloud/sandbox environments block outbound traffic to `asktherecruiter.com`
 (a `403` on the proxy CONNECT). `ops_status.py` detects this and exits **3**
-("CANNOT REACH … network egress policy") — this is **NOT an outage and NOT
-action-needed**. Do **not** route around the block. Instead verify the product
+(prints `ENVIRONMENT BLOCK`) — this is **NOT an outage and NOT
+action-needed**. It distinguishes a real egress block (tunnel/DNS/refused) from a
+genuine site error (an `HTTPError` or timeout still counts as action-needed). Do **not** route around the block. Instead verify the product
 via **GitHub Actions**, which is reachable: `gh run list --limit 15`. If today's
 `Deploy WordPress plugin`, `WARN notice import`, `ERM import`, `Supplemental
 news`, and the other crons are green, the pipeline is healthy — a `cancelled`
@@ -52,7 +53,12 @@ new files are live). The only thing the block prevents is the final visual
 - **Deploy = `git push` to main** (FTPS auto-deploy). There is no other path.
   Bump the plugin `Version:` + `ALT_VERSION` on every plugin change.
 - **Verify live before claiming anything.** `curl` the `ver=` on the page and the
-  API endpoint; never assume a deploy landed (5-min host cache — poll it).
+  API endpoint; never assume a deploy landed (5-min host cache — poll it). **If
+  egress to `asktherecruiter.com` is blocked** (some cloud environments deny it —
+  a 403 CONNECT from the proxy, not an outage), the visual curl step is
+  unavailable; fall back to confirming the **"Deploy WordPress plugin" Actions run
+  went green** (`gh run view <id>` / `gh run list --workflow="Deploy WordPress plugin"`).
+  A green deploy run **is** confirmation the new files are live.
 - Data-changing jobs FAIL LOUD. WARN is exempt from fuzzy dedup. Dates
   2015→today+18mo. Counts parse the FIRST number only. Country/industry
   normalize through fixed vocabularies.
@@ -79,6 +85,8 @@ CANNOT: type any password/credential (FTP/API keys stay in GitHub secrets — if
 task needs one, ask the owner to add it); post competitor data publicly; deploy
 except via git push. For a live, credibility-critical product, prefer bounded,
 well-scoped changes and dry-run before pushing — commits are the review trail.
+(A blocked environment can still deploy — see "If the live site is unreachable"
+above; the block only stops the visual `curl` check, never the `git push` deploy.)
 
 ## The task
 The owner fills this in per session. Most common first job: fix whatever

@@ -1,0 +1,33 @@
+name: Tests
+
+# Runs the railway unit test suite (parity guards, vocabulary parity, extraction
+# and dedup guards, fixtures). Until now these tests were only ever run locally;
+# this makes them a visible check on every PR and on main, so drift like an
+# unlabelled collector or a Python<->PHP vocabulary mismatch fails here instead
+# of shipping. Offline and fast — no secrets, no network.
+#
+# To make this REQUIRED before merge, enable it as a required status check in
+# the repo's branch-protection settings (Settings -> Branches -> main).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  railway-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: railway/requirements.txt
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run railway unit tests
+        working-directory: railway
+        run: python -m unittest discover -s tests -p "test_*.py" -v
