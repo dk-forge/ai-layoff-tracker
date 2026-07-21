@@ -85,16 +85,10 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Marketaux · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
+        <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
         <td>Extends the news net into non-English outlets (German, French, Dutch, Spanish, Italian) so European cuts surface without waiting for English coverage. Every candidate runs through the same extraction, de-duplication and verification as the rest.</td>
         <td>Verified (named report)</td>
         <td><a href="https://newsdata.io" target="_blank" rel="noopener">NewsData.io &#8599;</a></td>
-      </tr>
-      <tr>
-        <td><b>Earnings-call transcripts</b><br><span class="alt-muted">Financial Modeling Prep</span></td><td>US-listed + major global issuers</td>
-        <td>Transcripts are scanned for layoff / restructuring / headcount language, so a cut a company states on its own earnings call is captured even when it never files a discrete 8-K.</td>
-        <td>Verified</td>
-        <td><a href="https://site.financialmodelingprep.com" target="_blank" rel="noopener">Transcript API &#8599;</a></td>
       </tr>
       <tr>
         <td><b>BLS LAUS</b></td><td>US states without a public WARN register</td>
