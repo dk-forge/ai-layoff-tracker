@@ -36,6 +36,7 @@ reason_backfill / enrich_context pattern), so rows the model honestly leaves
 "unknown" cannot permanently stall the head of the queue.
 """
 import os
+import re
 import sys
 import time
 from datetime import date
