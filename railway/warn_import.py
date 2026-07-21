@@ -119,11 +119,20 @@ def main():
     for e in customs:
         _st = (e.get("state") or "").upper()
         _got_by_state[_st] = _got_by_state.get(_st, 0) + 1
+    # A 0 only means DRIFT for high-volume states (a 0 there is anomalous). Low-
+    # volume states (NV, ID, LA...) legitimately file nothing on a given run, so
+    # flagging them cries wolf and erodes trust in the alert. Log those quietly;
+    # only degrade/email on the big states where 0 = the scraper broke.
+    _HIGH_VOLUME = {"TX", "FL", "GA", "CA", "OH", "MI", "NY", "NC"}
     _legacy_drift = [st for st in _expected_c if _got_by_state.get(st, 0) == 0]
+    _real_drift = [st for st in _legacy_drift if st in _HIGH_VOLUME]
     if _legacy_drift:
-        print(f"::warning:: WARN legacy custom scraper(s) returned 0 notices — likely site drift: {', '.join(_legacy_drift)}")
+        print(f"::notice:: legacy custom WARN returned 0 for {', '.join(_legacy_drift)} "
+              f"(quiet run or drift; only high-volume states alert)")
+    if _real_drift:
+        print(f"::warning:: HIGH-VOLUME legacy WARN scraper(s) returned 0 — likely site drift: {', '.join(_real_drift)}")
         report_source_health("warn_custom_legacy", "degraded", 0,
-                             "Legacy custom WARN scraper(s) returned 0 — likely site drift: " + ", ".join(_legacy_drift))
+                             "High-volume custom WARN returned 0 — likely site drift: " + ", ".join(_real_drift))
     if min_emp:
         customs = [e for e in customs if e["job_count"] >= min_emp]
     if start:
