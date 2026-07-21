@@ -7,12 +7,19 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
 - **Contact page (corrections):** https://asktherecruiter.com/blog/contact/ → mails info@asktherecruiter.com
 - **Public API base:** `https://asktherecruiter.com/blog/wp-json/layoffs/v1/`
 
+## Start here (every session, especially cloud/remote)
+Run `python3 railway/ops_status.py` first — read-only, no deps/keys. It prints the
+live version, triages source health (what's broken + what to do), and lists the 4
+surfaces. Exit 0 = healthy; exit 2 = a source needs a human (→ RUNBOOK "a data
+source broke"). **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything).
+
 ## Read these before changing anything
 | Doc | What it holds |
 |---|---|
+| [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) | Self-contained operate-from-a-cloud-session guide (rules + owner's working style + what a session can/can't do) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System map: components, data flow, endpoints, DB schema, filter semantics |
 | [docs/TECHLOG.md](docs/TECHLOG.md) | Chronological log of every change + every incident and its root cause |
-| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Ops playbooks: deploy, caches, imports, "X is broken → do Y" |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Ops playbooks: deploy, caches, imports, "X is broken → do Y", add/tune/enhance a source |
 
 ## The 60-second mental model
 1. **`wordpress-plugin/ai-layoff-tracker/`** — a WP plugin on Bluehost (install lives at `/blog`).

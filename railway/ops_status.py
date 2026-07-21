@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""One-command operational status — run this FIRST in any session (esp. cloud).
+
+Read-only. No dependencies (stdlib only), no keys needed. Prints the live
+version, the source-health triage (what's degraded/stale and what to DO about
+it), and the four surfaces to keep current. Exits non-zero if something needs a
+human, so it doubles as a CI check.
+
+    python3 railway/ops_status.py
+"""
+import json
+import sys
+import urllib.request
+from datetime import datetime, timezone
+
+BASE = "https://asktherecruiter.com/blog"
+UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+
+# A degraded/stale source is BENIGN (no action) when it's one of these: a
+# transient rate-limit, or a state with no public register.
+SOFT = {"gdelt_historical"}
+BENIGN_STATES = {"HI", "AR", "WY", "NH"}
+# A WARN custom scraper returning 0 is only real DRIFT for high-volume states
+# (matches warn_import.py). A low-volume state filing nothing on a run is normal.
+HIGH_VOLUME = {"TX", "FL", "GA", "CA", "OH", "MI", "NY", "NC"}
+# staleness ceilings (days) — matches health_digest.py
+MAX_AGE = {"edgar": 2, "newsapi": 2, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
+           "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4, "press_releases": 3}
+
+
+def _get(url, browser=False):
+    req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA if browser else UA,
+                                               "Accept": "application/json"})
+    return urllib.request.urlopen(req, timeout=40)
+
+
+def _benign_states_only(detail):
+    import re
+    codes = re.findall(r"\b([A-Z]{2})\b", str(detail))
+    return bool(codes) and all(c in BENIGN_STATES for c in codes)
+
+
+def _low_volume_warn(src, detail):
+    """A warn_custom_* degraded is benign if it names no high-volume state."""
+    if not src.startswith("warn_custom"):
+        return False
+    import re
+    codes = re.findall(r"\b([A-Z]{2})\b", str(detail))
+    return not any(c in HIGH_VOLUME for c in codes)
+
+
+def main():
+    issues = []
+    print("=" * 64)
+    print("AI LAYOFF TRACKER — OPS STATUS")
+    print("=" * 64)
+
+    # 1. Live version
+    try:
+        html = _get(f"{BASE}/ai-layoff-tracker/?cb=ops", browser=True).read().decode("utf-8", "replace")
+        import re
+        ver = (re.search(r"ver=(\d+\.\d+\.\d+)", html) or [None, "?"])[1]
+        print(f"\n[1] LIVE TRACKER  ver={ver}  (https://asktherecruiter.com/blog/ai-layoff-tracker/)")
+    except Exception as exc:
+        print(f"\n[1] LIVE TRACKER  UNREACHABLE: {exc}")
+        issues.append("live tracker unreachable")
+
+    # 2. Health triage
+    print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")
+    try:
+        health = json.load(_get(f"{BASE}/wp-json/layoffs/v1/source-health?cb=ops"))
+        now = datetime.now(timezone.utc)
+        ok = 0
+        for src, info in (health or {}).items():
+            if not isinstance(info, dict):
+                continue
+            status, detail = info.get("status"), info.get("detail", "")
+            age = None
+            try:
+                age = (now - datetime.fromisoformat(str(info.get("checked_at")).replace("Z", "+00:00"))).days
+            except Exception:
+                pass
+            stale = age is not None and age > MAX_AGE.get(src, 10)
+            if stale:
+                print(f"    STALE     {src}: {age}d old — collector may have STOPPED. -> RUNBOOK 'a data source broke'")
+                issues.append(f"{src} stale")
+            elif (status == "degraded" and src not in SOFT
+                  and not _benign_states_only(detail) and not _low_volume_warn(src, detail)):
+                print(f"    DEGRADED  {src}: {str(detail)[:80]} -> RUNBOOK 'a data source broke'")
+                issues.append(f"{src} degraded")
+            elif status in ("degraded",):
+                print(f"    (benign)  {src}: {str(detail)[:60]}")
+                ok += 1
+            else:
+                ok += 1
+        print(f"    {ok} source(s) OK.")
+    except Exception as exc:
+        print(f"    HEALTH UNREACHABLE: {exc}")
+        issues.append("health endpoint unreachable")
+
+    # 3+4. Surfaces to keep current
+    print("\n[3] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
+    print("      -> must list EXACTLY the live collectors; update on any source add/remove.")
+    print("[4] BENCHMARK      scratchpad/bm-live.html (LOCAL ONLY, never commit)")
+    print("      -> refresh vs-competitor read; every table shows ours + theirs.")
+
+    print("\n" + "-" * 64)
+    if issues:
+        print(f"ACTION NEEDED: {len(issues)} item(s) -> {', '.join(issues)}")
+        print("See docs/RUNBOOK.md 'a data source broke (START HERE)'.")
+        return 2
+    print("ALL CLEAR — system healthy, all surfaces current. Nothing needs a human.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
