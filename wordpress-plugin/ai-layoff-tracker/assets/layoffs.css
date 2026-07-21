@@ -644,7 +644,9 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-barrow-on { border-color: var(--alt-blue, #2a78d6); background: var(--alt-blue-tint, #eef4fc); }
 .alt-barrow-dim { opacity: 0.45; }
 .alt-barrow-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
-.alt-barrow-name { font-size: 14px; font-weight: 700; color: var(--alt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* min-width:0 lets this flex child shrink so the ellipsis actually engages; without
+   it a long company name pushes the row past the card edge (mobile bleed). */
+.alt-barrow-name { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 700; color: var(--alt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .alt-barrow-val { font-size: 13.5px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .alt-bartrack { position: relative; display: block; height: 9px; border-radius: 6px; background: #e8ebf3; overflow: hidden; }
 .alt-barfill { position: absolute; top: 0; bottom: 0; background: #2a78d6; border-radius: 6px; }
