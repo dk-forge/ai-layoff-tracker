@@ -31,6 +31,18 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
    So the human loop is: get email → paste one line here → fix the one scraper. Full
    "add a source / tune it / fix a breakage" guide is in **docs/RUNBOOK.md**.
 
+## Session ritual — the 4 surfaces (CHECK AT START, DURING, AND END of EVERY session)
+Any session (Claude **or** ChatGPT) must keep these four live, correct, and
+**impeccably formatted** — verify at the **start** (baseline), **during** (after any
+data / UI / source change), and **end** (final pass). Never close a session without
+the end check.
+1. **Live tracker** — https://asktherecruiter.com/blog/ai-layoff-tracker/ — renders, numbers current, **zero visual/mobile overflow** (bar-list names ellipsize, tables scroll inside their own container).
+2. **Health page** — https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/ — if any source is `degraded`/`stale`, investigate before finishing (see RUNBOOK "a data source broke").
+3. **Sources page** — https://asktherecruiter.com/blog/ai-layoff-tracker/sources/ — must list **exactly** the live collectors; update it the SAME session you add/remove/block a source, and add its friendly label to `assets/health.js` `meta{}`.
+4. **Private benchmark** — `scratchpad/bm-live.html` (**LOCAL only, never commit** — competitor names stay off the repo). Refresh the vs-competitor read; every comparison table shows **ours + theirs side-by-side**; add a column/row when a new dimension exists.
+
+**Hard bars:** (a) any source/metric change updates Sources + Health labels + the benchmark in the **same** session; (b) formatting is non-negotiable — aligned tables, no horizontal bleed (especially mobile), consistent copy, **no em-dashes in UI copy**; (c) **verify live** (`curl` the `ver=` + the page/endpoint) before claiming any surface is updated — never assume a deploy landed.
+
 ## Iron rules learned the hard way (details in TECHLOG)
 - Every network request to the WP host MUST send a browser-ish `User-Agent` (ModSecurity blocks `python-requests`; use `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`).
 - `WP_SITE_URL` is `https://asktherecruiter.com/blog` — never the bare domain (root is a separate Railway app).
