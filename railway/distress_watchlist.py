@@ -32,6 +32,9 @@ from source_health import report_source_health
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 DAYS_BACK = max(7, min(90, int(os.environ.get("DISTRESS_DAYS_BACK", "30"))))
 MAX_CO = max(1, min(200, int(os.environ.get("DISTRESS_MAX", "40"))))
+# Hard wall-clock budget so the news-search phase can never hit the workflow's
+# job timeout (which cancels mid-run and loses everything).
+DEADLINE_SECONDS = max(120, min(1300, int(os.environ.get("DISTRESS_DEADLINE_SECONDS", "1000"))))
 DRY = os.environ.get("DISTRESS_DRY", "").lower() in {"1", "true", "yes"}
 
 # Caption noise to strip from a bankruptcy case name to recover the debtor.
@@ -112,12 +115,23 @@ def companies_house_insolvent():
     return out
 
 
-def _sweep(companies, label):
+def _sweep(companies, label, deadline):
     """Targeted news search + extractor + poster for each distressed company."""
     posted = ai = 0
-    todo = [c for c in companies if not already_have(c)][:MAX_CO]
-    print(f"{label}: {len(companies)} distressed, {len(todo)} with no current-year entry (cap {MAX_CO})")
+    # Cap BEFORE the already_have probes so we never run hundreds of lookups
+    # (Companies House can return 300); the daily rotation revisits the rest.
+    companies = companies[:MAX_CO]
+    todo = []
+    for c in companies:
+        if time.monotonic() > deadline:
+            break
+        if not already_have(c):
+            todo.append(c)
+    print(f"{label}: {len(companies)} distressed (capped), {len(todo)} with no current-year entry", flush=True)
     for i in range(0, len(todo), 20):
+        if time.monotonic() > deadline:
+            print(f"  deadline hit; remaining {label} companies resume next run", flush=True)
+            break
         chunk = todo[i:i + 20]
         try:
             entries = pull_news_articles(days_back=DAYS_BACK, queries=[query_for(c) for c in chunk])
@@ -152,13 +166,14 @@ def run():
         print("No COURTLISTENER_API_KEY / COMPANIES_HOUSE_API_KEY_UK set — distress feeder dormant.")
         return
     total_posted = total_ai = 0
+    deadline = time.monotonic() + DEADLINE_SECONDS
     for label, fn in sources:
         companies = fn()
         if not companies:
             if not DRY:
                 report_source_health(label, "ok", 0, "no distressed companies surfaced this run")
             continue
-        posted, ai = _sweep(companies, label)
+        posted, ai = _sweep(companies, label, deadline)
         total_posted += posted
         total_ai += ai
         if not DRY:
