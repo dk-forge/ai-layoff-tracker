@@ -722,6 +722,7 @@ function alt_api_add($request) {
         'company_name'       => $company,
         'ticker'             => sanitize_text_field($meta_in['ticker'] ?? ''),
         'job_count'          => $job_count,
+        'job_count_max'      => max($job_count, absint($meta_in['job_count_max'] ?? $job_count)),
         'layoff_date'        => $layoff_date,
         'announcement_date'  => alt_db_valid_date((string) ($meta_in['announcement_date'] ?? '')),
         'industry'           => alt_normalize_industry(sanitize_text_field($meta_in['industry'] ?? '')),

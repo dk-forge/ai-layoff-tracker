@@ -29,6 +29,7 @@ def post_to_wordpress(entry):
             "company_name": company,
             "ticker": entry.get("ticker"),
             "job_count": job_count,
+            "job_count_max": entry.get("job_count_max") or job_count,
             "layoff_date": entry.get("layoff_date"),
             "announcement_date": entry.get("announcement_date"),
             "industry": entry.get("industry"),

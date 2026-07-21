@@ -117,6 +117,7 @@ Response format:
   "company_name": "string or null",
   "ticker": "string or null",
   "job_count": "integer or null",
+  "job_count_max": "integer or null — the UPPER bound if the source gives a range ('up to 6,000'->6000; '400 to 500'->500); otherwise equal to job_count",
   "layoff_date": "YYYY-MM-DD or null",
   "announcement_date": "YYYY-MM-DD when the source states the public announcement date, otherwise null",
   "announcement_evidence": "exact source phrase containing that date, or null",
@@ -622,6 +623,14 @@ TEXT:
               f"(model likely derived it) — source: {raw_entry.get('source_url')}")
         return None
     extracted["job_count"] = job_count
+    # Range upper bound: store it too so a query can report the "announced
+    # intentions" framing (upper) or our conservative executed floor (job_count),
+    # instead of the floor-only bias the review flagged. Must also appear verbatim
+    # or we fall back to the floor (never fabricate the ceiling).
+    jc_max = _coerce_job_count(extracted.get("job_count_max"))
+    if not jc_max or jc_max < job_count or (raw_text and not _count_in_text(jc_max, raw_text)):
+        jc_max = job_count
+    extracted["job_count_max"] = jc_max
 
     company_name = extracted.get("company_name")
     extracted["company_name"] = (
