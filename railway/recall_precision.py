@@ -97,6 +97,53 @@ def measure_precision():
     return {"checked": checked, "ok": ok, "precision_pct": rate, "reasons": reasons}
 
 
+_AI_TERMS = re.compile(
+    r"\b(AI|A\.I\.|artificial intelligence|automation|automate|machine learning|"
+    r"generative|agentic|algorithm|chatbot|GPT|LLM)\b", re.I)
+
+
+def measure_ai_precision():
+    """Of rows we tag AI, what fraction carry a QUOTABLE, AI-naming statement?
+
+    This is the number a journalist probes: not 'is the count real' but 'can you
+    show me where the employer named AI'. A row tagged AI with no quote, or a
+    quote that never names AI/automation (e.g. 'technology-enabled efficiency'),
+    is a precision miss and is printed for the reclassifier to downgrade.
+    """
+    try:
+        yr = date.today().year
+        r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
+                         params={"years": str(yr), "ai": "1", "per_page": 300},
+                         headers=UA, timeout=30)
+        rows = r.json().get("data", []) if r.status_code == 200 else []
+    except Exception as exc:
+        print(f"ai_precision: could not sample ({exc})")
+        return None
+    if not rows:
+        return None
+    quoted = ai_named = 0
+    misses = []
+    for x in rows:
+        q = (x.get("ai_language") or "").strip()
+        if q:
+            quoted += 1
+            if _AI_TERMS.search(q):
+                ai_named += 1
+            else:
+                misses.append((x, q))
+        else:
+            misses.append((x, ""))
+    n = len(rows)
+    rate = round(100 * ai_named / n) if n else None
+    print(f"\nAI PRECISION: {ai_named}/{n} AI-tagged rows carry an AI-naming quote ({rate}%); "
+          f"{quoted}/{n} have any quote.")
+    for x, q in misses[:15]:
+        print(f"  AI PRECISION MISS: {x.get('company_name')} {x.get('job_count')} "
+              f"[{x.get('review_status')}] quote={q[:60]!r}")
+    return {"checked": n, "ai_named": ai_named, "with_quote": quoted,
+            "ai_precision_pct": rate, "misses": len(misses)}
+
+
 def measure_recall():
     """Diff the gold set against our data; classify hits/misses per cell."""
     if not os.path.exists(GOLDSET):
@@ -145,6 +192,7 @@ def measure_recall():
 def main():
     print(f"=== recall/precision @ {SITE} ===")
     prec = measure_precision()
+    aiprec = measure_ai_precision()
     rec = measure_recall()
     if os.environ.get("RP_DRY"):
         return 0
@@ -152,6 +200,7 @@ def main():
         from source_health import report_source_health
         detail = (f"precision {prec['precision_pct'] if prec else '?'}% "
                   f"({prec['reasons'] if prec else {}}); "
+                  f"ai_precision {aiprec['ai_precision_pct'] if aiprec else '?'}%; "
                   f"recall {rec['recall_pct'] if rec else '?'}% "
                   f"miss_cells={rec['miss_cells'] if rec else {}}")
         report_source_health("recall_precision", "ok", (rec or {}).get("hits", 0), detail)
