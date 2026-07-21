@@ -1,0 +1,44 @@
+company,year,jobs,geo,sector
+# Held-out recall gold set: verified real 2026 layoffs, stratified across
+# geography/size/sector so a miss localizes the weak cell (e.g. "EU/mfg 30%").
+# Sourced from the multi-agent research sweep; every one has a primary source.
+Amazon,2026,16000,US,tech
+Microsoft,2026,4800,US,tech
+Meta,2026,8000,US,tech
+Oracle,2026,21000,US,tech
+Dell,2026,11000,US,tech
+Cisco,2026,4000,US,tech
+Intuit,2026,3000,US,tech
+Cloudflare,2026,1100,US,tech
+Salesforce,2026,1000,US,tech
+PayPal,2026,4760,US,finance
+Block,2026,4000,US,finance
+UPS,2026,30000,US,logistics
+Spirit Airlines,2026,14000,US,airlines
+Tyson Foods,2026,3200,US,food
+Goodyear,2026,1700,US,mfg
+Macy's,2026,1050,US,retail
+Saks,2026,1866,US,retail
+Whirlpool,2026,288,US,mfg
+Starbucks,2026,300,US,food
+Optum,2026,572,US,health
+Kaiser Permanente,2026,216,US,health
+Peloton,2026,400,US,tech
+Estee Lauder,2026,9000,US,retail
+GSK,2026,350,EU,health
+Porsche,2026,4000,EU,mfg
+Lufthansa,2026,4000,EU,airlines
+Telefonica,2026,5500,EU,telecom
+Nestle,2026,16000,EU,food
+Bosch,2026,22000,EU,mfg
+Volkswagen,2026,19000,EU,mfg
+Commerzbank,2026,3000,EU,finance
+ASML,2026,1700,EU,tech
+Ericsson,2026,1600,EU,telecom
+Michelin,2026,1500,EU,mfg
+Heineken,2026,6000,EU,food
+Intesa Sanpaolo,2026,9000,EU,finance
+Takeda,2026,4500,Asia,health
+WiseTech Global,2026,2000,Asia,tech
+Telstra,2026,1000,Asia,telecom
+TCS,2026,12000,Asia,tech
