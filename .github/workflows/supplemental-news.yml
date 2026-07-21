@@ -1,0 +1,40 @@
+name: Supplemental news ingest (NewsData.io + Marketaux)
+
+# Widens the net into non-English / global outlets NewsAPI misses (targets the
+# measured European gap). Runs each provider only if its key is set; both feed
+# the same DeepSeek extractor + dedup + poster. Ships DORMANT per provider.
+#
+# Secrets: NEWSDATA_API_KEY and/or MARKETAUX_API_KEY, OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  schedule:
+    - cron: '5 14 * * *'   # 10:05 AM ET
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to 1 to log candidates without posting'
+        required: false
+        default: ''
+
+jobs:
+  supplemental:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Run supplemental news
+        working-directory: railway
+        env:
+          NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
+          MARKETAUX_API_KEY: ${{ secrets.MARKETAUX_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          SUPP_NEWS_DRY: ${{ github.event.inputs.dry_run }}
+        run: python supplemental_news.py

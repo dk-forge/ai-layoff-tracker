@@ -34,6 +34,7 @@ jobs:
       - name: Run earnings ingest
         working-directory: railway
         env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           EARNINGS_API_KEY: ${{ secrets.EARNINGS_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}

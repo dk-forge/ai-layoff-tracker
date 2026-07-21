@@ -26,7 +26,7 @@ from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
-API_KEY = os.environ.get("EARNINGS_API_KEY", "")
+API_KEY = os.environ.get("FMP_API_KEY") or os.environ.get("EARNINGS_API_KEY", "")
 API_BASE = os.environ.get("EARNINGS_API_BASE", "https://financialmodelingprep.com/api/v3")
 BATCH = max(1, int(os.environ.get("EARNINGS_BATCH", "40")))
 DRY = os.environ.get("EARNINGS_DRY", "").lower() in {"1", "true", "yes"}
