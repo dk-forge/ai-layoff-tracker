@@ -419,6 +419,24 @@
     var DASH_PRESENT = false;
     var LAST_AGG = null;
 
+    // Announced-vs-executed reconciliation, loaded once and keyed by a loose
+    // company name so a row's detail panel can show the link between a company's
+    // announcement (news/SEC) and its on-the-ground WARN executions.
+    var RECON_MAP = {};
+    function reconKey(name) {
+        return String(name || '').toLowerCase()
+            .replace(/\b(inc|corp|co|ltd|plc|llc|lp|group|holdings|the|sa|se|ag|nv|americas?|us|usa)\b/g, '')
+            .replace(/[^a-z0-9]+/g, '').trim();
+    }
+    function loadReconciliation() {
+        apiGet('reconciliation', {}).then(function (r) {
+            (r && r.rows || []).forEach(function (row) {
+                var k = reconKey(row.company);
+                if (k) RECON_MAP[k] = row;
+            });
+        }).catch(function () { /* reconciliation is enrichment; never block the table */ });
+    }
+
     function refreshAll() {
         saveFilters();
         if (TABLE) TABLE.ajax.reload(null, true);
@@ -1813,6 +1831,22 @@
             parts.push('<div class="alt-detail-block"><span class="alt-detail-h">AI attribution status</span><p>' + escapeHtml(aiDetail) + '</p></div>');
         }
         if (row.employer_country) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Employer country</span><p>' + escapeHtml(row.employer_country) + '</p></div>');
+        // Announced-vs-executed: if this employer has both an announcement and
+        // WARN executions on file, show the link so the two rows read as one story.
+        var rc = RECON_MAP[reconKey(row.company_name)];
+        if (rc && rc.announced_jobs && rc.executed_warn_jobs) {
+            var lag = (rc.lag_days != null) ? (rc.lag_days + ' day' + (rc.lag_days === 1 ? '' : 's') + ' after the announcement') : '';
+            var isWarn = row.source_type === 'warn';
+            var lead = isWarn
+                ? 'This WARN filing is part of a larger announced cut.'
+                : 'This announcement has begun showing up in official WARN filings.';
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Announced vs executed</span><p>' +
+                escapeHtml(lead) + ' <b>' + fmt(rc.announced_jobs) + '</b> announced' +
+                (rc.announced_date ? ' (' + escapeHtml(rc.announced_date) + ')' : '') +
+                '; <b>' + fmt(rc.executed_warn_jobs) + '</b> confirmed so far in US WARN filings' +
+                (lag ? ', first ' + escapeHtml(lag) : '') +
+                '. <span class="alt-muted">WARN is US-only and captures large single-site filings, so this is a floor, not a completion rate.</span></p></div>');
+        }
         if (row.ai_language) parts.push('<div class="alt-detail-block alt-detail-quote"><span class="alt-detail-h">Exact AI / automation quote</span><blockquote>“' + escapeHtml(row.ai_language) + '”</blockquote></div>');
         if (row.excerpt) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">From the source</span><p>' + escapeHtml(row.excerpt) + '</p></div>');
         if (row.roles) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Roles affected</span><p>' + escapeHtml(row.roles) + '</p></div>');
@@ -3148,6 +3182,7 @@
             updateRangeLabel();
             updateExportLinks();
             fetchAndRenderAggregate(); // charts + stats
+            loadReconciliation();      // announced-vs-executed links for row detail
         }).catch(function () {
             setStatus('alt-table-status', 'Could not load filters.', true);
             initMultiDropdowns();
