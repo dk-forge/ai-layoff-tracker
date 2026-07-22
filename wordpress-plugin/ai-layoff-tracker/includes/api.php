@@ -81,6 +81,18 @@ function alt_register_routes() {
         'permission_callback' => '__return_true',
     ));
 
+    // TEMP DIAGNOSTIC (remove after use): does THIS host's outbound IP clear the
+    // Akamai bot-wall on Nevada DETR's master WARN PDF? The URL is hardcoded (no
+    // SSRF) and only response metadata is returned (no body), so it is safe to
+    // leave unauthenticated for the brief test window. If Bluehost's IP is not
+    // blocked (status 200 + application/pdf), NV can be fetched server-side for
+    // free instead of only from a residential IP.
+    register_rest_route('layoffs/v1', '/nv-fetch-probe', array(
+        'methods'             => 'GET',
+        'callback'            => 'alt_api_nv_fetch_probe',
+        'permission_callback' => '__return_true',
+    ));
+
     // Live badge status. GET is public + uncached (so the phase flips within
     // the badge's 60s poll); POST is key-protected (data jobs report phase).
     register_rest_route('layoffs/v1', '/status', array(
@@ -884,6 +896,40 @@ function alt_api_check_duplicate($request) {
     $hash = strtolower(sanitize_text_field($request->get_param('hash')));
     return rest_ensure_response(array(
         'exists' => $hash !== '' && alt_hash_exists($hash),
+    ));
+}
+
+// TEMP DIAGNOSTIC (remove after use): fetch Nevada DETR's master WARN PDF from
+// THIS host and report only the response metadata, so we can see whether the
+// host's outbound IP clears the Akamai bot-wall. Hardcoded URL, no body echoed.
+function alt_api_nv_fetch_probe() {
+    $url = 'https://detr.nv.gov/content/media/WARN_and_Non_WARN_Master_w_Logo.pdf';
+    $headers = array(
+        'User-Agent'                => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept'                    => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language'           => 'en-US,en;q=0.9',
+        'Sec-Fetch-Dest'            => 'document',
+        'Sec-Fetch-Mode'            => 'navigate',
+        'Sec-Fetch-Site'            => 'none',
+        'Upgrade-Insecure-Requests' => '1',
+    );
+    $resp = wp_remote_get($url, array('headers' => $headers, 'timeout' => 30, 'redirection' => 5));
+    if (is_wp_error($resp)) {
+        return rest_ensure_response(array(
+            'ok'    => false,
+            'error' => $resp->get_error_message(),
+        ));
+    }
+    $code = wp_remote_retrieve_response_code($resp);
+    $body = wp_remote_retrieve_body($resp);
+    $ctype = wp_remote_retrieve_header($resp, 'content-type');
+    return rest_ensure_response(array(
+        'ok'            => ($code === 200 && strpos($body, '%PDF') === 0),
+        'status'        => $code,
+        'content_type'  => $ctype,
+        'bytes'         => strlen($body),
+        'looks_like_pdf'=> (strpos($body, '%PDF') === 0),
+        'first_bytes'   => substr($body, 0, 8),
     ));
 }
 
