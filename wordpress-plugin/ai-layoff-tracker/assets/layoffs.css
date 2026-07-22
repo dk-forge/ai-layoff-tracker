@@ -650,7 +650,18 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 
 /* "Where the cuts are" bar lists */
 .alt-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.alt-chart-head .alt-chart-h { margin-bottom: 0; }
+/* min-width:0 lets the title/caption block shrink instead of the caption
+   wrapping one-word-per-line while the fixed-width button cluster hogs width. */
+.alt-chart-head .alt-chart-h { margin-bottom: 0; min-width: 0; }
+/* On phones the button cluster (worst: the map's wide "World | US states"
+   toggle) can't shrink, so it starves the caption into a skinny column with
+   dead space beneath the buttons. Let the header wrap: caption takes a full
+   row, buttons drop below it. */
+@media (max-width: 560px) {
+    .alt-chart-head { flex-wrap: wrap; align-items: flex-start; }
+    .alt-chart-head .alt-chart-h { flex: 1 1 100%; }
+    .alt-chart-head .alt-chart-btns { margin-top: 8px; }
+}
 .alt-tap-hint { font-size: 12px; color: var(--alt-muted); white-space: nowrap; }
 .alt-ai-key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #eb6834; vertical-align: baseline; }
 .alt-barlist { display: flex; flex-direction: column; gap: 10px; }

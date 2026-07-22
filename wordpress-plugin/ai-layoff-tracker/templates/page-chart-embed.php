@@ -53,6 +53,12 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
   .alt-embed-foot{position:fixed;bottom:0;left:0;right:0;font:600 11px system-ui,-apple-system,sans-serif;
     text-align:center;padding:5px;background:#fff;border-top:1px solid #e5e7eb}
   .alt-embed-foot a{color:#4f7257;text-decoration:none}
+  .alt-chart-head .alt-chart-h{min-width:0}
+  @media (max-width:560px){
+    .alt-chart-head{flex-wrap:wrap;align-items:flex-start}
+    .alt-chart-head .alt-chart-h{flex:1 1 100%}
+    .alt-chart-head .alt-chart-btns{margin-top:8px}
+  }
 </style>
 </head><body>
 <div class="alt-embed-shell">
