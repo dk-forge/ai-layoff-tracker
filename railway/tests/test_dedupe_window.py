@@ -20,8 +20,10 @@ import dedupe_llm as d
 
 class PairWindowTest(unittest.TestCase):
     def test_identical_large_counts_get_wide_window(self):
-        # The VW case: two identical 50,000 figures.
-        self.assertEqual(d.pair_window_days(50000, 50000), d.WIDE_WINDOW_DAYS)
+        # The VW case: two identical 50,000 figures. Exact matches now get the
+        # widest (EXACT) window so a cumulative figure restated years apart is
+        # still adjudicated by the model.
+        self.assertEqual(d.pair_window_days(50000, 50000), d.EXACT_WINDOW_DAYS)
 
     def test_near_identical_large_counts_get_wide_window(self):
         # 9,600 vs 10,000 -> 96% similar, both material.
@@ -29,8 +31,8 @@ class PairWindowTest(unittest.TestCase):
 
     def test_exact_small_counts_get_wide_window(self):
         # Commonwealth Bank 300 in Jan and again in July (196 days): exact match
-        # at a material size (>=50) must cluster so the model can judge it.
-        self.assertEqual(d.pair_window_days(300, 300), d.WIDE_WINDOW_DAYS)
+        # at a material size (>=100) must cluster so the model can judge it.
+        self.assertEqual(d.pair_window_days(300, 300), d.EXACT_WINDOW_DAYS)
 
     def test_micro_exact_counts_keep_tight_window(self):
         # Below the 100-worker floor, exact tiny counts stay tight (noise).
