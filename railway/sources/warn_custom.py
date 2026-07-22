@@ -22,6 +22,7 @@ import re
 import requests
 
 from .warn import _count, _to_iso_date, STATE_WARN_URL
+from .warn_llm import llm_count_from_text
 
 UA = {"User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")}
@@ -113,6 +114,8 @@ def fetch_fl():
             continue
         jobs = _count(cells[12])
         date = _to_iso_date(cells[10]) or _to_iso_date(cells[9])
+        if jobs <= 0:  # count column may have shifted; let the LLM read the row
+            jobs = llm_count_from_text(" ".join(str(c) for c in cells), f"FL {cells[2]}")
         e = _entry("FL", cells[2], jobs, date, cells[5])
         if e:
             out.append(e)
@@ -149,6 +152,9 @@ def fetch_ga():
         link = re.search(r'href="([^"]+)"', str(cells[0]) or "")
         jobs = _count(_strip_tags(str(cells[3])))
         date = _to_iso_date(_strip_tags(str(cells[2])))
+        if jobs <= 0:
+            jobs = llm_count_from_text(" ".join(_strip_tags(str(c)) for c in cells),
+                                       f"GA {_strip_tags(str(cells[1]))}")
         e = _entry("GA", _strip_tags(str(cells[1])), jobs, date,
                    detail_url=link.group(1) if link else "")
         if e:
@@ -254,6 +260,8 @@ def fetch_mi():
         jobs = _count(field("Number of jobs impacted"))
         date = (_to_iso_date(field("Layoff date")) or _to_iso_date(field("Commencing date"))
                 or _to_iso_date(field("Date of layoff")) or _to_iso_date(field("Date WARN received")))
+        if jobs <= 0:  # label may have changed; read the whole record fragment
+            jobs = llm_count_from_text(_strip_tags(html), f"MI {title}")
         county = field("County")
         link = res.get("Url") or ""
         if link and link.startswith("/"):
@@ -345,6 +353,8 @@ def fetch_id():
             # Date of Letter | Updates | Company | Address | City | State | Zip | Affected | Effective
             jobs = _count(cells[7])
             date = _to_iso_date(cells[8]) or _to_iso_date(cells[0])
+            if jobs <= 0:
+                jobs = llm_count_from_text(" ".join(cells), f"ID {cells[2]}")
             e = _entry("ID", cells[2], jobs, date, cells[4], detail_url=m.group(1))
             if e:
                 out.append(e)
@@ -366,6 +376,8 @@ def _la_entries_from_tables(tables, url):
                 company, notice, layoff, affected = cells[0], cells[1], cells[2], cells[3]
             jobs = _count(affected)
             date = _to_iso_date(layoff) or _to_iso_date(notice)
+            if jobs <= 0:
+                jobs = llm_count_from_text(" ".join(cells), f"LA {company}")
             e = _entry("LA", company, jobs, date, detail_url=url)
             if e:
                 out.append(e)
@@ -476,7 +488,8 @@ def _nc_grid_entries(tables, url):
             if not cols:
                 continue
             get = lambda k: cells[cols[k]] if k in cols and cols[k] < len(cells) else ""
-            e = _entry("NC", get("company"), _count(get("jobs")),
+            nc_jobs = _count(get("jobs")) or llm_count_from_text(" ".join(str(c) for c in cells), f"NC {get('company')}")
+            e = _entry("NC", get("company"), nc_jobs,
                        _to_iso_date(get("eff")) or _to_iso_date(get("notice")),
                        get("city"), kind=get("kind"), detail_url=url)
             if e:
@@ -537,7 +550,8 @@ def _nc_text_rows(words, url):
     out = []
     for cells in rows:
         kind_m = re.search(r"Layoffs?|Closures?", cells[4])
-        e = _entry("NC", cells[2], _count(cells[4]),
+        nc_jobs = _count(cells[4]) or llm_count_from_text(" ".join(cells), f"NC {cells[2]}")
+        e = _entry("NC", cells[2], nc_jobs,
                    _to_iso_date(cells[1]) or _to_iso_date(cells[0]), cells[3],
                    kind=kind_m.group(0) if kind_m else "", detail_url=url)
         if e:
@@ -911,6 +925,8 @@ def _ny_fields_from_text(text):
     jm = (re.search(r"Total Number of Affected Workers\s*:?\s*([\d,]+)", flat, re.I)
           or re.search(r"Number of Affected Employees at Site\s*:?\s*([\d,]+)", flat, re.I))
     jobs = _count(jm.group(1)) if jm else 0
+    if jobs <= 0:  # DOL reworded the count label; read the notice text
+        jobs = llm_count_from_text(flat, "NY")
     dm = re.search(r"(?:Layoff|Closure)[^:]{0,15}Start Date\s*:\s*(.{0,220})", flat, re.I)
     date = _to_iso_date(dm.group(1)) if dm else ""
     if not date:

@@ -49,6 +49,7 @@ import requests
 
 from .warn import _count, _to_iso_date, STATE_WARN_URL
 from .warn_custom import _entry, _pdf_tables, _pdf_text  # noqa: F401  (_pdf_text kept for parity)
+from .warn_llm import llm_count_from_text
 
 # Browser-ish UA — ModSecurity/host WAFs block python-requests (see warn.py).
 UA = {"User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -179,6 +180,8 @@ def fetch_ms():
                 # wider shifted rows when no city was found.
                 if not city and kind_idx >= 7:
                     city = re.sub(r"\s+", " ", comp[2]).strip()
+                if jobs <= 0:  # grid shifted; let the LLM find the count in the row
+                    jobs = llm_count_from_text(" ".join(comp), f"MS {company}")
                 e = _entry("MS", company, jobs, date, city,
                            kind=_kind_norm(kind_raw), detail_url=url)
                 if e:
@@ -201,6 +204,8 @@ def _wv_flush(rec, url, out, seen):
     """Turn one accumulated WV record-card dict into an entry (dedup by hash)."""
     company = rec.get("company", "")
     jobs = _count(rec.get("number", ""))
+    if jobs <= 0:  # card label may have changed; read the whole record card
+        jobs = llm_count_from_text(" ".join(f"{k}: {v}" for k, v in rec.items()), f"WV {company}")
     date = _iso(rec.get("projected", "")) or _iso(rec.get("notice", ""))
     e = _entry("WV", company, jobs, date, kind=_kind_norm(rec.get("kind", "")),
                detail_url=url)
@@ -419,7 +424,11 @@ def fetch_wa(max_pages=200):
             if url in seen:
                 continue
             date = _to_iso_date(tds[2].get_text(strip=True)) or _to_iso_date(tds[6].get_text(strip=True))
-            e = _entry("WA", tds[0].get_text(strip=True), _count(tds[3].get_text(strip=True)),
+            jobs = _count(tds[3].get_text(strip=True))
+            if jobs <= 0:  # column may have shifted; read the whole row
+                jobs = llm_count_from_text(" ".join(td.get_text(" ", strip=True) for td in tds),
+                                           f"WA {tds[0].get_text(strip=True)}")
+            e = _entry("WA", tds[0].get_text(strip=True), jobs,
                        date, _wa_city(tds[1].get_text()), detail_url=url)
             if e:
                 seen.add(url); out.append(e); kept_this_page += 1
