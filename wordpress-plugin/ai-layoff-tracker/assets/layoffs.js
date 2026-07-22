@@ -358,6 +358,10 @@
         return v || '';
     }
 
+    // Journalist date-basis toggle: 'effective' (default, our conservative floor)
+    // counts each cut on its effective date; 'notice' recounts by filing date
+    // (how most aggregators count). Set by the toolbar toggle; recounts the page.
+    var DATE_BASIS = 'effective';
     function currentParams() {
         var p = {};
         var v;
@@ -393,6 +397,7 @@
         if (!isNaN(mj) && mj > 0) p.min_jobs = mj;
         if (readControl('alt-f-ai')) p.ai = '1';
         if (readControl('alt-f-announced')) p.stage = 'announced';
+        if (DATE_BASIS === 'notice') p.date_basis = 'notice';
         return p;
     }
 
@@ -1811,6 +1816,19 @@
         });
         var reset = document.getElementById('alt-f-reset');
         if (reset) reset.addEventListener('click', function () { clearFilters(); writeControl('alt-f-years', [String(new Date().getFullYear())]); updateDropdownSummaries(); refreshAll(); });
+
+        // Date-basis toggle: recount the whole page by effective vs filing date.
+        document.querySelectorAll('.alt-datebasis-opt').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var basis = b.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective';
+                if (basis === DATE_BASIS) return;
+                DATE_BASIS = basis;
+                document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
+                    x.classList.toggle('alt-datebasis-on', x === b);
+                });
+                refreshAll();
+            });
+        });
 
         // expand a row for the exact quote + source
         $(tableEl).on('click', 'tbody tr', function (e) {

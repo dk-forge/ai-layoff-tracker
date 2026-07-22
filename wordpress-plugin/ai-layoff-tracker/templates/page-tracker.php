@@ -93,6 +93,13 @@ if (function_exists('alt_faq_items')) {
                 <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear dates</button>
             </div>
         </div>
+        <div class="alt-datebasis-wrap" role="group" aria-label="Date basis">
+            <span class="alt-datebasis-label">Date basis</span>
+            <button type="button" class="alt-datebasis-opt alt-datebasis-on" data-basis="effective"
+                title="Counts each layoff on the day the cut takes effect, the day the jobs actually end. This is our default.">When it takes effect</button>
+            <button type="button" class="alt-datebasis-opt" data-basis="notice"
+                title="Counts each layoff on the day its notice was filed or announced. This is the basis most other trackers use.">When it was filed</button>
+        </div>
         <div class="alt-search-wrap">
             <svg class="alt-search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input type="search" id="alt-search" placeholder="Search company, industry, keyword…" autocomplete="off" aria-label="Search">

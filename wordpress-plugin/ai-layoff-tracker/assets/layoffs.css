@@ -432,6 +432,14 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     border-radius: 10px; background: var(--alt-surface); color: var(--alt-ink);
 }
 #alt-search:focus { outline: none; border-color: var(--alt-blue); box-shadow: 0 0 0 3px var(--alt-blue-tint); }
+/* Date-basis segmented toggle (effective vs filing date) */
+.alt-datebasis-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.alt-datebasis-label { color: var(--alt-muted); }
+.alt-datebasis-opt { font: inherit; font-size: 12.5px; padding: 7px 11px; border: 1px solid var(--alt-border); background: var(--alt-surface); color: var(--alt-muted); cursor: pointer; }
+.alt-datebasis-opt:first-of-type { border-radius: 9px 0 0 9px; }
+.alt-datebasis-opt:last-of-type { border-radius: 0 9px 9px 0; border-left: none; }
+.alt-datebasis-opt.alt-datebasis-on { background: var(--alt-accent, #4f7257); color: #fff; border-color: var(--alt-accent, #4f7257); }
+.alt-datebasis-opt:focus-visible { outline: 2px solid var(--alt-accent, #4f7257); outline-offset: 1px; }
 .alt-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--alt-muted); }
 .alt-sort select { font-size: 14px; padding: 9px 12px; border: 1px solid var(--alt-border); border-radius: 10px; background: var(--alt-surface); color: var(--alt-ink); cursor: pointer; }
 #alt-filters-toggle svg { vertical-align: -2px; margin-right: 4px; }
