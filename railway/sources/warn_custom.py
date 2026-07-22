@@ -488,8 +488,11 @@ def _nc_grid_entries(tables, url):
             if not cols:
                 continue
             get = lambda k: cells[cols[k]] if k in cols and cols[k] < len(cells) else ""
-            nc_jobs = _count(get("jobs")) or llm_count_from_text(" ".join(str(c) for c in cells), f"NC {get('company')}")
-            e = _entry("NC", get("company"), nc_jobs,
+            # NB: no LLM count-fallback here. The NC text/grid parsers emit some
+            # misaligned rows (company field = a bare number), and rescuing those
+            # extracts counts from noise (probe showed wild 5604/2035 values). NC
+            # needs proper row validation, not an LLM band-aid.
+            e = _entry("NC", get("company"), _count(get("jobs")),
                        _to_iso_date(get("eff")) or _to_iso_date(get("notice")),
                        get("city"), kind=get("kind"), detail_url=url)
             if e:
@@ -550,8 +553,9 @@ def _nc_text_rows(words, url):
     out = []
     for cells in rows:
         kind_m = re.search(r"Layoffs?|Closures?", cells[4])
-        nc_jobs = _count(cells[4]) or llm_count_from_text(" ".join(cells), f"NC {cells[2]}")
-        e = _entry("NC", cells[2], nc_jobs,
+        # No LLM count-fallback here (see _nc_grid_entries): these x-position text
+        # rows include misaligned garbage that would be rescued into bad data.
+        e = _entry("NC", cells[2], _count(cells[4]),
                    _to_iso_date(cells[1]) or _to_iso_date(cells[0]), cells[3],
                    kind=kind_m.group(0) if kind_m else "", detail_url=url)
         if e:

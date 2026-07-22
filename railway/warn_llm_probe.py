@@ -31,8 +31,10 @@ def main():
         return 1
     print("Probing WARN LLM count-fallback (no posting). Recoveries are printed "
           "as ::notice:: lines by the shared helper.\n")
+    only = {s.strip().upper() for s in os.environ.get("PROBE_STATES", "").split(",") if s.strip()}
+    fetchers = {k: v for k, v in FETCHERS.items() if not only or k in only}
     total = 0
-    for st, fn in FETCHERS.items():
+    for st, fn in fetchers.items():
         try:
             rows = fn()
             total += len(rows)
