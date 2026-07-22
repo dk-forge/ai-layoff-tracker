@@ -51,7 +51,18 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
   <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?> (the last time the database actually changed). Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a>. Note: <b>this source list is a reference that changes only when a collector is added or removed</b> (on a deploy), not every day, so it is honest for it to stay the same between updates.</p><?php endif; ?>
 
-  <h2>Every source at a glance</h2>
+  <nav class="alt-src-toc" aria-label="On this page">
+    <b>On this page:</b>
+    <a href="#alt-src-glance">Sources at a glance</a> &middot;
+    <a href="#alt-state-warn">US state WARN</a> &middot;
+    <a href="#alt-src-gaps">States not in the feed yet</a> &middot;
+    <a href="#alt-src-global">Global authorities</a> &middot;
+    <a href="#alt-src-news">Worldwide news outlets</a> &middot;
+    <a href="#alt-src-verify">How verification works</a> &middot;
+    <a href="#alt-ai-rubric">AI rubric</a>
+  </nav>
+
+  <h2 id="alt-src-glance">Every source at a glance</h2>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
     <thead><tr><th>Source</th><th>Region / scope</th><th>What it is</th><th>Tier it feeds</th><th>Link</th></tr></thead>
     <tbody>
@@ -152,7 +163,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p class="alt-muted">The state WARN registry list is being generated and will appear on the next update.</p>
   <?php endif; ?>
 
-  <h2>States not yet in the automated WARN feed, and why</h2>
+  <h2 id="alt-src-gaps">States not yet in the automated WARN feed, and why</h2>
   <p>All 50 states already appear in the tracker through SEC filings and news. The gap is only in state WARN <em>notices</em>. Each state below links to where it publishes (or an explanation of why it doesn't), in plain terms:</p>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table alt-gap-table">
     <thead><tr><th>State</th><th>Why it isn't in the WARN feed yet</th><th>Status</th><th>Where it publishes</th><th>Official unemployment (BLS)</th></tr></thead>
@@ -175,7 +186,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p class="alt-muted"><b>"Publishes, importer in progress"</b> states post public data we're actively building importers for. <b>"No public register" / "Confidential by law"</b> states keep WARN filings internal, so those cuts reach the tracker through SEC filings and named news instead, never invented and never estimated. The <b>unemployment column is a separate official metric</b> (the state's monthly BLS rate, not a layoff count) shown so every state carries an authoritative, sourced number even where individual notices aren't public.</p>
 
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php')) include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
-  <h2>Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
+
+  <h2 id="alt-src-global">Why most countries appear through news, not a registry</h2>
+  <p>Almost every country requires employers to notify a labour authority before a mass layoff, but treats those filings as <b>confidential</b>, publishing only aggregate statistics, never a public list of which companies are cutting. Only <b>US states</b> and <b>Quebec</b> publish a public, per-employer notice register we can read directly. Everywhere else, the honest options are the EU's <b>Eurofound ERM</b> (which compiles large restructuring events from national correspondents) and a <b>reviewed allowlist of that country's news outlets</b>. That is why a German or Japanese layoff reaches this tracker through a named news report rather than a government file: the government has the file, it just does not make it public. We link each country's official labour authority below so you can verify the filing requirement, and its confidentiality, yourself.</p>
+  <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php')) include ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php'; ?>
+
+  <h2 id="alt-src-news">Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
   <p>Beyond official filings, we monitor a curated allowlist of reputable news outlets in every country, in 65+ languages, twice daily via GDELT and NewsAPI, never the open web. The full list is below, generated straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register (if any) we pull directly.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php')) : ?>
   <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
@@ -183,7 +199,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p class="alt-muted">The full country &amp; outlet list is being generated and will appear on the next update.</p>
   <?php endif; ?>
 
-  <h2>How verification works</h2>
+  <h2 id="alt-src-verify">How verification works</h2>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
     <thead><tr><th>Source type</th><th>How it's handled</th></tr></thead>
     <tbody>
