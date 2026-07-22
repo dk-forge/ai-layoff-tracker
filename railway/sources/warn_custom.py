@@ -617,20 +617,35 @@ _NV_CITIES = [
     "Zephyr Cove", "Round Mountain", "Eureka", "Remote", "Statewide", "Various",
 ]
 
+# Nevada DETR now sits behind an Akamai bot-wall: the /Page/WARN landing HTML
+# 403s for non-browsers, so link discovery is dead. The cumulative master PDF
+# under /content/media/ IS reachable, but ONLY with a full browser-like header
+# set (User-Agent alone still 403s). Current year lives at a stable base
+# filename; prior years are date-suffixed archives. A 0-notice NV result now
+# means "check the master filename", not a silent failure (the health tripwire
+# already flags it).
+_NV_HEADERS = {
+    "User-Agent": UA["User-Agent"],
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Upgrade-Insecure-Requests": "1",
+}
+_NV_MASTER_PDFS = (
+    "https://detr.nv.gov/content/media/WARN_and_Non_WARN_Master_w_Logo.pdf",
+)
+
 def fetch_nv():
-    """Nevada DETR: one cumulative print-to-PDF master per year, filename rotates."""
+    """Nevada DETR cumulative master PDF. Landing page is Akamai-403 (no link
+    discovery); fetch the known master URL directly with browser headers."""
     import pdfplumber
-    landing = requests.get("https://detr.nv.gov/Page/WARN", headers=UA, timeout=TIMEOUT)
-    pdfs = re.findall(
-        r'href="(/[Cc]ontent/[Mm]edia/[^"]+\.pdf|https://detr\.nv\.gov/[Cc]ontent/[Mm]edia/[^"]+\.pdf)"[^>]*>\s*(20\d\d)\s*WARN',
-        landing.text)
     county_re = re.compile(r"\s+(?:%s)(?:\s*/\s*(?:%s))*$" % (_NV_COUNTIES, _NV_COUNTIES))
     out = []
-    for href, year in pdfs:
-        if int(year) < 2022:
-            continue
-        url = href if href.startswith("http") else "https://detr.nv.gov" + href
-        resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+    for url in _NV_MASTER_PDFS:
+        resp = requests.get(url, headers=_NV_HEADERS, timeout=TIMEOUT)
         if resp.status_code != 200:
             continue
         with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
