@@ -927,9 +927,13 @@ def _ny_fields_from_text(text):
     keeps the original, matching the tracker's lower-bound convention."""
     flat = re.sub(r"\s+", " ", text or "")
     jm = (re.search(r"Total Number of Affected Workers\s*:?\s*([\d,]+)", flat, re.I)
-          or re.search(r"Number of Affected Employees at Site\s*:?\s*([\d,]+)", flat, re.I))
+          or re.search(r"Number of Affected Employees at Site\s*:?\s*([\d,]+)", flat, re.I)
+          # Old 2022-2023 WARN-unit form used a single, differently-worded label.
+          # "Number Affected" (Affected right after Number) can't collide with the
+          # new form's "Total Number of Affected Workers" ("Number of Affected").
+          or re.search(r"\bNumber Affected\s*:?\s*([\d,]+)", flat, re.I))
     jobs = _count(jm.group(1)) if jm else 0
-    if jobs <= 0:  # DOL reworded the count label; read the notice text
+    if jobs <= 0:  # unrecognized form; LLM tail-net reads the notice text
         jobs = llm_count_from_text(flat, "NY")
     dm = re.search(r"(?:Layoff|Closure)[^:]{0,15}Start Date\s*:\s*(.{0,220})", flat, re.I)
     date = _to_iso_date(dm.group(1)) if dm else ""
