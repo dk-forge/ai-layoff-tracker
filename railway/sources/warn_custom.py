@@ -926,11 +926,89 @@ def fetch_ny_history():
     return out
 
 
+def fetch_ky():
+    """Kentucky (kyworks.ky.gov): current + prior-year WARN xlsx workbooks linked
+    from the Rapid Response page. Migrated off the generic warn-scraper tier,
+    which only ships KY's frozen historical CSV (ends ~2021) and can't read KY's
+    rotating, date-stamped xlsx filenames. Columns (verified 2026-07): company
+    'Company: Company Name', jobs 'Number of Employees Affected', effective
+    'Projected Date' (Excel serial), notice 'Date Received', county 'County',
+    kind 'Closure or Layoff?', link 'Notice URL'."""
+    from openpyxl import load_workbook
+    from datetime import datetime as _dt, timedelta as _td
+    landing = "https://kyworks.ky.gov/Services/Pages/Rapid-Response-Layoffs-and-Closures.aspx"
+    origin = "https://kyworks.ky.gov"
+    hrefs = []
+    try:
+        page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
+        hrefs = re.findall(r'href="(/Services/Documents/[^"]+\.xlsx)"', page, re.I)
+    except Exception as e:
+        print(f"KY landing fetch failed: {e}")
+    if not hrefs:  # fallback to the known filename shapes
+        hrefs = ["/Services/Documents/Website-WARN%20Notice%20Report%2007012026.xlsx",
+                 "/Services/Documents/Prior%20Year%20Warn%20Notices.xlsx"]
+
+    def _iso(v):
+        if v is None:
+            return ""
+        if isinstance(v, _dt):
+            return v.strftime("%Y-%m-%d")
+        if isinstance(v, (int, float)):  # Excel serial (epoch 1899-12-30)
+            try:
+                return (_dt(1899, 12, 30) + _td(days=int(v))).strftime("%Y-%m-%d")
+            except Exception:
+                return ""
+        return _to_iso_date(str(v))
+
+    out, seen = [], set()
+    for href in dict.fromkeys(hrefs):
+        url = href if href.lower().startswith("http") else origin + href
+        try:
+            xls = requests.get(url, headers=UA, timeout=60)
+            wb = load_workbook(io.BytesIO(xls.content), read_only=True, data_only=True)
+        except Exception as e:
+            print(f"KY workbook fetch failed ({url[:60]}): {e}")
+            continue
+        for ws in wb.worksheets:
+            headers = None
+            for row in ws.iter_rows(values_only=True):
+                cells = list(row)
+                if headers is None:
+                    lower = [str(c).strip().lower() if c is not None else "" for c in cells]
+                    if any("company" in v for v in lower):
+                        headers = lower
+                    continue
+                rl = dict(zip(headers, cells))
+
+                def g(*names):
+                    for n in names:
+                        for k, v in rl.items():
+                            if n in k:
+                                return v
+                    return ""
+                company = str(g("company") or "").strip()
+                jobs = _count(str(g("number of employees affected", "employees affected", "affected") or ""))
+                date = _iso(g("projected date")) or _iso(g("date received", "received"))
+                county = str(g("county") or "").strip()
+                kind = str(g("closure or layoff", "layoff?") or "").strip()
+                detail = str(g("notice url", "url") or "").strip()
+                if not detail.lower().startswith("http"):
+                    detail = ""
+                key = (company.lower(), date, jobs, county.lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                e = _entry("KY", company, jobs, date, city=county, kind=kind, detail_url=detail)
+                if e:
+                    out.append(e)
+    return out
+
+
 CUSTOM_STATES = {
     "TX": fetch_tx, "FL": fetch_fl, "GA": fetch_ga, "OH": fetch_oh,
     "MI": fetch_mi, "CO": fetch_co, "ID": fetch_id, "LA": fetch_la,
     "NC": fetch_nc, "NV": fetch_nv, "MN": fetch_mn, "MA": fetch_ma,
-    "NY": fetch_ny_history,
+    "NY": fetch_ny_history, "KY": fetch_ky,
 }
 
 

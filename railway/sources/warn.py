@@ -202,11 +202,12 @@ def _count(s):
 # earlier version of this list (IL and PA are top-5 layoff states!).
 ALL_STATES = [
     "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
-    "IL", "IN", "KS", "KY", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
+    "IL", "IN", "KS", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
     "NJ", "NM", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
     "VA", "VT", "WI",
-    # WA moved to the custom fortress scraper (per-notice PDF links) — see
-    # warn_new_states.fetch_wa. Excluded here so it isn't double-run.
+    # WA and KY moved to custom scrapers (warn_new_states.fetch_wa /
+    # warn_custom.fetch_ky). Excluded here so they aren't double-run; the generic
+    # tier only had KY's frozen historical CSV anyway.
 ]
 
 
