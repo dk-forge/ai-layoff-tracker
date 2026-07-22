@@ -23,7 +23,7 @@ import os
 import re
 import sys
 import time
-from datetime import date
+from datetime import date, timedelta
 
 import requests
 
@@ -84,6 +84,23 @@ def load_watchlist():
                     _add(row.get("company") or row.get("Name") or row.get("Security") or row.get("name"))
         except Exception as exc:
             print(f"watchlist index merge failed ({url[:40]}...): {exc}")
+
+    # Self-grow from our OWN captured data: every company we've ever ingested
+    # (WARN/SEC/news) becomes one we keep monitoring for its NEXT round — repeat
+    # layoffs are common (Amazon/Meta/Google cut multiple times). Uses only our
+    # own DB, so it's fully brand-safe and compounds with every capture. Bounded
+    # to recent captures (3y). Toggle off with WATCHLIST_SELF_GROW=0.
+    if os.environ.get("WATCHLIST_SELF_GROW", "1") != "0" and SITE:
+        try:
+            since = (date.today() - timedelta(days=365 * 3)).isoformat()
+            resp = requests.get(f"{SITE}/wp-json/layoffs/v1/companies",
+                                params={"since": since, "limit": 20000}, headers=UA, timeout=45)
+            got = resp.json().get("companies", []) if resp.status_code == 200 else []
+            for c in got:
+                _add(c)
+            print(f"watchlist self-grow: merged {len(got)} companies from our own captures")
+        except Exception as exc:
+            print(f"watchlist self-grow failed (non-fatal): {exc}")
     return names
 
 

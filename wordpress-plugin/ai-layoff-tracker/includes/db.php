@@ -907,6 +907,12 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_recall_benchmark_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // Distinct captured company names — powers the self-growing watchlist (every
+    // company we've ever captured becomes one we keep monitoring for new rounds).
+    // Public: company names are facts; no counts/dates/sources exposed here.
+    register_rest_route('layoffs/v1', '/companies', array(
+        'methods' => 'GET', 'callback' => 'alt_api_companies', 'permission_callback' => '__return_true',
+    ));
     // Separate, source-evidenced WARN timing/adjudication register. It never
     // affects layoff/AI totals and uses “violation” only after adjudication.
     register_rest_route('layoffs/v1', '/warn-transparency', array(
@@ -1891,6 +1897,29 @@ function alt_api_announcement_lifecycle_candidates(WP_REST_Request $r) {
 }
 
 /** Public retained reconciliation history; never a command to alter totals. */
+function alt_api_companies(WP_REST_Request $r) {
+    global $wpdb;
+    $table = $wpdb->prefix . 'alt_layoffs';
+    $since = sanitize_text_field((string) $r->get_param('since'));   // YYYY-MM-DD
+    $limit = min(50000, max(100, (int) ($r->get_param('limit') ?: 20000)));
+    $has_since = (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $since);
+    $ckey = 'alt_companies_' . md5(($has_since ? $since : 'all') . '_' . $limit);
+    $cached = get_transient($ckey);
+    if ($cached !== false) return new WP_REST_Response($cached, 200);
+    if ($has_since) {
+        $sql = $wpdb->prepare("SELECT company FROM $table WHERE company <> '' AND layoff_date >= %s "
+            . "GROUP BY company ORDER BY MAX(layoff_date) DESC LIMIT %d", $since, $limit);
+    } else {
+        $sql = $wpdb->prepare("SELECT company FROM $table WHERE company <> '' "
+            . "GROUP BY company ORDER BY MAX(layoff_date) DESC LIMIT %d", $limit);
+    }
+    $rows = $wpdb->get_col($sql);
+    $out = array('companies' => array_values(array_filter(array_map('strval', (array) $rows))),
+                 'count' => is_array($rows) ? count($rows) : 0);
+    set_transient($ckey, $out, HOUR_IN_SECONDS);
+    return new WP_REST_Response($out, 200);
+}
+
 function alt_api_survey_benchmarks() {
     $records = get_option('alt_survey_benchmarks');
     if (!is_array($records)) return rest_ensure_response(array());
