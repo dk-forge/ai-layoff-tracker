@@ -211,7 +211,10 @@ $alt_view_year = $alt_y;
 // This-week slug for the weekly tab.
 $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
 // Reports are stamped in New York (Eastern) time — the newsroom-standard zone.
-$alt_stamp = (new DateTime('now', new DateTimeZone('America/New_York')))->format('M j, Y · g:i A T');
+// Honest: show when the DATA last changed (last ingest), not the page-load time.
+// Fall back to render time only if nothing has ever been written.
+$alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : '')
+    ?: (new DateTime('now', new DateTimeZone('America/New_York')))->format('M j, Y · g:i A T');
 ?>
 <main class="alt-wrap alt-report-page">
   <?php if (function_exists("alt_dataset_jsonld") && !defined("ALT_REPORT_LD_DONE")) { define("ALT_REPORT_LD_DONE", 1); alt_output_jsonld(array(alt_dataset_jsonld())); } ?>

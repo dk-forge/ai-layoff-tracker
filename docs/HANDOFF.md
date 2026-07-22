@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** HELD
-- **HOLDER:** local (Claude Code)
+- **STATUS:** FREE
+- **HOLDER:** —
 - **SINCE:** 2026-07-21
-- **WORKING ON:** honest last-updated timestamps on report/press/sources
+- **WORKING ON:** —
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
@@ -31,6 +31,7 @@ whoever lands the "claim" commit first wins and the other must rebase and see
 the baton is taken.
 
 ## Handoff log (newest first — what each session did + what's next)
+- 2026-07-21 local: honest 'Data last updated' timestamps on report/press/sources from alt_last_write (real last-ingest time, NOT page-load). Fixed report's misleading DateTime('now') stamp. Sources notes its list changes on deploys, not daily. **Next (BIG): investigate WARN gap — WARNTracker 775,892 vs our 239,450 (31%) on the same source.**
 - 2026-07-21 local: self-growing watchlist — new public /companies endpoint (distinct captured names, cached) + company_watchlist self-grows from it (WATCHLIST_SELF_GROW). Monitored universe now compounds with every capture. **Next:** point WATCHLIST_INDEX_URLS at S&P500/Russell CSVs; build GLEIF/SEC alias feed.
 - 2026-07-21 local (Claude Code): added prominent public 'Why our number is lower' journalist callout on the tracker page (competitor-free). **Next:** point COMPETITOR_FEED_URLS at the layoffs.fyi export to auto-run the gap-chase.
 - 2026-07-21 local (Claude Code): removed the dead public competitor-benchmark block from health.js (FYI/Challenger/history numbers were in the served JS source, never rendered — no PHP container). Benchmark stays private (bm-live.html). **Next:** CA WARN backfill once egress allowlisted.

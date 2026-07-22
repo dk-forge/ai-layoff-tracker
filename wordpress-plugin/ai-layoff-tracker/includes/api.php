@@ -613,6 +613,23 @@ add_action('deleted_post', 'alt_flush_caches');
  * end-call never leaves the badge stuck. Phases: "refreshing" (pulling new
  * filings/notices/news) and "cleaning" (dedup + fact-check).
  */
+/**
+ * Honest "data last updated" label = the timestamp of the last ACTUAL write to
+ * the table (set on every ingest via alt_last_write), NOT the page-render time.
+ * Returns '' if nothing has ever been written. Used on the report/press/sources
+ * pages so a reader can spot-check that the data genuinely moved.
+ */
+function alt_data_last_updated_label() {
+    $ts = (int) get_option('alt_last_write', 0);
+    if ($ts <= 0) return '';
+    try {
+        return (new DateTime('@' . $ts))->setTimezone(new DateTimeZone('America/New_York'))
+            ->format('M j, Y · g:i A T');
+    } catch (Exception $e) {
+        return '';
+    }
+}
+
 function alt_pipeline_phase() {
     $s = get_option('alt_pipeline_status');
     if (!is_array($s) || empty($s['at']) || (time() - (int) $s['at']) > 50 * MINUTE_IN_SECONDS) {

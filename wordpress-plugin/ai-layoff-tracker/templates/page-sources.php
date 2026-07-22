@@ -49,6 +49,8 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <h1>Data Sources</h1>
   <p class="alt-lead"><span class="alt-lead-text">Every number in the tracker traces back to one of the sources below — an official government filing, a legally required layoff notice, an EU restructuring record, or a named news report. Nothing is estimated or modeled into existence. Each row links to the raw source so you can check it yourself.</span></p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-metric-definitions">Methodology</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code</a></p>
+  <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
+  <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?> (the last time the database actually changed). Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a>. Note: <b>this source list is a reference that changes only when a collector is added or removed</b> (on a deploy) — not every day — so it is honest for it to stay the same between updates.</p><?php endif; ?>
 
   <h2>Every source at a glance</h2>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">

@@ -158,6 +158,8 @@ if (!is_array($alt_sb_groups)) {
 
   <h2 id="alt-key-stats">Key stats by year</h2>
   <p>Live figures from the same database the tracker serves. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A separate broader measure (looser AI-linked attributions) is available in the <code>ai_broad_jobs</code> API field.</p>
+  <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
+  <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?> — the moment the underlying database last changed (a new filing/notice/report was added), not the time you loaded this page.</p><?php endif; ?>
   <div class="alt-health-table-wrap"><table class="alt-press-table">
     <thead><tr><th>Year</th><th class="num">Verified layoffs</th><th class="num">Job cuts recorded</th><th class="num">AI-attributed (strict)</th></tr></thead>
     <tbody>
