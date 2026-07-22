@@ -276,6 +276,18 @@ if (function_exists('alt_faq_items')) {
         <p class="alt-quality-note">Every figure links to a primary source. Machine-extracted numbers are double-checked by a second independent pass, numeric changes and removals always require a human, and <b>every correction is disclosed in the <a href="#alt-corrections">open log</a></b> &mdash; nothing is quietly edited.</p>
     </section>
 
+    <section class="alt-why-lower" aria-labelledby="alt-why-lower-title">
+        <h2 id="alt-why-lower-title">Why our number is lower &mdash; and why it's the one to cite</h2>
+        <p class="alt-why-lead">Announcement surveys count what companies <em>say</em>. We count what you can <em>prove</em>. Every figure on this page clicks through to a legal filing or a named report &mdash; so our total is a <strong>documented floor</strong>: smaller than the headline estimates by design, and verifiable by design.</p>
+        <div class="alt-why-grid">
+            <div class="alt-why-item"><b>They book multi-year plans on day one.</b> A &ldquo;20,000 over two years&rdquo; announcement lands in their total instantly. We add each cut as its WARN notice or SEC filing actually appears.</div>
+            <div class="alt-why-item"><b>They fold in receiptless separations.</b> Buyouts, attrition, and federal-workforce reductions that name no company and file nothing &mdash; hundreds of thousands of jobs with no document to link. We don&rsquo;t claim what we can&rsquo;t source.</div>
+            <div class="alt-why-item"><b>We don&rsquo;t pad to match a bigger headline.</b> A number a journalist can verify is worth more than a bigger one they can&rsquo;t. Nothing here is estimated into existence.</div>
+            <div class="alt-why-item"><b>On AI &mdash; what this tracker exists for &mdash;</b> every flagged cut carries the employer&rsquo;s own words naming AI: quotable, clickable, and held to a standard the estimates don&rsquo;t apply to themselves.</div>
+        </div>
+        <p class="alt-why-foot"><a href="#alt-metric-definitions">See the full methodology &rarr;</a> &middot; Every number, every source, one click away.</p>
+    </section>
+
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
     <div class="alt-minigrid">
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
