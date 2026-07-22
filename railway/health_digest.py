@@ -41,7 +41,7 @@ SOFT_DEGRADED = {"gdelt_historical"}  # historical recovery is rate-limit prone
 
 # States with no public WARN register: a custom scraper returning 0 for them is
 # correct, not drift, so a drift-detail naming ONLY these is benign.
-_BENIGN_STATES = {"HI", "AR", "WY", "NH"}
+_BENIGN_STATES = {"HI", "AR", "WY", "NH", "NV"}  # NV: Akamai bot-wall blocks CI
 
 
 def _benign_degraded(detail):

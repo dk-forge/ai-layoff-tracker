@@ -29,7 +29,10 @@ BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 # A degraded/stale source is BENIGN (no action) when it's one of these: a
 # transient rate-limit, or a state with no public register.
 SOFT = {"gdelt_historical"}
-BENIGN_STATES = {"HI", "AR", "WY", "NH"}
+# NV: DETR moved behind an Akamai bot-wall that 403s datacenter IPs, so the CI
+# importer can't reach the master PDF (fetch_nv works only from a residential IP).
+# A 0 from CI is expected, not drift; NV cuts reach the tracker via SEC/news.
+BENIGN_STATES = {"HI", "AR", "WY", "NH", "NV"}
 # A WARN custom scraper returning 0 is only real DRIFT for high-volume states
 # (matches warn_import.py). A low-volume state filing nothing on a run is normal.
 HIGH_VOLUME = {"TX", "FL", "GA", "CA", "OH", "MI", "NY", "NC"}
