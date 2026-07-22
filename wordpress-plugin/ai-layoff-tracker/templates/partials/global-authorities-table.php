@@ -88,7 +88,7 @@ $alt_authorities = array(
 );
 $alt_auth_count = 0; foreach ($alt_authorities as $alt_reg_rows) { $alt_auth_count += count($alt_reg_rows); }
 ?>
-<details class="alt-health-section">
+<details class="alt-health-section" open>
   <summary><b>Every country's labour authority, and how we track it (<?php echo (int) $alt_auth_count; ?> countries)</b></summary>
   <p class="alt-auth-note">Only Quebec (Canada) and US states publish public per-employer layoff notices. Everywhere else the filing is confidential and only aggregate statistics are released, so we rely on Eurofound ERM plus reviewed news across the EU and EEA, and reviewed national news outlets elsewhere.</p>
   <?php foreach ($alt_authorities as $alt_region => $alt_rows): ?>
