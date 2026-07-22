@@ -46,17 +46,23 @@
 /* Data-quality confidence note right under the headline numbers. */
 .alt-quality-note { margin: 8px 2px 0; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2); }
 
-/* "Why our number is lower" journalist callout — prominent, screenshot-friendly,
-   stacks on mobile (min-width:0 so nothing bleeds past the card). */
-.alt-why-lower { margin: 22px 0 0; padding: 22px 24px; background: #f2f5f0; border: 1px solid #cfdad0;
+/* "Why our number is lower" journalist callout — collapsible, stacks on mobile
+   (min-width:0 so nothing bleeds past the card). */
+.alt-why-lower { margin: 22px 0 0; padding: 16px 24px; background: #f2f5f0; border: 1px solid #cfdad0;
     border-left: 4px solid #537a5c; border-radius: 14px; color: #20283a; }
-.alt-why-lower h2 { margin: 0 0 8px; font-size: 18px; color: #20283a; }
+.alt-why-summary { cursor: pointer; list-style: none; font-size: 17px; font-weight: 700; color: #20283a; }
+.alt-why-summary::-webkit-details-marker { display: none; }
+.alt-why-summary::before { content: "\25B8\00a0"; color: #537a5c; }
+.alt-why-lower[open] .alt-why-summary::before { content: "\25BE\00a0"; }
+.alt-why-body { margin-top: 14px; }
 .alt-why-lead { margin: 0 0 16px; font-size: 14.5px; line-height: 1.6; color: #2c3446; max-width: 68em; }
 .alt-why-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 640px) { .alt-why-grid { grid-template-columns: 1fr; } }
 .alt-why-item { min-width: 0; background: #fafbf9; border: 1px solid #dbe4dc; border-radius: 10px;
     padding: 12px 14px; font-size: 13px; line-height: 1.55; color: #3d4658; }
 .alt-why-item b { color: #20283a; }
+.alt-why-quality { margin: 14px 0 0; font-size: 12.5px; line-height: 1.5; color: #3d4658; }
+.alt-why-quality a { color: #537a5c; font-weight: 600; }
 .alt-why-foot { margin: 14px 0 0; font-size: 13px; color: #3d4658; }
 .alt-why-foot a { color: #537a5c; font-weight: 600; }
 .alt-why-foot a:hover { color: #47694f; }
