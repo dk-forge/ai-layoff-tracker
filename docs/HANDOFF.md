@@ -30,9 +30,8 @@ The push itself is the real gate: git rejects the second concurrent push, so
 whoever lands the "claim" commit first wins and the other must rebase and see
 the baton is taken.
 
+## Handoff log (newest first — what each session did + what's next)
 - 2026-07-21 local (Claude Code): removed the dead public competitor-benchmark block from health.js (FYI/Challenger/history numbers were in the served JS source, never rendered — no PHP container). Benchmark stays private (bm-live.html). **Next:** CA WARN backfill once egress allowlisted.
-
- — what each session did + what's next)
 - 2026-07-21 local (Claude Code): built the handoff baton + env-equip kit
   (`docs/ENVIRONMENT-SETUP.md`, `scripts/setup_test_db.sh`,
   `railway/gen_synthetic_snapshot.py`) + wired the baton into `ops_status.py`.
