@@ -1,0 +1,46 @@
+name: Hawaii WARN OCR dry-run
+
+# DORMANT verification job. Hawaii's WARN notices are image-scan PDFs, so the
+# affected-employee count is OCR-only. This manually-dispatched job installs
+# tesseract, OCRs recent Hawaii notices, and PRINTS the extracted counts so a
+# human can judge accuracy before the source is promoted to live. It posts
+# NOTHING (no WP_API_KEY used). Manual dispatch only — never scheduled.
+# pytesseract + tesseract installed here only, kept out of the shared
+# requirements so the daily jobs stay lean and OCR-free.
+
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: 'Comma-separated years to crawl (blank = last/this/next)'
+        required: false
+        default: ''
+      limit:
+        description: 'Stop after N successful extractions (blank = all)'
+        required: false
+        default: ''
+
+jobs:
+  hi-warn-dryrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tesseract (system)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+      - name: Install deps
+        working-directory: railway
+        run: |
+          pip install -r requirements.txt
+          pip install pytesseract
+      - name: Hawaii WARN OCR dry-run (prints only, posts nothing)
+        working-directory: railway
+        env:
+          HI_DRYRUN_YEARS: ${{ github.event.inputs.years }}
+          HI_DRYRUN_LIMIT: ${{ github.event.inputs.limit }}
+        run: python hi_warn_dryrun.py
