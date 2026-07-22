@@ -39,4 +39,10 @@ jobs:
         env:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
+          # DeepSeek fallback for notices the deterministic extractor skips.
+          # Verified clean in the dry-run (all recoveries >=5 and plausible; the
+          # count must appear verbatim in the source). Falls back to regex-only
+          # if the LLM is unavailable, so it can't reduce coverage.
+          HI_LLM_FALLBACK: '1'
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python hi_warn_import.py
