@@ -259,12 +259,15 @@ def pull_warn(states, min_employees=0, start_date=""):
                 rl = _row_lower(row)
                 company = _match(rl, ["company", "employer", "business", "job_site",
                                       "job site", "organization", "establishment", "firm",
-                                      "location name"])  # Illinois names it "Location Name"
+                                      "location name"],  # Illinois names it "Location Name"
+                                 ["title"])  # Missouri's company column header is literally "Title"
                 jobs = _count(_count_col(rl))
                 date = _date_from(rl,
                     ["effective", "layoff start", "layoff_date", "layoff date",
                      "layoff begin", "closure start", "starts", "layoff/closure",
-                     "impact date"],                  # preferred: effective/impact
+                     "impact date", "date_action", "date of action",
+                     "action date"],                  # preferred: effective/impact
+                                                      # ("action" cols are AL/MS effective dates)
                     ["notice"],                       # then notice date
                     ["received"],                     # then received date
                     ["date"])                         # any remaining date column
