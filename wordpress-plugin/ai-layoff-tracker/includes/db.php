@@ -2509,13 +2509,16 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
     $payload = get_transient($key);
     if ($payload === false) {
         $payload = call_user_func($compute);
-        set_transient($key, $payload, 5 * MINUTE_IN_SECONDS);
+        set_transient($key, $payload, 30 * MINUTE_IN_SECONDS);
     }
     $resp = rest_ensure_response($payload);
-    // Server transients hold 5 minutes; let browsers and any edge cache ride
-    // the same window, and serve stale while revalidating so repeat visits
-    // never wait on the shared host. Data-changing writes bump alt_data_ver,
-    // which changes every transient key immediately regardless.
+    // The expensive compute (esp. /aggregate: ~30 SQL statements over 100K+ rows)
+    // is cached SERVER-side for 30 minutes, so a normal visitor almost never lands
+    // on a cold recompute — the main cause of the slow first load. The browser/edge
+    // Cache-Control stays at 5 minutes, so edge staleness after a data write is
+    // unchanged. A data-changing write bumps alt_data_ver, which changes every
+    // transient key immediately, so a longer server TTL can never serve a number a
+    // write has superseded (bounded by writes, not by TTL).
     $resp->header('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
     return $resp;
 }
