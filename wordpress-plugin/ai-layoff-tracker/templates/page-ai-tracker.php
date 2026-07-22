@@ -1,12 +1,12 @@
 <?php
-/** AI displacement view — rendered by [alt_ai_tracker]. */
+/** AI displacement view, rendered by [alt_ai_tracker]. */
 if (!defined('ABSPATH')) exit;
 ?>
 <div class="alt-wrap alt-ai-tracker">
     <div id="alt-ai-status" class="alt-status" role="status">Loading AI displacement data…</div>
 
     <div class="alt-hero" id="alt-ai-hero">
-        <span class="alt-hero-value" id="alt-ai-hero-jobs">—</span>
+        <span class="alt-hero-value" id="alt-ai-hero-jobs">…</span>
         <span class="alt-hero-label">jobs explicitly attributed to AI, automation, or robotics</span>
         <span class="alt-hero-sub" id="alt-ai-hero-sub"></span>
     </div>
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) exit;
         <div class="alt-chart-card">
             <h3>In their own words <span class="alt-chart-sub">exact language from sources</span></h3>
             <div class="alt-quote-wall" id="alt-quote-wall" aria-live="polite">
-                <blockquote id="alt-quote-text">—</blockquote>
+                <blockquote id="alt-quote-text">…</blockquote>
                 <cite id="alt-quote-cite"></cite>
             </div>
         </div>

@@ -1,5 +1,5 @@
 <?php
-/** Dashboard charts — rendered by [alt_dashboard]. */
+/** Dashboard charts, rendered by [alt_dashboard]. */
 if (!defined('ABSPATH')) exit;
 ?>
 <div class="alt-wrap alt-dashboard">

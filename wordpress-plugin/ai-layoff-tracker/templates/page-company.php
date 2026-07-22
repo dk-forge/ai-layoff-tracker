@@ -1,6 +1,6 @@
 <?php
 /**
- * Per-company history — rendered by [alt_company_history company="..."].
+ * Per-company history, rendered by [alt_company_history company="..."].
  * $company is provided by alt_template().
  */
 if (!defined('ABSPATH')) exit;

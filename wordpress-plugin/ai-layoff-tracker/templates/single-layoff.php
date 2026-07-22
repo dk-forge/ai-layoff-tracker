@@ -1,5 +1,5 @@
 <?php
-/** Single layoff entry page — /blog/layoff/{company}-{date}. */
+/** Single layoff entry page, /blog/layoff/{company}-{date}. */
 if (!defined('ABSPATH')) exit;
 
 get_header();
@@ -12,7 +12,7 @@ $verif = $verif_labels[$e['verification_level'] ?? ''] ?? 'News';
 $src_url = esc_url_raw($e['source_url'] ?? '');   // esc_url_raw drops javascript:/data:
 $tracker = home_url('/blog/ai-layoff-tracker/');
 $cite = sprintf(
-    'AI Layoff Tracker, AskTheRecruiter.com. "%s — %s jobs (%s)." Retrieved %s. Primary source: %s.',
+    'AI Layoff Tracker, AskTheRecruiter.com. "%s, %s jobs (%s)." Retrieved %s. Primary source: %s.',
     $e['company_name'] ?? '',
     number_format_i18n((int) ($e['job_count'] ?? 0)),
     $e['layoff_date'] ?: 'date unknown',

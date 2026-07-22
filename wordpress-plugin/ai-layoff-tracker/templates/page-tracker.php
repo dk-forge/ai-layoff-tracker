@@ -1,5 +1,5 @@
 <?php
-/** Main filterable tracker — rendered by [alt_tracker]. */
+/** Main filterable tracker, rendered by [alt_tracker]. */
 if (!defined('ABSPATH')) exit;
 
 $alt_csv  = admin_url('admin-post.php?action=alt_export_csv');
@@ -216,53 +216,53 @@ if (function_exists('alt_faq_items')) {
         <div class="screen-reader-text" id="alt-results-summary-title" role="heading" aria-level="2">Results summary</div>
         <div class="alt-stats-bar" id="alt-stats-bar">
             <div class="alt-stat-card alt-fam-verified">
-                <span class="alt-stat-value" id="alt-stat-total">—</span>
+                <span class="alt-stat-value" id="alt-stat-total">…</span>
                 <span class="alt-stat-label">Verified job cuts</span>
                 <span class="alt-stat-desc">Filed or reported. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>" target="_blank" rel="noopener">Why this is verified &rarr;</a></span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
             </div>
             <div class="alt-stat-card alt-fam-announced">
-                <span class="alt-stat-value" id="alt-stat-announced">—</span>
+                <span class="alt-stat-value" id="alt-stat-announced">…</span>
                 <span class="alt-stat-label">Announced job cuts (planned)</span>
                 <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
             </div>
             <div class="alt-stat-card alt-fam-all">
-                <span class="alt-stat-value" id="alt-stat-all">—</span>
+                <span class="alt-stat-value" id="alt-stat-all">…</span>
                 <span class="alt-stat-label">Verified + announced job cuts</span>
                 <span class="alt-stat-desc">Both tiers together: everything filed, reported, or planned in the period.</span>
                 <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
             </div>
             <div class="alt-stat-card">
-                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies">—</span><span class="alt-stat-label">Companies</span></span>
+                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies">…</span><span class="alt-stat-label">Companies</span></span>
                 <span class="alt-stat-desc">Coverage in this view.</span>
-                <span class="alt-stat-line"><b id="alt-stat-industries">—</b> <span id="alt-stat-industries-label">industries</span></span>
-                <span class="alt-stat-line"><b id="alt-stat-countries">—</b> <span id="alt-stat-countries-label">countries</span></span>
-                <span class="alt-stat-line"><b id="alt-stat-states">—</b> <span id="alt-stat-states-label">US states</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-industries">…</b> <span id="alt-stat-industries-label">industries</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-countries">…</b> <span id="alt-stat-countries-label">countries</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-states">…</b> <span id="alt-stat-states-label">US states</span></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-verified">
-                <span class="alt-stat-value" id="alt-stat-ai">—</span>
-                <span class="alt-stat-label">🤖 AI cuts — verified (specific)</span>
+                <span class="alt-stat-value" id="alt-stat-ai">…</span>
+                <span class="alt-stat-label">🤖 AI cuts, verified (specific)</span>
                 <span class="alt-stat-desc">Verified-tier cuts in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-share-line"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-announced">
-                <span class="alt-stat-value" id="alt-stat-ai-announced">—</span>
-                <span class="alt-stat-label">🤖 AI cuts — announced (planned)</span>
+                <span class="alt-stat-value" id="alt-stat-ai-announced">…</span>
+                <span class="alt-stat-label">🤖 AI cuts, announced (planned)</span>
                 <span class="alt-stat-desc">Announced-tier plans that cite AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-total">
-                <span class="alt-stat-value" id="alt-stat-ai-total">—</span>
-                <span class="alt-stat-label">🤖 AI cuts — total (specific)</span>
-                <span class="alt-stat-desc">Verified + announced added together — cuts the employer or plan explicitly named AI for. This is the two boxes to the left, summed.</span>
+                <span class="alt-stat-value" id="alt-stat-ai-total">…</span>
+                <span class="alt-stat-label">🤖 AI cuts, total (specific)</span>
+                <span class="alt-stat-desc">Verified + announced added together: cuts the employer or plan explicitly named AI for. This is the two boxes to the left, summed.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-total-sub"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-stat-card-broad">
-                <span class="alt-stat-value" id="alt-stat-ai-broad">—</span>
-                <span class="alt-stat-label">🤖 AI-linked — broad (wider lens)</span>
-                <span class="alt-stat-desc"><b>A different, looser measure</b> — a wider lens that also counts press AI-framing ("amid AI push," "AI pivot"), not just the employer's own words. It is intentionally larger than the total on the left, so it does <b>not</b> add up with the boxes above.</span>
+                <span class="alt-stat-value" id="alt-stat-ai-broad">…</span>
+                <span class="alt-stat-label">🤖 AI-linked, broad (wider lens)</span>
+                <span class="alt-stat-desc"><b>A different, looser measure</b>, a wider lens that also counts press AI-framing ("amid AI push," "AI pivot"), not just the employer's own words. It is intentionally larger than the total on the left, so it does <b>not</b> add up with the boxes above.</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>
@@ -438,9 +438,9 @@ if (function_exists('alt_faq_items')) {
 
             <p><b>How entries are extracted and checked.</b> Discovery searches a dialect-aware vocabulary (layoffs, redundancies, retrenchment, dismissals, sackings, workforce reduction and more than thirty other phrasings) across GDELT's 65-language translated index, so coverage that never uses the word "layoff" still surfaces. News and filings are machine-extracted; core facts must appear in the source text. Counts parse conservatively (ranges resolve to the lower bound). Countries and industries normalize through fixed vocabularies; implausible values are rejected. New records carry an evidence confidence and publication status. Exact fingerprints, same-company guards and cross-source comparison prevent double counting; uncertain candidates remain provisional instead of silently inflating verified totals. WARN filings skip the language model and remain exempt from fuzzy dedup because one employer can legally file several distinct notices.</p>
 
-            <p><b>How the AI tag works.</b> We distinguish AI as a <em>primary cause</em>, a contributing cause, a selection/operations tool, background context, and an explicit denial. Only primary or contributing cause classifications may be AI-attributed, and each must carry an exact supporting quote found in the source text. AI investment, future automation projections, and AI used to select workers do not qualify by themselves. Alongside the strict tag we also maintain a separately labeled <b>AI-linked, broad</b> measure that counts looser attributions &mdash; cuts made while funding an AI pivot, AI-driven market disruption, and press AI framing. The broad measure is surfaced in the <code>ai_broad_jobs</code> API field; it is never mixed into the strict verified-AI totals.</p>
+            <p><b>How the AI tag works.</b> We distinguish AI as a <em>primary cause</em>, a contributing cause, a selection/operations tool, background context, and an explicit denial. Only primary or contributing cause classifications may be AI-attributed, and each must carry an exact supporting quote found in the source text. AI investment, future automation projections, and AI used to select workers do not qualify by themselves. Alongside the strict tag we also maintain a separately labeled <b>AI-linked, broad</b> measure that counts looser attributions, cuts made while funding an AI pivot, AI-driven market disruption, and press AI framing. The broad measure is surfaced in the <code>ai_broad_jobs</code> API field; it is never mixed into the strict verified-AI totals.</p>
 
-            <p><b>How "Roles most impacted" works.</b> When a source names which teams were cut (for example "laying off customer-support and recruiting staff"), a model reads that stored text and maps it to a fixed set of role categories; a second independent pass must agree, and a supporting quote must be present, before the category is stored. Nothing is inferred from a company's industry or guessed. Each bar shows the <b>total job cuts</b> attributed to that team, and the orange segment plus the 🤖 figure show how many of those were <b>AI-linked</b> — so a bar with no orange is job cuts we could not tie to AI, not an error. This chart covers <em>only</em> the minority of records whose source actually named the teams affected, so it is a sample of where cuts land, never a breakdown of the full total.</p>
+            <p><b>How "Roles most impacted" works.</b> When a source names which teams were cut (for example "laying off customer-support and recruiting staff"), a model reads that stored text and maps it to a fixed set of role categories; a second independent pass must agree, and a supporting quote must be present, before the category is stored. Nothing is inferred from a company's industry or guessed. Each bar shows the <b>total job cuts</b> attributed to that team, and the orange segment plus the 🤖 figure show how many of those were <b>AI-linked</b>, so a bar with no orange is job cuts we could not tie to AI, not an error. This chart covers <em>only</em> the minority of records whose source actually named the teams affected, so it is a sample of where cuts land, never a breakdown of the full total.</p>
             <p><b>Coverage and honest limitations.</b> US depth is greatest because of WARN and SEC sources. Europe has structured coverage of large announcements through Eurofound ERM. Outside those live collectors, country-level coverage is currently worldwide news discovery and any explicitly reviewed company newsroom feed; named filing systems such as SEDAR+, RNS, ASX, TDnet and HKEXnews are research candidates, not silently assumed feeds. WARN and ERM have their own thresholds and geography rules, so they should not be summed as if they were a complete national census. Multi-state and multi-country events can overlap; the entry and source fields disclose that risk. Entries dated in the future are announced or filed but not yet completed. Filtering the table by a country also includes cuts by employers <em>headquartered</em> there whose layoff spanned multiple countries (each such row stays labeled with its true "Multiple countries" scope, never recounted as that country alone); the headline totals stay on the stricter job-location basis, so they are never inflated by a global figure.</p>
 
             <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; forward-looking projections (e.g. "could cost X jobs by 2050") rather than announced or executed cuts; and retrospective summary articles that would double-count events already tracked.</p>
@@ -453,7 +453,7 @@ if (function_exists('alt_faq_items')) {
     <details class="alt-methodology" id="alt-data-sources">
         <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
-            <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo (int) $alt_warn_states; ?> US states and DC, Eurofound ERM for the EU, discovery probes for Japan, South Korea and Brazil), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and NewsAPI — allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
+            <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo (int) $alt_warn_states; ?> US states and DC, Eurofound ERM for the EU, discovery probes for Japan, South Korea and Brazil), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and NewsAPI, allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
             <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
         </div>
     </details>
@@ -476,23 +476,23 @@ if (function_exists('alt_faq_items')) {
     <details class="alt-methodology">
         <summary>Why our numbers differ from other trackers</summary>
         <div class="alt-method-body">
-            <p><b>Every tracker measures a different thing — so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below the headline announcement estimates, and the gap is fully explainable — here is exactly why, and why we treat it as a feature, not a shortfall.</p>
+            <p><b>Every tracker measures a different thing, so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below the headline announcement estimates, and the gap is fully explainable, here is exactly why, and why we treat it as a feature, not a shortfall.</p>
 
-            <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years," the announcement trackers record all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap — their figure is a forecast, ours is an execution ledger.</p>
+            <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years," the announcement trackers record all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap, their figure is a forecast, ours is an execution ledger.</p>
 
-            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs — including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000–300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
+            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs, including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000–300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
-            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em> — smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for — <b>layoffs companies attribute to AI</b> — our count actually <em>exceeds</em> the headline announcement trackers every year, because we surface AI attributions from primary sources they never itemize.</p>
+            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>, smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year, because we surface AI attributions from primary sources they never itemize.</p>
 
             <p><b>Where each kind of tracker fits:</b></p>
             <ul class="alt-method-list">
-                <li><b>Announcement surveys</b> — monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Typically published as press releases; no per-event public database.</li>
-                <li><b>Editorial newsroom trackers</b> — selected major announcements with newsroom verification. No downloadable dataset; selective by design.</li>
-                <li><b>Sector trackers</b> — technology-focused trackers built from announcements and crowdsourced reports. Their scope matches our <em>Technology</em> filter, not our all-industry total.</li>
-                <li><b>Official statistics</b> — <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a>, <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS</a>, <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> count <em>all</em> separations economy-wide (millions/month) with no company detail. A different universe entirely.</li>
-                <li><b>This tracker</b> — verified events in the headline, announcement-stage figures in a separate labeled tier, corrections logged openly, data and code public. When our number differs, the difference is definitional — and both definitions are stated here so either can be cited correctly.</li>
+                <li><b>Announcement surveys</b>, monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Typically published as press releases; no per-event public database.</li>
+                <li><b>Editorial newsroom trackers</b>, selected major announcements with newsroom verification. No downloadable dataset; selective by design.</li>
+                <li><b>Sector trackers</b>, technology-focused trackers built from announcements and crowdsourced reports. Their scope matches our <em>Technology</em> filter, not our all-industry total.</li>
+                <li><b>Official statistics</b>, <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a>, <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS</a>, <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> count <em>all</em> separations economy-wide (millions/month) with no company detail. A different universe entirely.</li>
+                <li><b>This tracker</b>, verified events in the headline, announcement-stage figures in a separate labeled tier, corrections logged openly, data and code public. When our number differs, the difference is definitional, and both definitions are stated here so either can be cited correctly.</li>
             </ul>
         </div>
     </details>
@@ -500,7 +500,7 @@ if (function_exists('alt_faq_items')) {
     <details class="alt-methodology">
         <summary>Known gaps &amp; why the country count changes</summary>
         <div class="alt-method-body">
-            <p>The full directory of every pipeline — the SEC, all state WARN registries with live links, Eurofound ERM, and the news index — lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>. The disclosures below cover what is <em>not</em> yet included.</p>
+            <p>The full directory of every pipeline, the SEC, all state WARN registries with live links, Eurofound ERM, and the news index, lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>. The disclosures below cover what is <em>not</em> yet included.</p>
             <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As events occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable events exist, not a padded list.</p>
             <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE; they are maintained as official-source research candidates and will be named as live only after a stable public interface, tests and source-health monitoring exist. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Events too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
         </div>
@@ -509,9 +509,9 @@ if (function_exists('alt_faq_items')) {
     <details class="alt-methodology" id="alt-corrections" open>
         <summary>Data notes &amp; corrections log</summary>
         <div class="alt-method-body">
-            <p class="alt-corrections-framing"><b>Why this log is a feature, not a warning.</b> Many early entries are the pipeline catching and fixing its own extraction bugs during pre-launch QA — which is the point: a system that finds and discloses its own errors is more trustworthy than one that hides them.</p>
+            <p class="alt-corrections-framing"><b>Why this log is a feature, not a warning.</b> Many early entries are the pipeline catching and fixing its own extraction bugs during pre-launch QA, which is the point: a system that finds and discloses its own errors is more trustworthy than one that hides them.</p>
             <p>Errors are corrected openly, not silently. Every correction to published figures is dated and described here, newest first, and corrected rows are also flagged <code>edited: true</code> in the API. The list scrolls, because it grows a little every day as the data self-corrects.</p>
-            <p>For reproducible monitoring, the machine-readable <a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality status endpoint</a> reports dataset revision, recent corrections, collector health, retained-source integrity and the status of each coverage workstream. Pending work is shown as pending—not silently treated as coverage.</p>
+            <p>For reproducible monitoring, the machine-readable <a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality status endpoint</a> reports dataset revision, recent corrections, collector health, retained-source integrity and the status of each coverage workstream. Pending work is shown as pending, not silently treated as coverage.</p>
             <ul class="alt-corrections-scroll">
                 <?php
                 // The log renders from the actual audit trail: every /edit and

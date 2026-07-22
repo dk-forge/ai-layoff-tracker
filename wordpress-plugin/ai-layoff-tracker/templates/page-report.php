@@ -1,7 +1,7 @@
 <?php if (!defined('ABSPATH')) exit;
 /**
  * One-pager report: a static, citable, print/social-ready summary for a single
- * reporting period. Rendered SERVER-SIDE so the numbers are in the HTML —
+ * reporting period. Rendered SERVER-SIDE so the numbers are in the HTML , 
  * citable, indexable, screenshot-ready without waiting on JS.
  *
  * Periods (all via ?period=, since 'p' is WP's reserved post-ID var):
@@ -50,7 +50,7 @@ if (isset($_GET['view']) && $_GET['view'] === 'archive') :
         <header class="alt-op-masthead">
           <span class="alt-op-brand"><span class="alt-brand-mark">atr</span> AskTheRecruiter.com</span>
           <span class="alt-op-period">Job Cuts Reports · full archive · <?php echo $alt_us ? '🇺🇸 US only' : '🌐 Worldwide'; ?></span>
-          <span class="alt-op-asof">Every month, quarter and year — each a standalone, citable page.</span>
+          <span class="alt-op-asof">Every month, quarter and year, each a standalone, citable page.</span>
         </header>
         <p class="alt-arch-intro">Pick any period below. Every report renders live from the same verified database and carries its own methodology and citation line. Start with the <a href="<?php echo $alt_url($alt_wk_slug); ?>">latest weekly pulse</a>.</p>
         <div class="alt-arch-grid">
@@ -210,7 +210,7 @@ $alt_years = range((int) gmdate('Y'), 2023);
 $alt_view_year = $alt_y;
 // This-week slug for the weekly tab.
 $alt_thisweek = (new DateTime('now', new DateTimeZone('UTC')))->format('o-\WW');
-// Reports are stamped in New York (Eastern) time — the newsroom-standard zone.
+// Reports are stamped in New York (Eastern) time, the newsroom-standard zone.
 // Honest: show when the DATA last changed (last ingest), not the page-load time.
 // Fall back to render time only if nothing has ever been written.
 $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : '')
@@ -279,7 +279,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
               <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
             <?php endif; ?>
           </div>
-          <div class="alt-op-boxnote">The main number — every figure traces to a filing or named report.</div>
+          <div class="alt-op-boxnote">The main number, every figure traces to a filing or named report.</div>
         </div>
         <div class="alt-op-box alt-op-box-ai">
           <div class="alt-op-big alt-op-big-ai"><?php echo number_format($alt_ai_v); ?></div>
@@ -294,7 +294,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
 
     <?php if ($alt_is_year && $alt_months_series) : ?>
     <section class="alt-op-block alt-op-yearbars">
-      <h3>Month by month — verified cuts in <?php echo esc_html($alt_label); ?></h3>
+      <h3>Month by month, verified cuts in <?php echo esc_html($alt_label); ?></h3>
       <div class="alt-op-bars">
       <?php foreach ($alt_months_series as $ms) :
           $w = $alt_mseries_max > 0 ? max(2, round(100 * $ms['v'] / $alt_mseries_max)) : 0;
@@ -343,7 +343,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
     </div>
 
     <footer class="alt-op-footer">
-      <p><b>Methodology:</b> Verified cuts have a primary source behind each figure — an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
+      <p><b>Methodology:</b> Verified cuts have a primary source behind each figure, an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
       <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html($alt_stamp); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
     </footer>
   </article>

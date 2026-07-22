@@ -960,11 +960,11 @@
             // must not read this as representative of the whole dataset.
             var small = rke < 100;
             if (rolesCard) rolesCard.classList.toggle('alt-small-sample', small);
-            rolesSub.innerHTML = (small ? '<span class="alt-sample-warn">⚠ Small sample — illustrative only.</span> ' : '')
+            rolesSub.innerHTML = (small ? '<span class="alt-sample-warn">⚠ Small sample, illustrative only.</span> ' : '')
                 + 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
                 + ' and 🤖 number are the AI-linked share. Built from only the <b>' + fmt(rke)
                 + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> records whose source named which teams were cut'
-                + ' — a non-representative sample of where cuts land, <b>not</b> a breakdown of the total.';
+                + '; a non-representative sample of where cuts land, <b>not</b> a breakdown of the total.';
         }
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
             return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
