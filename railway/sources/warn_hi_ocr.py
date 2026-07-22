@@ -27,20 +27,35 @@ from .warn_new_states import (
 )
 
 _MAX_REASONABLE = 100000
-# A single Hawaii notice above this is unusual enough that we trust it ONLY from
-# the strongest explicit signals (grand total, or "employed by the establishment
-# is N" for a full closure). A big number from weaker context is far more likely
-# OCR noise than a real HI layoff — and any genuinely huge one reaches the tracker
-# via SEC/news anyway — so we flag it for review instead of auto-posting.
-_HI_OUTLIER = 1000
+# The recurring failure mode (calibrated against verified notices) is grabbing
+# TOTAL employed instead of AFFECTED. WARN letters say "X employees work at /
+# employs Y ... Z affected/separated" — the real count is the one tied to a
+# layoff verb, not the workforce total. So we classify each number by its nearest
+# cue and trust the affected one; a lone total is used only for a full closure.
 
-# A candidate number is only a headcount if an employee-unit word sits next to it.
-_EMP_UNIT = re.compile(
-    r"\b(?:employees|workers|positions|associates|staff|personnel|team\s*members)\b", re.I)
-# Layoff language in the window promotes a candidate from "generic" to "affected".
-_LAYOFF_CTX = re.compile(
-    r"affect|laid\s*off|lay\s*off|layoff|terminat|separat|impact|displac|reduc|to\s+be\b|eliminat", re.I)
-# Numeric token that is not glued to another number / decimal / currency.
+# A candidate number is only a headcount if an employee-unit word sits near it.
+_EMP_UNIT = re.compile(r"employe|workers|positions|associates|staff|personnel|jobs", re.I)
+# Cues that mark a number as the AFFECTED count (the thing we want).
+_AFFECTED_CTX = re.compile(
+    r"separat|laid\s*off|lay\s*off|layoff|terminat|affected|impact|displac|eliminat"
+    r"|ending\s+their\s+employ|let\s+go", re.I)
+# Cues that mark a number as a TOTAL workforce figure (NOT affected).
+_TOTAL_CTX = re.compile(
+    r"work(?:s|ing|ed)?\s+(?:at|for)|currently\s+employ|\bemploys\b|employed\s+by"
+    r"|workforce|of\s+whom|on\s+staff|currently\s+has|headcount", re.I)
+# Full-shutdown markers: for a closure, the total workforce IS the affected count.
+_CLOSURE = re.compile(
+    r"permanent|entire\s+facility|clos(?:e|ing|ure)|shut(?:ting| down)"
+    r"|cease\s+operations|all\s+(?:of\s+its\s+)?employees\s+will", re.I)
+# High-confidence airline/large-employer phrasing: "N of them ... separated".
+_OF_THEM = re.compile(
+    r"(\d[\d,]{0,6})\s+of\s+(?:them|these|which|whom)\s+(?:are|will\s+be|is|were)?\s*"
+    r"(?:anticipated|expected|projected)?\s*(?:to\s+be\s+)?"
+    r"(?:separat|laid\s*off|terminat|affected|impact|let\s+go)", re.I)
+# Full-closure WARN form field: "employed by the establishment is N".
+_ESTAB = re.compile(
+    r"employed\s+by\s+the\s+establishment[^0-9]{0,25}(?:is|:)?\s*(\d[\d,]{0,6})", re.I)
+# A numeric token not glued to another number / decimal / currency.
 _NUM_TOKEN = re.compile(r"(?<![\d.,$])(\d[\d,]{0,6})(?![\d.])")
 
 
@@ -52,66 +67,91 @@ def _to_int(raw: str) -> int:
 
 
 def _candidate_numbers(flat: str):
-    """Yield (value, start) for numeric tokens that aren't obvious non-counts
-    (ZIP codes, years, dollar amounts)."""
+    """Yield (value, start, end) for numeric tokens that aren't obvious non-counts
+    (ZIP codes, years, dollar amounts, percentages)."""
     for nm in _NUM_TOKEN.finditer(flat):
         raw = nm.group(1)
         v = _to_int(raw)
         if not (0 < v <= _MAX_REASONABLE):
             continue
         digits = raw.replace(",", "")
-        if len(digits) == 5:                       # ZIP code
+        if len(digits) == 5:                        # ZIP code
             continue
         if len(digits) == 4 and 1990 <= v <= 2035:  # a year, not a headcount
             continue
-        s = nm.start(1)
+        s, e = nm.start(1), nm.end(1)
         if s > 0 and flat[s - 1] == "$":            # dollar amount
             continue
-        yield v, s, nm.end(1)
+        if e < len(flat) and flat[e] == "%":        # percentage
+            continue
+        yield v, s, e
+
+
+def _classify(low: str, s: int, e: int):
+    """Classify a number as 'aff' (affected) or 'tot' (workforce total) by its
+    nearest cue — cues AFTER the number (within 90 chars) or just BEFORE (45)."""
+    best = (9999, None)
+    for pat, cls in ((_AFFECTED_CTX, "aff"), (_TOTAL_CTX, "tot")):
+        for m in pat.finditer(low):
+            if e <= m.start() <= e + 90:
+                d = m.start() - e
+            elif s - 45 <= m.end() <= s:
+                d = s - m.end()
+            else:
+                continue
+            if d < best[0]:
+                best = (d, cls)
+    return best[1]
 
 
 def _extract_count(text: str):
     """Return (count, pattern_label) or (0, reason) if no trustworthy count.
 
-    Priority: (1) an explicit multi-site "Grand Total"; (2) a full-closure
-    "employed by the establishment is N"; (3) a number sitting beside an
-    employee-unit word, preferring one whose window also carries layoff language.
-    Never guesses: bare "N employees" is trusted only when there is a SINGLE
-    distinct candidate, and any count above _HI_OUTLIER from a non-explicit
-    signal is flagged for review rather than posted."""
+    Priority: (1) multi-site "Grand Total"; (2) "N of them ... separated"; (3)
+    full-closure "employed by the establishment is N"; (4) classify each nearby
+    number as affected vs workforce-total and trust the affected one; (5) for a
+    full closure with no explicit affected number, the single total is the count.
+    Never guesses: multiple distinct affected values, or a bare total outside a
+    closure, are skipped rather than posted (the affected count is the one tied
+    to a layoff verb, never the 'X employees work here' workforce figure)."""
     if not text:
         return 0, "no_ocr_text"
     flat = re.sub(r"\s+", " ", text)
+    low = flat.lower()
 
     m = re.search(r"grand\s+total[^0-9]{0,20}(\d[\d,]{0,6})", flat, re.I)
     if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
         return _to_int(m.group(1)), "grand_total"
 
-    m = re.search(r"employed\s+by\s+the\s+establishment[^0-9]{0,25}(?:is|:)?\s*(\d[\d,]{0,6})", flat, re.I)
+    m = _OF_THEM.search(flat)
     if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
-        return _to_int(m.group(1)), "employed_by_establishment"
+        return _to_int(m.group(1)), "of_them_separated"
 
-    low = flat.lower()
-    strong, weak = [], []
+    m = _ESTAB.search(flat)
+    if m and _CLOSURE.search(low) and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
+        return _to_int(m.group(1)), "establishment_closure"
+
+    affected, total = [], []
     for v, s, e in _candidate_numbers(flat):
-        win = low[max(0, s - 70):min(len(low), e + 70)]
-        if not _EMP_UNIT.search(win):
+        if not _EMP_UNIT.search(low[max(0, s - 60):min(len(low), e + 60)]):
             continue
-        (strong if _LAYOFF_CTX.search(win) else weak).append(v)
+        cls = _classify(low, s, e)
+        if cls == "aff":
+            affected.append(v)
+        elif cls == "tot":
+            total.append(v)
 
-    if strong:
-        v = sorted(set(strong))[-1]
-        if v > _HI_OUTLIER:
-            return 0, f"outlier_needs_review({v})"
-        return v, "affected_context"
-    if weak:
-        vals = sorted(set(weak))
+    if affected:
+        vals = sorted(set(affected))
         if len(vals) > 1:
-            return 0, f"ambiguous_generic({','.join(map(str, vals))})"
-        if vals[0] > _HI_OUTLIER:
-            return 0, f"outlier_needs_review({vals[0]})"
-        return vals[0], "generic_single"
-    return 0, "no_count_pattern"
+            return 0, f"ambiguous_affected({','.join(map(str, vals))})"
+        return vals[0], "affected"
+    if _CLOSURE.search(low) and total:
+        vals = sorted(set(total))
+        if len(vals) == 1:
+            return vals[0], "closure_total"
+        return 0, f"closure_multi_total({','.join(map(str, vals))})"
+    return 0, "no_affected_count"
 
 
 def _ocr_pdf(content: bytes, max_pages: int = 4) -> str:
