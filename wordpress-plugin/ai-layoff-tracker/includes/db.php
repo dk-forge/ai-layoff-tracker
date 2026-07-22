@@ -403,6 +403,12 @@ function alt_db_upsert(array $row) {
         if ($data['industry'] === '') {
             unset($data['industry']);
         }
+        // Same rule for the filing/announcement date: a re-import that carries
+        // no notice date (a state that lists only the effective date) must not
+        // erase a date already on the row. Clearing goes through /edit (pinned).
+        if (isset($data['announcement_date']) && $data['announcement_date'] === '') {
+            unset($data['announcement_date']);
+        }
         $wpdb->update($table, $data, array('id' => (int) $existing->id));
         return (int) $existing->id;
     }
@@ -488,10 +494,26 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     global $wpdb;
     $where = array("1=1");
     $params = array();
-    // The public UI defaults to effective/filing date. Benchmark callers can
-    // explicitly request announcement_date; that date is source-evidenced and
-    // never inferred from the effective date.
-    $date_col = $r->get_param('date_basis') === 'announcement' ? 'announcement_date' : 'layoff_date';
+    // Date basis for period filtering:
+    //   (default)      -> layoff_date: when the layoff takes EFFECT (our
+    //                     conservative floor; what the public UI shows).
+    //   announcement   -> announcement_date ONLY (strict, source-evidenced;
+    //                     used by benchmark/reconciliation callers that must
+    //                     compare against genuine announcement-stage dates and
+    //                     deliberately exclude rows without one).
+    //   notice         -> COALESCE(announcement_date, layoff_date): when it was
+    //                     FILED/announced where known, else effective. This is
+    //                     the apples-to-apples basis for comparing against WARN
+    //                     aggregators that count by filing date; it never drops
+    //                     a row for lacking a filing date.
+    $db_basis = (string) $r->get_param('date_basis');
+    if ($db_basis === 'announcement') {
+        $date_col = 'announcement_date';
+    } elseif ($db_basis === 'notice') {
+        $date_col = 'COALESCE(announcement_date, layoff_date)';
+    } else {
+        $date_col = 'layoff_date';
+    }
 
     $from = $r->get_param('from');
     $to = $r->get_param('to');
@@ -2296,6 +2318,11 @@ function alt_api_bulk(WP_REST_Request $r) {
             'ticker'             => $e['ticker'] ?? '',
             'job_count'          => $e['job_count'] ?? 0,
             'layoff_date'        => $e['layoff_date'] ?? '',
+            // Filing/announcement date, kept alongside the effective date so
+            // the tracker can bucket either way (structured WARN rows now carry
+            // both). alt_db_upsert validates it and never blanks an existing
+            // value on re-import.
+            'announcement_date'  => $e['announcement_date'] ?? '',
             'industry'           => function_exists('alt_normalize_industry') ? alt_normalize_industry((string) ($e['industry'] ?? '')) : ($e['industry'] ?? ''),
             'country'            => function_exists('alt_normalize_country') ? alt_normalize_country((string) ($e['country'] ?? '')) : ($e['country'] ?? ''),
             'employer_country'   => function_exists('alt_normalize_country') ? alt_normalize_country((string) ($e['employer_country'] ?? '')) : ($e['employer_country'] ?? ''),

@@ -261,6 +261,13 @@ def pull_warn(states, min_employees=0, start_date=""):
                     ["notice"],                       # then notice date
                     ["received"],                     # then received date
                     ["date"])                         # any remaining date column
+                # The FILING date (when the notice was filed/received), captured
+                # SEPARATELY from the effective date instead of discarded. It
+                # lets the tracker bucket by when a layoff was ANNOUNCED (the
+                # date most WARN aggregators count) as well as by when it takes
+                # EFFECT (our conservative default). Empty when the state
+                # publishes only a single date column.
+                notice_date = _date_from(rl, ["notice"], ["received"])
                 city = _match(rl, ["city"], ["location"])
                 kind = _match(rl, ["closure", "warn_type", "type of layoff", "layoff or closure"])
                 # Some states publish a per-notice detail link (e.g. VT's
@@ -299,6 +306,11 @@ def pull_warn(states, min_employees=0, start_date=""):
                     "ticker": None,
                     "job_count": jobs,
                     "layoff_date": date,
+                    # Filing date, only when it's a distinct, earlier-or-equal
+                    # date than the effective date (a notice is filed on/before
+                    # the layoff takes effect); otherwise left blank so a
+                    # mislabeled column can never post a bogus announcement date.
+                    "announcement_date": (notice_date if notice_date and (not date or notice_date <= date) else None),
                     "industry": None,
                     "country": "United States",
                     "state": st,
