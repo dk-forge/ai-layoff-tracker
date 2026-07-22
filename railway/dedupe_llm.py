@@ -96,7 +96,7 @@ def norm_company(name):
     # Kept in sync with the plugin's alt_company_key (includes/api.php) so the two
     # dedup layers reach the same same-company verdict: same legal-suffix set plus
     # the trailing geographic qualifiers (America/USA/International/Global).
-    n = re.sub(r"[^a-z0-9 ]", "", (name or "").lower())
+    n = re.sub(r"[^a-z0-9]+", " ", (name or "").lower())   # punctuation -> space, like the PHP key ("Amazon.com" -> "amazon com")
     n = re.sub(r"\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|sa|ag|group|holdings|holding|technologies|technology|systems|solutions|platforms|the|com)\b", "", n)
     n = re.sub(r"\b(america|americas|usa|us|international|global|worldwide|na)\b", "", n)
     return re.sub(r"\s+", " ", n).strip()
