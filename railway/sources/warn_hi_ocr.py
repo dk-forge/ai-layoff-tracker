@@ -55,8 +55,27 @@ _OF_THEM = re.compile(
 # Full-closure WARN form field: "employed by the establishment is N".
 _ESTAB = re.compile(
     r"employed\s+by\s+the\s+establishment[^0-9]{0,25}(?:is|:)?\s*(\d[\d,]{0,6})", re.I)
+# "total number of (potentially) affected employees is N" — the stated grand
+# figure, trusted over the redacted per-line breakdown numbers around it.
+_TOTAL_AFFECTED = re.compile(
+    r"total\s+number\s+of\s+(?:potentially\s+)?affected\s+(?:employees|workers)\s+is\b"
+    r"[^0-9]{0,25}(\d[\d,]{0,6})", re.I)
+# "N employees are/will be ... affected/laid off" — one explicit affected clause.
+_N_AFFECTED = re.compile(
+    r"(\d[\d,]{0,6})\s+(?:employees|workers|positions)\s+"
+    r"(?:are\s+|will\s+be\s+|is\s+)?(?:expected\s+to\s+be\s+|anticipated\s+to\s+be\s+)?"
+    r"(?:affected|laid\s*off|terminated|separated|impacted|eliminated)", re.I)
 # A numeric token not glued to another number / decimal / currency.
 _NUM_TOKEN = re.compile(r"(?<![\d.,$])(\d[\d,]{0,6})(?![\d.])")
+
+# A count above this is unusual for a single Hawaii notice, so we trust it ONLY
+# from a structurally unambiguous pattern (an explicit Grand Total or an "N of
+# them separated" summary). A big number from any softer signal is far more
+# likely an OCR misread (a permit/address/phone number) than a real HI layoff —
+# and a genuinely large one reaches the tracker via SEC/news — so we flag it for
+# review instead of posting. (Caught the phantom "Honolulu Roofing 754".)
+_HI_OUTLIER = 500
+_TRUSTED_LABELS = {"grand_total", "of_them_separated", "total_affected"}
 
 
 def _to_int(raw: str) -> int:
@@ -104,18 +123,16 @@ def _classify(low: str, s: int, e: int):
     return best[1]
 
 
-def _extract_count(text: str):
-    """Return (count, pattern_label) or (0, reason) if no trustworthy count.
-
-    Priority: (1) multi-site "Grand Total"; (2) "N of them ... separated"; (3)
-    full-closure "employed by the establishment is N"; (4) classify each nearby
-    number as affected vs workforce-total and trust the affected one; (5) for a
+def _extract_raw(text: str):
+    """Best (count, label) before the outlier guard. Priority: (1) multi-site
+    "Grand Total"; (2) "N of them ... separated"; (3) "total number of affected
+    employees is N"; (4) full-closure "employed by the establishment is N"; (5)
+    one explicit "N employees ... affected" clause; (6) classify each nearby
+    number as affected vs workforce-total and trust the affected one; (7) for a
     full closure with no explicit affected number, the single total is the count.
     Never guesses: multiple distinct affected values, or a bare total outside a
-    closure, are skipped rather than posted (the affected count is the one tied
-    to a layoff verb, never the 'X employees work here' workforce figure)."""
-    if not text:
-        return 0, "no_ocr_text"
+    closure, are skipped (the affected count is the one tied to a layoff verb,
+    never the 'X employees work here' workforce figure)."""
     flat = re.sub(r"\s+", " ", text)
     low = flat.lower()
 
@@ -127,9 +144,17 @@ def _extract_count(text: str):
     if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
         return _to_int(m.group(1)), "of_them_separated"
 
+    m = _TOTAL_AFFECTED.search(flat)
+    if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
+        return _to_int(m.group(1)), "total_affected"
+
     m = _ESTAB.search(flat)
     if m and _CLOSURE.search(low) and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
         return _to_int(m.group(1)), "establishment_closure"
+
+    m = _N_AFFECTED.search(flat)
+    if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
+        return _to_int(m.group(1)), "n_affected"
 
     affected, total = [], []
     for v, s, e in _candidate_numbers(flat):
@@ -152,6 +177,18 @@ def _extract_count(text: str):
             return vals[0], "closure_total"
         return 0, f"closure_multi_total({','.join(map(str, vals))})"
     return 0, "no_affected_count"
+
+
+def _extract_count(text: str):
+    """Return (count, label) with a final outlier guard: a count above
+    _HI_OUTLIER is trusted only from a structurally unambiguous pattern; any
+    softer signal that large is flagged for review, not posted."""
+    if not text:
+        return 0, "no_ocr_text"
+    v, label = _extract_raw(text)
+    if v > _HI_OUTLIER and label not in _TRUSTED_LABELS:
+        return 0, f"outlier_review({v},{label})"
+    return v, label
 
 
 def _ocr_pdf(content: bytes, max_pages: int = 4) -> str:
