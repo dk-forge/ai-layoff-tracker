@@ -35,7 +35,8 @@ BENIGN_STATES = {"HI", "AR", "WY", "NH"}
 HIGH_VOLUME = {"TX", "FL", "GA", "CA", "OH", "MI", "NY", "NC"}
 # staleness ceilings (days) — matches health_digest.py
 MAX_AGE = {"edgar": 2, "newsapi": 2, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
-           "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4, "press_releases": 3}
+           "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4, "press_releases": 3,
+           "warn_quebec": 3}
 
 
 def _get(url, browser=False):

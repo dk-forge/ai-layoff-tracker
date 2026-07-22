@@ -68,6 +68,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="#alt-state-warn">See all <?php echo count($alt_state_urls); ?> &darr;</a></td>
       </tr>
       <tr>
+        <td><b>Quebec collective dismissals</b></td><td>Quebec, Canada</td>
+        <td>Official monthly notices employers must file with Quebec's Ministere de l'Emploi et de la Solidarite sociale (MESS) for a collective dismissal. Parsed from the ministry's monthly PDFs, no AI processing.</td>
+        <td>Verified</td>
+        <td><a href="https://www.quebec.ca/gouvernement/ministeres-organismes/emploi-solidarite-sociale/publications" target="_blank" rel="noopener">MESS publications &#8599;</a></td>
+      </tr>
+      <tr>
         <td><b>Eurofound ERM</b></td><td>EU27, Norway, UK (historically)</td>
         <td>The EU's official European Restructuring Monitor, per-company restructuring announcements from national correspondents.</td>
         <td>Announced</td>

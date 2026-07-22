@@ -202,6 +202,28 @@ def main():
             new_entries = [e for e in new_entries if e["layoff_date"] >= start]
         entries.extend(new_entries)
 
+    # Quebec (Canada) collective-dismissal notices (avis de licenciements
+    # collectifs) from the MESS monthly PDFs — WARN-class (a legal advance
+    # notice of a mass layoff). Live by default; set WARN_SKIP_QUEBEC=1 to
+    # disable if the PDF layout ever breaks the parser. Isolated in try/except
+    # so a Quebec hiccup never sinks the US WARN import.
+    if os.environ.get("WARN_SKIP_QUEBEC") != "1":
+        try:
+            from sources.quebec import pull_quebec
+            qc = pull_quebec(months_back=int(os.environ.get("QUEBEC_MONTHS", "4")))
+            print(f"Quebec (custom): {len(qc)} notices kept")
+            if start:
+                qc = [e for e in qc if e["layoff_date"] >= start]
+            if min_emp:
+                qc = [e for e in qc if e["job_count"] >= min_emp]
+            entries.extend(qc)
+            report_source_health("warn_quebec", "ok" if qc else "degraded", len(qc),
+                                 "Quebec collective-dismissal notices (MESS)"
+                                 + ("" if qc else " — parser returned 0, check PDF layout"))
+        except Exception as exc:
+            print(f"Quebec importer failed: {exc}")
+            report_source_health("warn_quebec", "degraded", 0, f"Quebec importer failed: {exc}")
+
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
     if limit:
         entries = entries[:limit]
