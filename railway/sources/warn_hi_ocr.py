@@ -76,6 +76,12 @@ _NUM_TOKEN = re.compile(r"(?<![\d.,$])(\d[\d,]{0,6})(?![\d.])")
 # review instead of posting. (Caught the phantom "Honolulu Roofing 754".)
 _HI_OUTLIER = 500
 _TRUSTED_LABELS = {"grand_total", "of_them_separated", "total_affected"}
+# WARN notices are mass-layoff filings, so a single-digit affected count from the
+# LLM fallback is almost always a stray small number the model latched onto (a
+# section/date fragment) rather than a real headcount — the anti-hallucination
+# check can't catch that (the number IS in the text), so a floor does. The
+# trusted regex set bottoms out at 5, so 5 is the plausibility floor.
+_LLM_MIN_COUNT = 5
 
 
 def _to_int(raw: str) -> int:
@@ -271,6 +277,8 @@ def _llm_affected_count(text: str):
         return 0, "llm_null"
     if not (0 < v <= _MAX_REASONABLE):
         return 0, "llm_out_of_range"
+    if v < _LLM_MIN_COUNT:
+        return 0, f"llm_implausibly_small({v})"
     if str(v) not in snippet and f"{v:,}" not in snippet:
         return 0, f"llm_not_in_text({v})"
     return v, "llm_fallback"
