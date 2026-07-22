@@ -104,6 +104,31 @@ def main():
     # Custom collectors cover the states whose sites broke the open scraper
     # (TX, FL, GA, OH, MI, CO, ID, LA, NC, NV, MN, MA) plus the retired NY
     # history database (dedup hashes absorb the warn-scraper overlap).
+    # Per-state visibility for the GENERIC (open warn-scraper) tier. Unlike the
+    # custom tiers below, warn_us reports a single AGGREGATE health status, so a
+    # single generic state silently returning 0 (its site changed / the open
+    # scraper broke for just that state) is otherwise invisible. Log every
+    # generic state's count, and warn LOUDLY in the run log for the high-volume
+    # generic states where a 0 is almost certainly drift, not a quiet filing
+    # week. No separate health-ledger reporter here — that needs live per-state
+    # volume calibration to avoid crying wolf on the public page (see RUNBOOK);
+    # the run-log ::warning:: surfaces it for an auditing human for now.
+    _generic_by_state = {}
+    for _e in entries:
+        _gs = (_e.get("state") or "").upper()
+        if _gs:
+            _generic_by_state[_gs] = _generic_by_state.get(_gs, 0) + 1
+    if len(states) == 1 and str(states[0]).lower() == "all":  # only meaningful on a full sweep
+        _counts = ", ".join(f"{st}={_generic_by_state[st]}" for st in sorted(_generic_by_state))
+        print("generic WARN per-state counts: " + (_counts or "(none)"))
+        _generic_monitor = {s.strip().upper() for s in
+                            os.environ.get("WARN_GENERIC_MONITOR", "CA").split(",") if s.strip()}
+        _generic_drift = sorted(st for st in _generic_monitor if _generic_by_state.get(st, 0) == 0)
+        if _generic_drift:
+            print(f"::warning:: HIGH-VOLUME generic WARN state(s) returned 0 — likely "
+                  f"open-scraper drift for: {', '.join(_generic_drift)}. Check that state's "
+                  f"site/parser (set WARN_GENERIC_MONITOR to tune the watched set).")
+
     customs = pull_warn_custom(states)
     # Structural-drift tripwire for the LEGACY custom scrapers (parity with the
     # new-states check below): these are high-volume states (TX, FL, GA, ...), so
