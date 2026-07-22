@@ -37,7 +37,7 @@ function alt_render_rss_feed() {
     ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-    <title><?php echo alt_xml(get_bloginfo('name') . ' — AI Layoff Tracker'); ?></title>
+    <title><?php echo alt_xml(get_bloginfo('name') . ': AI Layoff Tracker'); ?></title>
     <link><?php echo alt_xml(home_url('/ai-layoffs')); ?></link>
     <description>Verified AI-related and general layoffs from SEC filings and credible news sources.</description>
     <language><?php echo alt_xml(get_bloginfo('language')); ?></language>
@@ -51,7 +51,7 @@ function alt_render_rss_feed() {
             $link = get_permalink($post);
         }
         $description = sprintf(
-            '%s — %s jobs — %s. %s',
+            '%s: %s jobs (%s). %s',
             $entry['company_name'],
             number_format_i18n($entry['job_count']),
             $entry['layoff_date'] !== '' ? $entry['layoff_date'] : 'date unknown',

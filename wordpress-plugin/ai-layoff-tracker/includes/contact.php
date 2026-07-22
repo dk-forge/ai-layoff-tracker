@@ -34,9 +34,9 @@ function alt_shortcode_contact() {
     $error = isset($_GET['alt_error']) ? sanitize_key($_GET['alt_error']) : '';
     $messages = array(
         'spam'    => 'That looked like spam to us. Please try again (check the math question).',
-        'rate'    => 'Too many messages from this connection — please try again in an hour.',
+        'rate'    => 'Too many messages from this connection. Please try again in an hour.',
         'fields'  => 'Please fill in your name, a valid email, and a message.',
-        'mail'    => 'Sorry — the message could not be sent. Please email us directly.',
+        'mail'    => 'Sorry, the message could not be sent. Please email us directly.',
         'expired' => 'The form expired. Please try again.',
     );
 
@@ -175,7 +175,7 @@ function alt_contact_submit() {
 
     $ok = wp_mail(
         ALT_CONTACT_TO,
-        '[ATR Contact] ' . $topic . ' — ' . $name,
+        '[ATR Contact] ' . $topic . ': ' . $name,
         $body,
         array('Reply-To: ' . $name . ' <' . $email . '>')
     );

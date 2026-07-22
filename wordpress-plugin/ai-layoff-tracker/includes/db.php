@@ -958,7 +958,7 @@ function alt_api_company_directory_get() {
         );
     }
     return rest_ensure_response(array(
-        'methodology' => 'Company pages exist only for admitted identity mappings — added by editor review or by a published automated evidence-threshold policy (autopilot-v1) — and render only source-linked canonical events. A listed mapping is an identity record, not a completeness claim for that employer.',
+        'methodology' => 'Company pages exist only for admitted identity mappings, added by editor review or by a published automated evidence-threshold policy (autopilot-v1), and render only source-linked canonical events. A listed mapping is an identity record, not a completeness claim for that employer.',
         'mappings' => $out,
     ));
 }
@@ -1740,7 +1740,7 @@ function alt_api_quarterly_report_post(WP_REST_Request $r) {
     $reports[$report_id] = array(
         'report_id' => $report_id,
         'publication_status' => $status,
-        'title' => 'State of Layoffs — ' . $report_id,
+        'title' => 'State of Layoffs: ' . $report_id,
         'period' => array('from' => $window['from'], 'to' => $window['to'], 'date_basis' => 'layoff_date'),
         'generated_at' => gmdate('c'),
         'dataset_revision' => (int) ($quality['dataset_revision'] ?? get_option('alt_data_ver', 1)),

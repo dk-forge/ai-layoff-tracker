@@ -775,7 +775,7 @@ function alt_api_add($request) {
             alt_company_key($company), (int) $job_count, $layoff_date));
         if ($alt_prior) {
             return new WP_Error('alt_rebadge_suspect',
-                sprintf('Same company with identical count (%d) already recorded on %s — likely a republished old event, not a new one.', (int) $job_count, $alt_prior),
+                sprintf('Same company with identical count (%d) already recorded on %s; likely a republished old event, not a new one.', (int) $job_count, $alt_prior),
                 array('status' => 409));
         }
     }
@@ -801,7 +801,7 @@ function alt_api_add($request) {
 
     $title = sanitize_text_field((string) $request->get_param('title'));
     if ($title === '') {
-        $title = sprintf('%s — %s jobs — %s', $company, number_format_i18n($job_count), $layoff_date);
+        $title = sprintf('%s: %s jobs (%s)', $company, number_format_i18n($job_count), $layoff_date);
     }
 
     $slug = sanitize_title($company . '-' . ($layoff_date !== '' ? $layoff_date : 'filing'));

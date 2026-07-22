@@ -27,9 +27,9 @@
     reason_backfill: ['Untagged non-WARN records; reason tags only', 'Daily evidence-only', 'Internal', 'Stored-excerpt classification'],
     role_enrichment: ['Role categories from already-stored row text', 'Daily evidence-only', 'Internal', 'Stored-evidence re-read'],
     dedupe_llm: ['Cross-source duplicate remover (daily deep scan)', 'Daily', 'Internal', 'Cross-source dedup'],
-    edinet_jp: ['EDINET daily filing list — discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
-    opendart_kr: ['OpenDART disclosure list — discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
-    cvm_br: ['CVM Fato Relevante yearly index — discovery only, nothing ingested', 'Twice daily', 'Brazil', 'Official open-data portal'],
+    edinet_jp: ['EDINET daily filing list, discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
+    opendart_kr: ['OpenDART disclosure list, discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
+    cvm_br: ['CVM Fato Relevante yearly index, discovery only, nothing ingested', 'Twice daily', 'Brazil', 'Official open-data portal'],
     companies_house_uk: ['Registered-identity checks; identity support only', 'On demand', 'United Kingdom', 'Official registry API'],
   };
   const srcLabel = id => {
