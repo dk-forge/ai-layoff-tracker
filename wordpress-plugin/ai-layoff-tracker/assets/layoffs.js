@@ -625,7 +625,9 @@
         // cleaning within one poll instead of waiting on the 5-min stats cache.
         var poll = function () { apiGet('status', { _: Date.now() }).then(renderStatus).catch(function () {}); };
         poll();
-        setInterval(poll, 60000);
+        // Every poll is an uncached origin hit; 3 min is plenty for a status
+        // badge and cuts recurring load (the pipeline phase changes rarely).
+        setInterval(poll, 180000);
     }
 
     function fmtDate(iso) {
@@ -924,7 +926,12 @@
         renderBarList('alt-bars-countries', (agg.top_countries || []).map(function (e) {
             return [e[0], e[1], e[2], countryFlag(e[0]) + e[0]];
         }), wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
-        AIMAP.data = agg; renderAiMap();
+        AIMAP.data = agg;
+        // Defer the map's heavy work (fetching the ~756KB world atlas + the d3
+        // geo render) until the card nears the viewport. The data is stored
+        // above so the map is always current when it does draw; only the draw
+        // waits. This is the single biggest initial-load win on mobile.
+        if (AIMAP.revealed) renderAiMap(); else observeMapReveal();
         // Largest single events: name, jobs, AI segment when explicitly
         // attributed. Tapping toggles the company text filter.
         var companyBox = document.getElementById('alt-f-company');
@@ -1925,7 +1932,28 @@
         world: 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json',
         us: 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
     };
-    var AIMAP = { scope: 'world', data: null, outline: {}, loading: {}, transform: null, transformScope: null, retries: 0 };
+    var AIMAP = { scope: 'world', data: null, outline: {}, loading: {}, transform: null, transformScope: null, retries: 0, revealed: false };
+    // Draw the map only once its card scrolls near the viewport, so the initial
+    // page load doesn't pay for the world atlas + geo render up front. Falls
+    // back to drawing immediately if IntersectionObserver or the card is absent.
+    function observeMapReveal() {
+        if (AIMAP._observing) return;
+        var card = document.getElementById('alt-map-card');
+        if (!card || !('IntersectionObserver' in window)) { AIMAP.revealed = true; renderAiMap(); return; }
+        AIMAP._observing = true;
+        var io = new IntersectionObserver(function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+                if (entries[i].isIntersecting) {
+                    io.disconnect();
+                    AIMAP._observing = false;
+                    AIMAP.revealed = true;
+                    renderAiMap();
+                    return;
+                }
+            }
+        }, { rootMargin: '600px' });
+        io.observe(card);
+    }
 
     // d3 v7 (window.d3) + topojson-client (window.topojson) power the map now.
     // Both are plain UMD globals loaded just before this file (tracker + embed).
