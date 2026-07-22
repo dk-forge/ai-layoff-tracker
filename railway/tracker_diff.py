@@ -37,16 +37,21 @@ MAX_CHASE = max(1, int(os.environ.get("TRACKER_DIFF_MAX", "40")))
 DRY = os.environ.get("TRACKER_DIFF_DRY", "").lower() in {"1", "true", "yes"}
 
 
-def _parse_feed(url):
-    """Return a list of company names from a competitor feed (JSON or CSV)."""
+def _parse_feed(url, label):
+    """Return a list of company names from a competitor feed (JSON or CSV).
+
+    NEVER print the URL (it's a private competitor source in a secret; a URL
+    substring can slip past GitHub's secret masking into a public Actions log).
+    Reference the feed only by its index `label`.
+    """
     try:
         r = requests.get(url, headers=UA, timeout=40)
         if r.status_code != 200:
-            print(f"feed {url[:40]}...: HTTP {r.status_code}")
+            print(f"feed {label}: HTTP {r.status_code}")
             return []
         body = r.text
     except Exception as exc:
-        print(f"feed {url[:40]}...: {exc}")
+        print(f"feed {label}: fetch failed ({type(exc).__name__})")
         return []
     names = []
     body_strip = body.lstrip()
@@ -60,7 +65,7 @@ def _parse_feed(url):
                     if n:
                         names.append(str(n).strip())
         except Exception as exc:
-            print(f"feed {url[:40]}...: JSON parse failed ({exc})")
+            print(f"feed {label}: JSON parse failed ({type(exc).__name__})")
     else:
         try:
             for row in csv.DictReader(io.StringIO(body)):
@@ -68,7 +73,7 @@ def _parse_feed(url):
                 if n:
                     names.append(n)
         except Exception as exc:
-            print(f"feed {url[:40]}...: CSV parse failed ({exc})")
+            print(f"feed {label}: CSV parse failed ({type(exc).__name__})")
     return names
 
 
@@ -78,8 +83,8 @@ def run():
               "Add the secret to activate (URLs stay out of the repo).")
         return
     by_key = {}
-    for url in FEEDS:
-        for n in _parse_feed(url):
+    for i, url in enumerate(FEEDS, 1):
+        for n in _parse_feed(url, f"#{i}"):
             by_key.setdefault(n.lower(), n)
     competitor_names = list(by_key.values())
     print(f"competitor feeds: {len(competitor_names)} distinct companies")
