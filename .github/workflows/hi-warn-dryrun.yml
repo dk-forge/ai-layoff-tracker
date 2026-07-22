@@ -19,6 +19,10 @@ on:
         description: 'Stop after N successful extractions (blank = all)'
         required: false
         default: ''
+      llm_fallback:
+        description: 'Enable the DeepSeek fallback for regex-skipped notices (1 = on)'
+        required: false
+        default: ''
 
 jobs:
   hi-warn-dryrun:
@@ -43,4 +47,6 @@ jobs:
         env:
           HI_DRYRUN_YEARS: ${{ github.event.inputs.years }}
           HI_DRYRUN_LIMIT: ${{ github.event.inputs.limit }}
+          HI_LLM_FALLBACK: ${{ github.event.inputs.llm_fallback }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python hi_warn_dryrun.py

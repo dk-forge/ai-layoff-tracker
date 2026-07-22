@@ -232,6 +232,50 @@ def _hi_notices(years):
             yield date, company, href
 
 
+def _llm_affected_count(text: str):
+    """DeepSeek fallback for notices the deterministic extractor skipped.
+
+    Asks the model for the AFFECTED count and accepts it ONLY if that exact
+    number appears verbatim in the OCR text (anti-hallucination), so it can
+    recover a value but never invent one. Gated: returns (0, reason) unless
+    HI_LLM_FALLBACK=1 and OPENROUTER_API_KEY are set. Lazy imports keep the
+    module import-safe without the LLM stack."""
+    import os
+    if os.environ.get("HI_LLM_FALLBACK") != "1" or not os.environ.get("OPENROUTER_API_KEY"):
+        return 0, "llm_disabled"
+    snippet = re.sub(r"\s+", " ", text)[:4000].strip()
+    if not snippet:
+        return 0, "llm_no_text"
+    prompt = (
+        "This is the OCR'd text of a WARN layoff notice. Return ONLY JSON: "
+        '{"affected": <integer or null>}. "affected" is the number of employees '
+        "to be LAID OFF / affected / separated / terminated - NOT the total "
+        "employed by the establishment, UNLESS the notice is a full permanent "
+        "closure (then they are the same). If a per-site table has a grand total, "
+        "use that total. If no affected count is clearly stated, return null. The "
+        "number you return MUST appear verbatim in the text.\n\nTEXT:\n" + snippet
+    )
+    try:
+        from extractor import _get_client, _parse_json_response, MODEL
+        resp = _get_client().chat.completions.create(
+            model=MODEL, max_tokens=40, temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        data = _parse_json_response(resp.choices[0].message.content or "")
+    except Exception as exc:
+        return 0, f"llm_error({str(exc)[:40]})"
+    v = data.get("affected") if isinstance(data, dict) else None
+    try:
+        v = int(v)
+    except (TypeError, ValueError):
+        return 0, "llm_null"
+    if not (0 < v <= _MAX_REASONABLE):
+        return 0, "llm_out_of_range"
+    if str(v) not in snippet and f"{v:,}" not in snippet:
+        return 0, f"llm_not_in_text({v})"
+    return v, "llm_fallback"
+
+
 def fetch_hi_ocr(years=None, limit=None, dry_run=False):
     """OCR each Hawaii notice PDF and emit a countable WARN entry.
 
@@ -260,8 +304,15 @@ def fetch_hi_ocr(years=None, limit=None, dry_run=False):
             continue
         count, label = _extract_count(text)
         if count <= 0:
-            skipped.append((date, company, url, label))
-            continue
+            # Deterministic extractor skipped it — try the constrained LLM
+            # fallback (no-op unless enabled). Only accepts a number present in
+            # the text, so it recovers coverage without inventing a figure.
+            lv, llabel = _llm_affected_count(text)
+            if lv > 0:
+                count, label = lv, llabel
+            else:
+                skipped.append((date, company, url, f"{label}|{llabel}"))
+                continue
         e = _entry("HI", company, count, date, detail_url=url)
         if e:
             e["_ocr_pattern"] = label  # dry-run diagnostic only; ignored by /bulk
