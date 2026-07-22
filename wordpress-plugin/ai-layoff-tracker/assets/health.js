@@ -15,6 +15,7 @@
     edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', 'Twice daily', 'United States', 'Official filings API'],
     warn_us: ['State WARN mass-layoff notices', 'Daily', 'United States', 'State labor-agency notices'],
     warn_quebec: ['Quebec collective-dismissal notices (MESS)', 'Daily', 'Canada', 'Provincial labour-ministry filings'],
+    federal_rif: ['US federal RIF separations (OPM EHRI)', 'Monthly', 'United States', 'Official OPM workforce dataset'],
     newsapi: ['Worldwide licensed news discovery', 'Twice daily', 'Worldwide', 'Licensed news API'],
     gdelt: ['Worldwide multilingual news discovery', 'Twice daily', 'Worldwide', 'Open news-index API'],
     gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],

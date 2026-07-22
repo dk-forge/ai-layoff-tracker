@@ -151,21 +151,34 @@ def fetch_ms():
             continue
         for table in tables:
             for row in table:
-                # Collapse to the logical 9-field order (see _MS_POS).
+                # Collapse away empty/None cells; survivors keep left-to-right
+                # order in BOTH the old combined-locator layout AND the 2026+
+                # layout that split "Company (City)(County)" into three columns.
                 comp = [c.strip() for c in (("" if v is None else str(v)) for v in row)
                         if c and c.strip()]
                 if len(comp) < 8:
                     continue
-                kind_raw = comp[_MS_POS["kind"]]
-                # A real 'Layoff'/'Closure' token here is the row's fingerprint;
-                # it rejects header rows, continuation lines, and any layout that
-                # didn't collapse to the expected order (never guess).
-                if not re.fullmatch(r"(?:layoffs?|closures?)", kind_raw.strip(), re.I):
+                # Anchor on the 'Type of Action' cell by its Layoff/Closure token
+                # instead of a fixed index: MS shifted the grid right in 2026 by
+                # splitting City/County into their own columns. In EVERY layout the
+                # order is  Type | # Affected | Date of Action, so read the two
+                # cells after Type. notice=comp[0] and company=comp[1] stay stable.
+                # The token also rejects header and multi-line continuation rows.
+                kind_idx = next((i for i, c in enumerate(comp)
+                                 if re.fullmatch(r"(?:layoffs?|closures?)", c.strip(), re.I)),
+                                None)
+                if kind_idx is None or kind_idx < 2 or kind_idx + 2 >= len(comp):
                     continue
-                jobs = _count(comp[_MS_POS["jobs"]])
-                date = (_iso(comp[_MS_POS["eff"]])
-                        or _iso(comp[_MS_POS["notice"]]))
-                company, city = _ms_company_city(comp[_MS_POS["company"]])
+                kind_raw = comp[kind_idx]
+                jobs = _count(comp[kind_idx + 1])
+                date = _iso(comp[kind_idx + 2]) or _iso(comp[0])
+                company, city = _ms_company_city(comp[1])
+                # 2026+ split layout carries City as its own cell (comp[2]); the
+                # old combined layout keeps it inside the company cell (already
+                # handled by _ms_company_city), so only reach for comp[2] on the
+                # wider shifted rows when no city was found.
+                if not city and kind_idx >= 7:
+                    city = re.sub(r"\s+", " ", comp[2]).strip()
                 e = _entry("MS", company, jobs, date, city,
                            kind=_kind_norm(kind_raw), detail_url=url)
                 if e:

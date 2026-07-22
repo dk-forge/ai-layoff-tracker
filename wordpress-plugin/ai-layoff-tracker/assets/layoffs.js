@@ -1429,7 +1429,7 @@
     }
 
     var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings', '8K': 'SEC 8-K filings',
-        erm: 'Eurofound ERM', press_release: 'Company releases', seed: 'Curated (sourced)' };
+        erm: 'Eurofound ERM', press_release: 'Company releases', federal_rif: 'US federal RIFs (OPM)', seed: 'Curated (sourced)' };
 
     var CMP_AI_SEQ = 0;
     function renderCompareAiCumulative(cmp) {

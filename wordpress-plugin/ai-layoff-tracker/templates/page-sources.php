@@ -98,6 +98,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://newsdata.io" target="_blank" rel="noopener">NewsData.io &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>US federal RIFs (OPM)</b></td><td>US federal agencies</td>
+        <td>Official executed Reduction-in-Force separations from OPM's EHRI workforce dataset, grouped by agency and month. The documented floor for federal layoffs; announced or deferred-resignation federal cuts arrive via the news feed. No AI processing.</td>
+        <td>Verified</td>
+        <td><a href="https://data.opm.gov/explore-data/analytics/workforce-changes" target="_blank" rel="noopener">OPM workforce data &#8599;</a></td>
+      </tr>
+      <tr>
         <td><b>Company IR &amp; newsroom feeds</b></td><td>Reviewed employer/exchange feeds</td>
         <td>A reviewed allowlist of company investor-relations and newsroom RSS feeds, checked twice daily so a layoff a company discloses in its own release is caught even before wire pickup. Runs through the same extraction and verification as the rest.</td>
         <td>Verified (named report)</td>

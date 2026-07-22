@@ -82,7 +82,9 @@ function alt_allowed_verification_levels() {
 function alt_allowed_source_types() {
     // 'erm' = Eurofound's European Restructuring Monitor (EU27+Norway,
     // announced restructuring events curated by national correspondents)
-    return array('8K', 'warn', 'press_release', 'news', 'erm');
+    // 'federal_rif' = US OPM EHRI executed Reduction-in-Force separations
+    // (official federal-agency layoff records; structured, no AI language)
+    return array('8K', 'warn', 'press_release', 'news', 'erm', 'federal_rif');
 }
 
 function alt_register_cpt() {

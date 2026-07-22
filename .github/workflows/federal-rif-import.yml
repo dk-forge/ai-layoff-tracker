@@ -1,0 +1,38 @@
+name: Federal RIF import (OPM EHRI)
+
+# Pulls US federal executed Reduction-in-Force separations from OPM's EHRI
+# open data (keyless), filters to category SH (RIF), groups by agency + effective
+# month, and posts via the bulk endpoint (no LLM). Idempotent. OPM publishes
+# monthly with a lag, so this runs monthly + on manual dispatch.
+# Required secret: WP_API_KEY. pyarrow/pandas installed here only (kept out of
+# the shared requirements so the daily jobs stay lean).
+
+on:
+  schedule:
+    - cron: '0 14 6 * *'   # 6th of the month, ~after OPM's monthly publish
+  workflow_dispatch:
+
+jobs:
+  federal-rif:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secret
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: '[ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }'
+      - name: Install deps
+        working-directory: railway
+        run: |
+          pip install -r requirements.txt
+          pip install pandas pyarrow
+      - name: Run federal RIF import
+        working-directory: railway
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: python federal_rif_import.py
