@@ -31,7 +31,7 @@ DRY = os.environ.get("HEALTH_DIGEST_DRY", "").lower() in {"1", "true", "yes"}
 MAX_AGE_DAYS = {
     "edgar": 2, "newsapi": 2, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
-    "press_releases": 3,
+    "press_releases": 3, "warn_hi_ocr": 3,
 }
 DEFAULT_MAX_AGE = 10
 # Sources whose 0/degraded is expected-by-design or transient, so a DEGRADED
@@ -41,7 +41,7 @@ SOFT_DEGRADED = {"gdelt_historical"}  # historical recovery is rate-limit prone
 
 # States with no public WARN register: a custom scraper returning 0 for them is
 # correct, not drift, so a drift-detail naming ONLY these is benign.
-_BENIGN_STATES = {"HI", "AR", "WY", "NH"}  # NV now flows via the daily Bluehost mirror
+_BENIGN_STATES = {"AR", "WY", "NH"}  # HI now flows via the OCR importer; NV via the Bluehost mirror
 
 
 def _benign_degraded(detail):

@@ -436,7 +436,11 @@ def fetch_wa(max_pages=200):
     return out
 
 
-NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "HI": fetch_hi, "NM": fetch_nm, "WA": fetch_wa}
+# Hawaii is handled by the dedicated OCR importer (railway/hi_warn_import.py +
+# sources/warn_hi_ocr.py) because its notices are image scans, so it is NOT in
+# this list. The old no-op fetch_hi (list-page parse, never yielded a count) is
+# kept below only for reference.
+NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "NM": fetch_nm, "WA": fetch_wa}
 
 
 if __name__ == "__main__":

@@ -1,0 +1,42 @@
+name: Hawaii WARN OCR import
+
+# Hawaii posts WARN notices as image-scan PDFs, so the affected-employee count
+# is OCR-only. This installs tesseract, OCRs each notice, extracts the count with
+# a calibrated skip-don't-guess extractor, and posts via the bulk endpoint (no
+# LLM). Idempotent (dedup hash matches warn.py), so daily re-runs upsert in place.
+# Required secret: WP_API_KEY. tesseract/pytesseract installed here only, kept out
+# of the shared requirements so the other daily jobs stay lean and OCR-free.
+
+on:
+  schedule:
+    - cron: '30 16 * * *'   # daily ~12:30pm ET, after the main WARN import
+  workflow_dispatch:
+
+jobs:
+  hi-warn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secret
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: '[ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }'
+      - name: Install tesseract (system)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+      - name: Install deps
+        working-directory: railway
+        run: |
+          pip install -r requirements.txt
+          pip install pytesseract
+      - name: Run Hawaii WARN OCR import
+        working-directory: railway
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: python hi_warn_import.py

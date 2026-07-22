@@ -34,7 +34,6 @@ ksort($alt_state_urls);
 // attach the official BLS unemployment rate (a separate context metric) below.
 $alt_gap_states = array(
     // (A) Publishes, but not fully countable
-    array('Hawaii', 'The Workforce Development Council posts WARN notices on per-calendar-year pages, but the listings omit headcounts and the linked notices are image scans with no text layer. We will not invent a number, so those notices cannot become countable rows. The importer will pick them up automatically if Hawaii ever publishes machine-readable counts.', 'Publishes, no usable headcounts', 'https://labor.hawaii.gov/wdc/real-time-warn-updates/', 'HI'),
     array('Oklahoma', 'The Employment Security Commission publishes WARN notices through an interactive portal, but the public listing carries only employer, location, notice date and notice type, with no affected-employee count anywhere in the data. Because we will not invent a number, those notices cannot become countable rows. Oklahoma cuts still reach the tracker through SEC filings and named news, and the importer will pick up the portal automatically if OESC ever publishes headcounts.', 'Publishes notices, no public headcounts', 'https://www.employoklahoma.gov/Participants/s/warnnotices', 'OK'),
     // (B) No usable public register
     array('Arkansas', 'Treats WARN filings as confidential employer records. The Division of Workforce Services receives them but is barred from releasing company-level data under the Arkansas FOIA exemption, so there is no public list to import. Arkansas cuts still reach the tracker when a company files with the SEC or a named outlet reports them.', 'Confidential by law', 'https://dws.arkansas.gov/', 'AR'),
@@ -77,6 +76,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td>Official mass-layoff notices employers must file with the state. Imported daily, no AI processing. Full list below.</td>
         <td>Verified</td>
         <td><a href="#alt-state-warn">See all <?php echo count($alt_state_urls); ?> &darr;</a></td>
+      </tr>
+      <tr>
+        <td><b>Hawaii WARN notices (OCR)</b></td><td>Hawaii</td>
+        <td>Hawaii posts each notice as a scanned image PDF, so we OCR the notice to recover the affected-employee count the state states in the letter. Only a clearly stated count is used; notices without one (or with a redacted total) are omitted, never estimated. Every row links its source PDF.</td>
+        <td>Verified</td>
+        <td><a href="https://labor.hawaii.gov/wdc/real-time-warn-updates/" target="_blank" rel="noopener">HI WDC WARN notices &#8599;</a></td>
       </tr>
       <tr>
         <td><b>Quebec collective dismissals</b></td><td>Quebec, Canada</td>
