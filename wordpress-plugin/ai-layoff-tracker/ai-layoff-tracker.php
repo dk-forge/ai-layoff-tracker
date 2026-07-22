@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.110
+ * Version: 2.19.111
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.110');
+define('ALT_VERSION', '2.19.111');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -86,7 +86,6 @@ function alt_no_register_states() {
         'AR' => 'Arkansas treats WARN filings as confidential employer records under its FOIA exemption, so there is no public list to import.',
         'WY' => 'Wyoming tracks filings internally and does not host a public, centralized WARN register.',
         'NH' => 'New Hampshire handles WARN filings as internal business-compliance records, with no usable public feed.',
-        'MO' => 'Missouri does not publish layoff notices to the public at the individual-notice level.',
         'HI' => 'Hawaii posts notices as image scans with no headcounts, so they cannot become countable rows.',
         'OK' => 'Oklahoma publishes only through an interactive portal that frequently omits headcounts.',
     );
@@ -105,7 +104,7 @@ function alt_state_unemployment() {
     // FIPS-coded BLS LAUS unemployment-rate series -> state code.
     $series = array(
         'LASST050000000000003' => 'AR', 'LASST560000000000003' => 'WY',
-        'LASST330000000000003' => 'NH', 'LASST290000000000003' => 'MO',
+        'LASST330000000000003' => 'NH',
         'LASST150000000000003' => 'HI', 'LASST400000000000003' => 'OK',
     );
     $y = (int) gmdate('Y');

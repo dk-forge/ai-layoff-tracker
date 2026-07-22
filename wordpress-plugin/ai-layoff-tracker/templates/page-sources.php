@@ -40,7 +40,6 @@ $alt_gap_states = array(
     array('Arkansas', 'Treats WARN filings as confidential employer records. The Division of Workforce Services receives them but is barred from releasing company-level data under the Arkansas FOIA exemption, so there is no public list to import. Arkansas cuts still reach the tracker when a company files with the SEC or a named outlet reports them.', 'Confidential by law', 'https://dws.arkansas.gov/', 'AR'),
     array('Wyoming', 'The Department of Workforce Services tracks filings internally but does not host a public, centralized WARN register. Wyoming cuts reach the tracker through SEC filings and named regional news instead.', 'No public register', 'https://dws.wyo.gov/', 'WY'),
     array('New Hampshire', 'NH Employment Security handles WARN filings as internal business-compliance records and does not publish a usable public feed. New Hampshire cuts reach the tracker through SEC filings and named news instead.', 'No public register', 'https://www.nhes.nh.gov/', 'NH'),
-    array('Missouri', 'Does not publish layoff notices to the public at the individual-notice level, so there is nothing to import at the notice level. Missouri cuts reach the tracker through SEC filings and named news.', 'Nothing published', 'https://jobs.mo.gov/warn', 'MO'),
 );
 $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment() : array();
 ?>
