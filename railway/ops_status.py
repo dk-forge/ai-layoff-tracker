@@ -85,6 +85,22 @@ def main():
     print("AI LAYOFF TRACKER — OPS STATUS")
     print("=" * 64)
 
+    # 0. Handoff baton — is another session editing the repo right now?
+    import os as _os
+    _baton = _os.path.join(_os.path.dirname(__file__), "..", "docs", "HANDOFF.md")
+    try:
+        import re as _re
+        _txt = open(_baton).read()
+        _status = (_re.search(r"\*\*STATUS:\*\*\s*(\w+)", _txt) or [None, "?"])[1]
+        _holder = (_re.search(r"\*\*HOLDER:\*\*\s*(.+)", _txt) or [None, "-"])[1].strip()
+        if _status == "HELD":
+            print(f"\n[0] HANDOFF BATON: HELD by {_holder} — another session is editing. "
+                  "Do NOT edit; coordinate first (docs/HANDOFF.md).")
+        else:
+            print("\n[0] HANDOFF BATON: FREE — claim it in docs/HANDOFF.md before editing.")
+    except Exception:
+        print("\n[0] HANDOFF BATON: (docs/HANDOFF.md not found)")
+
     # 1. Live version
     try:
         html = _get(f"{BASE}/ai-layoff-tracker/?cb=ops", browser=True).read().decode("utf-8", "replace")

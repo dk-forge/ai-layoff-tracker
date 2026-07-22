@@ -11,12 +11,14 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
 Run `python3 railway/ops_status.py` first — read-only, no deps/keys. It prints the
 live version, triages source health (what's broken + what to do), and lists the 4
 surfaces. Exit 0 = healthy; exit 2 = a source needs a human (→ RUNBOOK "a data
-source broke"). **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything).
+source broke"). **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
 
 ## Read these before changing anything
 | Doc | What it holds |
 |---|---|
+| [docs/HANDOFF.md](docs/HANDOFF.md) | **Gated session baton** — one editor at a time (cloud ↔ local). Claim before editing, release when done; ops_status.py shows the holder |
 | [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) | Self-contained operate-from-a-cloud-session guide (rules + owner's working style + what a session can/can't do) |
+| [docs/ENVIRONMENT-SETUP.md](docs/ENVIRONMENT-SETUP.md) | Equip a cloud session fully: which hosts to allowlist + a throwaway test DB for proving SQL changes |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System map: components, data flow, endpoints, DB schema, filter semantics |
 | [docs/TECHLOG.md](docs/TECHLOG.md) | Chronological log of every change + every incident and its root cause |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Ops playbooks: deploy, caches, imports, "X is broken → do Y", add/tune/enhance a source |
