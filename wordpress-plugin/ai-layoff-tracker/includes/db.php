@@ -285,15 +285,52 @@ function alt_suppressed_hashes() {
 function alt_log_correction($action, $ids, $reason, $detail = '') {
     $log = get_option('alt_corrections_log');
     if (!is_array($log)) $log = array();
-    $log[] = array(
-        'date'   => gmdate('Y-m-d'),
-        'action' => $action,
-        'count'  => count((array) $ids),
-        'reason' => substr((string) $reason, 0, 400),
-        'detail' => substr((string) $detail, 0, 200),
-    );
+    $date   = gmdate('Y-m-d');
+    $reason = substr((string) $reason, 0, 400);
+    $detail = substr((string) $detail, 0, 200);
+    $n      = count((array) $ids);
+    // Collapse repeat automated passes: the batched enrichment jobs (industry
+    // classification, reason-tag backfill) log one row per 200-item batch and
+    // run many times a day, which buried the meaningful corrections (merges,
+    // removals, count fixes) AND blew the 200-entry cap, evicting them. A
+    // same-day entry with identical action/reason/detail now accumulates its
+    // count in place instead of adding a new row, so one line reads
+    // "3,000 entries enriched" rather than fifteen "200 entries enriched".
+    foreach ($log as &$e) {
+        if (($e['date'] ?? '') === $date && ($e['action'] ?? '') === $action
+            && ($e['reason'] ?? '') === $reason && ($e['detail'] ?? '') === $detail) {
+            $e['count'] = (int) ($e['count'] ?? 0) + $n;
+            update_option('alt_corrections_log', $log, false);
+            return;
+        }
+    }
+    unset($e);
+    $log[] = array('date' => $date, 'action' => $action, 'count' => $n, 'reason' => $reason, 'detail' => $detail);
     if (count($log) > 200) $log = array_slice($log, -200);
     update_option('alt_corrections_log', $log, false);
+}
+
+/**
+ * One-time compaction of the EXISTING corrections log: merge already-stored
+ * rows that share date+action+reason+detail (the historical wall of identical
+ * "200 entries enriched" lines) into single accumulating entries, preserving
+ * order by first occurrence. Idempotent; safe to run on every deploy.
+ */
+function alt_compact_corrections_log() {
+    $log = get_option('alt_corrections_log');
+    if (!is_array($log) || !$log) return;
+    $out = array();
+    $index = array();
+    foreach ($log as $e) {
+        $key = ($e['date'] ?? '') . '|' . ($e['action'] ?? '') . '|' . ($e['reason'] ?? '') . '|' . ($e['detail'] ?? '');
+        if (isset($index[$key])) {
+            $out[$index[$key]]['count'] = (int) ($out[$index[$key]]['count'] ?? 0) + (int) ($e['count'] ?? 0);
+        } else {
+            $index[$key] = count($out);
+            $out[] = $e;
+        }
+    }
+    if (count($out) !== count($log)) update_option('alt_corrections_log', $out, false);
 }
 function alt_suppress_hash($hash, $reason) {
     $hash = substr((string) $hash, 0, 32);
