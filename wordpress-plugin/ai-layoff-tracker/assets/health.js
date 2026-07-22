@@ -263,7 +263,7 @@
         row('By US employer, broad, through ' + (refMonth || 'YTD') + ' (Survey-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
         row('By US job location, broad, through ' + (refMonth || 'YTD'), fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
         row('Latest Survey report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
-        group('TECH — worldwide (sector trackers-comparable · fyi as of ' + FYI.asOf + ')') +
+        group('TECH — worldwide (sector trackers-comparable · as of ' + FYI.asOf + ')') +
         row('Tech cuts (Survey sector col, ' + CHAL_STATIC.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal)) +
         row('Tech AI cuts (broad)', '—', fmtN(FYI.techAI), fmtN(techBroad), pct(techBroad, FYI.techAI)) +
         group('WORLDWIDE — ATR only (no benchmark measures this)') +
