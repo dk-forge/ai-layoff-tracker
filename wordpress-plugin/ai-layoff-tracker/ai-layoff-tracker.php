@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.116
+ * Version: 2.19.117
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.116');
+define('ALT_VERSION', '2.19.117');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -218,6 +218,9 @@ function alt_flush_caches_on_deploy() {
     // Compact the historical wall of identical automated-enrichment log rows
     // into single accumulating entries (idempotent).
     if (function_exists('alt_compact_corrections_log')) alt_compact_corrections_log();
+    // Remove undated news/SEC rows that duplicate a dated same-size event
+    // (they bypassed the date-gated dedup guard). Idempotent.
+    if (function_exists('alt_dedup_undated_cleanup')) alt_dedup_undated_cleanup();
     if (function_exists('wp_cache_clear_cache')) {
         wp_cache_clear_cache();
     }

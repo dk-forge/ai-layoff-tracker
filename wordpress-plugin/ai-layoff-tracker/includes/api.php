@@ -182,6 +182,11 @@ function alt_company_key($name) {
     $k = strtolower((string) $name);
     $k = preg_replace('/[^a-z0-9 ]/', ' ', $k);
     $k = preg_replace('/\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|group|holdings|holding|technologies|technology|systems|solutions|the|com)\b/', ' ', $k);
+    // Trailing geographic qualifiers name the same employer ("Oracle America" is
+    // Oracle, "Amazon.com" already handled). Strip them so a US-subsidiary WARN
+    // row and the parent's news event share a key for fuzzy dedup + display
+    // grouping. (WARN's exact hash is unaffected; WARN rows never fuzzy-merge.)
+    $k = preg_replace('/\b(america|americas|usa|us|international|global|worldwide|na)\b/', ' ', $k);
     $k = trim(preg_replace('/\s+/', ' ', $k));
     return alt_canonical_company($k);
 }

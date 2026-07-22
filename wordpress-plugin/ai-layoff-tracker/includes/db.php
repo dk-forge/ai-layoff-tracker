@@ -332,6 +332,46 @@ function alt_compact_corrections_log() {
     }
     if (count($out) !== count($log)) update_option('alt_corrections_log', $out, false);
 }
+
+/**
+ * One-time (idempotent) removal of UNDATED news/SEC/press rows that duplicate a
+ * DATED event of the same company and headcount. Blank-date rows bypassed the
+ * date-gated fuzzy dedup guard, so e.g. an undated "Volkswagen 50,000" sat next
+ * to the real dated one (both on the public leaderboard). An undated row whose
+ * exact company_key + job_count already exists on a dated row is unambiguously
+ * that event re-posted without a date. Never touches edited/pinned rows or
+ * structured WARN/ERM. Logged to the public corrections trail.
+ */
+function alt_dedup_undated_cleanup() {
+    global $wpdb;
+    $t = alt_db_table();
+    $dups = $wpdb->get_results(
+        "SELECT a.id, a.post_id FROM $t a
+         WHERE a.layoff_date IS NULL
+           AND a.source_type IN ('news','8K','press_release')
+           AND a.edited = 0 AND a.company_key <> '' AND a.job_count > 0
+           AND EXISTS (
+             SELECT 1 FROM $t b
+             WHERE b.id <> a.id AND b.company_key = a.company_key
+               AND b.job_count = a.job_count AND b.layoff_date IS NOT NULL
+               AND b.source_type IN ('news','8K','press_release','erm'))
+         LIMIT 2000");
+    if (!$dups) return;
+    $removed = array();
+    foreach ($dups as $d) {
+        if (!empty($d->post_id)) {
+            wp_trash_post((int) $d->post_id);          // cascades to the table row
+        } else {
+            $wpdb->delete($t, array('id' => (int) $d->id));
+        }
+        $removed[] = (int) $d->id;
+    }
+    if ($removed && function_exists('alt_log_correction')) {
+        alt_log_correction('removed', $removed,
+            'Undated duplicate cleanup: news/SEC rows with no date that duplicate a dated event of the same company and headcount (they had bypassed the date-gated dedup guard).');
+    }
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+}
 function alt_suppress_hash($hash, $reason) {
     $hash = substr((string) $hash, 0, 32);
     if ($hash === '') return;
