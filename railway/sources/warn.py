@@ -186,6 +186,13 @@ def _count(s):
     s = (s or "").strip()
     if re.match(r"^\d{4}-\d{1,2}-\d{1,2}", s) or re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}", s):
         return 0
+    # A leading list marker like "1) ", "2. " or "3: " is an enumerator, not a
+    # count. Left in place, "1) 300 employees" parses to a bogus 1-worker
+    # notice. Strip ONLY a 1-2 digit number followed by ) . or : and a space,
+    # so real counts keep their first number: "45 Dallas / 60 Austin" (bare
+    # space, untouched -> 45) and "9,891 Remote (2 from RI)" (comma, untouched
+    # -> 9,891) are unaffected; ranges like "50-100" still resolve to 50.
+    s = re.sub(r"^#?\d{1,2}[).:]\s+", "", s)
     m = re.search(r"\d{1,3}(?:,\d{3})+|\d+", s)
     return int(m.group(0).replace(",", "")) if m else 0
 
