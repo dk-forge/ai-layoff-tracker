@@ -1,0 +1,29 @@
+name: WARN LLM fallback probe
+
+# Manual verification job for the DeepSeek count-fallback wired into the fragile
+# WARN scrapers. Runs those fetchers with WARN_LLM_FALLBACK=1 and PRINTS every
+# row the fallback recovers (regex count was 0, LLM found one) as ::notice::
+# lines. Posts NOTHING (no WP_API_KEY). Use it to review recoveries before
+# enabling the fallback in the live import. Manual dispatch only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Probe (prints recoveries, posts nothing)
+        working-directory: railway
+        env:
+          WARN_LLM_FALLBACK: '1'
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python warn_llm_probe.py
