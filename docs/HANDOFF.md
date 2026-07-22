@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
-- **SINCE:** —
-- **WORKING ON:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code)
+- **SINCE:** 2026-07-21
+- **WORKING ON:** pull competitor benchmark numbers off the public health page (owner chose private)
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
