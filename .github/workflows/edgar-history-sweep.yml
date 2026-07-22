@@ -1,0 +1,62 @@
+name: EDGAR history sweep (rotating)
+
+# Scheduled self-completing historical backfill from SEC EDGAR. Each daily run
+# backfills ONE month window, deterministically walking the whole
+# BACKFILL_ANCHOR_YEAR..now range and wrapping (the calendar date IS the cursor,
+# no server-side state). So every past and current-year month — 2025, 2026, and
+# back to the anchor — keeps getting re-verified and any gap self-fills, with no
+# human. Idempotent (dedup guard), so re-sweeping the same month is safe.
+#
+# This complements the manual one-shot "Historical backfill (EDGAR)" workflow,
+# which stays available for a targeted date range.
+#
+# Required secrets: OPENROUTER_API_KEY, WP_API_KEY
+
+on:
+  schedule:
+    - cron: '20 5 * * *'   # daily, one month-window per run
+  workflow_dispatch:
+    inputs:
+      anchor_year:
+        description: 'Oldest year the sweep walks'
+        required: false
+        default: '2015'
+
+jobs:
+  edgar-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify required secrets
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          missing=0
+          for v in OPENROUTER_API_KEY WP_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set."; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || { echo "Add the missing secret(s) and re-run."; exit 1; }
+
+      - name: Install dependencies
+        working-directory: railway
+        run: pip install -r requirements.txt
+
+      - name: Run EDGAR rotating history sweep
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
+          BACKFILL_ROTATE: '1'
+          BACKFILL_ANCHOR_YEAR: ${{ github.event.inputs.anchor_year || '2015' }}
+        run: python backfill.py

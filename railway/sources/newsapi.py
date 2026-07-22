@@ -3,7 +3,8 @@ Pulls layoff news from credible outlets via NewsAPI.
 
 Free (Developer) tier caveats that bite silently:
   - articles are delayed ~24 hours, so days_back=1 can return nothing;
-    the default here is 2 days and the deduplicator drops repeats
+    the default here is 4 days (covers the ~24h index delay + a weekend
+    publish gap) and the deduplicator drops repeats
   - `content` is truncated to ~200 chars; title + description carry most signal
   - 100 requests/day
 Production tier ($449/mo) removes the delay and truncation.
@@ -15,10 +16,30 @@ import requests
 
 NEWSAPI_URL = "https://newsapi.org/v2/everything"
 
+# Every domain here is also in the GDELT trusted-source allowlist (sources/
+# gdelt.py), so this is the SAME editorial bar applied to the NewsAPI channel —
+# not a looser one. The additions matter for the "announced" tier specifically:
+# the newswires (PR Newswire / Business Wire / GlobeNewswire) are the channel
+# companies use to ANNOUNCE cuts (the same feed announcement-surveys monitor),
+# and the trade/metro outlets catch mid-size US employers a general-news ranking
+# buries. Widening `domains` costs no extra requests (same call count).
 TRUSTED_DOMAINS = (
     "reuters.com,bloomberg.com,wsj.com,ft.com,apnews.com,"
     "techcrunch.com,cnbc.com,theguardian.com,cbsnews.com,npr.org,axios.com,"
-    "bbc.com,theverge.com,arstechnica.com,fortune.com,businessinsider.com"
+    "bbc.com,theverge.com,arstechnica.com,fortune.com,businessinsider.com,"
+    # newswires — the corporate-announcement channel
+    "prnewswire.com,businesswire.com,globenewswire.com,"
+    # national business / markets
+    "marketwatch.com,forbes.com,"
+    # regional & trade press (mid-size US employers)
+    "bizjournals.com,crainsnewyork.com,geekwire.com,"
+    "hrdive.com,retaildive.com,bankingdive.com,healthcaredive.com,ciodive.com,"
+    "variety.com,deadline.com,"
+    # global tech / startup press — the biggest remaining gap vs tech-event
+    # trackers is non-US, non-English, and startup tech layoffs that mainstream
+    # US outlets miss. All already vetted in the GDELT trusted list.
+    "theinformation.com,techinasia.com,restofworld.org,inc42.com,"
+    "theregister.com,calcalistech.com"
 )
 
 # Keep the general layoffs sweep separate from a targeted AI/automation sweep.
@@ -44,8 +65,10 @@ SEGMENT_TERMS = (
     '"automotive"', '"media"', '"logistics"', '"insurance"', '"telecom"',
     '"United Kingdom"', '"Canada"', '"India"', '"Germany"', '"Australia"',
     '"replaced by AI"', '"AI restructuring"', '"automation" AND "job cuts"',
+    # global tech / startup segments — close the tech-event-tracker gap
+    '"startup"', '"Israel"', '"Singapore"', '"tech company"',
 )
-SEGMENT_QUERIES_PER_RUN = max(0, min(6, int(os.environ.get("NEWSAPI_SEGMENT_QUERIES", "2"))))
+SEGMENT_QUERIES_PER_RUN = max(0, min(6, int(os.environ.get("NEWSAPI_SEGMENT_QUERIES", "4"))))
 
 
 def _segment_queries_for_now():
@@ -58,7 +81,7 @@ def _segment_queries_for_now():
     return [f'(layoffs OR "job cuts" OR "workforce reduction") AND {term}' for term in picked]
 
 
-def pull_news_articles(days_back=2, queries=None):
+def pull_news_articles(days_back=4, queries=None):
     """Pull layoff coverage from trusted outlets. `queries` overrides the
     standard discovery/segment set — the company-watchlist sweep passes
     company-targeted queries here to reuse all of this fetch/domain/shaping

@@ -240,8 +240,14 @@
       };
       const usJobs = throughRef(us, 'jobs');
       const usBroad = throughRef(us, 'ai_broad_jobs');
+      // ai_jobs = ai_explicit: the source's own words name AI as a reason
+      // (quote-verified). This is the honest Survey-comparable AI basis; broad
+      // additionally folds in ai_linked press-framing that the source did not
+      // state, so it is shown only as a labeled upper bound.
+      const usAi = throughRef(us, 'ai_jobs');
       const usEmpJobs = throughRef(usEmp, 'jobs');
       const usEmpBroad = throughRef(usEmp, 'ai_broad_jobs');
+      const usEmpAi = throughRef(usEmp, 'ai_jobs');
       const techJobs = tech && tech.totals ? tech.totals.jobs : null;
       const techBroad = tech && tech.totals ? tech.totals.ai_broad_jobs : null;
       const worldJobs = world && world.totals ? world.totals.jobs : null;
@@ -260,8 +266,9 @@
         row('By US job location, through ' + (refMonth || 'YTD'), fmtN(chalTotalYtd), '—', fmtN(usJobs), pct(usJobs, chalTotalYtd)) +
         row('Latest Survey report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalTotalMo), '—', '—', '—') +
         group('AI CUTS — United States') +
-        row('By US employer, broad, through ' + (refMonth || 'YTD') + ' (Survey-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
-        row('By US job location, broad, through ' + (refMonth || 'YTD'), fmtN(chalAiYtd), '—', fmtN(usBroad), pct(usBroad, chalAiYtd)) +
+        row('By US employer, AI-cited (source states AI), through ' + (refMonth || 'YTD') + ' (Survey-comparable)', fmtN(chalAiYtd), '—', fmtN(usEmpAi), pct(usEmpAi, chalAiYtd)) +
+        row('By US job location, AI-cited (source states AI), through ' + (refMonth || 'YTD'), fmtN(chalAiYtd), '—', fmtN(usAi), pct(usAi, chalAiYtd)) +
+        row('By US employer, broad (incl. press framing — upper bound, not source-stated)', fmtN(chalAiYtd), '—', fmtN(usEmpBroad), pct(usEmpBroad, chalAiYtd)) +
         row('Latest Survey report month' + (refMonth ? ' (' + refMonth + ')' : ''), fmtN(chalAiMo), '—', '—', '—') +
         group('TECH — worldwide (sector trackers-comparable · as of ' + FYI.asOf + ')') +
         row('Tech cuts (Survey sector col, ' + CHAL_STATIC.asOf + ')', fmtN(CHAL_STATIC.techTotal), fmtN(FYI.techTotal), fmtN(techJobs), pct(techJobs, FYI.techTotal)) +
@@ -309,7 +316,7 @@
     }).join('') || '<tr><td colspan="6">No collector reports yet.</td></tr>';
     $('alt-health-workstreams').innerHTML = (q.workstreams || []).map(x => `<p><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> <b>${esc(x.id.replaceAll('_', ' '))}</b><br>${esc(x.scope)}</p>`).join('');
     const last = Array.isArray(c) && c[0] ? c[0] : null;
-    $('alt-health-backlogs').innerHTML = `<p><b>Retained event-source links:</b> ${Number(i.canonical_events_without_linked_source_reports || 0).toLocaleString()} canonical event${Number(i.canonical_events_without_linked_source_reports || 0) === 1 ? '' : 's'} missing a linked retained-source record. This is a visible event-graph integrity gap; the canonical row may still have its own source URL.</p><p><b>Evidence hash backfill:</b> ${i.source_report_hashes_remaining.toLocaleString()} retained excerpts pending.</p><p><b>Industry metadata:</b> ${Number(completeness.rows_missing_industry || 0).toLocaleString()} rows remain blank rather than inferred.</p><p><b>US job-location state:</b> ${Number(completeness.us_rows_missing_job_location_state || 0).toLocaleString()} US rows are state-unspecified; headquarters and office footprint are never substituted.</p><p><b>Editorial review:</b> ${(r.total || 0).toLocaleString()} high-impact records queued.</p><p><b>Survey:</b> ${last ? `${Number(last.tracker_ai_primary_announced_us_employer_jobs_ytd).toLocaleString()} strict tracker vs ${Number(last.survey_ai_jobs_ytd).toLocaleString()} benchmark` : 'No retained comparison yet'}.</p><p><b>Country recall:</b> ${(rec || []).length ? 'published sample available' : 'no current independently documented sample published'}.</p>`;
+    $('alt-health-backlogs').innerHTML = `<p><b>Retained event-source links:</b> ${Number(i.canonical_events_without_linked_source_reports || 0).toLocaleString()} canonical event${Number(i.canonical_events_without_linked_source_reports || 0) === 1 ? '' : 's'} missing a linked retained-source record. This is a visible event-graph integrity gap; the canonical row may still have its own source URL.</p><p><b>Evidence hash backfill:</b> ${i.source_report_hashes_remaining.toLocaleString()} retained excerpts pending.</p><p><b>Industry metadata:</b> ${Number(completeness.rows_missing_industry || 0).toLocaleString()} rows remain blank rather than inferred.</p><p><b>US job-location state:</b> ${Number(completeness.us_rows_missing_job_location_state || 0).toLocaleString()} US rows are state-unspecified; headquarters and office footprint are never substituted.</p><p><b>Editorial review:</b> ${(r.total || 0).toLocaleString()} high-impact records queued.</p><p><b>Survey:</b> ${last ? `${Number(last.tracker_ai_cited_announced_us_employer_jobs_ytd ?? last.tracker_ai_primary_announced_us_employer_jobs_ytd ?? 0).toLocaleString()} AI-cited (source-stated) tracker vs ${Number(last.survey_ai_jobs_ytd).toLocaleString()} benchmark` : 'No retained comparison yet'}.</p><p><b>Country recall:</b> ${(rec || []).length ? 'published sample available' : 'no current independently documented sample published'}.</p>`;
     const releases = Array.isArray(ledger.releases) ? ledger.releases.slice().sort((a, b) => String(a.released_at).localeCompare(String(b.released_at))) : [];
     const first = releases[0], latest = releases[releases.length - 1];
     const changes = q.last_30_days_disclosed_changes || {};

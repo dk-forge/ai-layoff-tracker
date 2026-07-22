@@ -1,12 +1,20 @@
 name: News catch-up (last N days)
 
-# Manually triggered. Pulls the last N days of layoff news (Reuters/Bloomberg/
-# TechCrunch/etc.) and posts verified events — the source where AI-attributed
-# layoffs actually appear. Idempotent (dedup guard).
+# Pulls the last N days of layoff news (Reuters/Bloomberg/TechCrunch/wires/etc.)
+# and posts verified events — the source where AI-attributed layoffs actually
+# appear. Idempotent (dedup guard).
+#
+# Runs on a SCHEDULE as the wide-lookback safety net: the daily cron only looks
+# back a few days, and with NewsAPI's ~24h index delay + weekend gaps an
+# announcement can fall out of every daily window before it is ever seen. This
+# weekly ~14-day re-sweep recaptures those before they age past NewsAPI's ~30-day
+# history ceiling. Idempotent, so re-sweeping is safe. Also manually dispatchable.
 #
 # Required secrets: NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
 
 on:
+  schedule:
+    - cron: '30 9 * * 1'   # weekly, Monday 09:30 UTC (after the weekend)
   workflow_dispatch:
     inputs:
       days:
@@ -45,5 +53,6 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
-          NEWS_DAYS_BACK: ${{ github.event.inputs.days }}
+          # On a scheduled run there is no dispatch input, so fall back to 14.
+          NEWS_DAYS_BACK: ${{ github.event.inputs.days || '14' }}
         run: python news_catchup.py

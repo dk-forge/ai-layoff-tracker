@@ -1,27 +1,37 @@
 """Tracker-diff discovery tripwire — automated 'work backwards from other trackers'.
 
-Reads competitor tracker event feeds (URLs supplied ONLY via the
-COMPETITOR_FEED_URLS secret — never committed, per the standalone-brand rule),
-diffs their events against our own data, and for anything they list that we lack,
-fires a company-TARGETED primary-source query → the same DeepSeek extractor +
-dedup + poster. We never cite the competitor: their list is a discovery SIGNAL
-that points us at a primary source, which is what actually gets stored.
+Takes a competitor company list, diffs it against our own data, and for anything
+they list that we lack, fires a company-TARGETED primary-source query → the same
+DeepSeek extractor + dedup + poster. We never cite the competitor: their list is a
+discovery SIGNAL that points us at a primary source, which is what actually gets
+stored. Company names arrive ONLY via a secret (never committed, per the
+standalone-brand rule), and only counts/slice indices are logged — never the list.
 
-Ships DORMANT: with no COMPETITOR_FEED_URLS set it logs and exits clean, so the
-repo carries zero competitor URLs. The owner adds the secret to activate.
+Two ways to supply the list (use either or both):
+  * COMPETITOR_FEED_URLS  — comma-separated URLs, each returning a JSON array of
+    {company, date?, jobs?} objects (or {"data":[...]}/{"events":[...]}) OR a CSV
+    with a `company`/`company_name`/`name` column.
+  * COMPETITOR_COMPANIES  — the list pasted inline (comma- or newline-separated
+    company names). Use this when the competitor has no machine feed but you can
+    see their list: paste the names into this secret and the cron chases them.
 
-Feed format (per URL): JSON array of {company, date?, jobs?} objects, OR CSV with
-a `company` column. Robust to either.
+Ships DORMANT: with neither set it logs and exits clean, so the repo carries zero
+competitor data. The owner adds a secret to activate.
 
-Env: COMPETITOR_FEED_URLS (comma-separated, secret), TRACKER_DIFF_MAX (default 40
-missing companies to chase per run), TRACKER_DIFF_DRY=1 (log, don't post).
+Each daily run chases a rotating slice (TRACKER_DIFF_MAX companies), so over a few
+days the WHOLE list is walked — not just the first slice each time.
+
+Env: COMPETITOR_FEED_URLS, COMPETITOR_COMPANIES (secrets), TRACKER_DIFF_MAX
+(default 40 companies per run), TRACKER_DIFF_DRY=1 (log, don't post).
 """
 import csv
 import io
 import json
 import os
+import re
 import sys
 import time
+from datetime import date
 
 import requests
 
@@ -33,6 +43,7 @@ from source_health import report_source_health
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 FEEDS = [u.strip() for u in (os.environ.get("COMPETITOR_FEED_URLS") or "").split(",") if u.strip()]
+INLINE = [n.strip() for n in re.split(r"[,\n]", os.environ.get("COMPETITOR_COMPANIES") or "") if n.strip()]
 MAX_CHASE = max(1, int(os.environ.get("TRACKER_DIFF_MAX", "40")))
 DRY = os.environ.get("TRACKER_DIFF_DRY", "").lower() in {"1", "true", "yes"}
 
@@ -78,19 +89,33 @@ def _parse_feed(url, label):
 
 
 def run():
-    if not FEEDS:
-        print("COMPETITOR_FEED_URLS not set — tripwire dormant, nothing to diff. "
-              "Add the secret to activate (URLs stay out of the repo).")
+    if not FEEDS and not INLINE:
+        print("Neither COMPETITOR_FEED_URLS nor COMPETITOR_COMPANIES set — tripwire "
+              "dormant, nothing to diff. Paste a competitor company list into the "
+              "COMPETITOR_COMPANIES secret (or a feed URL into COMPETITOR_FEED_URLS) "
+              "to activate; either stays out of the repo.")
         return
     by_key = {}
     for i, url in enumerate(FEEDS, 1):
         for n in _parse_feed(url, f"#{i}"):
             by_key.setdefault(n.lower(), n)
-    competitor_names = list(by_key.values())
-    print(f"competitor feeds: {len(competitor_names)} distinct companies")
+    for n in INLINE:
+        by_key.setdefault(n.lower(), n)
+    competitor_names = sorted(by_key.values(), key=str.lower)  # stable order for the rotating slice
+    n_total = len(competitor_names)
+    if not n_total:
+        print("competitor list resolved to 0 companies — nothing to diff.")
+        report_source_health("tracker_diff", "ok", 0, "0 competitor companies resolved")
+        return
 
-    missing = [c for c in competitor_names if not already_have(c)][:MAX_CHASE]
-    print(f"they list, we lack: {len(missing)} (chasing up to {MAX_CHASE})")
+    # Walk a rotating slice each day so the WHOLE list gets covered over time,
+    # not just the first MAX_CHASE every run. The calendar date is the cursor.
+    n_slices = max(1, (n_total + MAX_CHASE - 1) // MAX_CHASE)
+    slice_idx = date.today().toordinal() % n_slices
+    window = competitor_names[slice_idx * MAX_CHASE:(slice_idx + 1) * MAX_CHASE]
+    missing = [c for c in window if not already_have(c)]
+    print(f"competitor list: {n_total} companies; slice {slice_idx + 1}/{n_slices} "
+          f"({len(window)} examined); they list, we lack: {len(missing)}")
     posted = ai = 0
     for i in range(0, len(missing), 20):
         chunk = missing[i:i + 20]
@@ -114,7 +139,8 @@ def run():
                 ai += 1 if ex.get("ai_explicit") else 0
                 print(f"  + {ex.get('company_name')} {ex.get('job_count')} ({ex.get('layoff_date')})")
         time.sleep(1)
-    detail = f"{len(competitor_names)} competitor events diffed, {len(missing)} missing, {posted} added ({ai} AI)"
+    detail = (f"{n_total} listed; slice {slice_idx + 1}/{n_slices}; "
+              f"{len(missing)} missing chased, {posted} added ({ai} AI)")
     print("tracker-diff:", detail)
     if not DRY:
         report_source_health("tracker_diff", "ok", posted, detail)

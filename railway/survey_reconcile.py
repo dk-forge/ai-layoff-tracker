@@ -191,6 +191,17 @@ def tracker_comparison_totals(site, reference_month):
     """Return strict and diagnostic monthly/YTD figures without equating them."""
     year = int(reference_month[:4])
     groups = {
+        # Headline AI comparison — the most honest Survey-comparable basis that
+        # KEEPS the "the source must state AI" bar: ai=1 => ai_explicit
+        # (ai_causation in primary_cause/contributing_cause), every row of which
+        # carries a verbatim quote where the source names AI as a reason. This is
+        # how the Survey attributes a reason (the company cited it), without
+        # importing ai_linked press-framing (which ai_broad would). Country basis
+        # is employer-domicile WITH the blank -> job-location fallback the
+        # front-end already uses, so US-located rows whose HQ field is blank are
+        # not silently dropped.
+        "ai_cited": {"country_basis": "employer", "country": "United States", "ai": "1"},
+        # Stricter sub-line: AI named as THE primary cause (a subset of ai_cited).
         "strict": {"employer_country": "United States", "ai_primary": "1"},
         "observed": {"country": "United States", "ai": "1"},
         # All-cuts comparator: identical strict gates minus the AI
@@ -226,6 +237,9 @@ def payload_for_report(site, report, allowed):
     total_month, total_ytd = survey_all_cut_totals(report["benchmark_url"], report["reference_month"])
     variance = (totals["strict_ytd"] - survey_ytd) / survey_ytd if survey_ytd else 0.0
     monthly_variance = (totals["strict_month"] - survey_month) / survey_month if survey_month else 0.0
+    # Honest headline: quote-backed AI-cited (ai_explicit) vs the Survey's AI figure.
+    ai_cited_variance = (totals["ai_cited_ytd"] - survey_ytd) / survey_ytd if survey_ytd else 0.0
+    ai_cited_monthly_variance = (totals["ai_cited_month"] - survey_month) / survey_month if survey_month else 0.0
     return {
         "survey_total_jobs_month": total_month, "survey_total_jobs_ytd": total_ytd,
         "tracker_announced_us_employer_jobs_month": totals["strict_all_month"],
@@ -244,9 +258,17 @@ def payload_for_report(site, report, allowed):
         "tracker_ai_cited_announced_us_job_location_jobs_month": totals["observed_month"],
         "tracker_observed_query": urls["observed_ytd"],
         "tracker_ai_cited_announced_us_job_location_jobs_ytd": totals["observed_ytd"],
+        # Honest headline pair: quote-backed AI-cited (ai_explicit), employer basis
+        # with job-location fallback. This is the Survey-comparable AI number.
+        "tracker_ai_cited_announced_us_employer_jobs_month": totals["ai_cited_month"],
+        "tracker_ai_cited_announced_us_employer_jobs_ytd": totals["ai_cited_ytd"],
+        "tracker_ai_cited_month_query": urls["ai_cited_month"],
+        "tracker_ai_cited_query": urls["ai_cited_ytd"],
+        "ai_cited_monthly_variance": round(ai_cited_monthly_variance, 4),
+        "ai_cited_variance": round(ai_cited_variance, 4),
         "monthly_variance": round(monthly_variance, 4), "variance": round(variance, 4),
         "allowed_variance": allowed,
-        "definition": "Strict AI pair: US employer + source-evidenced announcement date + announced + AI primary + canonical event, against Survey AI-attributed cuts. All-cuts pair: same strict gates without the AI requirement, against Survey total announced cuts. Diagnostic figure is US job location + any explicit AI citation and is not Survey-comparable.",
+        "definition": "Headline AI pair (ai_cited): US employer domicile with job-location fallback + source-evidenced announcement date + announced + AI explicitly cited as a reason (ai_explicit: primary OR contributing cause, each backed by a verbatim source quote naming AI) + canonical event, against Survey AI-attributed cuts. This is the most honest Survey-comparable AI basis that still requires the source to state AI; it excludes ai_linked press-framing. Strict AI sub-pair: the same but AI-primary-cause only (stricter subset). All-cuts pair: strict gates without the AI requirement, against Survey total announced cuts. Diagnostic figure is US job location + any explicit AI citation and is not Survey-comparable.",
     }
 
 

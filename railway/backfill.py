@@ -1,5 +1,5 @@
 """
-One-off historical backfill from SEC EDGAR.
+Historical backfill from SEC EDGAR.
 
 Walks monthly windows from BACKFILL_START to BACKFILL_END, pulls 8-K filings
 with layoff language, runs them through the same DeepSeek extractor + dedup +
@@ -8,14 +8,41 @@ WordPress poster as the daily cron, and posts the verified ones.
 Idempotent: the dedup guard (Railway pre-check + server-side 409) prevents
 re-posting, so this is safe to re-run or resume.
 
+Two modes:
+  * Explicit range  — set BACKFILL_START/END for a one-shot window.
+  * Rotating sweep  — set BACKFILL_ROTATE=1 and a daily cron backfills ONE month
+    per run, deterministically walking the whole [BACKFILL_ANCHOR_YEAR..now]
+    range and wrapping, so every past AND current-year month (2025, 2026, ...)
+    keeps getting re-verified and any gap self-fills with no server-side cursor.
+    Mirrors industry_backfill.rotating_slice.
+
 Env:
   OPENROUTER_API_KEY, WP_SITE_URL, WP_API_KEY, EDGAR_USER_AGENT  (as usual)
-  BACKFILL_START   YYYY-MM-DD  (default 2024-01-01)
-  BACKFILL_END     YYYY-MM-DD  (default today, UTC)
+  BACKFILL_ROTATE        1 => rotating single-month sweep (ignores START/END)
+  BACKFILL_ANCHOR_YEAR   int (default 2015) — oldest year the sweep walks
+  BACKFILL_START   YYYY-MM-DD  (default 2024-01-01; used when not rotating)
+  BACKFILL_END     YYYY-MM-DD  (default today, UTC; used when not rotating)
   BACKFILL_LIMIT   int         (optional cap on posts — use for a test run)
 """
 import os
 from datetime import datetime, timedelta, timezone
+
+
+def rotating_window(anchor_year, now=None):
+    """Deterministic single-month [start, end] that advances one month per
+    calendar day and wraps — so a daily cron walks the entire history and keeps
+    re-verifying it. No persisted cursor: the date IS the cursor."""
+    now = now or datetime.now(timezone.utc)
+    months = []
+    y, m = anchor_year, 1
+    while (y, m) <= (now.year, now.month):
+        months.append((y, m))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    wy, wm = months[now.toordinal() % len(months)]
+    start = datetime(wy, wm, 1, tzinfo=timezone.utc)
+    nxt = datetime(wy + 1, 1, 1, tzinfo=timezone.utc) if wm == 12 \
+        else datetime(wy, wm + 1, 1, tzinfo=timezone.utc)
+    return start, min(nxt - timedelta(seconds=1), now)
 
 from sources.edgar import pull_edgar_filings_between
 from extractor import extract_layoff_data
@@ -42,9 +69,15 @@ def month_windows(start, end):
 
 
 def run():
-    start = _parse_date(os.environ.get("BACKFILL_START"),
-                        datetime(2024, 1, 1, tzinfo=timezone.utc))
-    end = _parse_date(os.environ.get("BACKFILL_END"), datetime.now(timezone.utc))
+    if os.environ.get("BACKFILL_ROTATE"):
+        anchor = int(os.environ.get("BACKFILL_ANCHOR_YEAR") or 2015)
+        start, end = rotating_window(anchor)
+        print(f"EDGAR rotating sweep (anchor {anchor}): this run backfills "
+              f"{start.strftime('%Y-%m')}")
+    else:
+        start = _parse_date(os.environ.get("BACKFILL_START"),
+                            datetime(2024, 1, 1, tzinfo=timezone.utc))
+        end = _parse_date(os.environ.get("BACKFILL_END"), datetime.now(timezone.utc))
     limit = int(os.environ.get("BACKFILL_LIMIT") or 0) or None
 
     print(f"Backfill {start.date()} → {end.date()}"
