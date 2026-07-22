@@ -48,6 +48,7 @@ WINDOW_DAYS = 120
 # (Incident 2026-07-19: VW "50,000" appeared twice, 125 days apart — 5 days past
 # the flat window — so the deep scan never even compared them.)
 WIDE_WINDOW_DAYS = int(os.environ.get("DEDUPE_WIDE_WINDOW_DAYS") or 365)
+EXACT_WINDOW_DAYS = int(os.environ.get("DEDUPE_EXACT_WINDOW_DAYS") or 1095)  # ~3y for exact-count re-reports
 WIDE_WINDOW_MIN_COUNT = int(os.environ.get("DEDUPE_WIDE_WINDOW_MIN_COUNT") or 1000)
 WIDE_WINDOW_SIMILARITY = 0.95
 SRC_RANK = {"8K": 3, "warn": 3, "press_release": 2, "erm": 2, "news": 1}
@@ -68,7 +69,10 @@ def pair_window_days(lo, hi):
         return WINDOW_DAYS
     ratio = lo / hi
     if ratio >= 0.995 and hi >= 100:           # exact match, any size ≥100
-        return WIDE_WINDOW_DAYS
+        # Exact identical counts re-reported even years apart (e.g. a cumulative
+        # figure restated) escaped the 365-day ceiling. Let the model see pairs
+        # up to EXACT_WINDOW_DAYS (default ~3y); it still makes the final call.
+        return EXACT_WINDOW_DAYS
     if ratio >= WIDE_WINDOW_SIMILARITY and hi >= WIDE_WINDOW_MIN_COUNT:
         return WIDE_WINDOW_DAYS
     return WINDOW_DAYS
@@ -89,8 +93,12 @@ def api(path):
 
 
 def norm_company(name):
+    # Kept in sync with the plugin's alt_company_key (includes/api.php) so the two
+    # dedup layers reach the same same-company verdict: same legal-suffix set plus
+    # the trailing geographic qualifiers (America/USA/International/Global).
     n = re.sub(r"[^a-z0-9 ]", "", (name or "").lower())
-    n = re.sub(r"\b(inc|corp|corporation|co|ltd|llc|plc|sa|ag|group|holdings|platforms|the)\b", "", n)
+    n = re.sub(r"\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|sa|ag|group|holdings|holding|technologies|technology|systems|solutions|platforms|the|com)\b", "", n)
+    n = re.sub(r"\b(america|americas|usa|us|international|global|worldwide|na)\b", "", n)
     return re.sub(r"\s+", " ", n).strip()
 
 
@@ -112,7 +120,7 @@ def fetch_all():
     # 40K+, which the shared host can't paginate without throwing 500s.
     rows, page = [], 1
     while True:
-        d = api(f"query?sources=news,8K,press_release,erm&per_page=200&page={page}&sort=id&dir=asc")
+        d = api(f"query?sources=news,8K,press_release,erm,federal_rif&per_page=200&page={page}&sort=id&dir=asc")
         rows += d["data"]
         if page * 200 >= d["total"] or not d["data"]:
             break
