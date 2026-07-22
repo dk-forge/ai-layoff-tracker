@@ -183,7 +183,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     <?php endforeach; ?>
     </tbody>
   </table></div>
-  <p class="alt-muted"><b>"Publishes, importer in progress"</b> states post public data we're actively building importers for. <b>"No public register" / "Confidential by law"</b> states keep WARN filings internal, so those cuts reach the tracker through SEC filings and named news instead, never invented and never estimated. The <b>unemployment column is a separate official metric</b> (the state's monthly BLS rate, not a layoff count) shown so every state carries an authoritative, sourced number even where individual notices aren't public.</p>
+  <p class="alt-muted"><b>"Publishes, no usable headcounts"</b> states post WARN notices but without a per-employer employee count, so those notices cannot become countable rows (we never invent a number). <b>"No public register" / "Confidential by law"</b> states keep WARN filings internal. In both cases those cuts still reach the tracker through SEC filings and named news, never invented and never estimated. The <b>unemployment column is a separate official metric</b> (the state's monthly BLS rate, not a layoff count) shown so every state carries an authoritative, sourced number even where individual notices aren't public.</p>
 
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php')) include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
 
