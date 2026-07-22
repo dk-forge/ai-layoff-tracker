@@ -306,8 +306,13 @@ def pull_warn(states, min_employees=0, start_date=""):
                 excerpt = (f"{kind or 'Layoff'} at {company}{loc}. "
                            f"{jobs:,} employees affected, effective {date}. "
                            f"Filed under the {st} WARN Act.")
-                hash_input = (f"warn{company.lower().strip()}{date}{jobs}"
-                              f"{city.lower().strip()}{st}")
+                # City is deliberately NOT in the dedup hash: collectors emit
+                # inconsistent city text for the same notice (blank vs "Seattle
+                # and Remote" vs a county), which spawned cross-collector orphan
+                # duplicates. company+date+jobs+state identifies the notice; two
+                # identical-count filings that differ only by city are far more
+                # likely one notice double-scraped than two real coincident cuts.
+                hash_input = f"warn{company.lower().strip()}{date}{jobs}{st}"
 
                 results.append({
                     "source_type": "warn",

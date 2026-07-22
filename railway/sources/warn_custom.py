@@ -40,7 +40,10 @@ def _entry(st, company, jobs, date, city="", kind="", detail_url=""):
     excerpt = (f"{kind or 'Layoff'} at {company}{loc}. "
                f"{jobs:,} employees affected, effective {date}. "
                f"Filed under the {st} WARN Act.")
-    hash_input = f"warn{company.lower().strip()}{date}{jobs}{city.lower().strip()}{st}"
+    # City is deliberately NOT hashed: collectors emit inconsistent city text for
+    # the same notice (blank vs "Seattle and Remote" vs a county), which spawned
+    # cross-collector orphan duplicates. company+date+jobs+state identifies it.
+    hash_input = f"warn{company.lower().strip()}{date}{jobs}{st}"
     return {
         "source_type": "warn",
         "source_name": f"{st} WARN notice",
