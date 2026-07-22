@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.108
+ * Version: 2.19.109
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.108');
+define('ALT_VERSION', '2.19.109');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -705,6 +705,8 @@ function alt_faq_items() {
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
         array('How is this different from other layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
+        array('Why is our number different from other layoff trackers?',
+            'Three reasons, and all of them point toward a number you can check. First, we date each layoff by when the cut takes effect, not when the notice was filed; most trackers use the filing date, so the same event can land in a different month and the running totals differ. Second, we are deliberately conservative and land within about 10 percent of independent WARN trackers, so our figure is a floor you can trust rather than a high estimate. Third, we never inflate a total by counting a company-wide headcount on every state filing: when one notice lists a nationwide figure, we count only the jobs in that state, so one event is never summed several times. A tracker reporting several times higher is usually doing exactly that.'),
         array('Can journalists and researchers use this data?',
             'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
         array('How often is the tracker updated?',

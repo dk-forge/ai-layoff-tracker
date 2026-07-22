@@ -218,7 +218,7 @@ if (function_exists('alt_faq_items')) {
             <div class="alt-stat-card alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-total">…</span>
                 <span class="alt-stat-label">Verified job cuts</span>
-                <span class="alt-stat-desc">Filed or reported. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>" target="_blank" rel="noopener">Why this is verified &rarr;</a></span>
+                <span class="alt-stat-desc">Filed or reported, counted on the day each cut takes effect. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>" target="_blank" rel="noopener">Why this is verified &rarr;</a></span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
             </div>
             <div class="alt-stat-card alt-fam-announced">
@@ -230,7 +230,7 @@ if (function_exists('alt_faq_items')) {
             <div class="alt-stat-card alt-fam-all">
                 <span class="alt-stat-value" id="alt-stat-all">…</span>
                 <span class="alt-stat-label">Verified + announced job cuts</span>
-                <span class="alt-stat-desc">Both tiers together: everything filed, reported, or planned in the period.</span>
+                <span class="alt-stat-desc">Both tiers together: everything filed, reported, or planned in the period. An announced plan often becomes a verified filing later, so this can count one cut in both stages; it is not a tally of distinct people.</span>
                 <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
             </div>
             <div class="alt-stat-card">
@@ -484,6 +484,7 @@ if (function_exists('alt_faq_items')) {
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
+            <p><b>4 &middot; We date each cut by when it takes effect, not when it was filed.</b> Most trackers count a layoff on the day its WARN notice is filed or the cut is announced. We count it on the day the jobs actually end, because that is what a worker lives through and what a labor-market reader wants to measure. The two bases answer different questions: filing date asks "when did we hear about it," effective date asks "when did it happen." The gap is small and can fall either way; in 2026 the effective-date basis runs slightly higher, because more notices were filed in 2025 for cuts that land in 2026 than were filed in 2026 for cuts landing in 2027. We store both dates, so any figure here can be recounted on either basis.</p>
             <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>, smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year, because we surface AI attributions from primary sources they never itemize.</p>
 
             <p><b>Where each kind of tracker fits:</b></p>
