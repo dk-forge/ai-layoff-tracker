@@ -26,27 +26,22 @@ from .warn_new_states import (
     UA, TIMEOUT, _HI_YEAR_URL, _HI_ENTRY_RE, _iso, _hi_clean,
 )
 
-# Count-extraction patterns, HIGHEST confidence first. We stop at the first that
-# matches. "Grand Total" comes from the multi-site "Number of Employees to be
-# Laid Off" table; the "to be laid off / affected" phrasings are the affected
-# count for partial layoffs; "employed by the establishment ... is N" is the
-# affected count for a full closure. Anything else is not trusted.
-_COUNT_PATTERNS = [
-    ("grand_total", re.compile(r"grand\s+total[^0-9]{0,20}([0-9][0-9,]{0,6})", re.I)),
-    ("to_be_laid_off", re.compile(
-        r"(?:number\s+of\s+employees|employees)[^0-9]{0,60}?"
-        r"(?:to\s+be\s+(?:laid\s+off|terminated|separated)|affected)[^0-9]{0,20}([0-9][0-9,]{0,6})", re.I)),
-    ("n_to_be_laid_off", re.compile(
-        r"([0-9][0-9,]{0,6})\s+(?:employees|workers|positions)\s+"
-        r"(?:will\s+be\s+|are\s+being\s+)?(?:laid\s+off|terminated|separated|affected|impacted)", re.I)),
-    ("employed_by_establishment", re.compile(
-        r"number\s+of\s+employees\s+employed\s+by\s+the\s+establishment[^0-9]{0,20}"
-        r"(?:is|:)?\s*([0-9][0-9,]{0,6})", re.I)),
-    ("n_employees_generic", re.compile(
-        r"([0-9][0-9,]{0,6})\s+(?:employees|workers)\b", re.I)),
-]
-
 _MAX_REASONABLE = 100000
+# A single Hawaii notice above this is unusual enough that we trust it ONLY from
+# the strongest explicit signals (grand total, or "employed by the establishment
+# is N" for a full closure). A big number from weaker context is far more likely
+# OCR noise than a real HI layoff — and any genuinely huge one reaches the tracker
+# via SEC/news anyway — so we flag it for review instead of auto-posting.
+_HI_OUTLIER = 1000
+
+# A candidate number is only a headcount if an employee-unit word sits next to it.
+_EMP_UNIT = re.compile(
+    r"\b(?:employees|workers|positions|associates|staff|personnel|team\s*members)\b", re.I)
+# Layoff language in the window promotes a candidate from "generic" to "affected".
+_LAYOFF_CTX = re.compile(
+    r"affect|laid\s*off|lay\s*off|layoff|terminat|separat|impact|displac|reduc|to\s+be\b|eliminat", re.I)
+# Numeric token that is not glued to another number / decimal / currency.
+_NUM_TOKEN = re.compile(r"(?<![\d.,$])(\d[\d,]{0,6})(?![\d.])")
 
 
 def _to_int(raw: str) -> int:
@@ -56,27 +51,66 @@ def _to_int(raw: str) -> int:
         return 0
 
 
+def _candidate_numbers(flat: str):
+    """Yield (value, start) for numeric tokens that aren't obvious non-counts
+    (ZIP codes, years, dollar amounts)."""
+    for nm in _NUM_TOKEN.finditer(flat):
+        raw = nm.group(1)
+        v = _to_int(raw)
+        if not (0 < v <= _MAX_REASONABLE):
+            continue
+        digits = raw.replace(",", "")
+        if len(digits) == 5:                       # ZIP code
+            continue
+        if len(digits) == 4 and 1990 <= v <= 2035:  # a year, not a headcount
+            continue
+        s = nm.start(1)
+        if s > 0 and flat[s - 1] == "$":            # dollar amount
+            continue
+        yield v, s, nm.end(1)
+
+
 def _extract_count(text: str):
     """Return (count, pattern_label) or (0, reason) if no trustworthy count.
 
-    Never guesses: if the only signal is the generic "N employees" phrase and it
-    yields more than one DISTINCT value, that is ambiguous -> skip."""
+    Priority: (1) an explicit multi-site "Grand Total"; (2) a full-closure
+    "employed by the establishment is N"; (3) a number sitting beside an
+    employee-unit word, preferring one whose window also carries layoff language.
+    Never guesses: bare "N employees" is trusted only when there is a SINGLE
+    distinct candidate, and any count above _HI_OUTLIER from a non-explicit
+    signal is flagged for review rather than posted."""
     if not text:
         return 0, "no_ocr_text"
     flat = re.sub(r"\s+", " ", text)
-    for label, pat in _COUNT_PATTERNS:
-        matches = pat.findall(flat)
-        if not matches:
+
+    m = re.search(r"grand\s+total[^0-9]{0,20}(\d[\d,]{0,6})", flat, re.I)
+    if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
+        return _to_int(m.group(1)), "grand_total"
+
+    m = re.search(r"employed\s+by\s+the\s+establishment[^0-9]{0,25}(?:is|:)?\s*(\d[\d,]{0,6})", flat, re.I)
+    if m and 0 < _to_int(m.group(1)) <= _MAX_REASONABLE:
+        return _to_int(m.group(1)), "employed_by_establishment"
+
+    low = flat.lower()
+    strong, weak = [], []
+    for v, s, e in _candidate_numbers(flat):
+        win = low[max(0, s - 70):min(len(low), e + 70)]
+        if not _EMP_UNIT.search(win):
             continue
-        vals = sorted({_to_int(m) for m in matches if 0 < _to_int(m) <= _MAX_REASONABLE})
-        if not vals:
-            continue
-        if label == "grand_total":
-            return vals[-1], label  # the total, if several numbers matched
-        if label == "n_employees_generic" and len(vals) > 1:
+        (strong if _LAYOFF_CTX.search(win) else weak).append(v)
+
+    if strong:
+        v = sorted(set(strong))[-1]
+        if v > _HI_OUTLIER:
+            return 0, f"outlier_needs_review({v})"
+        return v, "affected_context"
+    if weak:
+        vals = sorted(set(weak))
+        if len(vals) > 1:
             return 0, f"ambiguous_generic({','.join(map(str, vals))})"
-        # Explicit phrasings: if multiple, the largest explicit affected figure.
-        return vals[-1], label
+        if vals[0] > _HI_OUTLIER:
+            return 0, f"outlier_needs_review({vals[0]})"
+        return vals[0], "generic_single"
     return 0, "no_count_pattern"
 
 
