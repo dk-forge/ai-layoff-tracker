@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.121
+ * Version: 2.19.122
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.121');
+define('ALT_VERSION', '2.19.122');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -221,6 +221,9 @@ function alt_flush_caches_on_deploy() {
     // Remove undated news/SEC rows that duplicate a dated same-size event
     // (they bypassed the date-gated dedup guard). Idempotent.
     if (function_exists('alt_dedup_undated_cleanup')) alt_dedup_undated_cleanup();
+    // Populate the Nevada WARN mirror immediately on deploy so it is current
+    // without waiting for the daily cron (the importer reads NV from it).
+    if (function_exists('alt_nv_mirror_refresh')) alt_nv_mirror_refresh();
     if (function_exists('wp_cache_clear_cache')) {
         wp_cache_clear_cache();
     }
@@ -265,6 +268,65 @@ function alt_ensure_schema_once() {
     }
 }
 add_action('init', 'alt_ensure_schema_once');
+
+/**
+ * Nevada WARN mirror.
+ *
+ * Nevada DETR's cumulative master WARN PDF sits behind an Akamai bot-wall that
+ * 403s data-center IPs, so the GitHub importer (data-center IP) cannot fetch it
+ * directly. This host's outbound IP is NOT blocked, so it re-fetches the PDF on
+ * a daily cron and mirrors it into uploads; the importer then reads NV from that
+ * mirror URL (which CI can reach) with a DETR-direct fallback. This makes NV
+ * fully automatic and free — no residential run needed.
+ */
+define('ALT_NV_MASTER_URL', 'https://detr.nv.gov/content/media/WARN_and_Non_WARN_Master_w_Logo.pdf');
+
+function alt_nv_mirror_path() {
+    $u = wp_upload_dir();
+    return trailingslashit($u['basedir']) . 'nv-warn-master.pdf';
+}
+
+function alt_nv_mirror_url() {
+    $u = wp_upload_dir();
+    return trailingslashit($u['baseurl']) . 'nv-warn-master.pdf';
+}
+
+function alt_nv_mirror_refresh() {
+    $headers = array(
+        'User-Agent'                => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept'                    => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language'           => 'en-US,en;q=0.9',
+        'Sec-Fetch-Dest'            => 'document',
+        'Sec-Fetch-Mode'            => 'navigate',
+        'Sec-Fetch-Site'            => 'none',
+        'Upgrade-Insecure-Requests' => '1',
+    );
+    $resp = wp_remote_get(ALT_NV_MASTER_URL, array('headers' => $headers, 'timeout' => 45, 'redirection' => 5));
+    if (is_wp_error($resp)) {
+        update_option('alt_nv_mirror_status', array('ok' => false, 'error' => $resp->get_error_message(), 'at' => gmdate('c')), false);
+        return false;
+    }
+    $code = wp_remote_retrieve_response_code($resp);
+    $body = wp_remote_retrieve_body($resp);
+    // Only overwrite the mirror with another VALID PDF, so a transient 403 or a
+    // truncated body can never blank out working data.
+    if ($code === 200 && strpos($body, '%PDF') === 0 && strlen($body) > 2000) {
+        wp_mkdir_p(dirname(alt_nv_mirror_path()));
+        file_put_contents(alt_nv_mirror_path(), $body);
+        update_option('alt_nv_mirror_status', array('ok' => true, 'bytes' => strlen($body), 'at' => gmdate('c')), false);
+        return true;
+    }
+    update_option('alt_nv_mirror_status', array('ok' => false, 'status' => $code, 'bytes' => strlen($body), 'at' => gmdate('c')), false);
+    return false;
+}
+add_action('alt_nv_mirror_cron', 'alt_nv_mirror_refresh');
+
+function alt_nv_mirror_schedule() {
+    if (!wp_next_scheduled('alt_nv_mirror_cron')) {
+        wp_schedule_event(time() + 300, 'daily', 'alt_nv_mirror_cron');
+    }
+}
+add_action('init', 'alt_nv_mirror_schedule');
 
 /**
  * Ensure the /contact page exists. Separate from the version-gated flush hook

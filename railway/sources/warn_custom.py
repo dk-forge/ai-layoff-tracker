@@ -634,7 +634,12 @@ _NV_HEADERS = {
     "Sec-Fetch-Site": "none",
     "Upgrade-Insecure-Requests": "1",
 }
+# Bluehost mirrors DETR's master PDF into uploads on a daily WP-cron (its IP is
+# not Akamai-blocked, unlike CI's data-center IP). Read the mirror FIRST — it is
+# reachable from CI — and fall back to DETR direct for residential runs or if the
+# mirror is ever missing. The first URL that returns a valid PDF wins.
 _NV_MASTER_PDFS = (
+    "https://asktherecruiter.com/blog/wp-content/uploads/nv-warn-master.pdf",
     "https://detr.nv.gov/content/media/WARN_and_Non_WARN_Master_w_Logo.pdf",
 )
 
@@ -645,9 +650,13 @@ def fetch_nv():
     county_re = re.compile(r"\s+(?:%s)(?:\s*/\s*(?:%s))*$" % (_NV_COUNTIES, _NV_COUNTIES))
     out = []
     for url in _NV_MASTER_PDFS:
-        resp = requests.get(url, headers=_NV_HEADERS, timeout=TIMEOUT)
-        if resp.status_code != 200:
+        try:
+            resp = requests.get(url, headers=_NV_HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
             continue
+        if resp.status_code != 200 or not resp.content.startswith(b"%PDF"):
+            continue
+        before = len(out)
         with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
             for page in pdf.pages:
                 for line in (page.extract_text() or "").splitlines():
@@ -668,6 +677,11 @@ def fetch_nv():
                                city, kind=m.group("kind"), detail_url=url)
                     if e:
                         out.append(e)
+        # The master PDF is cumulative, so the first source that yields rows has
+        # everything; stop so a residential run does not parse the mirror AND
+        # DETR and double the list.
+        if len(out) > before:
+            break
     return out
 
 
