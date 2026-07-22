@@ -62,7 +62,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://efts.sec.gov/LATEST/search-index?q=%22reduction%20in%20force%22&forms=8-K" target="_blank" rel="noopener">Full-text search &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>State WARN notices</b></td><td><?php echo count($alt_state_urls); ?> US states + DC</td>
+        <td><b>State WARN notices</b></td><td><?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> US states + DC</td>
         <td>Official mass-layoff notices employers must file with the state. Imported daily, no AI processing. Full list below.</td>
         <td>Verified</td>
         <td><a href="#alt-state-warn">See all <?php echo count($alt_state_urls); ?> &darr;</a></td>
@@ -98,6 +98,18 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://newsdata.io" target="_blank" rel="noopener">NewsData.io &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>Company IR &amp; newsroom feeds</b></td><td>Reviewed employer/exchange feeds</td>
+        <td>A reviewed allowlist of company investor-relations and newsroom RSS feeds, checked twice daily so a layoff a company discloses in its own release is caught even before wire pickup. Runs through the same extraction and verification as the rest.</td>
+        <td>Verified (named report)</td>
+        <td><span class="alt-muted">Reviewed feed list</span></td>
+      </tr>
+      <tr>
+        <td><b>Distress &amp; insolvency signals</b></td><td>US bankruptcy &middot; UK insolvency</td>
+        <td>CourtListener US bankruptcy petitions and Companies House UK insolvency filings flag distressed employers, which are then run through the news pipeline; a layoff only enters the tracker when a sourced, counted report confirms it (the filing itself is a lead, not a count).</td>
+        <td>Signal (feeds verification)</td>
+        <td><a href="https://www.courtlistener.com" target="_blank" rel="noopener">CourtListener &#8599;</a></td>
+      </tr>
+      <tr>
         <td><b>BLS LAUS</b></td><td>US states without a public WARN register</td>
         <td>Official monthly state unemployment rate from the Bureau of Labor Statistics. A separate context metric (not a layoff count), shown only for states that publish no usable notices, so every state carries an authoritative sourced number.</td>
         <td>Context (labeled)</td>
@@ -113,7 +125,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   </table></div>
   <p class="alt-muted"><b>Verified</b> = a filing or named report is behind it (the headline number). <b>Announced</b> = a company plan reported at announcement stage, kept in a separate tier and never mixed into the verified total.</p>
 
-  <h2 id="alt-state-warn">US state WARN registries (<?php echo count($alt_state_urls); ?> states)</h2>
+  <h2 id="alt-state-warn">US state WARN registries (<?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> states + DC)</h2>
   <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page, the exact source our importer reads.</p>
   <?php if ($alt_state_urls) : ?>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table alt-warn-table">
