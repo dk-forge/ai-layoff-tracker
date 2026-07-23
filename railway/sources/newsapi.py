@@ -40,9 +40,9 @@ TRUSTED_DOMAINS = (
     # US outlets miss. All already vetted in the GDELT trusted list.
     "theinformation.com,techinasia.com,restofworld.org,inc42.com,"
     "theregister.com,calcalistech.com,"
-    # 2026-07-23 gap closure: the layoffs.fyi diff showed our biggest tech
-    # misses cluster in crypto and regional startup press. These are the
-    # established outlets that cover exactly those categories.
+    # 2026-07-23 gap closure: a diff against an external tech tracker showed our
+    # biggest tech misses cluster in crypto and regional startup press. These are
+    # the established outlets that cover exactly those categories.
     "theblock.co,coindesk.com,decrypt.co,cointelegraph.com,"      # crypto trade press
     "yourstory.com,entrackr.com,moneycontrol.com,"                # India startup / markets
     "globes.co.il,ctech.calcalist.co.il,"                         # Israel tech (deepen)

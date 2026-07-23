@@ -48,7 +48,7 @@ jobs:
           print(f"| {y} YTD US | {us['entries']:,} | {us['jobs']:,} | {us['ai_jobs']:,} | {us.get('announced_jobs',0):,} |")
           print(f"| {y-1} full | {prev['entries']:,} | {prev['jobs']:,} | {prev['ai_jobs']:,} | — |")
           print(f"\nRange: {allt['min_date']} → {allt['max_date']} · {allt['states']} US states · {allt['countries']} countries")
-          print(f"\nCompare externally: [Survey](https://www.challengergray.com/press/press-releases/) · [sector trackers](https://www.trueup.io/layoffs) · [sector trackers](https://sector trackers) — differences are definitional (see site methodology).")
+          print(f"\nHow we compare to announcement surveys, tech-event trackers and WARN aggregators is explained by CATEGORY (no competitor named) at https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-metric-definitions — differences are definitional.")
           PY
 
       - name: Build report
