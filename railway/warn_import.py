@@ -13,6 +13,7 @@ Env:
   WARN_LIMIT          max notices (blank = no cap)
   WP_SITE_URL, WP_API_KEY
 """
+import html as _html
 import os
 import re
 import sys
@@ -37,6 +38,38 @@ _TAG_RX = re.compile(r"<[^>]*>")
 _RESCINDED_RX = re.compile(r"\b(rescind\w*|cancell?ed)\b", re.I)
 
 
+# Several states paste the notice's SITE ADDRESS into the employer cell
+# ("SafeSource Direct L.L.C. 200 St. Nazaire Rd. Broussard, LA, 70518",
+# "Walmart (1345 Crossman Ave.)"). Left in place it silently fragments company
+# identity: that Walmart row never groups with plain "Walmart", so company
+# totals, the directory and repeat-layoff detection all split. Louisiana is the
+# worst offender (436 rows), California next.
+_ADDR_RX = re.compile(
+    r"[\s(,]+\d{1,6}\s+[\w.'-]+(?:\s+[\w.'-]+){0,3}\s+"
+    r"(?:st|street|rd|road|ave|avenue|hwy|highway|blvd|boulevard|dr|drive|ln|lane|"
+    r"pkwy|parkway|way|ct|court|cir|circle|pl|place|ter|terrace|route|rte)\b\.?",
+    re.I)
+# "City, ST 70518" / "City, ST, 70518" tails.
+_CITYSTZIP_RX = re.compile(r"[\s,(]+[A-Za-z .'-]+,\s*[A-Z]{2},?\s*\d{5}(?:-\d{4})?\b")
+# Repeated "Update:" markers some states prepend on every revision.
+_UPDATE_RX = re.compile(r"^(?:\s*update\s*:\s*)+", re.I)
+
+
+def _strip_site_address(name):
+    """Cut a pasted-in site address off an employer name, conservatively.
+
+    Only applied when a real name survives, so an entry that is ONLY an address
+    is left exactly as scraped rather than reduced to nothing.
+    """
+    for rx in (_ADDR_RX, _CITYSTZIP_RX):
+        m = rx.search(name)
+        if m and m.start() > 0:
+            head = name[:m.start()].strip(" ,;-([")
+            if len(head) >= 3 and re.search(r"[A-Za-z]{3}", head):
+                name = head
+    return name
+
+
 def _clean_company(name):
     """Strip markup a state table smuggled into the employer name.
 
@@ -46,10 +79,13 @@ def _clean_company(name):
     the public table and in the row's excerpt.
     """
     name = _TAG_RX.sub(" ", str(name or ""))
+    name = _html.unescape(name)          # "Bingham &amp; Taylor" -> "Bingham & Taylor"
+    name = _UPDATE_RX.sub("", name)
     # Drop a trailing footnote marker and anything after it ("* Notice outlines
     # multiple scenarios ..."), which is commentary about the notice, not a name.
     name = re.split(r"\s*\*", name)[0]
-    return re.sub(r"\s+", " ", name).strip(" ,;-")
+    name = re.sub(r"\s+", " ", name).strip(" ,;-")
+    return _strip_site_address(name).strip(" ,;-")
 
 
 def _sanitize_warn_entries(entries):

@@ -72,3 +72,31 @@ def test_sanitize_drops_rescinded_keeps_others_and_preserves_hash():
     # The hash stays keyed to the same source row, so the correction lands on the
     # EXISTING stored row instead of forking a second copy under the clean name.
     assert out[0]["dedup_hash"] == "h1"
+
+
+def test_strips_pasted_site_address_from_employer_name():
+    # Louisiana (436 rows) and California paste the notice's site address into
+    # the employer cell, which fragments company identity: the polluted row
+    # never groups with the plain company name in totals or the directory.
+    cases = [
+        ("SafeSource Direct L.L.C. 200 St. Nazaire Rd. Broussard, LA, 70518",
+         "SafeSource Direct L.L.C."),
+        ("Walmart (1345 Crossman Ave.)", "Walmart"),
+        ("University Hospital & Clinics 2390 W. Congress St. Lafayette, LA 70506",
+         "University Hospital & Clinics"),
+    ]
+    for raw, expected in cases:
+        assert W._clean_company(raw) == expected, raw
+
+
+def test_unescapes_entities_and_drops_repeated_update_markers():
+    assert W._clean_company("Bingham &amp; Taylor") == "Bingham & Taylor"
+    assert W._clean_company("Update: Update: Noranda Aluminum") == "Noranda Aluminum"
+
+
+def test_address_stripping_never_damages_a_legitimate_name():
+    # These all contain digits and/or address-like words; none may be truncated.
+    for good in ("Prairie Farms Dairy, Inc. Shullsburg Creamery", "7-Eleven, Inc.",
+                 "3M Company", "Air Wisconsin Airlines LLC (MKE Hangar)",
+                 "Saputo Cheese USA Inc"):
+        assert W._clean_company(good) == good, good
