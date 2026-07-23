@@ -41,6 +41,10 @@ def clean_html(content):
 # alarm below. (moneycontrol.com 403s every run, which turned a healthy job red
 # daily and emailed the owner a false alarm.)
 PERMANENT_HTTP = {401, 403, 404, 410}
+# The "everything failed" alarm needs a MEANINGFUL sample. A batch can legitimately
+# contain 1-2 attemptable rows, and one transient miss there is noise, not an
+# outage - a genuinely broken fetcher fails across many rows and still trips this.
+MIN_ATTEMPTED_FOR_ALARM = 3
 
 
 def fetch_text(url):
@@ -75,7 +79,7 @@ def main():
     if not rows:
         print("No legacy AI rows pending reclassification")
         return 0
-    updates, unreadable, model_failures, blocked = [], 0, 0, 0
+    updates, unreadable, model_failures, blocked, empty = [], 0, 0, 0, 0
     started_at = time.monotonic()
     checked = 0
     for row in rows:
@@ -88,7 +92,9 @@ def main():
         try:
             text = fetch_text(row.get("source_url") or "")
             if not text:
-                unreadable += 1
+                # 200 but nothing extractable (JS-rendered or paywalled shell).
+                # A property of the page, not a failure of this job.
+                empty += 1
                 continue
             result = classify_ai_evidence(text)
             if not result:
@@ -110,7 +116,7 @@ def main():
     if updates:
         result = post_updates(updates)
         print(f"reclassified={len(result.get('updated', []))} rejected={len(result.get('rejected', []))}")
-    print(f"checked={checked} queued={len(updates)} blocked={blocked} "
+    print(f"checked={checked} queued={len(updates)} blocked={blocked} empty={empty} "
           f"unreadable={unreadable} model_failures={model_failures}")
     # A total failure should be visible in Actions rather than silently looking
     # like a successful historical clean-up.
@@ -118,8 +124,9 @@ def main():
     # actually attempt failed transiently. Publisher-blocked rows are excluded,
     # because a batch that happens to contain only bot-walled URLs is not an
     # outage and must not page the owner.
-    attempted = checked - blocked
-    return 1 if not updates and attempted and unreadable + model_failures == attempted else 0
+    attempted = checked - blocked - empty
+    return 1 if (not updates and attempted >= MIN_ATTEMPTED_FOR_ALARM
+                 and unreadable + model_failures == attempted) else 0
 
 
 if __name__ == "__main__":
