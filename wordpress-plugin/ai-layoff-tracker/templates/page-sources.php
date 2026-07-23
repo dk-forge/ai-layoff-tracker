@@ -90,6 +90,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://www.quebec.ca/gouvernement/ministeres-organismes/emploi-solidarite-sociale/publications" target="_blank" rel="noopener">MESS publications &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>Mazowieckie collective dismissals</b></td><td>Mazovia region, Poland</td>
+        <td>Official monthly notifications employers must file with the regional labour office (WUP Warszawa) before a collective redundancy, the only one of Poland's 16 voivodeship offices that publishes employers by name. Parsed from the office's monthly register posts, no AI processing.</td>
+        <td>Verified</td>
+        <td><a href="https://wupwarszawa.praca.gov.pl/urzad/dla-mediow" target="_blank" rel="noopener">WUP Warszawa register &#8599;</a></td>
+      </tr>
+      <tr>
         <td><b>Eurofound ERM</b></td><td>EU27, Norway, UK (historically)</td>
         <td>The EU's official European Restructuring Monitor, per-company restructuring announcements from national correspondents.</td>
         <td>Announced</td>
@@ -193,7 +199,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php')) include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
 
   <h2 id="alt-src-global">Why most countries appear through news, not a registry</h2>
-  <p>Almost every country requires employers to notify a labour authority before a mass layoff, but treats those filings as <b>confidential</b>, publishing only aggregate statistics, never a public list of which companies are cutting. Only <b>US states</b> and <b>Quebec</b> publish a public, per-employer notice register we can read directly. Everywhere else, the honest options are the EU's <b>Eurofound ERM</b> (which compiles large restructuring events from national correspondents) and a <b>reviewed allowlist of that country's news outlets</b>. That is why a German or Japanese layoff reaches this tracker through a named news report rather than a government file: the government has the file, it just does not make it public. We link each country's official labour authority below so you can verify the filing requirement, and its confidentiality, yourself.</p>
+  <p>Almost every country requires employers to notify a labour authority before a mass layoff, but treats those filings as <b>confidential</b>, publishing only aggregate statistics, never a public list of which companies are cutting. Only <b>US states</b>, <b>Quebec</b> and <b>Poland's Mazovia region</b> (WUP Warszawa, a 2026 survey of all 16 Polish voivodeship labour offices found it is the only one naming employers) publish a public, per-employer notice register we can read directly. Everywhere else, the honest options are the EU's <b>Eurofound ERM</b> (which compiles large restructuring events from national correspondents) and a <b>reviewed allowlist of that country's news outlets</b>. That is why a German or Japanese layoff reaches this tracker through a named news report rather than a government file: the government has the file, it just does not make it public. We link each country's official labour authority below so you can verify the filing requirement, and its confidentiality, yourself.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php')) include ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php'; ?>
 
   <h2 id="alt-src-news">Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>

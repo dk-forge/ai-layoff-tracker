@@ -37,7 +37,7 @@ $alt_authorities = array(
     array('Malta', 'Jobsplus', 'https://jobsplus.gov.mt', '❌ Confidential filing', 'Eurofound ERM + reviewed news'),
     array('Netherlands', 'UWV', 'https://www.uwv.nl', '❌ Confidential filing', 'Eurofound ERM + reviewed news (data live)'),
     array('Norway', 'NAV', 'https://www.nav.no', '❌ Confidential filing', 'Eurofound ERM + reviewed news'),
-    array('Poland', 'Ministry of Family & Labour', 'https://www.gov.pl', '❌ Confidential filing', 'Eurofound ERM + reviewed news (data live)'),
+    array('Poland', 'Voivodeship labour offices (WUP); Mazowieckie publishes employers by name', 'https://wupwarszawa.praca.gov.pl/urzad/dla-mediow', '✅ Mazovia: public named register (rest: aggregate/confidential)', 'WUP Warszawa register imported directly; other regions via ERM + reviewed news'),
     array('Portugal', 'ACT', 'https://www.act.gov.pt', '❌ Confidential filing', 'Eurofound ERM + reviewed news (data live)'),
     array('Romania', 'National Employment Agency (ANOFM)', 'https://www.anofm.ro', '❌ Confidential filing', 'Eurofound ERM + reviewed news (data live)'),
     array('Slovakia', 'Central Office of Labour', 'https://www.upsvr.gov.sk', '❌ Confidential filing', 'Eurofound ERM + reviewed news (data live)'),

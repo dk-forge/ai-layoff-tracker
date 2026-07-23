@@ -235,6 +235,31 @@ def main():
             print(f"Quebec importer failed: {exc}")
             report_source_health("warn_quebec", "degraded", 0, f"Quebec importer failed: {exc}")
 
+    # Mazowieckie (Poland) collective-dismissal register — WUP Warszawa's
+    # monthly named press posts, the only one of Poland's 16 voivodeship labour
+    # offices that publishes employers by name (2026-07 survey). Deterministic
+    # parse (no LLM), WARN-class provenance, same /bulk path. The register is
+    # monthly, so a run finding 0 NEW notices is normal — health only degrades
+    # on an exception, not an empty month. Set WARN_SKIP_WUP_MAZOWIECKIE=1 to
+    # disable if the post format ever drifts. Fail-isolated like Quebec.
+    if os.environ.get("WARN_SKIP_WUP_MAZOWIECKIE") != "1":
+        try:
+            from sources.wup_mazowieckie import pull_wup_mazowieckie
+            pl = pull_wup_mazowieckie(max_posts=int(os.environ.get("WUP_MAZ_POSTS", "4")))
+            print(f"Mazowieckie PL (custom): {len(pl)} notices kept")
+            if start:
+                pl = [e for e in pl if e["layoff_date"] >= start]
+            if min_emp:
+                pl = [e for e in pl if e["job_count"] >= min_emp]
+            entries.extend(pl)
+            report_source_health("warn_mazowieckie", "ok", len(pl),
+                                 "Mazowieckie collective-dismissal register (WUP Warszawa)"
+                                 + ("" if pl else " — no notices in the recent monthly posts"))
+        except Exception as exc:
+            print(f"Mazowieckie importer failed: {exc}")
+            report_source_health("warn_mazowieckie", "degraded", 0,
+                                 f"Mazowieckie importer failed: {exc}")
+
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
     if limit:
         entries = entries[:limit]
