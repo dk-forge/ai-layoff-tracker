@@ -234,7 +234,7 @@ def run():
               f"{len(edited) - det_edited} model-classified); {model_skips} evidence-names-no-reason "
               f"skips; {model_failures} model failures; ~{max(0, pending)} untagged rows pending")
     if not report_source_health("reason_backfill", "ok", len(edited), detail):
-        raise RuntimeError("Could not publish reason_backfill completion health status")
+        print("::warning::reason backfill completed but the health-ledger write failed (data is fine)")
     return {"tagged": len(edited), "checked": checked, "model_failures": model_failures}
 
 

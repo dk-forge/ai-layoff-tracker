@@ -160,7 +160,7 @@ def run():
             raise RuntimeError(f"Eurofound ERM import had {failed} failed batch(es)")
         detail = f"{len(entries)} source-linked ERM announcement event(s) imported"
         if not report_source_health("eurofound_erm", "ok", len(entries), detail):
-            raise RuntimeError("Could not publish Eurofound ERM completion health status")
+            print("::warning::ERM import completed but the health-ledger write failed (data is fine)")
         return entries
     except Exception as exc:
         # A failed source attempt is a material coverage condition, not an

@@ -360,8 +360,11 @@ def run():
               f"{len(filled)} 2-pass LLM, fixed vocabulary, blank fields only); "
               f"{unconfirmed} left blank as unconfirmed/unknown; {failures} model "
               f"failures; ~{pending} blank-industry rows pending")
+    # Best-effort: the classification WORK is already done and committed. A failed
+    # telemetry write (after its own retries) is a warning, not a reason to fail
+    # a successful run and page the owner.
     if not report_source_health("industry_backfill", "ok", total_filled, detail):
-        raise RuntimeError("Could not publish industry_backfill completion health status")
+        print("::warning::industry_backfill completed but the health-ledger write failed (data is fine)")
     return {"filled": total_filled, "checked": checked, "failures": failures}
 
 

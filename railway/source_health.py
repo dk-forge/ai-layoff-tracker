@@ -17,15 +17,29 @@ def report_source_health(source, status, entries=0, detail=""):
     if not (site and key):
         print("source-health skipped: WP_SITE_URL or WP_API_KEY missing")
         return False
-    try:
-        response = requests.post(
-            f"{site}/wp-json/layoffs/v1/source-health",
-            json={"source": source, "status": status, "entries": entries, "detail": detail[:240]},
-            headers={"X-Layoff-API-Key": key, "User-Agent": UA},
-            timeout=20,
-        )
-        response.raise_for_status()
-        return True
-    except Exception as exc:
-        print(f"source-health report failed for {source}: {exc}")
-        return False
+    # The health ledger is TELEMETRY, and the shared host answers a transient 5xx
+    # now and then. A one-off 500 here used to sink a whole data job (the run had
+    # already done its work); retry the write so a blip self-heals, and never let
+    # it raise - the caller decides, and a telemetry write is never worth failing
+    # a completed job over.
+    import time as _time
+    transient = {408, 429, 500, 502, 503, 504, 520, 521, 522, 524}
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                f"{site}/wp-json/layoffs/v1/source-health",
+                json={"source": source, "status": status, "entries": entries, "detail": detail[:240]},
+                headers={"X-Layoff-API-Key": key, "User-Agent": UA},
+                timeout=20,
+            )
+            if response.status_code in transient and attempt < 2:
+                _time.sleep(5 * (attempt + 1))
+                continue
+            response.raise_for_status()
+            return True
+        except Exception as exc:
+            if attempt < 2:
+                _time.sleep(5 * (attempt + 1))
+                continue
+            print(f"source-health report failed for {source} (non-fatal): {exc}")
+            return False
