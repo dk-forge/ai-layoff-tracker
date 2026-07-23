@@ -1647,3 +1647,22 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-hp { position: absolute; left: -9999px; width: 1px; height: 1px; }
 .alt-sub-ok { color: #2f6f2f; font-weight: 600; }
 .alt-sub-err { color: #b00; font-size: 13px; flex-basis: 100%; }
+
+/* Conversion chart range toggle */
+.alt-conv-range { display: inline-flex; gap: 4px; margin: 4px 0 8px; }
+.alt-conv-btn { font-size: 12px; padding: 5px 10px; border: 1px solid var(--alt-border); background: var(--alt-surface, #fff); color: var(--alt-muted); border-radius: 7px; cursor: pointer; }
+.alt-conv-btn:hover { color: var(--alt-ink, #1a1a1a); }
+.alt-conv-on { background: var(--alt-accent, #4f7257); color: #fff; border-color: var(--alt-accent, #4f7257); }
+
+/* Standalone methodology page */
+.alt-method-page .alt-method-toc { font-size: 13px; line-height: 1.9; margin: 14px 0 22px; padding: 12px 14px; background: var(--alt-tint, #eef3ee); border-radius: 8px; }
+.alt-method-page .alt-method-toc a { text-decoration: none; color: var(--alt-accent, #4f7257); }
+.alt-method-page .alt-method-toc a:hover { text-decoration: underline; }
+.alt-method-sec { margin: 26px 0; padding-top: 8px; border-top: 1px solid var(--alt-border); scroll-margin-top: 20px; }
+.alt-method-sec h2 { font-size: 20px; margin: 0 0 10px; }
+.alt-method-sec p { line-height: 1.7; margin: 0 0 12px; max-width: 74ch; }
+.alt-method-sec .alt-method-list { line-height: 1.7; max-width: 74ch; }
+.alt-method-sec .alt-method-list li { margin-bottom: 8px; }
+.alt-method-cta { margin-top: 6px; }
+.alt-method-fulllink { font-weight: 700; font-size: 15px; text-decoration: none; color: var(--alt-accent, #4f7257); }
+.alt-method-fulllink:hover { text-decoration: underline; }

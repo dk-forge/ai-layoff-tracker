@@ -78,6 +78,11 @@ function alt_shortcode_ai_quotes() {
 }
 add_shortcode('alt_ai_quotes', 'alt_shortcode_ai_quotes');
 
+function alt_shortcode_methodology() {
+    return alt_template('page-methodology.php');
+}
+add_shortcode('alt_methodology', 'alt_shortcode_methodology');
+
 /**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article

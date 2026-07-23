@@ -1561,8 +1561,16 @@
         var win = data.window_months || 6;
         // Future-dated plans (pending) cannot have converted yet; charting
         // them as 0% would read as broken promises. They stay in the CSV.
-        var rows = (data.series || []).filter(function (p) { return p.status !== 'pending' && p.conversion_pct !== null; });
-        if (rows.length < 2) return;
+        var allRows = (data.series || []).filter(function (p) { return p.status !== 'pending' && p.conversion_pct !== null; });
+        if (allRows.length < 2) return;
+        // Default to a RECENT window: 288 months since 2002 makes current months
+        // invisible, and the current ones (still maturing) are what readers want.
+        // A toggle exposes the longer history; the full series stays in the CSV.
+        var convRange = 24;
+        function rowsForRange() {
+            return convRange > 0 ? allRows.slice(-convRange) : allRows;
+        }
+        var rows = rowsForRange();
         var labels = rows.map(function (p) { return monthLabel(p.month); });
         function pickStatus(status) {
             return rows.map(function (p) { return p.status === status ? p.conversion_pct : null; });
@@ -1596,6 +1604,22 @@
                 { label: 'Still maturing (expected to rise)', data: pickStatus('maturing'), backgroundColor: '#E69F00', stack: 'conv' }
             ] },
             options: options
+        });
+        document.querySelectorAll('.alt-conv-btn').forEach(function (b) {
+            if (b.__convBound) return; b.__convBound = true;
+            b.addEventListener('click', function () {
+                convRange = parseInt(b.getAttribute('data-range'), 10) || 0;
+                document.querySelectorAll('.alt-conv-btn').forEach(function (x) { x.classList.toggle('alt-conv-on', x === b); });
+                rows = rowsForRange();
+                labels = rows.map(function (p) { return monthLabel(p.month); });
+                if (CHARTS['alt-chart-conversion']) {
+                    var c = CHARTS['alt-chart-conversion'];
+                    c.data.labels = labels;
+                    c.data.datasets[0].data = pickStatus('complete');
+                    c.data.datasets[1].data = pickStatus('maturing');
+                    c.update();
+                }
+            });
         });
         var note = document.getElementById('alt-conversion-note');
         if (note) {
