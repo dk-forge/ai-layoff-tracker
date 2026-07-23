@@ -175,6 +175,14 @@ $alt_largest = $wpdb->get_results($wpdb->prepare(
     "SELECT company, job_count, layoff_date, country, state, ai_explicit
      FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0$alt_geo
      ORDER BY job_count DESC, id DESC LIMIT 5", $alt_from, $alt_to), ARRAY_A) ?: array();
+// AI attributions for this period, WITH the employer's exact words. This is the
+// receipt behind the "blamed on AI" number: a reader sees the actual sentence,
+// the tier, and a link to the source. Verified tier, quote present, biggest first.
+$alt_ai_quotes = $wpdb->get_results($wpdb->prepare(
+    "SELECT company, job_count, layoff_date, country, state, ai_language, ai_causation, source_url
+     FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND ai_explicit = 1 AND announced = 0
+       AND ai_language <> ''$alt_geo
+     ORDER BY job_count DESC, id DESC LIMIT 40", $alt_from, $alt_to), ARRAY_A) ?: array();
 $alt_inds = $wpdb->get_results($wpdb->prepare(
     "SELECT industry, COALESCE(SUM(job_count),0) j FROM $alt_t
      WHERE layoff_date BETWEEN %s AND %s AND industry <> ''$alt_geo
@@ -291,6 +299,32 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
       </div>
       <div class="alt-op-sub">Across <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> separate verified layoff events<?php echo $alt_us ? '' : ' in ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?><?php echo ($alt_ai > $alt_ai_v) ? ' · ' . number_format($alt_ai) . ' AI-attributed including announced plans' : ''; ?>.</div>
     </div>
+
+    <?php if ($alt_ai_quotes) : ?>
+    <section class="alt-op-block alt-op-aiwords">
+      <h3>AI, in the employer's own words <span class="alt-op-aiwords-sub"><?php echo count($alt_ai_quotes); ?> attribution<?php echo count($alt_ai_quotes) === 1 ? '' : 's'; ?> this period, each with its source</span></h3>
+      <p class="alt-op-aiwords-intro">This is the receipt behind the number above. Every cut we count as AI carries the company's own statement, quoted verbatim, and a link to where they said it. Nothing here is inferred.</p>
+      <ul class="alt-op-quotes">
+        <?php foreach ($alt_ai_quotes as $qq) :
+            $tier = ($qq['ai_causation'] === 'primary_cause') ? 'AI named as the cause' : 'AI named among the causes';
+            $loc = trim(($qq['state'] ? $qq['state'] . ' · ' : '') . ($qq['country'] ?: ''));
+        ?>
+        <li class="alt-op-quote">
+          <div class="alt-op-quote-head">
+            <b><?php echo esc_html($qq['company']); ?></b>
+            <span class="alt-op-quote-meta"><?php echo number_format((int) $qq['job_count']); ?> jobs · <?php echo esc_html($qq['layoff_date']); ?><?php echo $loc ? ' · ' . esc_html($loc) : ''; ?></span>
+            <span class="alt-op-quote-tier alt-op-tier-<?php echo $qq['ai_causation'] === 'primary_cause' ? 'primary' : 'contrib'; ?>"><?php echo esc_html($tier); ?></span>
+          </div>
+          <blockquote class="alt-op-quote-text">&ldquo;<?php echo esc_html(rtrim($qq['ai_language'], '. ')); ?>&rdquo;</blockquote>
+          <?php if ($qq['source_url']) : ?>
+          <a class="alt-op-quote-src" href="<?php echo esc_url($qq['source_url']); ?>" target="_blank" rel="noopener">See the source &rarr;</a>
+          <?php endif; ?>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="alt-op-aiwords-foot"><a href="<?php echo esc_url(add_query_arg(array('years' => substr($alt_from,0,4), 'ai' => '1'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Open every AI-attributed cut in the tracker, filtered &rarr;</a></p>
+    </section>
+    <?php endif; ?>
 
     <?php if ($alt_is_year && $alt_months_series) : ?>
     <section class="alt-op-block alt-op-yearbars">

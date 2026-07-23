@@ -1577,3 +1577,26 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-press-page .alt-angles-table td:first-child { width: 34%; }
 .alt-angles-table td:first-child { white-space: nowrap; vertical-align: top; }
 .alt-angles-table td { line-height: 1.5; }
+
+/* Report: "AI, in the employer's own words" — the receipts wall. Turns the
+   AI count into the actual quoted statements, each with its source. */
+.alt-op-aiwords { margin-top: 22px; }
+.alt-op-aiwords h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.alt-op-aiwords-sub { font-size: 13px; font-weight: 500; color: var(--alt-muted); }
+.alt-op-aiwords-intro { color: var(--alt-muted); font-size: 14px; margin: 4px 0 14px; max-width: 70ch; }
+.alt-op-quotes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.alt-op-quote { border: 1px solid var(--alt-border); border-left: 3px solid var(--alt-accent, #4f7257);
+  border-radius: 8px; padding: 12px 14px; background: var(--alt-surface, #fff); }
+.alt-op-quote-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+.alt-op-quote-head b { font-size: 15px; }
+.alt-op-quote-meta { font-size: 12.5px; color: var(--alt-muted); }
+.alt-op-quote-tier { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  padding: 2px 8px; border-radius: 999px; margin-left: auto; white-space: nowrap; }
+.alt-op-tier-primary { background: #4f7257; color: #fff; }
+.alt-op-tier-contrib { background: var(--alt-tint, #eef3ee); color: #2f5233; }
+.alt-op-quote-text { margin: 0 0 6px; font-size: 15px; line-height: 1.5; color: var(--alt-ink, #1a1a1a);
+  font-style: italic; border: 0; padding: 0; }
+.alt-op-quote-src { font-size: 12.5px; font-weight: 600; text-decoration: none; color: var(--alt-accent, #4f7257); }
+.alt-op-quote-src:hover { text-decoration: underline; }
+.alt-op-aiwords-foot { margin-top: 12px; font-size: 13px; }
+@media (max-width: 600px) { .alt-op-quote-tier { margin-left: 0; } }
