@@ -1,0 +1,34 @@
+name: Monthly source-verification self-audit
+
+# Read-only credibility instrument. Draws a stratified random sample of PUBLISHED
+# rows, re-opens each one's cited source, and checks the source still supports the
+# company / count / date. Reports the accuracy to the health ledger and emails the
+# owner. Never edits a row - a mismatch is surfaced for the corrections path.
+# Safe to run live (read-only); no arming needed.
+on:
+  schedule:
+    - cron: '0 13 1 * *'   # 9 AM ET on the 1st of each month
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: "Rows to audit (5-120, default 40)"
+        required: false
+        default: '40'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r railway/requirements.txt
+      - name: Run self-audit
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AUDIT_SAMPLE: ${{ github.event.inputs.sample || '40' }}
+        run: python source_verification_audit.py
