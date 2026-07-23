@@ -143,6 +143,41 @@ def _parse_feed(url, label):
     return names
 
 
+# The "learn" step: a company we cannot verify from any source we scan is a
+# signal about a MISSING SOURCE, not just a missing row. Cluster the unresolved
+# names by cheap deterministic hints so each run answers "what should we add
+# next", ranked by how many misses it would fix. Heuristic and labelled as a
+# hint, never a fact.
+_GAP_HINTS = (
+    ("crypto / web3 trade press (The Block, CoinDesk, Decrypt)",
+     ("crypto", "web3", "blockchain", "token", "chain", "dao", "nft", "defi",
+      "protocol", "labs", "network", "polygon", "guild")),
+    ("India / SEA startup press (Inc42, YourStory, Entrackr)",
+     ("india", "bangalore", "mumbai", "singapore", "jakarta", "gojek", "paytm")),
+    ("Israel tech press (Globes, Calcalist, CTech)",
+     ("israel", "tel aviv", "cyber", "wiz", "monday")),
+    ("gaming / iGaming trade press",
+     ("games", "gaming", "studio", "poker", "casino", "esports", "playtika")),
+    ("LATAM business press (Exame, InfoMoney, NeoFeed)",
+     ("brazil", "sao paulo", "mexico", "latam", "hotmart", "nubank")),
+    ("EU startup press (Sifted, EU-Startups, Tech.eu)",
+     ("berlin", "paris", "amsterdam", "stockholm", "gmbh", "sp z o o")),
+)
+
+
+def _cluster_gaps(unresolved):
+    """Return ranked (category, count, examples) for the unresolved names."""
+    buckets = {}
+    for name in unresolved:
+        low = " " + re.sub(r"[^a-z0-9 ]+", " ", name.lower()) + " "
+        for label, toks in _GAP_HINTS:
+            if any(f" {t} " in low or low.strip().endswith(t) or t in low for t in toks):
+                buckets.setdefault(label, []).append(name)
+                break
+    ranked = sorted(buckets.items(), key=lambda kv: -len(kv[1]))
+    return [(lab, len(names), names[:4]) for lab, names in ranked]
+
+
 def _norm(name):
     """Loose company key for the SEC cross-reference guard."""
     n = re.sub(r"[^a-z0-9]+", " ", str(name or "").lower())
@@ -179,6 +214,7 @@ def run():
     print(f"competitor list: {n_total} companies; slice {slice_idx + 1}/{n_slices} "
           f"({len(window)} examined); they list, we lack: {len(missing)}")
     posted = ai = via_sec = via_press = 0
+    resolved = set()
     for i in range(0, len(missing), 20):
         chunk = missing[i:i + 20]
         entries = []
@@ -228,12 +264,24 @@ def run():
                     via_sec += 1
                 else:
                     via_press += 1
+                resolved.add(_norm(ex.get("company_name", "")))
                 print(f"  + [{raw.get('_alt_verify','?')}] {ex.get('company_name')} "
                       f"{ex.get('job_count')} ({ex.get('layoff_date')})")
         time.sleep(1)
+    unresolved = [c for c in missing if _norm(c) not in resolved]
+    gaps = _cluster_gaps(unresolved)
+    if gaps:
+        print("SOURCE-GAP LEARNING (what to add next, ranked by misses it would fix):")
+        for label, cnt, examples in gaps:
+            print(f"    +{cnt}  {label}")
+        # log ONLY the category + counts to health, never the competitor names
+        gap_summary = "; ".join(f"{cnt} {lab.split('(')[0].strip()}" for lab, cnt, _ in gaps[:4])
+    else:
+        gap_summary = ""
     detail = (f"{n_total} listed; slice {slice_idx + 1}/{n_slices}; "
               f"{len(missing)} missing chased, {posted} added "
-              f"({via_sec} via SEC, {via_press} via press; {ai} AI)")
+              f"({via_sec} via SEC, {via_press} via press; {ai} AI)"
+              + (f" | source gaps: {gap_summary}" if gap_summary else ""))
     print("tracker-diff:", detail)
     if not DRY:
         report_source_health("tracker_diff", "ok", posted, detail)

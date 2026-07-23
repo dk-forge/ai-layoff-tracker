@@ -39,7 +39,15 @@ TRUSTED_DOMAINS = (
     # trackers is non-US, non-English, and startup tech layoffs that mainstream
     # US outlets miss. All already vetted in the GDELT trusted list.
     "theinformation.com,techinasia.com,restofworld.org,inc42.com,"
-    "theregister.com,calcalistech.com"
+    "theregister.com,calcalistech.com,"
+    # 2026-07-23 gap closure: the layoffs.fyi diff showed our biggest tech
+    # misses cluster in crypto and regional startup press. These are the
+    # established outlets that cover exactly those categories.
+    "theblock.co,coindesk.com,decrypt.co,cointelegraph.com,"      # crypto trade press
+    "yourstory.com,entrackr.com,moneycontrol.com,"                # India startup / markets
+    "globes.co.il,ctech.calcalist.co.il,"                         # Israel tech (deepen)
+    "exame.com,infomoney.com.br,neofeed.com.br,"                  # Brazil business/tech
+    "eu-startups.com,sifted.eu,tech.eu"                           # EU startup press
 )
 
 # Keep the general layoffs sweep separate from a targeted AI/automation sweep.
@@ -67,6 +75,8 @@ SEGMENT_TERMS = (
     '"replaced by AI"', '"AI restructuring"', '"automation" AND "job cuts"',
     # global tech / startup segments — close the tech-event-tracker gap
     '"startup"', '"Israel"', '"Singapore"', '"tech company"',
+    '"crypto"', '"web3"', '"blockchain"', '"gaming studio"', '"fintech"',
+    '"Brazil"', '"Nigeria"', '"Indonesia"', '"Poland"',
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(6, int(os.environ.get("NEWSAPI_SEGMENT_QUERIES", "4"))))
 

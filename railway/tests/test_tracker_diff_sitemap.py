@@ -66,3 +66,27 @@ def test_sec_guard_accepts_the_real_company():
                               ("Salesforce", "Salesforce, Inc.")):
         t, g = _norm(target), _norm(extracted)
         assert t and g and (t in g or g in t), (target, extracted)
+
+
+def _load_cluster():
+    src = open(os.path.join(os.path.dirname(__file__), "..", "tracker_diff.py")).read()
+    ns = {"re": re}
+    exec(compile(src[src.index("_GAP_HINTS"):src.index("def _norm")], "cluster", "exec"), ns)
+    return ns["_cluster_gaps"]
+
+
+def test_learn_step_ranks_source_gaps_by_miss_count():
+    # The unresolved companies must cluster into an actionable, ranked
+    # "add this source" list, biggest category first.
+    cluster = _load_cluster()
+    gaps = cluster(["Polygon", "Yield Guild Games", "Hotmart", "Monday.com"])
+    assert gaps, "expected at least one clustered gap"
+    # crypto has 2 misses -> must rank first
+    assert "crypto" in gaps[0][0].lower() and gaps[0][1] == 2
+    labels = " ".join(g[0].lower() for g in gaps)
+    assert "latam" in labels or "brazil" in labels.lower()
+
+
+def test_learn_step_is_empty_when_nothing_clusters():
+    cluster = _load_cluster()
+    assert cluster(["Acme Holdings", "Generic Corp"]) == []
