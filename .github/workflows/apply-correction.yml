@@ -1,0 +1,56 @@
+name: Apply a signed-off correction
+
+# Manual only, never scheduled. Published corrections governance says a numeric
+# change always needs a human sign-off, so the dispatch itself IS the sign-off
+# and the required `reason` is recorded on the row's suppression list.
+# Defaults to a dry run: you must tick `apply` to write anything.
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: "Table row id(s), comma-separated (the id the /query API returns)"
+        required: true
+      action:
+        description: "trash (count unsupported by its source) or edit (fix a field)"
+        required: true
+        default: trash
+        type: choice
+        options: [trash, edit]
+      reason:
+        description: "Why, in plain words. Recorded permanently."
+        required: true
+      fields:
+        description: 'edit only: JSON of fields, e.g. {"job_count": 4500}'
+        required: false
+        default: ""
+      verify_company:
+        description: "Company name, used to show the row before and after"
+        required: false
+        default: ""
+      apply:
+        description: "Actually write. Leave false for a dry run."
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  correct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - name: Apply correction
+        env:
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          python3 railway/apply_correction.py \
+            --ids "${{ inputs.ids }}" \
+            --action "${{ inputs.action }}" \
+            --reason "${{ inputs.reason }}" \
+            --fields "${{ inputs.fields }}" \
+            --verify-company "${{ inputs.verify_company }}" \
+            ${{ inputs.apply && '--apply' || '' }}
