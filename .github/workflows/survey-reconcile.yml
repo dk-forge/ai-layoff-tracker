@@ -38,6 +38,10 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           BENCHMARK_YEAR: ${{ github.event.inputs.year || '2026' }}
+          # Competitor benchmark data via secrets, never the repo. Unset -> the
+          # reconciliation runs dormant (nothing to compare), which is correct.
+          SURVEY_FEED_URL: ${{ secrets.SURVEY_FEED_URL }}
+          SURVEY_BENCHMARK_JSON: ${{ secrets.SURVEY_BENCHMARK_JSON }}
           SURVEY_ALLOWED_VARIANCE: ${{ github.event.inputs.allowed_variance || '0.10' }}
           SURVEY_FAIL_ON_GAP: ${{ github.event.inputs.fail_on_gap || 'false' }}
         run: |

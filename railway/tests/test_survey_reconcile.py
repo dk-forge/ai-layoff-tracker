@@ -1,5 +1,6 @@
 """Guards for the source-linked monthly Survey reconciliation worker."""
 import sys
+import os
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,13 +13,30 @@ import survey_reconcile as subject
 
 
 class SurveyReconcileTests(unittest.TestCase):
-    def test_reviewed_manifest_is_monthly_and_source_linked(self):
-        reports = subject.HISTORICAL_REPORTS[2026]
-        self.assertEqual([item["reference_month"] for item in reports], [
-            "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06",
-        ])
-        self.assertEqual([item["ai_jobs_ytd"] for item in reports], [7624, 12304, 27645, 49135, 87714, 101743])
-        self.assertTrue(all(item["benchmark_url"].startswith("https://www.challengergray.com/") for item in reports))
+    def test_ships_dormant_with_no_competitor_data_in_the_repo(self):
+        # The standalone-brand rule: no competitor name, number or URL in the
+        # committed repo. With SURVEY_BENCHMARK_JSON unset the reconciliation is
+        # dormant (empty manifest), so there is nothing to leak.
+        import importlib
+        os.environ.pop("SURVEY_BENCHMARK_JSON", None)
+        importlib.reload(subject)
+        self.assertEqual(subject.HISTORICAL_REPORTS, {})
+        src = open(os.path.join(os.path.dirname(__file__), "..", "survey_reconcile.py")).read()
+        for banned in ("challengergray", "challenger,"):
+            self.assertNotIn(banned, src.lower())
+
+    def test_loads_the_manifest_from_the_secret_when_present(self):
+        import importlib
+        os.environ["SURVEY_BENCHMARK_JSON"] = (
+            '{"2026":[{"reference_month":"2026-01","report_month":"2026-02",'
+            '"benchmark_url":"https://x/","ai_jobs_month":7624,"ai_jobs_ytd":7624}]}')
+        importlib.reload(subject)
+        try:
+            reports = subject.HISTORICAL_REPORTS[2026]
+            self.assertEqual(reports[0]["ai_jobs_ytd"], 7624)
+        finally:
+            os.environ.pop("SURVEY_BENCHMARK_JSON", None)
+            importlib.reload(subject)
 
     def test_reference_month_window_uses_source_evidenced_announcement_date(self):
         self.assertEqual(subject.month_window("2026-02"), ("2026-02-01", "2026-02-28"))

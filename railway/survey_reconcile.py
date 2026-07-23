@@ -20,23 +20,31 @@ from urllib.parse import urlencode
 import requests
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
-FEED = "https://www.challengergray.com/blog/category/job-cuts-report/feed/"
+# Competitor benchmark data lives in a SECRET, never the repo (standalone-brand
+# rule). SURVEY_FEED_URL = the survey's RSS feed for new months; SURVEY_BENCHMARK_JSON
+# = the historical monthly figures as JSON: {"2026":[{"reference_month":..,
+# "report_month":..,"benchmark_url":..,"ai_jobs_month":..,"ai_jobs_ytd":..}, ...]}.
+# Unset -> the reconciliation ships DORMANT (nothing to compare), so the public
+# repo carries zero competitor names, numbers or URLs.
+FEED = os.environ.get("SURVEY_FEED_URL", "")
 
-# These historical figures are transcribed from the linked official 2026
-# monthly reports.  Keeping the source URL next to each figure makes the
-# starting benchmark reproducible without pretending Survey publishes a
-# downloadable event-level database.  New months are parsed from its official
-# feed and appended automatically below.
-HISTORICAL_REPORTS = {
-    2026: (
-        {"reference_month": "2026-01", "report_month": "2026-02", "benchmark_url": "https://www.challengergray.com/blog/challenger-report-january-job-cuts-surge-lowest-january-hiring-on-record/", "ai_jobs_month": 7624, "ai_jobs_ytd": 7624},
-        {"reference_month": "2026-02", "report_month": "2026-03", "benchmark_url": "https://www.challengergray.com/blog/challenger-report-february-cuts-plunge-hiring-falls-56-percent/", "ai_jobs_month": 4680, "ai_jobs_ytd": 12304},
-        {"reference_month": "2026-03", "report_month": "2026-04", "benchmark_url": "https://www.challengergray.com/blog/challenger-report-march-cuts-rise-25-from-february-ai-leads-reasons/", "ai_jobs_month": 15341, "ai_jobs_ytd": 27645},
-        {"reference_month": "2026-04", "report_month": "2026-05", "benchmark_url": "https://www.challengergray.com/blog/challenger-report-april-job-cuts-rise-38-from-march-ytd-cuts-down-50/", "ai_jobs_month": 21490, "ai_jobs_ytd": 49135},
-        {"reference_month": "2026-05", "report_month": "2026-06", "benchmark_url": "https://www.challengergray.com/blog/challenger-report-may-job-cuts-rise-16-from-april-highest-may-total-since-2020/", "ai_jobs_month": 38579, "ai_jobs_ytd": 87714},
-        {"reference_month": "2026-06", "report_month": "2026-07", "benchmark_url": "https://www.challengergray.com/blog/challenger-report-june-layoffs-cool-to-45849-down-53-from-may-ai-leads-reasons-for-fourth-consecutive-month/", "ai_jobs_month": 14029, "ai_jobs_ytd": 101743},
-    ),
-}
+def _load_historical():
+    """Historical survey figures from the SURVEY_BENCHMARK_JSON secret, or {}.
+    Empty -> dormant, so no competitor data is ever committed."""
+    raw = os.environ.get("SURVEY_BENCHMARK_JSON", "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        # keys may be str years from JSON; normalise to int
+        return {int(k): tuple(v) for k, v in data.items()}
+    except Exception as exc:
+        print(f"SURVEY_BENCHMARK_JSON parse failed ({type(exc).__name__}); running dormant")
+        return {}
+
+
+HISTORICAL_REPORTS = _load_historical()
+
 MONTH_NAMES = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
 
 
