@@ -47,6 +47,12 @@ TRUSTED_DOMAINS = {
     "morningstar.com", "thestreet.com", "benzinga.com", "fastcompany.com", "inc.com",
     "hbr.org", "qz.com", "sherwood.news", "economist.com", "financialpost.com",
     # tech / trade
+    # Startup/VC newsrooms. Added 2026-07-23: our tech coverage sits well below
+    # the tech-only trackers, and the difference is START-UP cuts (20-200 people)
+    # that never reach a national wire. These are editorial newsrooms we can cite
+    # directly - unlike crowdsourced trackers, which may only ever be a discovery
+    # signal to verify against a primary source, never a source themselves.
+    "news.crunchbase.com", "sifted.eu", "tech.eu",            # startup/VC newsrooms (US + EU)
     "techcrunch.com", "theverge.com", "wired.com", "arstechnica.com", "engadget.com",
     "zdnet.com", "venturebeat.com", "theregister.com", "gizmodo.com", "mashable.com",
     "digitaltrends.com", "theinformation.com", "restofworld.org", "9to5google.com",
