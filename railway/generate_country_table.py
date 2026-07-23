@@ -32,6 +32,9 @@ EU = {"Germany", "France", "Spain", "Italy", "Netherlands", "Belgium", "Sweden",
       "Luxembourg", "Malta", "Cyprus"}
 
 COUNTRY_FIXES = {
+    # Canonical names so the public table is consistent (and so an audit script
+    # searching for "United Kingdom" actually finds it).
+    "UK": "United Kingdom", "UAE": "United Arab Emirates", "USA": "United States",
     "Cote d'Ivoire": "Côte d'Ivoire", "DR Congo": "DR Congo",
     "Congo-Brazzaville": "Congo (Brazzaville)", "Central African Rep.": "Central African Republic",
 }
@@ -58,7 +61,7 @@ def parse():
         words = country.split()
         if (not re.match(r"^[A-ZÀ-Ü]", country) or len(words) > 3
                 or any(w.strip("().,'&—-").lower() in stop for w in words)):
-            country = "United States & global English press"
+            country = "Global & multi-region English press"
         if "/" in country and country not in ("Russia / Ukraine", "Mexico / Argentina"):
             country = country.split("/")[0].strip()
         country = COUNTRY_FIXES.get(country, country)

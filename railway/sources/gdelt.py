@@ -80,7 +80,8 @@ TRUSTED_DOMAINS = {
     # outlet covers it, so this list IS the reach lever). English editions
     # preferred; GDELT machine-translates the rest.
     "haaretz.com", "timesofisrael.com", "calcalistech.com",   # Israel
-    "thenationalnews.com", "gulfnews.com", "khaleejtimes.com", "arabnews.com",  # Gulf
+    "thenationalnews.com", "gulfnews.com", "khaleejtimes.com",  # United Arab Emirates
+    "arabnews.com",                                             # Saudi Arabia
     "hurriyetdailynews.com", "dailysabah.com",                # Turkey
     "news24.com", "businesslive.co.za", "iol.co.za", "moneyweb.co.za",  # South Africa
     "premiumtimesng.com", "punchng.com",                      # Nigeria
@@ -95,7 +96,9 @@ TRUSTED_DOMAINS = {
     "koreaherald.com", "koreatimes.co.kr",                    # South Korea (English)
     "themoscowtimes.com", "kyivindependent.com",              # Russia / Ukraine
     "notesfrompoland.com",                                    # Poland (English)
-    "thelocal.se", "thelocal.de", "thelocal.fr",             # Nordics / EU (English)
+    "thelocal.se",                                           # Sweden
+    "thelocal.de",                                           # Germany
+    "thelocal.fr",                                           # France
     "helsinkitimes.fi",                                       # Finland
     "swissinfo.ch",                                           # Switzerland
     "nzherald.co.nz", "rnz.co.nz",                            # New Zealand
@@ -353,7 +356,7 @@ TRUSTED_DOMAINS = {
     "frontiermyanmar.net",       # Myanmar — Frontier Myanmar (independent; operates in exile post-coup)
     "borneobulletin.com.bn",     # Brunei — Borneo Bulletin (main national daily)
     # --- Middle East
-    "zawya.com",                 # Gulf regional — Zawya (LSEG-owned Middle East business news)
+    "zawya.com",                 # United Arab Emirates
     "arabianbusiness.com",       # UAE — Arabian Business (regional business magazine/site)
     "aleqt.com",                 # Saudi Arabia — Al-Eqtisadiah (business daily; SRMG, state-aligned)
     "gulf-times.com",            # Qatar — Gulf Times (leading English daily)
@@ -550,7 +553,7 @@ TRUSTED_DOMAINS = {
     "mvariety.com",              # Northern Mariana Islands — Marianas Variety (main CNMI/Micronesia daily)
     "tahiti-infos.com",          # French Polynesia — Tahiti Infos (leading daily news site; French, GDELT translates)
     "lnc.nc",                    # New Caledonia — Les Nouvelles Calédoniennes (only daily, online-only since Oct 2023; nickel-industry layoffs)
-    "islandsbusiness.com",       # Pacific regional — Islands Business (Suva-based regional business magazine covering all Pacific islands)
+    "islandsbusiness.com",       # Fiji
     "techrepublic.com", "electrek.co", "gamedeveloper.com",   # tech/EV/games trade
     # Games trade press — studio layoffs are a large, well-documented segment
     # these editorial outlets cover first (added 2026-07-19 after the ZA/UM
@@ -597,7 +600,7 @@ TRUSTED_DOMAINS = {
     "oklahoman.com",             # Oklahoma — The Oklahoman
     "tulsaworld.com",            # Oklahoma — Tulsa World
     "inc42.com",                 # India — startup/tech press (Paytm, GoKwik-class events)
-    "techinasia.com",            # Southeast Asia tech press (Tokopedia, Shopee-class events)
+    "techinasia.com",            # Singapore
     "skift.com",                 # travel-industry trade (Mews, lastminute-class events)
     "chicago.suntimes.com",                                   # Chicago daily
     "wral.com",                                               # Raleigh NC (WRAL TechWire)
