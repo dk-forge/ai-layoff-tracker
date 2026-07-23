@@ -35,6 +35,14 @@ def clean_html(content):
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
+# HTTP statuses that can NEVER succeed on a retry: the page is gone, or the
+# publisher bot-walls automated reads. That is a permanent property of that URL,
+# not a breakage of this job -- so these must not trip the "everything failed"
+# alarm below. (moneycontrol.com 403s every run, which turned a healthy job red
+# daily and emailed the owner a false alarm.)
+PERMANENT_HTTP = {401, 403, 404, 410}
+
+
 def fetch_text(url):
     if not url.startswith(("http://", "https://")):
         return ""
@@ -67,7 +75,7 @@ def main():
     if not rows:
         print("No legacy AI rows pending reclassification")
         return 0
-    updates, unreadable, model_failures = [], 0, 0
+    updates, unreadable, model_failures, blocked = [], 0, 0, 0
     started_at = time.monotonic()
     checked = 0
     for row in rows:
@@ -88,16 +96,30 @@ def main():
                 continue
             updates.append({"id": row["id"], **result})
             time.sleep(0.25)
+        except requests.HTTPError as exc:
+            code = getattr(exc.response, "status_code", None)
+            if code in PERMANENT_HTTP:
+                blocked += 1
+                print(f"blocked id {row['id']}: HTTP {code} (publisher blocks automated reads; skipped)")
+            else:
+                unreadable += 1
+                print(f"unreadable id {row['id']}: {exc}")
         except Exception as exc:
             unreadable += 1
             print(f"unreadable id {row['id']}: {exc}")
     if updates:
         result = post_updates(updates)
         print(f"reclassified={len(result.get('updated', []))} rejected={len(result.get('rejected', []))}")
-    print(f"checked={checked} queued={len(updates)} unreadable={unreadable} model_failures={model_failures}")
+    print(f"checked={checked} queued={len(updates)} blocked={blocked} "
+          f"unreadable={unreadable} model_failures={model_failures}")
     # A total failure should be visible in Actions rather than silently looking
     # like a successful historical clean-up.
-    return 1 if not updates and checked and unreadable + model_failures == checked else 0
+    # Fail only on a REAL breakage: nothing written AND every row we could
+    # actually attempt failed transiently. Publisher-blocked rows are excluded,
+    # because a batch that happens to contain only bot-walled URLs is not an
+    # outage and must not page the owner.
+    attempted = checked - blocked
+    return 1 if not updates and attempted and unreadable + model_failures == attempted else 0
 
 
 if __name__ == "__main__":
