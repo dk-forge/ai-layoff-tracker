@@ -10,6 +10,10 @@ on:
         description: 'Set 1 to print what would post without writing'
         required: false
         default: ''
+      seed:
+        description: 'Seed file under railway/ (blank = seed_data/backfill_2023_2024.json)'
+        required: false
+        default: ''
 
 concurrency:
   group: backfill-seed
@@ -30,6 +34,7 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+          BACKFILL_SEED: ${{ github.event.inputs.seed || '' }}
         run: |
           set -o pipefail
           cd railway
