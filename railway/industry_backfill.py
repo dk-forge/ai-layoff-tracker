@@ -31,15 +31,16 @@ INDUSTRY_BACKFILL_DRY_RUN=1 (classify + print, no writes, no health reports),
 INDUSTRY_BACKFILL_SINGLE_PASS=1 (disable the second confirmation pass — for
 manual spot checks only; the scheduled job always double-confirms).
 
-The daily slice over the queue rotates deterministically by date (the
-reason_backfill / enrich_context pattern), so rows the model honestly leaves
-"unknown" cannot permanently stall the head of the queue.
+The slice over the queue rotates deterministically by SIX-HOUR block (the
+reason_backfill / enrich_context pattern, stepped up because this job now runs
+4x/day), so rows the model honestly leaves "unknown" cannot permanently stall
+the head of the queue, and the four daily runs work on four different slices.
 """
 import os
 import re
 import sys
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 
 import requests
 
@@ -98,7 +99,10 @@ def fetch_candidates():
 
 
 def rotating_slice(rows, batch, day_ordinal):
-    """Deterministic daily slice so skipped ("unknown") rows cannot stall the queue."""
+    """Deterministic rotating slice so skipped ("unknown") rows cannot stall the
+    queue. NB the caller passes a SIX-HOURLY ordinal, not a daily one: the job
+    runs 4x/day, and a day-based ordinal made all four runs target the same
+    region of the queue, wasting three of them."""
     if not rows or batch <= 0:
         return []
     pages = (len(rows) + batch - 1) // batch
@@ -255,7 +259,11 @@ def run():
             det_filled, det_skip, det_nf = post_fills(det_items)
             print(f"deterministic pre-pass: {len(det_filled)} filled / {len(det_items)} matched "
                   f"(skipped_not_blank={len(det_skip)}, not_found={len(det_nf)})")
-    queue = rotating_slice(remaining, BATCH, date.today().toordinal())
+    # SIX-HOURLY ordinal, not daily: the job runs 4x/day, and a day-based
+    # ordinal pointed all four runs at the same slice, wasting three of them.
+    _now = datetime.now(timezone.utc)
+    _ordinal = date.today().toordinal() * 4 + (_now.hour // 6)
+    queue = rotating_slice(remaining, BATCH, _ordinal)
     items, confirmed, unconfirmed, failures, checked = [], 0, 0, 0, 0
     started_at = time.monotonic()
     for row in queue:
