@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.134
+ * Version: 2.19.135
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.134');
+define('ALT_VERSION', '2.19.135');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -766,11 +766,51 @@ function alt_seo_head() {
 add_action('wp_head', 'alt_seo_head', 20);
 
 /**
+ * SERP meta description for the main tracker page, with LIVE numbers.
+ *
+ * Evidence (2026-07 SERP research, TECHLOG): every data-page competitor winning
+ * our head terms leads with an imperative verb + a live figure + the current
+ * year + a freshness cue; Google truncates by pixels (~155 desktop / ~120
+ * mobile) and rewrites ~65% of descriptions, but keeps ones that match on-page
+ * content, and explicitly ENCOURAGES programmatic page-specific descriptions
+ * for data sites. So: numbers first (inside the mobile window), our unique
+ * primary-source claim as the payload, figures from the same hour-cached
+ * alt_live_numbers() the on-page FAQ quotes (description matches body = fewer
+ * rewrites), rounded DOWN so the claim can never overstate or go stale upward.
+ *
+ * Rank Math owns the description tag site-wide; we feed copy through its
+ * filter instead of emitting a second tag (the 2.19.133 duplicate-OG lesson).
+ * If Rank Math is inactive these filters simply never fire.
+ */
+function alt_tracker_meta_description($desc) {
+    if (!is_page('ai-layoff-tracker')) return $desc;
+    if (!function_exists('alt_live_numbers')) return $desc;
+    $n = alt_live_numbers();
+    // Early-year guard: with small totals the injected line reads worse than
+    // the static field, so only take over once the figures carry weight.
+    if (empty($n['jobs']) || (int) $n['jobs'] < 50000 || (int) $n['ai_jobs'] < 5000) return $desc;
+    $jobs = (int) (floor(((int) $n['jobs']) / 10000) * 10000);  // round DOWN, defensible
+    $ai   = (int) (floor(((int) $n['ai_jobs']) / 1000) * 1000);
+    return sprintf(
+        'Layoff tracker, updated daily: %s+ jobs cut in %d, %s+ tied to AI. Every number links to an SEC filing, WARN notice, or news report. Free.',
+        number_format($jobs), (int) $n['y'], number_format($ai));
+}
+add_filter('rank_math/frontend/description', 'alt_tracker_meta_description', 20);
+// Keep the social-card copy identical to the SERP copy.
+add_filter('rank_math/opengraph/facebook/og_description', 'alt_tracker_meta_description', 20);
+add_filter('rank_math/opengraph/twitter/twitter_description', 'alt_tracker_meta_description', 20);
+
+/**
  * FAQ content shared by the FAQPage JSON-LD (wp_head) and the on-page FAQ
  * section (template) — one source so Google's "must match visible text" rule
  * holds. Numbers come from the live table, cached an hour.
  */
-function alt_faq_items() {
+/**
+ * Live headline figures (current-year job cuts + the AI-attributed subset),
+ * cached an hour. Shared by the on-page FAQ and the SEO meta description so both
+ * quote the SAME numbers - Google's "description must reflect the page" rule.
+ */
+function alt_live_numbers() {
     $n = get_transient('alt_faq_numbers');
     if (!is_array($n)) {
         global $wpdb;
@@ -794,6 +834,11 @@ function alt_faq_items() {
         );
         set_transient('alt_faq_numbers', $n, HOUR_IN_SECONDS);
     }
+    return $n;
+}
+
+function alt_faq_items() {
+    $n = alt_live_numbers();
     $f = function ($v) { return number_format((float) $v); };
     return array(
         array('What is the AI Layoff Tracker?',
