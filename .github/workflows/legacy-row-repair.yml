@@ -1,0 +1,47 @@
+name: Legacy row repair (names + country)
+
+# Manual only. Repairs rows a re-import can no longer reach: the site address
+# stored inside an employer name, and a blank country where DETERMINISTIC
+# evidence exists (a US state code, or a US state government WARN source).
+# Publisher nationality is never used as evidence of layoff location.
+# Every change lands in the public corrections log via /edit.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Actually write. Leave false for a dry run."
+        required: true
+        default: false
+        type: boolean
+      only:
+        description: "Which repair to run"
+        required: false
+        default: both
+        type: choice
+        options: [both, names, country]
+      max:
+        description: "Cap on edits"
+        required: false
+        default: '500'
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Repair legacy rows
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          IN_APPLY: ${{ inputs.apply }}
+          IN_ONLY: ${{ inputs.only }}
+          IN_MAX: ${{ inputs.max }}
+        run: |
+          ARGS=()
+          if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
+          python3 railway/legacy_row_repair.py --only "$IN_ONLY" --max "$IN_MAX" "${ARGS[@]}"
