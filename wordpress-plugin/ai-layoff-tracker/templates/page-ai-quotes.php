@@ -1,6 +1,6 @@
 <?php if (!defined('ABSPATH')) exit;
 /**
- * "AI, in their own words" — the quote wall.
+ * "AI, in their own words", the quote wall.
  *
  * Every layoff we count as AI carries the employer's own statement in
  * ai_language. This page surfaces all of them as a filterable, server-rendered
@@ -62,7 +62,7 @@ $src_label = function ($t) {
   <div class="alt-qw-filters" aria-label="Filter the AI attributions">
     <div class="alt-qw-chiprow"><span class="alt-qw-chiplabel">Year</span>
       <?php echo $chip('All', array_filter(array('industry' => $alt_ind, 'tier' => $alt_tier, 'country' => $alt_country)), !$alt_year);
-      foreach ($alt_years as $y) { echo $chip($y, array_filter(array('years' => (int) $y, 'industry' => $alt_ind, 'tier' => $alt_tier, 'country' => $alt_country)), $alt_year === (int) $y)); } ?>
+      foreach ($alt_years as $y) { echo $chip($y, array_filter(array('years' => (int) $y, 'industry' => $alt_ind, 'tier' => $alt_tier, 'country' => $alt_country)), $alt_year === (int) $y); } ?>
     </div>
     <div class="alt-qw-chiprow"><span class="alt-qw-chiplabel">Attribution</span>
       <?php echo $chip('Any', array_filter(array('years' => $alt_year, 'industry' => $alt_ind, 'country' => $alt_country)), !$alt_tier);
