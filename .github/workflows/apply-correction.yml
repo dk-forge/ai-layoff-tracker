@@ -43,14 +43,25 @@ jobs:
           python-version: "3.11"
       - run: pip install requests
       - name: Apply correction
+        # Inputs go through env, never straight into the shell line: a reason is
+        # free text (quotes, apostrophes, backticks) and interpolating it into
+        # `run:` would be both fragile and a script-injection hole.
         env:
-          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          IN_IDS: ${{ inputs.ids }}
+          IN_ACTION: ${{ inputs.action }}
+          IN_REASON: ${{ inputs.reason }}
+          IN_FIELDS: ${{ inputs.fields }}
+          IN_COMPANY: ${{ inputs.verify_company }}
+          IN_APPLY: ${{ inputs.apply }}
         run: |
+          ARGS=()
+          [ "$IN_APPLY" = "true" ] && ARGS+=(--apply)
           python3 railway/apply_correction.py \
-            --ids "${{ inputs.ids }}" \
-            --action "${{ inputs.action }}" \
-            --reason "${{ inputs.reason }}" \
-            --fields "${{ inputs.fields }}" \
-            --verify-company "${{ inputs.verify_company }}" \
-            ${{ inputs.apply && '--apply' || '' }}
+            --ids "$IN_IDS" \
+            --action "$IN_ACTION" \
+            --reason "$IN_REASON" \
+            --fields "$IN_FIELDS" \
+            --verify-company "$IN_COMPANY" \
+            "${ARGS[@]}"
