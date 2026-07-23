@@ -30,16 +30,19 @@ on:
 
 # The endpoint fills blank rows idempotently, but two overlapping runs would
 # waste model calls racing the same rotation slice.
-concurrency:
-  # Per-shard: the shards stride DISJOINT scan pages, so they never race each
-  # other; only a re-run of the same shard should queue behind itself.
-  group: industry-backfill-${{ matrix.shard || github.event.inputs.shard || '0' }}
-  cancel-in-progress: false
 
 jobs:
   backfill:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Concurrency lives on the JOB, not the workflow: a workflow-level group
+    # cannot reference `matrix` (that is a hard workflow-file error), and a
+    # static workflow-level group would serialize the shards and defeat the
+    # whole point. Per-shard grouping lets the four run together while a re-run
+    # of the SAME shard still queues behind itself.
+    concurrency:
+      group: industry-backfill-${{ matrix.shard }}
+      cancel-in-progress: false
     strategy:
       # 4 parallel shards. Each strides every 4th page of the blank-industry
       # scan, so together they cover the same pages the single job did, in a
@@ -60,7 +63,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '200' }}
           INDUSTRY_SHARD: ${{ matrix.shard }}
-          INDUSTRY_SHARDS: '4' 
+          INDUSTRY_SHARDS: '4'
           INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
           # Stops safely between rows well below the job timeout; the daily
