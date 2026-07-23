@@ -75,4 +75,10 @@ jobs:
         run: |
           set -o pipefail
           cd railway
-          python industry_backfill.py | tee -a "$GITHUB_STEP_SUMMARY"
+          for attempt in 1 2 3; do
+            python industry_backfill.py | tee -a "$GITHUB_STEP_SUMMARY" && exit 0
+            echo "::warning::attempt $attempt failed; auto-retrying in $((attempt*45))s (transient, not paging you)"
+            sleep $((attempt*45))
+          done
+          echo "::error::still failing after 3 attempts - a real failure, worth a look"
+          exit 1

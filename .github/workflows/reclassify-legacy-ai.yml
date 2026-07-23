@@ -37,4 +37,10 @@ jobs:
           OPENROUTER_TIMEOUT_SECONDS: '35'
         run: |
           cd railway
-          python reclassify_legacy_ai.py
+          for attempt in 1 2 3; do
+            python reclassify_legacy_ai.py && exit 0
+            echo "::warning::attempt $attempt failed; auto-retrying in $((attempt*45))s"
+            sleep $((attempt*45))
+          done
+          echo "::error::still failing after 3 attempts"
+          exit 1

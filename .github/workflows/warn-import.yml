@@ -85,4 +85,11 @@ jobs:
           # the LLM is down, so it can never reduce coverage. NC excluded.
           WARN_LLM_FALLBACK: '1'
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python warn_import.py
+        run: |
+          for attempt in 1 2 3; do
+            python warn_import.py && exit 0
+            echo "::warning::attempt $attempt failed; auto-retrying in $((attempt*45))s"
+            sleep $((attempt*45))
+          done
+          echo "::error::still failing after 3 attempts"
+          exit 1

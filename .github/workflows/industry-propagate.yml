@@ -44,4 +44,10 @@ jobs:
           INDUSTRY_PROPAGATE_MAX: ${{ github.event.inputs.max_rows || '' }}
         run: |
           set -o pipefail
-          python industry_propagate.py | tee -a "$GITHUB_STEP_SUMMARY"
+          for attempt in 1 2 3; do
+            python industry_propagate.py | tee -a "$GITHUB_STEP_SUMMARY" && exit 0
+            echo "::warning::attempt $attempt failed; auto-retrying in $((attempt*45))s"
+            sleep $((attempt*45))
+          done
+          echo "::error::still failing after 3 attempts"
+          exit 1

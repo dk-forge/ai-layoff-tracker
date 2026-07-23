@@ -44,4 +44,10 @@ jobs:
         run: |
           ARGS=()
           if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
-          python3 railway/legacy_row_repair.py --only "$IN_ONLY" --max "$IN_MAX" "${ARGS[@]}"
+          for attempt in 1 2 3; do
+            python3 railway/legacy_row_repair.py --only "$IN_ONLY" --max "$IN_MAX" "${ARGS[@]}" && exit 0
+            echo "::warning::attempt $attempt failed; auto-retrying in $((attempt*45))s"
+            sleep $((attempt*45))
+          done
+          echo "::error::still failing after 3 attempts"
+          exit 1
