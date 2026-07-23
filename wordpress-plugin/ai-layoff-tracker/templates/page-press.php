@@ -1,3 +1,36 @@
+<?php
+/**
+ * Country flag for press copy. Regional-indicator emoji, so it degrades to two
+ * letters on platforms without flag glyphs (Windows) rather than to a blank box.
+ * The country name is always printed alongside, so the flag is decoration and
+ * never the only carrier of meaning.
+ */
+function alt_country_flag($country) {
+    static $map = array(
+        'World' => "\xF0\x9F\x8C\x90", 'Worldwide' => "\xF0\x9F\x8C\x90",
+        'United States' => 'US', 'Germany' => 'DE', 'United Kingdom' => 'GB',
+        'France' => 'FR', 'Canada' => 'CA', 'Australia' => 'AU', 'India' => 'IN',
+        'Ireland' => 'IE', 'Netherlands' => 'NL', 'Spain' => 'ES', 'Italy' => 'IT',
+        'Poland' => 'PL', 'Sweden' => 'SE', 'Norway' => 'NO', 'Denmark' => 'DK',
+        'Finland' => 'FI', 'Belgium' => 'BE', 'Austria' => 'AT', 'Switzerland' => 'CH',
+        'Portugal' => 'PT', 'Japan' => 'JP', 'South Korea' => 'KR', 'China' => 'CN',
+        'Brazil' => 'BR', 'Mexico' => 'MX', 'Singapore' => 'SG', 'Israel' => 'IL',
+        'New Zealand' => 'NZ', 'South Africa' => 'ZA', 'Nigeria' => 'NG',
+        'Czechia' => 'CZ', 'Romania' => 'RO', 'Hungary' => 'HU', 'Greece' => 'GR',
+    );
+    $c = trim((string) $country);
+    if (!isset($map[$c])) return '';
+    $v = $map[$c];
+    if (strlen($v) !== 2 || !ctype_upper($v)) return $v;   // already an emoji
+    $flag = '';
+    foreach (str_split($v) as $ch) {
+        // html_entity_decode, not mb_convert_encoding(HTML-ENTITIES): that
+        // idiom is deprecated on PHP 8.2+ and would emit notices on every load.
+        $flag .= html_entity_decode('&#' . (127397 + ord($ch)) . ';', ENT_QUOTES, 'UTF-8');
+    }
+    return $flag;
+}
+?>
 <?php if (!defined('ABSPATH')) exit;
 // Year-by-year stats straight from the fast table, cached an hour. The press
 // page must never show a number the tracker itself cannot reproduce.
@@ -104,7 +137,8 @@ if (!is_array($alt_sb_groups)) {
     foreach ($alt_places as $p) {
         $s = $alt_stats($alt_ytd_from, $alt_ytd_to, $p[1]); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
         $pct = $v ? round(100 * $aiv / $v) : 0; $pctb = $v ? round(100 * $aib / $v) : 0;
-        if ($v > 0) $geo_items[] = array('label' => $p[0], 'text' => $p[2] . number_format($v) . ' job cuts have been recorded in ' . $alt_y . ': ' . $pct . '% attributed to AI in the employer\'s own words (verified), ' . $pctb . '% under the broader AI-linked measure.', 'link' => $alt_lk($p[1] === '' ? array('years' => $alt_y) : array('years' => $alt_y, 'country' => $p[1])), 'linklabel' => 'the data');
+        $flag = alt_country_flag($p[1] === '' ? 'World' : $p[1]);
+        if ($v > 0) $geo_items[] = array('label' => ($flag ? $flag . ' ' : '') . $p[0], 'text' => $p[2] . number_format($v) . ' job cuts have been recorded in ' . $alt_y . ': ' . $pct . '% attributed to AI in the employer\'s own words (verified), ' . $pctb . '% under the broader AI-linked measure.', 'link' => $alt_lk($p[1] === '' ? array('years' => $alt_y) : array('years' => $alt_y, 'country' => $p[1])), 'linklabel' => 'the data');
     }
     if ($geo_items) $alt_sb_groups[] = array('id' => 'sb-geo', 'title' => 'By region and country (' . $alt_y . ')', 'items' => $geo_items);
 
@@ -206,7 +240,7 @@ if (!is_array($alt_sb_groups)) {
       <blockquote class="alt-sb-text"><?php echo esc_html($alt_sb['text']); ?></blockquote>
       <figcaption class="alt-sb-actions">
         <button type="button" class="alt-btn alt-btn-sm alt-sb-copy">Copy</button>
-        <a class="alt-sb-link" href="<?php echo $alt_sb['link']; ?>">&#128202; See <?php echo esc_html($alt_sb['linklabel']); ?> &rarr;</a>
+        <a class="alt-sb-link" href="<?php echo $alt_sb['link']; ?>" target="_blank" rel="noopener">&#128202; See <?php echo esc_html($alt_sb['linklabel']); ?> &rarr;</a>
       </figcaption>
     </figure>
       <?php endforeach; ?>
@@ -294,7 +328,7 @@ if (!is_array($alt_ps)) {
                 ? sprintf(' Within that, %s jobs carry an explicit AI attribution from the employer.', $alt_pn($stai->j))
                 : '';
             $out[] = array(
-                'label' => 'Localized: top US state',
+                'label' => alt_country_flag('United States') . ' Localized: top US state',
                 'text'  => sprintf(
                     '%s recorded the largest documented job-cut total of any US state for %s, at %s jobs across filings and named reports.%s Every row links to the state\'s own WARN notice or the company\'s SEC filing, so a regional desk can name the employers, the effective dates and the affected sites without waiting for a national survey.',
                     $alt_stn[$st->k], $label, $alt_pn($st->j), $aitxt),
@@ -419,7 +453,7 @@ if (!is_array($alt_ps)) {
       <blockquote class="alt-sb-text"><?php echo esc_html($alt_it['text']); ?></blockquote>
       <figcaption class="alt-sb-actions">
         <button type="button" class="alt-btn alt-btn-sm alt-sb-copy">Copy statement</button>
-        <a class="alt-sb-link" href="<?php echo $alt_it['link']; ?>">&#128202; Open <?php echo esc_html($alt_it['linklabel']); ?> &rarr;</a>
+        <a class="alt-sb-link" href="<?php echo $alt_it['link']; ?>" target="_blank" rel="noopener">&#128202; Open <?php echo esc_html($alt_it['linklabel']); ?> &rarr;</a>
       </figcaption>
     </figure>
     <?php endforeach; ?>
@@ -439,7 +473,7 @@ if (!is_array($alt_ps)) {
             <th><?php echo esc_html($alt_a['label']); ?></th>
             <td><?php echo number_format($alt_a['v']); ?></td>
             <td><?php echo number_format($alt_a['ai']); ?></td>
-            <td><a href="<?php echo $alt_a['link']; ?>">Open this period &rarr;</a></td>
+            <td><a href="<?php echo $alt_a['link']; ?>" target="_blank" rel="noopener">Open this period &rarr;</a></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
