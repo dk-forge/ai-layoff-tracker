@@ -57,7 +57,7 @@ jobs:
           IN_APPLY: ${{ inputs.apply }}
         run: |
           ARGS=()
-          [ "$IN_APPLY" = "true" ] && ARGS+=(--apply)
+          if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
           python3 railway/apply_correction.py \
             --ids "$IN_IDS" \
             --action "$IN_ACTION" \

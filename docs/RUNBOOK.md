@@ -292,6 +292,43 @@ free. Steps:
   when a third-party site redesigns (now auto-detected + emailed), refreshing the
   private benchmark, and novel-source judgment. Do not claim "100% automated".
 
+## Quarterly source-verification audit (the accuracy claim)
+
+What it produces: the number we publish in the FAQ ("How do you check your own
+accuracy?"). Run it fresh every quarter, never reuse a seed.
+
+1. Pull the pool from the public `/query` API and draw a **stratified random**
+   sample (30 rows/year x warn/news/erm/8K; oversample 8-K, there are few).
+   Record the seed. A fresh-model auditor is worth it: it has no memory of why
+   a row was built the way it was, which is the whole point.
+2. The auditor OPENS every row's `source_url` and grades company + count + date
+   against what the page actually says. Verdicts: PASS, WRONG-NUMBER,
+   WRONG-DATE, WRONG-COMPANY, DEAD-LINK, REGISTER-LEVEL (the register rolled
+   over and no longer exposes the row - an access limitation, NOT a data
+   error, report it separately), UNVERIFIABLE.
+3. **Re-verify every proposed numeric change YOURSELF before applying it.**
+   This is not ceremony. In audit #1 the auditor graded Dow 3,700 as WRONG
+   because the cited article headlines 4,500; the row was right (3,700 is the
+   net-new portion, the other 800 is a separate retained row, and Eurofound
+   records the event as "3,700 - 4,500"). Applying that "fix" would have
+   double-counted 800 jobs. **A deliberately reconciled net-new row always
+   looks wrong to an auditor reading only the headline figure** - so read the
+   row's excerpt for a reconciliation note, and check whether the difference is
+   already retained as its own row, before you believe the finding.
+4. Apply what survives via the dispatch-only corrections path (dry run first):
+
+```bash
+gh workflow run apply-correction.yml -f ids=70289 -f action=trash -f reason="audit #N: <why>" -f verify_company=Starbucks -f apply=false
+```
+
+   `trash` when the source supports no count at all; `edit` when a field is
+   wrong. Both suppress the original hash so the nightly re-scrape cannot
+   resurrect the row, and both append to the PUBLIC corrections log
+   automatically. Re-run with `apply=true` once the dry run shows the right row.
+5. Update the published accuracy figure in the FAQ and log the audit in
+   TECHLOG under "## Audits". Report register-level rows separately from real
+   errors, and say what you could NOT verify.
+
 ## Monthly coverage audit (the gap-closing loop)
 
 The daily pipeline collects; this loop finds what the pipeline is BLIND to. Run

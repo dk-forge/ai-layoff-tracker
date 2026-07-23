@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.136
+ * Version: 2.19.137
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.136');
+define('ALT_VERSION', '2.19.137');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -854,6 +854,11 @@ function alt_faq_items() {
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Why is our number different from other layoff trackers?',
             'Three reasons, and all of them point toward a number you can check. First, we date each layoff by when the cut takes effect, not when the notice was filed; most trackers use the filing date, so the same event can land in a different month and the running totals differ. Second, we are deliberately conservative and land within about 10 percent of independent WARN trackers, so our figure is a floor you can trust rather than a high estimate. Third, we never inflate a total by counting a company-wide headcount on every state filing: when one notice lists a nationwide figure, we count only the jobs in that state, so one event is never summed several times. A tracker reporting several times higher is usually doing exactly that.'),
+        array('What if a source only says "up to" a number?',
+            'We record the figure the source states and keep its qualifying words with the entry, because inventing a lower number would be a guess and dropping the entry would hide a real cut. So a report of "up to 600 roles" is stored as 600 with that wording retained, which makes it a ceiling rather than a measured total. This is the one place our figures can read high, so we name it rather than bury it. Where a source gives a true range ("400 to 500"), we take the lower bound and keep the upper bound in the data as well.'),
+        array('How do you check your own accuracy?',
+            'By auditing ourselves against our own sources. We periodically draw a random, stratified sample of published entries and re-open every cited source to confirm the company, the number and the date. The most recent audit drew 60 entries at random. Two could not be rechecked because the state register they came from no longer exposes that row publicly. Of the 58 we could verify, 57 matched their source, which is 98.3 percent, and all 42 entries drawn from official filings and notices matched exactly on company, number and date. The single entry that did not match was removed the same day. Anything that fails is corrected or removed, and the correction is disclosed in the log below.',
+            array('ai-layoff-tracker/sources/', 'See how verification works &rarr;')),
         array('Can journalists and researchers use this data?',
             'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
         array('How often is the tracker updated?',

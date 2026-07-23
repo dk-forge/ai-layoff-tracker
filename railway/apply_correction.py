@@ -29,6 +29,8 @@ import argparse
 import json
 import os
 import sys
+import time
+import uuid
 
 import requests
 
@@ -41,8 +43,12 @@ def _rows_for(site, company):
     if not company:
         return {}
     try:
+        # cb= is not optional: /query responses are cached, and a stale hit
+        # made the first real correction report "STILL PRESENT" after the row
+        # had in fact been trashed — a false alarm on a fail-loudly check.
         r = requests.get(f"{site}/wp-json/layoffs/v1/query",
-                         params={"company": company, "per_page": 200},
+                         params={"company": company, "per_page": 200,
+                                 "cb": str(uuid.uuid4())},
                          headers=UA, timeout=TIMEOUT)
         if r.status_code != 200:
             return {}
@@ -123,7 +129,15 @@ def main():
         print(f"::error:: ids not applied: {missed}")
         return 1
 
+    # Re-read a few times: the write is committed, but a cache layer can still
+    # serve the pre-correction page for a moment.
     after = _rows_for(site, a.verify_company)
+    if a.action == "trash" and any(i in after for i in ids):
+        for _ in range(4):
+            time.sleep(6)
+            after = _rows_for(site, a.verify_company)
+            if not any(i in after for i in ids):
+                break
     for i in ids:
         row = after.get(i)
         if a.action == "trash":
