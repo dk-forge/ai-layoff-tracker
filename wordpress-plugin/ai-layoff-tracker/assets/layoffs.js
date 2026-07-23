@@ -2946,11 +2946,30 @@
                     if (!ch) return;
                     var src = ch.canvas;
                     var c = document.createElement('canvas');
-                    c.width = src.width; c.height = src.height;
+                    // Reserve a strip under the chart for the credit. Exported
+                    // charts get screenshotted into stories and posts, and an
+                    // unbranded PNG travels with no way back to the source, so
+                    // the attribution has to be baked into the pixels.
+                    var strip = Math.max(22, Math.round(src.height * 0.07));
+                    c.width = src.width; c.height = src.height + strip;
                     var ctx = c.getContext('2d');
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(0, 0, c.width, c.height);
                     ctx.drawImage(src, 0, 0);
+                    ctx.fillStyle = '#eef3ee';
+                    ctx.fillRect(0, src.height, c.width, strip);
+                    var fs = Math.max(11, Math.round(strip * 0.5));
+                    ctx.font = '600 ' + fs + 'px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#4f7257';
+                    ctx.fillText('AI Layoff Tracker  ·  asktherecruiter.com',
+                                 10, src.height + strip / 2);
+                    ctx.font = Math.max(10, fs - 2) + 'px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                    ctx.fillStyle = '#5e6675';
+                    var stamp = 'Source-linked data · ' + new Date().toISOString().slice(0, 10);
+                    ctx.textAlign = 'right';
+                    ctx.fillText(stamp, c.width - 10, src.height + strip / 2);
+                    ctx.textAlign = 'left';
                     var a = document.createElement('a');
                     a.href = c.toDataURL('image/png');
                     a.download = 'ai-layoff-tracker-' + t.replace('alt-chart-', '') + '.png';
