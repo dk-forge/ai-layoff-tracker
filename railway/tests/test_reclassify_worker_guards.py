@@ -18,7 +18,17 @@ class ReclassifyWorkerGuards(unittest.TestCase):
         self.assertIn("RECLASSIFY_DEADLINE_SECONDS", WORKER)
         self.assertIn("time.monotonic() - started_at >= DEADLINE_SECONDS", WORKER)
         self.assertIn("stopping safely after", WORKER)
-        self.assertIn("return 1 if not updates and checked", WORKER)
+
+    def test_loud_fail_alarm_excludes_permanently_blocked_sources(self):
+        """The worker must still fail LOUDLY on a real breakage, but a publisher
+        bot-wall (401/403/404/410) or an empty-but-200 page is a permanent
+        property of that URL, not an outage - those rows are excluded from the
+        failure ratio, and the alarm needs a meaningful sample so a 1-row batch
+        cannot page the owner (the false-alarm emails of 2026-07-22/23)."""
+        self.assertIn("PERMANENT_HTTP = {401, 403, 404, 410}", WORKER)
+        self.assertIn("MIN_ATTEMPTED_FOR_ALARM", WORKER)
+        self.assertIn("attempted = checked - blocked - empty", WORKER)
+        self.assertIn("return 1 if (not updates and attempted >= MIN_ATTEMPTED_FOR_ALARM", WORKER)
 
 
 if __name__ == "__main__":
