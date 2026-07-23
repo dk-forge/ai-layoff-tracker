@@ -46,7 +46,7 @@ new files are live). The only thing the block prevents is the final visual
   `raw_text` — the extractor reads only that and drops the row if empty) and
   calls `extract_layoff_data` → `post_to_wordpress`. Mirror `sources/newsapi.py`.
   Ship key-gated sources DORMANT with dry-run diagnostics.
-- **Competitor data stays private.** Challenger / layoffs.fyi / TrueUp names or
+- **Competitor data stays private.** Competitor names or
   numbers NEVER enter the repo or CI logs. The benchmark (`gen.py`,
   `scratchpad/bm-live.html`) is LOCAL ONLY; competitor URLs live in the
   `COMPETITOR_FEED_URLS` secret. This one is non-negotiable.
@@ -72,7 +72,7 @@ new files are live). The only thing the block prevents is the final visual
   honest "here's the real ceiling / this isn't viable / it's ~99% not 100%"
   answer far more than a false "done." If a task turns out non-viable, say so
   with evidence — don't fake it. The product is a credibility play (be cited
-  like Challenger), so intellectual honesty in the build IS the value.
+  like the incumbent surveys), so intellectual honesty in the build IS the value.
 - **Name the manual sliver.** ~99% autonomous; the irreducible human part is
   repairing a scraper when a site redesigns (auto-detected + emailed), the
   private-benchmark refresh, and novel-source judgment. Never claim 100%.

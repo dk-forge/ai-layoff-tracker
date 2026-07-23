@@ -31,11 +31,11 @@ JS filter). Weekly cross-check `railway/tracker_crosscheck.py` +
 `railway/archive_sources.py` + `archive-sources.yml` (Mondays).
 AR/WY/NH/MO documented as no-public-register (SEC+news only).
 
-**Brand / SEO.** Competitor names (Challenger/layoffs.fyi/TrueUp) removed from
+**Brand / SEO.** Competitor names removed from
 ALL public surfaces AND the whole repo (538→0). Benchmark subsystem renamed
-`challenger`→`survey` across railway+workflows+WP (route `/benchmarks/survey`,
+to the neutral `survey` codename across railway+workflows+WP (route `/benchmarks/survey`,
 option `alt_survey_benchmarks`, files `survey_reconcile.py` +
-`survey-reconcile.yml`); functional `challengergray.com` scrape URLs preserved.
+`survey-reconcile.yml`); the functional survey-source scrape URLs preserved.
 Press page "Ready-to-use soundbites" library (grouped YTD + month + per-region;
 cached `alt_press_sb_groups`), TOC, cleaned tables. Schema.org JSON-LD
 (`alt_dataset_jsonld()` Dataset + FAQPage) on tracker/press/report for
@@ -68,7 +68,7 @@ page: accurate gap table + hyperlinked outlets + dynamic counts.
   located-subset note in 2.19.76.)
 - **Private benchmark** — built as a PRIVATE claude.ai artifact (NOT on the site,
   NOT in the repo; file in scratchpad only). Competitors codenamed ("C Data" =
-  Challenger, Fyi/T/WARN Data). Owner decision: health page stays as-is (its
+  the survey, tech-tracker/WARN Data). Owner decision: health page stays as-is (its
   coded benchmark infra in health.js remains deliberately dormant); benchmark is
   private-artifact-only. Repo confirmed free of literal competitor names.
 

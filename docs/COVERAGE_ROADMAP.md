@@ -1,7 +1,7 @@
 # Coverage & Quality Roadmap
 
 Distilled from a multi-agent research pass (2026-07-22). Actionable specs for
-extending the tracker toward Challenger-class quality, adding federal-workforce
+extending the tracker toward survey-class quality, adding federal-workforce
 coverage, and building a historical (1995 to present) by-state view. Competitor
 names are deliberately absent per the house rule; keep them out of the repo.
 
@@ -40,9 +40,9 @@ language): skip the LLM, bulk-upsert like `warn_import.py`.
 Watch, Wikipedia 2025 federal mass layoffs (also a seed list), WSJ tracker,
 Partnership for Public Service "Federal Harms Tracker" (downstream of OPM).
 
-## 2. Challenger-parity roadmap (ranked by impact/effort)
+## 2. Survey-parity roadmap (ranked by impact/effort)
 
-Challenger = monthly US job-cut ANNOUNCEMENT report; quality = rich REASON
+The incumbent survey = a monthly US job-cut ANNOUNCEMENT report; quality = rich REASON
 (~15 categories) + ~28-sector INDUSTRY dimensions + YTD/YoY + a HIRING
 counterpart. Our model already matches its announcement basis (we're faster:
 continuous vs monthly). Gaps:
@@ -55,7 +55,7 @@ continuous vs monthly). Gaps:
    `reason_backfill.py` over history.
 2. **Monthly report object (Med/Low-Med).** Add `/reports/monthly` cloning the
    `/reports/quarterly` immutable-snapshot machinery; surface YTD + YoY from
-   `/aggregate`. Makes us Challenger-*quotable*.
+   `/aggregate`. Makes us survey-*quotable*.
 3. **Hiring / job-creation series (High/Med).** (a) BLS JOLTS "Hires" via the
    free `api.bls.gov/publicAPI/v2` (public domain); (b) capture "plans to hire N"
    news via the existing pipeline with a `record_type=hiring` flag (dormant +

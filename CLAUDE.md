@@ -62,7 +62,7 @@ the end check.
 - Data-changing jobs must FAIL LOUDLY (non-zero exit on any failed batch; `curl --fail-with-body` in workflows).
 - Bump the plugin `Version:` + `ALT_VERSION` on EVERY deploy — it cache-busts assets and triggers the flush.
 - **Never write a row directly.** A new source builds a raw dict and calls `extract_layoff_data` → `post_to_wordpress`. The raw dict MUST set `raw_text` (the extractor reads ONLY that and returns None if empty — the bug that made supplemental news silently post zero). Mirror `sources/newsapi.py`. Ship key-gated sources DORMANT with dry-run diagnostics. See RUNBOOK "add a new source".
-- **Competitor data stays private** (standalone brand): never put Challenger/layoffs.fyi/TrueUp names or numbers in the repo or GitHub logs. Benchmark refresh (`gen.py`/`bm-live.html`) runs LOCAL only; competitor URLs go in the `COMPETITOR_FEED_URLS` secret.
+- **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Benchmark refresh (`gen.py`/`bm-live.html`) runs LOCAL only; competitor URLs go in the `COMPETITOR_FEED_URLS` secret.
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 

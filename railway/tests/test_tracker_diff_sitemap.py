@@ -43,12 +43,12 @@ def _parse_sitemap(xml):
 
 def test_sitemap_deslugifies_and_drops_non_companies():
     xml = """<urlset>
-      <url><loc>https://x.fyi/tag/monday-com/</loc></url>
-      <url><loc>https://x.fyi/tag/yield-guild-games/</loc></url>
-      <url><loc>https://x.fyi/tag/ai/</loc></url>
-      <url><loc>https://x.fyi/tag/san-francisco/</loc></url>
-      <url><loc>https://x.fyi/tag/monday-com/</loc></url>
-      <url><loc>https://x.fyi/about/</loc></url>
+      <url><loc>https://example.test/tag/monday-com/</loc></url>
+      <url><loc>https://example.test/tag/yield-guild-games/</loc></url>
+      <url><loc>https://example.test/tag/ai/</loc></url>
+      <url><loc>https://example.test/tag/san-francisco/</loc></url>
+      <url><loc>https://example.test/tag/monday-com/</loc></url>
+      <url><loc>https://example.test/about/</loc></url>
     </urlset>"""
     got = _parse_sitemap(xml)
     assert got == ["Monday Com", "Yield Guild Games"], got

@@ -281,7 +281,7 @@ free. Steps:
   This lever is maxed.
 - **Europe**: per-company data is Eurofound ERM (running) + multilingual news;
   NL/FR/DE publish NO public per-company register (confidential) — not buildable.
-- **Benchmark refresh** (Challenger baselines in the private `gen.py`/`bm-live.html`):
+- **Benchmark refresh** (survey baselines in the private `gen.py`/`bm-live.html`):
   MUST stay local — competitor names/numbers may never enter the public repo or
   GitHub logs (standalone-brand rule; competitor URLs go in `COMPETITOR_FEED_URLS`
   secret only). A cloud cron would leak them.
