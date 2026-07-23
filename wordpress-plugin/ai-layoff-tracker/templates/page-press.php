@@ -379,7 +379,7 @@ if (!is_array($alt_ps)) {
   <h2 id="alt-evidence-ladder">The AI evidence ladder</h2>
   <p>The hardest question about any AI layoff number is what counts as AI. We answer it by never publishing a single blended figure. Every entry already stores how directly the employer tied the cut to AI, so you can pick the standard your story needs and see exactly what falls in or out at each step.</p>
   <div class="alt-health-table-wrap"><table class="alt-sources-table">
-    <thead><tr><th>Tier</th><th>What has to be true</th><th><?php echo (int) $alt_ps['tiers']['year']; ?> jobs</th><th>Preset view</th></tr></thead>
+    <thead><tr><th>Tier</th><th>What has to be true</th><th><?php echo (int) $alt_ps['tiers']['year']; ?> jobs<br><small>verified tier</small></th><th>Preset view</th></tr></thead>
     <tbody>
       <tr>
         <td><b>Tier 1</b><br><small>AI named as the cause</small></td>
@@ -401,7 +401,7 @@ if (!is_array($alt_ps)) {
       </tr>
     </tbody>
   </table></div>
-  <p class="alt-muted">Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
+  <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated causation is on record, so they are a subset of the headline AI figure rather than a restatement of it. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
 
   <h2 id="alt-press-statements">Press statements</h2>
   <p>Written to be pasted straight into a pitch or a story, with the maths already done. Each one carries the preset view that reproduces it, so an editor can check the claim in a single click. Figures are live and regenerate hourly; the wording stays stable.</p>
