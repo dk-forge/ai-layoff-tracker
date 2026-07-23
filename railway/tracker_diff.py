@@ -59,7 +59,25 @@ _SITEMAP_STOP = {
     "los-angeles", "miami", "toronto", "dublin", "singapore", "tel-aviv",
     "amsterdam", "paris", "sydney", "melbourne", "dallas", "houston", "phoenix",
     "portland", "pittsburgh", "detroit", "nashville", "washington-dc",
+    "new-york-city", "san-francisco-bay-area", "silicon-valley", "bengaluru",
+    "mumbai", "delhi", "hyderabad", "pune", "chennai", "gurugram", "noida",
+    "tokyo", "hong-kong", "shanghai", "beijing", "dubai", "abu-dhabi",
+    "vancouver", "montreal", "atlanta-ga", "raleigh", "denver-co", "boulder",
+    # topic / non-employer tags common on layoff sitemaps
+    "hiring", "funding", "ipo", "acquisition", "merger", "recession",
+    "remote-work", "return-to-office", "salaries", "severance", "wfh",
+    "big-tech", "faang", "unicorn", "series-a", "series-b", "vc", "yc",
+    "job-cuts", "restructuring", "downsizing", "furlough", "buyout",
+    "healthcare", "biotech", "pharma", "edtech", "adtech", "insurtech",
+    "proptech", "cleantech", "climate-tech", "cybersecurity", "saas",
+    "e-commerce", "logistics", "automotive", "manufacturing", "banking",
+    "north-america", "south-america", "middle-east", "africa", "asia-pacific",
+    "germany", "france", "spain", "italy", "netherlands", "sweden", "canada",
+    "australia", "japan", "china", "united-kingdom", "united-states",
 }
+# A tag is dropped when it is a single generic word OR clearly a place/topic. A
+# real company slug almost always has 2+ tokens or a legal suffix; a bare
+# lowercase single word is far more likely to be a topic/city than an employer.
 DRY = os.environ.get("TRACKER_DIFF_DRY", "").lower() in {"1", "true", "yes"}
 
 
