@@ -49,7 +49,7 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '40' }}
+          INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '200' }}
           INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
           # Stops safely between rows well below the job timeout; the daily
