@@ -346,17 +346,33 @@ function alt_normalize_corrections_dashes() {
     if (!is_array($log) || !$log) return;
     $changed = false;
     foreach ($log as $i => $e) {
-        foreach (array('reason', 'detail') as $f) {
-            if (empty($e[$f]) || !is_string($e[$f])) continue;
-            $new = preg_replace('/\s+[\x{2014}\x{2013}]\s+/u', ', ', $e[$f]);
+        if (!is_array($e)) continue;
+        // Normalize EVERY string field, not just reason/detail: log entries have
+        // varied over time and a dash in any of them renders on the tracker.
+        foreach ($e as $f => $val) {
+            if (!is_string($val) || $val === '') continue;
+            $new = preg_replace('/\s+[\x{2014}\x{2013}]\s+/u', ', ', $val);
             $new = preg_replace('/[\x{2014}\x{2013}]/u', '-', (string) $new);
-            if ($new !== null && $new !== $e[$f]) {
+            if ($new !== null && $new !== $val) {
                 $log[$i][$f] = $new;
                 $changed = true;
             }
         }
     }
     if ($changed) update_option('alt_corrections_log', $log, false);
+}
+
+/** True when no corrections-log string still carries an em/en dash. */
+function alt_corrections_dashes_clean() {
+    $log = get_option('alt_corrections_log');
+    if (!is_array($log)) return true;
+    foreach ($log as $e) {
+        if (!is_array($e)) continue;
+        foreach ($e as $val) {
+            if (is_string($val) && preg_match('/[\x{2014}\x{2013}]/u', $val)) return false;
+        }
+    }
+    return true;
 }
 
 /**

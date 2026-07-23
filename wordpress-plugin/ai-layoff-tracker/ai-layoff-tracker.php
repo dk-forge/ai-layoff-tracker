@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.127
+ * Version: 2.19.128
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.127');
+define('ALT_VERSION', '2.19.128');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -270,6 +270,29 @@ function alt_ensure_schema_once() {
     }
 }
 add_action('init', 'alt_ensure_schema_once');
+
+/**
+ * Strip em-dashes from historical corrections-log notes, RETRYING until verified.
+ *
+ * This cannot live in the version-gated flush: an FTP deploy uploads files one at
+ * a time, so that flush can fire before includes/db.php carrying the normalizer
+ * has landed -- function_exists() is then false, the work is skipped, and the
+ * version gate marks the deploy done so it never retries (the 2.19.20 race that
+ * the iron rules warn about; it is exactly what happened on 2.19.127). Records
+ * completion ONLY once the stored log actually verifies clean.
+ */
+function alt_ensure_corrections_dashes_once() {
+    if (get_option('alt_corr_dashes_ok') === '1') return;
+    if (!function_exists('alt_normalize_corrections_dashes')
+        || !function_exists('alt_corrections_dashes_clean')) {
+        return; // db.php not uploaded yet — a later request will do it
+    }
+    alt_normalize_corrections_dashes();
+    if (alt_corrections_dashes_clean()) {
+        update_option('alt_corr_dashes_ok', '1', false);
+    }
+}
+add_action('init', 'alt_ensure_corrections_dashes_once');
 
 /**
  * Nevada WARN mirror.

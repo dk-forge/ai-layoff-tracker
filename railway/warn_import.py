@@ -158,6 +158,12 @@ def main():
         print(f"::warning:: HIGH-VOLUME legacy WARN scraper(s) returned 0 — likely site drift: {', '.join(_real_drift)}")
         report_source_health("warn_custom_legacy", "degraded", 0,
                              "High-volume custom WARN returned 0 — likely site drift: " + ", ".join(_real_drift))
+    elif _expected_c:
+        # Report OK explicitly. Without this the reporter only ever writes on
+        # failure, so a RESOLVED drift stayed red forever (NV sat degraded for
+        # 35h after the Bluehost mirror fixed it).
+        report_source_health("warn_custom_legacy", "ok", len(customs),
+                             f"{len(_expected_c)} legacy custom scraper(s) checked, no high-volume drift")
     if min_emp:
         customs = [e for e in customs if e["job_count"] >= min_emp]
     if start:
@@ -196,6 +202,11 @@ def main():
             report_source_health("warn_custom_states", "degraded", 0,
                                   "Custom WARN scraper(s) returned 0 / errored — likely site drift: "
                                   + ", ".join(drift_states))
+        elif wanted:
+            # Explicit OK so a resolved drift clears (HI stayed red for 8h after
+            # it moved to its own OCR importer and left this list entirely).
+            report_source_health("warn_custom_states", "ok", len(new_entries),
+                                 f"{len(wanted)} custom scraper(s) checked, no drift")
         if min_emp:
             new_entries = [e for e in new_entries if e["job_count"] >= min_emp]
         if start:
