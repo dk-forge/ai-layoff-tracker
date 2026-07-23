@@ -1,0 +1,42 @@
+name: Industry propagate (deterministic)
+
+# Fills blank-industry rows from the SAME company's already-known label. No LLM,
+# no cost, no guessing — a company whose tagged rows disagree is skipped. Writes
+# through the /industry-backfill endpoint, so it inherits blank-only + closed-
+# vocabulary validation. Complements the LLM classifier, which handles the rows
+# that have no tagged sibling to learn from.
+# Weekly + manual; required secret: WP_API_KEY.
+
+on:
+  schedule:
+    - cron: '20 7 * * 3'   # Wednesdays, after the nightly enrichment jobs
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set 1 to print what would be filled without writing'
+        required: false
+        default: ''
+      max_rows:
+        description: 'Cap rows written this run (default 5000)'
+        required: false
+        default: ''
+
+jobs:
+  propagate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run industry propagation
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          INDUSTRY_PROPAGATE_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+          INDUSTRY_PROPAGATE_MAX: ${{ github.event.inputs.max_rows || '' }}
+        run: |
+          set -o pipefail
+          python industry_propagate.py | tee -a "$GITHUB_STEP_SUMMARY"
