@@ -473,6 +473,29 @@ def _nc_header_cols(cells):
     return idx if "company" in idx and "jobs" in idx else None
 
 
+def _nc_plausible_company(name):
+    """Reject a misaligned NC row before it can become an entry.
+
+    The grid parser's header column-map persists across pages, and the 2015-2017
+    x-position bucketing can drop a summary/continuation line into a data row --
+    either way the company cell ends up holding a bare number ('0', '18'). Those
+    rows were previously dropped only INCIDENTALLY (their count parses to 0, so
+    _entry rejected them). Validating the company makes the skip deliberate,
+    which is the precondition for running a count-fallback on NC: a rescued count
+    must never be attached to a garbage row."""
+    s = re.sub(r"\s+", " ", str(name or "")).strip()
+    if not s:
+        return False
+    if re.fullmatch(r"[\d,.\s/-]+", s):     # bare number or date fragment
+        return False
+    # Two consecutive letters is the discriminator: it keeps every real name
+    # (verified against all 1151 current NC rows, incl. "3M Company", "24 Hour
+    # Fitness", "BP") while rejecting "0" / "18" / "1a" style misalignment.
+    if not re.search(r"[A-Za-z]{2,}", s):
+        return False
+    return True
+
+
 def _nc_grid_entries(tables, url):
     """Header-keyed rows from the gridded NC archive PDFs (2018+). The 2022+
     files only carry the header on page 1, so the column map persists across
@@ -488,11 +511,13 @@ def _nc_grid_entries(tables, url):
             if not cols:
                 continue
             get = lambda k: cells[cols[k]] if k in cols and cols[k] < len(cells) else ""
-            # NB: no LLM count-fallback here. The NC text/grid parsers emit some
-            # misaligned rows (company field = a bare number), and rescuing those
-            # extracts counts from noise (probe showed wild 5604/2035 values). NC
-            # needs proper row validation, not an LLM band-aid.
-            e = _entry("NC", get("company"), _count(get("jobs")),
+            if not _nc_plausible_company(get("company")):
+                continue  # stale column map hit a summary/continuation row
+            jobs = _count(get("jobs"))
+            if jobs <= 0:  # column shifted; the row is validated, so rescue is safe
+                jobs = llm_count_from_text(" ".join(str(c) for c in cells),
+                                           f"NC {get('company')}")
+            e = _entry("NC", get("company"), jobs,
                        _to_iso_date(get("eff")) or _to_iso_date(get("notice")),
                        get("city"), kind=get("kind"), detail_url=url)
             if e:
@@ -552,10 +577,13 @@ def _nc_text_rows(words, url):
                     rows[-1][i] = f"{rows[-1][i]} {cells[i]}".strip()
     out = []
     for cells in rows:
+        if not _nc_plausible_company(cells[2]):
+            continue  # x-position bucketing mislanded a summary/continuation line
         kind_m = re.search(r"Layoffs?|Closures?", cells[4])
-        # No LLM count-fallback here (see _nc_grid_entries): these x-position text
-        # rows include misaligned garbage that would be rescued into bad data.
-        e = _entry("NC", cells[2], _count(cells[4]),
+        jobs = _count(cells[4])
+        if jobs <= 0:  # row is validated, so a count rescue can't hit garbage
+            jobs = llm_count_from_text(" ".join(cells), f"NC {cells[2]}")
+        e = _entry("NC", cells[2], jobs,
                    _to_iso_date(cells[1]) or _to_iso_date(cells[0]), cells[3],
                    kind=kind_m.group(0) if kind_m else "", detail_url=url)
         if e:

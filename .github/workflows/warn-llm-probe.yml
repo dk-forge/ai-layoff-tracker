@@ -8,6 +8,11 @@ name: WARN LLM fallback probe
 
 on:
   workflow_dispatch:
+    inputs:
+      states:
+        description: 'Comma-separated states to probe (blank = all fragile ones)'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -26,4 +31,5 @@ jobs:
         env:
           WARN_LLM_FALLBACK: '1'
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          PROBE_STATES: ${{ github.event.inputs.states }}
         run: python warn_llm_probe.py
