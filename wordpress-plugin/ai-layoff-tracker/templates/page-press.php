@@ -1,36 +1,3 @@
-<?php
-/**
- * Country flag for press copy. Regional-indicator emoji, so it degrades to two
- * letters on platforms without flag glyphs (Windows) rather than to a blank box.
- * The country name is always printed alongside, so the flag is decoration and
- * never the only carrier of meaning.
- */
-function alt_country_flag($country) {
-    static $map = array(
-        'World' => "\xF0\x9F\x8C\x90", 'Worldwide' => "\xF0\x9F\x8C\x90",
-        'United States' => 'US', 'Germany' => 'DE', 'United Kingdom' => 'GB',
-        'France' => 'FR', 'Canada' => 'CA', 'Australia' => 'AU', 'India' => 'IN',
-        'Ireland' => 'IE', 'Netherlands' => 'NL', 'Spain' => 'ES', 'Italy' => 'IT',
-        'Poland' => 'PL', 'Sweden' => 'SE', 'Norway' => 'NO', 'Denmark' => 'DK',
-        'Finland' => 'FI', 'Belgium' => 'BE', 'Austria' => 'AT', 'Switzerland' => 'CH',
-        'Portugal' => 'PT', 'Japan' => 'JP', 'South Korea' => 'KR', 'China' => 'CN',
-        'Brazil' => 'BR', 'Mexico' => 'MX', 'Singapore' => 'SG', 'Israel' => 'IL',
-        'New Zealand' => 'NZ', 'South Africa' => 'ZA', 'Nigeria' => 'NG',
-        'Czechia' => 'CZ', 'Romania' => 'RO', 'Hungary' => 'HU', 'Greece' => 'GR',
-    );
-    $c = trim((string) $country);
-    if (!isset($map[$c])) return '';
-    $v = $map[$c];
-    if (strlen($v) !== 2 || !ctype_upper($v)) return $v;   // already an emoji
-    $flag = '';
-    foreach (str_split($v) as $ch) {
-        // html_entity_decode, not mb_convert_encoding(HTML-ENTITIES): that
-        // idiom is deprecated on PHP 8.2+ and would emit notices on every load.
-        $flag .= html_entity_decode('&#' . (127397 + ord($ch)) . ';', ENT_QUOTES, 'UTF-8');
-    }
-    return $flag;
-}
-?>
 <?php if (!defined('ABSPATH')) exit;
 // Year-by-year stats straight from the fast table, cached an hour. The press
 // page must never show a number the tracker itself cannot reproduce.
