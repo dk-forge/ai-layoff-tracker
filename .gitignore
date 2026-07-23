@@ -19,3 +19,8 @@ Thumbs.db
 
 # Build artifacts
 ai-layoff-tracker.zip
+
+# Private competitor benchmark — LOCAL ONLY. Competitor names must never
+# enter the repo or GitHub logs (standalone brand). Ignoring the whole
+# scratchpad dir so a stray copy can never be committed by accident.
+scratchpad/
