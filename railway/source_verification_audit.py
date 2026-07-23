@@ -116,7 +116,12 @@ def _sample(year, seed):
 
 
 def _src_param(st):
-    return {"warn": "warn", "sec_8k": "gold", "erm": "bronze", "news": "bronze"}.get(st, "")
+    # Filter by source_type (not verification tier): ERM rows are silver and
+    # SEC rows are gold, but two tiers collapse — mapping erm->"bronze" sampled
+    # NEWS rows (bronze) and never touched ERM, while news+erm drew the same
+    # pool. source_type values are 1:1 with the strata, so each stratum samples
+    # its own rows. (`sources` matches source_type OR tier, so these are valid.)
+    return {"warn": "warn", "sec_8k": "8K", "erm": "erm", "news": "news"}.get(st, "")
 
 
 def _email(subject, body):

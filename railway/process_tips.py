@@ -62,7 +62,10 @@ _ALLOWED = set(d.strip().lower() for d in TRUSTED_DOMAINS.replace("\n", "").spli
 def _domain_trusted(url):
     """True when the source is a trusted outlet or an official filing host."""
     try:
-        host = urlparse(url).netloc.lower().lstrip("www.")
+        host = urlparse(url).netloc.lower().split(":")[0]  # drop any :port
+        if host.startswith("www."):
+            host = host[4:]  # strip the prefix; str.lstrip('www.') would eat
+                             # leading w/./ chars ("wsj.com"->"sj.com")
     except Exception:
         return False
     if _OFFICIAL_RX.search(url):
