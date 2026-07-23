@@ -273,11 +273,18 @@ if (!is_array($alt_ps)) {
         $out = array();
         $pct = $v > 0 ? round(100 * $ai / $v) : 0;
 
+        // A short window can legitimately contain no explicit AI attribution.
+        // Saying "0 (0%)" reads like a broken statistic; saying so plainly, and
+        // explaining WHY it lags, is both more honest and more quotable.
+        $aiclause = $ai > 0
+            ? sprintf('Of those, %s carry the employer\'s own words naming AI or automation as a cause (%d%% of the documented total).',
+                      $alt_pn($ai), $pct)
+            : 'None of them carries an explicit AI attribution from the employer yet. That is normal for a short window: WARN notices and filings record a cut\'s size, date and location, not its cause, so an AI attribution usually arrives later with the company\'s own statement.';
         $out[] = array(
             'label' => 'The documented floor',
             'text'  => sprintf(
-                'For %s, %s job cuts are documented worldwide: every one traceable to an SEC filing, a state WARN notice, or a named news report, counted on the day the cut takes effect. Of those, %s carry the employer\'s own words naming AI or automation as a cause (%d%% of the documented total). A further %s sit in the separately labeled announced tier, which is company plans at announcement stage and is never mixed into the documented figure. Announcement surveys count intentions on the day they are announced, including multi-year plans and receiptless separations; this figure counts what has a paper trail behind it, so treat it as a floor you can verify rather than an estimate.',
-                $label, $alt_pn($v), $alt_pn($ai), $pct, $alt_pn($a)),
+                'For %s, %s job cuts are documented worldwide: every one traceable to an SEC filing, a state WARN notice, or a named news report, counted on the day the cut takes effect. %s A further %s sit in the separately labeled announced tier, which is company plans at announcement stage and is never mixed into the documented figure. Announcement surveys count intentions on the day they are announced, including multi-year plans and receiptless separations; this figure counts what has a paper trail behind it, so treat it as a floor you can verify rather than an estimate.',
+                $label, $alt_pn($v), $aiclause, $alt_pn($a)),
             'link' => $alt_plk($linkargs), 'linklabel' => 'the exact rows behind this figure');
 
         $st = $alt_ptopcol('state', $from, $to, false);
