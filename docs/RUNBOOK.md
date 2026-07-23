@@ -292,6 +292,61 @@ free. Steps:
   when a third-party site redesigns (now auto-detected + emailed), refreshing the
   private benchmark, and novel-source judgment. Do not claim "100% automated".
 
+## Monthly coverage audit (the gap-closing loop)
+
+The daily pipeline collects; this loop finds what the pipeline is BLIND to. Run
+it monthly. It is the only reliable way to discover a structural blind spot,
+because a blind spot by definition does not show up in our own data.
+
+**Step 1 - research the thin sectors.** Dispatch one agent per weak sector (use
+the private benchmark to pick them). Brief each with these NON-NEGOTIABLE rules,
+which exist because looser ones produce unusable rows:
+- an EXACT headcount (reject ranges, "hundreds", percentage-only)
+- a date inside the target window
+- a NAMED source: major outlet, official company release, or an SEC filing
+- NO layoff aggregators as sources (some of their figures are provably fabricated)
+- the agent must OPEN the article to confirm number + date. Search snippets
+  routinely misdate 2025 events into 2026.
+
+**Step 2 - DEDUPE BEFORE YOU SEED. This is the step that matters.** In the
+2026-07 run, 36 of 69 researched events were ALREADY in the tracker (58% of
+auto/food, 79% of tech). Seeding blind would have double-counted every one.
+Query `/query?company=<name>` per candidate and compare. Two traps:
+- **Window too narrow.** A +/-75 day window marked Oracle 21,000 as NEW; we held
+  it 77 days away at a different date basis. ALWAYS re-check any big candidate
+  against EVERY row for that company in the year, not just a date window.
+- **Announced vs executed.** If we already hold a company's WARN execution
+  slices (Meta 2,212 + 1,395 + ...), seeding the company-wide announcement
+  (Meta 8,000) counts the same people twice. Skip it, or use the announced tier
+  deliberately - never mix them.
+
+**Step 3 - seed the survivors** via `seed_data/<name>.json` +
+`backfill-seed.yml` (dry_run=1 first). It is idempotent and dedup-guarded
+server-side, which caught one more duplicate the client check missed.
+
+**Step 4 - THE PART PEOPLE SKIP: diff the SOURCES, not just the events.**
+Tabulate the `source_name` of everything you had to seed. In 2026-07 that single
+table was the most valuable output of the whole audit: we already held every
+national-wire story, and every event we MISSED ran only in a state business
+journal or a vertical trade publication (NJBIZ alone carried 4 of 29). Seven of
+those ten outlets were not in the allowlist at all. The events were a symptom;
+the allowlist was the disease. Add the missing outlets to `TRUSTED_DOMAINS` so
+next month the pipeline catches them automatically - that converts a manual
+backfill into a permanent capability.
+
+**Step 5 - re-measure and record.** Before/after by month and by sector, into
+TECHLOG. If a sector barely moves, ask whether the data is present but
+UNLABELLED before going to find more of it: in 2026-07, 96% of US rows carried
+no industry (72% of job volume), so the by-industry view under-reported reality
+far more than collection did.
+
+**What this loop can NEVER close (stop trying):**
+- Receiptless categories (buyouts, contract loss, bankruptcy, federal/DOGE) -
+  the announcement survey gets these by ASKING employers; we require a document.
+- Announcement-vs-effective date basis - a definitional difference, not a gap.
+- Employers who withhold headcounts. In H1 2026 media, only one US event had a
+  public number; the rest deliberately withheld. That cell cannot go green.
+
 ## Research pointers
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)
 - GDELT DOC 2.0 API: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ (keyless; ~gentle rate limits, 429s happen)
