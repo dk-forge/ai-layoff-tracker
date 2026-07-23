@@ -1825,6 +1825,9 @@
                 DATE_BASIS = basis;
                 document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
                     x.classList.toggle('alt-datebasis-on', x === b);
+                    // Keep the accessible state in step with the visual one, so
+                    // a screen reader announces which basis is active.
+                    x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
                 });
                 refreshAll();
             });

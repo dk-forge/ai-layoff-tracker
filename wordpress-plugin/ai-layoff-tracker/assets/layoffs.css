@@ -433,12 +433,24 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 }
 #alt-search:focus { outline: none; border-color: var(--alt-blue); box-shadow: 0 0 0 3px var(--alt-blue-tint); }
 /* Date-basis segmented toggle (effective vs filing date) */
-.alt-datebasis-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.alt-datebasis-label { color: var(--alt-muted); }
-.alt-datebasis-opt { font: inherit; font-size: 12.5px; padding: 7px 11px; border: 1px solid var(--alt-border); background: var(--alt-surface); color: var(--alt-muted); cursor: pointer; }
-.alt-datebasis-opt:first-of-type { border-radius: 9px 0 0 9px; }
-.alt-datebasis-opt:last-of-type { border-radius: 0 9px 9px 0; border-left: none; }
-.alt-datebasis-opt.alt-datebasis-on { background: var(--alt-accent, #4f7257); color: #fff; border-color: var(--alt-accent, #4f7257); }
+.alt-datebasis-wrap { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+.alt-datebasis-label { color: var(--alt-ink, #1a1a1a); font-weight: 600; }
+.alt-datebasis-label::after { content: ""; }
+/* Segmented control: a sunken track makes the raised active segment read as a
+   switch. Previously both options sat flat on the page background, so the
+   control looked like static label text and readers missed that the whole
+   page can be recounted on a different date basis. */
+.alt-datebasis-switch { display: inline-flex; padding: 3px; gap: 3px; border-radius: 11px;
+  background: var(--alt-tint, #eef3ee); border: 1px solid var(--alt-border); }
+.alt-datebasis-opt { font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border: 1px solid transparent;
+  background: transparent; color: var(--alt-muted); cursor: pointer; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease; }
+.alt-datebasis-opt:hover:not(.alt-datebasis-on) { background: rgba(0,0,0,.05); color: var(--alt-ink, #1a1a1a); }
+.alt-datebasis-opt::before { content: ""; width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid currentColor; opacity: .5; flex: none; }
+.alt-datebasis-opt.alt-datebasis-on { background: var(--alt-accent, #4f7257); color: #fff; border-color: var(--alt-accent, #4f7257);
+  box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.alt-datebasis-opt.alt-datebasis-on::before { opacity: 1; background: #fff; border-color: #fff; }
 .alt-datebasis-opt:focus-visible { outline: 2px solid var(--alt-accent, #4f7257); outline-offset: 1px; }
 .alt-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--alt-muted); }
 .alt-sort select { font-size: 14px; padding: 9px 12px; border: 1px solid var(--alt-border); border-radius: 10px; background: var(--alt-surface); color: var(--alt-ink); cursor: pointer; }
@@ -672,7 +684,14 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 }
 .alt-tap-hint { font-size: 12px; color: var(--alt-muted); white-space: nowrap; }
 .alt-ai-key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #eb6834; vertical-align: baseline; }
-.alt-barlist { display: flex; flex-direction: column; gap: 10px; }
+.alt-barlist { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+/* A visible, unobtrusive scrollbar: an invisible one reads as "this list is complete". */
+.alt-barlist::-webkit-scrollbar { width: 8px; }
+.alt-barlist::-webkit-scrollbar-thumb { background: var(--alt-border); border-radius: 4px; }
+.alt-barlist::-webkit-scrollbar-track { background: transparent; }
+.alt-barlist { scrollbar-width: thin; }
+/* Expanded (lightbox) view gets the full height back. */
+.alt-expanded .alt-barlist, .alt-lightbox .alt-barlist { max-height: none; overflow-y: visible; }
 .alt-barrow {
     display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent;
     border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; color: inherit;

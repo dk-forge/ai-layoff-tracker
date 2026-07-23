@@ -14,6 +14,7 @@ Env:
   WP_SITE_URL, WP_API_KEY
 """
 import os
+import re
 import sys
 import time
 
@@ -22,6 +23,67 @@ import requests
 from sources.warn import pull_warn
 from sources.warn_custom import pull_warn_custom
 from source_health import report_source_health
+
+# --- last-mile clean-up, applied to EVERY state scraper's output -------------
+# Deliberately here and not in an individual scraper: these two defects are
+# structural to scraping government HTML tables, so one guard at the import
+# boundary covers all 48 states (and every state added later) instead of
+# 48 copies that drift apart.
+_TAG_RX = re.compile(r"<[^>]*>")
+# A notice the state later RESCINDED or CANCELLED is a layoff that did not
+# happen. Counting it inflates the total with jobs nobody lost; a public audit
+# found 23 such rows carrying 5,050 phantom jobs (Wisconsin/Louisiana/California
+# and others append the status to the employer name rather than removing the row).
+_RESCINDED_RX = re.compile(r"\b(rescind\w*|cancell?ed)\b", re.I)
+
+
+def _clean_company(name):
+    """Strip markup a state table smuggled into the employer name.
+
+    Wisconsin's WARN table wraps a footnote INSIDE the company cell, so a naive
+    cell read stored `Wisconsin Green, LLC<br/></a><a><em ...>* Notice outlines
+    multiple scenarios...` as the employer, which then rendered as raw HTML in
+    the public table and in the row's excerpt.
+    """
+    name = _TAG_RX.sub(" ", str(name or ""))
+    # Drop a trailing footnote marker and anything after it ("* Notice outlines
+    # multiple scenarios ..."), which is commentary about the notice, not a name.
+    name = re.split(r"\s*\*", name)[0]
+    return re.sub(r"\s+", " ", name).strip(" ,;-")
+
+
+def _sanitize_warn_entries(entries):
+    """Clean employer names and drop rescinded notices. Never raises."""
+    out, dropped, cleaned = [], 0, 0
+    for e in entries:
+        try:
+            raw = str(e.get("company_name") or "")
+            if _RESCINDED_RX.search(_TAG_RX.sub(" ", raw)):
+                dropped += 1
+                continue
+            name = _clean_company(raw)
+            if name and name != raw:
+                # Keep the excerpt consistent with the corrected name. The raw
+                # name must be flattened the SAME way before substituting, or
+                # the footnote survives in the excerpt after the company field
+                # is already clean.
+                raw_flat = re.sub(r"\s+", " ", _TAG_RX.sub(" ", raw)).strip()
+                ex = re.sub(r"\s+", " ", _TAG_RX.sub(" ", str(e.get("excerpt") or ""))).strip()
+                e["excerpt"] = ex.replace(raw_flat, name) if raw_flat else ex
+                e["company_name"] = name
+                cleaned += 1
+            # dedup_hash is intentionally left as the scraper computed it: it
+            # stays keyed to the same source row, so this correction flows into
+            # the EXISTING stored row on the next upsert instead of forking a
+            # second copy under the cleaned name.
+            out.append(e)
+        except Exception:
+            out.append(e)
+    if dropped or cleaned:
+        print(f"WARN sanitize: dropped {dropped} rescinded/cancelled notice(s), "
+              f"cleaned {cleaned} employer name(s)")
+    return out
+
 
 BATCH = 1000
 FAILED_BATCHES = 0
@@ -260,6 +322,7 @@ def main():
             report_source_health("warn_mazowieckie", "degraded", 0,
                                  f"Mazowieckie importer failed: {exc}")
 
+    entries = _sanitize_warn_entries(entries)
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
     if limit:
         entries = entries[:limit]

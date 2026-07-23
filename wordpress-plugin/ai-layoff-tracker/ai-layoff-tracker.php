@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.137
+ * Version: 2.19.138
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.137');
+define('ALT_VERSION', '2.19.138');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -214,6 +214,26 @@ function alt_flush_caches_on_deploy() {
     // response shape even after dbDelta has added the new columns.
     update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);
     if (function_exists('alt_record_dataset_release')) alt_record_dataset_release(ALT_VERSION);
+    // Flush the PAGE cache too, not just our transients. Bing indexed a
+    // 2.19.128 copy of the tracker (and its old meta description) long after
+    // 2.19.136 had shipped, because WP Super Cache kept serving the previously
+    // generated HTML: crawlers request the bare URL, so unlike our own checks
+    // they never get a cache-busting query string. Clearing transients alone
+    // updated the DATA while leaving the stale <head> in front of it.
+    if (function_exists('wp_cache_clear_cache')) {
+        wp_cache_clear_cache();               // WP Super Cache: drop all cached pages
+    }
+    if (function_exists('w3tc_flush_all')) {
+        w3tc_flush_all();
+    }
+    if (has_action('litespeed_purge_all')) {
+        do_action('litespeed_purge_all');
+    }
+    // Bluehost/Newfold performance module.
+    do_action('nfd_purge_all');
+    if (function_exists('wp_cache_flush')) {
+        wp_cache_flush();                     // object cache, harmless otherwise
+    }
     // Compact the historical wall of identical automated-enrichment log rows
     // into single accumulating entries (idempotent).
     if (function_exists('alt_compact_corrections_log')) alt_compact_corrections_log();
