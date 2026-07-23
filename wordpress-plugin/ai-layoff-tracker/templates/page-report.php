@@ -161,6 +161,14 @@ function alt_report_period_stats($from, $to, $us_only = false) {
 } // end function_exists guard
 
 $alt_geo = $alt_us ? " AND country = 'United States'" : '';
+// Every figure on this report links to the tracker filtered to the SAME period
+// (and dimension), so a reader can go from any number straight to the rows and
+// sources behind it - the report is a summary, the link is the receipt.
+$alt_rlink = function ($extra = array()) use ($alt_from, $alt_to, $alt_us) {
+    $args = array('from' => $alt_from, 'to' => $alt_to);
+    if ($alt_us) { $args['country'] = 'United States'; }
+    return esc_url(add_query_arg(array_merge($args, $extra), home_url('/ai-layoff-tracker/')));
+};
 $alt_cur = alt_report_period_stats($alt_from, $alt_to, $alt_us);
 $alt_prev = alt_report_period_stats($alt_pfrom, $alt_pto, $alt_us);
 $alt_v = (int) ($alt_cur['verified_jobs'] ?? 0);
@@ -281,7 +289,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
     <div class="alt-op-headline">
       <div class="alt-op-twobox">
         <div class="alt-op-box alt-op-box-overall">
-          <div class="alt-op-big"><?php echo number_format($alt_v); ?></div>
+          <a class="alt-op-figlink" href="<?php echo $alt_rlink(); ?>" target="_blank" rel="noopener" title="See the rows behind this number"><div class="alt-op-big"><?php echo number_format($alt_v); ?></div></a>
           <div class="alt-op-boxlabel"><?php echo $alt_us ? 'US ' : 'Worldwide '; ?>verified job cuts<?php echo $alt_is_week ? ' this week' : ''; ?>
             <?php if ($alt_delta !== null) : ?>
               <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
@@ -290,13 +298,14 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
           <div class="alt-op-boxnote">The main number, every figure traces to a filing or named report.</div>
         </div>
         <div class="alt-op-box alt-op-box-ai">
-          <div class="alt-op-big alt-op-big-ai"><?php echo number_format($alt_ai_v); ?></div>
+          <a class="alt-op-figlink" href="<?php echo $alt_rlink(array('ai' => '1')); ?>" target="_blank" rel="noopener" title="See every AI-attributed cut this period"><div class="alt-op-big alt-op-big-ai"><?php echo number_format($alt_ai_v); ?></div></a>
           <div class="alt-op-boxlabel">🤖 blamed on AI by the employer
             <span class="alt-op-aipct"><?php echo $alt_ai_pct; ?>% of the total</span>
           </div>
           <div class="alt-op-boxnote">AI or automation named as a cause, in the company's own words.</div>
         </div>
       </div>
+      <p class="alt-op-figs-note">Every figure below is a live link: click any number, company or industry to open the exact rows and sources behind it, filtered to this period.</p>
       <div class="alt-op-sub">Across <?php echo number_format((int) ($alt_cur['verified_events'] ?? 0)); ?> separate verified layoff events<?php echo $alt_us ? '' : ' in ' . number_format((int) ($alt_cur['countries'] ?? 0)) . ' countries'; ?><?php echo ($alt_ai > $alt_ai_v) ? ' · ' . number_format($alt_ai) . ' AI-attributed including announced plans' : ''; ?>.</div>
     </div>
 
@@ -355,7 +364,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
         <table class="alt-op-table"><tbody>
         <?php foreach ($alt_largest as $r) :
             $loc = alt_short_location($r['state'], $r['country']); ?>
-          <tr><td class="alt-op-co"><?php echo esc_html($r['company']); ?><?php echo $loc ? ' <span class="alt-muted">· ' . esc_html($loc) . '</span>' : ''; ?><?php echo !empty($r['ai_explicit']) ? ' 🤖' : ''; ?></td>
+          <tr><td class="alt-op-co"><a href="<?php echo $alt_rlink(array('company' => $r['company'])); ?>" target="_blank" rel="noopener"><?php echo esc_html($r['company']); ?></a><?php echo $loc ? ' <span class="alt-muted">· ' . esc_html($loc) . '</span>' : ''; ?><?php echo !empty($r['ai_explicit']) ? ' 🤖' : ''; ?></td>
               <td class="alt-op-num"><?php echo number_format((int) $r['job_count']); ?></td></tr>
         <?php endforeach; ?>
         <?php if (!$alt_largest) : ?><tr><td colspan="2" class="alt-muted">No cuts recorded for this period.</td></tr><?php endif; ?>
@@ -367,9 +376,9 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
         <h3>Top industries</h3>
         <div class="alt-op-bars">
         <?php foreach ($alt_inds as $i) : $w = $alt_ind_max > 0 ? max(4, round(100 * (int) $i['j'] / $alt_ind_max)) : 0; ?>
-          <div class="alt-op-bar"><span class="alt-op-barname"><?php echo esc_html($i['industry']); ?></span>
+          <a class="alt-op-bar alt-op-bar-link" href="<?php echo $alt_rlink(array('industry' => $i['industry'])); ?>" target="_blank" rel="noopener"><span class="alt-op-barname"><?php echo esc_html($i['industry']); ?></span>
             <span class="alt-op-bartrack"><span class="alt-op-barfill" style="width:<?php echo $w; ?>%"></span></span>
-            <span class="alt-op-barval"><?php echo number_format((int) $i['j']); ?></span></div>
+            <span class="alt-op-barval"><?php echo number_format((int) $i['j']); ?></span></a>
         <?php endforeach; ?>
         <?php if (!$alt_inds) : ?><p class="alt-muted">No industry-tagged cuts for this period.</p><?php endif; ?>
         </div>
