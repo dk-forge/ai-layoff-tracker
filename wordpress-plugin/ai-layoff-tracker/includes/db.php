@@ -443,6 +443,27 @@ function alt_db_valid_date($d) {
  * Insert or update one row, keyed by dedup_hash (falling back to post_id).
  * $row is an associative array of column => value.
  */
+/**
+ * Collapse invisible separators inside a company name.
+ *
+ * A no-break space, narrow no-break space, zero-width space or BOM renders
+ * exactly like a normal space but makes the name UNSEARCHABLE: a reader typing
+ * "Carl Zeiss Meditec" never matches the stored "Carl<U+202F>Zeiss Meditec",
+ * and the row never groups with that company's other entries. Eurofound rows
+ * carry these, and nothing on screen reveals it. Applied at the single write
+ * choke point so no collector can reintroduce it.
+ *
+ * Dashes and other real punctuation are deliberately left alone: an en dash in
+ * "Energoremont - Bobov dol JSC" is the source's own spelling, not a defect.
+ */
+function alt_normalize_company_ws($name) {
+    $name = (string) $name;
+    $clean = preg_replace('/[\x{00A0}\x{1680}\x{2000}-\x{200B}\x{202F}\x{205F}\x{2060}\x{3000}\x{FEFF}]/u', ' ', $name);
+    if ($clean === null) return trim($name);   // invalid UTF-8: leave as-is
+    $clean = preg_replace('/\s+/u', ' ', $clean);
+    return $clean === null ? trim($name) : trim($clean);
+}
+
 function alt_db_upsert(array $row) {
     global $wpdb;
     $table = alt_db_table();
@@ -450,8 +471,8 @@ function alt_db_upsert(array $row) {
     $data = array(
         'post_id'            => isset($row['post_id']) ? (int) $row['post_id'] : null,
         'dedup_hash'         => substr((string) ($row['dedup_hash'] ?? ''), 0, 32),
-        'company'            => substr((string) ($row['company'] ?? ''), 0, 255),
-        'company_key'        => substr(function_exists('alt_company_key') ? alt_company_key((string) ($row['company'] ?? '')) : '', 0, 255),
+        'company'            => substr(alt_normalize_company_ws($row['company'] ?? ''), 0, 255),
+        'company_key'        => substr(function_exists('alt_company_key') ? alt_company_key(alt_normalize_company_ws($row['company'] ?? '')) : '', 0, 255),
         'ticker'             => substr((string) ($row['ticker'] ?? ''), 0, 32),
         'job_count'          => max(0, (int) ($row['job_count'] ?? 0)),
         'job_count_max'      => max((int) ($row['job_count'] ?? 0), (int) ($row['job_count_max'] ?? 0)),
@@ -2377,6 +2398,7 @@ function alt_api_edit(WP_REST_Request $r) {
                         function_exists('alt_allowed_reason_tags') ? alt_allowed_reason_tags() : array()
                     )));
                     break;
+                case 'company':     $data[$k] = alt_normalize_company_ws($v); break;
                 default:            $data[$k] = (string) $v;
             }
         }
