@@ -193,7 +193,9 @@ def run():
               f"{posted} posted ({ai} AI-attributed), {extract_fail} extract fails")
     print("watchlist sweep:", detail)
     if not DRY_RUN and not report_source_health("company_watchlist", "ok", posted, detail):
-        raise RuntimeError("could not publish company_watchlist health status")
+        # Completion telemetry: the sweep already finished, so a failed health
+        # write is a warning, never a reason to fail the run and page the owner.
+        print("::warning::company_watchlist completed but the health-ledger write failed (data is fine)")
 
 
 def main():
