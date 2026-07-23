@@ -1047,6 +1047,19 @@ function alt_register_query_routes() {
             'page' => array('type' => 'integer', 'default' => 1),
         ),
     ));
+    // Public-tip intake queue. Tips are LEADS, never sources: a member of the
+    // public points us at a URL, and the process_tips worker independently
+    // verifies it (fetch + double-confirm + allowlist gate) before anything is
+    // published. GET(keyed) lists tips by status for the worker; POST(keyed)
+    // updates a tip's status. Public submission is NOT a REST route: it flows
+    // through the captcha-protected /contact form, so this endpoint adds no new
+    // unauthenticated write surface.
+    register_rest_route('layoffs/v1', '/tips', array(
+        array('methods' => 'GET', 'callback' => 'alt_api_tips_get',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+        array('methods' => 'POST', 'callback' => 'alt_api_tips_post',
+            'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
+    ));
     // Read-only, deliberately narrow lifecycle candidates. A candidate is
     // never a merge decision: it is a same-company/same-count/source-supported
     // announcement followed by a later reported/filing record in the same
@@ -1963,6 +1976,69 @@ function alt_record_dataset_release($version) {
  * the triggers identify events whose count, causation claim, or geography
  * merits a human look. Existing review_status is reported, not overwritten.
  */
+/**
+ * Append a public tip to the intake queue. Called server-side from the
+ * captcha-protected contact form, never from an unauthenticated REST route.
+ * Bounded so a flood cannot grow the option unbounded.
+ */
+function alt_tips_append($company, $source_url, $email, $note, $attachment = '') {
+    $q = get_option('alt_tips_queue');
+    if (!is_array($q)) $q = array();
+    $q[] = array(
+        'id'         => (string) (count($q) + 1) . '-' . substr(md5($source_url . microtime()), 0, 8),
+        'company'    => substr((string) $company, 0, 160),
+        'source_url' => esc_url_raw((string) $source_url),
+        'email'      => sanitize_email((string) $email),
+        'note'       => substr((string) $note, 0, 500),
+        'attachment' => substr((string) $attachment, 0, 300),
+        'status'     => 'new',
+        'received'   => gmdate('c'),
+    );
+    if (count($q) > 500) $q = array_slice($q, -500);   // keep the newest
+    update_option('alt_tips_queue', $q, false);
+    return true;
+}
+
+function alt_api_tips_get(WP_REST_Request $r) {
+    $want = sanitize_key($r->get_param('status') ?: 'new');
+    $per  = min(100, max(1, (int) ($r->get_param('per_page') ?: 25)));
+    $q = get_option('alt_tips_queue');
+    $q = is_array($q) ? $q : array();
+    $out = array();
+    foreach ($q as $t) {
+        if (($t['status'] ?? 'new') === $want) { $out[] = $t; if (count($out) >= $per) break; }
+    }
+    return array('tips' => $out, 'total_new' => count(array_filter($q, function ($t) {
+        return ($t['status'] ?? 'new') === 'new';
+    })));
+}
+
+function alt_api_tips_post(WP_REST_Request $r) {
+    $id = (string) $r->get_param('id');
+    $status = sanitize_key((string) $r->get_param('status'));
+    $note = substr((string) $r->get_param('note'), 0, 300);
+    $allowed = array('new', 'posted', 'review', 'rejected', 'duplicate');
+    if ($id === '' || !in_array($status, $allowed, true)) {
+        return new WP_Error('alt_bad_request', 'id and a valid status are required.', array('status' => 400));
+    }
+    $q = get_option('alt_tips_queue');
+    $q = is_array($q) ? $q : array();
+    $found = false;
+    foreach ($q as &$t) {
+        if (($t['id'] ?? '') === $id) {
+            $t['status'] = $status;
+            if ($note) $t['note'] = $note;
+            $t['processed'] = gmdate('c');
+            $found = true;
+            break;
+        }
+    }
+    unset($t);
+    if (!$found) return array('updated' => false, 'not_found' => $id);
+    update_option('alt_tips_queue', $q, false);
+    return array('updated' => true, 'id' => $id, 'status' => $status);
+}
+
 function alt_api_review_queue(WP_REST_Request $r) {
     global $wpdb;
     $per_page = min(100, max(1, (int) $r->get_param('per_page')));

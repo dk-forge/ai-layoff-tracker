@@ -1,0 +1,42 @@
+name: Process public layoff tips
+
+# Hands-off processor for "report a layoff we're missing" tips. A tip is a LEAD:
+# the worker fetches the submitter's source link, extracts it with the same
+# pipeline that gates every row, double-confirms with a second model pass, and
+# ONLY auto-publishes when the source is a trusted outlet or an official filing.
+# Everything else queues for the owner. Emails a digest each run.
+#
+# Ships SAFE: without TIPS_LIVE=1 it is a DRY RUN — it reports what it WOULD post
+# and posts nothing, so the owner sees a full digest before arming it. Set the
+# TIPS_LIVE repo variable to 1 to arm auto-publishing.
+on:
+  schedule:
+    - cron: '35 14 * * *'   # 10:35 AM ET, after the morning collectors
+  workflow_dispatch:
+    inputs:
+      live:
+        description: "Set 1 to arm auto-posting for this run (else dry run)"
+        required: false
+        default: ''
+
+jobs:
+  tips:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r railway/requirements.txt
+      - name: Process tips
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          EDGAR_USER_AGENT: ${{ secrets.EDGAR_USER_AGENT }}
+          # Dry run unless explicitly armed: the dispatch input wins, else the
+          # TIPS_LIVE repo variable. Absent both -> dry run, posts nothing.
+          TIPS_LIVE: ${{ github.event.inputs.live || vars.TIPS_LIVE }}
+        run: python process_tips.py

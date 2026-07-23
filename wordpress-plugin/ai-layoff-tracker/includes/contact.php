@@ -81,10 +81,15 @@ function alt_shortcode_contact() {
                     <label for="alt-c-org">Outlet / company (optional)</label>
                     <input type="text" id="alt-c-org" name="alt_org" maxlength="160" autocomplete="organization">
                 </div>
+                <div class="alt-filter alt-tip-only" hidden>
+                    <label for="alt-c-tipco">Company that had the layoff</label>
+                    <input type="text" id="alt-c-tipco" name="alt_tip_company" maxlength="160" placeholder="e.g. Acme Corp">
+                </div>
                 <div class="alt-filter">
-                    <label for="alt-c-link">Link to the tracker entry or source (optional)</label>
+                    <label for="alt-c-link">Link to the source (news report, filing, or company post)</label>
                     <input type="url" id="alt-c-link" name="alt_link" maxlength="500" placeholder="https://">
-                    <span class="alt-contact-note">For corrections, paste the entry you're flagging so we can locate it fast.</span>
+                    <span class="alt-contact-note alt-tip-note" hidden>Reporting a layoff? A source link lets us verify it against the original and add it automatically. Without one we still read your tip, but it needs a manual check first.</span>
+                    <span class="alt-contact-note alt-nontip-note">For corrections, paste the entry you're flagging so we can locate it fast.</span>
                 </div>
                 <div class="alt-filter">
                     <label for="alt-c-msg">Message</label>
@@ -106,6 +111,21 @@ function alt_shortcode_contact() {
             </div>
             <p class="alt-contact-note">We usually reply within 3 business days, and corrections get looked at first. Anything we fix gets logged publicly on the tracker, so you can see it was handled.</p>
         </form>
+        <script>
+        (function () {
+            var topic = document.getElementById('alt-c-topic');
+            if (!topic) return;
+            var sync = function () {
+                var isTip = topic.value === 'tip';
+                document.querySelectorAll('.alt-tip-only').forEach(function (el) { el.hidden = !isTip; });
+                var tn = document.querySelector('.alt-tip-note'), nn = document.querySelector('.alt-nontip-note');
+                if (tn) tn.hidden = !isTip;
+                if (nn) nn.hidden = isTip;
+            };
+            topic.addEventListener('change', sync);
+            sync();
+        })();
+        </script>
     </div>
     <?php
     return ob_get_clean();
@@ -179,6 +199,16 @@ function alt_contact_submit() {
         $body,
         array('Reply-To: ' . $name . ' <' . $email . '>')
     );
+
+    // A tip that names a layoff AND gives a source link is enqueued for the
+    // hands-off processor (which verifies it against the source before anything
+    // publishes). Tips without a link still email us; they just cannot enter the
+    // automated path, because a lead with no source cannot be verified.
+    if ($topic_key === 'tip' && $link !== '' && function_exists('alt_tips_append')) {
+        // Prefer an explicit company field; fall back to the outlet/company box.
+        $tip_company = sanitize_text_field(wp_unslash($_POST['alt_tip_company'] ?? '')) ?: $org;
+        alt_tips_append($tip_company, $link, $email, $msg);
+    }
 
     if (!$ok) $fail('mail');
     wp_safe_redirect(add_query_arg('alt_sent', '1', $back));
