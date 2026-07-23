@@ -45,7 +45,9 @@ _RESCINDED_RX = re.compile(r"\b(rescind\w*|cancell?ed)\b", re.I)
 # totals, the directory and repeat-layoff detection all split. Louisiana is the
 # worst offender (436 rows), California next.
 _ADDR_RX = re.compile(
-    r"[\s(,]+\d{1,6}\s+[\w.'-]+(?:\s+[\w.'-]+){0,3}\s+"
+    # The number may be a RANGE ("(1500-1552 Encinitas Blvd.)"), which a plain
+    # \d+ stops matching at the dash.
+    r"[\s(,]+\d{1,6}(?:\s*-\s*\d{1,6})?\s+[\w.'-]+(?:\s+[\w.'-]+){0,3}\s+"
     r"(?:st|street|rd|road|ave|avenue|hwy|highway|blvd|boulevard|dr|drive|ln|lane|"
     r"pkwy|parkway|way|ct|court|cir|circle|pl|place|ter|terrace|route|rte)\b\.?",
     re.I)
@@ -85,12 +87,17 @@ def _clean_company(name):
     # multiple scenarios ..."), which is commentary about the notice, not a name.
     name = re.split(r"\s*\*", name)[0]
     name = re.sub(r"\s+", " ", name).strip(" ,;-")
-    return _strip_site_address(name).strip(" ,;-")
+    name = _strip_site_address(name).strip(" ,;-")
+    # Cutting the address can leave a dangling site marker ("Winn Dixie Store
+    # No." once "1411 5901 Airline Drive" goes). The store number is a SITE id,
+    # not company identity, so dropping it is what we want for grouping; the
+    # orphaned label just should not trail the name.
+    return re.sub(r"[\s,]*\b(?:no\.?|#|unit|suite|ste\.?)\s*$", "", name, flags=re.I).strip(" ,;-")
 
 
 def _sanitize_warn_entries(entries):
     """Clean employer names and drop rescinded notices. Never raises."""
-    out, dropped, cleaned = [], 0, 0
+    out, dropped, unnamed, cleaned = [], 0, 0, 0
     for e in entries:
         try:
             raw = str(e.get("company_name") or "")
@@ -98,6 +105,14 @@ def _sanitize_warn_entries(entries):
                 dropped += 1
                 continue
             name = _clean_company(raw)
+            if not re.search(r"[A-Za-z0-9]", name):
+                # Cleaning left nothing nameable (Tennessee's list yields rows
+                # whose employer cell is just "." or ","). A row with no
+                # identifiable employer cannot be checked by a reader, so it is
+                # skipped rather than published as punctuation. NB the test is
+                # alphanumeric, not alphabetic: "118 118" is a real company.
+                unnamed += 1
+                continue
             if name and name != raw:
                 # Keep the excerpt consistent with the corrected name. The raw
                 # name must be flattened the SAME way before substituting, or
@@ -115,9 +130,9 @@ def _sanitize_warn_entries(entries):
             out.append(e)
         except Exception:
             out.append(e)
-    if dropped or cleaned:
+    if dropped or cleaned or unnamed:
         print(f"WARN sanitize: dropped {dropped} rescinded/cancelled notice(s), "
-              f"cleaned {cleaned} employer name(s)")
+              f"{unnamed} with no identifiable employer, cleaned {cleaned} name(s)")
     return out
 
 

@@ -38,6 +38,14 @@ def week_windows(start, end):
         cur = nxt
 
 
+def _is_upstream_throttle(exc):
+    """True when the third party throttled or timed out on us, rather than the
+    collector being broken."""
+    text = str(exc).lower()
+    return any(m in text for m in ("429", "rate limit", "too many requests",
+                                   "timed out", "timeout", "503", "502", "504"))
+
+
 def run():
     start = _parse(os.environ.get("BACKFILL_START"),
                   datetime(2024, 1, 1, tzinfo=timezone.utc))
@@ -60,6 +68,20 @@ def run():
             report_source_health("gdelt_historical", "ok", len(entries), f"window {label}")
         except Exception as exc:
             report_source_health("gdelt_historical", "degraded", 0, f"window {label}: {exc}")
+            # An upstream THROTTLE is not our failure. GDELT answers 429 under
+            # load and the collector already backs off 5 times; turning that
+            # into a red run emails a breakage that no human can act on, and
+            # contradicts the health ledger, which classifies gdelt_historical
+            # as expected-transient. Nothing is half-written (the window either
+            # returns articles or none) and the cursor only advances on a
+            # completed window, so stopping here loses no coverage: the same
+            # window is retried next run. Any OTHER error still raises, so a
+            # genuinely broken parser cannot hide behind this.
+            if _is_upstream_throttle(exc):
+                print(f"::warning::[{label}] upstream rate limit ({exc}); "
+                      f"stopping this run with progress kept, window retries next run")
+                _summary(posted, ai, dupes, skipped, failed, considered)
+                return
             raise
         print(f"[{label}] {len(entries)} articles")
         for raw in entries:

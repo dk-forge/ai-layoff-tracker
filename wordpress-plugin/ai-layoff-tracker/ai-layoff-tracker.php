@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.139
+ * Version: 2.19.140
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.139');
+define('ALT_VERSION', '2.19.140');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -57,7 +57,7 @@ function alt_dataset_jsonld() {
         'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
         'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
         'creator' => $org, 'publisher' => $org,
-        'temporalCoverage' => '2015-01-01/' . $now, 'dateModified' => $now,
+        'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $now, 'dateModified' => $now,
         'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
         'variableMeasured' => array(
             array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a primary source document behind each figure.'),
@@ -731,7 +731,7 @@ function alt_seo_head() {
         'keywords'            => array('AI layoffs', 'layoffs', 'layoff tracker', 'job layoff tracker', 'jobs lost to AI', 'AI job losses', 'AI layoff tracker', 'automation layoffs', 'tech layoffs', 'layoffs worldwide', 'global layoffs', 'layoffs by country', 'layoffs ' . gmdate('Y'), 'WARN notices'),
         'license'             => 'https://creativecommons.org/licenses/by/4.0/',
         'isAccessibleForFree' => true,
-        'temporalCoverage'    => '2015-01-01/..',
+        'temporalCoverage'    => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/..',
         'spatialCoverage'     => 'Worldwide',
         'dateModified'        => gmdate('Y-m-d'),
         'variableMeasured'    => array('company', 'job_count', 'layoff_date', 'country', 'US state', 'industry', 'AI attribution', 'source URL'),
@@ -840,9 +840,13 @@ function alt_live_numbers() {
             "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                     COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
              FROM $t WHERE YEAR(layoff_date) = %d", $y));
+        // MIN(layoff_date) is guarded against the sentinel/zero dates that a bad
+        // parse can leave behind, so the published coverage start is a real event.
         $all = $wpdb->get_row(
             "SELECT COUNT(*) entries, COUNT(DISTINCT NULLIF(country,'')) countries,
-                    COUNT(DISTINCT NULLIF(state,'')) states FROM $t");
+                    COUNT(DISTINCT NULLIF(state,'')) states,
+                    MIN(CASE WHEN layoff_date > '2000-01-01' THEN layoff_date END) min_date
+             FROM $t");
         $n = array(
             'y'         => $y,
             'entries'   => $row ? (int) $row->entries : 0,
@@ -851,6 +855,10 @@ function alt_live_numbers() {
             'all'       => $all ? (int) $all->entries : 0,
             'countries' => $all ? (int) $all->countries : 0,
             'states'    => $all ? (int) $all->states : 0,
+            // The dataset actually reaches back to 2002; every surface used to
+            // hardcode 2015, understating our own coverage by 13 years and
+            // ~18,000 events. Derive it instead of asserting it.
+            'start'     => ($all && $all->min_date) ? substr($all->min_date, 0, 4) : '2015',
         );
         set_transient('alt_faq_numbers', $n, HOUR_IN_SECONDS);
     }
@@ -866,7 +874,7 @@ function alt_faq_items() {
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus NewsAPI. The dataset spans 2015 to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus NewsAPI. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
         array('What sources do you use?',
             'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . $f($n['states']) . ' US states (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),

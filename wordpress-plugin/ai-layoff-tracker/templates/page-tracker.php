@@ -20,7 +20,7 @@ $alt_ld[] = array(
     'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
     'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
     'creator' => $alt_org_ld, 'publisher' => $alt_org_ld,
-    'temporalCoverage' => '2015-01-01/' . $alt_now_ld, 'dateModified' => $alt_now_ld,
+    'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $alt_now_ld, 'dateModified' => $alt_now_ld,
     'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
     'variableMeasured' => array(
         array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a primary source document behind each figure.'),

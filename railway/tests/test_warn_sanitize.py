@@ -100,3 +100,24 @@ def test_address_stripping_never_damages_a_legitimate_name():
                  "3M Company", "Air Wisconsin Airlines LLC (MKE Hangar)",
                  "Saputo Cheese USA Inc"):
         assert W._clean_company(good) == good, good
+
+
+def test_handles_ranged_street_numbers_and_dangling_site_markers():
+    # A range ("1500-1552") stops a plain \d+ match, so these escaped the first
+    # pass; and cutting an address can leave an orphaned site label behind.
+    assert W._clean_company("Off Duty Officers, Inc. (1500-1552 Encinitas Blvd.)") == \
+        "Off Duty Officers, Inc."
+    assert W._clean_company("Winn Dixie Store No. 1411 5901 Airline Drive Metairie, LA 70003") == \
+        "Winn Dixie Store"
+
+
+def test_drops_rows_whose_employer_cell_is_only_punctuation():
+    # Tennessee's list yields employer cells of "." and ",". Published as-is
+    # they are rows no reader can verify. The guard is ALPHANUMERIC, not
+    # alphabetic, because "118-118" is a real (UK) company.
+    out = W._sanitize_warn_entries([
+        {"company_name": ".", "excerpt": "x", "dedup_hash": "a", "job_count": 51},
+        {"company_name": ",", "excerpt": "x", "dedup_hash": "b", "job_count": 46},
+        {"company_name": "118-118", "excerpt": "x", "dedup_hash": "c", "job_count": 180},
+    ])
+    assert [e["company_name"] for e in out] == ["118-118"]
