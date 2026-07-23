@@ -103,7 +103,12 @@ def _sample(year, seed):
                            params={"years": year, "sources": _src_param(st), "per_page": 200,
                                    "cb": f"aud{seed}{st}"}, headers=UA, timeout=TIMEOUT)
         rows = r.json().get("data", []) if (r and r.status_code == 200) else []
-        rows = [x for x in rows if str(x.get("source_url") or "").startswith("http")]
+        # Skip rows a human already reconciled/pinned (edited=1): a deliberate
+        # net-new figure (e.g. Dow 3,700 of a 4,500 plan) correctly looks like a
+        # "mismatch" to a naive re-read of the headline, so auditing it re-flags
+        # a known-good decision every month. Audit only un-reviewed rows.
+        rows = [x for x in rows
+                if str(x.get("source_url") or "").startswith("http") and not x.get("edited")]
         rng.shuffle(rows)
         picked.extend(rows[:per])
     rng.shuffle(picked)

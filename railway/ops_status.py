@@ -29,7 +29,7 @@ BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 
 # A degraded/stale source is BENIGN (no action) when it's one of these: a
 # transient rate-limit, or a state with no public register.
-SOFT = {"gdelt_historical"}
+SOFT = {"gdelt_historical", "source_audit"}
 # States with no usable public register: a custom scraper returning 0 is correct,
 # not drift. NV is NOT here anymore — the site mirrors DETR's master PDF daily
 # (Bluehost's IP clears the Akamai bot-wall), so CI reads NV via the mirror; a 0

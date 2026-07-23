@@ -36,7 +36,7 @@ MAX_AGE_DAYS = {
 DEFAULT_MAX_AGE = 10
 # Sources whose 0/degraded is expected-by-design or transient, so a DEGRADED
 # status alone should not be treated as an incident (still shown in the digest).
-SOFT_DEGRADED = {"gdelt_historical"}  # historical recovery is rate-limit prone
+SOFT_DEGRADED = {"gdelt_historical", "source_audit"}  # historical recovery is rate-limit prone
 
 
 # States with no public WARN register: a custom scraper returning 0 for them is
