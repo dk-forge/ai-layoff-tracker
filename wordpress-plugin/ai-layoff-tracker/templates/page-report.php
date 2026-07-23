@@ -356,7 +356,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
         <?php if ($alt_is_year && $alt_top_co) : ?>
         <table class="alt-op-table"><tbody>
         <?php foreach ($alt_top_co as $c) : ?>
-          <tr><td class="alt-op-co"><?php echo esc_html($c['company']); ?><?php echo ((int) $c['n'] > 1) ? ' <span class="alt-muted">· ' . (int) $c['n'] . ' events</span>' : ''; ?><?php echo !empty($c['any_ai']) ? ' 🤖' : ''; ?></td>
+          <tr><td class="alt-op-co"><a href="<?php echo $alt_rlink(array('company' => $c['company'])); ?>" target="_blank" rel="noopener"><?php echo esc_html($c['company']); ?></a><?php echo ((int) $c['n'] > 1) ? ' <span class="alt-muted">· ' . (int) $c['n'] . ' events</span>' : ''; ?><?php echo !empty($c['any_ai']) ? ' 🤖' : ''; ?></td>
               <td class="alt-op-num"><?php echo number_format((int) $c['j']); ?></td></tr>
         <?php endforeach; ?>
         </tbody></table>
