@@ -17,6 +17,7 @@ Exit codes:
 """
 import json
 import sys
+import uuid
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -108,7 +109,7 @@ def main():
 
     # 1. Live version
     try:
-        html = _get(f"{BASE}/ai-layoff-tracker/?cb=ops", browser=True).read().decode("utf-8", "replace")
+        html = _get(f"{BASE}/ai-layoff-tracker/?cb={uuid.uuid4()}", browser=True).read().decode("utf-8", "replace")
         import re
         ver = (re.search(r"ver=(\d+\.\d+\.\d+)", html) or [None, "?"])[1]
         print(f"\n[1] LIVE TRACKER  ver={ver}  (https://asktherecruiter.com/blog/ai-layoff-tracker/)")
@@ -119,7 +120,7 @@ def main():
     # 2. Health triage
     print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")
     try:
-        health = json.load(_get(f"{BASE}/wp-json/layoffs/v1/source-health?cb=ops"))
+        health = json.load(_get(f"{BASE}/wp-json/layoffs/v1/source-health?cb={uuid.uuid4()}"))
         now = datetime.now(timezone.utc)
         ok = 0
         for src, info in (health or {}).items():
