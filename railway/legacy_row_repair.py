@@ -57,7 +57,7 @@ _US_STATES = {
 
 def _fetch_all():
     """Every published row, page by page."""
-    rows, page = [], 1
+    rows, page, skipped_pages = [], 1, []
     while True:
         r = get_with_retry(f"{SITE}/wp-json/layoffs/v1/query",
                            params={"per_page": PAGE, "page": page, "cb": f"repair{page}"},
@@ -65,11 +65,16 @@ def _fetch_all():
         if r is None:
             if page == 1:
                 raise RuntimeError("legacy repair: /query unreachable on page 1 after retries")
-            # A blip on one page of a 300-page scan is not a reason to discard
-            # the run: repair what we did read, the rest comes next run.
-            print(f"  scan: page {page} still failing after retries, "
-                  f"continuing with {len(rows):,} row(s) already read")
-            break
+            # SKIP the bad page and keep going, rather than stopping the scan.
+            # Stopping meant one flaky page at position 70 hid the remaining
+            # 49,000 rows from the repair entirely; the defects we are hunting
+            # are concentrated in the OLD rows, which live in the later pages.
+            skipped_pages.append(page)
+            if len(skipped_pages) > 12:
+                print(f"::warning::{len(skipped_pages)} pages unreadable; stopping the scan early")
+                break
+            page += 1
+            continue
         if r.status_code == 404 and page > 1:
             break
         r.raise_for_status()
@@ -82,6 +87,11 @@ def _fetch_all():
         page += 1
         if page > 400:            # hard bound; the table is ~63K rows
             break
+    if skipped_pages:
+        # Never silent: a skipped page is coverage we did not inspect.
+        print(f"  scan: {len(skipped_pages)} page(s) unreadable and skipped "
+              f"({skipped_pages[:8]}{'...' if len(skipped_pages) > 8 else ''}); "
+              f"those rows were NOT inspected this run")
     return rows
 
 
