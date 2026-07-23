@@ -510,7 +510,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini .alt-barlist { gap: 5px; }
 /* Compact cards show every row inside a short scroll box, so all items are
    reachable without expanding (expanding removes the cap, see .alt-expanded). */
-.alt-mini:not(.alt-expanded) .alt-barlist { max-height: 208px; overflow-y: auto; padding-right: 4px; }
+.alt-mini:not(.alt-expanded) .alt-barlist { max-height: 320px; overflow-y: auto; padding-right: 4px; }
 .alt-mini .alt-barrow { padding: 5px 7px; }
 .alt-mini .alt-barrow-top { margin-bottom: 4px; }
 .alt-mini .alt-barrow-name { font-size: 13px; }
@@ -684,14 +684,12 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 }
 .alt-tap-hint { font-size: 12px; color: var(--alt-muted); white-space: nowrap; }
 .alt-ai-key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #eb6834; vertical-align: baseline; }
-.alt-barlist { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.alt-barlist { display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
 /* A visible, unobtrusive scrollbar: an invisible one reads as "this list is complete". */
 .alt-barlist::-webkit-scrollbar { width: 8px; }
 .alt-barlist::-webkit-scrollbar-thumb { background: var(--alt-border); border-radius: 4px; }
 .alt-barlist::-webkit-scrollbar-track { background: transparent; }
 .alt-barlist { scrollbar-width: thin; }
-/* Expanded (lightbox) view gets the full height back. */
-.alt-expanded .alt-barlist, .alt-lightbox .alt-barlist { max-height: none; overflow-y: visible; }
 .alt-barrow {
     display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent;
     border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; color: inherit;
