@@ -568,6 +568,21 @@ TRUSTED_DOMAINS = {
     "beckershospitalreview.com", "beckerspayerissues.com",            # hospital/payer trade
     "retaildive.com", "supplychaindive.com", "bankingdive.com",       # retail/logistics/banking trade
     "utilitydive.com", "constructiondive.com",                        # utility/construction trade
+    # --- 2026-07-23 backfill-diff sweep. A curated H1-2026 research pass found
+    # 29 events we were missing, and the SOURCE pattern was the finding: we
+    # already held every national-wire story (Amazon, Block, eBay, Intuit,
+    # Atlassian, Snap, Disney...), and what we missed ran ONLY in state business
+    # journals and vertical trade press. NJBIZ alone carried 4 of the 29. That
+    # 200-1,500-employee band is exactly what fills the sector gaps, so the
+    # allowlist was structurally blind to it. Same allowlist-only rules apply.
+    "njbiz.com", "westfaironline.com", "mercerme.com",                # NJ/NY metro business press
+    "insideindianabusiness.com", "crainsdetroit.com",                 # midwest business press
+    "fooddive.com", "grocerydive.com", "restaurantdive.com",          # food/grocery trade
+    "progressivegrocer.com", "fooddistributionmagazine.com",          # grocery/distribution trade
+    "biospace.com", "endpts.com", "modernhealthcare.com",             # biotech/pharma/health trade
+    "medtechdive.com", "biopharmadive.com", "drugdeliverybusiness.com",  # medtech/pharma trade
+    "americanbanker.com", "manufacturingdive.com", "automotivedive.com",  # banking/manufacturing/auto trade
+    "packagingdive.com", "agriculturedive.com", "truckingdive.com",   # packaging/ag/trucking trade
     # Startup/tech press surfaced by the 2026-07-19 aggregator diff (their
     # entries cited these outlets; most of the missed small/mid AI events
     # ran here first)
