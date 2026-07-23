@@ -35,6 +35,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from warn_import import _clean_company  # single source of truth for name cleaning
+from http_retry import get_with_retry  # single source of truth for transient 5xx
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -58,9 +59,17 @@ def _fetch_all():
     """Every published row, page by page."""
     rows, page = [], 1
     while True:
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
-                         params={"per_page": PAGE, "page": page, "cb": f"repair{page}"},
-                         headers=UA, timeout=TIMEOUT)
+        r = get_with_retry(f"{SITE}/wp-json/layoffs/v1/query",
+                           params={"per_page": PAGE, "page": page, "cb": f"repair{page}"},
+                           headers=UA, timeout=TIMEOUT)
+        if r is None:
+            if page == 1:
+                raise RuntimeError("legacy repair: /query unreachable on page 1 after retries")
+            # A blip on one page of a 300-page scan is not a reason to discard
+            # the run: repair what we did read, the rest comes next run.
+            print(f"  scan: page {page} still failing after retries, "
+                  f"continuing with {len(rows):,} row(s) already read")
+            break
         if r.status_code == 404 and page > 1:
             break
         r.raise_for_status()

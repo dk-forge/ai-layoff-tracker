@@ -72,33 +72,7 @@ MAX_PAGES = 300  # hard bound on the scan (300 * 200 = 60K rows)
 WRITE_BATCH = 200  # the endpoint accepts up to 2000 items; stay well under
 
 
-_TRANSIENT = {408, 429, 500, 502, 503, 504, 520, 521, 522, 524}
-
-
-def _get_with_retry(url, params, attempts=3):
-    """GET that survives the shared host's intermittent 5xx.
-
-    Returns the response, or None when every attempt failed transiently. A
-    deep-offset page of the blank-industry scan reliably 500s while a large
-    WARN import is running; that single blip used to abort the entire backfill
-    (the run died at page 76 of 140 having filled nothing), which is why the
-    backlog was not draining.
-    """
-    for attempt in range(attempts):
-        try:
-            r = requests.get(url, params=params, headers=UA, timeout=60)
-            if r.status_code not in _TRANSIENT:
-                return r          # success, or a real error the caller must raise on
-            if attempt < attempts - 1:
-                time.sleep(5 * (attempt + 1))
-                continue
-            return None           # still transient after the last attempt
-        except requests.RequestException:
-            if attempt < attempts - 1:
-                time.sleep(5 * (attempt + 1))
-                continue
-            return None
-    return None
+from http_retry import get_with_retry as _get_with_retry  # shared: see http_retry.py
 
 
 def fetch_candidates():

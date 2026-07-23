@@ -11,8 +11,11 @@ import types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-_SRC = open(os.path.join(os.path.dirname(__file__), "..", "industry_backfill.py")).read()
-_BODY = _SRC[_SRC.index("_TRANSIENT = {"):_SRC.index("def fetch_candidates")]
+# The retry now lives in the SHARED module: the industry backfill and the
+# legacy-row repair both import it, after the repair script reproduced the
+# identical dead-scan bug hours after the backfill was fixed.
+_SRC = open(os.path.join(os.path.dirname(__file__), "..", "http_retry.py")).read()
+_BODY = _SRC[_SRC.index("TRANSIENT = {"):]
 
 
 class _Resp:
@@ -39,7 +42,7 @@ def _load(sequence):
     fake = _FakeRequests(sequence)
     ns = {"requests": fake, "time": types.SimpleNamespace(sleep=lambda *_: None), "UA": {}}
     exec(compile(_BODY, "industry_backfill_slice", "exec"), ns)
-    return ns["_get_with_retry"], fake
+    return ns["get_with_retry"], fake
 
 
 def test_recovers_from_a_transient_500():
