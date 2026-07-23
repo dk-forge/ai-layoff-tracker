@@ -130,6 +130,7 @@ if (!is_array($alt_sb_groups)) {
     <a href="#alt-brand">Brand assets</a>
     <a href="#alt-soundbites"><b>Ready-to-use soundbites &darr;</b></a>
     &middot; <a href="#alt-evidence-ladder"><b>AI evidence ladder &darr;</b></a>
+    &middot; <a href="#alt-monthly-release"><b>Monthly release &darr;</b></a>
     &middot; <a href="#alt-press-statements"><b>Press statements &darr;</b></a>
   </nav>
 
@@ -373,6 +374,24 @@ if (!is_array($alt_ps)) {
                             'link' => $alt_plk(array('years' => $yy)));
     }
     $alt_ps['archive'] = $alt_arch;
+    // Monthly release index, computed here (inside the cache build) because
+    // $alt_pstats only exists on a cache MISS. Referencing it from the render
+    // path would fatal on every cached page load.
+    $alt_rel = array();
+    for ($i = 1; $i <= 12; $i++) {
+        $ts = strtotime(gmdate('Y-m-01') . " -$i month");
+        $f = gmdate('Y-m-01', $ts); $t = gmdate('Y-m-t', $ts);
+        $st = $alt_pstats($f, $t);
+        if ((int) ($st->v ?? 0) <= 0) continue;
+        $alt_rel[] = array(
+            'label'    => gmdate('F Y', $ts),
+            'released' => gmdate('j M Y', strtotime(gmdate('Y-m-01', $ts) . ' +1 month')),
+            'v' => (int) $st->v, 'ai' => (int) $st->ai,
+            'report'   => esc_url(add_query_arg(array('period' => gmdate('Y-m', $ts)),
+                                                home_url('/ai-layoff-tracker/report/'))),
+        );
+    }
+    $alt_ps['releases'] = $alt_rel;
     set_transient('alt_press_statements', $alt_ps, HOUR_IN_SECONDS);
 }
 ?>
@@ -406,6 +425,24 @@ if (!is_array($alt_ps)) {
   </table></div>
   <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI, while verified and announced sort the same rows by whether the cut has happened yet. The two axes reconcile exactly: Tier 1 plus Tier 2 equals the tracker's verified AI box to the job, and Tier 3 is precisely the gap between the specific figure and the broad one. Nothing is double counted and nothing is invented for this table.</p>
   <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated causation is on record, so they are a subset of the headline AI figure rather than a restatement of it. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
+
+  <h2 id="alt-monthly-release">Monthly release schedule</h2>
+  <p>Each month's figures are final once that month has closed, and the one-page report for it lives at a permanent link. The release date is the <b>1st of the following month</b>, when the last of that month's notices have landed. Nothing is embargoed and nothing is held back: the link below is live the moment the month closes.</p>
+  <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
+    <thead><tr><th>Period</th><th>Released</th><th>Documented job cuts</th><th>AI, employer's own words</th><th>One-page report</th></tr></thead>
+    <tbody>
+    <?php foreach (($alt_ps['releases'] ?? array()) as $alt_r) : ?>
+      <tr>
+        <th><?php echo esc_html($alt_r['label']); ?></th>
+        <td><?php echo esc_html($alt_r['released']); ?></td>
+        <td><?php echo number_format($alt_r['v']); ?></td>
+        <td><?php echo number_format($alt_r['ai']); ?></td>
+        <td><a href="<?php echo $alt_r['report']; ?>" target="_blank" rel="noopener">Open the <?php echo esc_html($alt_r['label']); ?> report &rarr;</a></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table></div>
+  <p class="alt-muted">Every report link is permanent, so a story that cites the March figure still resolves to the March figure a year later.</p>
 
   <h2 id="alt-press-statements">Press statements</h2>
   <p>Written to be pasted straight into a pitch or a story, with the maths already done. Each one carries the preset view that reproduces it, so an editor can check the claim in a single click. Figures are live and regenerate hourly; the wording stays stable.</p>

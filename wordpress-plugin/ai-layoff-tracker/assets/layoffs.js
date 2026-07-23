@@ -3194,7 +3194,16 @@
                 var fig = btn.closest('.alt-soundbite');
                 var q = fig && fig.querySelector('.alt-sb-text');
                 if (!q) return;
-                copyText(q.textContent.replace(/[“”"]/g, '').trim(), function () {
+                // Paste the VERIFICATION URL with the text. A statement lands
+                // in an editor's inbox stripped of its markup, so a link that
+                // only exists as an <a> beneath it does not travel; the editor
+                // then has a claim with no way to check it. Source line too, so
+                // the pitch is self-contained.
+                var body = q.textContent.replace(/[“”"]/g, '').trim();
+                var vlink = fig.querySelector('.alt-sb-link');
+                if (vlink && vlink.href) body += '\n\nCheck this figure (filters pre-applied): ' + vlink.href;
+                body += '\nSource: AI Layoff Tracker, asktherecruiter.com/blog/ai-layoff-tracker/press/';
+                copyText(body, function () {
                     var o = btn.textContent; btn.textContent = 'Copied ✓';
                     setTimeout(function () { btn.textContent = o; }, 1500);
                 });
