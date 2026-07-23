@@ -145,6 +145,64 @@ def _search_keyword(keyword, start, end):
     return hits
 
 
+def search_company_filings(company, days_back=120, max_hits=6):
+    """Targeted EDGAR full-text search for ONE company's recent layoff filings.
+
+    Used by the tracker-diff tripwire: when another tracker lists a company we
+    lack, this asks SEC directly whether that employer filed an 8-K/6-K naming a
+    workforce reduction. Returns raw dicts for extract_layoff_data (never posts
+    directly). A primary source, so it verifies rather than trusts the other
+    tracker's entry. Best-effort: any error yields an empty list, never raises.
+    """
+    if not company or len(company) < 2:
+        return []
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days_back)
+    out, seen = [], set()
+    # AND the company name with a layoff phrase so we only pull relevant filings.
+    for phrase in ("layoff", "workforce reduction", "reduction in force", "item 2.05"):
+        params = {
+            "q": f'"{company}" "{phrase}"',
+            "dateRange": "custom",
+            "startdt": start.strftime("%Y-%m-%d"),
+            "enddt": end.strftime("%Y-%m-%d"),
+            "forms": "8-K",
+        }
+        try:
+            time.sleep(REQUEST_DELAY_SECONDS)
+            resp = requests.get(EDGAR_FTS_URL, params=params, headers=_headers(), timeout=30)
+            if resp.status_code != 200:
+                continue
+            for hit in resp.json().get("hits", {}).get("hits", [])[:max_hits]:
+                src = hit.get("_source", {})
+                cik = (src.get("ciks") or [None])[0]
+                aid = hit.get("_id", "")
+                if not cik or not aid or aid in seen:
+                    continue
+                seen.add(aid)
+                acc, _, doc = aid.partition(":")
+                acc_nodash = acc.replace("-", "")
+                url = f"{SEC_ARCHIVES_BASE}/{int(cik)}/{acc_nodash}/{doc}"
+                try:
+                    raw_text = _fetch_filing_text(url)
+                except Exception:
+                    continue
+                names = src.get("display_names") or [company]
+                comp, ticker = _split_company_ticker(names[0]) if names else (company, None)
+                out.append({
+                    "source_type": "sec_8k",
+                    "source_name": "SEC EDGAR 8-K",
+                    "source_url": url,
+                    "company_name": comp,
+                    "ticker": ticker,
+                    "filing_date": src.get("file_date"),
+                    "raw_text": raw_text,
+                })
+        except Exception:
+            continue
+    return out
+
+
 def pull_edgar_filings(days_back=1):
     """Pull 8-K/6-K filings from the last N days containing layoff language."""
     end = datetime.now(timezone.utc)

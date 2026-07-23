@@ -3,9 +3,19 @@ name: Tracker-diff discovery tripwire
 # Diffs competitor tracker feeds against our data; anything they list that we
 # lack becomes a company-targeted primary-source query -> extractor -> add. We
 # never cite them — their list is only a discovery signal pointing at a primary
-# source. Ships DORMANT: with COMPETITOR_FEED_URLS unset it exits clean, so the
-# repo holds zero competitor URLs (per the standalone-brand rule). Add the
-# secret to activate.
+# source. Each missing company is verified against SEC EDGAR (targeted per-
+# company full-text, with a cross-reference guard so a filing that merely
+# MENTIONS the company is rejected) AND press (NewsAPI + GDELT). WARN needs no
+# per-company call: it is bulk-imported daily, so a missing company is by
+# definition not in a WARN notice we already hold.
+#
+# COMPETITOR_FEED_URLS accepts JSON, CSV, OR a SITEMAP url. A tag/company
+# sitemap is the cleanest feed: ONE url that auto-expands to the whole
+# (self-refreshing) company list, so the secret holds a single link, not a
+# static list that goes stale. Ships DORMANT: unset it and the job exits clean,
+# so the repo holds zero competitor URLs (per the standalone-brand rule). The
+# URL lives ONLY in the secret; hardcoding it here would name a competitor in
+# the repo.
 #
 # Secrets: COMPETITOR_FEED_URLS (activates it), NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
 
@@ -39,5 +49,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
+          # Needed for the SEC full-text verification path (SEC rejects
+          # anonymous requests). Reuses the same UA as the daily EDGAR import.
+          EDGAR_USER_AGENT: ${{ secrets.EDGAR_USER_AGENT }}
           TRACKER_DIFF_DRY: ${{ github.event.inputs.dry_run }}
         run: python tracker_diff.py
