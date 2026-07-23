@@ -42,14 +42,33 @@ COUNTRY_FIXES = {
 
 def parse():
     countries = OrderedDict()
+    pending_comment = ""
     text = SRC.read_text()
     body = text.split("TRUSTED_DOMAINS = {", 1)[1].split("\n}", 1)[0]
     for line in body.splitlines():
-        m = re.match(r'\s*((?:"[a-z0-9.\-]+",\s*)+)#\s*(.+)$', line)
-        if not m:
+        # gdelt.py uses TWO comment styles and the old parser only understood
+        # one, so every domain on a line without its own trailing comment was
+        # silently dropped: 106 of 705 outlets (15%) - including AP, BBC, Axios
+        # and Al Jazeera - were missing from the public table, making the page
+        # UNDER-report our real coverage. Track the current country instead:
+        #   A)  "a.com", "b.com",   # Country      (inline trailing comment)
+        #   B)  # Country
+        #       "a.com", "b.com",                  (comment above the block)
+        standalone = re.match(r'\s*#\s*(.+)$', line)
+        if standalone:
+            pending_comment = standalone.group(1).strip()
             continue
-        domains = re.findall(r'"([a-z0-9.\-]+)"', m.group(1))
-        comment = m.group(2).strip()
+        m = re.match(r'\s*((?:"[a-z0-9.\-]+",\s*)+)#\s*(.+)$', line)
+        if m:
+            domains = re.findall(r'"([a-z0-9.\-]+)"', m.group(1))
+            comment = m.group(2).strip()
+            pending_comment = comment
+        else:
+            m2 = re.match(r'\s*((?:"[a-z0-9.\-]+",?\s*)+)$', line)
+            if not m2 or not pending_comment:
+                continue
+            domains = re.findall(r'"([a-z0-9.\-]+)"', m2.group(1))
+            comment = pending_comment
         # Worldwide-block style: "Country — Outlet (note)"; legacy style: "Country"
         country = re.split(r"\s+[—-]\s+", comment, 1)[0].strip()
         country = re.sub(r"\s*\(.*\)$", "", country)
