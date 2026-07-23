@@ -1,0 +1,39 @@
+name: AI evidence sweep
+
+# Hunts an EXACT employer AI quote for the biggest 2026 layoffs we have NOT
+# tagged as AI. Closes the gap where a cut was stored from a non-AI-framed
+# source even though the employer named AI elsewhere (the BAT case). Never
+# loosens the standard: no verbatim quote -> the row correctly stays untagged,
+# so genuinely non-AI cuts (Canada Post, UPS) are never mislabelled.
+#
+# SAFE: dry-run until the AI_SWEEP_LIVE repo variable is 1 - it reports what it
+# WOULD upgrade and writes nothing. Runs once daily (this is evidence
+# completeness, not freshness; hourly would burn budget re-reading the same rows).
+on:
+  schedule:
+    - cron: '15 16 * * *'   # 12:15 PM ET, after the day's collectors + reclassify
+  workflow_dispatch:
+    inputs:
+      live:
+        description: "Set 1 to arm upgrades for this run (else dry run)"
+        required: false
+        default: ''
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r railway/requirements.txt
+      - name: Run AI evidence sweep
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          AI_SWEEP_LIVE: ${{ github.event.inputs.live || vars.AI_SWEEP_LIVE }}
+        run: python ai_evidence_sweep.py
