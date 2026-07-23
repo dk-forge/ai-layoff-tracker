@@ -62,6 +62,10 @@ SINGLE_PASS = os.environ.get("INDUSTRY_BACKFILL_SINGLE_PASS", "").lower() in {"1
 # the 500s in the first place.
 SHARDS = max(1, int(os.environ.get("INDUSTRY_SHARDS") or "1"))
 SHARD = max(0, min(SHARDS - 1, int(os.environ.get("INDUSTRY_SHARD") or "0")))
+# Even shards chase job VOLUME (what the sector percentages are made of); odd
+# shards chase RECENCY (what the current-year view shows). Overridable for a
+# one-off sweep.
+SCAN_SORT = os.environ.get("INDUSTRY_SORT") or ("job_count" if SHARD % 2 == 0 else "layoff_date")
 
 PAGE_SIZE = 200
 MAX_PAGES = 300  # hard bound on the scan (300 * 200 = 60K rows)
@@ -108,7 +112,15 @@ def fetch_candidates():
         # Newest layoffs first: the current-year rows drive the live sector
         # numbers (and the benchmark), so they should be tagged before the
         # decade-old backlog. Pagination/dedup are order-independent.
-        params = {"industry_missing": "1", "sort": "layoff_date", "dir": "desc",
+        # HYBRID ordering across shards, deliberately not one global sort.
+        # Sorting everything by size would move the headline sector figures
+        # fastest, but it would also tag big employers first and leave small
+        # ones blank, skewing the sector DISTRIBUTION for as long as the drain
+        # takes. Sorting everything by date does the opposite: it never reaches
+        # the handful of 20,000-job rows that actually move the numbers. So
+        # half the shards work largest-first and half newest-first, and both
+        # problems shrink at once.
+        params = {"industry_missing": "1", "sort": SCAN_SORT, "dir": "desc",
                   "per_page": PAGE_SIZE, "page": page}
         response = _get_with_retry(f"{SITE}/wp-json/layoffs/v1/query", params)
         if response is None and page == 1:
