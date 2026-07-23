@@ -8,11 +8,11 @@ name: Industry backfill
 # touches counts/dates/stages/sources/AI labels.
 on:
   schedule:
-    # 4x/day at the max safe batch. The blank-industry backlog measured 42,028
+    # 8x/day at the max safe batch (1,600 rows/day). The blank-industry backlog measured 42,028
     # rows on 2026-07-23; at the old 40/day this would never drain (~1,000 days).
     # The worker stops safely on its own deadline, so a full batch that runs long
     # simply resumes next slot.
-    - cron: '55 4,10,16,22 * * *'
+    - cron: '55 1,4,7,10,13,16,19,22 * * *'
   workflow_dispatch:
     inputs:
       batch:

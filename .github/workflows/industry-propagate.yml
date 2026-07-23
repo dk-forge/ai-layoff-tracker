@@ -9,7 +9,12 @@ name: Industry propagate (deterministic)
 
 on:
   schedule:
-    - cron: '20 7 * * 3'   # Wednesdays, after the nightly enrichment jobs
+    # DAILY, not weekly: 45% of US-2026 job volume still carries no industry
+    # label, which mechanically caps every sector figure we report. This pass is
+    # deterministic (it reuses a label the SAME company already carries on
+    # another row), so it costs no model calls and can safely run every day
+    # alongside the bounded LLM backfill.
+    - cron: '20 7 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
