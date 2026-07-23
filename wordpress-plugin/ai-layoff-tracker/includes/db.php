@@ -334,6 +334,32 @@ function alt_compact_corrections_log() {
 }
 
 /**
+ * House style is "no em-dashes in UI copy", but the corrections log is DATA:
+ * historical notes were written with em-dashes before that rule existed, and they
+ * render verbatim on the tracker. A code change can't reach them, so normalize
+ * the stored strings instead. A SPACED em/en dash is a clause break (-> comma);
+ * any remaining one is a joiner or range (-> hyphen, so "2015-2017" stays a
+ * range). Idempotent: once converted no dashes remain, so re-running is a no-op.
+ */
+function alt_normalize_corrections_dashes() {
+    $log = get_option('alt_corrections_log');
+    if (!is_array($log) || !$log) return;
+    $changed = false;
+    foreach ($log as $i => $e) {
+        foreach (array('reason', 'detail') as $f) {
+            if (empty($e[$f]) || !is_string($e[$f])) continue;
+            $new = preg_replace('/\s+[\x{2014}\x{2013}]\s+/u', ', ', $e[$f]);
+            $new = preg_replace('/[\x{2014}\x{2013}]/u', '-', (string) $new);
+            if ($new !== null && $new !== $e[$f]) {
+                $log[$i][$f] = $new;
+                $changed = true;
+            }
+        }
+    }
+    if ($changed) update_option('alt_corrections_log', $log, false);
+}
+
+/**
  * One-time (idempotent) removal of UNDATED news/SEC/press rows that duplicate a
  * DATED event of the same company and headcount. Blank-date rows bypassed the
  * date-gated fuzzy dedup guard, so e.g. an undated "Volkswagen 50,000" sat next
