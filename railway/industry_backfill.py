@@ -55,6 +55,14 @@ DEADLINE_SECONDS = max(60, min(1800, int(os.environ.get("INDUSTRY_BACKFILL_DEADL
 DRY_RUN = os.environ.get("INDUSTRY_BACKFILL_DRY_RUN", "").lower() in {"1", "true", "yes"}
 SINGLE_PASS = os.environ.get("INDUSTRY_BACKFILL_SINGLE_PASS", "").lower() in {"1", "true", "yes"}
 
+# Shard support: several backfill jobs run in parallel, each striding a
+# DISJOINT set of scan pages. Striding (rather than each shard scanning
+# everything) means N shards do N times the work for the SAME total request
+# load on the shared host, which matters because it was host load that produced
+# the 500s in the first place.
+SHARDS = max(1, int(os.environ.get("INDUSTRY_SHARDS") or "1"))
+SHARD = max(0, min(SHARDS - 1, int(os.environ.get("INDUSTRY_SHARD") or "0")))
+
 PAGE_SIZE = 200
 MAX_PAGES = 300  # hard bound on the scan (300 * 200 = 60K rows)
 WRITE_BATCH = 200  # the endpoint accepts up to 2000 items; stay well under
@@ -95,7 +103,7 @@ def fetch_candidates():
     A row with neither a company name nor an excerpt has no evidence to read,
     so it never enters the queue (it would only ever resolve to a skip)."""
     candidates = []
-    page = 1
+    page = 1 + SHARD           # this shard's first page
     while page <= MAX_PAGES:
         # Newest layoffs first: the current-year rows drive the live sector
         # numbers (and the benchmark), so they should be tagged before the
@@ -140,7 +148,7 @@ def fetch_candidates():
             candidates.append(row)
         if len(rows) < PAGE_SIZE or page * PAGE_SIZE >= payload.get("total", 0):
             break
-        page += 1
+        page += SHARDS         # stride past the pages other shards own
     return candidates
 
 
@@ -309,7 +317,7 @@ def run():
     # pointed two consecutive runs at the same slice (and a daily one pointed
     # all eight there). The divisor must track the schedule.
     _now = datetime.now(timezone.utc)
-    _ordinal = date.today().toordinal() * 8 + (_now.hour // 3)
+    _ordinal = (date.today().toordinal() * 8 + (_now.hour // 3)) * SHARDS + SHARD
     queue = rotating_slice(remaining, BATCH, _ordinal)
     items, confirmed, unconfirmed, failures, checked = [], 0, 0, 0, 0
     started_at = time.monotonic()

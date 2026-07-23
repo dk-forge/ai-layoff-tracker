@@ -31,13 +31,22 @@ on:
 # The endpoint fills blank rows idempotently, but two overlapping runs would
 # waste model calls racing the same rotation slice.
 concurrency:
-  group: industry-backfill
+  # Per-shard: the shards stride DISJOINT scan pages, so they never race each
+  # other; only a re-run of the same shard should queue behind itself.
+  group: industry-backfill-${{ matrix.shard || github.event.inputs.shard || '0' }}
   cancel-in-progress: false
 
 jobs:
   backfill:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      # 4 parallel shards. Each strides every 4th page of the blank-industry
+      # scan, so together they cover the same pages the single job did, in a
+      # quarter of the wall time and with the same total request load.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,6 +59,8 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '200' }}
+          INDUSTRY_SHARD: ${{ matrix.shard }}
+          INDUSTRY_SHARDS: '4' 
           INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
           # Stops safely between rows well below the job timeout; the daily
