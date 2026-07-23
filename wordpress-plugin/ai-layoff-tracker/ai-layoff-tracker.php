@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.155
+ * Version: 2.19.156
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.155');
+define('ALT_VERSION', '2.19.156');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -431,6 +431,16 @@ function alt_ensure_sources_page_once() {
 }
 add_action('init', 'alt_ensure_sources_page_once', 20);
 
+function alt_ensure_ai_quotes_page_once() {
+    if (get_page_by_path('ai-layoff-tracker/ai-quotes')) return;
+    $parent = get_page_by_path('ai-layoff-tracker');
+    if (!$parent) return;
+    wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
+        'post_parent' => (int) $parent->ID, 'post_title' => "AI layoffs, in their own words",
+        'post_name' => 'ai-quotes', 'post_content' => '[alt_ai_quotes]'));
+}
+add_action('init', 'alt_ensure_ai_quotes_page_once', 20);
+
 function alt_ensure_publisher_page_once() {
     if (get_page_by_path('ai-layoff-tracker/publisher-tools')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
@@ -558,7 +568,7 @@ function alt_page_needs_assets() {
     $shortcodes = array(
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
-        'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report',
+        'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report', 'alt_ai_quotes',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
