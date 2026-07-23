@@ -30,7 +30,9 @@ import urllib.request
 SITE = os.environ.get("WP_SITE_URL", "https://asktherecruiter.com/blog").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
 DRY = os.environ.get("INDUSTRY_PROPAGATE_DRY_RUN", "").lower() in {"1", "true", "yes"}
-MAX_WRITE = int(os.environ.get("INDUSTRY_PROPAGATE_MAX", "5000"))
+# `or` not a get-default: the workflow passes an EMPTY string when the input is
+# blank, which a plain default would not catch.
+MAX_WRITE = int(os.environ.get("INDUSTRY_PROPAGATE_MAX") or "5000")
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 PAGE = 200
 # A company's label is only trusted when it clearly dominates its tagged rows;
