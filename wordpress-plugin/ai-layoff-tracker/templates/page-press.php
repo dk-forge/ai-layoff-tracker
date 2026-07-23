@@ -128,6 +128,8 @@ if (!is_array($alt_sb_groups)) {
     <a href="#alt-dataset">The dataset &amp; API</a>
     <a href="#alt-brand">Brand assets</a>
     <a href="#alt-soundbites"><b>Ready-to-use soundbites &darr;</b></a>
+    &middot; <a href="#alt-evidence-ladder"><b>AI evidence ladder &darr;</b></a>
+    &middot; <a href="#alt-press-statements"><b>Press statements &darr;</b></a>
   </nav>
 
   <h2 id="alt-boilerplate">Boilerplate</h2>
@@ -211,5 +213,228 @@ if (!is_array($alt_sb_groups)) {
   </div>
     <?php endforeach; ?>
   <p class="alt-muted">Figures are current live values and change as new sources are verified. Every number is reproducible from the public API.</p>
+  <?php endif; ?>
+
+<?php
+// ---------------------------------------------------------------------------
+// AI EVIDENCE LADDER + PRESS STATEMENTS
+//
+// Soundbites are one sentence. Reporters also need a paragraph they can paste
+// into a pitch, with the filtered view already built so the claim can be
+// checked in one click. Everything below is generated from live data, cached
+// hourly, and every statement carries the preset link that reproduces it.
+// ---------------------------------------------------------------------------
+$alt_ps = get_transient('alt_press_statements');
+if (!is_array($alt_ps)) {
+    global $wpdb; $alt_pt = alt_db_table();
+    $alt_ptk = home_url('/ai-layoff-tracker/');
+    $alt_plk = function ($args) use ($alt_ptk) { return esc_url(add_query_arg($args, $alt_ptk)); };
+    $alt_pn = function ($v) { return number_format((int) $v); };
+
+    // Evidence tiers. These are not new labels: they are the ai_causation values
+    // already stored on every row, surfaced so a reporter can choose the
+    // strictness their story needs instead of trusting one blended number.
+    $alt_tiers = $wpdb->get_row(
+        "SELECT COALESCE(SUM(CASE WHEN ai_causation='primary_cause' AND announced=0 THEN job_count END),0) t1,
+                COALESCE(SUM(CASE WHEN ai_causation='contributing_cause' AND announced=0 THEN job_count END),0) t2,
+                COALESCE(SUM(CASE WHEN ai_causation='ai_linked' AND announced=0 THEN job_count END),0) t3
+         FROM $alt_pt WHERE YEAR(layoff_date) = " . (int) gmdate('Y'));
+
+    // One period's figures.
+    $alt_pstats = function ($from, $to) use ($wpdb, $alt_pt) {
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
+                    COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) a,
+                    COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai,
+                    COUNT(DISTINCT CASE WHEN announced=0 THEN company_key END) co
+             FROM $alt_pt WHERE layoff_date BETWEEN %s AND %s", $from, $to));
+    };
+    $alt_ptopcol = function ($col, $from, $to, $ai_only) use ($wpdb, $alt_pt) {
+        $extra = $ai_only ? " AND ai_explicit=1" : "";
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT $col k, SUM(job_count) j FROM $alt_pt
+             WHERE layoff_date BETWEEN %s AND %s AND $col <> '' AND announced=0 $extra
+             GROUP BY $col ORDER BY j DESC LIMIT 1", $from, $to));
+    };
+    $alt_pbig = function ($from, $to) use ($wpdb, $alt_pt) {
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT company, job_count, country FROM $alt_pt
+             WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND job_count > 0
+             ORDER BY job_count DESC, id DESC LIMIT 1", $from, $to));
+    };
+    $alt_stn = array('AL'=>'Alabama','AK'=>'Alaska','AZ'=>'Arizona','AR'=>'Arkansas','CA'=>'California','CO'=>'Colorado','CT'=>'Connecticut','DE'=>'Delaware','DC'=>'Washington, D.C.','FL'=>'Florida','GA'=>'Georgia','HI'=>'Hawaii','ID'=>'Idaho','IL'=>'Illinois','IN'=>'Indiana','IA'=>'Iowa','KS'=>'Kansas','KY'=>'Kentucky','LA'=>'Louisiana','ME'=>'Maine','MD'=>'Maryland','MA'=>'Massachusetts','MI'=>'Michigan','MN'=>'Minnesota','MS'=>'Mississippi','MO'=>'Missouri','MT'=>'Montana','NE'=>'Nebraska','NV'=>'Nevada','NH'=>'New Hampshire','NJ'=>'New Jersey','NM'=>'New Mexico','NY'=>'New York','NC'=>'North Carolina','ND'=>'North Dakota','OH'=>'Ohio','OK'=>'Oklahoma','OR'=>'Oregon','PA'=>'Pennsylvania','RI'=>'Rhode Island','SC'=>'South Carolina','SD'=>'South Dakota','TN'=>'Tennessee','TX'=>'Texas','UT'=>'Utah','VT'=>'Vermont','VA'=>'Virginia','WA'=>'Washington','WV'=>'West Virginia','WI'=>'Wisconsin','WY'=>'Wyoming');
+
+    // Build the statement set for one cadence.
+    $alt_build = function ($from, $to, $label, $linkargs) use ($alt_pstats, $alt_ptopcol, $alt_pbig, $alt_plk, $alt_pn, $alt_stn) {
+        $s = $alt_pstats($from, $to);
+        $v = (int) ($s->v ?? 0); $a = (int) ($s->a ?? 0);
+        $ai = (int) ($s->ai ?? 0); $co = (int) ($s->co ?? 0);
+        if ($v <= 0) return array();
+        $out = array();
+        $pct = $v > 0 ? round(100 * $ai / $v) : 0;
+
+        $out[] = array(
+            'label' => 'The documented floor',
+            'text'  => sprintf(
+                'For %s, %s job cuts are documented worldwide: every one traceable to an SEC filing, a state WARN notice, or a named news report, counted on the day the cut takes effect. Of those, %s carry the employer\'s own words naming AI or automation as a cause (%d%% of the documented total). A further %s sit in the separately labeled announced tier, which is company plans at announcement stage and is never mixed into the documented figure. Announcement surveys count intentions on the day they are announced, including multi-year plans and receiptless separations; this figure counts what has a paper trail behind it, so treat it as a floor you can verify rather than an estimate.',
+                $label, $alt_pn($v), $alt_pn($ai), $pct, $alt_pn($a)),
+            'link' => $alt_plk($linkargs), 'linklabel' => 'the exact rows behind this figure');
+
+        $st = $alt_ptopcol('state', $from, $to, false);
+        if ($st && $st->k && isset($alt_stn[$st->k])) {
+            $stai = $alt_ptopcol('state', $from, $to, true);
+            $aitxt = ($stai && $stai->k === $st->k)
+                ? sprintf(' Within that, %s jobs carry an explicit AI attribution from the employer.', $alt_pn($stai->j))
+                : '';
+            $out[] = array(
+                'label' => 'Localized: top US state',
+                'text'  => sprintf(
+                    '%s recorded the largest documented job-cut total of any US state for %s, at %s jobs across filings and named reports.%s Every row links to the state\'s own WARN notice or the company\'s SEC filing, so a regional desk can name the employers, the effective dates and the affected sites without waiting for a national survey.',
+                    $alt_stn[$st->k], $label, $alt_pn($st->j), $aitxt),
+                'link' => $alt_plk(array_merge($linkargs, array('country' => 'United States', 'state' => $st->k))),
+                'linklabel' => $alt_stn[$st->k] . ' rows');
+        }
+
+        $ind = $alt_ptopcol('industry', $from, $to, false);
+        if ($ind && $ind->k) {
+            $out[] = array(
+                'label' => 'Sector concentration',
+                'text'  => sprintf(
+                    '%s absorbed the largest share of documented job cuts for %s, at %s jobs. Sector labels here come from the company plus its own retained source text, are drawn from a fixed vocabulary, and are only written when two independent passes agree, so the breakdown can be reproduced rather than taken on trust.',
+                    $ind->k, $label, $alt_pn($ind->j)),
+                'link' => $alt_plk(array_merge($linkargs, array('industry' => $ind->k))),
+                'linklabel' => $ind->k . ' rows');
+        }
+
+        $big = $alt_pbig($from, $to);
+        if ($big && $big->company) {
+            $out[] = array(
+                'label' => 'Largest single documented cut',
+                'text'  => sprintf(
+                    'The largest single documented cut for %s is %s, at %s jobs. It appears here only because a filing or a named report puts the number on the record, and the entry links straight to that document, so the figure can be checked at source before it is quoted.',
+                    $label, $big->company, $alt_pn($big->job_count)),
+                'link' => $alt_plk(array_merge($linkargs, array('company' => $big->company))),
+                'linklabel' => $big->company . ' entries');
+        }
+        return $out;
+    };
+
+    $alt_y2 = (int) gmdate('Y');
+    $alt_wk_from = gmdate('Y-m-d', strtotime('-7 days'));
+    $alt_wk_to   = gmdate('Y-m-d');
+    $alt_lmts    = strtotime(gmdate('Y-m-01') . ' -1 day');
+    $alt_mo_from = gmdate('Y-m-01', $alt_lmts); $alt_mo_to = gmdate('Y-m-t', $alt_lmts);
+    $alt_mo_lab  = gmdate('F Y', $alt_lmts);
+
+    $alt_ps = array(
+        'generated' => gmdate('j F Y, H:i') . ' UTC',
+        'tiers'     => array(
+            't1' => (int) ($alt_tiers->t1 ?? 0),
+            't2' => (int) ($alt_tiers->t2 ?? 0),
+            't3' => (int) ($alt_tiers->t3 ?? 0),
+            'year' => $alt_y2,
+        ),
+        'sets' => array(
+            array('id' => 'weekly', 'title' => 'This week', 'sub' => 'rolling 7 days to ' . gmdate('j F Y'),
+                  'items' => $alt_build($alt_wk_from, $alt_wk_to, 'the last seven days',
+                                        array('from' => $alt_wk_from, 'to' => $alt_wk_to))),
+            array('id' => 'monthly', 'title' => $alt_mo_lab, 'sub' => 'complete calendar month',
+                  'items' => $alt_build($alt_mo_from, $alt_mo_to, $alt_mo_lab,
+                                        array('from' => $alt_mo_from, 'to' => $alt_mo_to))),
+            array('id' => 'yearly', 'title' => $alt_y2 . ' year to date', 'sub' => '1 January to today',
+                  'items' => $alt_build(sprintf('%04d-01-01', $alt_y2), gmdate('Y-m-d'), $alt_y2 . ' so far',
+                                        array('years' => $alt_y2))),
+        ),
+    );
+
+    // Rolling archive: every earlier month this year and each prior year, so a
+    // statement stays reachable after its cadence rolls over.
+    $alt_arch = array();
+    for ($i = 2; $i <= 13; $i++) {
+        $ts = strtotime(gmdate('Y-m-01') . " -$i month");
+        $f = gmdate('Y-m-01', $ts); $t = gmdate('Y-m-t', $ts);
+        $st = $alt_pstats($f, $t);
+        if ((int) ($st->v ?? 0) <= 0) continue;
+        $alt_arch[] = array('label' => gmdate('F Y', $ts), 'v' => (int) $st->v, 'ai' => (int) $st->ai,
+                            'link' => $alt_plk(array('from' => $f, 'to' => $t)));
+    }
+    for ($yy = $alt_y2 - 1; $yy >= $alt_y2 - 6; $yy--) {
+        $st = $alt_pstats(sprintf('%04d-01-01', $yy), sprintf('%04d-12-31', $yy));
+        if ((int) ($st->v ?? 0) <= 0) continue;
+        $alt_arch[] = array('label' => 'Full year ' . $yy, 'v' => (int) $st->v, 'ai' => (int) $st->ai,
+                            'link' => $alt_plk(array('years' => $yy)));
+    }
+    $alt_ps['archive'] = $alt_arch;
+    set_transient('alt_press_statements', $alt_ps, HOUR_IN_SECONDS);
+}
+?>
+
+  <h2 id="alt-evidence-ladder">The AI evidence ladder</h2>
+  <p>The hardest question about any AI layoff number is what counts as AI. We answer it by never publishing a single blended figure. Every entry already stores how directly the employer tied the cut to AI, so you can pick the standard your story needs and see exactly what falls in or out at each step.</p>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+    <thead><tr><th>Tier</th><th>What has to be true</th><th><?php echo (int) $alt_ps['tiers']['year']; ?> jobs</th><th>Preset view</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Tier 1</b><br><small>AI named as the cause</small></td>
+        <td>The employer states AI or automation is <b>the</b> reason for the cut, with the exact quote on file.</td>
+        <td><b><?php echo number_format($alt_ps['tiers']['t1']); ?></b></td>
+        <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_primary' => '1'), home_url('/ai-layoff-tracker/'))); ?>">Tier 1 only &rarr;</a></td>
+      </tr>
+      <tr>
+        <td><b>Tier 2</b><br><small>AI named among the causes</small></td>
+        <td>The employer names AI as <b>a</b> contributing cause alongside others, again with the quote on file.</td>
+        <td><b><?php echo number_format($alt_ps['tiers']['t2']); ?></b></td>
+        <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai' => '1'), home_url('/ai-layoff-tracker/'))); ?>">Tier 1 + 2 &rarr;</a></td>
+      </tr>
+      <tr>
+        <td><b>Tier 3</b><br><small>AI-linked, no direct statement</small></td>
+        <td>No employer statement. An AI pivot is underway, or the press framed the cut that way. Reported separately and <b>never</b> merged into the tiers above.</td>
+        <td><b><?php echo number_format($alt_ps['tiers']['t3']); ?></b></td>
+        <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_broad' => '1'), home_url('/ai-layoff-tracker/'))); ?>">Tiers 1 + 2 + 3 &rarr;</a></td>
+      </tr>
+    </tbody>
+  </table></div>
+  <p class="alt-muted">Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
+
+  <h2 id="alt-press-statements">Press statements</h2>
+  <p>Written to be pasted straight into a pitch or a story, with the maths already done. Each one carries the preset view that reproduces it, so an editor can check the claim in a single click. Figures are live and regenerate hourly; the wording stays stable.</p>
+  <p class="alt-muted"><b>Generated <?php echo esc_html($alt_ps['generated']); ?>.</b> Weekly, monthly and year-to-date versions run in parallel, and each period drops into the archive at the bottom when it rolls over, so nothing you have already quoted disappears.</p>
+
+  <?php foreach ($alt_ps['sets'] as $alt_set) : if (empty($alt_set['items'])) continue; ?>
+  <h3 id="alt-ps-<?php echo esc_attr($alt_set['id']); ?>" class="alt-sb-grouptitle"><?php echo esc_html($alt_set['title']); ?> <small class="alt-muted">(<?php echo esc_html($alt_set['sub']); ?>)</small></h3>
+  <div class="alt-soundbites">
+    <?php foreach ($alt_set['items'] as $alt_it) : ?>
+    <figure class="alt-soundbite alt-press-statement">
+      <span class="alt-sb-label"><?php echo esc_html($alt_it['label']); ?></span>
+      <blockquote class="alt-sb-text"><?php echo esc_html($alt_it['text']); ?></blockquote>
+      <figcaption class="alt-sb-actions">
+        <button type="button" class="alt-btn alt-btn-sm alt-sb-copy">Copy statement</button>
+        <a class="alt-sb-link" href="<?php echo $alt_it['link']; ?>">&#128202; Open <?php echo esc_html($alt_it['linklabel']); ?> &rarr;</a>
+      </figcaption>
+    </figure>
+    <?php endforeach; ?>
+  </div>
+  <?php endforeach; ?>
+
+  <?php if (!empty($alt_ps['archive'])) : ?>
+  <details class="alt-methodology" id="alt-ps-archive">
+    <summary>Statement archive (earlier months and years)</summary>
+    <div class="alt-method-body">
+      <p>Every period keeps its own preset view, so a figure you quoted last quarter stays reachable and checkable.</p>
+      <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
+        <thead><tr><th>Period</th><th>Documented job cuts</th><th>AI, employer's own words</th><th>Preset view</th></tr></thead>
+        <tbody>
+        <?php foreach ($alt_ps['archive'] as $alt_a) : ?>
+          <tr>
+            <th><?php echo esc_html($alt_a['label']); ?></th>
+            <td><?php echo number_format($alt_a['v']); ?></td>
+            <td><?php echo number_format($alt_a['ai']); ?></td>
+            <td><a href="<?php echo $alt_a['link']; ?>">Open this period &rarr;</a></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table></div>
+    </div>
+  </details>
   <?php endif; ?>
 </main>
