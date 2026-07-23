@@ -60,6 +60,35 @@ MAX_PAGES = 300  # hard bound on the scan (300 * 200 = 60K rows)
 WRITE_BATCH = 200  # the endpoint accepts up to 2000 items; stay well under
 
 
+_TRANSIENT = {408, 429, 500, 502, 503, 504, 520, 521, 522, 524}
+
+
+def _get_with_retry(url, params, attempts=3):
+    """GET that survives the shared host's intermittent 5xx.
+
+    Returns the response, or None when every attempt failed transiently. A
+    deep-offset page of the blank-industry scan reliably 500s while a large
+    WARN import is running; that single blip used to abort the entire backfill
+    (the run died at page 76 of 140 having filled nothing), which is why the
+    backlog was not draining.
+    """
+    for attempt in range(attempts):
+        try:
+            r = requests.get(url, params=params, headers=UA, timeout=60)
+            if r.status_code not in _TRANSIENT:
+                return r          # success, or a real error the caller must raise on
+            if attempt < attempts - 1:
+                time.sleep(5 * (attempt + 1))
+                continue
+            return None           # still transient after the last attempt
+        except requests.RequestException:
+            if attempt < attempts - 1:
+                time.sleep(5 * (attempt + 1))
+                continue
+            return None
+    return None
+
+
 def fetch_candidates():
     """Page through blank-industry rows that carry something to classify.
 
@@ -73,7 +102,24 @@ def fetch_candidates():
         # decade-old backlog. Pagination/dedup are order-independent.
         params = {"industry_missing": "1", "sort": "layoff_date", "dir": "desc",
                   "per_page": PAGE_SIZE, "page": page}
-        response = requests.get(f"{SITE}/wp-json/layoffs/v1/query", params=params, headers=UA, timeout=60)
+        response = _get_with_retry(f"{SITE}/wp-json/layoffs/v1/query", params)
+        if response is None and page == 1:
+            # No data at all: that is a real outage, not a blip. Fail loudly
+            # rather than reporting a successful run that classified nothing.
+            raise RuntimeError(
+                "industry backfill: /query unreachable (transient errors on page 1 "
+                "after retries) - the run classified nothing")
+        if response is None:
+            # The shared host answered 5xx on this page even after retries
+            # (usually because a big WARN import is loading it at the same
+            # time). Losing one page of a 140-page scan is not a reason to
+            # throw away the whole run: the deterministic pre-pass can still
+            # fill thousands of rows from the pages we DID get, and the rest
+            # comes back on the next rotation. Only a page-1 failure, i.e. no
+            # data at all, is treated as a real outage (raised below).
+            print(f"  scan: page {page} still failing after retries, "
+                  f"continuing with {len(candidates)} candidate(s) already collected")
+            break
         # WP returns 404 for a page past the last row. Between our sequential
         # page requests the candidate set shrinks (rows get filled) or `total`
         # is under-reported, so the final page can 404 even though the scan
@@ -259,10 +305,11 @@ def run():
             det_filled, det_skip, det_nf = post_fills(det_items)
             print(f"deterministic pre-pass: {len(det_filled)} filled / {len(det_items)} matched "
                   f"(skipped_not_blank={len(det_skip)}, not_found={len(det_nf)})")
-    # SIX-HOURLY ordinal, not daily: the job runs 4x/day, and a day-based
-    # ordinal pointed all four runs at the same slice, wasting three of them.
+    # THREE-HOURLY ordinal: the job now runs 8x/day, so a six-hourly ordinal
+    # pointed two consecutive runs at the same slice (and a daily one pointed
+    # all eight there). The divisor must track the schedule.
     _now = datetime.now(timezone.utc)
-    _ordinal = date.today().toordinal() * 4 + (_now.hour // 6)
+    _ordinal = date.today().toordinal() * 8 + (_now.hour // 3)
     queue = rotating_slice(remaining, BATCH, _ordinal)
     items, confirmed, unconfirmed, failures, checked = [], 0, 0, 0, 0
     started_at = time.monotonic()
