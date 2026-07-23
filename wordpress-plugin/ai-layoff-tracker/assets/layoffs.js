@@ -732,14 +732,29 @@
             return (pv >= 10 ? Math.round(pv) : pv.toFixed(1)) + '%';
         };
         setText('alt-stat-ai-sub', when);
-        var shareV = pctTxt(aiJ, verifiedJ);
-        setText('alt-stat-ai-share-line', shareV ? shareV + ' of verified cuts were blamed on AI by the employer' : '');
+        // A share is only meaningful against a denominator that still contains
+        // non-AI rows. Once the view is filtered to AI-attributed rows the
+        // denominator IS the numerator, so this read "100% of verified cuts
+        // were blamed on AI by the employer", which is circular and, screenshot
+        // out of context, plainly false. Say what the filter did instead.
+        var _cp = (typeof currentParams === 'function') ? currentParams() : {};
+        var aiFiltered = !!(readControl('alt-f-ai')
+            || _cp.ai === '1' || _cp.ai_broad === '1' || _cp.ai_primary === '1');
+        var shareV = aiFiltered ? null : pctTxt(aiJ, verifiedJ);
+        setText('alt-stat-ai-share-line', aiFiltered
+            ? 'Share not shown: this view is filtered to AI-attributed rows, so it would compare the number with itself.'
+            : (shareV ? shareV + ' of verified cuts were blamed on AI by the employer' : ''));
         // The broad card is the wider-lens AI measure. Location-basis fills
         // first so the card never sits empty.
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
         setText('alt-stat-ai-broad-sub', when);
-        var shareB = pctTxt(t.ai_broad_jobs, t.jobs);
-        setText('alt-stat-ai-broad-share-line', shareB ? shareB + ' of all cuts in this view have an AI link' : '');
+        // Same trap: filtered to strict-AI rows, the broad measure cannot
+        // exceed them, so the card silently equalled the specific total while
+        // its caption promised it would be larger.
+        var shareB = aiFiltered ? null : pctTxt(t.ai_broad_jobs, t.jobs);
+        setText('alt-stat-ai-broad-share-line', aiFiltered
+            ? 'Equals the specific total in this filtered view: the broad lens can only widen an UNfiltered set. Clear the AI filter to see it.'
+            : (shareB ? shareB + ' of all cuts in this view have an AI link' : ''));
         var aiAnnJ = (t.ai_announced_jobs != null)
             ? t.ai_announced_jobs
             : Math.max(0, (t.ai_jobs || 0) - aiJ);

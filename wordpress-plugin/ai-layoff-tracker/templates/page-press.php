@@ -379,11 +379,12 @@ if (!is_array($alt_ps)) {
   <h2 id="alt-evidence-ladder">The AI evidence ladder</h2>
   <p>The hardest question about any AI layoff number is what counts as AI. We answer it by never publishing a single blended figure. Every entry already stores how directly the employer tied the cut to AI, so you can pick the standard your story needs and see exactly what falls in or out at each step.</p>
   <div class="alt-health-table-wrap"><table class="alt-sources-table">
-    <thead><tr><th>Tier</th><th>What has to be true</th><th><?php echo (int) $alt_ps['tiers']['year']; ?> jobs<br><small>verified tier</small></th><th>Preset view</th></tr></thead>
+    <thead><tr><th>Tier</th><th>What has to be true</th><th>Where it appears on the tracker</th><th><?php echo (int) $alt_ps['tiers']['year']; ?> jobs<br><small>verified tier</small></th><th>Preset view</th></tr></thead>
     <tbody>
       <tr>
         <td><b>Tier 1</b><br><small>AI named as the cause</small></td>
         <td>The employer states AI or automation is <b>the</b> reason for the cut, with the exact quote on file.</td>
+        <td rowspan="2" class="alt-tier-map">Together these are the <b>&#34;AI cuts, verified (specific)&#34;</b> box on the tracker, and the AI figure we headline. Each also has an announced-stage counterpart in <b>&#34;AI cuts, announced&#34;</b>.</td>
         <td><b><?php echo number_format($alt_ps['tiers']['t1']); ?></b></td>
         <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_primary' => '1'), home_url('/ai-layoff-tracker/'))); ?>">Tier 1 only &rarr;</a></td>
       </tr>
@@ -396,11 +397,13 @@ if (!is_array($alt_ps)) {
       <tr>
         <td><b>Tier 3</b><br><small>AI-linked, no direct statement</small></td>
         <td>No employer statement. An AI pivot is underway, or the press framed the cut that way. Reported separately and <b>never</b> merged into the tiers above.</td>
+        <td>This tier is exactly what the <b>&#34;AI-linked, broad&#34;</b> box adds on top of the specific figure. It is the only reason that box is larger.</td>
         <td><b><?php echo number_format($alt_ps['tiers']['t3']); ?></b></td>
         <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_broad' => '1'), home_url('/ai-layoff-tracker/'))); ?>">Tiers 1 + 2 + 3 &rarr;</a></td>
       </tr>
     </tbody>
   </table></div>
+  <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI, while verified and announced sort the same rows by whether the cut has happened yet. The two axes reconcile exactly: Tier 1 plus Tier 2 equals the tracker's verified AI box to the job, and Tier 3 is precisely the gap between the specific figure and the broad one. Nothing is double counted and nothing is invented for this table.</p>
   <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated causation is on record, so they are a subset of the headline AI figure rather than a restatement of it. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
 
   <h2 id="alt-press-statements">Press statements</h2>
