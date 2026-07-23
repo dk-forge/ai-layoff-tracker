@@ -1,0 +1,25 @@
+name: NC WARN parser check
+
+# Dry check for the NC WARN parsers (grid + 2015-2017 x-position text vintages).
+# Runs fetch_nc() and reports the row count plus any row whose company field is
+# still misaligned (a bare number / no real word). Posts NOTHING. Used to measure
+# before/after a parser fix. Manual dispatch only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  nc-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: NC parser check (prints only, posts nothing)
+        working-directory: railway
+        run: python nc_warn_check.py
