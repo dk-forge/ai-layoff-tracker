@@ -52,7 +52,8 @@ TRUSTED_DOMAINS = {
     # that never reach a national wire. These are editorial newsrooms we can cite
     # directly - unlike crowdsourced trackers, which may only ever be a discovery
     # signal to verify against a primary source, never a source themselves.
-    "news.crunchbase.com", "sifted.eu", "tech.eu",            # startup/VC newsrooms (US + EU)
+    "news.crunchbase.com",                                    # United States
+    "sifted.eu", "tech.eu",                                   # EU-wide
     "techcrunch.com", "theverge.com", "wired.com", "arstechnica.com", "engadget.com",
     "zdnet.com", "venturebeat.com", "theregister.com", "gizmodo.com", "mashable.com",
     "digitaltrends.com", "theinformation.com", "restofworld.org", "9to5google.com",
@@ -116,6 +117,27 @@ TRUSTED_DOMAINS = {
     "afr.com", "theaustralian.com.au", "news.com.au", "theage.com.au",  # Australia
     "9news.com.au", "skynews.com.au", "watoday.com.au", "brisbanetimes.com.au",
     "thetimes.co.uk", "news.sky.com", "standard.co.uk", "cityam.com",   # UK
+    # --- 2026-07-23 international depth audit. Per-country counts showed the
+    # same shape as the US finding: national dailies present, BUSINESS and TRADE
+    # press absent - and that tier is what reports mid-size layoffs. Canada was
+    # the worst: its only two outlets were French-language Quebec, so no
+    # English-Canadian cut was visible at all. Comments are BARE country names
+    # on purpose: the country-table parser drops any comment containing words
+    # like business/press/trade/regional into an unattributed bucket.
+    "thelogic.co", "biv.com", "obj.ca", "calgaryherald.com",  # Canada
+    "winnipegfreepress.com", "canadianmanufacturing.com", "investmentexecutive.com", "canadiangrocer.com",  # Canada
+    "mining.com",  # Canada
+    "thetimes.com", "business-live.co.uk", "thebusinessdesk.com", "insidermedia.com",  # United Kingdom
+    "insider.co.uk", "retailgazette.co.uk", "retail-week.com", "thegrocer.co.uk",  # United Kingdom
+    "themanufacturer.com", "pressgazette.co.uk", "pmlive.com", "irishnews.com",  # United Kingdom
+    "thehindubusinessline.com", "financialexpress.com", "cnbctv18.com", "businesstoday.in",  # India
+    "entrackr.com", "the-ken.com", "fortuneindia.com", "medianama.com",  # India
+    "businesspost.ie", "irishexaminer.com", "thecurrency.news", "siliconrepublic.com",  # Ireland
+    "businessplus.ie", "breakingnews.ie", "checkout.ie", "farmersjournal.ie",  # Ireland
+    "agriland.ie", "shelflife.ie", "echolive.ie",  # Ireland
+    "theedgesingapore.com", "dealstreetasia.com", "asia.nikkei.com", "e27.co",  # Singapore
+    "zaobao.com.sg", "hrmasia.com", "humanresourcesonline.net", "marketing-interactive.com",  # Singapore
+    "splash247.com",  # Singapore
     "euronews.com", "politico.eu", "euractiv.com",            # EU-wide
     "liberation.fr", "lexpress.fr",                           # France
     "sueddeutsche.de", "welt.de", "tagesschau.de",            # Germany
