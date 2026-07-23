@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.132
+ * Version: 2.19.133
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.132');
+define('ALT_VERSION', '2.19.133');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -743,7 +743,17 @@ function alt_seo_head() {
     );
     echo "<script type=\"application/ld+json\">" . wp_json_encode($faq_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
 
-    if (apply_filters('alt_output_og_tags', true)) {
+    // Defer plain meta/OG tags to a dedicated SEO plugin when one is active.
+    // The live page was emitting TWO og:description tags (theirs at 184 chars,
+    // ours at 321) because both we and the SEO plugin wrote them - conflicting
+    // signals, and crawlers just take the first, so ours was dead weight. Our
+    // unique contribution is the Dataset + FAQPage JSON-LD above, which no SEO
+    // plugin generates, so that always ships. Override with the filter if the
+    // SEO plugin is ever configured not to emit Open Graph.
+    $alt_seo_plugin = defined('WPSEO_VERSION') || defined('RANK_MATH_VERSION')
+        || defined('AIOSEO_VERSION') || defined('SEOPRESS_VERSION')
+        || class_exists('The_SEO_Framework\\Load');
+    if (apply_filters('alt_output_og_tags', !$alt_seo_plugin)) {
         echo '<meta property="og:type" content="website">' . "\n";
         echo '<meta property="og:title" content="' . esc_attr($title) . '">' . "\n";
         echo '<meta property="og:description" content="' . esc_attr($desc) . '">' . "\n";
