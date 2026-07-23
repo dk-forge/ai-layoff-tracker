@@ -71,4 +71,18 @@ the end check.
 curl -s "https://asktherecruiter.com/blog/wp-json/layoffs/v1/aggregate?cb=$RANDOM" | python3 -m json.tool | head
 curl -s "https://asktherecruiter.com/blog/ai-layoff-tracker/?cb=$RANDOM" | grep -o 'ver=[0-9.]*' | head -3
 ```
+**Waiting on a deploy?** Match the **commit SHA**, never "the latest run". A
+`gh run list -L 1` right after a push returns the run for the PREVIOUS commit
+(yours is still queueing), so a wait loop exits instantly and you verify the old
+build. Filter on your SHA:
+
+```bash
+SHA=$(git rev-parse HEAD); until gh run list --workflow='Deploy WordPress plugin' -L 5 --json headSha,status -q ".[] | select(.headSha==\"$SHA\") | .status" | grep -q completed; do sleep 20; done
+```
+
+Also: the page cache can serve the PREVIOUS version's `<head>` to anything that
+requests the bare URL (crawlers do). A version bump flushes it since 2.19.138,
+but the CDN edge still holds a copy for a few minutes; add a random query string
+when you need the origin's truth.
+
 **Egress-blocked cloud session?** If these curls fail with a proxy 403/tunnel CONNECT (some cloud environments deny `asktherecruiter.com` — `ops_status.py` prints `ENVIRONMENT BLOCK` / exit 3, NOT a source outage), the visual check is unavailable but the deploy still works: `git push` → GitHub Actions "Deploy WordPress plugin" FTPS-uploads server-side. Confirm via a green deploy run (`gh run list --workflow="Deploy WordPress plugin"`) — that green run **is** proof it's live. Full detail in [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md).
