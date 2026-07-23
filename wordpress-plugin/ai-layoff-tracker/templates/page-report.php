@@ -315,7 +315,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
             <span class="alt-op-quote-meta"><?php echo number_format((int) $qq['job_count']); ?> jobs · <?php echo esc_html($qq['layoff_date']); ?><?php echo $loc ? ' · ' . esc_html($loc) : ''; ?></span>
             <span class="alt-op-quote-tier alt-op-tier-<?php echo $qq['ai_causation'] === 'primary_cause' ? 'primary' : 'contrib'; ?>"><?php echo esc_html($tier); ?></span>
           </div>
-          <blockquote class="alt-op-quote-text">&ldquo;<?php echo esc_html(rtrim($qq['ai_language'], '. ')); ?>&rdquo;</blockquote>
+          <blockquote class="alt-op-quote-text">&ldquo;<?php echo esc_html(trim(rtrim(trim($qq['ai_language']), '. '), "\"'\xe2\x80\x9c\xe2\x80\x9d")); ?>&rdquo;</blockquote>
           <?php if ($qq['source_url']) : ?>
           <a class="alt-op-quote-src" href="<?php echo esc_url($qq['source_url']); ?>" target="_blank" rel="noopener">See the source &rarr;</a>
           <?php endif; ?>
