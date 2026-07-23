@@ -426,6 +426,31 @@ if (!is_array($alt_ps)) {
   <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI, while verified and announced sort the same rows by whether the cut has happened yet. The two axes reconcile exactly: Tier 1 plus Tier 2 equals the tracker's verified AI box to the job, and Tier 3 is precisely the gap between the specific figure and the broad one. Nothing is double counted and nothing is invented for this table.</p>
   <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated causation is on record, so they are a subset of the headline AI figure rather than a restatement of it. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
 
+  <?php
+  $alt_sub_a = wp_rand(2, 9); $alt_sub_b = wp_rand(2, 9);
+  $alt_sub_tok = wp_generate_password(16, false, false);
+  set_transient('alt_captcha_' . $alt_sub_tok, $alt_sub_a + $alt_sub_b, 30 * MINUTE_IN_SECONDS);
+  ?>
+  <section id="alt-press-signup" class="alt-press-signup">
+    <h2>Get the monthly brief</h2>
+    <p>One email a month when the numbers close: the documented job-cut total, the AI figure in the employer's own words, the biggest cuts, and the preset links to check every claim. Built for reporters on deadline. No spam, unsubscribe any time.</p>
+    <?php if (isset($_GET['alt_sub'])) : ?>
+      <p class="alt-sub-ok" role="status">You're on the list. The next brief lands the 1st of the month.</p>
+    <?php else : ?>
+    <form class="alt-sub-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+      <input type="hidden" name="action" value="alt_press_subscribe">
+      <input type="hidden" name="alt_captcha_token" value="<?php echo esc_attr($alt_sub_tok); ?>">
+      <input type="text" name="alt_hp" class="alt-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <input type="email" name="alt_sub_email" required placeholder="you@outlet.com" aria-label="Email">
+      <input type="text" name="alt_sub_name" placeholder="Name (optional)" aria-label="Name">
+      <input type="text" name="alt_sub_outlet" placeholder="Outlet (optional)" aria-label="Outlet">
+      <label class="alt-sub-cap">What is <?php echo (int) $alt_sub_a; ?> + <?php echo (int) $alt_sub_b; ?>? <input type="number" name="alt_captcha" required inputmode="numeric"></label>
+      <button type="submit" class="alt-btn">Subscribe</button>
+      <?php if (isset($_GET['alt_sub_err'])) : ?><span class="alt-sub-err">Please check the email and the math question.</span><?php endif; ?>
+    </form>
+    <?php endif; ?>
+  </section>
+
   <h2 id="alt-monthly-release">Monthly release schedule</h2>
   <p>Each month's figures are final once that month has closed, and the one-page report for it lives at a permanent link. The release date is the <b>1st of the following month</b>, when the last of that month's notices have landed. Nothing is embargoed and nothing is held back: the link below is live the moment the month closes.</p>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">

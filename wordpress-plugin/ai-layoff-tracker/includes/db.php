@@ -1054,6 +1054,13 @@ function alt_register_query_routes() {
     // updates a tip's status. Public submission is NOT a REST route: it flows
     // through the captcha-protected /contact form, so this endpoint adds no new
     // unauthenticated write surface.
+    // Press-brief subscribers. Opt-in only (a captcha'd form on the press page).
+    // GET(keyed) lists them for the monthly-brief composer; POST(keyed) is unused
+    // externally. Public signup flows through admin-post, not a REST write.
+    register_rest_route('layoffs/v1', '/press-subscribers', array(
+        'methods' => 'GET', 'callback' => 'alt_api_press_subs_get',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     register_rest_route('layoffs/v1', '/tips', array(
         array('methods' => 'GET', 'callback' => 'alt_api_tips_get',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
@@ -1997,6 +2004,28 @@ function alt_tips_append($company, $source_url, $email, $note, $attachment = '')
     if (count($q) > 500) $q = array_slice($q, -500);   // keep the newest
     update_option('alt_tips_queue', $q, false);
     return true;
+}
+
+function alt_press_subscribe($email, $name, $outlet) {
+    $email = sanitize_email($email);
+    if (!is_email($email)) return false;
+    $subs = get_option('alt_press_subscribers');
+    if (!is_array($subs)) $subs = array();
+    foreach ($subs as $sx) { if (($sx['email'] ?? '') === $email) return true; } // dedupe
+    $subs[] = array('email' => $email, 'name' => substr((string) $name, 0, 120),
+                    'outlet' => substr((string) $outlet, 0, 160), 'joined' => gmdate('c'),
+                    'status' => 'active');
+    if (count($subs) > 5000) $subs = array_slice($subs, -5000);
+    update_option('alt_press_subscribers', $subs, false);
+    return true;
+}
+
+function alt_api_press_subs_get(WP_REST_Request $r) {
+    $subs = get_option('alt_press_subscribers');
+    $subs = is_array($subs) ? array_values(array_filter($subs, function ($s) {
+        return ($s['status'] ?? 'active') === 'active';
+    })) : array();
+    return array('subscribers' => $subs, 'count' => count($subs));
 }
 
 function alt_api_tips_get(WP_REST_Request $r) {

@@ -1637,3 +1637,13 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-qw-src:hover { text-decoration: underline; }
 .alt-qw-more, .alt-qw-foot { margin-top: 16px; font-size: 13.5px; line-height: 1.6; }
 @media (max-width: 600px){ .alt-qw-tier, .alt-qw-src { margin-left: 0; } .alt-qw-chiplabel { min-width: 0; } }
+
+/* Press-brief opt-in */
+.alt-press-signup { border: 1px solid var(--alt-border); border-radius: 10px; padding: 18px 20px; margin: 20px 0; background: var(--alt-tint, #eef3ee); }
+.alt-sub-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.alt-sub-form input[type=email], .alt-sub-form input[type=text] { flex: 1 1 180px; padding: 9px 11px; border: 1px solid var(--alt-border); border-radius: 7px; font-size: 14px; }
+.alt-sub-cap { font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.alt-sub-cap input { width: 60px; padding: 8px; border: 1px solid var(--alt-border); border-radius: 7px; }
+.alt-hp { position: absolute; left: -9999px; width: 1px; height: 1px; }
+.alt-sub-ok { color: #2f6f2f; font-weight: 600; }
+.alt-sub-err { color: #b00; font-size: 13px; flex-basis: 100%; }

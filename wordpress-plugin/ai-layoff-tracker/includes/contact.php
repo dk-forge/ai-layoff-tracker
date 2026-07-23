@@ -218,6 +218,33 @@ add_action('admin_post_alt_contact', 'alt_contact_submit');
 add_action('admin_post_nopriv_alt_contact', 'alt_contact_submit');
 
 /**
+ * Press-brief opt-in. Double-safety: honeypot + the same arithmetic captcha as
+ * the contact form. Stores the email in the plugin's subscriber list; the
+ * monthly brief is composed and sent from there. Opt-in only, with a clear
+ * source, so it stays CAN-SPAM clean.
+ */
+function alt_press_subscribe_submit() {
+    $back = wp_get_referer() ?: home_url('/ai-layoff-tracker/press/');
+    if (!empty($_POST['alt_hp'])) { wp_safe_redirect(add_query_arg('alt_sub', '1', $back)); exit; }
+    $token = sanitize_text_field($_POST['alt_captcha_token'] ?? '');
+    $answer = (int) ($_POST['alt_captcha'] ?? -1);
+    $expected = get_transient('alt_captcha_' . $token);
+    if ($expected === false || (int) $expected !== $answer) {
+        wp_safe_redirect(add_query_arg('alt_sub_err', 'spam', $back)); exit;
+    }
+    delete_transient('alt_captcha_' . $token);
+    $email = sanitize_email(wp_unslash($_POST['alt_sub_email'] ?? ''));
+    if (!is_email($email)) { wp_safe_redirect(add_query_arg('alt_sub_err', 'email', $back)); exit; }
+    if (function_exists('alt_press_subscribe')) {
+        alt_press_subscribe($email, sanitize_text_field(wp_unslash($_POST['alt_sub_name'] ?? '')),
+                             sanitize_text_field(wp_unslash($_POST['alt_sub_outlet'] ?? '')));
+    }
+    wp_safe_redirect(add_query_arg('alt_sub', '1', $back)); exit;
+}
+add_action('admin_post_alt_press_subscribe', 'alt_press_subscribe_submit');
+add_action('admin_post_nopriv_alt_press_subscribe', 'alt_press_subscribe_submit');
+
+/**
  * Auto-create the /contact page on deploy if it doesn't exist yet (FTP deploys
  * can't create WP pages, so the plugin does it on the first request after a
  * version bump — same trigger as the cache flush).
