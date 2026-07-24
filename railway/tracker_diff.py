@@ -46,6 +46,11 @@ UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 FEEDS = [u.strip() for u in (os.environ.get("COMPETITOR_FEED_URLS") or "").split(",") if u.strip()]
 INLINE = [n.strip() for n in re.split(r"[,\n]", os.environ.get("COMPETITOR_COMPANIES") or "") if n.strip()]
 MAX_CHASE = max(1, int(os.environ.get("TRACKER_DIFF_MAX", "40")))
+# Recall alarm: email the owner when our coverage of the reference list drops
+# below this percent. Names go ONLY to the owner's inbox (never the repo, health
+# ledger, or Actions log), so the standalone-brand rule holds.
+RECALL_ALERT_PCT = float(os.environ.get("TRACKER_DIFF_RECALL_ALERT_PCT", "90"))
+RECALL_ALERT_MAX_NAMES = max(5, int(os.environ.get("TRACKER_DIFF_RECALL_MAX_NAMES", "60")))
 # Tag namespaces mix companies with topics/cities; drop the obvious non-company
 # slugs so we never chase "layoffs" or "san-francisco" as if it were an employer.
 _SITEMAP_STOP = {
@@ -205,6 +210,48 @@ def _norm(name):
     return re.sub(r"\s+", " ", n).strip()
 
 
+def _email_recall_gap(missing, recall_pct, n_total):
+    """Email the owner the tracked layoffs we're MISSING vs the reference list,
+    so a coverage gap self-surfaces instead of being noticed by hand. PRIVATE:
+    company names go only to the owner's inbox via /alert, never to the repo,
+    the health ledger, or the Actions log. Fires only below the alert threshold
+    so a healthy day is silent. Never raises."""
+    if recall_pct >= RECALL_ALERT_PCT or not missing:
+        return
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return
+    shown = sorted(missing, key=str.lower)[:RECALL_ALERT_MAX_NAMES]
+    more = f" (first {len(shown)} of {len(missing)})" if len(missing) > len(shown) else ""
+    subject = (f"Coverage recall {recall_pct}%: missing {len(missing)} of "
+               f"{n_total} tracked layoffs")
+    body = "\n".join([
+        "The recall audit compared our data against the reference layoff list.",
+        f"We carry {n_total - len(missing)} of {n_total} ({recall_pct}%). "
+        f"Missing {len(missing)}.",
+        "",
+        f"Companies on the list with no current-year entry of ours{more}:",
+        "  " + ", ".join(shown),
+        "",
+        "Likely causes: NewsAPI discovery is empty (paywalled outlets are not",
+        "indexed), or the announced headcount is not in a machine-readable source",
+        "so the extractor skips it. To chase these now, open a Claude Code session",
+        "in the ai-layoff-tracker repo and paste:",
+        '  "Run tracker_diff to chase the missing companies; for any still missing,',
+        '   widen discovery and store the announced figure with an announced label."',
+    ])
+    try:
+        requests.post(f"{site}/wp-json/layoffs/v1/alert",
+                      json={"subject": subject, "body": body},
+                      headers={"X-Layoff-API-Key": key, "User-Agent": UA["User-Agent"]},
+                      timeout=25)
+        print(f"recall-gap alert emailed to owner ({recall_pct}% recall, "
+              f"{len(missing)} missing)")
+    except Exception as exc:
+        print(f"recall alert failed: {exc}")
+
+
 def run():
     if not FEEDS and not INLINE:
         print("Neither COMPETITOR_FEED_URLS nor COMPETITOR_COMPANIES set — tripwire "
@@ -225,14 +272,30 @@ def run():
         report_source_health("tracker_diff", "ok", 0, "0 competitor companies resolved")
         return
 
-    # Walk a rotating slice each day so the WHOLE list gets covered over time,
-    # not just the first MAX_CHASE every run. The calendar date is the cursor.
-    n_slices = max(1, (n_total + MAX_CHASE - 1) // MAX_CHASE)
+    # FULL-LIST RECALL (the self-catching marquee alarm): check EVERY listed
+    # company against our data, not just this run's slice. This is the number
+    # that says, automatically, how much of the known landscape we lack — so a
+    # gap surfaces in an email instead of only when someone eyeballs another
+    # tracker. One /query call per company; a lookup blip counts as "have" so a
+    # transient error never inflates the gap.
+    all_missing = [c for c in competitor_names if not already_have(c)]
+    n_missing = len(all_missing)
+    recall_pct = round(100.0 * (n_total - n_missing) / n_total, 1) if n_total else 100.0
+    print(f"RECALL: we carry {n_total - n_missing}/{n_total} listed companies "
+          f"({recall_pct}%); missing {n_missing}")
+    if not DRY:
+        _email_recall_gap(all_missing, recall_pct, n_total)
+
+    # Chase a rotating slice OF THE MISSING (not the whole list), so the daily
+    # SEC/LLM budget is spent only on real gaps and the whole backlog is walked
+    # over a few days. The calendar date is the cursor.
+    chase_pool = all_missing or competitor_names
+    n_slices = max(1, (len(chase_pool) + MAX_CHASE - 1) // MAX_CHASE)
     slice_idx = date.today().toordinal() % n_slices
-    window = competitor_names[slice_idx * MAX_CHASE:(slice_idx + 1) * MAX_CHASE]
-    missing = [c for c in window if not already_have(c)]
-    print(f"competitor list: {n_total} companies; slice {slice_idx + 1}/{n_slices} "
-          f"({len(window)} examined); they list, we lack: {len(missing)}")
+    missing = chase_pool[slice_idx * MAX_CHASE:(slice_idx + 1) * MAX_CHASE]
+    print(f"competitor list: {n_total} companies; recall {recall_pct}%; chasing "
+          f"slice {slice_idx + 1}/{n_slices} of {n_missing} missing "
+          f"({len(missing)} this run)")
     posted = ai = via_sec = via_press = 0
     resolved = set()
     for i in range(0, len(missing), 20):
@@ -298,7 +361,8 @@ def run():
         gap_summary = "; ".join(f"{cnt} {lab.split('(')[0].strip()}" for lab, cnt, _ in gaps[:4])
     else:
         gap_summary = ""
-    detail = (f"{n_total} listed; slice {slice_idx + 1}/{n_slices}; "
+    detail = (f"{n_total} listed; recall {recall_pct}% ({n_missing} missing); "
+              f"slice {slice_idx + 1}/{n_slices}; "
               f"{len(missing)} missing chased, {posted} added "
               f"({via_sec} via SEC, {via_press} via press; {ai} AI)"
               + (f" | source gaps: {gap_summary}" if gap_summary else ""))
