@@ -106,6 +106,11 @@ def pull_news_articles(days_back=4, queries=None):
     )
 
     results, seen_urls = [], set()
+    # Record a hard API error (dead/exhausted key, 429, plan restriction) so the
+    # cron caller can report this source DEGRADED instead of a masked "ok" with
+    # 0 rows. NewsAPI is the primary AI-attribution channel; a silent zero here
+    # starves the site's core differentiator, so it must fail loud.
+    pull_news_articles.last_error = None
     for query in tuple(DISCOVERY_QUERIES) + tuple(_segment_queries_for_now()):
         params = {
             "q": query,
@@ -121,10 +126,12 @@ def pull_news_articles(days_back=4, queries=None):
             if resp.status_code == 429:
                 # A quota/rate limit applies to the whole API key, so another
                 # query in this run cannot safely recover it.
+                pull_news_articles.last_error = "429 rate-limited / daily quota exhausted"
                 print("NewsAPI: rate limited (429) — stopping this run")
                 break
             data = resp.json()
             if data.get("status") != "ok":
+                pull_news_articles.last_error = f"{data.get('code')}: {data.get('message')}"
                 print(f"NewsAPI error response: {data.get('code')} — {data.get('message')}")
                 continue
             for article in data.get("articles", []):

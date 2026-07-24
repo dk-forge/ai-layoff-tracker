@@ -159,6 +159,23 @@ def run():
                         source, "degraded", 0,
                         "No reviewed company-owned or exchange RSS/Atom feeds configured",
                     )
+            elif source == "newsapi":
+                # NewsAPI is the primary AI-attribution channel. A masked "ok"
+                # at 0 rows (dead/exhausted key, free-tier plan rejection) starves
+                # the site silently. Fail loud: degrade on any API error, and on
+                # a 0-article pull (abnormal for this channel) so it surfaces on
+                # the health page + weekly digest instead of hiding.
+                err = getattr(pull_news_articles, "last_error", None)
+                if err:
+                    report_source_health(source, "degraded", 0, f"NewsAPI error: {err}")
+                    print(f"::warning::NewsAPI degraded: {err}")
+                elif not pulled:
+                    report_source_health(source, "degraded", 0,
+                        "NewsAPI returned 0 articles — verify the key/tier "
+                        "(free tier is dev-only, ~100 req/day, 1-month window)")
+                    print("::warning::NewsAPI returned 0 articles")
+                else:
+                    report_source_health(source, "ok", len(pulled))
             else:
                 report_source_health(source, "ok", len(pulled))
         except Exception as e:
