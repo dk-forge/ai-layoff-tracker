@@ -18,6 +18,13 @@ import openai
 # (e.g. "google/gemini-2.0-flash-001" for an even cheaper option). DeepSeek-V3
 # is the default — near the price floor while staying strong at extraction.
 MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat")
+# Cheap model for the NARROW, constrained-vocabulary calls (industry, roles,
+# reason tags, context) - "pick one label from a fixed list" tasks that a small
+# fast model handles as well as a frontier one, and which are the bulk of the
+# call volume. Defaults to MODEL so behaviour is unchanged until this is pointed
+# at e.g. "google/gemini-2.0-flash-001" after an A/B agreement check. The
+# correctness-critical calls (full extraction, AI-causation) always use MODEL.
+CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", MODEL)
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "45"))
 
@@ -138,6 +145,13 @@ Response format:
   "confidence": "integer 0-100 for the event identity, count and causation together",
   "is_layoff_event": true or false
 }"""
+
+# The narrow classify calls (industry/roles/reason/context) carry their FULL
+# task spec in their own user prompt, so they never needed the ~1,400-token
+# extraction SYSTEM_PROMPT above - sending it was ~80% wasted input tokens on the
+# highest-volume jobs. A tiny system message keeps the JSON output disciplined.
+MINI_SYSTEM = ("You are a precise data-classification assistant. Follow the "
+               "instructions exactly and return only strict JSON, no preamble.")
 
 _client = None
 
@@ -363,8 +377,8 @@ any unsupported field. Evidence phrases must be copied exactly from TEXT.
 TEXT:\n""" + raw_text
     try:
         response = _get_client().chat.completions.create(
-            model=MODEL, max_tokens=350,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+            model=CLASSIFY_MODEL, max_tokens=350,
+            messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
@@ -417,8 +431,8 @@ TEXT:\n""" + raw_text
     _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
-            model=MODEL, max_tokens=200,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+            model=CLASSIFY_MODEL, max_tokens=200,
+            messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
@@ -490,8 +504,8 @@ def classify_industry(company, raw_text):
     _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
-            model=MODEL, max_tokens=40,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+            model=CLASSIFY_MODEL, max_tokens=40,
+            messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
@@ -549,8 +563,8 @@ TEXT:\n""" + raw_text
     _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
-            model=MODEL, max_tokens=250,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+            model=CLASSIFY_MODEL, max_tokens=250,
+            messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")

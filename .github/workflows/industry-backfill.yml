@@ -8,11 +8,14 @@ name: Industry backfill
 # touches counts/dates/stages/sources/AI labels.
 on:
   schedule:
-    # 8x/day at the max safe batch (1,600 rows/day). The blank-industry backlog measured 42,028
-    # rows on 2026-07-23; at the old 40/day this would never drain (~1,000 days).
-    # The worker stops safely on its own deadline, so a full batch that runs long
-    # simply resumes next slot.
-    - cron: '55 1,4,7,10,13,16,19,22 * * *'
+    # COST-TUNED: once daily, single shard. This is background enrichment of the
+    # industry-breakdown chart, not published-critical data, so it drains the
+    # blank-industry backlog slowly and cheaply (~200 rows/run) rather than
+    # re-chewing it 8x/day across 4 shards (which dominated the OpenRouter bill).
+    # With the narrow-prompt fix in extractor.py each row is ~5x cheaper too.
+    # To drain the historical backlog faster, temporarily raise this or run the
+    # workflow_dispatch with a larger batch; steady-state only needs the trickle.
+    - cron: '55 4 * * *'
   workflow_dispatch:
     inputs:
       batch:
@@ -44,12 +47,13 @@ jobs:
       group: industry-backfill-${{ matrix.shard }}
       cancel-in-progress: false
     strategy:
-      # 4 parallel shards. Each strides every 4th page of the blank-industry
-      # scan, so together they cover the same pages the single job did, in a
-      # quarter of the wall time and with the same total request load.
+      # Single shard (cost-tuned). Was 4 parallel shards to drain a 42k backlog
+      # fast; that quadrupled the request load every run. One shard is plenty for
+      # a once-daily trickle. Bump back to [0,1,2,3] + INDUSTRY_SHARDS='4' only
+      # for a deliberate fast backlog drain.
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -63,7 +67,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '200' }}
           INDUSTRY_SHARD: ${{ matrix.shard }}
-          INDUSTRY_SHARDS: '4'
+          INDUSTRY_SHARDS: '1'
           INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
           # Stops safely between rows well below the job timeout; the daily
