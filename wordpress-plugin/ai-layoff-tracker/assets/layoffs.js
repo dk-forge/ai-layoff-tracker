@@ -136,15 +136,39 @@
     // still pending or unavailable — never a broken or guessed link. The second
     // link sits alongside the official source on every row that has one.
     function archivedUrl(row) { return safeUrl(row && row.archived_url); }
+    function hasSourceUrl(row) { return row && typeof row.source_url === 'string' && row.source_url.indexOf('http') === 0; }
+    // Last-checked date (YYYY-MM-DD) for the transparency disclaimer.
+    function archiveCheckedDate(row) {
+        var c = row && row.archive_checked_at ? String(row.archive_checked_at) : '';
+        return c ? c.slice(0, 10) : '';
+    }
+    // Every row with a source URL shows EITHER a permanent Wayback link OR a
+    // truthful, dated "archive pending" disclaimer — never a silent gap. The
+    // backfill re-checks the Internet Archive weekly and adds the link the moment
+    // a snapshot exists, so the disclaimer is honest about state, not a dead end.
+    function archivePendingTitle(row) {
+        var d = archiveCheckedDate(row);
+        return 'No permanent Internet Archive (Wayback) copy exists yet. We re-check '
+            + 'automatically every week and add the archived copy the moment the '
+            + 'Internet Archive captures this source.' + (d ? ' Last checked ' + d + '.' : '');
+    }
     // Compact secondary link for the table source cell.
     function archivedCellLink(row) {
         var a = archivedUrl(row);
-        return a ? ' <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="Permanent Internet Archive (Wayback Machine) snapshot of this source">(archived)</a>' : '';
+        if (a) return ' <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="Permanent Internet Archive (Wayback Machine) snapshot of this source">(archived)</a>';
+        if (hasSourceUrl(row)) return ' <span class="alt-muted" title="' + escapeHtml(archivePendingTitle(row)) + '">(archive pending)</span>';
+        return '';
     }
     // Full secondary link for the row-detail Source block.
     function archivedDetailLink(row) {
         var a = archivedUrl(row);
-        return a ? ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Archived copy (Wayback Machine) ↗</a>' : '';
+        if (a) return ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Archived copy (Wayback Machine) ↗</a>';
+        if (hasSourceUrl(row)) {
+            var d = archiveCheckedDate(row);
+            return ' <span class="alt-src-sep">·</span> <span class="alt-muted" title="' + escapeHtml(archivePendingTitle(row)) + '">Archive pending, re-checked weekly'
+                + (d ? ' (last checked ' + escapeHtml(d) + ')' : '') + '</span>';
+        }
+        return '';
     }
     function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
     function setStatus(id, text, isError) {

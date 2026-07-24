@@ -2170,19 +2170,26 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
     $limit = min(500, max(1, (int) ($r->get_param('limit') ?: 200)));
     $retry_hours = min(720, max(1, (int) ($r->get_param('retry_hours') ?: 72)));
     $retry_before = gmdate('Y-m-d H:i:s', time() - $retry_hours * HOUR_IN_SECONDS);
+    // NEVER give up: an 'unavailable' URL is re-checked WEEKLY forever, because a
+    // source not yet in Wayback today may be crawled next month — so every row
+    // eventually gets its archive or an honest, freshly-timestamped disclaimer.
+    $weekly_before = gmdate('Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS);
     $layoffs = alt_db_table();
     $archive = alt_archive_table();
-    // DISTINCT source URLs missing an archive, or 'pending' and due for retry.
-    // The MD5 join matches the PHP/Python url_hash (md5 of the trimmed URL).
-    // NB: the literal percent in LIKE 'http%' is doubled to '%%' because this
-    // string is run through $wpdb->prepare (a bare % is read as a placeholder).
+    // DISTINCT source URLs missing an archive, 'pending' and due for retry, or
+    // 'unavailable' and due for its weekly re-check. The MD5 join matches the
+    // PHP/Python url_hash (md5 of the trimmed URL). NB: the literal percent in
+    // LIKE 'http%' is doubled to '%%' because this string is run through
+    // $wpdb->prepare (a bare % is read as a placeholder).
     $sql = "SELECT DISTINCT l.source_url
             FROM $layoffs l
             LEFT JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
             WHERE l.source_url <> '' AND l.source_url LIKE 'http%%'
-              AND (a.url_hash IS NULL OR (a.status = 'pending' AND (a.checked_at IS NULL OR a.checked_at < %s)))
+              AND (a.url_hash IS NULL
+                   OR (a.status = 'pending' AND (a.checked_at IS NULL OR a.checked_at < %s))
+                   OR (a.status = 'unavailable' AND (a.checked_at IS NULL OR a.checked_at < %s)))
             LIMIT %d";
-    $urls = $wpdb->get_col($wpdb->prepare($sql, $retry_before, $limit)) ?: array();
+    $urls = $wpdb->get_col($wpdb->prepare($sql, $retry_before, $weekly_before, $limit)) ?: array();
     return rest_ensure_response(array(
         'urls' => array_values($urls),
         'limit' => $limit,
@@ -3251,17 +3258,31 @@ function alt_attach_archived_urls(array $data) {
     if (!$by_hash) return $data;
     $hashes = array_keys($by_hash);
     $ph = implode(',', array_fill(0, count($hashes), '%s'));
+    // Fetch ALL statuses (not just archived) + the last-checked timestamp, so a
+    // row without a Wayback copy yet can show an honest, dated disclaimer instead
+    // of nothing: "no permanent archive yet, re-checked weekly, last checked X".
     $found = $wpdb->get_results($wpdb->prepare(
-        "SELECT url_hash, archived_url FROM $table
-          WHERE status = 'archived' AND archived_url <> '' AND url_hash IN ($ph)", $hashes), ARRAY_A) ?: array();
-    if (!$found) return $data;
+        "SELECT url_hash, archived_url, status, checked_at FROM $table
+          WHERE url_hash IN ($ph)", $hashes), ARRAY_A) ?: array();
     $snap = array();
-    foreach ($found as $r) { $snap[$r['url_hash']] = $r['archived_url']; }
+    foreach ($found as $r) { $snap[$r['url_hash']] = $r; }
     foreach ($data as &$row) {
         $url = trim((string) ($row['source_url'] ?? ''));
         if ($url === '' || strpos($url, 'http') !== 0) continue;
         $h = alt_archive_url_key($url);
-        if (!empty($snap[$h])) $row['archived_url'] = $snap[$h];
+        if (isset($snap[$h])) {
+            $rec = $snap[$h];
+            if (($rec['status'] ?? '') === 'archived' && !empty($rec['archived_url'])) {
+                $row['archived_url'] = $rec['archived_url'];
+            }
+            $row['archive_status'] = (string) ($rec['status'] ?? 'queued');
+            $row['archive_checked_at'] = (string) ($rec['checked_at'] ?? '');
+        } else {
+            // Has a source URL but no archive attempt recorded yet — it enters
+            // the backfill queue automatically and is captured on the next run.
+            $row['archive_status'] = 'queued';
+            $row['archive_checked_at'] = '';
+        }
     }
     unset($row);
     return $data;
