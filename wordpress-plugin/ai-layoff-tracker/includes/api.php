@@ -362,17 +362,24 @@ function alt_industry_rules() {
         'Automotive'             => array('automotive', 'auto', 'electric vehicle', 'ev', 'used car', 'car marketplace', 'car dealer'),
         'Technology'             => array('artificial intelligence', 'ai/', 'robotic', 'software', 'cloud', 'cyber', 'saas', 'semiconductor', 'chip', 'information technology', 'tech', 'internet', 'computing', 'data center', 'it services'),
         'Telecom'                => array('telecom', 'broadband', 'connectivity', 'wireless'),
-        'Media & Entertainment'  => array('media', 'broadcast', 'radio', 'news', 'entertainment', 'gaming', 'game', 'streaming', 'publishing', 'film'),
+        'Media & Entertainment'  => array('media', 'broadcast', 'radio', 'news', 'entertainment', 'gaming', 'game', 'streaming', 'publishing', 'film', 'arts', 'sports'),
         'Retail & E-commerce'    => array('retail', 'e-commerce', 'ecommerce', 'grocery', 'apparel', 'fashion'),
         'Food & Hospitality'     => array('hospitality', 'hotel', 'restaurant', 'food', 'beverage'),
-        'Energy'                 => array('energy', 'oil', 'gas', 'coal', 'solar', 'nuclear', 'renewable', 'utilit'),
+        // 'electric'/'electricity', extractive 'mining'/'quarrying', and 'water'/
+        // 'waste' utilities all belong under Energy (were falling through to raw
+        // NACE labels like "Electricity", "Mining / Quarrying", "Water / Waste").
+        'Energy'                 => array('energy', 'oil', 'gas', 'coal', 'solar', 'nuclear', 'renewable', 'utilit', 'electric', 'mining', 'quarry', 'water supply', 'waste manage'),
         'Logistics & Transport'  => array('logistic', 'transport', 'trucking', 'shipping', 'freight', 'rail', 'delivery', 'supply chain'),
         'Real Estate & Construction' => array('real estate', 'construction', 'reit', 'housing', 'property'),
         'Manufacturing'          => array('manufactur', 'industrial', 'paper', 'containerboard', 'steel', 'chemical', 'machinery', 'production'),
         'Consumer Goods'         => array('consumer', 'cannabis', 'cbd', 'household', 'cosmetic', 'toy'),
-        'Professional Services'  => array('consult', 'professional', 'legal', 'accounting', 'staffing', 'recruit', 'hr', 'scientific and technical'),
+        // 'administrative'/'support services' (and the source's "Adminstrative"
+        // misspelling) map here instead of leaking a typo'd bucket to the filter.
+        'Professional Services'  => array('consult', 'professional', 'legal', 'accounting', 'staffing', 'recruit', 'hr', 'scientific and technical', 'administrative', 'adminstrative', 'support services', 'other services'),
         'Agriculture'            => array('agricultur', 'farm'),
-        'Government & Nonprofit' => array('government', 'public sector', 'nonprofit', 'non-profit'),
+        // 'public administration' / British 'defence' (the combined NACE label)
+        // belong with Government, not the raw "Public Administration / Defence".
+        'Government & Nonprofit' => array('government', 'public sector', 'public administr', 'defence', 'nonprofit', 'non-profit'),
     );
 }
 
