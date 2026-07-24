@@ -59,6 +59,12 @@ function alt_db_install() {
         roles_evidence TEXT NULL,
         excerpt TEXT NULL,
         event_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        /* Superset dedup: when a company-wide news/announced total and its
+         * site-level WARN rows document the SAME event, the smaller rows point
+         * at the primary (most-complete) row's id here and are EXCLUDED from
+         * job totals, so one real event is counted once, not twice. 0 = counts
+         * normally (a standalone row or the primary of a group). */
+        superset_of BIGINT UNSIGNED NOT NULL DEFAULT 0,
         PRIMARY KEY (id),
         UNIQUE KEY dedup_hash (dedup_hash),
         KEY layoff_date (layoff_date),
@@ -75,7 +81,8 @@ function alt_db_install() {
          * deliberately not a merge index: candidates remain editorial work. */
         KEY lifecycle_lookup (announced, company_key, job_count, layoff_date),
         KEY post_id (post_id),
-        KEY event_id (event_id)
+        KEY event_id (event_id),
+        KEY superset_of (superset_of)
     ) $charset;";
     dbDelta($sql);
 
@@ -959,6 +966,14 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/bulk', array(
         'methods'  => 'POST',
         'callback' => 'alt_api_bulk',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    // Key-protected: superset dedup (default DRY-RUN; apply=1 to write). Marks
+    // a company-wide news total or its site-level WARN rows as a subset of the
+    // same event's most-complete row so one event is counted once.
+    register_rest_route('layoffs/v1', '/reconcile-supersets', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_reconcile_supersets',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
     // Key-protected: re-normalize country/industry across table + posts.
@@ -2950,6 +2965,83 @@ function alt_api_event_migrate(WP_REST_Request $r) {
     if ($repaired > 0 && function_exists('alt_flush_caches')) alt_flush_caches();
     $remaining = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE event_id = 0");
     return rest_ensure_response(array('processed' => count($rows), 'last_id' => $last, 'remaining' => $remaining, 'canonical_repaired' => $repaired));
+}
+
+/**
+ * Superset dedup: when a company-wide news/announced total AND its site-level
+ * WARN rows document the SAME layoff, both currently sum into job totals (the
+ * ~5% double-count concentrated in Spirit/Amazon/Verizon/Meta...). This marks
+ * the smaller side of each overlap as a subset of the larger (most-complete)
+ * primary row via `superset_of`, so one real event is counted ONCE.
+ *
+ * Conservative matching (never drops a standalone layoff): a group forms only
+ * when, for one company_key, a news/erm/8k/press total of >=200 sits within 45
+ * days of a WARN row and is >= half the WARN sum (i.e. plausibly the same
+ * event). The larger of {news total, WARN sum} stays; the smaller side's rows
+ * get superset_of = primary id. Idempotent. $dry_run reports without writing.
+ */
+function alt_reconcile_supersets($dry_run = true) {
+    global $wpdb;
+    $table = alt_db_table();
+    $rows = $wpdb->get_results(
+        "SELECT id, company_key, source_type, job_count, layoff_date
+         FROM $table WHERE company_key <> '' AND job_count > 0 AND edited = 0", ARRAY_A) ?: array();
+    $by = array();
+    $before = 0;
+    foreach ($rows as $r) { $before += (int) $r['job_count']; $by[$r['company_key']][] = $r; }
+    $mark = array();      // member id => primary id (the row it's a subset of)
+    $excluded = 0;
+    $news_types = array('news', 'erm', '8k', 'press_release');
+    foreach ($by as $grp) {
+        $warn = array(); $news = array(); $warn_sum = 0; $largest_warn = null;
+        foreach ($grp as $r) {
+            if ($r['source_type'] === 'warn' && $r['layoff_date']) {
+                $warn[] = $r; $warn_sum += (int) $r['job_count'];
+                if (!$largest_warn || (int) $r['job_count'] > (int) $largest_warn['job_count']) $largest_warn = $r;
+            } elseif (in_array($r['source_type'], $news_types, true) && $r['layoff_date']) {
+                $news[] = $r;
+            }
+        }
+        if (!$warn || !$news || $warn_sum <= 0) continue;
+        foreach ($news as $nr) {
+            $nc = (int) $nr['job_count'];
+            if ($nc < 200 || $nc < $warn_sum * 0.5) continue;   // not plausibly the same event
+            $near = false;
+            foreach ($warn as $w) {
+                if (abs((strtotime($nr['layoff_date']) - strtotime($w['layoff_date'])) / 86400) <= 45) { $near = true; break; }
+            }
+            if (!$near) continue;
+            if ($nc >= $warn_sum) {
+                // News total is the most-complete figure -> exclude the WARN sites.
+                foreach ($warn as $w) {
+                    if (empty($mark[$w['id']])) { $mark[$w['id']] = (int) $nr['id']; $excluded += (int) $w['job_count']; }
+                }
+            } else {
+                // WARN sum is more complete -> exclude the news total.
+                if (empty($mark[$nr['id']])) { $mark[$nr['id']] = (int) $largest_warn['id']; $excluded += $nc; }
+            }
+        }
+    }
+    if (!$dry_run) {
+        $wpdb->query("UPDATE $table SET superset_of = 0 WHERE superset_of <> 0");  // clean slate, then re-mark
+        foreach ($mark as $id => $primary) {
+            $wpdb->update($table, array('superset_of' => (int) $primary), array('id' => (int) $id));
+        }
+        if (function_exists('alt_flush_caches')) alt_flush_caches();
+    }
+    return array(
+        'dry_run'        => (bool) $dry_run,
+        'members_marked' => count($mark),
+        'jobs_before'    => (int) $before,
+        'jobs_excluded'  => (int) $excluded,
+        'jobs_after'     => (int) ($before - $excluded),
+    );
+}
+
+/** Key-protected. Default DRY-RUN; pass apply=1 to actually mark rows. */
+function alt_api_reconcile_supersets(WP_REST_Request $r) {
+    $dry = $r->get_param('apply') !== '1';
+    return rest_ensure_response(alt_reconcile_supersets($dry));
 }
 
 /**

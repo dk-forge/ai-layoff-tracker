@@ -1,0 +1,27 @@
+name: Superset dedup reconciliation
+
+# Marks a company-wide news/announced total or its site-level WARN rows as a
+# subset of the same event's most-complete row (superset_of), so one real layoff
+# is counted once instead of double-summed. DEFAULT DRY-RUN: reports
+# jobs_before / jobs_excluded / jobs_after without writing. Pass apply=1 to write.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Set to 1 to WRITE (mark rows). Empty = dry-run report only.'
+        required: false
+        default: ''
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Reconcile supersets
+        run: |
+          curl -sS --fail-with-body -X POST \
+            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=${{ github.event.inputs.apply }}" \
+            -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+          echo ""
