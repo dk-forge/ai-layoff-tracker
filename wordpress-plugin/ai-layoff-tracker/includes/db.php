@@ -3390,6 +3390,13 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
     list($where, $params) = alt_db_where($r);
+    // Superset-deduped WHERE: excludes rows marked as a subset of the same
+    // event's primary (a company-wide news total sitting on top of its WARN
+    // sites, or vice versa), so JOB TOTALS count each event once. Applied to the
+    // headline, the bar-list breakdowns, and the monthly series — but NOT to the
+    // largest-single-rows list or the repeat-rounds (frequency) view, which are
+    // row-level and would lose real site-level detail if members were hidden.
+    $where_dd = $where . ' AND superset_of = 0';
 
     // Headline totals
     $totals = $wpdb->get_row(alt_db_prep(
@@ -3414,7 +3421,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COUNT(DISTINCT NULLIF(state,'')) states,
                 MIN(CASE WHEN layoff_date > '2000-01-01' THEN layoff_date END) min_date,
                 MAX(layoff_date) max_date
-         FROM $table WHERE $where", $params));
+         FROM $table WHERE $where_dd", $params));
 
     // Top-N helpers (each slicer ignores its own dimension). Each entry is
     // [label, total jobs, AI-attributed jobs] so bars can show the AI share.
@@ -3423,7 +3430,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         $sql = "SELECT $col k, SUM(job_count) v,
                        COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
                 FROM $table
-                WHERE $w AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT " . max(1, (int) $limit);
+                WHERE $w AND superset_of = 0 AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT " . max(1, (int) $limit);
         $rows = $wpdb->get_results(alt_db_prep($sql, $p));
         $out = array();
         foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v, (int) $row->a); }
@@ -3437,7 +3444,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     $reasons = array();
     foreach ($reason_tags as $tag) {
         $val = (int) $wpdb->get_var(alt_db_prep(
-            "SELECT COALESCE(SUM(job_count),0) FROM $table WHERE $rw AND reason_tags LIKE %s",
+            "SELECT COALESCE(SUM(job_count),0) FROM $table WHERE $rw AND superset_of = 0 AND reason_tags LIKE %s",
             array_merge($rp, array('%,' . $tag . ',%'))));
         if ($val > 0) $reasons[] = array($tag, $val);
     }
@@ -3453,7 +3460,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             $row = $wpdb->get_row(alt_db_prep(
                 "SELECT COALESCE(SUM(job_count),0) v,
                         COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
-                 FROM $table WHERE $where AND role_categories LIKE %s",
+                 FROM $table WHERE $where_dd AND role_categories LIKE %s",
                 array_merge($params, array('%,' . $slug . ',%'))));
             if ($row && (int) $row->v > 0) $top_roles[] = array($label, (int) $row->v, (int) $row->a);
         }
@@ -3472,7 +3479,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN job_count END),0) ai_announced_jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN job_count END),0) ai_broad_jobs
-         FROM $table WHERE $where AND layoff_date > '2000-01-01'
+         FROM $table WHERE $where_dd AND layoff_date > '2000-01-01'
          GROUP BY m ORDER BY m ASC", $params));
     $series = array();
     foreach ($months ?: array() as $row) {
