@@ -103,6 +103,33 @@
         url = String(url == null ? '' : url).trim();
         return /^https?:\/\//i.test(url) ? url : '';
     }
+    // Permanent receipt for California WARN rows. CA's per-row source_url is the
+    // ROLLING recent-processed xlsx, which drops a notice within weeks (verified:
+    // Meta's 2026-07-22 filings, processed in May, are gone from it). But CA also
+    // publishes a PERMANENT cumulative PDF per fiscal year that DOES list the
+    // notice (Meta is on page 19 of the FY2025-26 report), keyed by NOTICE date
+    // (July 1 to June 30). This maps a notice date to that permanent PDF so a CA
+    // row links to a document that actually contains it. The current fiscal year
+    // has no PDF until it closes (~mid the following year), so recent notices
+    // fall back to the live file. Filenames are irregular, hence an explicit map.
+    var CA_WARN_FY_PDF = {
+        2019: 'warn-report-for-7-1-2019-to-6-30-2020.pdf',
+        2020: 'warn-report-for-7-1-2020-to-06-30-2021.pdf',
+        2021: 'warn-report-for-7-1-2021-to-06-30-2022.pdf',
+        2022: 'warn-report-for-7-1-2022-to-06-30-2023.pdf',
+        2023: 'warn-report-for-7-1-2023-to-06-30-2024.pdf',
+        2024: 'warn-report-for-7-1-2024-to-06-30-2025.pdf',
+        2025: 'warn-report-for-7-1-25-to-6-30-26.pdf'
+    };
+    function caWarnPdfUrl(dateStr) {
+        var m = /^(\d{4})-(\d{2})/.exec(String(dateStr || ''));
+        if (!m) return '';
+        var y = parseInt(m[1], 10), mo = parseInt(m[2], 10);
+        var fy = mo >= 7 ? y : y - 1;   // CA fiscal year starts July 1
+        return CA_WARN_FY_PDF[fy]
+            ? 'https://edd.ca.gov/siteassets/files/jobs_and_training/warn/' + CA_WARN_FY_PDF[fy]
+            : '';
+    }
     function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
     function setStatus(id, text, isError) {
         var el = document.getElementById(id);
@@ -2014,12 +2041,22 @@
             if (wl.list) {
                 src += ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow">State WARN list ↗</a>';
             }
-            // Rolling-file honesty: when we only have the state list (not a
-            // permanent per-notice URL), many states publish a continuously
-            // updated file, so an older notice may no longer appear in today's
-            // version. The captured details above are the record as filed.
+            // California: link the PERMANENT fiscal-year PDF that actually lists
+            // this notice (by notice/received date), not the rolling xlsx that
+            // has dropped it. This is the durable receipt a reader can open and
+            // find the row in. Uses announcement_date (the received date CA files
+            // under) when present, else the effective date.
+            if (row.state === 'CA') {
+                var caPdf = caWarnPdfUrl(row.announcement_date || row.layoff_date);
+                if (caPdf) {
+                    src += ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(caPdf) + '" target="_blank" rel="noopener nofollow" title="California’s permanent cumulative WARN report for the fiscal year this notice was filed in. This notice is listed in it.">Official CA WARN report (PDF, permanent) ↗</a>';
+                }
+            }
+            // Rolling-file honesty: many states publish one continuously updated
+            // file, so an older notice may no longer appear in today's version.
+            // The captured details above are the record as filed.
             if (!wl.exact) {
-                src += '<div class="alt-muted alt-warn-rolling">State WARN lists are updated continuously; if this notice has rolled into the state’s annual archive, the size, date and location above are the details captured from it when it was filed.</div>';
+                src += '<div class="alt-muted alt-warn-rolling">State WARN lists are updated continuously; an older notice may have rolled into the state’s annual archive. Where a permanent report exists (linked above), this notice is listed in it; the size, date and location shown here are the details captured from the notice when it was filed.</div>';
             }
         } else {
             var url = safeUrl(row.source_url);
