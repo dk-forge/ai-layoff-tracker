@@ -82,6 +82,13 @@ TRUSTED_DOMAINS = {
     "globo.com", "estadao.com.br", "folha.uol.com.br",       # Brazil
     "eleconomista.com.mx", "clarin.com",                      # Mexico / Argentina
     "nrc.nl", "volkskrant.nl",                                # Netherlands
+    # Added 2026-07-24 with the native-language query sweep: these countries
+    # gained native search terms (varsel/zwolnienia/despedimento) but had no
+    # allowlisted outlet, so every native hit would have died at the trust
+    # gate. Papers of record + business dailies only.
+    "di.se", "dn.se", "svd.se",                               # Sweden
+    "rp.pl", "pb.pl",                                         # Poland
+    "publico.pt", "jornaldenegocios.pt",                      # Portugal
     # --- Regional expansion: reputable national business/news outlets, added
     # to widen country coverage (a layoff only enters the tracker if a trusted
     # outlet covers it, so this list IS the reach lever). English editions
@@ -781,6 +788,38 @@ SEGMENT_TERMS = (
 )
 SEGMENT_QUERIES_PER_RUN = max(0, min(8, int(os.environ.get("GDELT_SEGMENT_QUERIES", "4"))))
 
+# Native-language layoff terms, run STANDALONE (never ANDed with the English
+# base: segments require the English vocabulary to co-match, which native-
+# language originals cannot do). This closes the euphemism-translation gap:
+# Swedish press says "varsel" which machine-translates to "notice", Italian
+# says "esuberi" -> "surpluses" - words the English net deliberately ignores,
+# so those stories never surfaced. Terms below are the PRECISION-SELECTED
+# subset of a 12-language terminology sweep (2026-07-24, three independent
+# model consultations agreed; each term verified unambiguous - it only ever
+# means mass job cuts). Deliberately EXCLUDED as too ambiguous alone: bare
+# "varsel" (also weather warnings), "optimering"/"优化"-style euphemisms,
+# "Restrukturierung"/"reorganisatie" (M&A noise) - candidates for a sampled
+# second wave, not a blind add. Same downstream gates as everything else:
+# trusted-domain allowlist + extractor + verbatim-count check (which already
+# accepts EU number formats like 1.200).
+NATIVE_TERMS = (
+    '"Stellenabbau"',            # de: job reduction (the German press headline word)
+    '"Massenentlassung"',        # de: mass dismissal (legal)
+    '"suppression de postes"',   # fr: elimination of positions
+    '"licenciement collectif"',  # fr: collective dismissal (legal)
+    '"despido colectivo"',       # es: collective dismissal (legal)
+    '"recorte de plantilla"',    # es: workforce cut (press)
+    '"licenziamento collettivo"',# it: collective dismissal (legal)
+    '"esuberi"',                 # it: redundancies (the Italian headline word)
+    '"massaontslag"',            # nl: mass dismissal
+    '"zwolnienia grupowe"',      # pl: group dismissals (legal)
+    '"varsel om uppsägning"',    # sv: redundancy notice (two-word precise form)
+    '"demissão em massa"',       # pt-BR: mass dismissal
+    '"despedimento coletivo"',   # pt-PT: collective dismissal (legal)
+    '"大规模裁员"',                # zh: large-scale layoffs
+)
+NATIVE_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_NATIVE_QUERIES", "2"))))
+
 
 def _segment_queries_for_now():
     """Deterministic daily rotation over the segment matrix (0 disables)."""
@@ -885,6 +924,22 @@ def pull_gdelt_between(start, end, max_records=250):
             continue
         print(f"GDELT segment {segment_query[-48:]}: {len(seg_articles)} article(s)")
         articles.extend(seg_articles)
+
+    # Native-language sweep: STANDALONE queries (see NATIVE_TERMS), same
+    # non-health-bearing rules as segments - a rate-limited term is skipped
+    # and rotates back within days. Deterministic rotation like the segments.
+    if NATIVE_QUERIES_PER_RUN:
+        _now = datetime.now(timezone.utc)
+        _run = 0 if _now.hour < 17 else 1
+        _start = ((_now.timetuple().tm_yday * 2 + _run) * NATIVE_QUERIES_PER_RUN) % len(NATIVE_TERMS)
+        for _i in range(NATIVE_QUERIES_PER_RUN):
+            native_query = NATIVE_TERMS[(_start + _i) % len(NATIVE_TERMS)]
+            nat_articles, _, nat_error = _query_window(native_query, start, end, max_records)
+            if nat_articles is None:
+                print(f"GDELT native-term skipped ({nat_error}): {native_query}")
+                continue
+            print(f"GDELT native-term {native_query}: {len(nat_articles)} article(s)")
+            articles.extend(nat_articles)
 
     # Standalone THEME sweep: GDELT's GKG topic classifier tags a story's subject
     # matter independent of our keyword vocabulary, so it can catch a layoff piece
