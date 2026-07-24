@@ -8,8 +8,12 @@ name: Foreign filings ingest (EDINET JP + OpenDART KR)
 # Secrets: EDINET_API_KEY_JP and/or OPENDART_API_KEY_KR, OPENROUTER_API_KEY, WP_API_KEY
 
 on:
-  schedule:
-    - cron: '30 13 * * *'   # 9:30 AM ET (after JP/KR filing days close)
+  # RETIRED 2026-07-24: after months live this ingested ZERO layoff rows (JP/KR
+  # regulatory filings essentially never announce layoffs; that coverage comes
+  # from news + ERM). Scheduled run disabled to stop the waste; still runnable
+  # on demand if the JP/KR body-parsing is ever built out.
+  # schedule:
+  #   - cron: '30 13 * * *'
   workflow_dispatch:
     inputs:
       dry_run:

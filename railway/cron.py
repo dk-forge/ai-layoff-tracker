@@ -201,12 +201,16 @@ def run():
         report_source_health("gdelt", "degraded", 0, str(e))
         print(f"GDELT source failed: {e}")
 
-    # Discovery probes are diagnostics only; an error here must never abort the
-    # cron cycle after entries were already collected (it logs per-probe itself).
-    try:
-        run_discovery_probes()
-    except Exception as e:
-        print(f"discovery probes failed (non-fatal): {e}")
+    # RETIRED: the EDINET(JP)/OpenDART(KR)/CVM(BR) discovery probes ingested zero
+    # layoff rows after months live — those regulatory filings essentially never
+    # announce layoffs, and that coverage comes from news + ERM instead. They only
+    # cluttered the health page with "listed N, nothing ingested". Off by default;
+    # set RUN_DISCOVERY_PROBES=1 to re-enable the diagnostics.
+    if os.environ.get("RUN_DISCOVERY_PROBES", "").lower() in {"1", "true", "yes"}:
+        try:
+            run_discovery_probes()
+        except Exception as e:
+            print(f"discovery probes failed (non-fatal): {e}")
 
     print(f"Pulled {len(entries)} raw entries")
 
