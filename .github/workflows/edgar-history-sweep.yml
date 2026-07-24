@@ -14,7 +14,10 @@ name: EDGAR history sweep (rotating)
 
 on:
   schedule:
-    - cron: '20 5 * * *'   # daily, one month-window per run
+    # SPRINT-TO-CLOSE: hourly — 76 month-windows remained (walker at 2020-03);
+    # one/day was 2.5 more months of drip. Hourly finishes in ~4 days, then the
+    # walker self-idles at the present. Revert to '20 5 * * *' after it closes.
+    - cron: '20 * * * *'   # hourly, one month-window per run
   workflow_dispatch:
     inputs:
       anchor_year:

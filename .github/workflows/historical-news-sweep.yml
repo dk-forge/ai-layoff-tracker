@@ -7,7 +7,13 @@ name: Historical global news sweep
 # separate from the live feed and safe to pause by disabling this workflow.
 on:
   schedule:
-    - cron: '40 5 * * *'
+    # SPRINT-TO-CLOSE: hourly instead of daily. 494 seven-day windows remained
+    # (cursor at 2017-01-29) — one/day meant 16 more months of drip-feed history.
+    # Hourly closes the whole historical universe in ~3 weeks, then the job
+    # self-idles (cursor reaches today; each run becomes a no-op). The script is
+    # success-anchored and 429-safe, so a rate-limited hour just retries later.
+    # After the cursor reaches today, revert to '40 5 * * *' to cut Actions noise.
+    - cron: '40 * * * *'
   workflow_dispatch:
     inputs:
       start:
