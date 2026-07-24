@@ -69,7 +69,6 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         'ai', 'ai_broad', 'stage');
     $alt_boot = array_intersect($alt_boot_url_filters, array_keys($_GET))
         ? null : alt_tracker_bootstrap_payload();
-    if (!empty($GLOBALS['alt_boot_debug'])) { echo "\n<!-- altboot " . esc_html($GLOBALS['alt_boot_debug']) . " -->\n"; }
     if ($alt_boot) {
         echo '<script>window.ALT_BOOTSTRAP = '
             . wp_json_encode($alt_boot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)

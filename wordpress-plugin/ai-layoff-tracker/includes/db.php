@@ -3307,10 +3307,6 @@ function alt_tracker_bootstrap_payload() {
     $facets    = $call('alt_api_facets', 'facets', array());
     $aggregate = $call('alt_api_aggregate', 'aggregate', $aggregate_params);
     $query     = $call('alt_api_query', 'query', $query_params);
-    // TEMP DIAGNOSTIC (remove after): record which piece failed so a live curl
-    // can name the cause instead of guessing at WP internals with no local PHP.
-    $GLOBALS['alt_boot_debug'] = sprintf('f:%d a:%d q:%d',
-        is_array($facets) ? 1 : 0, is_array($aggregate) ? 1 : 0, is_array($query) ? 1 : 0);
     // All-or-nothing: a partial bootstrap is worse than none (the front-end
     // would render some surfaces instantly and fetch the rest, out of step).
     if (!is_array($facets) || !is_array($aggregate) || !is_array($query)) return null;
