@@ -57,7 +57,10 @@ KEY = os.environ.get("WP_API_KEY", "")
 AVAILABILITY = "https://archive.org/wayback/available"
 SAVE = "https://web.archive.org/save/"
 
-LIMIT = max(1, min(500, int(os.environ.get("ARCHIVE_BACKFILL_LIMIT", "200"))))
+LIMIT = max(1, min(4000, int(os.environ.get("ARCHIVE_BACKFILL_LIMIT", "1200"))))
+# Post captured records to the server every N URLs so a run's progress is
+# durable and coverage climbs DURING the run, not only at its end.
+FLUSH_EVERY = max(10, int(os.environ.get("ARCHIVE_FLUSH_EVERY", "40")))
 SPN_MAX = max(0, int(os.environ.get("ARCHIVE_SPN_MAX", "60")))
 SPN_GAP_SECONDS = max(1, int(os.environ.get("ARCHIVE_SPN_GAP_SECONDS", "6")))
 DEADLINE_SECONDS = max(60, min(3000, int(os.environ.get("ARCHIVE_BACKFILL_DEADLINE_SECONDS", "1500"))))
@@ -229,6 +232,16 @@ def run():
         records.append({"url": url, "archived_url": permalink, "status": status})
         tag = "availability" if snap else ("save" if permalink else "pending")
         print(f"  [{status}:{tag}] {url}" + (f" -> {permalink}" if permalink else ""))
+        # Flush incrementally so progress is DURABLE and visible during the run:
+        # batching every record until the end meant a killed/long run wrote
+        # nothing at all, and coverage showed 0 for the whole run. Post every
+        # FLUSH_EVERY records, then keep going.
+        if not DRY_RUN and len(records) >= FLUSH_EVERY:
+            try:
+                post_records(records)
+                records = []
+            except Exception as exc:
+                print(f"::warning::incremental flush failed ({exc}); will retry the batch at run end")
 
     if DRY_RUN:
         print(f"DRY RUN: checked={checked} would-archive={archived} would-pend={pending}; no writes.")

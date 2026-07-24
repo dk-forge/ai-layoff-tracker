@@ -14,7 +14,10 @@ name: Source-archive backfill
 # an "Archived copy (Wayback Machine)" link beside each official source.
 on:
   schedule:
-    - cron: '25 5 * * *'
+    # SPRINT: hourly until the 24,853-URL backlog is archived, then it self-idles
+    # (empty candidate list = no-op). Most URLs are already in Wayback (free, fast
+    # availability hits); only never-crawled ones need a rate-limited save.
+    - cron: '25 * * * *'
   workflow_dispatch:
     inputs:
       limit:
