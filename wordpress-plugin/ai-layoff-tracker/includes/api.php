@@ -368,7 +368,7 @@ function alt_industry_rules() {
         // 'electric'/'electricity', extractive 'mining'/'quarrying', and 'water'/
         // 'waste' utilities all belong under Energy (were falling through to raw
         // NACE labels like "Electricity", "Mining / Quarrying", "Water / Waste").
-        'Energy'                 => array('energy', 'oil', 'gas', 'coal', 'solar', 'nuclear', 'renewable', 'utilit', 'electric', 'mining', 'quarry', 'water supply', 'waste manage'),
+        'Energy'                 => array('energy', 'oil', 'gas', 'coal', 'solar', 'nuclear', 'renewable', 'utilit', 'electric', 'mining', 'quarry', 'water', 'waste'),
         'Logistics & Transport'  => array('logistic', 'transport', 'trucking', 'shipping', 'freight', 'rail', 'delivery', 'supply chain'),
         'Real Estate & Construction' => array('real estate', 'construction', 'reit', 'housing', 'property'),
         'Manufacturing'          => array('manufactur', 'industrial', 'paper', 'containerboard', 'steel', 'chemical', 'machinery', 'production'),
