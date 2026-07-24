@@ -25,6 +25,13 @@ on:
         required: false
         default: '2015'
 
+# Hourly sprint safety: a run that outlives the hour must NOT overlap the
+# next one - two walkers racing the same cursor window would double-spend
+# LLM calls on the same articles (dedup keeps the DATA clean, not the bill).
+concurrency:
+  group: edgar-history-sweep
+  cancel-in-progress: false
+
 jobs:
   edgar-history:
     runs-on: ubuntu-latest

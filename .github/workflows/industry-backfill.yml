@@ -18,7 +18,10 @@ on:
     # and makes no model calls, so leaving this on does not keep costing money -
     # it just runs more often than needed. Revert to the cheap trickle with:
     #   cron -> '55 4 * * *'   |   matrix shard -> [0]   |   INDUSTRY_SHARDS -> '1'
-    - cron: '55 1,4,7,10,13,16,19,22 * * *'
+    # HOURLY for the pre-launch close: 8 shards x 200 rows x 24 runs = the whole
+    # 20,955-row backlog labels in ~13 hours. Self-limiting as before: an empty
+    # backlog run makes zero model calls.
+    - cron: '55 * * * *'
   workflow_dispatch:
     inputs:
       batch:
