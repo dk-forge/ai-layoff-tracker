@@ -1914,6 +1914,30 @@
         var reset = document.getElementById('alt-f-reset');
         if (reset) reset.addEventListener('click', function () { clearFilters(); writeControl('alt-f-years', [String(new Date().getFullYear())]); updateDropdownSummaries(); refreshAll(); });
 
+        // Company typeahead: as the user types (2+ chars), fetch matching
+        // employer names from /companies?q= and fill the <datalist>, so the
+        // Company box is a search-as-you-type instead of guess-the-exact-name.
+        // Debounced; the actual table filter still fires via onFilterChange.
+        var coBox = document.getElementById('alt-f-company');
+        var coList = document.getElementById('alt-company-suggest');
+        if (coBox && coList) {
+            var coTimer, coLast = '';
+            coBox.addEventListener('input', function () {
+                var q = coBox.value.trim();
+                if (q.length < 2 || q === coLast) return;
+                coLast = q;
+                clearTimeout(coTimer);
+                coTimer = setTimeout(function () {
+                    apiGet('companies', { q: q, limit: 12 }).then(function (res) {
+                        var names = (res && res.companies) || [];
+                        coList.innerHTML = names.map(function (n) {
+                            return '<option value="' + escapeHtml(n) + '"></option>';
+                        }).join('');
+                    }).catch(function () { /* suggestions are best-effort */ });
+                }, 220);
+            });
+        }
+
         // Date-basis toggle: recount the whole page by effective vs filing date.
         document.querySelectorAll('.alt-datebasis-opt').forEach(function (b) {
             b.addEventListener('click', function () {

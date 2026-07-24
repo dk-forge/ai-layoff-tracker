@@ -224,7 +224,8 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             </div>
             <div class="alt-filter">
                 <label for="alt-f-company">Company</label>
-                <input type="text" id="alt-f-company" placeholder="e.g. Amazon">
+                <input type="text" id="alt-f-company" placeholder="Type to search, e.g. Amazon" list="alt-company-suggest" autocomplete="off">
+                <datalist id="alt-company-suggest"></datalist>
             </div>
             <div class="alt-filter">
                 <label for="alt-f-keyword">Keyword in excerpt</label>

@@ -2211,12 +2211,23 @@ function alt_api_companies(WP_REST_Request $r) {
     global $wpdb;
     $table = $wpdb->prefix . 'alt_layoffs';
     $since = sanitize_text_field((string) $r->get_param('since'));   // YYYY-MM-DD
-    $limit = min(50000, max(100, (int) ($r->get_param('limit') ?: 20000)));
+    $limit = min(50000, max(10, (int) ($r->get_param('limit') ?: 20000)));
+    $q = trim((string) $r->get_param('q'));   // typeahead prefix/substring
     $has_since = (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $since);
-    $ckey = 'alt_companies_' . md5(($has_since ? $since : 'all') . '_' . $limit);
+    $ckey = 'alt_companies_' . md5(($has_since ? $since : 'all') . '_' . $limit . '_' . strtolower($q));
     $cached = get_transient($ckey);
     if ($cached !== false) return new WP_REST_Response($cached, 200);
-    if ($has_since) {
+    // Typeahead: when a query is given, rank names that START with it first
+    // (what a searcher expects) then any substring match, so "Cre" surfaces
+    // "Cree Lighting" ahead of an incidental mid-name match.
+    if ($q !== '') {
+        $like = '%' . $wpdb->esc_like($q) . '%';
+        $pre  = $wpdb->esc_like($q) . '%';
+        $sql = $wpdb->prepare(
+            "SELECT company FROM $table WHERE company <> '' AND company LIKE %s "
+            . "GROUP BY company ORDER BY (company LIKE %s) DESC, MAX(layoff_date) DESC LIMIT %d",
+            $like, $pre, $limit);
+    } elseif ($has_since) {
         $sql = $wpdb->prepare("SELECT company FROM $table WHERE company <> '' AND layoff_date >= %s "
             . "GROUP BY company ORDER BY MAX(layoff_date) DESC LIMIT %d", $since, $limit);
     } else {
