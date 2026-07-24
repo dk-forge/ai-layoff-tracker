@@ -1690,3 +1690,5 @@ figure.alt-soundbite figcaption.alt-sb-actions,
   border:1px solid var(--alt-line,#e2e8f0);border-left:3px solid var(--alt-blue,#2f6fd0);
   border-radius:9px;background:var(--alt-panel-2,#f5f8fd);color:var(--alt-ink-2,#475062)}
 .alt-floor-banner a{font-weight:600;white-space:nowrap}
+/* Rolling-WARN honesty note in the row-detail source block. */
+.alt-warn-rolling{font-size:12px;line-height:1.4;margin-top:6px}

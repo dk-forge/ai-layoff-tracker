@@ -1887,7 +1887,7 @@
                                 : '';
                             return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens this exact WARN notice">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix;
                         }
-                        return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list. This notice is a row in it.">' + escapeHtml(row.source_name || 'source') + '</a> <span class="alt-muted" title="The notice is a row in the state’s official WARN list">(list)</span>';
+                        return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive; the recorded details here were captured from the notice when it was filed.">' + escapeHtml(row.source_name || 'source') + '</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>';
                     }
                     var url = safeUrl(d);
                     if (!url) return escapeHtml(row.source_name || '—');
@@ -1983,12 +1983,19 @@
             var wl = warnLinks(row);
             var warnText = wl.exact
                 ? 'View this WARN notice (' + (row.source_name || 'source') + ') ↗'
-                : 'View the state’s official WARN list (this notice is a row in it) ↗';
+                : 'View the state’s official WARN list (where this notice was filed) ↗';
             src = wl.primary ? '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(warnText) + '</a>' : escapeHtml(row.source_name || '—');
             // Exact notice + a distinct state list → offer both: the specific
             // record and the official index it sits in.
             if (wl.list) {
                 src += ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow">State WARN list ↗</a>';
+            }
+            // Rolling-file honesty: when we only have the state list (not a
+            // permanent per-notice URL), many states publish a continuously
+            // updated file, so an older notice may no longer appear in today's
+            // version. The captured details above are the record as filed.
+            if (!wl.exact) {
+                src += '<div class="alt-muted alt-warn-rolling">State WARN lists are updated continuously; if this notice has rolled into the state’s annual archive, the size, date and location above are the details captured from it when it was filed.</div>';
             }
         } else {
             var url = safeUrl(row.source_url);

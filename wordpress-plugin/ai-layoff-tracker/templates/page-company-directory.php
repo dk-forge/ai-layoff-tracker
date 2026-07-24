@@ -16,7 +16,7 @@ get_header(); $alt_company = $alt_company_directory['company'];
     <?php foreach ($alt_company_directory['events'] as $event) : ?>
         <li><h2><?php echo esc_html($event['layoff_date'] ?: 'Date not stated'); ?> · <?php echo number_format((int) $event['job_count']); ?> jobs</h2>
             <p><?php echo $event['announced'] ? 'Announcement-stage record.' : 'Filed or independently reported record.'; ?><?php echo $event['country'] ? ' Affected-job location: ' . esc_html($event['country']) . ($event['state'] ? ' (' . esc_html($event['state']) . ')' : '') . '.' : ''; ?></p>
-            <ul class="alt-company-source-list"><?php foreach ($event['sources'] as $source) : ?><li><a href="<?php echo esc_url($source['url']); ?>" target="_blank" rel="noopener nofollow"><?php echo esc_html($source['name'] ?: 'Cited source'); ?></a><?php echo $source['type'] === 'warn' ? ' (official WARN list; notice may be a row in the list)' : ''; ?></li><?php endforeach; ?></ul>
+            <ul class="alt-company-source-list"><?php foreach ($event['sources'] as $source) : ?><li><a href="<?php echo esc_url($source['url']); ?>" target="_blank" rel="noopener nofollow"><?php echo esc_html($source['name'] ?: 'Cited source'); ?></a><?php echo $source['type'] === 'warn' ? ' (official WARN list; the notice was filed here, and older ones roll into the state archive)' : ''; ?></li><?php endforeach; ?></ul>
         </li>
     <?php endforeach; ?>
     </ol>
