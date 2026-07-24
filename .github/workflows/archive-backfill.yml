@@ -53,8 +53,12 @@ jobs:
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
-          ARCHIVE_BACKFILL_LIMIT: ${{ github.event.inputs.limit || '200' }}
-          ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '60' }}
+          # Sprint throughput: Pass 1 (free availability) clears most of the
+          # 24,853-URL backlog fast, so a high per-run limit + hourly cron covers
+          # it in ~1-2 days rather than ~5. Pass 2 saves stay rate-limited.
+          ARCHIVE_BACKFILL_LIMIT: ${{ github.event.inputs.limit || '1500' }}
+          ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '80' }}
+          ARCHIVE_FLUSH_EVERY: '25'
           ARCHIVE_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           # Stops safely between URLs well below the job timeout; the daily run
           # resumes with whatever the server still reports as un-archived.

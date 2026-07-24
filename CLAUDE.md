@@ -56,7 +56,7 @@ the end check.
 - Every network request to the WP host MUST send a browser-ish `User-Agent` (ModSecurity blocks `python-requests`; use `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`).
 - `WP_SITE_URL` is `https://asktherecruiter.com/blog` — never the bare domain (root is a separate Railway app).
 - FTP deploys bypass WP hooks: version bumps trigger cache-flush/table-migration on first request (`alt_flush_caches_on_deploy`), and anything that must exist (like the contact page) needs a **retry-until-verified** hook, not a one-shot on version bump (deploys race mid-upload).
-- Never trust freeform extracted values: countries/industries normalize through fixed vocabularies (`alt_normalize_country`/`alt_normalize_industry`); counts parse the FIRST number only; dates outside 2015→today+18mo are rejected.
+- Never trust freeform extracted values: countries/industries normalize through fixed vocabularies (`alt_normalize_country`/`alt_normalize_industry`); counts parse the FIRST number only. Date bounds differ by path: the LLM path (`extractor.py`) nulls any `layoff_date` before 2015 (news/SEC have no reliable pre-2015 supply anyway); the server WARN/bulk path (`alt_db_valid_date`) accepts back to year 2000, so historical state-WARN + ERM data legitimately populates 2002→2014. Upper bound is today+~3yr (future-dated WARN effective dates), not +18mo.
 - WARN entries are EXEMPT from fuzzy/cross-outlet dedup (companies legally file several notices close together).
 - Changing an entry's job count changes its dedup hash → corrections need `/bulk-purge` + full re-import, not plain upsert.
 - Data-changing jobs must FAIL LOUDLY (non-zero exit on any failed batch; `curl --fail-with-body` in workflows).
