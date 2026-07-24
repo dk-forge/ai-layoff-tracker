@@ -436,6 +436,14 @@ function alt_db_valid_date($d) {
     if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $d, $m)) return null;
     if (!checkdate((int) $m[2], (int) $m[3], (int) $m[1])) return null;
     if ((int) $m[1] < 2000) return null; // zero dates & obvious garbage
+    // Upper bound: reject a date implausibly far in the future. Announced or
+    // filed closures can legitimately be dated a couple of years out (a
+    // scheduled plant closure), so the ceiling is generous (~today + 3y); this
+    // only catches a mis-parsed year (a "by 2050" projection, a typo'd 2082)
+    // that would otherwise land as a phantom far-future spike in the trend and
+    // conversion charts. Rejected -> the row stores undated (dropped from the
+    // month series) rather than the whole row being lost.
+    if ($d > gmdate('Y-m-d', strtotime('+3 years'))) return null;
     return $d;
 }
 

@@ -46,7 +46,7 @@ from datetime import date
 
 import requests
 
-from extractor import classify_reason_tags
+from extractor import classify_reason_tags, CreditsExhaustedError
 from source_health import report_source_health
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
@@ -248,6 +248,16 @@ def main():
             raise RuntimeError("Could not publish reason_backfill running health status")
     try:
         run()
+        return 0
+    except CreditsExhaustedError as exc:
+        # BILLING, not code: the LLM provider is out of credits. Record a
+        # distinct, actionable state and exit 0 so it does not page as a code
+        # failure every run; the weekly health digest surfaces it until topped up.
+        if not DRY_RUN:
+            report_source_health("reason_backfill", "degraded", 0,
+                                 "OpenRouter credits exhausted (HTTP 402) - top up at "
+                                 "https://openrouter.ai/settings/credits; no rows classified")
+        print(f"::warning::reason_backfill halted: {exc} (billing, not a code failure)")
         return 0
     except Exception as exc:
         # A failed backfill attempt is a material condition, not a quiet

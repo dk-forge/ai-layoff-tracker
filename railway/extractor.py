@@ -6,6 +6,7 @@ OpenRouter serves the OpenAI-compatible chat-completions API, so this module
 uses the openai SDK with a base_url override — the anthropic SDK cannot talk
 to OpenRouter (different wire format/endpoint).
 """
+import datetime
 import hashlib
 import json
 import os
@@ -139,6 +140,53 @@ Response format:
 }"""
 
 _client = None
+
+
+class CreditsExhaustedError(RuntimeError):
+    """The LLM provider returned HTTP 402 / 'insufficient credits'.
+
+    This is a BILLING condition, not a code fault or a transient outage: no
+    amount of retrying fixes it, and every subsequent call in the run will fail
+    the same way. Batch jobs catch this to stop immediately (rather than burning
+    hundreds of doomed calls) and report a distinct, human-actionable state
+    ("top up OpenRouter credits") instead of paging as if the code broke.
+    """
+
+
+# Once one call reports credits exhausted, every further call in THIS process is
+# guaranteed to fail the same way. The flag lets classify_* short-circuit so a
+# 200-row batch stops in seconds, not minutes. Reset per process (each workflow
+# run is fresh), so a mid-run top-up is picked up on the next scheduled run.
+_credits_exhausted = False
+
+
+def _is_credits_exhausted(exc):
+    """True when an exception is the provider's out-of-credits (402) signal."""
+    msg = str(exc).lower()
+    code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+    return code == 402 or "insufficient credits" in msg or "code': 402" in msg \
+        or "error code: 402" in msg
+
+
+def _guard_credits(exc):
+    """Call from an LLM except-block: if this is the out-of-credits signal, trip
+    the circuit breaker and raise CreditsExhaustedError; otherwise return (the
+    caller's existing transient-failure handling continues)."""
+    global _credits_exhausted
+    if _is_credits_exhausted(exc):
+        _credits_exhausted = True
+        raise CreditsExhaustedError(
+            "OpenRouter credits exhausted (HTTP 402). Top up at "
+            "https://openrouter.ai/settings/credits") from exc
+
+
+def _precheck_credits():
+    """Short-circuit at the top of a classify call once the breaker has tripped,
+    so a big batch stops in seconds instead of firing hundreds of doomed calls."""
+    if _credits_exhausted:
+        raise CreditsExhaustedError(
+            "OpenRouter credits exhausted (HTTP 402). Top up at "
+            "https://openrouter.ai/settings/credits")
 
 
 def _get_client():
@@ -366,6 +414,7 @@ Rules:
   outside this text.
 
 TEXT:\n""" + raw_text
+    _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
             model=MODEL, max_tokens=200,
@@ -374,6 +423,7 @@ TEXT:\n""" + raw_text
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
+        _guard_credits(exc)
         print(f"Reason-tag classification failed: {exc}")
         return None
     return _validate_reason_result(result, raw_text)
@@ -437,6 +487,7 @@ def classify_industry(company, raw_text):
         'answer {"industry":"unknown"}. Never guess to fill the field.\n\n'
         f"COMPANY: {company}\nEXCERPT: {raw_text}"
     )
+    _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
             model=MODEL, max_tokens=40,
@@ -445,6 +496,7 @@ def classify_industry(company, raw_text):
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
+        _guard_credits(exc)
         print(f"Industry classification failed: {exc}")
         return None
     return _validate_industry_result(result)
@@ -494,6 +546,7 @@ cutting "corporate staff" is NOT retail_staff). The evidence phrase must be
 copied exactly from TEXT and is REQUIRED whenever categories is non-empty.
 
 TEXT:\n""" + raw_text
+    _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
             model=MODEL, max_tokens=250,
@@ -502,6 +555,7 @@ TEXT:\n""" + raw_text
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
+        _guard_credits(exc)
         print(f"Role-category extraction failed: {exc}")
         return None
     if not isinstance(result, dict):
@@ -669,6 +723,14 @@ TEXT:
     if extracted["layoff_date"] and extracted["layoff_date"] < "2015-01-01":
         fallback = _normalize_date(raw_entry.get("filing_date"))
         extracted["layoff_date"] = fallback if (fallback and fallback >= "2015-01-01") else None
+    # Future ceiling (defense in depth; the DB re-checks the same bound): a date
+    # implausibly far out is a model misreading a projection ("by 2050") as an
+    # effective date. Generous ~3y margin keeps genuine announced closures dated
+    # a couple years out; anything past it falls back to the source date or undated.
+    _max_future = (datetime.date.today() + datetime.timedelta(days=366 * 3)).isoformat()
+    if extracted["layoff_date"] and extracted["layoff_date"] > _max_future:
+        fallback = _normalize_date(raw_entry.get("filing_date"))
+        extracted["layoff_date"] = fallback if (fallback and fallback <= _max_future) else None
 
     # Plausibility cap: no single verified company layoff event reaches this
     # size (largest in US history ~60K). Bigger numbers are industry-wide

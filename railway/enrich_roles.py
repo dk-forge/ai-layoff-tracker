@@ -22,7 +22,7 @@ import time
 
 import requests
 
-from extractor import extract_role_categories
+from extractor import extract_role_categories, CreditsExhaustedError
 from reclassify_legacy_ai import UA
 
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -116,6 +116,15 @@ def main():
         # A run where every attempted row failed at the model must be a
         # visible failure, not a quiet no-op that looks like a clean pass.
         return 1 if checked and model_failures == checked else 0
+    except CreditsExhaustedError as exc:
+        # BILLING, not code: provider out of credits. Distinct, actionable state
+        # and exit 0 so it does not page as a code failure every run; the weekly
+        # digest surfaces it until topped up. The circuit breaker already stopped
+        # the batch after the first 402.
+        report_health("degraded", 0, "OpenRouter credits exhausted (HTTP 402) - top up at "
+                      "https://openrouter.ai/settings/credits; no rows enriched")
+        print(f"::warning::enrich_roles halted: {exc} (billing, not a code failure)")
+        return 0
     except Exception as exc:
         report_health("degraded", detail=str(exc))
         raise

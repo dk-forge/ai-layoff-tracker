@@ -44,7 +44,7 @@ from datetime import date, datetime, timezone
 
 import requests
 
-from extractor import classify_industry, INDUSTRY_VOCABULARY
+from extractor import classify_industry, INDUSTRY_VOCABULARY, CreditsExhaustedError
 from source_health import report_source_health
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
@@ -381,6 +381,18 @@ def main():
             raise RuntimeError("Could not publish industry_backfill running health status")
     try:
         run()
+        return 0
+    except CreditsExhaustedError as exc:
+        # BILLING, not a code fault: the LLM provider is out of credits, so every
+        # call 402s. Retrying/paging is useless — record a distinct, actionable
+        # health state and exit 0 so this does not spam a red "run failed" email
+        # 8x/day. The weekly health digest surfaces it until credits are topped
+        # up; the circuit breaker already stopped the batch after the first 402.
+        if not DRY_RUN:
+            report_source_health("industry_backfill", "degraded", 0,
+                                 "OpenRouter credits exhausted (HTTP 402) - top up at "
+                                 "https://openrouter.ai/settings/credits; no rows classified")
+        print(f"::warning::industry_backfill halted: {exc} (billing, not a code failure)")
         return 0
     except Exception as exc:
         # A failed backfill attempt is a material condition, not a quiet retry:
