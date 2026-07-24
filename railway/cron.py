@@ -226,6 +226,18 @@ def run():
         f"{skipped_dupes} duplicates skipped, {skipped_not_layoff} non-events skipped, "
         f"{failed} failed"
     )
+    # FAIL LOUD (CLAUDE.md iron rule): the per-source health above covers
+    # COLLECTION. This covers POSTING. A cycle that pulled real work but posted
+    # nothing while failures piled up is an outage (rotated WP_API_KEY / WP host
+    # 5xx), not a quiet no-op, and Railway won't flag a bare exit-0. Surface it
+    # on the health ledger AND exit non-zero so the cycle is visibly red.
+    if len(entries) > 0 and posted == 0 and failed >= 3:
+        report_source_health(
+            "ingest_post", "degraded", 0,
+            f"news/SEC ingest posted 0 of {len(entries)} entries with {failed} post "
+            f"failures this cycle (likely WP host down or WP_API_KEY rotated)")
+        raise SystemExit(
+            f"ingest posted 0/{len(entries)} with {failed} post failures; failing loud")
     return results
 
 

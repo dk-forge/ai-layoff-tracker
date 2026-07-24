@@ -39,6 +39,7 @@ KNOWN_UNLABELLED = {
     "tracker_diff": "internal tracker-diff discovery tripwire",
     "industry_backfill": "internal evidence-only industry backfill",
     "link_check": "internal broken-link tripwire (public pages + source-rot sample)",
+    "ingest_post": "posting-pipeline tripwire; only emits 'degraded' on a broad post outage",
     # Collectors that report under a family / per-target / runtime-variable id
     # rather than their own module name, so the module-level literal has no
     # standalone meta entry.

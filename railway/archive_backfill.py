@@ -282,6 +282,15 @@ def run():
         return {"archived": 0, "pending": len(misses), "checked": checked}
 
     flush(force=True)  # post the remainder
+    # FAIL LOUD: flush() swallows a failed post so it can retry, but if the
+    # final forced flush also failed the records were never persisted and are
+    # still buffered here. A run that captured nothing because every write
+    # failed must NOT report "ok" (that was the whole "succeeds while writing
+    # nothing" trap). Raise so main() degrades health and exits non-zero.
+    if records:
+        raise RuntimeError(
+            f"archive backfill could not persist {len(records)} record(s) to "
+            f"/archive-record (all flushes failed this run); reporting degraded")
     # Read the true server coverage for the health detail (accurate regardless
     # of how records were batched above).
     try:
