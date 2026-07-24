@@ -63,6 +63,7 @@ if (empty($GLOBALS['alt_tracker_boot_emitted']) && !doing_action('wp_head')
         'ai', 'ai_broad', 'stage');
     $alt_boot = array_intersect($alt_boot_url_filters, array_keys($_GET))
         ? null : alt_tracker_bootstrap_payload();
+    if (!empty($GLOBALS['alt_boot_debug'])) { echo "\n<!-- altboot " . esc_html($GLOBALS['alt_boot_debug']) . " headpass:" . (doing_action('wp_head') ? 1 : 0) . " -->\n"; }
     if ($alt_boot) {
         $GLOBALS['alt_tracker_boot_emitted'] = true;
         echo '<script>window.ALT_BOOTSTRAP = '
