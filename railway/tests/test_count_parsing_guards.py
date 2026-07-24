@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.modules.setdefault("openai", SimpleNamespace())
 sys.modules.setdefault("requests", SimpleNamespace())
 
-from extractor import _percent_only_mention
+from extractor import _percent_only_mention, _count_in_text
 from sources.warn import _count_col
 
 
@@ -78,3 +78,51 @@ class ExtractorPercentGuardTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CountInTextVerbatimGuardTests(unittest.TestCase):
+    """The verbatim guard must reject a count that is only the PREFIX of a
+    larger grouped number ("500" in "$500,000", "12" in "12,500") or a calendar
+    year the model misread as a headcount, while still accepting every real
+    count. (Adversarial finding 2026-07-24.)"""
+
+    REJECT = [
+        (500, "cut costs by $500,000 this year"),
+        (5000, "a $5,000,000 charge"),
+        (500, "reached 500,000 customers"),
+        (12, "12,500 employees remain"),
+        (12, "12.500 employees remain (EU)"),
+        (500, "500 000 users"),
+        (2026, "By 2026 the firm plans changes"),
+        (2020, "founded in 2020, the company grew"),
+        (2024, "in fiscal 2024 revenue fell"),
+    ]
+    ACCEPT = [
+        (500, "laid off 500 workers"),
+        (500, "cut 500, then reversed course"),
+        (300, "300,000 sq ft closed, and cut 300 jobs"),
+        (12000, "12,000 employees affected"),
+        (12000, "12000 employees affected"),
+        (12000, "about 12k staff let go"),
+        (500000, "500,000 roles eliminated"),
+        (500000, "500 000 roles eliminated"),
+        (2000, "2,000 jobs cut"),
+        (2000, "2000 employees laid off"),
+        (2050, "eliminating 2,050 positions"),
+        (2050, "2050 workers affected"),
+        (1995, "1,995 jobs to go"),
+        (2026, "2,026 employees will be let go"),
+        (2026, "cutting 2026 jobs"),
+        (40, "40 employees"),
+        (150, "150 staff"),
+    ]
+
+    def test_rejects_prefix_of_larger_number_and_years(self):
+        for n, text in self.REJECT:
+            self.assertFalse(_count_in_text(n, text),
+                             f"should REJECT {n} in {text!r}")
+
+    def test_accepts_real_counts(self):
+        for n, text in self.ACCEPT:
+            self.assertTrue(_count_in_text(n, text),
+                            f"should ACCEPT {n} in {text!r}")

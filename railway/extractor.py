@@ -274,10 +274,36 @@ def _count_in_text(job_count, raw_text):
                 grouped.replace(",", " ")}
     if n % 1000 == 0 and n >= 1000:
         variants.update({f"{n // 1000}k", f"{n // 1000}K"})
-    return any(
-        re.search(rf"(?<![\d.,]){re.escape(v)}(?![\d])", raw_text)
+    # A variant must not be the PREFIX of a longer grouped number: the old
+    # lookahead only blocked a trailing digit, so "500" matched inside
+    # "$500,000" and "12" inside "12,500 employees" — the guard's whole job is
+    # to stop exactly that misread. Also forbid a following thousands-group
+    # (separator + 3 digits). Lookbehind already blocks matching from the left.
+    sep = r"[.,   ]"
+    if not any(
+        re.search(rf"(?<![\d.,]){re.escape(v)}(?![\d])(?!{sep}\d{{3}})", raw_text)
         for v in variants
-    )
+    ):
+        return False
+    # Year trap: a 4-digit value in 1990-2099 that appears ONLY in a date phrase
+    # ("in 2020", "by 2026", "fiscal 2024") and never beside a headcount noun is
+    # a calendar year the model misread as a count. A documented floor prefers a
+    # dropped row over a wrong number, so reject it.
+    if 1990 <= n <= 2099:
+        noun = (r"jobs?|employe|workers?|positions?|staff|roles?|layoff|headcount|"
+                r"people|workforce|personnel|hires?|staffers?")
+        dateword = (r"in|by|since|before|after|through|during|fiscal|fy|year|of|the|"
+                    r"january|february|march|april|may|june|july|august|september|"
+                    r"october|november|december|q[1-4]")
+        near_noun = re.search(
+            rf"(?<![\d.,]){n}(?![\d])(?!{sep}\d{{3}})\W{{0,4}}(?:{noun})"
+            rf"|(?:{noun})\w*\W{{0,6}}(?:of\s+|about\s+|~)?{n}(?![\d])(?!{sep}\d{{3}})",
+            raw_text, re.I)
+        only_dateish = re.search(rf"(?:{dateword})\s+{n}(?![\d])(?!{sep}\d{{3}})",
+                                 raw_text, re.I)
+        if only_dateish and not near_noun:
+            return False
+    return True
 
 
 def _coerce_job_count(value):
