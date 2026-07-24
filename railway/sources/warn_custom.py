@@ -97,19 +97,30 @@ def fetch_fl():
               "StateNotificationEndDate": "2028-12-31", "appForm": "export"},
         headers=UA, timeout=120)
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", resp.text, re.S | re.I)
-    out = []
-    skipped_test = 0
+    # WarnNo, LWDB, Company, Addr1, Addr2, City, State, Zip, County,
+    # NotifDate, LayoffBegin, LayoffEnd, Affected, Industry
+    # Florida's export bundles staff TEST notices. Row-level "test" matching was
+    # NOT enough: notice W-1511 spans "AT&T" + "BOEING" + "BOEING test" with
+    # fabricated counts — one row carried 78,788 fake workers under an AT&T name
+    # and briefly topped the whole tracker, while its AT&T/BOEING siblings (clean
+    # company cells) slipped through. Quarantine the ENTIRE WarnNo when ANY of its
+    # rows is a test row, so the poisoned notice is dropped whole. Legit
+    # multi-site notices have no "test" sibling and are untouched.
+    test_re = re.compile(r"(?:^|[^a-z])test(?:[^a-z]|\d|$)", re.I)
+    parsed = []
+    poisoned = set()
     for tr in rows[1:]:  # first <tr> is the header (td cells, no th)
         cells = [_strip_tags(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S | re.I)]
         if len(cells) < 14:
             continue
-        # WarnNo, LWDB, Company, Addr1, Addr2, City, State, Zip, County,
-        # NotifDate, LayoffBegin, LayoffEnd, Affected, Industry
-        # Florida's export contains staff TEST rows ("test testie", "BOEING
-        # test", "test2" — one carried 78,788 fake workers under an AT&T name
-        # and briefly topped our whole tracker). "test" as its own token skips
-        # them without touching legit names like "DuctTesters, Inc.".
-        if re.search(r"(?:^|[^a-z])test(?:[^a-z]|\d|$)", cells[2], re.I):
+        parsed.append(cells)
+        if test_re.search(cells[2]) and cells[0].strip():
+            poisoned.add(cells[0].strip())  # WarnNo of a test-tainted notice
+    out = []
+    skipped_test = 0
+    for cells in parsed:
+        warn_no = cells[0].strip()
+        if test_re.search(cells[2]) or (warn_no and warn_no in poisoned):
             skipped_test += 1
             continue
         jobs = _count(cells[12])
@@ -120,7 +131,8 @@ def fetch_fl():
         if e:
             out.append(e)
     if skipped_test:
-        print(f"    FL: skipped {skipped_test} state-side test row(s)")
+        print(f"    FL: skipped {skipped_test} state-side test row(s) "
+              f"across {len(poisoned)} poisoned notice(s)")
     return out
 
 

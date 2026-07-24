@@ -1,0 +1,32 @@
+name: Trash rows (delete + suppress)
+
+# Deletes specific table rows by id AND adds their dedup_hash to the suppression
+# list, so the daily imports (which re-scrape the same source) cannot resurrect
+# them. Use for fabricated / test / mis-parsed rows a code fix alone can't undo
+# because the bad row is still live in the upstream source.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: 'Comma-separated table row ids (the id field /query returns)'
+        required: true
+      reason:
+        description: 'Reason, stored on the suppression list'
+        required: true
+
+jobs:
+  trash:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trash + suppress
+        run: |
+          IDS_JSON=$(printf '%s' "${{ github.event.inputs.ids }}" | python3 -c 'import sys,json;print(json.dumps([int(x) for x in sys.stdin.read().split(",") if x.strip()]))')
+          echo "Trashing ids: $IDS_JSON"
+          curl -sS --fail-with-body -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/trash" \
+            -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -d "{\"ids\":$IDS_JSON,\"reason\":\"${{ github.event.inputs.reason }}\"}"
+          echo ""
