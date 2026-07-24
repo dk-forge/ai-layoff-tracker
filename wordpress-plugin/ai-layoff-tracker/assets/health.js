@@ -103,7 +103,16 @@
   // Each endpoint retries once and degrades to null on failure, so one flaky
   // fetch renders as a visible gap in its own section instead of blanking the
   // entire page (observed live 2026-07-19).
-  const safeGet = path => get(path).catch(() => get(path)).catch(() => null);
+  // A stalled fetch that never settles (not reject, just hangs) would otherwise
+  // block the Promise.all below FOREVER and leave the whole page stuck on
+  // "Loading…" — the fetch retry/.catch can't save a request that never
+  // returns. Race every request against an 9s timeout that resolves null, so a
+  // single hung endpoint degrades to its own empty section instead of bricking
+  // the page (observed live 2026-07-24).
+  const withTimeout = (p, ms) => Promise.race([
+    p, new Promise(resolve => setTimeout(() => resolve(null), ms)),
+  ]);
+  const safeGet = path => withTimeout(get(path).catch(() => get(path)).catch(() => null), 9000);
 
   // (Public competitor benchmark removed — comparison is kept private in the owner's local benchmark, per the standalone-brand rule.)
 

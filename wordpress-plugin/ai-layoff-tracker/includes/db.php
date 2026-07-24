@@ -3390,14 +3390,35 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
 
     // Companies with multiple rounds in the filtered period: the serial-cuts
     // view no aggregator offers (frequency, not size).
+    // MAX(company) picks the alphabetically-last raw NAME VARIANT in each
+    // company_key group, which mislabels big groups: Amazon's key also holds
+    // "Twitch"/"Amazon Fresh" variants that sort after "Amazon", so the chart
+    // showed "Twitch - 89 rounds". Resolve the label from the company directory
+    // (which knows the canonical "Amazon" for the key), falling back to the raw
+    // name only when the directory has no entry.
     $repeat_rows = $wpdb->get_results(alt_db_prep(
-        "SELECT MAX(company) company, COUNT(*) n, COALESCE(SUM(job_count),0) jobs
+        "SELECT company_key, MAX(company) company, COUNT(*) n, COALESCE(SUM(job_count),0) jobs
          FROM $table WHERE $where AND company_key <> ''
          GROUP BY company_key HAVING COUNT(*) >= 2
          ORDER BY n DESC, jobs DESC LIMIT 24", $params));
     $repeat = array();
-    foreach ($repeat_rows ?: array() as $rr) {
-        $repeat[] = array($rr->company, (int) $rr->n, (int) $rr->jobs);
+    if ($repeat_rows) {
+        $dir_names = array();
+        $keys = array();
+        foreach ($repeat_rows as $rr) { if ($rr->company_key !== '') $keys[] = $rr->company_key; }
+        if ($keys) {
+            $dir = alt_company_directory_table();
+            $ph = implode(',', array_fill(0, count($keys), '%s'));
+            $dir_rows = $wpdb->get_results(alt_db_prep(
+                "SELECT company_key, display_name FROM $dir WHERE company_key IN ($ph)", $keys));
+            foreach ($dir_rows ?: array() as $d) {
+                if ($d->display_name !== '') $dir_names[$d->company_key] = $d->display_name;
+            }
+        }
+        foreach ($repeat_rows as $rr) {
+            $label = isset($dir_names[$rr->company_key]) ? $dir_names[$rr->company_key] : $rr->company;
+            $repeat[] = array($label, (int) $rr->n, (int) $rr->jobs);
+        }
     }
 
     return array(
