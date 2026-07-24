@@ -8,14 +8,17 @@ name: Industry backfill
 # touches counts/dates/stages/sources/AI labels.
 on:
   schedule:
-    # COST-TUNED: once daily, single shard. This is background enrichment of the
-    # industry-breakdown chart, not published-critical data, so it drains the
-    # blank-industry backlog slowly and cheaply (~200 rows/run) rather than
-    # re-chewing it 8x/day across 4 shards (which dominated the OpenRouter bill).
-    # With the narrow-prompt fix in extractor.py each row is ~5x cheaper too.
-    # To drain the historical backlog faster, temporarily raise this or run the
-    # workflow_dispatch with a larger batch; steady-state only needs the trickle.
-    - cron: '55 4 * * *'
+    # ---- DRAIN SPRINT (temporary, pre-launch) --------------------------------
+    # The sector table understates every industry while rows sit unclassified
+    # (20,955 blank as of 2026-07-24), so the backlog must clear BEFORE launch.
+    # 8 shards x 200 rows x 8 runs/day = ~12,800 rows/day -> drains in ~2 days.
+    # With the narrow-prompt fix each row is ~$0.0002, so the whole drain is ~$4.
+    #
+    # SELF-LIMITING: once the backlog is empty the job finds nothing to classify
+    # and makes no model calls, so leaving this on does not keep costing money -
+    # it just runs more often than needed. Revert to the cheap trickle with:
+    #   cron -> '55 4 * * *'   |   matrix shard -> [0]   |   INDUSTRY_SHARDS -> '1'
+    - cron: '55 1,4,7,10,13,16,19,22 * * *'
   workflow_dispatch:
     inputs:
       batch:
@@ -47,13 +50,12 @@ jobs:
       group: industry-backfill-${{ matrix.shard }}
       cancel-in-progress: false
     strategy:
-      # Single shard (cost-tuned). Was 4 parallel shards to drain a 42k backlog
-      # fast; that quadrupled the request load every run. One shard is plenty for
-      # a once-daily trickle. Bump back to [0,1,2,3] + INDUSTRY_SHARDS='4' only
-      # for a deliberate fast backlog drain.
+      # DRAIN SPRINT: 8 shards. Even shards scan largest-first, odd shards
+      # newest-first, so the headline sector figures AND the distribution both
+      # improve as it drains (see fetch_candidates). Drop back to [0] after.
       fail-fast: false
       matrix:
-        shard: [0]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -67,7 +69,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '200' }}
           INDUSTRY_SHARD: ${{ matrix.shard }}
-          INDUSTRY_SHARDS: '1'
+          INDUSTRY_SHARDS: '8'
           INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
           # Stops safely between rows well below the job timeout; the daily
