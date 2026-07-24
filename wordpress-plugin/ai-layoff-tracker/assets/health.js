@@ -20,6 +20,7 @@
     warn_mazowieckie: ['Mazowieckie collective dismissals (WUP Warszawa)', 'Daily check, monthly register', 'Poland', 'Official regional labour-office register'],
     source_audit: ['Monthly self-audit (rows re-verified against their sources)', 'Monthly', 'Internal QA', 'Read-only accuracy check'],
     newsapi: ['Worldwide licensed news discovery', 'Twice daily', 'Worldwide', 'Licensed news API'],
+    google_news: ['Free worldwide layoff-headline discovery (no key)', 'Twice daily', 'Worldwide', 'Google News RSS'],
     gdelt: ['Worldwide multilingual news discovery', 'Twice daily', 'Worldwide', 'Open news-index API'],
     gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],
     press_releases: ['Reviewed company-controlled IR/newsroom feeds', 'Twice daily', 'Per reviewed company (US · DE)', 'Company RSS/Atom feeds'],

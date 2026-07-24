@@ -11,6 +11,7 @@ from sources import cvm_br, edinet, opendart
 from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
+from sources.google_news import pull_google_news
 from sources.press_releases import pull_press_releases, reviewed_feed_count
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
@@ -137,6 +138,10 @@ def run():
     # Pull from sources — one source failing must not kill the run
     for source, collector in (
         ("edgar", pull_edgar_filings),
+        # Free, keyless discovery. Its headlines carry the headcount even for
+        # paywalled marquee layoffs (the exact gap NewsAPI's death + paywalls
+        # created), so it leads the news sweep.
+        ("google_news", pull_google_news),
         ("newsapi", pull_news_articles),
         ("press_releases", pull_press_releases),
     ):
@@ -159,21 +164,24 @@ def run():
                         source, "degraded", 0,
                         "No reviewed company-owned or exchange RSS/Atom feeds configured",
                     )
-            elif source == "newsapi":
-                # NewsAPI is the primary AI-attribution channel. A masked "ok"
-                # at 0 rows (dead/exhausted key, free-tier plan rejection) starves
-                # the site silently. Fail loud: degrade on any API error, and on
-                # a 0-article pull (abnormal for this channel) so it surfaces on
+            elif source in ("newsapi", "google_news"):
+                # These news channels must fail loud: a masked "ok" at 0 rows (a
+                # dead/exhausted key, a plan rejection, or Google News blocking
+                # the feed) silently starves discovery. Degrade on any API error,
+                # and on a 0-item pull (abnormal for these channels) so it hits
                 # the health page + weekly digest instead of hiding.
-                err = getattr(pull_news_articles, "last_error", None)
+                fn = pull_news_articles if source == "newsapi" else pull_google_news
+                err = getattr(fn, "last_error", None)
                 if err:
-                    report_source_health(source, "degraded", 0, f"NewsAPI error: {err}")
-                    print(f"::warning::NewsAPI degraded: {err}")
+                    report_source_health(source, "degraded", 0, f"{source} error: {err}")
+                    print(f"::warning::{source} degraded: {err}")
                 elif not pulled:
+                    hint = ("verify the key/tier (free tier is dev-only, ~100 req/day)"
+                            if source == "newsapi" else
+                            "Google News RSS returned nothing — the feed may be blocked/changed")
                     report_source_health(source, "degraded", 0,
-                        "NewsAPI returned 0 articles — verify the key/tier "
-                        "(free tier is dev-only, ~100 req/day, 1-month window)")
-                    print("::warning::NewsAPI returned 0 articles")
+                        f"{source} returned 0 items — {hint}")
+                    print(f"::warning::{source} returned 0 items")
                 else:
                     report_source_health(source, "ok", len(pulled))
             else:

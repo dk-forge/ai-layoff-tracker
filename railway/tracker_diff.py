@@ -37,6 +37,7 @@ import requests
 
 from company_watchlist import already_have, query_for, DAYS_BACK
 from sources.newsapi import pull_news_articles
+from sources.google_news import pull_google_news
 from sources.edgar import search_company_filings
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
@@ -316,6 +317,16 @@ def run():
                 r["_alt_verify"] = "sec"
                 r["_alt_target"] = c        # who we searched for, to reject cross-refs
             entries.extend(sec)
+        # Google News FIRST (free, keyless, and its headlines carry the count)
+        # then NewsAPI if it's alive. This is what lets the chase actually close
+        # a gap again — NewsAPI alone was dead, so every run added 0.
+        try:
+            gnews = pull_google_news(company_names=chunk)
+            for r in gnews:
+                r["_alt_verify"] = "press"
+            entries.extend(gnews)
+        except Exception as exc:
+            print(f"google-news fetch failed: {exc}")
         try:
             press = pull_news_articles(days_back=DAYS_BACK, queries=[query_for(c) for c in chunk])
             for r in press:
