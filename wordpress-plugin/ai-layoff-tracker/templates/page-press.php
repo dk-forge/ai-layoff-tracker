@@ -267,13 +267,15 @@ if (!is_array($alt_ps)) {
         $st = $alt_pstats($f, $t);
         if ((int) ($st->v ?? 0) <= 0) continue;
         $alt_arch[] = array('label' => gmdate('F Y', $ts), 'v' => (int) $st->v, 'ai' => (int) $st->ai,
-                            'link' => $alt_plk(array('from' => $f, 'to' => $t)));
+                            'link' => $alt_plk(array('from' => $f, 'to' => $t)),
+                            'ai_link' => $alt_plk(array('from' => $f, 'to' => $t, 'ai' => 1)));
     }
     for ($yy = $alt_y2 - 1; $yy >= $alt_y2 - 6; $yy--) {
         $st = $alt_pstats(sprintf('%04d-01-01', $yy), sprintf('%04d-12-31', $yy));
         if ((int) ($st->v ?? 0) <= 0) continue;
         $alt_arch[] = array('label' => 'Full year ' . $yy, 'v' => (int) $st->v, 'ai' => (int) $st->ai,
-                            'link' => $alt_plk(array('years' => $yy)));
+                            'link' => $alt_plk(array('years' => $yy)),
+                            'ai_link' => $alt_plk(array('years' => $yy, 'ai' => 1)));
     }
     $alt_ps['archive'] = $alt_arch;
     // Monthly release index, computed here (inside the cache build) because
@@ -349,7 +351,7 @@ if (!is_array($alt_ps)) {
           <tr>
             <th><?php echo esc_html($alt_a['label']); ?></th>
             <td><?php echo number_format($alt_a['v']); ?></td>
-            <td><?php echo number_format($alt_a['ai']); ?></td>
+            <td><?php if ($alt_a['ai'] > 0 && !empty($alt_a['ai_link'])) : ?><a href="<?php echo $alt_a['ai_link']; ?>" target="_blank" rel="noopener" title="Open this period filtered to cuts the employer attributed to AI"><?php echo number_format($alt_a['ai']); ?> &rarr;</a><?php else : ?><?php echo number_format($alt_a['ai']); ?><?php endif; ?></td>
             <td><a href="<?php echo $alt_a['link']; ?>" target="_blank" rel="noopener">Open this period &rarr;</a></td>
           </tr>
         <?php endforeach; ?>
