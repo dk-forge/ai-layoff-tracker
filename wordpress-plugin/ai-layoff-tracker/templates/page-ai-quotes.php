@@ -18,6 +18,11 @@ $alt_ind    = isset($_GET['industry']) ? sanitize_text_field(wp_unslash($_GET['i
 $alt_tier   = isset($_GET['tier']) ? sanitize_key($_GET['tier']) : '';
 $alt_country = isset($_GET['country']) ? sanitize_text_field(wp_unslash($_GET['country'])) : '';
 $alt_q      = isset($_GET['q']) ? sanitize_text_field(wp_unslash($_GET['q'])) : '';
+// Sort: newest first is the default (press wants the latest attribution);
+// company A-Z and largest-first are one click. Letter = alphabet-strip filter.
+$alt_sort   = isset($_GET['sort']) && in_array($_GET['sort'], array('az', 'jobs'), true) ? $_GET['sort'] : 'recent';
+$alt_letter = isset($_GET['letter']) && preg_match('/^[A-Z]$/', strtoupper((string) $_GET['letter']))
+    ? strtoupper((string) $_GET['letter']) : '';
 
 $where = array("ai_explicit = 1", "ai_language <> ''");
 $params = array();
@@ -27,14 +32,24 @@ if ($alt_country) { $where[] = "country = %s"; $params[] = $alt_country; }
 if ($alt_tier === 'primary')      { $where[] = "ai_causation = 'primary_cause'"; }
 elseif ($alt_tier === 'contributing') { $where[] = "ai_causation = 'contributing_cause'"; }
 if ($alt_q) { $where[] = "(company LIKE %s OR ai_language LIKE %s)"; $params[] = '%' . $wpdb->esc_like($alt_q) . '%'; $params[] = '%' . $wpdb->esc_like($alt_q) . '%'; }
+if ($alt_letter) { $where[] = "company LIKE %s"; $params[] = $wpdb->esc_like($alt_letter) . '%'; }
 $where_sql = implode(' AND ', $where);
 
 $alt_total = (int) $wpdb->get_var(alt_db_prep("SELECT COUNT(*) FROM $alt_t WHERE $where_sql", $params));
 $alt_jobs  = (int) $wpdb->get_var(alt_db_prep("SELECT COALESCE(SUM(job_count),0) FROM $alt_t WHERE $where_sql", $params));
 $LIMIT = 300;
+$alt_order = 'layoff_date DESC, job_count DESC';                    // recent (default)
+if ($alt_sort === 'az')   { $alt_order = 'company ASC, layoff_date DESC'; }
+if ($alt_sort === 'jobs') { $alt_order = 'job_count DESC, layoff_date DESC'; }
 $alt_rows = $wpdb->get_results(alt_db_prep(
     "SELECT company, job_count, layoff_date, country, state, industry, ai_language, ai_causation, source_url, source_type
-     FROM $alt_t WHERE $where_sql ORDER BY layoff_date DESC, job_count DESC LIMIT $LIMIT", $params), ARRAY_A) ?: array();
+     FROM $alt_t WHERE $where_sql ORDER BY $alt_order LIMIT $LIMIT", $params), ARRAY_A) ?: array();
+
+// Alphabet strip: only letters that actually have a quoted attribution become
+// links (clicking a dead letter would land on an empty wall). One cheap query
+// over the ~100-row AI subset.
+$alt_letters = $wpdb->get_col("SELECT DISTINCT UPPER(LEFT(company,1)) FROM $alt_t WHERE ai_explicit=1 AND ai_language<>''");
+$alt_letters = array_flip(array_filter($alt_letters, function ($l) { return preg_match('/^[A-Z]$/', (string) $l); }));
 
 // Filter chips: the years and tiers that actually have quotes, so a click never
 // leads to an empty wall.
@@ -68,6 +83,23 @@ $src_label = function ($t) {
       <?php echo $chip('Any', array_filter(array('years' => $alt_year, 'industry' => $alt_ind, 'country' => $alt_country)), !$alt_tier);
       echo $chip('AI named as the cause', array_filter(array('years' => $alt_year, 'industry' => $alt_ind, 'country' => $alt_country, 'tier' => 'primary')), $alt_tier === 'primary');
       echo $chip('AI named among causes', array_filter(array('years' => $alt_year, 'industry' => $alt_ind, 'country' => $alt_country, 'tier' => 'contributing')), $alt_tier === 'contributing'); ?>
+    </div>
+    <div class="alt-qw-chiprow"><span class="alt-qw-chiplabel">Sort</span>
+      <?php $alt_keep = array_filter(array('years' => $alt_year, 'industry' => $alt_ind, 'tier' => $alt_tier, 'country' => $alt_country, 'letter' => $alt_letter));
+      echo $chip('Newest first', $alt_keep, $alt_sort === 'recent');
+      echo $chip('Company A to Z', array_merge($alt_keep, array('sort' => 'az')), $alt_sort === 'az');
+      echo $chip('Largest first', array_merge($alt_keep, array('sort' => 'jobs')), $alt_sort === 'jobs'); ?>
+    </div>
+    <div class="alt-qw-chiprow alt-qw-alpha"><span class="alt-qw-chiplabel">Company</span>
+      <?php $alt_keep_s = array_filter(array('years' => $alt_year, 'industry' => $alt_ind, 'tier' => $alt_tier, 'country' => $alt_country, 'sort' => $alt_sort === 'recent' ? '' : $alt_sort));
+      echo $chip('All', $alt_keep_s, !$alt_letter);
+      foreach (range('A', 'Z') as $alt_l) {
+          if (isset($alt_letters[$alt_l])) {
+              echo $chip($alt_l, array_merge($alt_keep_s, array('letter' => $alt_l)), $alt_letter === $alt_l);
+          } else {
+              echo '<span class="alt-qw-chip alt-qw-chip-dead">' . esc_html($alt_l) . '</span>';
+          }
+      } ?>
     </div>
     <?php if ($alt_ind || $alt_country || $alt_q) : ?>
     <div class="alt-qw-chiprow"><span class="alt-qw-chiplabel">Active</span>

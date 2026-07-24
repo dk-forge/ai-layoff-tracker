@@ -3263,3 +3263,61 @@ function alt_api_conversion_compute(WP_REST_Request $r) {
         'generated_at' => gmdate('c'),
     );
 }
+
+/**
+ * Server-side bootstrap for the tracker page's first paint.
+ *
+ * Each REST call costs ~1.2s of WordPress boot on this host even when the
+ * result is cached, and the tracker fires facets + aggregate + query before
+ * it can render anything. This computes those exact three default-filter
+ * responses through the SAME REST callbacks the endpoints use — payloads,
+ * transient micro-cache (alt_api_cached) and filter semantics are shared,
+ * never duplicated — so templates/page-tracker.php can inline the result as
+ * window.ALT_BOOTSTRAP and the first paint needs zero API round-trips.
+ *
+ * The front-end uses each piece only when the request it was about to make
+ * matches the recorded *_params exactly (deep links, saved session filters
+ * and year rollover therefore fall back to live fetches), so the bootstrap
+ * can never show different numbers than the API would.
+ */
+function alt_tracker_bootstrap_payload() {
+    if (!class_exists('WP_REST_Request')) return null;
+
+    // Mirrors the front-end default scope: every load starts on the current
+    // year ("All time" is one click away). Site timezone, like the site copy.
+    $year = (string) current_time('Y');
+    $aggregate_params = array('years' => $year);
+    // Mirrors the table's first DataTables draw: newest first, 25 per page.
+    $query_params = array(
+        'years'    => $year,
+        'per_page' => '25',
+        'page'     => '1',
+        'sort'     => 'layoff_date',
+        'dir'      => 'desc',
+    );
+
+    $call = function ($handler, $route, $params) {
+        $req = new WP_REST_Request('GET', '/layoffs/v1/' . $route);
+        $req->set_query_params($params);
+        $resp = call_user_func($handler, $req);
+        if (is_wp_error($resp)) return null;
+        return ($resp instanceof WP_REST_Response) ? $resp->get_data() : $resp;
+    };
+
+    $facets    = $call('alt_api_facets', 'facets', array());
+    $aggregate = $call('alt_api_aggregate', 'aggregate', $aggregate_params);
+    $query     = $call('alt_api_query', 'query', $query_params);
+    // All-or-nothing: a partial bootstrap is worse than none (the front-end
+    // would render some surfaces instantly and fetch the rest, out of step).
+    if (!is_array($facets) || !is_array($aggregate) || !is_array($query)) return null;
+
+    return array(
+        'ver'              => defined('ALT_VERSION') ? ALT_VERSION : '',
+        'facets'           => $facets,
+        'facets_params'    => new stdClass(),
+        'aggregate'        => $aggregate,
+        'aggregate_params' => $aggregate_params,
+        'query'            => $query,
+        'query_params'     => $query_params,
+    );
+}

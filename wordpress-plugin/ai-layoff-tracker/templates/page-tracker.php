@@ -32,23 +32,40 @@ $alt_ld[] = array(
         array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv', 'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
     ),
 );
-if (function_exists('alt_faq_items')) {
-    $alt_qa_ld = array();
-    foreach (alt_faq_items() as $alt_f) {
-        $alt_q = is_array($alt_f) ? (string) ($alt_f[0] ?? '') : '';
-        $alt_a = is_array($alt_f) ? (string) ($alt_f[1] ?? '') : '';
-        if ($alt_q !== '' && $alt_a !== '') $alt_qa_ld[] = array('@type' => 'Question',
-            'name' => wp_strip_all_tags($alt_q),
-            'acceptedAnswer' => array('@type' => 'Answer', 'text' => wp_strip_all_tags($alt_a)));
-    }
-    if ($alt_qa_ld) $alt_ld[] = array('@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => $alt_qa_ld);
-}
+// NOTE: no FAQPage block here — alt_seo_head() (wp_head, main plugin file)
+// already emits the identical FAQPage JSON-LD from the same alt_faq_items()
+// in the <head>; duplicating it in the body added ~7KB and risked a
+// duplicate-FAQPage flag in rich-result validation.
 ?>
 <?php if (!defined('ALT_TRACKER_LD_DONE')) { define('ALT_TRACKER_LD_DONE', 1); // emit once even if the shortcode renders twice
     foreach ($alt_ld as $alt_block) {
         echo '<script type="application/ld+json">' . wp_json_encode($alt_block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
     }
 } ?>
+<?php
+// Zero-round-trip first paint: inline the same three default-filter payloads
+// (facets + aggregate + first query page) the front-end would otherwise fetch,
+// computed by the REST endpoints' own callbacks (alt_tracker_bootstrap_payload,
+// includes/db.php). Skipped for deep-linked filtered views — those must fetch
+// live — and layoffs.js ALSO verifies each param set matches what it was about
+// to request before using a piece, so a mismatch just falls back to fetching.
+// JSON_HEX_TAG escapes < and >, so "</script>" can never appear in the blob.
+if (!defined('ALT_TRACKER_BOOTSTRAP_DONE') && function_exists('alt_tracker_bootstrap_payload')) {
+    define('ALT_TRACKER_BOOTSTRAP_DONE', 1);
+    $alt_boot_url_filters = array('years', 'quarters', 'months', 'industry', 'country', 'state',
+        'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
+        'ai', 'ai_broad', 'stage');
+    $alt_boot = null;
+    if (!array_intersect($alt_boot_url_filters, array_keys($_GET))) {
+        $alt_boot = alt_tracker_bootstrap_payload();
+    }
+    if ($alt_boot) {
+        echo '<script>window.ALT_BOOTSTRAP = '
+            . wp_json_encode($alt_boot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
+            . ';</script>' . "\n";
+    }
+}
+?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <?php $alt_cov = alt_coverage_counts(); ?>

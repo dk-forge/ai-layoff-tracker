@@ -22,6 +22,7 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <a href="#m-roles">Roles most impacted</a> ·
     <a href="#m-coverage">Coverage &amp; limits</a> ·
     <a href="#m-differ">Why our totals differ</a> ·
+    <a href="#m-audit">Self-audit</a> ·
     <a href="#m-use">Using the data</a>
   </nav>
 
@@ -72,8 +73,21 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <p>Measured like-for-like against the public trackers by category, the result is not always that we are smaller: we run <em>higher</em> than WARN-only aggregators (we add SEC and named news on top of the same notices), <em>at or above</em> tech-event trackers by job volume, and <em>at or above</em> the announcement AI surveys on our broad measure with a quote on every entry; we run <em>lower</em> only on all-industry totals, where the gap is receiptless cuts (federal-workforce reductions, buyouts, attrition, small closings that file nothing) that we do not claim because we cannot source them.</p>
   </section>
 
+  <section class="alt-method-sec" id="m-audit">
+    <h2>The tracker audits itself</h2>
+    <p>Once a month, an automated audit draws a random sample of already published rows, re-opens each row's own cited source, and checks that the source still supports that company, that count, and that date. The result is written to the public health ledger whether it is flattering or not. A mismatch is flagged for human review through the corrections process; it is never silently edited.</p>
+    <?php
+    $alt_sh = get_option('alt_source_health');
+    $alt_audit = is_array($alt_sh) && isset($alt_sh['source_audit']) ? $alt_sh['source_audit'] : null;
+    if (is_array($alt_audit) && !empty($alt_audit['detail'])) : ?>
+    <p class="alt-method-audit"><b>Latest audit result:</b> <?php echo esc_html($alt_audit['detail']); ?><?php if (!empty($alt_audit['checked_at'])) : ?> <span class="alt-muted">(checked <?php echo esc_html(gmdate('M j, Y', strtotime($alt_audit['checked_at']))); ?>)</span><?php endif; ?></p>
+    <?php endif; ?>
+    <p>Independent verification needs no permission: every row links to its source, and the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a> shows each collector's live status.</p>
+  </section>
+
   <section class="alt-method-sec" id="m-use">
     <h2>Using the data</h2>
+    <p><b>How to phrase a citation.</b> Our totals are what is documented under this methodology: a verifiable floor, not a census of every layoff that happened. The accurate phrasing is <em>"According to AskTheRecruiter's AI Layoff Tracker, N job cuts are documented for [period]"</em> rather than <em>"there were exactly N layoffs."</em> No tracker of any kind observes every layoff; ours is the one where each counted cut can be traced to its document.</p>
     <p>Free with attribution to <b>asktherecruiter.com</b> (CC BY 4.0). The CSV and JSON buttons download exactly what your current filters show (or the full dataset when unfiltered); each chart offers its own image or data download. Programmatic access: <code>GET /blog/wp-json/layoffs/v1/query</code> (paginated; filter params match the page: years, quarters, months, industry, country, state, sources, reasons, q, from, to) and <code>GET /blog/wp-json/layoffs/v1/aggregate</code> for totals and breakdowns. Corrections get priority via the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a>, and every fix is disclosed in the corrections log on the tracker.</p>
   </section>
 </main>

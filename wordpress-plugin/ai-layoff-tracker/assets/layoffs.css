@@ -1666,3 +1666,15 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-method-cta { margin-top: 6px; }
 .alt-method-fulllink { font-weight: 700; font-size: 15px; text-decoration: none; color: var(--alt-accent, #4f7257); }
 .alt-method-fulllink:hover { text-decoration: underline; }
+
+/* Anchor-jump offset for the tracker page: the theme's sticky header covers
+   ~80px, so a bare in-page anchor (e.g. the FAQ's Methodology link to
+   #alt-metric-definitions) lands with its heading hidden underneath. The
+   health/press pages already carry per-element rules; this covers every
+   anchored element on the tracker without affecting visual layout
+   (scroll-margin only applies during anchor navigation). */
+.alt-wrap [id] { scroll-margin-top: 92px; }
+/* Alphabet strip on the AI quote wall: letters with no quoted attribution are
+   inert (a link to an empty wall helps no one). */
+.alt-qw-chip-dead { opacity: .35; cursor: default; pointer-events: none; }
+.alt-qw-alpha .alt-qw-chip { min-width: 30px; text-align: center; }

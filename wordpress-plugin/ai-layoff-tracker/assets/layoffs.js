@@ -10,6 +10,11 @@
  * Filters, the period selector, and chart clicks all set the same controls and
  * then re-fetch query + aggregate, so table, charts, and headline numbers move
  * together.
+ *
+ * First paint: the tracker template inlines the default-filter responses for
+ * all three endpoints as window.ALT_BOOTSTRAP (computed server-side by the
+ * same endpoint callbacks), so an unfiltered first load renders with zero
+ * REST round-trips; see takeBoot() below. Filter changes always fetch live.
  */
 (function ($) {
     'use strict';
@@ -149,6 +154,30 @@
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         });
+    }
+
+    // Server-inlined first-load payloads (window.ALT_BOOTSTRAP, emitted by
+    // page-tracker.php from the same PHP callbacks the REST endpoints run).
+    // Each REST round-trip costs ~1.2s of WordPress boot on this host, so the
+    // default first paint uses these instead of fetching. Every piece is used
+    // AT MOST ONCE, and only when the request the page was about to make
+    // matches the params the server computed it for — deep links, saved
+    // session filters and year rollover all mismatch and fall back to a
+    // normal fetch, so the bootstrap can never show numbers the API wouldn't.
+    var BOOT = window.ALT_BOOTSTRAP || null;
+    function bootParamsMatch(want, have) {
+        var kw = Object.keys(want || {}), kh = Object.keys(have || {});
+        if (kw.length !== kh.length) return false;
+        return kw.every(function (k) {
+            return Object.prototype.hasOwnProperty.call(have, k) && String(want[k]) === String(have[k]);
+        });
+    }
+    function takeBoot(kind, params) {
+        if (!BOOT || !BOOT[kind]) return null;
+        if (!bootParamsMatch(params || {}, BOOT[kind + '_params'] || {})) return null;
+        var data = BOOT[kind];
+        BOOT[kind] = null; // one shot: everything after first load fetches live
+        return data;
     }
 
     function renderSourceHealth() {
@@ -477,6 +506,8 @@
         if (!document.getElementById('alt-stats-bar') && !DASH_PRESENT) return;
         var seq = ++AGG_SEQ; // drop stale responses that resolve out of order
         var aggParams = (window.altData && window.altData.embedParams) || currentParams();
+        var boot = takeBoot('aggregate', aggParams);
+        if (boot) { LAST_AGG = boot; renderStats(boot.totals); renderCharts(boot); return; }
         apiGet('aggregate', aggParams)
             .then(function (agg) {
                 if (seq !== AGG_SEQ) return;
@@ -1548,12 +1579,34 @@
     // about the whole announced tier, and recent months need their maturity
     // labels regardless of the active view.
     var CONVERSION_DATA = null;
-    function initConversionChart() {
-        if (!document.getElementById('alt-chart-conversion') || !chartsAvailable()) return;
+    var CONVERSION_REQUESTED = false;
+    function fetchConversionChart() {
+        if (CONVERSION_REQUESTED) return;
+        CONVERSION_REQUESTED = true;
         apiGet('conversion', {}).then(function (data) {
             CONVERSION_DATA = data;
             renderConversionChart();
         }).catch(function () { /* card stays empty; no fabricated series */ });
+    }
+    function initConversionChart() {
+        var canvas = document.getElementById('alt-chart-conversion');
+        if (!canvas || !chartsAvailable()) return;
+        // The card sits far below the fold, so fetching it with the first
+        // paint made every visitor pay a full REST round-trip for a chart
+        // most never scroll to. Load it when the card approaches the viewport
+        // instead (generous margin, so it is drawn before it is visible);
+        // toggling the card is a second trigger, and browsers without
+        // IntersectionObserver keep the old load-immediately behavior.
+        var card = document.getElementById('alt-conversion-card') || canvas;
+        card.addEventListener('toggle', fetchConversionChart);
+        if (typeof IntersectionObserver === 'undefined') { fetchConversionChart(); return; }
+        var io = new IntersectionObserver(function (entries) {
+            if (entries.some(function (e) { return e.isIntersecting; })) {
+                io.disconnect();
+                fetchConversionChart();
+            }
+        }, { rootMargin: '1200px 0px' });
+        io.observe(card);
     }
     function renderConversionChart() {
         var data = CONVERSION_DATA;
@@ -1757,6 +1810,11 @@
                 p.page = Math.floor(dtData.start / dtData.length) + 1;
                 var ord = dtData.order && dtData.order[0];
                 if (ord && sortFields[ord.column]) { p.sort = sortFields[ord.column]; p.dir = ord.dir; }
+                var boot = takeBoot('query', p);
+                if (boot) {
+                    callback({ draw: dtData.draw, recordsTotal: boot.total, recordsFiltered: boot.total, data: boot.data });
+                    return;
+                }
                 apiGet('query', p).then(function (res) {
                     callback({ draw: dtData.draw, recordsTotal: res.total, recordsFiltered: res.total, data: res.data });
                 }).catch(function () {
@@ -3267,7 +3325,12 @@
         var hasFilterSurface = document.getElementById('alt-table') || document.getElementById('alt-stats-bar') || DASH_PRESENT;
         if (!hasFilterSurface) return;
 
-        apiGet('facets', {}).then(function (facets) {
+        // The whole filter surface waits on facets, so the server-inlined copy
+        // (when present and unfiltered) removes the one fetch that gated
+        // everything else; the aggregate and first query page below then also
+        // resolve from the bootstrap, making the default first paint zero-fetch.
+        var bootFacets = takeBoot('facets', {});
+        (bootFacets ? Promise.resolve(bootFacets) : apiGet('facets', {})).then(function (facets) {
             fillSelect('alt-f-industry', facets.industries);
             fillSelect('alt-f-country', facets.countries);
             fillSelect('alt-f-state', facets.states);

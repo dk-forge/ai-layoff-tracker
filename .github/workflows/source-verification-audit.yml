@@ -30,5 +30,7 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          AUDIT_SAMPLE: ${{ github.event.inputs.sample || '40' }}
+          # 100-row default (was 40): a published accuracy rate over 100 rows is
+          # the credibility instrument reviewers ask for; ~$0.10/month at current rates.
+          AUDIT_SAMPLE: ${{ github.event.inputs.sample || '100' }}
         run: python source_verification_audit.py

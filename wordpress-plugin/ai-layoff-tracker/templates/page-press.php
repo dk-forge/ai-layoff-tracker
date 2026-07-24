@@ -444,6 +444,7 @@ if (!is_array($alt_ps)) {
 
   <h2 id="alt-cite">How to cite us</h2>
   <p>The data is free for editorial, research, and educational use under <b>CC BY 4.0</b>. Attribute to asktherecruiter.com and link back where possible.</p>
+  <p><b>The accurate phrasing:</b> <em>"According to AskTheRecruiter's AI Layoff Tracker, N job cuts are documented for [period]."</em> Our totals are what can be traced to a filing or named report under a published methodology: a verifiable floor, not a census. Phrasing it as "there were exactly N layoffs" overstates what any tracker can know; phrasing it as documented counts is precise, defensible, and survives fact-checking. Every number on this page links to the rows behind it, and the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>#m-audit">tracker audits its own published rows monthly</a> against their sources.</p>
   <p><b>Suggested attribution:</b> "According to the AI Layoff Tracker by AskTheRecruiter.com..."</p>
   <p><b>One-line description:</b> "The AI Layoff Tracker by AskTheRecruiter.com, a source-linked database of layoffs worldwide, flagging the ones companies blame on AI."</p>
   <ul>
