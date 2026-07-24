@@ -124,7 +124,9 @@ def _parse_feed(url, label):
                 continue
             slug = m.group(1)
             # Skip non-company tags that share the namespace (cities, topics).
-            if slug.lower() in _SITEMAP_STOP or len(slug) < 2:
+            # Pure-numeric tags (/tag/200/ = a headcount, not an employer) and
+            # stop-listed cities/topics/countries never become "companies".
+            if slug.lower() in _SITEMAP_STOP or len(slug) < 2 or slug.isdigit():
                 continue
             name = re.sub(r"[-_]+", " ", slug).strip()
             # Title-case only all-lowercase slugs; leave AllBirds/23andMe alone.
