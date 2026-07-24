@@ -50,16 +50,21 @@ $alt_ld[] = array(
 // live — and layoffs.js ALSO verifies each param set matches what it was about
 // to request before using a piece, so a mismatch just falls back to fetching.
 // JSON_HEX_TAG escapes < and >, so "</script>" can never appear in the blob.
-if (!defined('ALT_TRACKER_BOOTSTRAP_DONE') && function_exists('alt_tracker_bootstrap_payload')) {
-    define('ALT_TRACKER_BOOTSTRAP_DONE', 1);
+// The guard must only trip AFTER a real emit. WordPress evaluates the_content
+// more than once per request (SEO/meta-description and excerpt passes run it
+// with output discarded, and some run during wp_head); a persistent flag set
+// BEFORE emitting let one of those discarded passes claim the single emit and
+// the visible body render then skipped. So: never run during the wp_head pass,
+// and set the once-flag only once a payload is actually echoed.
+if (empty($GLOBALS['alt_tracker_boot_emitted']) && !doing_action('wp_head')
+    && function_exists('alt_tracker_bootstrap_payload')) {
     $alt_boot_url_filters = array('years', 'quarters', 'months', 'industry', 'country', 'state',
         'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
         'ai', 'ai_broad', 'stage');
-    $alt_boot = null;
-    if (!array_intersect($alt_boot_url_filters, array_keys($_GET))) {
-        $alt_boot = alt_tracker_bootstrap_payload();
-    }
+    $alt_boot = array_intersect($alt_boot_url_filters, array_keys($_GET))
+        ? null : alt_tracker_bootstrap_payload();
     if ($alt_boot) {
+        $GLOBALS['alt_tracker_boot_emitted'] = true;
         echo '<script>window.ALT_BOOTSTRAP = '
             . wp_json_encode($alt_boot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
             . ';</script>' . "\n";
