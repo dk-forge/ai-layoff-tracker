@@ -741,6 +741,15 @@ SEGMENT_TERMS = (
     '"amid AI push"', '"to focus on AI"', '"AI-first" layoffs',
     '"AI reshapes"', '"invest in AI" jobs', '"AI transformation" cuts',
     '"AI restructuring"', '"shift to AI"',
+    # Adjacent-automation vocabulary (2026-07-24 audit): employers and press
+    # increasingly name the MECHANISM (agents, chatbots, robots, generative
+    # AI) rather than the word "AI". Discovery-side only - the attribution
+    # gate is untouched, so these can surface candidates but never loosen
+    # what counts as an AI-attributed cut (verbatim employer quote required).
+    '"AI agents" "jobs"', '"agentic AI" workforce', '"generative AI" "job cuts"',
+    '"chatbots" "laid off"', '"chatbot" "replaced"', '"robots" "replace workers"',
+    '"automated" "positions eliminated"', '"automation" "job losses"',
+    '"digital workers" jobs', '"AI adoption" "headcount"',
     # Dialect-synonym segments (rarer phrasings ride the rotation instead of
     # the base OR-set): Commonwealth/African/Asian English + translated press
     '"sackings"', '"job shedding"', '"shed jobs"', '"slash jobs"',
