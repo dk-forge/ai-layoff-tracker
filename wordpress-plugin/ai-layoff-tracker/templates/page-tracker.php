@@ -56,16 +56,21 @@ $alt_ld[] = array(
 // BEFORE emitting let one of those discarded passes claim the single emit and
 // the visible body render then skipped. So: never run during the wp_head pass,
 // and set the once-flag only once a payload is actually echoed.
-if (empty($GLOBALS['alt_tracker_boot_emitted']) && !doing_action('wp_head')
-    && function_exists('alt_tracker_bootstrap_payload')) {
+// Emit unconditionally when the payload succeeds and no filter rides the URL.
+// This theme renders the post content during wp_head (for SEO/JSON-LD) and that
+// pass's output is what reaches the body, so any guard that suppressed the
+// head-time pass (or a persistent once-flag set by an earlier discarded pass)
+// killed the only emit that mattered. A duplicate emit, if the template ever
+// renders twice into visible output, is harmless: layoffs.js reads the global
+// once and the payloads are identical.
+if (function_exists('alt_tracker_bootstrap_payload')) {
     $alt_boot_url_filters = array('years', 'quarters', 'months', 'industry', 'country', 'state',
         'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
         'ai', 'ai_broad', 'stage');
     $alt_boot = array_intersect($alt_boot_url_filters, array_keys($_GET))
         ? null : alt_tracker_bootstrap_payload();
-    if (!empty($GLOBALS['alt_boot_debug'])) { echo "\n<!-- altboot " . esc_html($GLOBALS['alt_boot_debug']) . " headpass:" . (doing_action('wp_head') ? 1 : 0) . " -->\n"; }
+    if (!empty($GLOBALS['alt_boot_debug'])) { echo "\n<!-- altboot " . esc_html($GLOBALS['alt_boot_debug']) . " -->\n"; }
     if ($alt_boot) {
-        $GLOBALS['alt_tracker_boot_emitted'] = true;
         echo '<script>window.ALT_BOOTSTRAP = '
             . wp_json_encode($alt_boot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
             . ';</script>' . "\n";
