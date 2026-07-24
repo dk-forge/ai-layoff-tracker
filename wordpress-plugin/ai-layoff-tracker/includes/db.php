@@ -163,6 +163,31 @@ function alt_db_install() {
         PRIMARY KEY (id), UNIQUE KEY record_key (record_key),
         KEY state_status (state, assessment_status), KEY related_layoff_id (related_layoff_id)
     ) $charset;");
+
+    // Permanent-archive index for source URLs. Keyed by md5(source_url) so the
+    // many WARN rows that share one state source file store ONE snapshot, while
+    // one-per-row news/SEC/ERM URLs store one each. This is additive telemetry:
+    // it never joins into a layoff count and a missing/failed row here only
+    // means "no second link yet", never a broken row. Status is one of
+    // 'archived' (a permanent Wayback permalink exists in archived_url),
+    // 'pending' (queued/rate-limited, retried) or 'unavailable' (genuinely not
+    // archivable after repeated attempts; reported honestly, not retried
+    // forever).
+    $archive = alt_archive_table();
+    dbDelta("CREATE TABLE $archive (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        url_hash CHAR(32) NOT NULL,
+        source_url TEXT NULL,
+        archived_url TEXT NULL,
+        status VARCHAR(16) NOT NULL DEFAULT 'pending',
+        attempts INT UNSIGNED NOT NULL DEFAULT 0,
+        checked_at DATETIME NULL,
+        archived_at DATETIME NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY url_hash (url_hash),
+        KEY status (status),
+        KEY status_checked (status, checked_at)
+    ) $charset;");
 }
 
 function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events'; }
@@ -170,6 +195,17 @@ function alt_source_reports_table() { global $wpdb; return $wpdb->prefix . 'alt_
 function alt_company_directory_table() { global $wpdb; return $wpdb->prefix . 'alt_company_directory'; }
 function alt_source_runs_table() { global $wpdb; return $wpdb->prefix . 'alt_source_runs'; }
 function alt_warn_transparency_table() { global $wpdb; return $wpdb->prefix . 'alt_warn_transparency'; }
+function alt_archive_table() { global $wpdb; return $wpdb->prefix . 'alt_archive'; }
+
+/**
+ * Stable key for a source URL in the archive store. Many WARN rows share one
+ * source file, so the archive is keyed by URL (not by row) and one snapshot
+ * covers every row citing that file. Trim only — the URL is stored as sent so
+ * the availability check and the render both hash the same string.
+ */
+function alt_archive_url_key($url) {
+    return md5(trim((string) $url));
+}
 
 /**
  * FTP deployment can serve a request while files are still arriving. Keep the
@@ -179,6 +215,20 @@ function alt_warn_transparency_table() { global $wpdb; return $wpdb->prefix . 'a
 function alt_source_runs_table_ready() {
     global $wpdb;
     $table = alt_source_runs_table();
+    $exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+    if ($exists === $table) return true;
+    alt_db_install();
+    return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) === $table;
+}
+
+/**
+ * Same self-heal guard for the source-archive index: an FTP deploy can serve a
+ * request before dbDelta has created the new table, so a writer verifies it and
+ * runs the idempotent installer if needed before using it.
+ */
+function alt_archive_table_ready() {
+    global $wpdb;
+    $table = alt_archive_table();
     $exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
     if ($exists === $table) return true;
     alt_db_install();
@@ -978,6 +1028,26 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/industry-backfill', array(
         'methods' => 'POST', 'callback' => 'alt_api_industry_backfill',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    // Source archiving (Internet Archive / Wayback). Two key-protected endpoints
+    // drive the resumable backfill: /archive-candidates hands out the next batch
+    // of DISTINCT un-archived source URLs (any row type, including brand-new
+    // rows), /archive-record stores the resulting permanent snapshot per URL.
+    // /archive-coverage is a public read-only coverage tally for the health page.
+    register_rest_route('layoffs/v1', '/archive-candidates', array(
+        'methods' => 'GET', 'callback' => 'alt_api_archive_candidates',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+        'args' => array(
+            'limit' => array('type' => 'integer', 'default' => 200),
+            'retry_hours' => array('type' => 'integer', 'default' => 72),
+        ),
+    ));
+    register_rest_route('layoffs/v1', '/archive-record', array(
+        'methods' => 'POST', 'callback' => 'alt_api_archive_record',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    register_rest_route('layoffs/v1', '/archive-coverage', array(
+        'methods' => 'GET', 'callback' => 'alt_api_archive_coverage', 'permission_callback' => '__return_true',
     ));
     // Read-only public operational transparency, plus a key-protected writer
     // used by the autonomous collectors after each source attempt.
@@ -2071,6 +2141,162 @@ function alt_api_seen_urls(WP_REST_Request $r) {
     return array('seen' => array_values(array_unique(array_merge($seen ?: array(), $seen2 ?: array()))));
 }
 
+/* ------------------------------------------------------------------ */
+/* Source archiving (Internet Archive / Wayback) — see archive_backfill.py */
+/* ------------------------------------------------------------------ */
+
+// Rounds a source URL is retried before it is recorded 'unavailable' (dead or
+// bot-walled) instead of retried forever. The daily backfill retries 'pending'
+// rows on a spacing window, so this is roughly a week of attempts.
+if (!defined('ALT_ARCHIVE_MAX_ATTEMPTS')) define('ALT_ARCHIVE_MAX_ATTEMPTS', 5);
+
+/**
+ * Key-protected: return the next batch of DISTINCT source URLs that still need
+ * a permanent archive. The gap is computed by LEFT JOIN against the archive
+ * index, so this covers EVERY row type (WARN / news / SEC / ERM) and — crucially
+ * — a brand-new row's source URL appears here automatically until it is
+ * archived, with no ingest-path change. That is how forward coverage is
+ * guaranteed: the daily backfill drains whatever /add and /bulk have written.
+ *
+ * A URL is returned when it has no archive row yet, or when its row is 'pending'
+ * (a previous save was rate-limited/in-flight) and older than the retry window.
+ * 'archived' and 'unavailable' URLs drop out, so the job is naturally resumable.
+ */
+function alt_api_archive_candidates(WP_REST_Request $r) {
+    global $wpdb;
+    if (!alt_archive_table_ready()) {
+        return new WP_Error('alt_db_error', 'Archive index unavailable after migration retry.', array('status' => 500));
+    }
+    $limit = min(500, max(1, (int) ($r->get_param('limit') ?: 200)));
+    $retry_hours = min(720, max(1, (int) ($r->get_param('retry_hours') ?: 72)));
+    $retry_before = gmdate('Y-m-d H:i:s', time() - $retry_hours * HOUR_IN_SECONDS);
+    $layoffs = alt_db_table();
+    $archive = alt_archive_table();
+    // DISTINCT source URLs missing an archive, or 'pending' and due for retry.
+    // The MD5 join matches the PHP/Python url_hash (md5 of the trimmed URL).
+    // NB: the literal percent in LIKE 'http%' is doubled to '%%' because this
+    // string is run through $wpdb->prepare (a bare % is read as a placeholder).
+    $sql = "SELECT DISTINCT l.source_url
+            FROM $layoffs l
+            LEFT JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
+            WHERE l.source_url <> '' AND l.source_url LIKE 'http%%'
+              AND (a.url_hash IS NULL OR (a.status = 'pending' AND (a.checked_at IS NULL OR a.checked_at < %s)))
+            LIMIT %d";
+    $urls = $wpdb->get_col($wpdb->prepare($sql, $retry_before, $limit)) ?: array();
+    return rest_ensure_response(array(
+        'urls' => array_values($urls),
+        'limit' => $limit,
+        'coverage' => alt_archive_coverage_counts(),
+    ));
+}
+
+/** Shared coverage tally for the candidate response and the public endpoint. */
+function alt_archive_coverage_counts() {
+    global $wpdb;
+    $layoffs = alt_db_table();
+    $archive = alt_archive_table();
+    $distinct_total = (int) $wpdb->get_var(
+        "SELECT COUNT(DISTINCT source_url) FROM $layoffs WHERE source_url <> '' AND source_url LIKE 'http%'");
+    $rows = $wpdb->get_results("SELECT status, COUNT(*) AS n FROM $archive GROUP BY status", ARRAY_A) ?: array();
+    $by = array('archived' => 0, 'pending' => 0, 'unavailable' => 0);
+    foreach ($rows as $row) {
+        $s = (string) $row['status'];
+        if (isset($by[$s])) $by[$s] = (int) $row['n'];
+    }
+    $archived = $by['archived'];
+    return array(
+        'distinct_source_urls' => $distinct_total,
+        'archived' => $archived,
+        'pending' => $by['pending'],
+        'unavailable' => $by['unavailable'],
+        'coverage_pct' => $distinct_total > 0 ? round(100 * $archived / $distinct_total, 1) : 0.0,
+    );
+}
+
+/**
+ * Key-protected: record archive results. Body: { items: [ { url, archived_url,
+ * status } ] }. Upserts one row per url_hash (dedup across shared WARN files is
+ * free). status must be one of archived/pending/unavailable; an 'archived' item
+ * must carry a real archived_url or it is downgraded to 'pending' (never fake a
+ * link). Attempts increment so a URL that never archives becomes 'unavailable'
+ * once the worker has tried it enough times, and is then reported honestly
+ * instead of retried forever. Best-effort cache flush so freshly archived
+ * links appear on the tracker.
+ */
+function alt_api_archive_record(WP_REST_Request $r) {
+    global $wpdb;
+    if (!alt_archive_table_ready()) {
+        return new WP_Error('alt_db_error', 'Archive index unavailable after migration retry.', array('status' => 500));
+    }
+    $items = $r->get_param('items');
+    if (!is_array($items)) return new WP_Error('alt_bad_request', 'items must be an array of {url, archived_url, status}.', array('status' => 400));
+    if (count($items) > 2000) return new WP_Error('alt_bad_request', 'at most 2000 items per call.', array('status' => 400));
+    $table = alt_archive_table();
+    $now = gmdate('Y-m-d H:i:s');
+    $out = array('archived' => 0, 'pending' => 0, 'unavailable' => 0, 'rejected' => array());
+    $any_archived = false;
+    foreach ($items as $item) {
+        $url = trim((string) ($item['url'] ?? ''));
+        if ($url === '' || strpos($url, 'http') !== 0) { $out['rejected'][] = $url; continue; }
+        $status = (string) ($item['status'] ?? '');
+        if (!in_array($status, array('archived', 'pending', 'unavailable'), true)) { $out['rejected'][] = $url; continue; }
+        $archived_url = esc_url_raw(trim((string) ($item['archived_url'] ?? '')));
+        // Never store an 'archived' status without a real permalink.
+        if ($status === 'archived' && $archived_url === '') $status = 'pending';
+        $hash = alt_archive_url_key($url);
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, attempts FROM $table WHERE url_hash = %s", $hash));
+        $attempts = ($existing ? (int) $existing->attempts : 0) + 1;
+        // Don't retry forever: a URL that has failed to archive after this many
+        // rounds is recorded 'unavailable' (dead / bot-walled) so it drops out
+        // of the candidate query and is reported honestly rather than faked. A
+        // worker may also send 'unavailable' outright on a definitive signal.
+        if ($status === 'pending' && $attempts >= ALT_ARCHIVE_MAX_ATTEMPTS) $status = 'unavailable';
+        $data = array(
+            'source_url' => $url,
+            'status' => $status,
+            'attempts' => $attempts,
+            'checked_at' => $now,
+        );
+        $fmt = array('%s', '%s', '%d', '%s');
+        if ($status === 'archived') {
+            $data['archived_url'] = $archived_url;
+            $data['archived_at'] = $now;
+            $fmt[] = '%s'; $fmt[] = '%s';
+        }
+        if ($existing) {
+            $ok = $wpdb->update($table, $data, array('id' => (int) $existing->id), $fmt, array('%d'));
+        } else {
+            $data['url_hash'] = $hash;
+            $fmt[] = '%s';
+            $ok = $wpdb->insert($table, $data, $fmt);
+        }
+        if ($ok === false) {
+            return new WP_Error('alt_db_error', 'Archive record failed for ' . $url . ': ' . $wpdb->last_error, array('status' => 500));
+        }
+        $out[$status] = ($out[$status] ?? 0) + 1;
+        if ($status === 'archived') $any_archived = true;
+    }
+    $out['coverage'] = alt_archive_coverage_counts();
+    // Newly archived links should appear on the tracker without waiting out the
+    // server cache TTL. Best-effort; a failed flush never fails the record.
+    if ($any_archived && function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response($out);
+}
+
+/** Public, read-only archive-coverage summary for the health page. */
+function alt_api_archive_coverage() {
+    global $wpdb;
+    $table = alt_archive_table();
+    if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) !== $table) {
+        return rest_ensure_response(array(
+            'distinct_source_urls' => 0, 'archived' => 0, 'pending' => 0,
+            'unavailable' => 0, 'coverage_pct' => 0.0,
+        ));
+    }
+    return rest_ensure_response(alt_archive_coverage_counts());
+}
+
 function alt_api_tips_get(WP_REST_Request $r) {
     $want = sanitize_key($r->get_param('status') ?: 'new');
     $per  = min(100, max(1, (int) ($r->get_param('per_page') ?: 25)));
@@ -2922,7 +3148,7 @@ function alt_api_query_compute(WP_REST_Request $r) {
         'total'    => $total,
         'page'     => $page,
         'per_page' => $per,
-        'data'     => alt_attach_event_sources(array_map('alt_db_row_to_array', $rows ?: array())),
+        'data'     => alt_attach_archived_urls(alt_attach_event_sources(array_map('alt_db_row_to_array', $rows ?: array()))),
     );
 }
 
@@ -2990,6 +3216,52 @@ function alt_attach_event_sources(array $data) {
                 'source_url'  => $url,
             );
         }
+    }
+    unset($row);
+    return $data;
+}
+
+/**
+ * Attach each row's permanent Internet Archive (Wayback) snapshot as
+ * `archived_url` when one exists. One batched, indexed lookup over the page's
+ * distinct source URLs (the alt_attach_event_sources pattern) — never a
+ * per-row query. Rows whose source is not yet archived simply carry no
+ * `archived_url`, so the front-end shows the second link only when it resolves
+ * (never a broken link). Fail-open: if the archive table is missing or the
+ * lookup errors, every row is returned unchanged.
+ */
+function alt_attach_archived_urls(array $data) {
+    if (!$data) return $data;
+    global $wpdb;
+    $table = alt_archive_table();
+    // Guard against the deploy race (table not yet created): read the schema
+    // rather than self-heal here — this is a hot read path, and a missing
+    // second link is harmless until the next backfill fills it in.
+    if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) !== $table) {
+        return $data;
+    }
+    // Collect the distinct source URLs on this page and map each to its hash.
+    $by_hash = array();
+    foreach ($data as $row) {
+        $url = trim((string) ($row['source_url'] ?? ''));
+        if ($url !== '' && strpos($url, 'http') === 0) {
+            $by_hash[alt_archive_url_key($url)] = true;
+        }
+    }
+    if (!$by_hash) return $data;
+    $hashes = array_keys($by_hash);
+    $ph = implode(',', array_fill(0, count($hashes), '%s'));
+    $found = $wpdb->get_results($wpdb->prepare(
+        "SELECT url_hash, archived_url FROM $table
+          WHERE status = 'archived' AND archived_url <> '' AND url_hash IN ($ph)", $hashes), ARRAY_A) ?: array();
+    if (!$found) return $data;
+    $snap = array();
+    foreach ($found as $r) { $snap[$r['url_hash']] = $r['archived_url']; }
+    foreach ($data as &$row) {
+        $url = trim((string) ($row['source_url'] ?? ''));
+        if ($url === '' || strpos($url, 'http') !== 0) continue;
+        $h = alt_archive_url_key($url);
+        if (!empty($snap[$h])) $row['archived_url'] = $snap[$h];
     }
     unset($row);
     return $data;

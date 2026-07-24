@@ -130,6 +130,22 @@
             ? 'https://edd.ca.gov/siteassets/files/jobs_and_training/warn/' + CA_WARN_FY_PDF[fy]
             : '';
     }
+    // Permanent Internet Archive (Wayback) snapshot of the row's source, when
+    // the backfill has captured one. The API attaches `archived_url` only for a
+    // resolved snapshot, so this returns '' (no link) whenever an archive is
+    // still pending or unavailable — never a broken or guessed link. The second
+    // link sits alongside the official source on every row that has one.
+    function archivedUrl(row) { return safeUrl(row && row.archived_url); }
+    // Compact secondary link for the table source cell.
+    function archivedCellLink(row) {
+        var a = archivedUrl(row);
+        return a ? ' <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="Permanent Internet Archive (Wayback Machine) snapshot of this source">(archived)</a>' : '';
+    }
+    // Full secondary link for the row-detail Source block.
+    function archivedDetailLink(row) {
+        var a = archivedUrl(row);
+        return a ? ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Archived copy (Wayback Machine) ↗</a>' : '';
+    }
     function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
     function setStatus(id, text, isError) {
         var el = document.getElementById(id);
@@ -1903,6 +1919,7 @@
                 } },
                 { data: 'source_url', orderable: false, render: function (d, t, row) {
                     if (t !== 'display') return row.source_name || '';
+                    var arch = archivedCellLink(row);
                     if (row.source_type === 'warn') {
                         var wl = warnLinks(row);
                         if (!wl.primary) return escapeHtml(row.source_name || '—');
@@ -1912,13 +1929,13 @@
                             var suffix = wl.list
                                 ? ' <a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="The state’s official WARN list this notice is filed in">(list)</a>'
                                 : '';
-                            return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens this exact WARN notice">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix;
+                            return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens this exact WARN notice">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix + arch;
                         }
-                        return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive; the recorded details here were captured from the notice when it was filed.">' + escapeHtml(row.source_name || 'source') + '</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>';
+                        return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive; the recorded details here were captured from the notice when it was filed.">' + escapeHtml(row.source_name || 'source') + '</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>' + arch;
                     }
                     var url = safeUrl(d);
                     if (!url) return escapeHtml(row.source_name || '—');
-                    return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="Opens the primary source">' + escapeHtml(row.source_name || 'source') + '</a>';
+                    return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="Opens the primary source">' + escapeHtml(row.source_name || 'source') + '</a>' + arch;
                 } }
             ]
         });
@@ -2062,6 +2079,10 @@
             var url = safeUrl(row.source_url);
             src = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>' : escapeHtml(row.source_name || '—');
         }
+        // Permanent Wayback snapshot as a uniform second link on every row that
+        // has one (SEC/EDGAR rows are already permanent, but carry it too for
+        // consistency). Omitted entirely when no snapshot is captured yet.
+        src += archivedDetailLink(row);
         parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div>' + src + verif + '</div></div>');
         // Corroboration: when this event was recorded from more than one source
         // (e.g. an official WARN filing AND the news article that reported it,

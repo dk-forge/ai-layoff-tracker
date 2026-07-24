@@ -31,6 +31,7 @@
     context_enrichment: ['Existing source-linked records', 'Daily evidence-only', 'Internal', 'Evidence re-read'],
     reason_backfill: ['Untagged non-WARN records; reason tags only', 'Daily evidence-only', 'Internal', 'Stored-excerpt classification'],
     role_enrichment: ['Role categories from already-stored row text', 'Daily evidence-only', 'Internal', 'Stored-evidence re-read'],
+    archive_backfill: ['Permanent Internet Archive (Wayback) snapshots of every source link', 'Daily, resumable', 'Internal', 'Wayback availability + Save Page Now'],
     dedupe_llm: ['Cross-source duplicate remover (daily deep scan)', 'Daily', 'Internal', 'Cross-source dedup'],
     edinet_jp: ['EDINET daily filing list, discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
     opendart_kr: ['OpenDART disclosure list, discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],

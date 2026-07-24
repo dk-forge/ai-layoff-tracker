@@ -1,0 +1,64 @@
+name: Source-archive backfill
+
+# Give every tracker row a permanent Internet Archive (Wayback) copy of its
+# source. The server hands out the next batch of DISTINCT un-archived source
+# URLs (any row type: WARN / news / SEC / ERM), this job checks the free Wayback
+# availability API first and only spends a rate-limited Save Page Now capture on
+# URLs with no existing snapshot, then records the permalink per URL. It is
+# resumable (a URL drops out once archived or recorded unavailable) and picks up
+# brand-new rows automatically, so running daily guarantees forward coverage
+# with NO change to the ingest write path. No LLM, no secrets beyond WP_API_KEY.
+#
+# Complements archive-sources.yml (which snapshots the ~50 WARN source FILES);
+# this one covers and STORES every per-row source URL so the tracker can render
+# an "Archived copy (Wayback Machine)" link beside each official source.
+on:
+  schedule:
+    - cron: '25 5 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Candidate URLs to process this run (1-500; default 200)'
+        required: false
+        default: '200'
+      spn_max:
+        description: 'Max Save-Page-Now captures this run (respects Wayback limits; default 60)'
+        required: false
+        default: '60'
+      dry_run:
+        description: 'Set 1 to check + print without saving or writing'
+        required: false
+        default: ''
+
+# The candidate query is idempotent, but two overlapping runs would double the
+# Save-Page-Now load against Wayback's anonymous rate limit.
+concurrency:
+  group: archive-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Capture permanent Wayback snapshots of source URLs
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          ARCHIVE_BACKFILL_LIMIT: ${{ github.event.inputs.limit || '200' }}
+          ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '60' }}
+          ARCHIVE_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
+          # Stops safely between URLs well below the job timeout; the daily run
+          # resumes with whatever the server still reports as un-archived.
+          ARCHIVE_BACKFILL_DEADLINE_SECONDS: '1800'
+        # Data-changing job fails loudly: an unreachable candidate feed or a
+        # failed /archive-record batch exits non-zero above.
+        run: |
+          set -o pipefail
+          cd railway
+          python archive_backfill.py | tee -a "$GITHUB_STEP_SUMMARY"

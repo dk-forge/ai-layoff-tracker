@@ -1,0 +1,273 @@
+"""Give every tracker row a permanent Internet Archive (Wayback) copy of its source.
+
+Why: each row cites an official source link (WARN notice / list / FY PDF, SEC
+filing, or news URL). Sources rot — states rotate WARN files, outlets unpublish,
+PDFs 404. A dead citation weakens the record. This job captures a permanent,
+neutral, third-party snapshot for EVERY distinct source URL (WARN + news + SEC +
+ERM), so the tracker can show an "Archived copy (Wayback Machine)" link beside
+the official one on every row.
+
+Relationship to archive_sources.py: that job snapshots the ~50 WARN SOURCE FILES
+(state registries + CA PDFs + the rolling xlsx) on a schedule. This job covers
+EVERY per-row source URL of every type AND stores the resulting snapshot so the
+API can serve it. They are complementary; the WARN files this one requests will
+usually already be in Wayback (found free via the availability API) thanks to
+archive_sources.py, so this job mostly spends its Save-Page-Now budget on the
+news/SEC/ERM long tail.
+
+How it stays correct and cheap:
+- The server computes the gap (distinct source URLs with no snapshot yet) via
+  /archive-candidates, so this job is naturally RESUMABLE — a URL drops out once
+  it is 'archived' or 'unavailable', and a brand-new row's URL appears here
+  automatically until captured. Running daily guarantees forward coverage with
+  NO change to the ingest write path.
+- Dedup is free: the store is keyed by md5(source_url), so the thousands of WARN
+  rows that share one state file resolve to ONE snapshot.
+- Free first: check the Wayback availability API (fast, no save) before spending
+  a Save-Page-Now capture. Only URLs with no existing snapshot cost a save.
+- Rate-limited: Save Page Now is throttled for anonymous callers, so captures
+  are spaced with a polite gap and backed off on HTTP 429. A bounded number of
+  saves per run keeps this well inside Wayback's limits.
+- Honest about failure: a URL that cannot be archived is recorded 'pending' and
+  retried on a later run; after ALT_ARCHIVE_MAX_ATTEMPTS rounds the server
+  records it 'unavailable' (dead / bot-walled) so it is reported, not faked, and
+  not retried forever.
+- Fail-open: archiving never touches or blocks an ingest. Wayback being down
+  means everything stays 'pending' and is retried; nothing raises per URL.
+
+Env: WP_SITE_URL, WP_API_KEY.
+Optional: ARCHIVE_BACKFILL_LIMIT (candidate URLs/run, default 200),
+ARCHIVE_SPN_MAX (max Save-Page-Now captures/run, default 60),
+ARCHIVE_SPN_GAP_SECONDS (gap between captures, default 6),
+ARCHIVE_BACKFILL_DEADLINE_SECONDS (default 1500, stops safely between URLs),
+ARCHIVE_BACKFILL_DRY_RUN=1 (check + print, no saves, no writes).
+"""
+import os
+import sys
+import time
+
+import requests
+
+from source_health import report_source_health
+
+UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
+SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
+KEY = os.environ.get("WP_API_KEY", "")
+
+AVAILABILITY = "https://archive.org/wayback/available"
+SAVE = "https://web.archive.org/save/"
+
+LIMIT = max(1, min(500, int(os.environ.get("ARCHIVE_BACKFILL_LIMIT", "200"))))
+SPN_MAX = max(0, int(os.environ.get("ARCHIVE_SPN_MAX", "60")))
+SPN_GAP_SECONDS = max(1, int(os.environ.get("ARCHIVE_SPN_GAP_SECONDS", "6")))
+DEADLINE_SECONDS = max(60, min(3000, int(os.environ.get("ARCHIVE_BACKFILL_DEADLINE_SECONDS", "1500"))))
+DRY_RUN = os.environ.get("ARCHIVE_BACKFILL_DRY_RUN", "").lower() in {"1", "true", "yes"}
+
+# Sentinel returned by save_page_now when Wayback throttled the request, so the
+# caller backs off instead of treating it as a permanent failure.
+RATE_LIMITED = "__rate_limited__"
+
+
+# --- pure helpers (unit-tested) -------------------------------------------
+
+def dedupe_urls(urls):
+    """Trim, drop non-http(s)/blank, de-duplicate preserving order.
+
+    Mirrors the server's own source-URL filtering so the worker never wastes a
+    capture on a value the store would reject."""
+    out, seen = [], set()
+    for u in urls or []:
+        u = str(u or "").strip()
+        if not u or not u.lower().startswith(("http://", "https://")):
+            continue
+        if u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+    return out
+
+
+def parse_availability(payload):
+    """Return a permanent snapshot permalink from an availability-API payload,
+    or None. The API answers {'archived_snapshots': {'closest': {...}}} with a
+    'closest' only when a usable snapshot exists."""
+    if not isinstance(payload, dict):
+        return None
+    closest = (payload.get("archived_snapshots") or {}).get("closest") or {}
+    if not closest.get("available"):
+        return None
+    status = str(closest.get("status") or "")
+    if status and not status.startswith("2") and status not in ("", "3"):
+        # Only accept snapshots that actually captured content (2xx). A stored
+        # 4xx/5xx snapshot is a receipt of a dead page, not a usable archive.
+        if not status.startswith("3"):
+            return None
+    url = str(closest.get("url") or "").strip()
+    if not url.lower().startswith(("http://", "https://")):
+        return None
+    # Prefer https for the link we display.
+    return url.replace("http://web.archive.org", "https://web.archive.org", 1)
+
+
+def classify_outcome(availability_url, spn_url):
+    """Decide the status to record for one URL from this round's results.
+
+    Returns ('archived', permalink) when either the availability check found an
+    existing snapshot or Save Page Now returned a fresh one; otherwise
+    ('pending', '') so the URL is retried on a later run. The server promotes a
+    long-pending URL to 'unavailable' after ALT_ARCHIVE_MAX_ATTEMPTS, so the
+    worker never has to guess when a source is dead — it only reports what this
+    round observed. Never raises."""
+    if availability_url:
+        return "archived", availability_url
+    if spn_url and spn_url != RATE_LIMITED and str(spn_url).lower().startswith("http"):
+        return "archived", spn_url
+    return "pending", ""
+
+
+# --- network (fail-open) ---------------------------------------------------
+
+def check_availability(url, session):
+    """Free existence check. Returns a permalink or None; never raises."""
+    try:
+        r = session.get(AVAILABILITY, params={"url": url}, headers=UA, timeout=30)
+        if r.status_code != 200:
+            return None
+        return parse_availability(r.json())
+    except Exception:
+        return None
+
+
+def save_page_now(url, session):
+    """Trigger a Wayback capture. Returns a permalink, RATE_LIMITED, or None.
+
+    Never raises: a save failure just leaves the URL 'pending' for a later run."""
+    try:
+        r = session.get(SAVE + url, headers=UA, timeout=90, allow_redirects=True)
+        if r.status_code == 429:
+            return RATE_LIMITED
+        loc = r.headers.get("Content-Location") or ""
+        if loc.startswith("/web/"):
+            return "https://web.archive.org" + loc
+        # Some captures land on the final snapshot URL directly.
+        if r.status_code in (200, 301, 302) and "/web/" in r.url:
+            return r.url.replace("http://web.archive.org", "https://web.archive.org", 1)
+        return None
+    except Exception:
+        return None
+
+
+# --- server I/O ------------------------------------------------------------
+
+def fetch_candidates():
+    """Distinct un-archived source URLs from the server (already the gap)."""
+    try:
+        r = requests.get(f"{SITE}/wp-json/layoffs/v1/archive-candidates",
+                         params={"limit": LIMIT},
+                         headers={**UA, "X-Layoff-API-Key": KEY}, timeout=60)
+    except requests.RequestException as exc:
+        raise RuntimeError(f"/archive-candidates unreachable: {exc}")
+    if r.status_code != 200:
+        raise RuntimeError(f"/archive-candidates HTTP {r.status_code}: {r.text[:200]}")
+    payload = r.json()
+    return dedupe_urls(payload.get("urls", [])), payload.get("coverage", {})
+
+
+def post_records(items):
+    """POST results to /archive-record. Raises on HTTP failure (loud)."""
+    if not items:
+        return {}
+    r = requests.post(f"{SITE}/wp-json/layoffs/v1/archive-record",
+                      json={"items": items},
+                      headers={**UA, "X-Layoff-API-Key": KEY}, timeout=120)
+    r.raise_for_status()
+    return r.json()
+
+
+def run():
+    urls, coverage_before = fetch_candidates()
+    print(f"archive backfill: {len(urls)} candidate URL(s) this run; "
+          f"coverage before: {coverage_before}")
+    if not urls:
+        detail = (f"nothing to archive this run; coverage {coverage_before.get('archived', 0)}/"
+                  f"{coverage_before.get('distinct_source_urls', 0)} distinct source URLs "
+                  f"({coverage_before.get('coverage_pct', 0)}%)")
+        if not DRY_RUN:
+            report_source_health("archive_backfill", "ok", 0, detail)
+        print(detail)
+        return {"archived": 0, "pending": 0, "checked": 0}
+
+    session = requests.Session()
+    records = []
+    archived = pending = checked = saves = rate_limited = 0
+    started = time.monotonic()
+    for url in urls:
+        if time.monotonic() - started >= DEADLINE_SECONDS:
+            print(f"Reached ARCHIVE_BACKFILL_DEADLINE_SECONDS={DEADLINE_SECONDS}; "
+                  f"stopping safely after {checked} URL(s)")
+            break
+        checked += 1
+        # Free existence check first — most WARN files (and much crawled news)
+        # are already in Wayback and cost no capture.
+        snap = check_availability(url, session)
+        spn = ""
+        if not snap and not DRY_RUN and saves < SPN_MAX:
+            spn = save_page_now(url, session)
+            saves += 1
+            if spn == RATE_LIMITED:
+                rate_limited += 1
+                # Back off harder when throttled, then keep going: the rest of
+                # this batch stays 'pending' and is retried next run.
+                time.sleep(SPN_GAP_SECONDS * 3)
+            else:
+                time.sleep(SPN_GAP_SECONDS)
+        status, permalink = classify_outcome(snap, spn)
+        if status == "archived":
+            archived += 1
+        else:
+            pending += 1
+        records.append({"url": url, "archived_url": permalink, "status": status})
+        tag = "availability" if snap else ("save" if permalink else "pending")
+        print(f"  [{status}:{tag}] {url}" + (f" -> {permalink}" if permalink else ""))
+
+    if DRY_RUN:
+        print(f"DRY RUN: checked={checked} would-archive={archived} would-pend={pending}; no writes.")
+        return {"archived": 0, "pending": 0, "checked": checked}
+
+    result = post_records(records)
+    coverage_after = result.get("coverage", {})
+    detail = (f"{archived} archived / {pending} still pending this run "
+              f"({saves} Save-Page-Now captures, {rate_limited} throttled); "
+              f"coverage {coverage_after.get('archived', 0)}/"
+              f"{coverage_after.get('distinct_source_urls', 0)} distinct source URLs "
+              f"({coverage_after.get('coverage_pct', 0)}%), "
+              f"{coverage_after.get('unavailable', 0)} recorded unavailable")
+    print(detail)
+    # A run that captured nothing AND could not even find existing snapshots,
+    # only because every save was throttled, is a degraded (not failed) state:
+    # the work retries next run. A hard failure would be a raise above.
+    status = "degraded" if (archived == 0 and rate_limited and rate_limited == saves) else "ok"
+    if not report_source_health("archive_backfill", status, archived, detail):
+        print("::warning::archive_backfill completed but the health-ledger write failed (data is fine)")
+    return {"archived": archived, "pending": pending, "checked": checked}
+
+
+def main():
+    if not SITE or (not KEY and not DRY_RUN):
+        print("WP_SITE_URL and WP_API_KEY are required (or set ARCHIVE_BACKFILL_DRY_RUN=1)")
+        return 1
+    if not DRY_RUN:
+        if not report_source_health("archive_backfill", "running", 0,
+                                    "capturing permanent Wayback snapshots of source URLs"):
+            raise RuntimeError("Could not publish archive_backfill running health status")
+    try:
+        run()
+        return 0
+    except Exception as exc:
+        if not DRY_RUN:
+            report_source_health("archive_backfill", "degraded", 0, f"archive backfill failed: {exc}")
+        raise
+
+
+if __name__ == "__main__":
+    sys.exit(main())
