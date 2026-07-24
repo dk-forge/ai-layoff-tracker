@@ -1,0 +1,37 @@
+name: OpenRouter low-balance alert
+
+# Daily read of the OpenRouter account balance + this key's remaining cap.
+# Emails the owner (via the keyed /alert endpoint) while either is below the
+# threshold, so the LLM pipeline never silently stalls on an empty balance
+# again. Read-only, no LLM calls, ~0 cost. Never fails the run: a monitoring
+# job must not page about its own hiccup.
+
+on:
+  schedule:
+    - cron: '0 13 * * *'   # daily, 9 AM ET
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: 'Alert when balance/cap drops below this many USD'
+        required: false
+        default: '10'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Check OpenRouter balance
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          ALERT_THRESHOLD: ${{ github.event.inputs.threshold || '10' }}
+        run: python openrouter_balance_check.py

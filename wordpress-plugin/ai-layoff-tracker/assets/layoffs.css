@@ -1678,3 +1678,9 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
    inert (a link to an empty wall helps no one). */
 .alt-qw-chip-dead { opacity: .35; cursor: default; pointer-events: none; }
 .alt-qw-alpha .alt-qw-chip { min-width: 30px; text-align: center; }
+/* "We don't estimate" positioning banner: the documented-floor promise, stated
+   once at the top of the tracker. Deliberately compact, not a hero. */
+.alt-floor-banner{margin:0 0 16px;padding:9px 14px;font-size:13.5px;line-height:1.45;
+  border:1px solid var(--alt-line,#e2e8f0);border-left:3px solid var(--alt-blue,#2f6fd0);
+  border-radius:9px;background:var(--alt-panel-2,#f5f8fd);color:var(--alt-ink-2,#475062)}
+.alt-floor-banner a{font-weight:600;white-space:nowrap}

@@ -78,6 +78,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
+    <p class="alt-floor-banner">We do not estimate. Every number here links to an official filing, a state WARN notice, or a named news report. It is a verified floor, not a survey. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count &rarr;</a></p>
     <?php $alt_cov = alt_coverage_counts(); ?>
     <div class="alt-narrative" id="alt-narrative"></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
