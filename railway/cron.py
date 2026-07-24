@@ -94,6 +94,42 @@ def run_discovery_probes():
             print(f"{source} discovery probe failed: {e}")
 
 
+def filter_already_seen(entries):
+    """Drop entries whose EXACT source_url is already in the record.
+
+    Batched POSTs to the keyed /seen-urls endpoint (main rows + retained
+    source reports). Only same-URL re-reads are dropped - a fresh outlet on
+    the same event has a different URL and always goes to the extractor.
+    Fails OPEN on any error: the worst outcome of a broken pre-check must be
+    a slightly higher LLM bill, never a missed layoff.
+    """
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    urls = [e.get("source_url") for e in entries if e.get("source_url")]
+    if not (site and key and urls):
+        return entries
+    seen = set()
+    try:
+        for i in range(0, len(urls), 400):
+            resp = requests.post(
+                f"{site}/wp-json/layoffs/v1/seen-urls",
+                json={"urls": urls[i:i + 400]},
+                headers={"X-Layoff-API-Key": key,
+                         "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"},
+                timeout=30)
+            if resp.status_code != 200:
+                print(f"seen-urls pre-check HTTP {resp.status_code} - extracting everything (fail open)")
+                return entries
+            seen.update(resp.json().get("seen", []))
+    except Exception as exc:
+        print(f"seen-urls pre-check failed ({exc}) - extracting everything (fail open)")
+        return entries
+    kept = [e for e in entries if not (e.get("source_url") and e.get("source_url") in seen)]
+    print(f"seen-urls pre-check: {len(entries) - len(kept)} same-URL re-read(s) skipped "
+          f"before the extractor, {len(kept)} to process")
+    return kept
+
+
 def run():
     _mark_phase("refreshing")
     entries = []
@@ -148,6 +184,16 @@ def run():
         print(f"discovery probes failed (non-fatal): {e}")
 
     print(f"Pulled {len(entries)} raw entries")
+
+    # URL-level pre-check: the pull windows overlap on purpose (36h GDELT on a
+    # twice-daily cadence), so the SAME article URL arrives ~3 runs in a row.
+    # Re-extracting an identical URL adds zero evidence (the server INSERT
+    # IGNOREs the duplicate source report) but costs an LLM call every time.
+    # Skip exactly those. A new outlet covering the same event is a new URL,
+    # never skipped, and still lands as a corroborating source report. FAIL
+    # OPEN: if the check errors, extract everything (server dedup backstops) -
+    # a cost optimization must never be able to cost coverage.
+    entries = filter_already_seen(entries)
 
     results = []
     posted = skipped_dupes = skipped_not_layoff = failed = 0

@@ -1075,6 +1075,19 @@ function alt_register_query_routes() {
         array('methods' => 'POST', 'callback' => 'alt_api_tips_post',
             'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false'),
     ));
+    // URL-level "already ingested?" pre-check for collectors. The ingest
+    // pipeline overlaps its pull windows on purpose (a 36h GDELT window on a
+    // twice-daily cadence), so the SAME article URL reaches the extractor ~3
+    // times; the identical re-read adds zero evidence (the source-report
+    // INSERT IGNOREs the duplicate hash) but costs an LLM call every time.
+    // POST {urls:[...]} -> {seen:[...]} lets a collector skip exactly those,
+    // BEFORE extraction. A NEW outlet covering the same event has a new URL,
+    // is never in `seen`, and still extracts fully into a corroborating
+    // source report - this endpoint can only skip re-reads, never evidence.
+    register_rest_route('layoffs/v1', '/seen-urls', array(
+        'methods' => 'POST', 'callback' => 'alt_api_seen_urls',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Read-only, deliberately narrow lifecycle candidates. A candidate is
     // never a merge decision: it is a same-company/same-count/source-supported
     // announcement followed by a later reported/filing record in the same
@@ -2034,6 +2047,28 @@ function alt_api_press_subs_get(WP_REST_Request $r) {
         return ($s['status'] ?? 'active') === 'active';
     })) : array();
     return array('subscribers' => $subs, 'count' => count($subs));
+}
+
+/**
+ * Which of these source URLs are already in the record (main rows OR retained
+ * source reports)? Read-only; used by collectors to skip re-extracting the
+ * exact same article on overlapping pull windows. Caps at 500 URLs per call.
+ */
+function alt_api_seen_urls(WP_REST_Request $r) {
+    global $wpdb;
+    $urls = $r->get_param('urls');
+    if (!is_array($urls)) return array('seen' => array());
+    $urls = array_values(array_unique(array_filter(array_map(function ($u) {
+        $u = esc_url_raw(trim((string) $u));
+        return (strlen($u) > 11 && strpos($u, 'http') === 0) ? $u : '';
+    }, array_slice($urls, 0, 500)))));
+    if (!$urls) return array('seen' => array());
+    $ph = implode(',', array_fill(0, count($urls), '%s'));
+    $seen = $wpdb->get_col($wpdb->prepare(
+        "SELECT source_url FROM " . alt_db_table() . " WHERE source_url IN ($ph)", $urls));
+    $seen2 = $wpdb->get_col($wpdb->prepare(
+        "SELECT source_url FROM " . alt_source_reports_table() . " WHERE source_url IN ($ph)", $urls));
+    return array('seen' => array_values(array_unique(array_merge($seen ?: array(), $seen2 ?: array()))));
 }
 
 function alt_api_tips_get(WP_REST_Request $r) {
