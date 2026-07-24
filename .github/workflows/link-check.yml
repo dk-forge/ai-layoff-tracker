@@ -1,0 +1,35 @@
+name: Broken-link check
+
+# Daily check that every public tracker page returns 200, plus a sampled
+# source-link reachability report. Alerts (and fails red) only when a PUBLIC
+# PAGE is down; source-link rot is expected decay, reported not alerted, and is
+# backstopped by the Wayback archiving. Read-only, no LLM, ~0 cost.
+
+on:
+  schedule:
+    - cron: '30 14 * * *'   # daily, 10 AM ET
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: 'How many recent source links to sample'
+        required: false
+        default: '60'
+
+jobs:
+  linkcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Check links
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          LINK_CHECK_SAMPLE: ${{ github.event.inputs.sample || '60' }}
+        run: python link_check.py
