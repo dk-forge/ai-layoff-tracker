@@ -36,7 +36,12 @@
     edinet_jp: ['EDINET daily filing list, discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
     opendart_kr: ['OpenDART disclosure list, discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
     cvm_br: ['CVM Fato Relevante yearly index, discovery only, nothing ingested', 'Twice daily', 'Brazil', 'Official open-data portal'],
-    companies_house_uk: ['Registered-identity checks; identity support only', 'On demand', 'United Kingdom', 'Official registry API'],
+    companies_house_insolvency: ['UK insolvency signals, lead to targeted news', 'Weekly', 'United Kingdom', 'Official registry API'],
+    courtlistener_bankruptcy: ['US bankruptcy petitions, lead to targeted news', 'Weekly', 'United States', 'Federal court dockets'],
+    edgar_historical: ['Historical SEC 8-K/6-K backfill (live feed is "edgar")', 'Backfill, resumable', 'United States', 'Official filings API'],
+    industry_backfill: ['Industry tags for existing rows, evidence-only', 'Daily evidence-only', 'Internal', 'Stored-evidence re-read'],
+    link_check: ['Broken-link tripwire: public pages + source-rot sample', 'Daily', 'Internal QA', 'HTTP reachability check'],
+    warn_custom_legacy: ['Legacy custom-scraper WARN states (drift watchdog family)', 'Daily', 'United States', 'State labor-agency notices'],
   };
   const srcLabel = id => {
     const m = meta[id];

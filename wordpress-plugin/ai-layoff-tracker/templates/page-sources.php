@@ -188,8 +188,8 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><b><?php echo esc_html($alt_g[0]); ?></b></td>
         <td><?php echo esc_html($alt_g[1]); ?></td>
         <td><span class="alt-gap-status <?php echo $alt_cls; ?>"><?php echo esc_html($alt_g[2]); ?></span></td>
-        <td><?php if ($alt_gs) : ?><a href="<?php echo esc_url($alt_gs); ?>" target="_blank" rel="noopener"><?php echo esc_html(preg_replace('#^https?://(www\.)?#', '', rtrim($alt_gs, '/'))); ?> &#8599;</a><?php else : ?>, <?php endif; ?></td>
-        <td class="alt-warn-cadence"><?php if ($alt_u) : ?><a href="https://www.bls.gov/eag/eag.<?php echo esc_attr(strtolower($alt_code)); ?>.htm" target="_blank" rel="noopener"><?php echo esc_html(number_format((float) $alt_u['rate'], 1)); ?>% <span class="alt-muted">(<?php echo esc_html($alt_u['period']); ?>)</span> &#8599;</a><?php else : ?>, <?php endif; ?></td>
+        <td><?php if ($alt_gs) : ?><a href="<?php echo esc_url($alt_gs); ?>" target="_blank" rel="noopener"><?php echo esc_html(preg_replace('#^https?://(www\.)?#', '', rtrim($alt_gs, '/'))); ?> &#8599;</a><?php else : ?><span class="alt-muted">n/a</span><?php endif; ?></td>
+        <td class="alt-warn-cadence"><?php if ($alt_u) : ?><a href="https://www.bls.gov/eag/eag.<?php echo esc_attr(strtolower($alt_code)); ?>.htm" target="_blank" rel="noopener"><?php echo esc_html(number_format((float) $alt_u['rate'], 1)); ?>% <span class="alt-muted">(<?php echo esc_html($alt_u['period']); ?>)</span> &#8599;</a><?php else : ?><span class="alt-muted">n/a</span><?php endif; ?></td>
       </tr>
     <?php endforeach; ?>
     </tbody>

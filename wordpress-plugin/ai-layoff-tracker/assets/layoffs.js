@@ -2016,7 +2016,7 @@
             // pending" implies a verdict is coming; there is nothing in the filing
             // to classify. Where the SAME cut was reported with a company-stated
             // reason, that reason lives on the separate news / SEC entry.
-            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">AI attribution status</span><p>Not stated in this filing. A WARN notice records a layoff’s size, date and location — not its cause. When the same cut is reported with a company-stated reason, that appears as a separate news or SEC entry for this employer.</p></div>');
+            parts.push('<div class="alt-detail-block"><span class="alt-detail-h">AI attribution status</span><p>Not stated in this filing. A WARN notice records a layoff’s size, date and location, not its cause. When the same cut is reported with a company-stated reason, that appears as a separate news or SEC entry for this employer.</p></div>');
         } else if (row.ai_causation) {
             var aiDetail = AI_CAUSATION_LABELS[row.ai_causation] || row.ai_causation;
             if (row.confidence != null && Number(row.confidence) > 0) aiDetail += ' · evidence confidence ' + fmt(row.confidence) + '/100';

@@ -37,16 +37,12 @@ KNOWN_UNLABELLED = {
     "health_digest": "weekly health-digest tripwire (self-report)",
     "recall_precision": "internal recall/precision QA run",
     "tracker_diff": "internal tracker-diff discovery tripwire",
-    "industry_backfill": "internal evidence-only industry backfill",
-    "link_check": "internal broken-link tripwire (public pages + source-rot sample)",
     "ingest_post": "posting-pipeline tripwire; only emits 'degraded' on a broad post outage",
     # Collectors that report under a family / per-target / runtime-variable id
     # rather than their own module name, so the module-level literal has no
     # standalone meta entry.
-    "edgar_historical": "historical EDGAR backfill; live feed is labelled 'edgar'",
     "foreign_filings": "reports per country: edinet_jp / opendart_kr / cvm_br",
     "distress_watchlist": "reports under a per-jurisdiction runtime label",
-    "warn_custom_legacy": "legacy custom WARN; 'warn_custom_states' family label",
 }
 
 
