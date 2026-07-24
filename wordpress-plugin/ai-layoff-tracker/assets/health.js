@@ -112,7 +112,15 @@
   const withTimeout = (p, ms) => Promise.race([
     p, new Promise(resolve => setTimeout(() => resolve(null), ms)),
   ]);
-  const safeGet = path => withTimeout(get(path).catch(() => get(path)).catch(() => null), 9000);
+  // NB: one Promise.all slot is a `null` placeholder (a removed feed). safeGet
+  // MUST handle null WITHOUT calling get(null) — get() does path.includes('?'),
+  // which throws a synchronous TypeError on null DURING the .map(), before
+  // Promise.all runs, so neither .then nor .catch ever fires and the whole page
+  // freezes on "Loading…". (A prior timeout-only fix could not catch a
+  // synchronous throw.) Short-circuit null to a resolved promise.
+  const safeGet = path => path == null
+    ? Promise.resolve(null)
+    : withTimeout(get(path).catch(() => get(path)).catch(() => null), 9000);
 
   // (Public competitor benchmark removed — comparison is kept private in the owner's local benchmark, per the standalone-brand rule.)
 
