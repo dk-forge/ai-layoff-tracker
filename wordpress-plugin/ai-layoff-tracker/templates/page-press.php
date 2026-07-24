@@ -1,7 +1,7 @@
 <?php if (!defined('ABSPATH')) exit;
 // Year-by-year stats straight from the fast table, cached an hour. The press
 // page must never show a number the tracker itself cannot reproduce.
-$alt_press_years = get_transient('alt_press_year_stats');
+$alt_press_years = get_transient('alt_press_year_stats_' . ALT_VERSION);
 if (!is_array($alt_press_years)) {
     global $wpdb;
     $alt_t = alt_db_table();
@@ -10,7 +10,7 @@ if (!is_array($alt_press_years)) {
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
          FROM $alt_t WHERE layoff_date >= '2015-01-01' AND layoff_date <= CURDATE()
          GROUP BY YEAR(layoff_date) ORDER BY y DESC", ARRAY_A) ?: array();
-    set_transient('alt_press_year_stats', $alt_press_years, HOUR_IN_SECONDS);
+    set_transient('alt_press_year_stats_' . ALT_VERSION, $alt_press_years, HOUR_IN_SECONDS);
 }
 
 // Data-backed soundbite LIBRARY, grouped, live, source-reproducible sentences,
@@ -19,7 +19,7 @@ if (!is_array($alt_press_years)) {
 // (the template esc_html()s at render). Every link uses ONLY params the
 // tracker front-end actually parses (restoreFiltersFromUrl in layoffs.js):
 // years/months/from/to/industry/country/state/roles/company/ai/ai_broad.
-$alt_sb_groups = get_transient('alt_press_sb_groups');
+$alt_sb_groups = get_transient('alt_press_sb_groups_' . ALT_VERSION);
 if (!is_array($alt_sb_groups)) {
     global $wpdb; $alt_t = alt_db_table();
     $alt_tk = home_url('/ai-layoff-tracker/');
@@ -113,7 +113,7 @@ if (!is_array($alt_sb_groups)) {
     }
     if ($geo_items) $alt_sb_groups[] = array('id' => 'sb-geo', 'title' => 'By region and country (' . $alt_y . ')', 'items' => $geo_items);
 
-    set_transient('alt_press_sb_groups', $alt_sb_groups, HOUR_IN_SECONDS);
+    set_transient('alt_press_sb_groups_' . ALT_VERSION, $alt_sb_groups, HOUR_IN_SECONDS);
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ if (!is_array($alt_sb_groups)) {
 // checked in one click. Everything below is generated from live data, cached
 // hourly, and every statement carries the preset link that reproduces it.
 // ---------------------------------------------------------------------------
-$alt_ps = get_transient('alt_press_statements');
+$alt_ps = get_transient('alt_press_statements_' . ALT_VERSION);
 if (!is_array($alt_ps)) {
     global $wpdb; $alt_pt = alt_db_table();
     $alt_ptk = home_url('/ai-layoff-tracker/');
@@ -294,7 +294,7 @@ if (!is_array($alt_ps)) {
         );
     }
     $alt_ps['releases'] = $alt_rel;
-    set_transient('alt_press_statements', $alt_ps, HOUR_IN_SECONDS);
+    set_transient('alt_press_statements_' . ALT_VERSION, $alt_ps, HOUR_IN_SECONDS);
 }
 ?>
 <main class="alt-wrap alt-press-page">
