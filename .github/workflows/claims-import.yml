@@ -1,0 +1,29 @@
+name: Unemployment-claims backdrop
+
+# Keyless FRED pull (national ICSA/CCSA + all 50 states + DC) -> /claims-ingest.
+# Macro CONTEXT for the tracker's charts; never summed into layoff counts. DOL
+# releases Thursdays, so a Friday refresh is plenty; fail-soft (empty pull never
+# overwrites the cache). No key needed for FRED, no LLM, ~0 cost.
+
+on:
+  schedule:
+    - cron: '0 15 * * 5'   # Fridays 11 AM ET, after the Thursday DOL release
+  workflow_dispatch:
+
+jobs:
+  claims:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Fetch + store claims backdrop
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python claims_import.py

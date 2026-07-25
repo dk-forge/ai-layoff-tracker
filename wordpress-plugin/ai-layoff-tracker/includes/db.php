@@ -968,6 +968,19 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_bulk',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Public: macro-context unemployment-claims backdrop (national + state).
+    // Served from a cached option; refreshed by the keyed ingest below. This is
+    // LABELED CONTEXT (BLS/DOL claims), never summed into layoff counts.
+    register_rest_route('layoffs/v1', '/claims', array(
+        'methods'  => 'GET',
+        'callback' => 'alt_api_claims_get',
+        'permission_callback' => '__return_true',
+    ));
+    register_rest_route('layoffs/v1', '/claims-ingest', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_claims_ingest',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Key-protected: superset dedup (default DRY-RUN; apply=1 to write). Marks
     // a company-wide news total or its site-level WARN rows as a subset of the
     // same event's most-complete row so one event is counted once.
@@ -3042,6 +3055,28 @@ function alt_reconcile_supersets($dry_run = true) {
 function alt_api_reconcile_supersets(WP_REST_Request $r) {
     $dry = $r->get_param('apply') !== '1';
     return rest_ensure_response(alt_reconcile_supersets($dry));
+}
+
+/** Public: return the cached unemployment-claims backdrop payload (or empty). */
+function alt_api_claims_get() {
+    $data = get_option('alt_claims_data', array());
+    return rest_ensure_response(is_array($data) ? $data : array());
+}
+
+/** Key-protected: store the claims payload built by railway/sources/claims.py. */
+function alt_api_claims_ingest(WP_REST_Request $r) {
+    $body = $r->get_json_params();
+    if (!is_array($body) || empty($body['national'])) {
+        return new WP_Error('alt_bad_request', 'Expected a claims payload with a national series.', array('status' => 400));
+    }
+    update_option('alt_claims_data', $body, false);
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    return rest_ensure_response(array(
+        'stored'          => true,
+        'updated'         => isset($body['updated']) ? $body['updated'] : gmdate('c'),
+        'national_months' => is_array($body['national']['initial'] ?? null) ? count($body['national']['initial']) : 0,
+        'states'          => is_array($body['states'] ?? null) ? count($body['states']) : 0,
+    ));
 }
 
 /**
