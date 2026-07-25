@@ -136,6 +136,69 @@ def _sanitize_warn_entries(entries):
     return out
 
 
+def _parse_generic_baselines(raw):
+    """Optional per-state numeric floors from WARN_GENERIC_BASELINE.
+
+    Format: JSON object of typical volumes, e.g. {"CA": 3000, "IL": 900}. A state
+    whose count falls far below its floor counts as collapsed even if it isn't a
+    hard 0 (a state that lost half its history to a parser change, say). Empty or
+    malformed -> {} (pure 0-collapse detection, the conservative default).
+    """
+    if not raw:
+        return {}
+    try:
+        import json
+        data = json.loads(raw)
+        return {str(k).upper(): float(v) for k, v in data.items() if float(v) > 0}
+    except Exception as exc:
+        print(f"WARN_GENERIC_BASELINE ignored (not valid JSON floors): {exc}")
+        return {}
+
+
+def detect_generic_state_drift(counts, expected, baselines=None, *,
+                               drop_frac=0.7, peer_min_frac=0.5, peer_min_total=50):
+    """Which generic-tier states collapsed THIS run while their peers are healthy.
+
+    The generic (open warn-scraper) tier reports one AGGREGATE health status
+    (warn_us), so a single state silently returning 0 — its site changed and the
+    open scraper broke for that ONE state — is otherwise invisible. This checks
+    EVERY expected generic state against its own baseline, not just CA.
+
+    Per-state baseline: a state is expected to be non-zero (implicit floor of 1);
+    if ``baselines`` carries a numeric floor for it, a count below
+    ``floor*(1-drop_frac)`` also counts as a collapse.
+
+    Peer-health gate (avoids crying wolf): a system-wide zero — a scraper/network
+    outage, or a genuinely quiet nationwide week — is warn_us's job to flag, not
+    a reason to fire 40 per-state alerts. So NOTHING is flagged unless the sweep
+    clearly ran: at least ``peer_min_frac`` of expected states produced > 0 AND
+    the total across expected states is >= ``peer_min_total``. Only then is a
+    state at 0 trustworthy evidence of a STATE-SPECIFIC break.
+
+    Returns a sorted list of drifted state codes (empty when nothing is wrong or
+    the peer gate says the run itself is untrustworthy).
+    """
+    expected = [s.upper() for s in expected]
+    if not expected:
+        return []
+    baselines = {k.upper(): v for k, v in (baselines or {}).items()}
+    producing = [s for s in expected if counts.get(s, 0) > 0]
+    total = sum(counts.get(s, 0) for s in expected)
+    # Peer gate: a nationwide zero is not per-state drift — suppress to avoid a
+    # flood of false alarms (warn_us already surfaces a whole-sweep failure).
+    if len(producing) < peer_min_frac * len(expected) or total < peer_min_total:
+        return []
+    drift = []
+    for s in expected:
+        n = counts.get(s, 0)
+        floor = baselines.get(s)
+        if n == 0:
+            drift.append(s)
+        elif floor and n < floor * (1 - drop_frac):
+            drift.append(s)
+    return sorted(drift)
+
+
 BATCH = 1000
 FAILED_BATCHES = 0
 
@@ -217,30 +280,47 @@ def main():
     # Custom collectors cover the states whose sites broke the open scraper
     # (TX, FL, GA, OH, MI, CO, ID, LA, NC, NV, MN, MA) plus the retired NY
     # history database (dedup hashes absorb the warn-scraper overlap).
-    # Per-state visibility for the GENERIC (open warn-scraper) tier. Unlike the
-    # custom tiers below, warn_us reports a single AGGREGATE health status, so a
-    # single generic state silently returning 0 (its site changed / the open
-    # scraper broke for just that state) is otherwise invisible. Log every
-    # generic state's count, and warn LOUDLY in the run log for the high-volume
-    # generic states where a 0 is almost certainly drift, not a quiet filing
-    # week. No separate health-ledger reporter here — that needs live per-state
-    # volume calibration to avoid crying wolf on the public page (see RUNBOOK);
-    # the run-log ::warning:: surfaces it for an auditing human for now.
+    # Per-state drift for the GENERIC (open warn-scraper) tier. Unlike the custom
+    # tiers below, warn_us reports a single AGGREGATE health status, so a single
+    # generic state silently returning 0 (its site changed / the open scraper
+    # broke for just that state) was previously invisible on every surface — only
+    # CA was watched, and only in the run log. Now EVERY generic state is checked
+    # against its own baseline (see detect_generic_state_drift), the check is
+    # peer-gated so a nationwide-zero week never floods false alarms, and any real
+    # collapse is FOLDED INTO the terminal warn_us health status further down
+    # (degraded -> public health page + weekly digest). It is reported under
+    # warn_us (this tier's own family key) rather than a new id or the
+    # warn_custom_* family: warn_custom_states / warn_custom_legacy are re-reported
+    # by the custom-scraper blocks BELOW this point, which would clobber a value
+    # written here, and a brand-new literal id would need a health.js label.
     _generic_by_state = {}
     for _e in entries:
         _gs = (_e.get("state") or "").upper()
         if _gs:
             _generic_by_state[_gs] = _generic_by_state.get(_gs, 0) + 1
+    _generic_drift = []
     if len(states) == 1 and str(states[0]).lower() == "all":  # only meaningful on a full sweep
         _counts = ", ".join(f"{st}={_generic_by_state[st]}" for st in sorted(_generic_by_state))
         print("generic WARN per-state counts: " + (_counts or "(none)"))
-        _generic_monitor = {s.strip().upper() for s in
-                            os.environ.get("WARN_GENERIC_MONITOR", "CA").split(",") if s.strip()}
-        _generic_drift = sorted(st for st in _generic_monitor if _generic_by_state.get(st, 0) == 0)
+        # WARN_GENERIC_MONITOR narrows the watched set for tuning; default is the
+        # WHOLE generic tier (every state warn-scraper covers), not just CA.
+        _mon_env = os.environ.get("WARN_GENERIC_MONITOR", "").strip()
+        if _mon_env:
+            _expected_g = [s.strip().upper() for s in _mon_env.split(",") if s.strip()]
+        else:
+            try:
+                from sources.warn import ALL_STATES as _ALL_GENERIC
+                _expected_g = list(_ALL_GENERIC)
+            except Exception:
+                _expected_g = sorted(_generic_by_state)  # fall back to what we saw
+        _generic_drift = detect_generic_state_drift(
+            _generic_by_state, _expected_g,
+            _parse_generic_baselines(os.environ.get("WARN_GENERIC_BASELINE")))
         if _generic_drift:
-            print(f"::warning:: HIGH-VOLUME generic WARN state(s) returned 0 — likely "
-                  f"open-scraper drift for: {', '.join(_generic_drift)}. Check that state's "
-                  f"site/parser (set WARN_GENERIC_MONITOR to tune the watched set).")
+            print(f"::warning:: generic WARN state(s) went dark vs healthy peers — likely "
+                  f"open-scraper drift for: {', '.join(_generic_drift)}. Check each state's "
+                  f"site/parser (WARN_GENERIC_MONITOR narrows the set, WARN_GENERIC_BASELINE "
+                  f"tunes per-state floors).")
 
     customs = pull_warn_custom(states)
     # Structural-drift tripwire for the LEGACY custom scrapers (parity with the
@@ -413,8 +493,17 @@ def main():
         report_source_health("warn_us", "degraded", 0,
                              f"{FAILED_BATCHES} bulk batch(es) rejected by the API")
         sys.exit(1)
-    report_source_health("warn_us", "ok", len(entries),
-                         f"{scope}: {upserted} upserted from {len(entries)} notices")
+    # Fold per-state generic-tier drift into the terminal status: a state that
+    # went dark while its peers stayed healthy is a coverage gap the health page
+    # and weekly digest must show, even though the bulk upsert itself succeeded.
+    if _generic_drift:
+        report_source_health("warn_us", "degraded", len(entries),
+                             f"{scope}: {upserted} upserted, but generic-tier state(s) went "
+                             f"dark vs healthy peers (likely open-scraper drift): "
+                             + ", ".join(_generic_drift))
+    else:
+        report_source_health("warn_us", "ok", len(entries),
+                             f"{scope}: {upserted} upserted from {len(entries)} notices")
 
 
 if __name__ == "__main__":
