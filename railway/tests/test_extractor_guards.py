@@ -30,6 +30,10 @@ class EvidenceGuardTests(unittest.TestCase):
     def test_discovery_vocab_covers_common_layoff_language(self):
         terms = set(discovery_terms())
         self.assertTrue({"redundancy", "staff cuts", "downsizing", "RIF"}.issubset(terms))
+        # Corporate euphemisms (2026-07-25): low-noise soften-speak that comms
+        # teams use to dodge "layoff". Must stay in the always-on base vocabulary.
+        self.assertTrue({"rightsizing", "workforce optimization",
+                         "voluntary separation"}.issubset(terms))
 
     def test_official_feed_parser_handles_rss_link_and_summary(self):
         rss = b"""<rss><channel><item><title>Workforce reduction</title><link>https://example.test/release</link><description>Company announces job cuts.</description><pubDate>Tue, 14 Jul 2026 10:00:00 +0000</pubDate></item></channel></rss>"""

@@ -42,6 +42,15 @@ GLOBAL_TERMS = (
     # where US outlets say "layoffs".
     "retrenchment", "retrenchments", "mass dismissal", "dismissals",
     "sacked", "jobs axed",
+    # Corporate euphemisms (2026-07-25). Comms teams increasingly avoid the words
+    # above, so these soften-speak variants are a real recall gap. Only the
+    # LOW-NOISE, layoff-specific ones live in the always-on base (they match few
+    # extra articles, so cost barely moves); the noisy cost/efficiency doublespeak
+    # ("cost optimization", "operating model", "efficiency program") is kept OUT of
+    # the base and instead rotates as layoff-signal-PAIRED segments in gdelt.py, so
+    # discovery stays inside the monthly LLM budget instead of flooding extraction.
+    "rightsizing", "workforce optimization", "workforce rebalancing",
+    "job eliminations", "voluntary separation", "organizational simplification",
 )
 
 
@@ -88,10 +97,11 @@ def discovery_terms() -> tuple[str, ...]:
     terms = list(GLOBAL_TERMS)
     for market in MARKETS.values():
         terms.extend(market.terms)
-    # GDELT queries become less reliable when needlessly huge; 42 terms is a
-    # deliberate ceiling (raised from 36 on 2026-07-19 for the dialect
-    # synonyms) and the global terms occupy the most valuable slots.
-    return tuple(dict.fromkeys(terms))[:42]
+    # GDELT queries become less reliable when needlessly huge; the ceiling is a
+    # deliberate cap (36 -> 42 on 2026-07-19 for dialect synonyms; 42 -> 48 on
+    # 2026-07-25 for the low-noise corporate euphemisms) and the global terms
+    # occupy the most valuable slots.
+    return tuple(dict.fromkeys(terms))[:48]
 
 
 def coverage_manifest() -> list[dict[str, object]]:

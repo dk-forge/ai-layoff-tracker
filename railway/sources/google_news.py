@@ -49,6 +49,10 @@ DISCOVERY_QUERIES = (
     '"layoffs" OR "job cuts" OR "lays off" OR "cutting jobs" OR "workforce reduction"',
     '("layoffs" OR "job cuts" OR "lays off") ("AI" OR "artificial intelligence" OR automation)',
     '"reduction in force" OR "restructuring" OR "redundancies" layoffs',
+    # Corporate euphemisms that dodge the word "layoff" — paired with a headcount
+    # signal so the results stay layoff-events, not macro/strategy noise. Budget-
+    # neutral: the MAX_ITEMS cap holds total extraction flat across all queries.
+    '("rightsizing" OR "workforce optimization" OR "role elimination" OR "voluntary separation" OR "organizational simplification") (jobs OR employees OR roles OR staff)',
     '"bankruptcy" OR "shuts down" OR "winding down" (layoffs OR "job cuts" OR employees)',
 )
 

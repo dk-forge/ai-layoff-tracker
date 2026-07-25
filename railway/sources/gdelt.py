@@ -768,6 +768,19 @@ SEGMENT_TERMS = (
     '"school district" "layoffs"', '"university" "job cuts"',
     '"state employees" "layoffs"', '"federal employees" "layoffs"',
     '"city workers" "laid off"', '"nonprofit" "layoffs"',
+    # Corporate euphemisms too noisy for the always-on base, so they rotate here
+    # PAIRED with a headcount-signal word (jobs/roles/employees/positions) — that
+    # pairing keeps the match count (and thus LLM extraction cost) bounded while
+    # still catching the doublespeak that avoids "layoff" (2026-07-25).
+    '"cost optimization" jobs', '"efficiency program" roles',
+    '"operating model" redundancies', '"transformation program" "job cuts"',
+    '"strategic realignment" employees', '"delayering" management',
+    '"flattening" "management layers"', '"headcount optimization"',
+    '"early retirement" buyout employees', '"buyout" "reduce headcount"',
+    # Industry-specific euphemisms (retail/finance/manufacturing/healthcare)
+    '"store rationalization"', '"branch" "optimization" jobs',
+    '"capacity reduction" plant', '"plant optimization" workers',
+    '"service line" consolidation staff', '"network optimization" jobs',
     '"hospital" "layoffs"', '"school" "positions eliminated"',
     # Government-sector expansion (#31): federal RIFs, agencies, and local
     # government cuts leave no WARN/8-K, so press rotation is the only channel.
