@@ -10,6 +10,41 @@
     <a href="#alt-sec-changes">Change report</a>
   </nav>
   <section class="alt-health-summary" aria-label="Operational summary" id="alt-health-summary"></section>
+  <?php
+  // OWNER-ONLY: the IndexNow key must not be public (the protocol asks that only
+  // you and the search engines know it), so this block renders solely for a
+  // logged-in admin. Everything here is already automated; it exists so the
+  // owner can verify in Bing Webmaster Tools or fire a manual submission.
+  if (current_user_can('manage_options') && function_exists('alt_indexnow_key')) :
+      $alt_in_key = alt_indexnow_key();
+      $alt_in_loc = alt_indexnow_key_url();
+      $alt_in_last = get_option('alt_indexnow_last', array());
+  ?>
+  <section class="alt-health-section" id="alt-sec-indexnow">
+    <h2>IndexNow <span class="alt-health-status alt-health-active">Admin only</span></h2>
+    <p>New data is pushed to Bing (which powers ChatGPT search) and Yandex automatically, at most once a day, whenever the dataset changes. Nothing here needs doing by hand; it is shown so you can verify in Bing Webmaster Tools.</p>
+    <p><b>Key:</b> <code><?php echo esc_html($alt_in_key); ?></code><br>
+       <b>Key file:</b> <a href="<?php echo esc_url($alt_in_loc); ?>"><?php echo esc_html($alt_in_loc); ?></a>
+       (must return the key above)<br>
+       <b>Last submission:</b>
+       <?php if (!empty($alt_in_last['at'])) {
+           echo esc_html(gmdate('Y-m-d H:i', (int) $alt_in_last['at']) . ' UTC · ' . (int) $alt_in_last['urls'] . ' URLs'
+                . (!empty($alt_in_last['error']) ? ' · error: ' . $alt_in_last['error'] : ' · no error'));
+       } else { echo 'not yet sent (fires on the next data change)'; } ?>
+    </p>
+    <p><b>Manual submission links</b> (one click each, a 200 or 202 means accepted):</p>
+    <ul class="alt-health-schedule">
+      <?php foreach (alt_indexnow_urls() as $alt_in_u) :
+          $alt_in_req = add_query_arg(array(
+              'url' => rawurlencode($alt_in_u), 'key' => $alt_in_key,
+              'keyLocation' => rawurlencode($alt_in_loc),
+          ), 'https://api.indexnow.org/indexnow'); ?>
+        <li><a href="<?php echo esc_url($alt_in_req); ?>" target="_blank" rel="noopener"><?php echo esc_html($alt_in_u); ?></a></li>
+      <?php endforeach; ?>
+    </ul>
+    <p class="alt-muted">A key hosted under /blog/ can only submit URLs under /blog/, which is where every tracker page lives.</p>
+  </section>
+  <?php endif; ?>
   <section class="alt-health-section" id="alt-sec-collectors"><h2>Collector operations</h2><p>Last completed source attempt. Counts are raw candidate documents, not a claim of accepted events.</p><div class="alt-health-table-wrap"><table><thead><tr><th>Source</th><th>Coverage target</th><th>Cadence</th><th>Last pull</th><th>Result</th><th>Status / safe detail</th></tr></thead><tbody id="alt-health-sources"></tbody></table></div></section>
   <section class="alt-health-section" id="alt-sec-runs"><div class="alt-health-run-heading"><div><h2>Recent collector runs</h2><p>Append-only history from this health-ledger release onward. It records source attempts and raw candidates, not accepted events, and never reconstructs earlier runs.</p></div><label for="alt-health-run-days">Window <select id="alt-health-run-days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label></div><div class="alt-health-table-wrap"><table><thead><tr><th>When</th><th>Source</th><th>Status</th><th>Raw candidates</th><th>Safe detail</th></tr></thead><tbody id="alt-health-runs"></tbody></table></div></section>
   <section class="alt-health-section alt-feature-list" id="alt-sec-roadmap" aria-labelledby="alt-feature-list-heading">
