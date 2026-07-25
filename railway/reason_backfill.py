@@ -105,12 +105,30 @@ def fetch_candidates():
     while page <= MAX_PAGES:
         params = {"sources": NON_WARN_SOURCES, "sort": "id", "dir": "asc",
                   "per_page": PAGE_SIZE, "page": page}
-        response = requests.get(f"{SITE}/wp-json/layoffs/v1/query", params=params, headers=UA, timeout=60)
+        # Retry transient host errors instead of aborting the whole scan. The
+        # shared host 500s on a single page under load; industry_backfill was
+        # failing DAILY for exactly this reason (one bad page killed the run
+        # before any work) until it gained retries — reason_backfill had the
+        # same fragility and hit it on 2026-07-25. Retry the page a few times,
+        # then carry on with the pages we have; page 1 failing is a real outage
+        # and still raises.
+        response = None
+        for attempt in range(3):
+            response = requests.get(f"{SITE}/wp-json/layoffs/v1/query", params=params, headers=UA, timeout=60)
+            if response.status_code < 500:
+                break
+            if attempt < 2:
+                print(f"  page {page}: HTTP {response.status_code}, retry {attempt + 1}/2")
+                time.sleep(5 * (attempt + 1))
         # WP returns 404 for a page past the last row; between our sequential
         # page requests the candidate set shrinks (rows get tagged), so the
         # final page can 404 even though the scan succeeded. End-of-data, not a
         # failure. A 404 on page 1 is a real endpoint problem and still raises.
         if response.status_code == 404 and page > 1:
+            break
+        if response.status_code >= 500 and page > 1:
+            print(f"  page {page}: still HTTP {response.status_code} after retries; "
+                  f"continuing with {len(candidates)} candidate(s) already collected")
             break
         response.raise_for_status()
         payload = response.json()
