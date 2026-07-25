@@ -49,7 +49,13 @@ WINDOW_DAYS = 120
 # the flat window — so the deep scan never even compared them.)
 WIDE_WINDOW_DAYS = int(os.environ.get("DEDUPE_WIDE_WINDOW_DAYS") or 365)
 EXACT_WINDOW_DAYS = int(os.environ.get("DEDUPE_EXACT_WINDOW_DAYS") or 1095)  # ~3y for exact-count re-reports
-WIDE_WINDOW_MIN_COUNT = int(os.environ.get("DEDUPE_WIDE_WINDOW_MIN_COUNT") or 1000)
+# Near-identical counts (95%+) at a MODERATE size get the wide window too. Was
+# 1,000, which let a same-event re-report of a mid-size cut ("Company X 420" vs
+# "X 430" 200 days apart — one plan, rounded differently) fall back to the tight
+# 120-day window and never reach the model. 250 catches those while staying above
+# the small-number noise floor. The model still adjudicates every pair it sees,
+# and the daily cluster cap keeps LLM cost flat regardless of how many it sees.
+WIDE_WINDOW_MIN_COUNT = int(os.environ.get("DEDUPE_WIDE_WINDOW_MIN_COUNT") or 250)
 WIDE_WINDOW_SIMILARITY = 0.95
 SRC_RANK = {"8K": 3, "warn": 3, "press_release": 2, "erm": 2, "news": 1}
 

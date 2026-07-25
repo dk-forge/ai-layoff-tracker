@@ -38,6 +38,18 @@ class PairWindowTest(unittest.TestCase):
         # Below the 100-worker floor, exact tiny counts stay tight (noise).
         self.assertEqual(d.pair_window_days(50, 50), d.WINDOW_DAYS)
 
+    def test_near_identical_moderate_counts_get_wide_window(self):
+        # 420 vs 430 -> ~98% similar, mid-size: a same-event re-report rounded
+        # differently, months apart. Must get the wide window (floor lowered
+        # from 1,000 to 250) so the model sees the pair instead of it slipping
+        # past the tight 120-day window.
+        self.assertEqual(d.pair_window_days(420, 430), d.WIDE_WINDOW_DAYS)
+
+    def test_near_identical_below_floor_keeps_tight_window(self):
+        # 200 vs 205 -> similar but below the 250 material floor: stays tight so
+        # small-number churn does not over-merge distinct rounds.
+        self.assertEqual(d.pair_window_days(200, 205), d.WINDOW_DAYS)
+
     def test_dissimilar_counts_keep_tight_window(self):
         # 4,000 vs 5,000 -> 80% similar: clusterable, but not "obviously the
         # same figure", so no widening.
