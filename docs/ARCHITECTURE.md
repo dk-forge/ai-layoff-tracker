@@ -23,9 +23,9 @@
   │                                                                                      │
   │  REST layoffs/v1:                                                                    │
   │   PUBLIC  /query /aggregate /facets /reconciliation /source-health(GET) /source-runs /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
-  │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed)                           │
+  │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed) · /claims (jobless-claims backdrop, macro context) │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup /source-health(POST) /alert(emails owner on breakage) │
-  │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate       │
+  │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate /reconcile-supersets(dedup) /claims-ingest /trash │
   │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
   │                                                                                      │
@@ -49,7 +49,9 @@ wordpress-plugin/ai-layoff-tracker/
   templates/page-tracker.php the main page markup (stats → filters → charts → table)
   assets/layoffs.js|css      the entire front-end
 railway/
-  cron.py                    2×daily ingest (EDGAR + NewsAPI + GDELT 36h) + source health
+  cron.py                    2×daily ingest (EDGAR + Google News + NewsAPI + GDELT 36h) + source health; fails loud if a cycle posts 0 with failures
+  sources/google_news.py     FREE keyless layoff-headline discovery (Google News RSS) — leads the news sweep (NewsAPI is effectively dead)
+  sources/claims.py          Keyless FRED puller (national ICSA/CCSA + 50 states) for the /claims macro backdrop; claims_import.py POSTs it daily
   extractor.py               DeepSeek prompt + post-processing; source-quote guard and AI causal taxonomy
   source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
@@ -86,6 +88,14 @@ automatable or licensed for reuse.
   a second *news* entry. The daily deep scan rotates through all bounded candidate clusters (with exact-count
   repeats prioritized), and merges confirmed reports into one canonical event while retaining every source link.
   **WARN is exempt from fuzzy + cluster dedup** — its hash also includes city+state.
+- **Superset dedup** (`alt_reconcile_supersets`, `superset_of` column, daily `reconcile-supersets.yml`): the fuzzy
+  ±30-day rule misses cross-channel + far-apart duplicates, which double-count job TOTALS. Three passes mark the
+  smaller side of an overlap as a subset of the same event's primary row: (1) a company-wide news/announced total
+  sitting on top of its own site-level WARN rows; (2) news-vs-news with the EXACT same count within ~150 days (an
+  announcement + later coverage — e.g. Coinbase 700 twice); (3) within-WARN same-state exact-count (≥100) refiled
+  revisions (Tyson 1,761 Amarillo). Aggregate job SUMs use `superset_of = 0` (headline/bars/monthly), so an event
+  counts ONCE; the row LIST still shows every member (no lost site detail). Self-maintaining (daily), reversible
+  (unmark). Live guard: `railway/tests/test_dedup_live.py`.
 - **Countries:** canonical "United States"/"United Kingdom"; regions & multi-country phrases
   ("Global", "Europe", "India and US") → **"Multiple countries"** (splitting would double-count).
   Real "and"-countries (Trinidad and Tobago…) are whitelisted first.
