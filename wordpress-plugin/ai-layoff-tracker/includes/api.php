@@ -627,6 +627,9 @@ function alt_flush_caches() {
     // Invalidate every cached /query and /aggregate response at once: their
     // cache keys embed this version, so bumping it orphans the old entries.
     update_option('alt_data_ver', (int) get_option('alt_data_ver', 1) + 1, false);
+    // Announce the change to IndexNow (Bing/ChatGPT search, Yandex). The
+    // listener throttles to once a day and never blocks the request.
+    do_action('alt_data_written');
 }
 // Manual edits/deletes in wp-admin must also invalidate the caches
 add_action('save_post_layoffs', 'alt_flush_caches');

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.201
+ * Version: 2.19.202
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.201');
+define('ALT_VERSION', '2.19.202');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -131,6 +131,76 @@ function alt_state_unemployment() {
     set_transient('alt_state_unemp', $out, 15 * DAY_IN_SECONDS);
     return $out;
 }
+
+/**
+ * IndexNow: PUSH url changes to Bing (which powers ChatGPT search) + Yandex the
+ * moment data lands, instead of waiting to be crawled. The tracker's figures
+ * change every day, so a crawl-driven index is always behind what the page
+ * actually says — this closes that gap and is the single most direct lever on
+ * "get cited with current numbers".
+ *
+ * The key is PUBLIC BY DESIGN: IndexNow verifies ownership by fetching it from
+ * our own host, so it must be openly readable and is safe in the source. It is
+ * served from /blog/<key>.txt (the plugin owns /blog, not the domain root), and
+ * every submission passes keyLocation so the engines look in the right place.
+ * Override per-install with the ALT_INDEXNOW_KEY constant in wp-config.php.
+ */
+if (!defined('ALT_INDEXNOW_KEY')) define('ALT_INDEXNOW_KEY', 'cb047caed7fd4936a80e2cdf20306fb3');
+
+function alt_indexnow_key_url() {
+    return home_url('/' . ALT_INDEXNOW_KEY . '.txt');
+}
+
+/** Serve the ownership key file (mirrors the llms.txt handler). */
+function alt_serve_indexnow_key() {
+    $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+    if (!preg_match('#/' . preg_quote(ALT_INDEXNOW_KEY, '#') . '\.txt/?($|\?)#', $uri)) return;
+    header('Content-Type: text/plain; charset=utf-8');
+    header('X-Robots-Tag: noindex');
+    echo ALT_INDEXNOW_KEY;
+    exit;
+}
+add_action('init', 'alt_serve_indexnow_key', 0);
+
+/** The public surfaces whose CONTENT changes when new layoffs land. */
+function alt_indexnow_urls() {
+    $t = home_url('/ai-layoff-tracker/');
+    return array($t, $t . 'report/', $t . 'press/', $t . 'sources/',
+                 $t . 'ai-quotes/', $t . 'ai-tracker-health/');
+}
+
+/**
+ * Submit to IndexNow, at most once per day. Throttled deliberately: the
+ * protocol asks for submissions when content actually changes, and spraying
+ * the same URLs repeatedly is the one way to get a domain ignored. Fire-and-
+ * forget (non-blocking) so no visitor request ever waits on it.
+ */
+function alt_indexnow_ping($force = false) {
+    if (!$force && get_transient('alt_indexnow_sent')) return false;
+    set_transient('alt_indexnow_sent', 1, DAY_IN_SECONDS);
+    $body = array(
+        'host'        => wp_parse_url(home_url('/'), PHP_URL_HOST),
+        'key'         => ALT_INDEXNOW_KEY,
+        'keyLocation' => alt_indexnow_key_url(),
+        'urlList'     => array_values(alt_indexnow_urls()),
+    );
+    $res = wp_remote_post('https://api.indexnow.org/IndexNow', array(
+        'timeout'  => 5,
+        'blocking' => false,                      // never block a page render
+        'headers'  => array('Content-Type' => 'application/json; charset=utf-8'),
+        'body'     => wp_json_encode($body),
+    ));
+    update_option('alt_indexnow_last', array(
+        'at'    => time(),
+        'urls'  => count($body['urlList']),
+        'error' => is_wp_error($res) ? $res->get_error_message() : '',
+    ), false);
+    return true;
+}
+
+/** New data landed -> tell the engines (throttled to once a day). */
+function alt_indexnow_on_write() { alt_indexnow_ping(); }
+add_action('alt_data_written', 'alt_indexnow_on_write');
 
 /**
  * Serve /blog/llms.txt — a plain-text map of the dataset + API for LLMs (an
