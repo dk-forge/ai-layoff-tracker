@@ -111,16 +111,24 @@ def pull_google_news(queries=None, company_names=None):
     qs = list(queries or DISCOVERY_QUERIES)
     # Company-targeted queries are the surgical fix for the exact miss list
     # (Google, HP, Accenture, SAP, Uber...): the watchlist supplies the names.
+    # They go FIRST: MAX_ITEMS is a GLOBAL cap, and with the broad sweeps in
+    # front the first two queries alone could exhaust it, so the targeted
+    # queries (the whole point of a chase call) never fired (audit 2026-07-25).
     for c in (company_names or []):
         c = str(c or "").strip()
         if c:
-            qs.append(f'"{c}" (layoffs OR "job cuts" OR "lays off" OR restructuring)')
+            qs.insert(0, f'"{c}" (layoffs OR "job cuts" OR "lays off" OR restructuring)')
 
     results, seen = [], set()
     errors = 0
+    # Per-query slice: every query gets a fair share of the global cap, so a
+    # later query (the euphemism sweep, a company chase) can never be starved
+    # by an earlier broad one returning ~100 items.
+    per_q = max(15, MAX_ITEMS // max(1, len(qs)))
     for q in qs:
         if len(results) >= MAX_ITEMS:
             break
+        taken_this_q = 0
         try:
             r = requests.get(_rss_url(q), headers=UA, timeout=30)
             if r.status_code != 200:
@@ -158,7 +166,8 @@ def pull_google_news(queries=None, company_names=None):
                 "ticker": None,
                 "filing_date": _iso_date(it.get("published")),
             })
-            if len(results) >= MAX_ITEMS:
+            taken_this_q += 1
+            if taken_this_q >= per_q or len(results) >= MAX_ITEMS:
                 break
         time.sleep(GAP)
 

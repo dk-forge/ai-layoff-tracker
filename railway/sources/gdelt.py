@@ -768,19 +768,6 @@ SEGMENT_TERMS = (
     '"school district" "layoffs"', '"university" "job cuts"',
     '"state employees" "layoffs"', '"federal employees" "layoffs"',
     '"city workers" "laid off"', '"nonprofit" "layoffs"',
-    # Corporate euphemisms too noisy for the always-on base, so they rotate here
-    # PAIRED with a headcount-signal word (jobs/roles/employees/positions) — that
-    # pairing keeps the match count (and thus LLM extraction cost) bounded while
-    # still catching the doublespeak that avoids "layoff" (2026-07-25).
-    '"cost optimization" jobs', '"efficiency program" roles',
-    '"operating model" redundancies', '"transformation program" "job cuts"',
-    '"strategic realignment" employees', '"delayering" management',
-    '"flattening" "management layers"', '"headcount optimization"',
-    '"early retirement" buyout employees', '"buyout" "reduce headcount"',
-    # Industry-specific euphemisms (retail/finance/manufacturing/healthcare)
-    '"store rationalization"', '"branch" "optimization" jobs',
-    '"capacity reduction" plant', '"plant optimization" workers',
-    '"service line" consolidation staff', '"network optimization" jobs',
     '"hospital" "layoffs"', '"school" "positions eliminated"',
     # Government-sector expansion (#31): federal RIFs, agencies, and local
     # government cuts leave no WARN/8-K, so press rotation is the only channel.
@@ -831,7 +818,25 @@ NATIVE_TERMS = (
     '"despedimento coletivo"',   # pt-PT: collective dismissal (legal)
     '"大规模裁员"',                # zh: large-scale layoffs
 )
+# English corporate-doublespeak sweep, SAME standalone mechanism as the native
+# terms and for the same reason: a segment query ANDs the base layoff vocabulary
+# in front, so "delayering the management structure" (no base word) could never
+# match a segment — the exact article the euphemism hunt exists for (audit
+# 2026-07-25; they were originally shipped as paired segments, i.e. dead).
+# Each pairs the euphemism with a headcount word for precision, NOT with the
+# base vocabulary. Same downstream gates as everything else.
+EUPHEMISM_TERMS = (
+    '"cost optimization" jobs', '"efficiency program" roles',
+    '"operating model" redundancies', '"transformation program" "job cuts"',
+    '"strategic realignment" employees', '"delayering" management',
+    '"flattening" "management layers"', '"headcount optimization"',
+    '"early retirement" buyout employees', '"buyout" "reduce headcount"',
+    '"store rationalization"', '"branch" "optimization" jobs',
+    '"capacity reduction" plant', '"plant optimization" workers',
+    '"service line" consolidation staff', '"network optimization" jobs',
+)
 NATIVE_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_NATIVE_QUERIES", "2"))))
+EUPHEMISM_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_EUPHEMISM_QUERIES", "2"))))
 
 
 def _segment_queries_for_now():
@@ -953,6 +958,19 @@ def pull_gdelt_between(start, end, max_records=250):
                 continue
             print(f"GDELT native-term {native_query}: {len(nat_articles)} article(s)")
             articles.extend(nat_articles)
+    # English-doublespeak sweep: standalone for the same reason as native terms.
+    if EUPHEMISM_QUERIES_PER_RUN:
+        _now = datetime.now(timezone.utc)
+        _run = 0 if _now.hour < 17 else 1
+        _start = ((_now.timetuple().tm_yday * 2 + _run) * EUPHEMISM_QUERIES_PER_RUN) % len(EUPHEMISM_TERMS)
+        for _i in range(EUPHEMISM_QUERIES_PER_RUN):
+            eu_query = EUPHEMISM_TERMS[(_start + _i) % len(EUPHEMISM_TERMS)]
+            eu_articles, _, eu_error = _query_window(eu_query, start, end, max_records)
+            if eu_articles is None:
+                print(f"GDELT euphemism-term skipped ({eu_error}): {eu_query}")
+                continue
+            print(f"GDELT euphemism-term {eu_query}: {len(eu_articles)} article(s)")
+            articles.extend(eu_articles)
 
     # Standalone THEME sweep: GDELT's GKG topic classifier tags a story's subject
     # matter independent of our keyword vocabulary, so it can catch a layoff piece

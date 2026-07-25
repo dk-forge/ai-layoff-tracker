@@ -42,7 +42,8 @@ function alt_export_filters() {
 
 function alt_export_is_filtered() {
     $keys = array('years', 'quarters', 'months', 'industry', 'country', 'state',
-        'sources', 'reasons', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs', 'ai', 'stage');
+        'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
+        'ai', 'ai_broad', 'date_basis', 'stage');
     foreach ($keys as $k) {
         if (!empty($_GET[$k])) return true;
     }

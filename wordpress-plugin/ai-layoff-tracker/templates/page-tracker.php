@@ -7,41 +7,11 @@ $alt_json = admin_url('admin-post.php?action=alt_export_json');
 $alt_api  = rest_url('layoffs/v1/query');
 $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>';
 
-// --- Structured data (Schema.org) so search + answer engines (Google AI
-// Overviews, ChatGPT, Perplexity) can cite the dataset WITH attribution. ---
-$alt_now_ld = gmdate('Y-m-d');
-$alt_org_ld = array('@type' => 'Organization', 'name' => 'AskTheRecruiter', 'url' => home_url('/'));
-$alt_ld = array();
-$alt_ld[] = array(
-    '@context' => 'https://schema.org', '@type' => 'Dataset',
-    'name' => 'AI Layoff Tracker', 'alternateName' => 'AskTheRecruiter AI Layoff Tracker',
-    'description' => 'A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document: an SEC filing, a state WARN notice, or a named news report.',
-    'url' => home_url('/ai-layoff-tracker/'),
-    'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
-    'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
-    'creator' => $alt_org_ld, 'publisher' => $alt_org_ld,
-    'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $alt_now_ld, 'dateModified' => $alt_now_ld,
-    'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
-    'variableMeasured' => array(
-        array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a primary source document behind each figure.'),
-        array('@type' => 'PropertyValue', 'name' => 'AI-attributed job cuts', 'description' => 'Layoffs the employer named AI or automation as a cause, with a supporting quote on file.'),
-        array('@type' => 'PropertyValue', 'name' => 'Announced job cuts', 'description' => 'Company plans at announcement stage, in a separate labeled tier.'),
-    ),
-    'distribution' => array(
-        array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => rest_url('layoffs/v1/query')),
-        array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv', 'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
-    ),
-);
-// NOTE: no FAQPage block here — alt_seo_head() (wp_head, main plugin file)
-// already emits the identical FAQPage JSON-LD from the same alt_faq_items()
-// in the <head>; duplicating it in the body added ~7KB and risked a
-// duplicate-FAQPage flag in rich-result validation.
+// NOTE: no Dataset block here — alt_seo_head() (wp_head, main plugin file)
+// already emits the single, richer Dataset JSON-LD (incl. measurementTechnique
+// + publisher merged from the block that used to live here). Two Dataset
+// objects on one page made answer engines pick one at random (audit 2026-07-25).
 ?>
-<?php if (!defined('ALT_TRACKER_LD_DONE')) { define('ALT_TRACKER_LD_DONE', 1); // emit once even if the shortcode renders twice
-    foreach ($alt_ld as $alt_block) {
-        echo '<script type="application/ld+json">' . wp_json_encode($alt_block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
-    }
-} ?>
 <?php
 // Zero-round-trip first paint: inline the same three default-filter payloads
 // (facets + aggregate + first query page) the front-end would otherwise fetch,
@@ -66,7 +36,7 @@ $alt_ld[] = array(
 if (function_exists('alt_tracker_bootstrap_payload')) {
     $alt_boot_url_filters = array('years', 'quarters', 'months', 'industry', 'country', 'state',
         'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
-        'ai', 'ai_broad', 'stage');
+        'ai', 'ai_broad', 'stage', 'date_basis');
     $alt_boot = array_intersect($alt_boot_url_filters, array_keys($_GET))
         ? null : alt_tracker_bootstrap_payload();
     if ($alt_boot) {
@@ -323,7 +293,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <div class="alt-why-item"><b>We don&rsquo;t pad to match a bigger headline.</b> A number a journalist can verify is worth more than a bigger one they can&rsquo;t. Nothing here is estimated into existence.</div>
             <div class="alt-why-item"><b>On AI, the thing this tracker exists for,</b> every flagged cut carries the employer&rsquo;s own words naming AI: quotable, clickable, and held to a standard the estimates don&rsquo;t apply to themselves.</div>
         </div>
-        <p class="alt-why-quality">Every figure links to a primary source. Machine-extracted numbers are double-checked by a second independent pass, numeric changes and removals always require a human, and <b>every correction is disclosed in the <a href="#alt-corrections">open log</a></b>. Nothing is quietly edited.</p>
+        <p class="alt-why-quality">Every figure links to a primary source. Machine-extracted numbers are double-checked by a second independent pass. Changing or removing a claimed figure requires a human; the one automated exception is duplicate control, where the same event reported by two sources is consolidated by a double-checked pass so nothing is ever counted twice, with every source link retained. <b>Every correction and every merge is disclosed in the <a href="#alt-corrections">open log</a></b>. Nothing is quietly edited.</p>
         <p class="alt-why-foot"><a href="#alt-metric-definitions">See the full methodology &rarr;</a> &middot; Every number, every source, one click away.</p>
         </div>
     </details>

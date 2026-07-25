@@ -485,8 +485,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini .alt-map-box { height: 360px; }
 .alt-mini.alt-expanded .alt-map-box { height: 600px; }
 /* Jobs-cut-per-month: promoted to a full-width hero row (matches the map's
-   presence) so the trend + jobless-claims overlay read clearly by default.
-   dense auto-flow backfills the map row's third column with the next card. */
+   presence) so the trend + jobless-claims overlay read clearly by default. */
 .alt-trend-card { grid-column: 1 / -1; }
 .alt-trend-card .alt-chart-box { height: 300px; }
 .alt-trend-card.alt-expanded .alt-chart-box { height: 460px; }

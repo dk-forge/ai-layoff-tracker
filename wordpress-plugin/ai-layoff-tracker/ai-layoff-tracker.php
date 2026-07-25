@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.198
+ * Version: 2.19.199
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.198');
+define('ALT_VERSION', '2.19.199');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -643,26 +643,16 @@ function alt_enqueue_assets() {
     // us-atlas topojson the map already fetches. Both are dependency-free UMD
     // globals (window.d3 / window.topojson); only Chart.js drives the other
     // charts now. cdnjs does not mirror these cleanly, so jsdelivr's npm build.
-    wp_enqueue_script(
-        'd3',
-        'https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js',
-        array(),
-        '7.9.0',
-        true
-    );
-    wp_enqueue_script(
-        'topojson-client',
-        'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js',
-        array(),
-        '3.1.0',
-        true
-    );
+    // d3 + topojson are NO LONGER enqueued eagerly: layoffs.js lazy-injects
+    // them (loadMapLibs) only when the map card nears the viewport, because
+    // they serve only the below-the-fold map (~95KB gzip saved per visit;
+    // perf audit 2026-07-25). URLs live in layoffs.js MAP_LIBS.
 
     // Main JS
     wp_enqueue_script(
         'alt-js',
         ALT_PLUGIN_URL . 'assets/layoffs.js',
-        array('jquery', 'datatables-js', 'chartjs', 'd3', 'topojson-client'),
+        array('jquery', 'datatables-js', 'chartjs'),
         $alt_asset_ver('assets/layoffs.js'),
         // Autoptimize defers our dependencies (jquery/datatables/chartjs).
         // Since our file is AO-excluded it MUST defer too, or it executes
@@ -694,7 +684,7 @@ add_action('wp_enqueue_scripts', 'alt_enqueue_assets');
 // resolve: worst case a 5-minute-old page loads a 5-minute-old-but-working
 // script.
 function alt_autoptimize_exclude_js($exclude) {
-    return $exclude . ', ai-layoff-tracker/assets';
+    return $exclude . ', ai-layoff-tracker/assets, ALT_BOOTSTRAP';
 }
 add_filter('autoptimize_filter_js_exclude', 'alt_autoptimize_exclude_js');
 function alt_autoptimize_exclude_css($exclude) {
@@ -736,6 +726,10 @@ add_filter('rank_math/frontend/title', 'alt_title_string_no_emdash', 99);
 
 function alt_seo_head() {
     if (!alt_page_needs_assets()) return;
+    // Full preconnect (DNS+TCP+TLS) to both CDNs: the DataTables CSS on
+    // cdnjs is render-blocking, so the handshake sits on the critical path.
+    echo '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>' . "\n";
+    echo '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>' . "\n";
 
     $page_url = get_permalink();
     if (!$page_url) $page_url = home_url('/');
@@ -756,7 +750,15 @@ function alt_seo_head() {
         'spatialCoverage'     => 'Worldwide',
         'dateModified'        => gmdate('Y-m-d'),
         'variableMeasured'    => array('company', 'job_count', 'layoff_date', 'country', 'US state', 'industry', 'AI attribution', 'source URL'),
+        // Merged from the tracker template's former (duplicate) Dataset block —
+        // this head emitter is now the ONE Dataset object per page.
+        'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
         'creator'             => array(
+            '@type' => 'Organization',
+            'name'  => 'AskTheRecruiter',
+            'url'   => home_url('/'),
+        ),
+        'publisher'           => array(
             '@type' => 'Organization',
             'name'  => 'AskTheRecruiter',
             'url'   => home_url('/'),

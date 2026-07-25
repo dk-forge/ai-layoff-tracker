@@ -116,7 +116,9 @@ def main():
         status = info.get("status")
         age = _age_days(info.get("checked_at"), now)
         maxage = MAX_AGE_DAYS.get(src, DEFAULT_MAX_AGE)
-        if age is not None and age > maxage:
+        if status == "retired":
+            ok += 1            # deliberately stopped; real old timestamp is expected
+        elif age is not None and age > maxage:
             stale.append((src, round(age, 1), maxage))
         elif status == "degraded" and src not in SOFT_DEGRADED:
             degraded.append((src, info.get("detail", "")))

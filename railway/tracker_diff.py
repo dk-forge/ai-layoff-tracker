@@ -308,7 +308,11 @@ def vocab_hit(text, terms):
     was invisible to our broad sweep and only a targeted chase found it — its
     wording belongs in the vocabulary."""
     low = " " + re.sub(r"\s+", " ", str(text or "").lower()) + " "
-    return any(t and t.lower() in low for t in (terms or []))
+    # WORD boundaries, not substrings: "RIF" lives inside "tariff", "sacked"
+    # inside "ransacked" — plain substring matching made almost every headline
+    # a false hit and silently suppressed the whole signal (audit 2026-07-25).
+    return any(t and re.search(r"\b" + re.escape(t.lower()) + r"\b", low)
+               for t in (terms or []))
 
 
 def _email_recall_gap(missing, recall_pct, n_total):
@@ -481,13 +485,9 @@ def run():
             entries.extend(gnews)
         except Exception as exc:
             print(f"google-news fetch failed: {exc}")
-        try:
-            press = pull_news_articles(days_back=DAYS_BACK, queries=[query_for(c) for c in chunk])
-            for r in press:
-                r["_alt_verify"] = "press"
-            entries.extend(press)
-        except Exception as exc:
-            print(f"news fetch failed: {exc}")
+        # (NewsAPI chase removed 2026-07-25: the source is retired — the call
+        # only burned a 429 round-trip per chunk. Google News above is the
+        # press path; restore from git if NewsAPI is ever paid for.)
         for raw in entries:
             try:
                 ex = extract_layoff_data(raw)
@@ -531,7 +531,17 @@ def run():
                             vocab_misses.append(str(raw.get("raw_text") or "")[:140])
                     except Exception:
                         pass
-                resolved.add(_norm(ex.get("company_name", "")))
+                got_key = _norm(ex.get("company_name", ""))
+                resolved.add(got_key)
+                # Also record the COMPETITOR-list spelling(s) this resolve
+                # covers: the independence gauge compares against THEIR names,
+                # and "_norm('Amazon.com, Inc.')" != "_norm('Amazon')" — the
+                # mismatch made every chased company count as independently
+                # found (audit 2026-07-25).
+                for c_listed in chunk:
+                    ck = _norm(c_listed)
+                    if ck and got_key and (ck in got_key or got_key in ck):
+                        resolved.add(ck)
                 print(f"  + [{raw.get('_alt_verify','?')}] {ex.get('company_name')} "
                       f"{ex.get('job_count')} ({ex.get('layoff_date')})")
         time.sleep(1)
@@ -566,8 +576,10 @@ def run():
         # inbox via /alert (they may quote competitor-adjacent material).
         print(f"VOCAB LEARNING: {len(vocab_misses)} resolved win(s) matched no discovery term "
               f"(wording candidates emailed to owner)")
-        if not DRY:
-            _email_learning(vocab_misses, suggestions)
+    if not DRY and (vocab_misses or suggestions):
+        # Either kind of learning is worth the email: vocabulary to add OR
+        # outlets to adopt (gating on vocab alone silenced the outlet email).
+        _email_learning(vocab_misses, suggestions)
 
     detail = (f"{n_total} listed; recall {recall_pct}%; independent {ind_recall}%; "
               f"slice {slice_idx + 1}/{n_slices}; "

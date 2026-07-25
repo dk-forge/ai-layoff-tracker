@@ -49,6 +49,29 @@ jobs:
           find wordpress-plugin/ai-layoff-tracker -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
 
+      # Minify JS/CSS IN PLACE on the runner copy before upload: the repo keeps
+      # readable source (git is canonical), production serves the small files.
+      # Perf audit 2026-07-25: layoffs.js 215KB->~100KB raw (~46KB gzip saved
+      # with the CSS). A minifier failure fails the deploy loudly rather than
+      # shipping a half-minified tree; terser output is syntax-checked by node.
+      - name: Minify assets for production
+        run: |
+          set -euo pipefail
+          cd wordpress-plugin/ai-layoff-tracker/assets
+          for f in layoffs.js health.js widget.js; do
+            [ -f "$f" ] || continue
+            npx --yes terser@5 "$f" --compress --mangle -o "$f.min"
+            node -e "new Function(require('fs').readFileSync('$f.min','utf8'))"
+            mv "$f.min" "$f"
+          done
+          for f in layoffs.css widget.css; do
+            [ -f "$f" ] || continue
+            npx --yes clean-css-cli@5 -o "$f.min" "$f"
+            [ -s "$f.min" ] || { echo "::error::clean-css produced empty $f"; exit 1; }
+            mv "$f.min" "$f"
+          done
+          ls -la
+
       - name: Verify secrets are configured
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}

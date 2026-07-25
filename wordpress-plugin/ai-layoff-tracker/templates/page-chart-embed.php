@@ -22,7 +22,7 @@ list($alt_ctype, $alt_ctitle) = $alt_embed_charts[$alt_chart];
 
 // Build the aggregate filter params from the URL (allowlisted + sanitized).
 $alt_embed_params = array();
-$alt_pass = array('years','quarters','months','industry','country','state','sources','reasons','roles','from','to','q','company','keyword','stage');
+$alt_pass = array('years','quarters','months','industry','country','state','sources','reasons','roles','from','to','q','company','keyword','stage','date_basis');
 foreach ($alt_pass as $k) {
     if (isset($_GET[$k]) && $_GET[$k] !== '') $alt_embed_params[$k] = sanitize_text_field(wp_unslash($_GET[$k]));
 }

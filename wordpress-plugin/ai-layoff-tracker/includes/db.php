@@ -1702,11 +1702,19 @@ function alt_api_source_health_get() {
     // fresh timestamp, so no consumer (health page, ops_status, digest) reads it
     // as degraded OR stale. 'retired' is a declared status, not a run claim.
     foreach (alt_retired_sources() as $src => $why) {
-        if (isset($health[$src])) {
-            $health[$src]['status'] = 'retired';
-            $health[$src]['detail'] = $why;
-            $health[$src]['checked_at'] = gmdate('c');
+        if (!isset($health[$src])) continue;
+        // A collector that POSTed within the last 2 days is RUNNING again (a
+        // deliberate reactivation, e.g. RUN_DISCOVERY_PROBES=1) — do not mask
+        // its real status. Reactivating permanently means also removing the
+        // source from alt_retired_sources() in the same change.
+        $ts = strtotime((string) ($health[$src]['checked_at'] ?? ''));
+        if ($ts && (time() - $ts) < 2 * DAY_IN_SECONDS && ($health[$src]['status'] ?? '') !== 'retired') {
+            continue;
         }
+        // Keep the REAL last-run timestamp: fabricating a fresh checked_at made
+        // the health page claim a months-idle collector was checked "just now".
+        $health[$src]['status'] = 'retired';
+        $health[$src]['detail'] = $why;
     }
     return rest_ensure_response($health);
 }
@@ -3194,6 +3202,17 @@ function alt_api_tracker_meta(WP_REST_Request $r) {
     foreach ((array) ($body['add_wins'] ?? array()) as $domain => $n) {
         $d = sanitize_text_field((string) $domain);
         if ($d !== '') $meta['wins'][$d] = (int) ($meta['wins'][$d] ?? 0) + max(1, (int) $n);
+    }
+    // Bound the maps, not just the history: wins keys carry an outlet+country
+    // suffix (higher cardinality), and resolved grows with every chase. Keep
+    // the most recent 500 resolved and the 300 highest win counts.
+    if (count($meta['resolved']) > 500) {
+        arsort($meta['resolved']);                       // newest dates first
+        $meta['resolved'] = array_slice($meta['resolved'], 0, 500, true);
+    }
+    if (count($meta['wins']) > 300) {
+        arsort($meta['wins']);                           // biggest counts first
+        $meta['wins'] = array_slice($meta['wins'], 0, 300, true);
     }
     if (!empty($body['record_ind']) && is_array($body['record_ind'])) {
         $pt = array(

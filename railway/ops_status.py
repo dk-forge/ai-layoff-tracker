@@ -132,7 +132,10 @@ def main():
                 age = (now - datetime.fromisoformat(str(info.get("checked_at")).replace("Z", "+00:00"))).days
             except Exception:
                 pass
-            stale = age is not None and age > MAX_AGE.get(src, 10)
+            # Retired collectors keep their REAL last-run timestamp (no forged
+            # freshness), so they will always look old — a retired row is never
+            # stale, it is deliberately stopped.
+            stale = status != "retired" and age is not None and age > MAX_AGE.get(src, 10)
             if stale:
                 print(f"    STALE     {src}: {age}d old — collector may have STOPPED. -> RUNBOOK 'a data source broke'")
                 issues.append(f"{src} stale")

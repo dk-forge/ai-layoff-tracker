@@ -436,8 +436,28 @@
             if (query.has(pair[0])) writeControl(pair[1], query.get(pair[0]));
         });
         if (query.get('ai') === '1') writeControl('alt-f-ai', true);
-        if (query.get('ai_broad') === '1') writeControl('alt-f-reasons', ['possible_ai']);
+        if (query.get('ai_broad') === '1') {
+            // APPEND, never overwrite: a shared link can carry ai_broad=1 AND
+            // reasons=restructuring; clobbering the multi-select silently
+            // dropped the co-selected reasons for the recipient (audit 2026-07-25).
+            var rs = readControl('alt-f-reasons') || [];
+            if (rs.indexOf('possible_ai') === -1) rs = rs.concat(['possible_ai']);
+            writeControl('alt-f-reasons', rs);
+        }
         if (query.get('stage') === 'announced') writeControl('alt-f-announced', true);
+        // date_basis was WRITE-only: every share URL carried it, nothing read it
+        // back, so a "notice date" link silently reverted the recipient to the
+        // effective-date basis while looking like it carried the setting — and
+        // the two bases produce different numbers. Set the closure state AND the
+        // segmented switch's visual/aria state (it's buttons, not a form field).
+        if (query.get('date_basis') === 'notice') {
+            DATE_BASIS = 'notice';
+            document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
+                var on = x.getAttribute('data-basis') === 'notice';
+                x.classList.toggle('alt-datebasis-on', on);
+                x.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
     }
     function clearFilters() {
         FILTER_IDS.forEach(function (id) {
@@ -1405,7 +1425,7 @@
         }
         // Optional macro-context overlay: jobless claims as muted bars on a
         // SEPARATE right axis (different unit AND ~15x scale — never blended
-        // with the layoff line). Toggle-gated, off by default, drawn behind.
+        // with the layoff line). Toggle-gated (ON by default), drawn behind.
         var claimsTog = document.getElementById('alt-claims-toggle');
         if (claimsTog && claimsTog.checked && CLAIMS_DATA) {
             var cl = claimsAligned(series.map(function (s) { return s.month; }));
@@ -1472,9 +1492,13 @@
         if (monthEl && latest) monthEl.textContent = monthLabel(latest);
         box.innerHTML = rows.map(function (r) {
             var pct = Math.max(1, Math.round(100 * r.value / max));
+            // States publish on slightly different lags; when a state's latest
+            // point is older than the headline month, say so on the value
+            // instead of silently ranking a May figure in a June list.
+            var lag = (r.month && latest && r.month < latest) ? ' <small>(' + escapeHtml(monthLabel(r.month)) + ')</small>' : '';
             return '<div class="alt-barrow" role="listitem">'
                 + '<div class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(r.st) + '</span>'
-                + '<span class="alt-barrow-val">' + fmt(r.value) + '</span></div>'
+                + '<span class="alt-barrow-val">' + fmt(r.value) + lag + '</span></div>'
                 + '<div class="alt-bartrack"><div style="width:' + pct + '%;height:100%;border-radius:inherit;background:#9aa0ab"></div></div>'
                 + '</div>';
         }).join('');
@@ -2259,10 +2283,26 @@
     // Draw the map only once its card scrolls near the viewport, so the initial
     // page load doesn't pay for the world atlas + geo render up front. Falls
     // back to drawing immediately if IntersectionObserver or the card is absent.
+    // d3 + topojson (~95KB gzip) power ONLY the map, which lazy-renders below
+    // the fold — so the libraries lazy-load with it instead of shipping to
+    // every visitor (perf audit 2026-07-25: they were 30% of the eager JS and
+    // defeated the atlas lazy-load). renderAiMap() already polls d3Ready() for
+    // up to 6s, which absorbs the CDN fetch time.
+    var MAP_LIBS = ['https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js',
+                    'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js'];
+    function loadMapLibs() {
+        if (loadMapLibs._done) return;
+        loadMapLibs._done = true;
+        MAP_LIBS.forEach(function (src) {
+            var el = document.createElement('script');
+            el.src = src; el.async = true;
+            document.head.appendChild(el);
+        });
+    }
     function observeMapReveal() {
         if (AIMAP._observing) return;
         var card = document.getElementById('alt-map-card');
-        if (!card || !('IntersectionObserver' in window)) { AIMAP.revealed = true; renderAiMap(); return; }
+        if (!card || !('IntersectionObserver' in window)) { AIMAP.revealed = true; loadMapLibs(); renderAiMap(); return; }
         AIMAP._observing = true;
         var io = new IntersectionObserver(function (entries) {
             for (var i = 0; i < entries.length; i++) {
@@ -2270,6 +2310,7 @@
                     io.disconnect();
                     AIMAP._observing = false;
                     AIMAP.revealed = true;
+                    loadMapLibs();
                     renderAiMap();
                     return;
                 }
@@ -2398,7 +2439,11 @@
             // 4px keeps tiny-but-real AI presence findable; the tooltip carries
             // the exact number, so the floor never misstates a value.
             var rAi = function (v) { return v > 0 ? Math.max(4, rScale(v)) : 0; };
-            pts.forEach(function (p) { p.r = rOf(p.jobs); p.ra = rAi(p.ai); });
+            // The AI dot's 4px visibility floor must never exceed its own blue
+            // bubble: for small totals rScale(jobs) < 4, and an uncapped floor
+            // drew red OVER blue — the legend's "sits inside" became a lie
+            // (audit 2026-07-25). Cap at the parent radius.
+            pts.forEach(function (p) { p.r = rOf(p.jobs); p.ra = Math.min(p.r, rAi(p.ai)); });
 
             box.innerHTML = '';
             box.style.position = 'relative';
@@ -3397,7 +3442,7 @@
             if (!id) return;
             if (!card.id) card.id = 'card-' + id;
             var sh = document.createElement('button');
-            sh.type = 'button'; sh.className = 'alt-chart-share'; sh.title = 'Copy a link to this filtered view';
+            sh.type = 'button'; sh.className = 'alt-chart-share'; sh.title = 'Copy a link to this filtered view (live data: numbers update as new sources are verified)';
             sh.setAttribute('aria-label', 'Share this view'); sh.innerHTML = SHARE_SVG;
             btns.insertBefore(sh, btns.firstChild);
             sh.addEventListener('click', function (e) {
