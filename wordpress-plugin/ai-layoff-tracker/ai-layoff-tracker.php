@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.202
+ * Version: 2.19.203
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.202');
+define('ALT_VERSION', '2.19.203');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -139,25 +139,40 @@ function alt_state_unemployment() {
  * actually says — this closes that gap and is the single most direct lever on
  * "get cited with current numbers".
  *
- * The key is PUBLIC BY DESIGN: IndexNow verifies ownership by fetching it from
- * our own host, so it must be openly readable and is safe in the source. It is
- * served from /blog/<key>.txt (the plugin owns /blog, not the domain root), and
- * every submission passes keyLocation so the engines look in the right place.
- * Override per-install with the ALT_INDEXNOW_KEY constant in wp-config.php.
+ * KEY HANDLING: the spec says "only you and the search engines should know the
+ * key and your file key location", so it must NOT sit in this repo (it is
+ * public). The plugin mints its own 32-hex key on first use and keeps it in the
+ * DB; wp-config.php can override with ALT_INDEXNOW_KEY. Rotation is safe: drop
+ * the alt_indexnow_key option and the next request mints a fresh one.
+ *
+ * SCOPE: a key hosted at /blog/<key>.txt may only submit URLs under /blog/
+ * (protocol Option 2 — the key's directory bounds what it can claim). Every
+ * tracker surface lives under /blog/, so that is exactly right here; a
+ * root-level URL would need the file at the domain root, a separate app.
  */
-if (!defined('ALT_INDEXNOW_KEY')) define('ALT_INDEXNOW_KEY', 'cb047caed7fd4936a80e2cdf20306fb3');
+function alt_indexnow_key() {
+    if (defined('ALT_INDEXNOW_KEY') && ALT_INDEXNOW_KEY) return ALT_INDEXNOW_KEY;
+    $k = get_option('alt_indexnow_key');
+    if (!is_string($k) || !preg_match('/^[a-zA-Z0-9-]{8,128}$/', $k)) {
+        $k = bin2hex(random_bytes(16));           // 32 hex chars, inside spec
+        update_option('alt_indexnow_key', $k, false);
+    }
+    return $k;
+}
 
 function alt_indexnow_key_url() {
-    return home_url('/' . ALT_INDEXNOW_KEY . '.txt');
+    return home_url('/' . alt_indexnow_key() . '.txt');
 }
 
 /** Serve the ownership key file (mirrors the llms.txt handler). */
 function alt_serve_indexnow_key() {
     $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
-    if (!preg_match('#/' . preg_quote(ALT_INDEXNOW_KEY, '#') . '\.txt/?($|\?)#', $uri)) return;
+    if (strpos($uri, '.txt') === false) return;   // cheap bail before any DB read
+    $key = alt_indexnow_key();
+    if (!preg_match('#/' . preg_quote($key, '#') . '\.txt/?($|\?)#', $uri)) return;
     header('Content-Type: text/plain; charset=utf-8');
     header('X-Robots-Tag: noindex');
-    echo ALT_INDEXNOW_KEY;
+    echo $key;
     exit;
 }
 add_action('init', 'alt_serve_indexnow_key', 0);
@@ -180,7 +195,7 @@ function alt_indexnow_ping($force = false) {
     set_transient('alt_indexnow_sent', 1, DAY_IN_SECONDS);
     $body = array(
         'host'        => wp_parse_url(home_url('/'), PHP_URL_HOST),
-        'key'         => ALT_INDEXNOW_KEY,
+        'key'         => alt_indexnow_key(),
         'keyLocation' => alt_indexnow_key_url(),
         'urlList'     => array_values(alt_indexnow_urls()),
     );
