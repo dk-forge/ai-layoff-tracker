@@ -32,6 +32,9 @@
     var ALT_RED = '#D55E00', ALT_AMBER = '#E69F00';
     var SEQ_BLUE = '#2a78d6';
     var SEQ_BLUE_FILL = 'rgba(42, 120, 214, 0.18)';
+    // Unemployment-claims backdrop (BLS/DOL via /claims). Macro CONTEXT only —
+    // rendered on its OWN right-side axis, never summed with layoff counts.
+    var CLAIMS_DATA = null;
     var INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9' };
 
     var REASON_LABELS = {
@@ -1403,11 +1406,64 @@
                 return items.length > 1 ? 'Total incl. plans: ' + fmt(total) : '';
             };
         }
+        // Optional macro-context overlay: jobless claims as muted bars on a
+        // SEPARATE right axis (different unit AND ~15x scale — never blended
+        // with the layoff line). Toggle-gated, off by default, drawn behind.
+        var claimsTog = document.getElementById('alt-claims-toggle');
+        if (claimsTog && claimsTog.checked && CLAIMS_DATA) {
+            var cl = claimsAligned(series.map(function (s) { return s.month; }));
+            if (cl) {
+                datasets.push({
+                    type: 'bar', label: cl.label + ' (context)', data: cl.data, yAxisID: 'y1',
+                    backgroundColor: 'rgba(120,120,120,0.20)', borderColor: 'rgba(120,120,120,0.30)',
+                    borderWidth: 0, order: 99, barPercentage: 0.92, categoryPercentage: 0.98
+                });
+                options.scales.y1 = {
+                    position: 'right', beginAtZero: true, grid: { display: false },
+                    ticks: { color: INK.muted, callback: function (v) { return fmt(v); } },
+                    title: { display: true, text: 'jobless claims / mo', color: INK.muted, font: { size: 10 } }
+                };
+                options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
+            }
+        }
         mountChart('alt-chart-weekly', {
             type: 'line',
             data: { labels: series.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
             options: options
         });
+    }
+
+    // Align the claims series to the chart's months; national by default, or the
+    // selected US state's claims when exactly one US state is filtered.
+    function claimsAligned(monthKeys) {
+        if (!CLAIMS_DATA || !CLAIMS_DATA.national) return null;
+        var stSel = readControl('alt-f-state'), st = null;
+        if (Array.isArray(stSel) && stSel.length === 1) st = stSel[0];
+        else if (typeof stSel === 'string' && stSel) st = stSel;
+        var src, label;
+        if (st && CLAIMS_DATA.states && CLAIMS_DATA.states[st] && CLAIMS_DATA.states[st].length) {
+            src = CLAIMS_DATA.states[st]; label = st + ' initial jobless claims';
+        } else {
+            src = CLAIMS_DATA.national.initial || []; label = 'US initial jobless claims';
+        }
+        var map = {};
+        src.forEach(function (p) { map[p.month] = p.value; });
+        var data = monthKeys.map(function (m) { return map[m] != null ? map[m] : null; });
+        return data.some(function (v) { return v != null; }) ? { data: data, label: label } : null;
+    }
+
+    // Fetch the claims backdrop once, reveal the toggle, redraw the trend on flip.
+    // Fail-soft: no claims data => toggle stays hidden and nothing changes.
+    function initClaimsOverlay() {
+        if (!document.getElementById('alt-claims-toggle')) return;
+        apiGet('claims', {}).then(function (d) {
+            if (!d || !d.national || !((d.national.initial || []).length)) return;
+            CLAIMS_DATA = d;
+            var wrap = document.getElementById('alt-claims-toggle-wrap');
+            if (wrap) wrap.hidden = false;
+            var tog = document.getElementById('alt-claims-toggle');
+            if (tog) tog.addEventListener('change', function () { if (LAST_AGG) renderTrend(LAST_AGG.series); });
+        }).catch(function () {});
     }
 
     // Monthly AI share of verified cuts, as a percent line.
@@ -3475,6 +3531,7 @@
             updateExportLinks();
             fetchAndRenderAggregate(); // charts + stats
             loadReconciliation();      // announced-vs-executed links for row detail
+            initClaimsOverlay();       // jobless-claims backdrop toggle (macro context)
         }).catch(function () {
             setStatus('alt-table-status', 'Could not load filters.', true);
             initMultiDropdowns();
