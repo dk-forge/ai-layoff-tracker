@@ -272,6 +272,14 @@ def fetch_mi():
         jobs = _count(field("Number of jobs impacted"))
         date = (_to_iso_date(field("Layoff date")) or _to_iso_date(field("Commencing date"))
                 or _to_iso_date(field("Date of layoff")) or _to_iso_date(field("Date WARN received")))
+        if not date:  # labels shift; scan the fragment prose for the first real date
+            for cand in re.findall(
+                    r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|[A-Z][a-z]+\.?\s+\d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2})",
+                    _strip_tags(html)):
+                d = _to_iso_date(cand)
+                if d:
+                    date = d
+                    break
         if jobs <= 0:  # label may have changed; read the whole record fragment
             jobs = llm_count_from_text(_strip_tags(html), f"MI {title}")
         county = field("County")
