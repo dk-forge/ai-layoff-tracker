@@ -67,7 +67,29 @@ function alt_export_walk($cb) {
     }
 }
 
+/**
+ * Lightweight per-IP throttle for the anonymous full-dataset exports. Bulk reuse
+ * is welcome (the data is licensed for it), but repeated concurrent full-table
+ * downloads shouldn't be able to hammer the origin. 20 exports / 10 min per IP;
+ * over that, 429 + exit. Filtered exports and the API remain the fast paths.
+ */
+function alt_export_throttle() {
+    $ip = isset($_SERVER['REMOTE_ADDR']) ? preg_replace('/[^0-9a-f:.]/i', '', (string) $_SERVER['REMOTE_ADDR']) : '0';
+    $key = 'alt_export_rl_' . md5($ip);
+    $n = (int) get_transient($key);
+    if ($n >= 20) {
+        status_header(429);
+        nocache_headers();
+        header('Retry-After: 600');
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "Export rate limit reached. The full dataset is free to reuse — please wait a few minutes, filter your export, or use the public API.";
+        exit;
+    }
+    set_transient($key, $n + 1, 10 * MINUTE_IN_SECONDS);
+}
+
 function alt_export_csv() {
+    alt_export_throttle();
     nocache_headers();
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . (alt_export_is_filtered() ? 'filtered-' : '') . gmdate('Y-m-d') . '.csv"');
@@ -114,6 +136,7 @@ function alt_export_csv() {
 }
 
 function alt_export_json() {
+    alt_export_throttle();
     nocache_headers();
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="ai-layoff-tracker-' . (alt_export_is_filtered() ? 'filtered-' : '') . gmdate('Y-m-d') . '.json"');
