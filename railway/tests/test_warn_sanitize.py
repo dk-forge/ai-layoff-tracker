@@ -10,18 +10,17 @@ import sys
 import types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-for _m in ("requests",):
-    if _m not in sys.modules:
-        sys.modules[_m] = types.ModuleType(_m)
-        sys.modules[_m].RequestException = Exception
-for _m, _attr, _val in (("sources", None, None),
-                        ("sources.warn", "pull_warn", lambda *a, **k: []),
-                        ("sources.warn_custom", "pull_warn_custom", lambda *a, **k: []),
-                        ("source_health", "report_source_health", lambda *a, **k: None)):
-    if _m not in sys.modules:
-        sys.modules[_m] = types.ModuleType(_m)
-    if _attr:
-        setattr(sys.modules[_m], _attr, _val)
+# Only stub `requests` (a bare stub is enough for warn_import's real deps to
+# import offline). Do NOT install fake `sources.*` modules: they persist in
+# sys.modules and shadow the real sources.warn / sources.warn_custom for every
+# test loaded after this one, which silently breaks their parsers. See the same
+# note in tests/test_warn_generic_drift.py.
+_rq = sys.modules.get("requests")
+if _rq is None:
+    _rq = types.ModuleType("requests")
+    sys.modules["requests"] = _rq
+if not hasattr(_rq, "RequestException"):
+    _rq.RequestException = Exception
 
 import warn_import as W  # noqa: E402
 

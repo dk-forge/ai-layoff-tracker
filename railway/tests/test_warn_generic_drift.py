@@ -13,20 +13,23 @@ import sys
 import types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-# warn_import imports these at module load; stub them so the test needs no network
-# deps (mirrors tests/test_warn_sanitize.py).
-for _m in ("requests",):
-    if _m not in sys.modules:
-        sys.modules[_m] = types.ModuleType(_m)
-        sys.modules[_m].RequestException = Exception
-for _m, _attr, _val in (("sources", None, None),
-                        ("sources.warn", "pull_warn", lambda *a, **k: []),
-                        ("sources.warn_custom", "pull_warn_custom", lambda *a, **k: []),
-                        ("source_health", "report_source_health", lambda *a, **k: None)):
-    if _m not in sys.modules:
-        sys.modules[_m] = types.ModuleType(_m)
-    if _attr:
-        setattr(sys.modules[_m], _attr, _val)
+# warn_import imports the real state scrapers (sources.warn / sources.warn_custom
+# / source_health) at module load. They import cleanly offline once `requests`
+# is present, so a bare `requests` stub is all this test needs.
+#
+# We deliberately do NOT install fake `sources.*` modules here. A fake persists
+# in sys.modules and shadows the REAL sources.warn / sources.warn_custom for
+# every test module loaded after this one in the suite (alphabetical discovery),
+# which is exactly what silently broke test_warn_history_backfills' OH/LA/NC
+# parsers. A requests-only stub cannot leak into another module's real import.
+# These tests exercise only pure in-memory helpers (detect_generic_state_drift,
+# _parse_generic_baselines) and never call a scraper, so no network is possible.
+_rq = sys.modules.get("requests")
+if _rq is None:
+    _rq = types.ModuleType("requests")
+    sys.modules["requests"] = _rq
+if not hasattr(_rq, "RequestException"):     # real requests already has it; a
+    _rq.RequestException = Exception         # bare stub from an earlier test may not
 
 import unittest  # noqa: E402
 
