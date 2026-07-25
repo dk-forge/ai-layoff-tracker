@@ -1449,6 +1449,38 @@
         return data.some(function (v) { return v != null; }) ? { data: data, label: label } : null;
     }
 
+    // "Jobless claims by US state": official DOL initial claims, latest month,
+    // every state, ranked. Deliberately GREY (not the layoff blue/orange) and
+    // deliberately NOT wired to the filters — it is a different universe shown
+    // for context, so it must never look like a filterable layoff chart.
+    function renderClaimsStates() {
+        var box = document.getElementById('alt-bars-claims-states');
+        var card = document.getElementById('alt-claims-states-card');
+        if (!box || !card || !CLAIMS_DATA || !CLAIMS_DATA.states) return;
+        var rows = [];
+        Object.keys(CLAIMS_DATA.states).forEach(function (st) {
+            var series = CLAIMS_DATA.states[st] || [];
+            if (!series.length) return;
+            var last = series[series.length - 1];
+            if (last && last.value != null) rows.push({ st: st, month: last.month, value: last.value });
+        });
+        if (!rows.length) return;
+        rows.sort(function (a, b) { return b.value - a.value; });
+        var max = rows[0].value || 1;
+        var latest = rows.reduce(function (m, r) { return r.month > m ? r.month : m; }, '');
+        var monthEl = document.getElementById('alt-claims-states-month');
+        if (monthEl && latest) monthEl.textContent = monthLabel(latest);
+        box.innerHTML = rows.map(function (r) {
+            var pct = Math.max(1, Math.round(100 * r.value / max));
+            return '<div class="alt-barrow" role="listitem">'
+                + '<div class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(r.st) + '</span>'
+                + '<span class="alt-barrow-val">' + fmt(r.value) + '</span></div>'
+                + '<div class="alt-bartrack"><div style="width:' + pct + '%;height:100%;border-radius:inherit;background:#9aa0ab"></div></div>'
+                + '</div>';
+        }).join('');
+        card.hidden = false;
+    }
+
     // Fetch the claims backdrop once, reveal the toggle, redraw the trend on flip.
     // Fail-soft: no claims data => toggle stays hidden and nothing changes.
     function initClaimsOverlay() {
@@ -1466,6 +1498,7 @@
             // The toggle defaults ON, but the first trend render ran before the
             // claims data loaded — redraw now so the overlay appears without a click.
             if (tog.checked && LAST_AGG) renderTrend(LAST_AGG.series);
+            renderClaimsStates();
         }).catch(function () {});
     }
 

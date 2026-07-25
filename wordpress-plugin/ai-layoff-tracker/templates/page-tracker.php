@@ -348,17 +348,24 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">By US state <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <div class="alt-chart-h">Layoffs by US state <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter · our documented cuts, not jobless claims</span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-states" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-states"></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h" id="alt-country-chart-title">By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <div class="alt-chart-h" id="alt-country-chart-title">Layoffs by country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-countries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-countries"></div>
+        </div>
+        <div class="alt-mini alt-chart-card" id="alt-claims-states-card" hidden>
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Jobless claims by US state <span class="alt-chart-sub">official government data (DOL), <span id="alt-claims-states-month">latest month</span> · every state, all filers, not just layoffs · context only, separate from our counts · unaffected by the filters above</span></div>
+            </div>
+            <div class="alt-barlist" id="alt-bars-claims-states"></div>
+            <p class="alt-chart-note">Initial unemployment claims: everyone who filed for benefits that month, from the US Department of Labor. A different, much larger universe than our documented layoffs; shown for context and never added to any tracker total. Updates automatically each week.</p>
         </div>
         <div class="alt-grid-h"><h2>How it is trending</h2><p>The same filtered data over time: monthly totals with jobless-claims context, this year against last, and how often employers name AI.</p></div>
         <div class="alt-mini alt-chart-card alt-trend-card">

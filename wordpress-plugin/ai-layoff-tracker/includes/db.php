@@ -981,6 +981,15 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_claims_ingest',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Private working memory for the daily competitor-weaning loop (tracker_diff):
+    // which companies were ever resolved only by chasing a reference list, the
+    // independent-recall history, and which outlets keep closing gaps. Keyed POST
+    // only — this state stays in the DB, never in the repo or Actions logs.
+    register_rest_route('layoffs/v1', '/tracker-meta', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_tracker_meta',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Key-protected: superset dedup (default DRY-RUN; apply=1 to write). Marks
     // a company-wide news total or its site-level WARN rows as a subset of the
     // same event's most-complete row so one event is counted once.
@@ -3163,6 +3172,43 @@ function alt_api_claims_ingest(WP_REST_Request $r) {
         'national_months' => is_array($body['national']['initial'] ?? null) ? count($body['national']['initial']) : 0,
         'states'          => is_array($body['states'] ?? null) ? count($body['states']) : 0,
     ));
+}
+
+/**
+ * Working memory for the competitor-weaning loop. Merge-and-return: the caller
+ * POSTs {add_resolved: [names], add_wins: {domain: n}, record_ind: {d, ind, total}}
+ * (any subset) and always receives the full state back, so one keyed call both
+ * reads and writes. Bounded: resolved and win domains are maps (no unbounded
+ * growth per run), the independence history keeps the last 180 daily points.
+ */
+function alt_api_tracker_meta(WP_REST_Request $r) {
+    $body = $r->get_json_params();
+    if (!is_array($body)) $body = array();
+    $meta = get_option('alt_tracker_meta');
+    if (!is_array($meta)) $meta = array();
+    $meta += array('resolved' => array(), 'wins' => array(), 'ind_history' => array());
+    foreach ((array) ($body['add_resolved'] ?? array()) as $name) {
+        $k = sanitize_text_field((string) $name);
+        if ($k !== '' && !isset($meta['resolved'][$k])) $meta['resolved'][$k] = gmdate('Y-m-d');
+    }
+    foreach ((array) ($body['add_wins'] ?? array()) as $domain => $n) {
+        $d = sanitize_text_field((string) $domain);
+        if ($d !== '') $meta['wins'][$d] = (int) ($meta['wins'][$d] ?? 0) + max(1, (int) $n);
+    }
+    if (!empty($body['record_ind']) && is_array($body['record_ind'])) {
+        $pt = array(
+            'd'     => sanitize_text_field((string) ($body['record_ind']['d'] ?? gmdate('Y-m-d'))),
+            'ind'   => (float) ($body['record_ind']['ind'] ?? 0),
+            'total' => (float) ($body['record_ind']['total'] ?? 0),
+        );
+        // one point per day: replace today's entry instead of appending twice
+        $meta['ind_history'] = array_values(array_filter($meta['ind_history'],
+            function ($p) use ($pt) { return ($p['d'] ?? '') !== $pt['d']; }));
+        $meta['ind_history'][] = $pt;
+        $meta['ind_history'] = array_slice($meta['ind_history'], -180);
+    }
+    update_option('alt_tracker_meta', $meta, false);
+    return rest_ensure_response($meta);
 }
 
 /**

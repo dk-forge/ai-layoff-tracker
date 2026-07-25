@@ -52,6 +52,12 @@ MAX_CHASE = max(1, int(os.environ.get("TRACKER_DIFF_MAX", "40")))
 # ledger, or Actions log), so the standalone-brand rule holds.
 RECALL_ALERT_PCT = float(os.environ.get("TRACKER_DIFF_RECALL_ALERT_PCT", "90"))
 RECALL_ALERT_MAX_NAMES = max(5, int(os.environ.get("TRACKER_DIFF_RECALL_MAX_NAMES", "60")))
+# Weaning thresholds (see the WEANING block below _norm). Defined HERE with the
+# other env config: test_tracker_diff_sitemap exec's the _norm..run source slice
+# in a bare namespace, so that region must stay free of module-level os reads.
+IND_WEAN_PCT = float(os.environ.get("TRACKER_DIFF_WEAN_PCT", "90"))
+IND_WEAN_DAYS = max(7, int(os.environ.get("TRACKER_DIFF_WEAN_DAYS", "21")))
+FORCE_CHASE = os.environ.get("TRACKER_DIFF_FORCE_CHASE", "").lower() in {"1", "true", "yes"}
 # Tag namespaces mix companies with topics/cities; drop the obvious non-company
 # slugs so we never chase "layoffs" or "san-francisco" as if it were an employer.
 _SITEMAP_STOP = {
@@ -211,6 +217,87 @@ def _norm(name):
     return re.sub(r"\s+", " ", n).strip()
 
 
+# ---------------------------------------------------------------------------
+# WEANING: the reference lists are a teacher, not a crutch. Three mechanisms
+# make the dependence measurable and shrink it over time:
+#   1. INDEPENDENT RECALL — of the companies they list, how many did our OWN
+#      pipeline already have (i.e., have MINUS ever-chase-resolved)? This is
+#      the "we don't need them" number, recorded daily server-side.
+#   2. LEARN FROM WINS — when a chase resolves a company, remember WHICH outlet
+#      carried it. An outlet that repeatedly closes gaps but is not in our
+#      allowlist is a ranked candidate to join the permanent net.
+#   3. GRADUATED CADENCE — once independent recall holds >=90% for 21 straight
+#      recorded days, the chase steps down to Mondays only (the recall gauge
+#      still runs daily). If they ever block robots, coverage barely moves.
+# State lives in the keyed /tracker-meta endpoint (WP DB) — names never touch
+# the repo or the Actions log, so the standalone-brand rule holds.
+# (IND_WEAN_PCT / IND_WEAN_DAYS / FORCE_CHASE are defined with the env config
+# at the top of the file — this region must stay free of module-level os reads
+# because test_tracker_diff_sitemap exec's the _norm..run slice bare.)
+# ---------------------------------------------------------------------------
+
+
+def _meta_sync(payload):
+    """Merge payload into the server-side weaning memory; return full state.
+    Fail-soft: a blip returns {} and the run continues without the gauge."""
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return {}
+    try:
+        r = requests.post(f"{site}/wp-json/layoffs/v1/tracker-meta",
+                          json=payload, headers={**UA, "X-ALT-KEY": key}, timeout=30)
+        return r.json() if r.status_code == 200 else {}
+    except Exception as exc:
+        print(f"tracker-meta sync failed (non-fatal): {exc}")
+        return {}
+
+
+def chase_today(ind_history, today, wean_pct=None, wean_days=None):
+    """True if the full chase should run today. Pure + tested.
+
+    Daily until independent recall has held >= wean_pct for wean_days straight
+    recorded points; after that, Mondays only. Any dip below the bar snaps the
+    cadence back to daily — weaning is earned continuously, never a ratchet."""
+    wean_pct = IND_WEAN_PCT if wean_pct is None else wean_pct
+    wean_days = IND_WEAN_DAYS if wean_days is None else wean_days
+    pts = [p for p in (ind_history or []) if isinstance(p, dict) and "ind" in p]
+    if len(pts) < wean_days:
+        return True
+    recent = pts[-wean_days:]
+    if all(float(p["ind"]) >= wean_pct for p in recent):
+        return today.weekday() == 0  # weaned: Monday spot-check only
+    return True
+
+
+def _win_key(raw):
+    """Outlet identity for learn-from-wins: a real domain when the source URL
+    has one, else the outlet name (Google News links are redirects, so the RSS
+    <source> name is the truthful identity there)."""
+    url = str(raw.get("source_url") or "")
+    m = re.search(r"https?://(?:www\.)?([^/]+)/", url + "/")
+    dom = (m.group(1).lower() if m else "")
+    if dom and "google." not in dom:
+        return dom
+    name = re.sub(r"\s+", " ", str(raw.get("source_name") or "").strip().lower())
+    return name
+
+
+def outlet_suggestions(wins, trusted_domains):
+    """Outlets that closed >=2 gaps but are not in the allowlist — ranked,
+    these are the permanent-net candidates that shrink future dependence."""
+    trusted = {d.lower() for d in (trusted_domains or [])}
+    out = []
+    for key, cnt in sorted((wins or {}).items(), key=lambda kv: -int(kv[1])):
+        if int(cnt) < 2 or not key:
+            continue
+        token = re.sub(r"[^a-z0-9]+", "", key.split(".")[0])
+        if key in trusted or any(token and token in d for d in trusted):
+            continue
+        out.append((key, int(cnt)))
+    return out[:10]
+
+
 def _email_recall_gap(missing, recall_pct, n_total):
     """Email the owner the tracked layoffs we're MISSING vs the reference list,
     so a coverage gap self-surfaces instead of being noticed by hand. PRIVATE:
@@ -284,8 +371,33 @@ def run():
     recall_pct = round(100.0 * (n_total - n_missing) / n_total, 1) if n_total else 100.0
     print(f"RECALL: we carry {n_total - n_missing}/{n_total} listed companies "
           f"({recall_pct}%); missing {n_missing}")
+
+    # INDEPENDENT RECALL: strip out every company we only ever got by chasing
+    # their list. What remains is what our own net caught — the number that
+    # proves the data stands on its own (and the weaning dial).
+    meta = _meta_sync({}) if not DRY else {}
+    resolved_ever = set((meta.get("resolved") or {}).keys())
+    have = [c for c in competitor_names if c not in set(all_missing)]
+    ind_have = [c for c in have if _norm(c) not in resolved_ever]
+    ind_recall = round(100.0 * len(ind_have) / n_total, 1) if n_total else 100.0
+    print(f"INDEPENDENT RECALL: {len(ind_have)}/{n_total} ({ind_recall}%) found by "
+          f"our own pipeline without their pointer ({len(have) - len(ind_have)} "
+          f"chase-resolved historically)")
     if not DRY:
+        meta = _meta_sync({"record_ind": {"d": date.today().isoformat(),
+                                          "ind": ind_recall, "total": recall_pct}}) or meta
         _email_recall_gap(all_missing, recall_pct, n_total)
+
+    # GRADUATED CADENCE: earned weaning. Recall is measured every day (above);
+    # the chase itself steps down to Mondays once independence has held.
+    do_chase = FORCE_CHASE or chase_today(meta.get("ind_history"), date.today())
+    if not do_chase:
+        detail = (f"{n_total} listed; recall {recall_pct}%; independent {ind_recall}%; "
+                  f"weaned cadence: chase skipped (Mondays only while independence holds)")
+        print("tracker-diff:", detail)
+        if not DRY:
+            report_source_health("tracker_diff", "ok", 0, detail)
+        return
 
     # Chase a rotating slice OF THE MISSING (not the whole list), so the daily
     # SEC/LLM budget is spent only on real gaps and the whole backlog is walked
@@ -299,6 +411,7 @@ def run():
           f"({len(missing)} this run)")
     posted = ai = via_sec = via_press = 0
     resolved = set()
+    run_wins = {}
     for i in range(0, len(missing), 20):
         chunk = missing[i:i + 20]
         entries = []
@@ -358,6 +471,11 @@ def run():
                     via_sec += 1
                 else:
                     via_press += 1
+                    # LEARN FROM WINS: remember which outlet carried the story
+                    # we missed — repeat winners become allowlist candidates.
+                    wk = _win_key(raw)
+                    if wk:
+                        run_wins[wk] = run_wins.get(wk, 0) + 1
                 resolved.add(_norm(ex.get("company_name", "")))
                 print(f"  + [{raw.get('_alt_verify','?')}] {ex.get('company_name')} "
                       f"{ex.get('job_count')} ({ex.get('layoff_date')})")
@@ -372,11 +490,29 @@ def run():
         gap_summary = "; ".join(f"{cnt} {lab.split('(')[0].strip()}" for lab, cnt, _ in gaps[:4])
     else:
         gap_summary = ""
-    detail = (f"{n_total} listed; recall {recall_pct}% ({n_missing} missing); "
+    # Persist what this run learned: which companies only exist because we
+    # chased (feeds the independence gauge) and which outlets carried the wins
+    # (feeds the allowlist suggestions). Then surface any repeat-winner outlets
+    # that are NOT yet in our own net — each one adopted is dependence removed.
+    suggestions = []
+    if not DRY and (resolved or run_wins):
+        meta = _meta_sync({"add_resolved": sorted(resolved), "add_wins": run_wins}) or meta
+    try:
+        from sources.gdelt import TRUSTED_DOMAINS
+        suggestions = outlet_suggestions(meta.get("wins") or run_wins, TRUSTED_DOMAINS)
+    except Exception:
+        suggestions = []
+    if suggestions:
+        print("LEARN-FROM-WINS (outlets that keep closing our gaps; allowlist candidates):")
+        for dom, cnt in suggestions:
+            print(f"    {cnt}x  {dom}")
+
+    detail = (f"{n_total} listed; recall {recall_pct}%; independent {ind_recall}%; "
               f"slice {slice_idx + 1}/{n_slices}; "
               f"{len(missing)} missing chased, {posted} added "
               f"({via_sec} via SEC, {via_press} via press; {ai} AI)"
-              + (f" | source gaps: {gap_summary}" if gap_summary else ""))
+              + (f" | source gaps: {gap_summary}" if gap_summary else "")
+              + (f" | outlet candidates: {len(suggestions)}" if suggestions else ""))
     print("tracker-diff:", detail)
     if not DRY:
         report_source_health("tracker_diff", "ok", posted, detail)
