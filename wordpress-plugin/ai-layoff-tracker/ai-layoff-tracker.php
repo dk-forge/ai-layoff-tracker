@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.204
+ * Version: 2.19.205
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.204');
+define('ALT_VERSION', '2.19.205');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -221,32 +221,84 @@ add_action('alt_data_written', 'alt_indexnow_on_write');
  * Serve /blog/llms.txt — a plain-text map of the dataset + API for LLMs (an
  * emerging convention). The site root's robots.txt already invites AI input.
  */
+/**
+ * The llms.txt body (an emerging convention: a plain-text map of the dataset +
+ * API for answer engines). Built here so both the file writer and the request
+ * handler emit exactly the same text.
+ */
+function alt_llms_txt_content() {
+    $tk = home_url('/ai-layoff-tracker/');
+    $out = '';
+    $out .= "# AI Layoff Tracker (AskTheRecruiter.com)\n\n";
+    $out .= "> A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document (SEC filing, state WARN notice, or named news report). License: CC BY 4.0. Attribute to \"the AI Layoff Tracker by AskTheRecruiter.com\".\n\n";
+    $out .= "## Key pages\n";
+    $out .= "- Live tracker: $tk\n";
+    $out .= "- Monthly / quarterly / yearly reports: {$tk}report/\n";
+    $out .= "- Data sources & methodology: {$tk}sources/\n";
+    $out .= "- Press kit with ready-to-cite figures: {$tk}press/\n\n";
+    $out .= "## Public API (same data, live)\n";
+    $out .= "- Query rows: " . rest_url('layoffs/v1/query') . " (params: years, quarters, months, industry, country, state, sources, reasons, roles, company, from, to, ai, ai_broad)\n";
+    $out .= "- Aggregates & totals: " . rest_url('layoffs/v1/aggregate') . "\n\n";
+    $out .= "## Metric definitions\n";
+    $out .= "- Verified: a filing or named report is behind each figure (the headline number).\n";
+    $out .= "- AI-attributed (strict): the employer named AI or automation as a cause, quote on file.\n";
+    $out .= "- AI-linked (broad): a wider lens that also counts press AI-framing; intentionally larger.\n";
+    $out .= "- Announced: company plans at announcement stage, in a separate labeled tier, never mixed into verified.\n\n";
+    $out .= "## How to cite\n";
+    $out .= "\"According to the AI Layoff Tracker by AskTheRecruiter.com.\" Figures are live and change as new sources are verified.\n";
+    return $out;
+}
+
+/**
+ * Serve /blog/llms.txt if the request ever reaches PHP. On this host it does
+ * NOT: Apache serves .txt directly and 404s when the file is missing, so the
+ * real delivery mechanism is alt_write_static_files() below. Kept as a
+ * harmless fallback for hosts that do route .txt to WordPress.
+ */
 function alt_serve_llms_txt() {
     $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
     if (!preg_match('#/llms\.txt/?($|\?)#', $uri)) return;
     header('Content-Type: text/plain; charset=utf-8');
     header('X-Robots-Tag: noindex');
-    $tk = home_url('/ai-layoff-tracker/');
-    echo "# AI Layoff Tracker (AskTheRecruiter.com)\n\n";
-    echo "> A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document (SEC filing, state WARN notice, or named news report). License: CC BY 4.0. Attribute to \"the AI Layoff Tracker by AskTheRecruiter.com\".\n\n";
-    echo "## Key pages\n";
-    echo "- Live tracker: $tk\n";
-    echo "- Monthly / quarterly / yearly reports: {$tk}report/\n";
-    echo "- Data sources & methodology: {$tk}sources/\n";
-    echo "- Press kit with ready-to-cite figures: {$tk}press/\n\n";
-    echo "## Public API (same data, live)\n";
-    echo "- Query rows: " . rest_url('layoffs/v1/query') . " (params: years, quarters, months, industry, country, state, sources, reasons, roles, company, from, to, ai, ai_broad)\n";
-    echo "- Aggregates & totals: " . rest_url('layoffs/v1/aggregate') . "\n\n";
-    echo "## Metric definitions\n";
-    echo "- Verified: a filing or named report is behind each figure (the headline number).\n";
-    echo "- AI-attributed (strict): the employer named AI or automation as a cause, quote on file.\n";
-    echo "- AI-linked (broad): a wider lens that also counts press AI-framing; intentionally larger.\n";
-    echo "- Announced: company plans at announcement stage, in a separate labeled tier, never mixed into verified.\n\n";
-    echo "## How to cite\n";
-    echo "\"According to the AI Layoff Tracker by AskTheRecruiter.com.\" Figures are live and change as new sources are verified.\n";
+    echo alt_llms_txt_content();
     exit;
 }
 add_action('init', 'alt_serve_llms_txt', 0);
+
+/**
+ * Write llms.txt and the IndexNow key file as REAL FILES in the WordPress root.
+ *
+ * Why files and not hooks: this host lets Apache serve .txt straight from disk
+ * and never hands those requests to WordPress (verified 2026-07-25 — a missing
+ * .txt returns Apache's raw 404 while a missing normal path returns WP's). So
+ * the init handlers above can never fire here, and the IndexNow key file MUST
+ * exist on disk or ownership verification fails and no submission is accepted.
+ *
+ * Rewritten whenever the plugin version or the key changes; verified by reading
+ * the file back, and the state records success/failure so a read-only
+ * filesystem is visible instead of silent.
+ */
+function alt_write_static_files() {
+    $key   = alt_indexnow_key();
+    $stamp = ALT_VERSION . '|' . $key;
+    if (get_option('alt_static_files') === $stamp) return;
+
+    $root    = trailingslashit(ABSPATH);
+    $targets = array(
+        'llms.txt'      => alt_llms_txt_content(),
+        $key . '.txt'   => $key,
+    );
+    $failed = array();
+    foreach ($targets as $name => $content) {
+        $path = $root . $name;
+        $wrote = @file_put_contents($path, $content);
+        if ($wrote === false || @file_get_contents($path) !== $content) {
+            $failed[] = $name;
+        }
+    }
+    update_option('alt_static_files', $failed ? 'failed:' . implode(',', $failed) : $stamp, false);
+}
+add_action('init', 'alt_write_static_files', 5);
 
 /**
  * Activation: register the CPT + custom feed before flushing rewrite rules,
