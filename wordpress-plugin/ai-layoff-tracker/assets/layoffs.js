@@ -1395,16 +1395,13 @@
         var dots = series.length <= 2 ? 4 : 0;
         var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 }];
         if (announced.some(function (v) { return v > 0; })) {
-            // STACKED band: announced plans sit on top of verified, so the
-            // top edge of the amber band reads as verified + announced —
-            // matching the intuition that plans "add to" the total.
-            datasets.push({ label: 'Announced plans, stacked on top of Verified', data: announced, borderColor: ALT_AMBER, backgroundColor: 'rgba(230, 159, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 });
-            options.scales.y.stacked = true;
+            // UN-stacked: the blue filled area is the verified floor (the number
+            // we stand behind); announced plans are a separate DASHED line, not
+            // piled on top — they are forward-looking signal that hasn't landed
+            // in the floor yet. Keeping them apart avoids reading the amber edge
+            // as part of the verified count.
+            datasets.push({ label: 'Announced plans (not yet in the verified floor)', data: announced, borderColor: ALT_AMBER, backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.3 });
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
-            options.plugins.tooltip.callbacks.footer = function (items) {
-                var total = items.reduce(function (s, it) { return s + it.parsed.y; }, 0);
-                return items.length > 1 ? 'Total incl. plans: ' + fmt(total) : '';
-            };
         }
         // Optional macro-context overlay: jobless claims as muted bars on a
         // SEPARATE right axis (different unit AND ~15x scale — never blended

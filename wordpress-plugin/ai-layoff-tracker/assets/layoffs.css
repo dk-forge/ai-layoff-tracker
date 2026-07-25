@@ -468,7 +468,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-qv-on, .alt-qv-on:hover { background: var(--alt-ink); border-color: var(--alt-ink); color: #fff; }
 
 /* Compact chart grid at the top; the ⤢ button expands a card full-width */
-.alt-minigrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+.alt-minigrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; grid-auto-flow: dense; }
 @media (max-width: 900px) { .alt-minigrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .alt-minigrid { grid-template-columns: 1fr; } }
 .alt-mini { padding: 13px 15px; }
@@ -477,6 +477,13 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 @media (max-width: 900px) { .alt-map-card { grid-column: 1 / -1; } }
 .alt-mini .alt-map-box { height: 360px; }
 .alt-mini.alt-expanded .alt-map-box { height: 600px; }
+/* Jobs-cut-per-month: promoted to a full-width hero row (matches the map's
+   presence) so the trend + jobless-claims overlay read clearly by default.
+   dense auto-flow backfills the map row's third column with the next card. */
+.alt-trend-card { grid-column: 1 / -1; }
+.alt-trend-card .alt-chart-box { height: 300px; }
+.alt-trend-card.alt-expanded .alt-chart-box { height: 460px; }
+@media (max-width: 560px) { .alt-trend-card .alt-chart-box { height: 240px; } }
 .alt-map-toggle { display: inline-flex; border: 1px solid var(--alt-border); border-radius: 7px; overflow: hidden; margin-right: 4px; }
 .alt-map-scope { background: #fff; border: 0; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--alt-ink-2); cursor: pointer; }
 .alt-map-scope + .alt-map-scope { border-left: 1px solid var(--alt-border); }

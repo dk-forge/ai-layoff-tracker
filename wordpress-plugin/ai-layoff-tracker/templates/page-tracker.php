@@ -345,7 +345,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <p class="alt-map-total alt-muted" id="alt-map-total"></p>
             <p class="alt-map-empty alt-muted" id="alt-map-note" style="display:none"></p>
         </div>
-        <div class="alt-mini alt-chart-card">
+        <div class="alt-mini alt-chart-card alt-trend-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub" id="alt-trend-range"></span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-weekly" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
