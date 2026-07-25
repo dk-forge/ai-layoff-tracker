@@ -2997,7 +2997,7 @@ function alt_reconcile_supersets($dry_run = true) {
     global $wpdb;
     $table = alt_db_table();
     $rows = $wpdb->get_results(
-        "SELECT id, company_key, source_type, job_count, layoff_date, ai_explicit
+        "SELECT id, company_key, source_type, job_count, layoff_date, ai_explicit, state
          FROM $table WHERE company_key <> '' AND job_count > 0 AND edited = 0", ARRAY_A) ?: array();
     $by = array();
     $before = 0;
@@ -3060,6 +3060,31 @@ function alt_reconcile_supersets($dry_run = true) {
                 for ($i = 1, $n = count($dupes); $i < $n; $i++) {
                     $m = $dupes[$i];
                     if (abs((strtotime($m['layoff_date']) - strtotime($primary['layoff_date'])) / 86400) > 150) continue;
+                    if (empty($mark[$m['id']])) { $mark[$m['id']] = (int) $primary['id']; $excluded += (int) $m['job_count']; }
+                }
+            }
+        }
+        // (3) within-WARN duplicate: same company + same STATE + EXACT same count
+        //     (>=100) within ~90 days is a notice + its refiled revision, not two
+        //     real events (Tyson: 1,761 Amarillo TX on both Jan 20 and Feb 24).
+        //     Keep the earliest; mark the rest. The >=100 floor protects the
+        //     legitimately-coincidental tiny multi-site filings (six sites of "2").
+        if (count($warn) >= 2) {
+            $wkey = array();
+            foreach ($warn as $w) {
+                if (!empty($mark[$w['id']]) || (int) $w['job_count'] < 100) continue;
+                $wkey[$w['state'] . '|' . (int) $w['job_count']][] = $w;
+            }
+            foreach ($wkey as $dupes) {
+                if (count($dupes) < 2) continue;
+                usort($dupes, function ($a, $b) {
+                    $d = strcmp((string) $a['layoff_date'], (string) $b['layoff_date']);
+                    return $d !== 0 ? $d : ((int) $a['id'] - (int) $b['id']);
+                });
+                $primary = $dupes[0];
+                for ($i = 1, $n = count($dupes); $i < $n; $i++) {
+                    $m = $dupes[$i];
+                    if (abs((strtotime($m['layoff_date']) - strtotime($primary['layoff_date'])) / 86400) > 90) continue;
                     if (empty($mark[$m['id']])) { $mark[$m['id']] = (int) $primary['id']; $excluded += (int) $m['job_count']; }
                 }
             }
