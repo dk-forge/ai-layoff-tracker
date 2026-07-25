@@ -1415,8 +1415,8 @@
             if (cl) {
                 datasets.push({
                     type: 'bar', label: cl.label + ' (context)', data: cl.data, yAxisID: 'y1',
-                    backgroundColor: 'rgba(120,120,120,0.20)', borderColor: 'rgba(120,120,120,0.30)',
-                    borderWidth: 0, order: 99, barPercentage: 0.92, categoryPercentage: 0.98
+                    backgroundColor: 'rgba(130,130,130,0.13)', borderColor: 'rgba(130,130,130,0.20)',
+                    borderWidth: 0, order: 99, barPercentage: 0.9, categoryPercentage: 0.96
                 });
                 options.scales.y1 = {
                     position: 'right', beginAtZero: true, grid: { display: false },
@@ -1455,14 +1455,20 @@
     // Fetch the claims backdrop once, reveal the toggle, redraw the trend on flip.
     // Fail-soft: no claims data => toggle stays hidden and nothing changes.
     function initClaimsOverlay() {
-        if (!document.getElementById('alt-claims-toggle')) return;
+        var tog = document.getElementById('alt-claims-toggle');
+        if (!tog) return;
         apiGet('claims', {}).then(function (d) {
             if (!d || !d.national || !((d.national.initial || []).length)) return;
             CLAIMS_DATA = d;
             var wrap = document.getElementById('alt-claims-toggle-wrap');
             if (wrap) wrap.hidden = false;
-            var tog = document.getElementById('alt-claims-toggle');
-            if (tog) tog.addEventListener('change', function () { if (LAST_AGG) renderTrend(LAST_AGG.series); });
+            var note = document.getElementById('alt-claims-note');
+            function syncNote() { if (note) note.hidden = !tog.checked; }
+            syncNote();
+            tog.addEventListener('change', function () { syncNote(); if (LAST_AGG) renderTrend(LAST_AGG.series); });
+            // The toggle defaults ON, but the first trend render ran before the
+            // claims data loaded — redraw now so the overlay appears without a click.
+            if (tog.checked && LAST_AGG) renderTrend(LAST_AGG.series);
         }).catch(function () {});
     }
 

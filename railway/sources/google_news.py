@@ -37,7 +37,10 @@ RSS = "https://news.google.com/rss/search"
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"}
 
-MAX_ITEMS = max(10, int(os.environ.get("GOOGLE_NEWS_MAX", "300")))
+# Lean default (was 300) to hold the monthly LLM spend near the ~$5-10 target:
+# Google News returns most-relevant first, so the marquee cuts are in the top
+# slice; raise GOOGLE_NEWS_MAX if you later want deeper coverage over cost.
+MAX_ITEMS = max(10, int(os.environ.get("GOOGLE_NEWS_MAX", "150")))
 GAP = max(0.0, float(os.environ.get("GOOGLE_NEWS_GAP_SECONDS", "1")))
 
 # Broad layoff sweeps + a dedicated AI/automation sweep, mirroring newsapi's
