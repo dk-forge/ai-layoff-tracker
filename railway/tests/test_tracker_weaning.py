@@ -80,6 +80,28 @@ class OutletSuggestionTests(unittest.TestCase):
         self.assertEqual(td.outlet_suggestions({}, self.TRUSTED), [])
         self.assertEqual(td.outlet_suggestions(None, None), [])
 
+    def test_country_suffix_carries_through_but_never_breaks_trust_match(self):
+        # Wins are tagged 'outlet · Country' so the owner learns WHERE a repeat
+        # winner reports from; the allowlist match uses only the outlet part.
+        wins = {"techcrunch.com · United States": 4, "inc42.com · India": 3}
+        self.assertEqual(td.outlet_suggestions(wins, self.TRUSTED),
+                         [("inc42.com · India", 3)])
+
+
+class VocabHitTests(unittest.TestCase):
+    TERMS = ("layoff", "job cuts", "rightsizing")
+
+    def test_matching_headline_is_a_hit(self):
+        self.assertTrue(td.vocab_hit("Acme announces job cuts in Ohio", self.TERMS))
+
+    def test_invisible_headline_is_a_miss(self):
+        # The learning signal: a resolved win our broad sweep could never see.
+        self.assertFalse(td.vocab_hit("Acme to sunset its Berlin operation", self.TERMS))
+
+    def test_empty_inputs_are_safe(self):
+        self.assertFalse(td.vocab_hit("", self.TERMS))
+        self.assertFalse(td.vocab_hit("anything", ()))
+
 
 class WinKeyTests(unittest.TestCase):
     def test_real_domain_wins(self):

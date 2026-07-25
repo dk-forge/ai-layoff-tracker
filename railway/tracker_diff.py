@@ -285,17 +285,30 @@ def _win_key(raw):
 
 def outlet_suggestions(wins, trusted_domains):
     """Outlets that closed >=2 gaps but are not in the allowlist — ranked,
-    these are the permanent-net candidates that shrink future dependence."""
+    these are the permanent-net candidates that shrink future dependence.
+    Win keys may carry a country suffix ('sifted.eu · Germany') so the owner
+    learns WHERE each repeat winner reports from; matching against the
+    allowlist uses only the outlet part before the suffix."""
     trusted = {d.lower() for d in (trusted_domains or [])}
     out = []
     for key, cnt in sorted((wins or {}).items(), key=lambda kv: -int(kv[1])):
         if int(cnt) < 2 or not key:
             continue
-        token = re.sub(r"[^a-z0-9]+", "", key.split(".")[0])
-        if key in trusted or any(token and token in d for d in trusted):
+        outlet = key.split(" · ")[0].strip()
+        token = re.sub(r"[^a-z0-9]+", "", outlet.split(".")[0])
+        if outlet in trusted or any(token and token in d for d in trusted):
             continue
         out.append((key, int(cnt)))
     return out[:10]
+
+
+def vocab_hit(text, terms):
+    """True when any discovery term appears in the text. A resolved win whose
+    headline matches NO term is the sharpest learning signal we get: that story
+    was invisible to our broad sweep and only a targeted chase found it — its
+    wording belongs in the vocabulary."""
+    low = " " + re.sub(r"\s+", " ", str(text or "").lower()) + " "
+    return any(t and t.lower() in low for t in (terms or []))
 
 
 def _email_recall_gap(missing, recall_pct, n_total):
@@ -338,6 +351,33 @@ def _email_recall_gap(missing, recall_pct, n_total):
               f"{len(missing)} missing)")
     except Exception as exc:
         print(f"recall alert failed: {exc}")
+
+
+def _email_learning(vocab_misses, suggestions):
+    """Owner-only learning digest: headlines our broad sweep could not see plus
+    repeat-winner outlets, so vocabulary and allowlist growth is a one-line
+    paste instead of detective work. Best-effort; never raises."""
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return
+    lines = ["The daily chase resolved layoffs our own sweep missed. What to learn:\n"]
+    if vocab_misses:
+        lines.append("Headlines matching NO discovery term (add the missing wording):")
+        lines += [f"  - {h}" for h in vocab_misses[:10]]
+    if suggestions:
+        lines.append("\nOutlets that keep closing gaps (allowlist candidates, with country):")
+        lines += [f"  - {cnt}x {dom}" for dom, cnt in suggestions[:10]]
+    lines.append("\nPaste into a Claude session: \"Adopt the outlet/vocabulary learnings from "
+                 "today\'s tracker_diff learning email.\"")
+    try:
+        requests.post(f"{site}/wp-json/layoffs/v1/alert",
+                      json={"subject": "Tracker learning: wording/outlets our sweep missed",
+                            "message": "\n".join(lines)},
+                      headers={**UA, "X-ALT-KEY": key}, timeout=30)
+        print("learning email sent to owner")
+    except Exception as exc:
+        print(f"learning email failed (non-fatal): {exc}")
 
 
 def run():
@@ -412,6 +452,7 @@ def run():
     posted = ai = via_sec = via_press = 0
     resolved = set()
     run_wins = {}
+    vocab_misses = []
     for i in range(0, len(missing), 20):
         chunk = missing[i:i + 20]
         entries = []
@@ -472,10 +513,24 @@ def run():
                 else:
                     via_press += 1
                     # LEARN FROM WINS: remember which outlet carried the story
-                    # we missed — repeat winners become allowlist candidates.
+                    # we missed AND which country it reported for — repeat
+                    # winners become allowlist candidates, tagged by country so
+                    # coverage gaps are geographic facts, not guesses.
                     wk = _win_key(raw)
                     if wk:
-                        run_wins[wk] = run_wins.get(wk, 0) + 1
+                        country = str(ex.get("country") or "").strip()
+                        key = f"{wk} · {country}" if country else wk
+                        run_wins[key] = run_wins.get(key, 0) + 1
+                    # VOCAB LEARNING: a win whose text matches NONE of our
+                    # discovery terms was invisible to the broad sweep — keep
+                    # its headline (owner-email only) so the missing wording
+                    # can join the vocabulary.
+                    try:
+                        from source_registry import discovery_terms
+                        if not vocab_hit(raw.get("raw_text"), discovery_terms()):
+                            vocab_misses.append(str(raw.get("raw_text") or "")[:140])
+                    except Exception:
+                        pass
                 resolved.add(_norm(ex.get("company_name", "")))
                 print(f"  + [{raw.get('_alt_verify','?')}] {ex.get('company_name')} "
                       f"{ex.get('job_count')} ({ex.get('layoff_date')})")
@@ -506,6 +561,13 @@ def run():
         print("LEARN-FROM-WINS (outlets that keep closing our gaps; allowlist candidates):")
         for dom, cnt in suggestions:
             print(f"    {cnt}x  {dom}")
+    if vocab_misses:
+        # Count only in the public log; the actual headlines go to the owner's
+        # inbox via /alert (they may quote competitor-adjacent material).
+        print(f"VOCAB LEARNING: {len(vocab_misses)} resolved win(s) matched no discovery term "
+              f"(wording candidates emailed to owner)")
+        if not DRY:
+            _email_learning(vocab_misses, suggestions)
 
     detail = (f"{n_total} listed; recall {recall_pct}%; independent {ind_recall}%; "
               f"slice {slice_idx + 1}/{n_slices}; "
