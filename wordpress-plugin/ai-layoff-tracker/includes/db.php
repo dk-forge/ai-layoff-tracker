@@ -1682,16 +1682,21 @@ function alt_api_industry_backfill(WP_REST_Request $r) {
  * honest (a retired source is not a breakage) without needing a keyed write.
  */
 function alt_retired_sources() {
+    // source => array(retired_on (UTC date), reason). The DATE matters: a run
+    // POSTed AFTER it means the collector was deliberately switched back on and
+    // must never be masked; a run before it is just the last gasp before
+    // retirement (a 'within N days' window instead wrongly un-retired every
+    // source for its first N days — caught 2026-07-25).
     return array(
-        'newsapi' => 'Retired 2026-07-25. Replaced by keyless Google News RSS discovery, whose headlines carry the headcount even for paywalled marquee layoffs. Worldwide news coverage continues via GDELT + Google News.',
+        'newsapi' => array('2026-07-25', 'Retired 2026-07-25. Replaced by keyless Google News RSS discovery, whose headlines carry the headcount even for paywalled marquee layoffs. Worldwide news coverage continues via GDELT + Google News.'),
         // JP/KR/BR filing probes: after months live they ingested zero layoff rows
         // (those filings essentially never announce layoffs); coverage comes from
         // worldwide news + ERM. Discovery gated off (RUN_DISCOVERY_PROBES) and the
         // schedule disabled 2026-07-24. Marked retired so their last-run rows never
         // age into a false "stale" alarm.
-        'edinet_jp' => 'Retired 2026-07-24. Japan filing probe ingested zero layoff rows; Japan is covered through worldwide news. Client kept, re-runnable on demand.',
-        'opendart_kr' => 'Retired 2026-07-24. South Korea filing probe ingested zero layoff rows; South Korea is covered through worldwide news. Client kept, re-runnable on demand.',
-        'cvm_br' => 'Retired 2026-07-24. Brazil filing probe ingested zero layoff rows; Brazil is covered through worldwide news. Client kept, re-runnable on demand.',
+        'edinet_jp' => array('2026-07-24', 'Retired 2026-07-24. Japan filing probe ingested zero layoff rows; Japan is covered through worldwide news. Client kept, re-runnable on demand.'),
+        'opendart_kr' => array('2026-07-24', 'Retired 2026-07-24. South Korea filing probe ingested zero layoff rows; South Korea is covered through worldwide news. Client kept, re-runnable on demand.'),
+        'cvm_br' => array('2026-07-24', 'Retired 2026-07-24. Brazil filing probe ingested zero layoff rows; Brazil is covered through worldwide news. Client kept, re-runnable on demand.'),
     );
 }
 
@@ -1701,14 +1706,15 @@ function alt_api_source_health_get() {
     // Coerce any retired collector to a permanent, benign 'retired' state with a
     // fresh timestamp, so no consumer (health page, ops_status, digest) reads it
     // as degraded OR stale. 'retired' is a declared status, not a run claim.
-    foreach (alt_retired_sources() as $src => $why) {
+    foreach (alt_retired_sources() as $src => $meta) {
         if (!isset($health[$src])) continue;
-        // A collector that POSTed within the last 2 days is RUNNING again (a
-        // deliberate reactivation, e.g. RUN_DISCOVERY_PROBES=1) — do not mask
-        // its real status. Reactivating permanently means also removing the
-        // source from alt_retired_sources() in the same change.
-        $ts = strtotime((string) ($health[$src]['checked_at'] ?? ''));
-        if ($ts && (time() - $ts) < 2 * DAY_IN_SECONDS && ($health[$src]['status'] ?? '') !== 'retired') {
+        list($retired_on, $why) = $meta;
+        // Ran AFTER the retirement date => deliberately switched back on; show
+        // its real status. (Reactivating permanently means also removing the
+        // source from alt_retired_sources() in the same change.)
+        $ts  = strtotime((string) ($health[$src]['checked_at'] ?? ''));
+        $cut = strtotime($retired_on . ' 23:59:59 UTC');
+        if ($ts && $cut && $ts > $cut && ($health[$src]['status'] ?? '') !== 'retired') {
             continue;
         }
         // Keep the REAL last-run timestamp: fabricating a fresh checked_at made
