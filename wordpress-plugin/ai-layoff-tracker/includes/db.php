@@ -1675,6 +1675,14 @@ function alt_api_industry_backfill(WP_REST_Request $r) {
 function alt_retired_sources() {
     return array(
         'newsapi' => 'Retired 2026-07-25. Replaced by keyless Google News RSS discovery, whose headlines carry the headcount even for paywalled marquee layoffs. Worldwide news coverage continues via GDELT + Google News.',
+        // JP/KR/BR filing probes: after months live they ingested zero layoff rows
+        // (those filings essentially never announce layoffs); coverage comes from
+        // worldwide news + ERM. Discovery gated off (RUN_DISCOVERY_PROBES) and the
+        // schedule disabled 2026-07-24. Marked retired so their last-run rows never
+        // age into a false "stale" alarm.
+        'edinet_jp' => 'Retired 2026-07-24. Japan filing probe ingested zero layoff rows; Japan is covered through worldwide news. Client kept, re-runnable on demand.',
+        'opendart_kr' => 'Retired 2026-07-24. South Korea filing probe ingested zero layoff rows; South Korea is covered through worldwide news. Client kept, re-runnable on demand.',
+        'cvm_br' => 'Retired 2026-07-24. Brazil filing probe ingested zero layoff rows; Brazil is covered through worldwide news. Client kept, re-runnable on demand.',
     );
 }
 
