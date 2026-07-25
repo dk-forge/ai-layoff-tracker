@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.199
+ * Version: 2.19.200
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.199');
+define('ALT_VERSION', '2.19.200');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -210,6 +210,12 @@ function alt_flush_caches_on_deploy() {
     delete_transient('alt_press_sb_groups');
     delete_transient('alt_press_statements');
     delete_transient('alt_press_year_stats');
+    // The .htaccess header block is guarded by a 12h "verified" transient, so a
+    // deploy that CHANGES those rules (cache lifetimes, endpoint list) sat
+    // unapplied for up to 12 hours while every other cache updated instantly
+    // (found 2026-07-25). A version bump means the desired block may differ:
+    // clear the guard so alt_htaccess_ensure() re-verifies on this deploy.
+    delete_transient('alt_htaccess_ok');
     // Public endpoint cache keys contain this value. A schema/API deployment
     // must advance it too, otherwise callers can receive a five-minute-old
     // response shape even after dbDelta has added the new columns.
