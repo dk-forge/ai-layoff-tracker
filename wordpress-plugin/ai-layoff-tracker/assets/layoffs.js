@@ -1090,7 +1090,7 @@
             if (rolesCard) rolesCard.classList.toggle('alt-small-sample', small);
             rolesSub.innerHTML = (small ? '<span class="alt-sample-warn">⚠ Small sample, illustrative only.</span> ' : '')
                 + 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
-                + ' and 🤖 number are the AI-linked share. Built from only the <b>' + fmt(rke)
+                + ' and 🤖 number are the AI-attributed share. Built from only the <b>' + fmt(rke)
                 + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> records whose source named which teams were cut'
                 + '; a non-representative sample of where cuts land, <b>not</b> a breakdown of the total.';
         }
@@ -1165,7 +1165,7 @@
             var aiPct = hasAi ? Math.round(100 * ai / jobs) : 0;
             var valTxt = fmt(jobs) + (suffix || '');
             if (hasAi && !compact) valTxt += ' · \uD83E\uDD16 ' + fmt(ai) + ' (' + aiPct + '%)';
-            var tip = hasAi ? (label + ': ' + fmt(jobs) + ' total · ' + fmt(ai) + ' AI-linked (' + aiPct + '%)') : '';
+            var tip = hasAi ? (label + ': ' + fmt(jobs) + ' total · ' + fmt(ai) + ' AI-attributed (' + aiPct + '%)') : '';
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + ((filterId || onPick) ? '' : ' disabled')
                 + (tip ? ' title="' + escapeHtml(tip) + '"' : '')
@@ -1418,7 +1418,7 @@
                 options.scales.y1 = {
                     position: 'right', beginAtZero: true, grid: { display: false },
                     ticks: { color: INK.muted, callback: function (v) { return fmt(v); } },
-                    title: { display: true, text: 'jobless claims / mo', color: INK.muted, font: { size: 10 } }
+                    title: { display: true, text: 'jobless claims per month', color: INK.muted, font: { size: 10 } }
                 };
                 options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             }
@@ -2287,7 +2287,7 @@
     function mapTipHtml(b) {
         var pct = Math.round((b.jobs ? b.ai / b.jobs : 0) * 100);
         return '<b>' + escapeHtml(b.label) + '</b><br>' + fmt(b.jobs) + ' job cuts'
-            + ' &middot; ' + fmt(b.ai) + ' AI-linked (' + pct + '%)';
+            + ' &middot; ' + fmt(b.ai) + ' AI-attributed (' + pct + '%)';
     }
 
     // NYT-style proportional-symbol map on an SVG: gray base geography, a blue
@@ -2318,7 +2318,7 @@
             var place = scope === 'us' ? 'US states' : 'countries';
             total.textContent = points.length
                 ? fmt(mappedJobs) + ' job cuts plotted (those with a named location, across ' + points.length + ' ' + place + ')'
-                    + ' · ' + fmt(mappedAi) + ' AI-linked · ' + fmt(viewTotal) + ' total in this view · ' + statPeriodLabel()
+                    + ' · ' + fmt(mappedAi) + ' AI-attributed · ' + fmt(viewTotal) + ' total in this view · ' + statPeriodLabel()
                 : '';
         }
 
@@ -2359,7 +2359,13 @@
             var maxR = scope === 'us' ? 30 : 38;
             var rScale = d3.scaleSqrt().domain([0, maxJobs]).range([0, maxR]);
             var rOf = function (v) { return v > 0 ? Math.max(2.2, rScale(v)) : 0; };
-            pts.forEach(function (p) { p.r = rOf(p.jobs); p.ra = rOf(p.ai); });
+            // AI dots get a HIGHER visibility floor: with an all-time view the AI
+            // share is ~1% of the total, so a strictly proportional radius shrinks
+            // to ~2px inside a 30px+ blue bubble and reads as "no AI on the map".
+            // 4px keeps tiny-but-real AI presence findable; the tooltip carries
+            // the exact number, so the floor never misstates a value.
+            var rAi = function (v) { return v > 0 ? Math.max(4, rScale(v)) : 0; };
+            pts.forEach(function (p) { p.r = rOf(p.jobs); p.ra = rAi(p.ai); });
 
             box.innerHTML = '';
             box.style.position = 'relative';
@@ -2634,7 +2640,7 @@
                 .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#4a4d55').text(txt);
         };
         row(2, MAP_BLUE, MAP_BLUE_LINE, 'All job cuts');
-        row(22, MAP_RED, MAP_RED_LINE, 'AI-linked cuts');
+        row(22, MAP_RED, MAP_RED_LINE, 'AI-attributed cuts');
         var sizeY = 46;
         if (hasHatch) {
             // Small hatched swatch matching the state pattern.
@@ -3020,10 +3026,14 @@
     function updateWorkedExample() {
         var el = document.getElementById('alt-worked-ours');
         if (!el) return;
-        apiGet('aggregate', { years: '2026', country: 'United States', stage: 'verified' }).then(function (r) {
+        // Window derives from the clock: current year's H1 once July starts,
+        // else last year's H1 — so the label and figure can never go stale.
+        var now = new Date();
+        var exYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+        apiGet('aggregate', { years: String(exYear), country: 'United States', stage: 'verified' }).then(function (r) {
             var h1 = 0;
             (r.series || []).forEach(function (m) {
-                if (m.month >= '2026-01' && m.month <= '2026-06') h1 += m.jobs;
+                if (m.month >= exYear + '-01' && m.month <= exYear + '-06') h1 += m.jobs;
             });
             if (h1 > 0) el.textContent = 'about ' + fmt(Math.round(h1 / 1000) * 1000);
         }).catch(function () { /* keep the server-rendered fallback text */ });

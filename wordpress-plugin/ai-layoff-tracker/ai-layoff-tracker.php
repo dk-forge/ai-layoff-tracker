@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.196
+ * Version: 2.19.197
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.196');
+define('ALT_VERSION', '2.19.197');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -943,8 +943,8 @@ function alt_faq_items() {
         array('What if a source only says "up to" a number?',
             'We record the figure the source states and keep its qualifying words with the entry, because inventing a lower number would be a guess and dropping the entry would hide a real cut. So a report of "up to 600 roles" is stored as 600 with that wording retained, which makes it a ceiling rather than a measured total. This is the one place our figures can read high, so we name it rather than bury it. Where a source gives a true range ("400 to 500"), we take the lower bound and keep the upper bound in the data as well.'),
         array('How do you check your own accuracy?',
-            'By auditing ourselves against our own sources. We periodically draw a random, stratified sample of published entries and re-open every cited source to confirm the company, the number and the date. The most recent audit drew 60 entries at random. Two could not be rechecked because the state register they came from no longer exposes that row publicly. Of the 58 we could verify, 57 matched their source, which is 98.3 percent, and all 42 entries drawn from official filings and notices matched exactly on company, number and date. The single entry that did not match was removed the same day. Anything that fails is corrected or removed, and the correction is disclosed in the log below.',
-            array('ai-layoff-tracker/sources/', 'See how verification works &rarr;')),
+            'By auditing ourselves against our own sources. Every month an automated audit draws a random, stratified sample of published entries and re-opens every cited source to confirm the company, the number and the date. Entries from official filings and notices consistently match exactly; anything that fails is corrected or removed, usually the same day, and the correction is disclosed in the log below. The latest audit result is always published live on the Tracker Health page, so the number you see there is current, not a snapshot.',
+            array('ai-layoff-tracker/ai-tracker-health/', 'See the latest audit result &rarr;')),
         array('Can journalists and researchers use this data?',
             'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
         array('How often is the tracker updated?',

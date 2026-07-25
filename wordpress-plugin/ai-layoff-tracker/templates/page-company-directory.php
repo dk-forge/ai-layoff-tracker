@@ -8,9 +8,9 @@ get_header(); $alt_company = $alt_company_directory['company'];
 <main class="alt-wrap alt-company-directory">
     <p class="alt-eyebrow">Source-linked company record</p>
     <h1><?php echo esc_html($alt_company['display_name']); ?> layoffs</h1>
-    <p class="alt-company-summary">This page lists <?php echo count($alt_company_directory['events']); ?> canonical event<?php echo count($alt_company_directory['events']) === 1 ? '' : 's'; ?> with retained cited source<?php echo count($alt_company_directory['events']) === 1 ? '' : 's'; ?>. It is not a complete employment history.</p>
-    <?php if (!$alt_company_directory['indexable']) : ?><p class="alt-directory-notice">This reviewed record is available for direct research but is not indexed as a directory page because it does not yet meet the minimum source-linked event threshold.</p><?php endif; ?>
-    <p class="alt-company-directory-total"><strong><?php echo number_format((int) $alt_company_directory['total_jobs']); ?></strong> source-linked jobs across retained canonical events</p>
+    <p class="alt-company-summary">This page lists <?php echo count($alt_company_directory['events']); ?> recorded layoff event<?php echo count($alt_company_directory['events']) === 1 ? '' : 's'; ?>, each with its original source. It is not a complete employment history.</p>
+    <?php if (!$alt_company_directory['indexable']) : ?><p class="alt-directory-notice">This reviewed record is available for direct research but is not indexed as a directory page because it does not yet have enough source-linked events to be listed as a directory page.</p><?php endif; ?>
+    <p class="alt-company-directory-total"><strong><?php echo number_format((int) $alt_company_directory['total_jobs']); ?></strong> jobs across the recorded layoff events, each linked to a source</p>
     <p><a href="<?php echo esc_url($alt_company_directory['tracker_url']); ?>">Search this company name in the full tracker</a></p>
     <ol class="alt-company-event-list">
     <?php foreach ($alt_company_directory['events'] as $event) : ?>

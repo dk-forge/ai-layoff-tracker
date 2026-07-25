@@ -51,10 +51,10 @@ function alt_quarterly_report_table($rows, $label) {
   <?php endif; ?>
   <section aria-labelledby="alt-report-headline"><h2 id="alt-report-headline">Quarter at a glance</h2><div class="alt-report-metrics">
     <article><strong><?php echo number_format_i18n((int) ($vt['jobs'] ?? 0)); ?></strong><span>Verified job cuts</span><small><?php echo number_format_i18n((int) ($vt['entries'] ?? 0)); ?> source-linked events</small></article>
-    <article><strong><?php echo number_format_i18n((int) ($ait['ai_primary_jobs'] ?? 0)); ?></strong><span>AI-primary verified subset</span><small><?php echo number_format_i18n((int) ($ait['ai_primary_entries'] ?? 0)); ?> source-confirmed events</small></article>
+    <article><strong><?php echo number_format_i18n((int) ($ait['ai_primary_jobs'] ?? 0)); ?></strong><span>AI-attributed cuts (employer's own words)</span><small><?php echo number_format_i18n((int) ($ait['ai_primary_entries'] ?? 0)); ?> source-confirmed events</small></article>
     <article><strong><?php echo number_format_i18n((int) ($at['announced_jobs'] ?? 0)); ?></strong><span>Announcement-stage plans</span><small><?php echo number_format_i18n((int) ($at['announced_entries'] ?? 0)); ?> separate source-linked plans</small></article>
   </div></section>
-  <p class="alt-report-note">Verified and announcement-stage figures are separate and must not be added together. The AI-primary figure is a source-confirmed subset of verified events, not an estimate of all AI-related cuts.</p>
+  <p class="alt-report-note">Verified and announcement-stage figures are separate and must not be added together. The AI-attributed figure is a source-confirmed subset of verified events, not an estimate of all AI-related cuts.</p>
   <section class="alt-report-grid" aria-label="Quarterly breakdowns">
     <div><h2>Largest verified industries</h2><?php alt_quarterly_report_table($verified['top_industries'] ?? array(), 'Industry'); ?></div>
     <div><h2>Largest verified job-location countries</h2><?php alt_quarterly_report_table($verified['top_countries'] ?? array(), 'Country'); ?></div>

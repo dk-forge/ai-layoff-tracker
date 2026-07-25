@@ -330,9 +330,10 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
     <div class="alt-minigrid">
+        <div class="alt-grid-h"><h2>Where the cuts are</h2><p>Geography first: the map plots every cut with a named place, then the state and country rankings below it.</p></div>
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-linked cuts (sits inside) &middot; circle size = number of jobs &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
+                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-attributed cuts, the employer's own words (sits inside; small red dots are kept visible even when the share is tiny) &middot; circle size = number of jobs &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
                 <span class="alt-chart-btns">
                     <span class="alt-map-toggle">
                         <button type="button" class="alt-map-scope alt-map-scope-on" data-scope="world">World</button>
@@ -344,29 +345,6 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <div class="alt-chart-box alt-map-box"><div id="alt-chart-aimap" aria-label="AI-attributed layoffs by geography"></div></div>
             <p class="alt-map-total alt-muted" id="alt-map-total"></p>
             <p class="alt-map-empty alt-muted" id="alt-map-note" style="display:none"></p>
-        </div>
-        <div class="alt-mini alt-chart-card alt-trend-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub" id="alt-trend-range"></span></div>
-                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-weekly" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
-            </div>
-            <label class="alt-claims-toggle" id="alt-claims-toggle-wrap" hidden><input type="checkbox" id="alt-claims-toggle" checked> <span>Overlay jobless claims (BLS/DOL) — background context</span></label>
-            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
-            <p class="alt-chart-note" id="alt-claims-note" hidden>Grey bars = US initial unemployment claims (everyone who filed for benefits that month, ~hundreds of thousands, right axis). The blue/amber areas are the layoffs we can document (left axis). Claims are the whole labor market's churn; our tracked layoffs are the verifiable slice inside it. Context, never added to our counts.</p>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
-                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-industries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
-            </div>
-            <div class="alt-barlist" id="alt-bars-industries"></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
-                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-reasons" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
-            </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
@@ -382,6 +360,46 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             </div>
             <div class="alt-barlist" id="alt-bars-countries"></div>
         </div>
+        <div class="alt-grid-h"><h2>How it is trending</h2><p>The same filtered data over time: monthly totals with jobless-claims context, this year against last, and how often employers name AI.</p></div>
+        <div class="alt-mini alt-chart-card alt-trend-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub" id="alt-trend-range"></span></div>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-weekly" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
+            </div>
+            <label class="alt-claims-toggle" id="alt-claims-toggle-wrap" hidden><input type="checkbox" id="alt-claims-toggle" checked> <span>Overlay US jobless claims (BLS/DOL), background context</span></label>
+            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+            <p class="alt-chart-note" id="alt-claims-note" hidden>Grey bars = US initial unemployment claims (everyone who filed for benefits that month, ~hundreds of thousands, right axis). The blue/amber areas are the layoffs we can document (left axis). Claims are the whole labor market's churn; our tracked layoffs are the verifiable slice inside it. Context, never added to our counts.</p>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts · select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head"><div class="alt-chart-h">AI share of verified cuts, monthly <span class="alt-chart-sub">how attribution is trending</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-share-trend" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-share-trend"></canvas></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub" id="alt-cum-range"></span></div>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-cumulative" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
+        </div>
+        <div class="alt-grid-h"><h2>Who is cutting, and why</h2><p>Industries, stated reasons, the biggest single events and repeat cutters, plus which data source each figure came from.</p></div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-industries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
+            </div>
+            <div class="alt-barlist" id="alt-bars-industries"></div>
+        </div>
+        <div class="alt-mini alt-chart-card">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
+                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-reasons" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
+            </div>
+            <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
+        </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">Largest single job cuts <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-leaders" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-leaders"></div>
@@ -391,16 +409,8 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <div class="alt-barlist" id="alt-bars-repeat"></div>
         </div>
         <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">AI share of Verified, monthly <span class="alt-chart-sub">how attribution is trending</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-share-trend" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-share-trend"></canvas></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">By data source <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-sourcetypes" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-sourcetypes"></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts · select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
-            <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts the employer attributed to AI · industries under 1,000 cuts excluded</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
@@ -408,15 +418,8 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <p class="alt-chart-note">Each share is the employer's own words, not our inference. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">See the verbatim quotes and their sources →</a></p>
         </div>
         <div class="alt-mini alt-chart-card" id="alt-roles-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">Roles most impacted <span class="alt-chart-sub" id="alt-roles-sub">Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part and 🤖 number are the AI-linked share. From only the reports that named which teams were cut.</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-roles" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">Roles most impacted <span class="alt-chart-sub" id="alt-roles-sub">Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part and 🤖 number are the AI-attributed share. From only the reports that named which teams were cut.</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-roles" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-roles"></div>
-        </div>
-        <div class="alt-mini alt-chart-card">
-            <div class="alt-chart-head">
-                <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub" id="alt-cum-range"></span></div>
-                <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-cumulative" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
-            </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
         </div>
     </div>
 

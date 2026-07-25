@@ -39,7 +39,7 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <ul class="alt-method-list">
       <li><span class="alt-badge alt-badge-gold">SEC filing</span> Legal 8-K and 6-K filings pulled from SEC EDGAR full-text search. Strongest evidence; US public companies and foreign private issuers that file with the SEC.</li>
       <li><span class="alt-badge alt-badge-warn">WARN notice</span> State government mass-layoff filings from <?php echo (int) $alt_cov['states']; ?> covered US states.</li>
-      <li><span class="alt-badge alt-badge-silver">Company statement</span> Reviewed investor-relations and newsroom feeds.</li>
+      <li><span class="alt-badge alt-badge-silver">Press release</span> Reviewed investor-relations and newsroom feeds (the "Press release" source in the tracker's filter).</li>
       <li><span class="alt-badge alt-badge-bronze">News</span> Named reports discovered through GDELT and Google News, retained only when the record has usable evidence. Eurofound ERM is a separately labeled, thresholded European announcement source.</li>
     </ul>
     <p><b>How often it updates.</b> News and SEC filings: twice daily (morning and after US market close, ET). WARN notices: daily at 11 AM ET, sweeping every covered state. An automated anomaly review runs daily at noon ET, flagging statistically unusual entries (very large single notices, same company filing in several states, weak source links) for human inspection before anyone else finds them. A monthly self-audit re-opens a random sample of published rows and re-checks each against its own source.</p>

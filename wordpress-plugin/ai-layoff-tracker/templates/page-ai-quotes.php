@@ -73,7 +73,7 @@ $src_label = function ($t) {
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">How the AI tag works</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
 
   <div class="alt-qw-summary">
-    <b><?php echo number_format($alt_total); ?></b> AI attributions<?php echo $alt_total > $LIMIT ? ' (showing the ' . $LIMIT . ' most recent)' : ''; ?> · <b><?php echo number_format($alt_jobs); ?></b> jobs · <?php echo $alt_year ? esc_html($alt_year) : 'all-time (since 2017)'; ?> · each with the employer's quote and its source.
+    <b><?php echo number_format($alt_total); ?></b> AI attributions<?php echo $alt_total > $LIMIT ? ' (showing the ' . $LIMIT . ' most recent)' : ''; ?> · <b><?php echo number_format($alt_jobs); ?></b> jobs · <?php echo $alt_year ? esc_html($alt_year) : 'all-time'; ?> · each with the employer's quote and its source.
   </div>
 
   <div class="alt-qw-filters" aria-label="Filter the AI attributions">

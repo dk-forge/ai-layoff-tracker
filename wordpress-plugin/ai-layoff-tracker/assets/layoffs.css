@@ -468,13 +468,20 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-qv-on, .alt-qv-on:hover { background: var(--alt-ink); border-color: var(--alt-ink); color: #fff; }
 
 /* Compact chart grid at the top; the ⤢ button expands a card full-width */
-.alt-minigrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; grid-auto-flow: dense; }
+.alt-minigrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+/* Narrative section headers inside the chart grid: Where -> Trending -> Who/why.
+   Full-width rows so each group reads as its own chapter. (No dense auto-flow:
+   it could pull a later card back across a section boundary.) */
+.alt-grid-h { grid-column: 1 / -1; margin: 14px 0 0; }
+.alt-grid-h:first-child { margin-top: 0; }
+.alt-grid-h h2 { margin: 0 0 2px; font-size: 17px; }
+.alt-grid-h p { margin: 0; font-size: 12.5px; color: var(--alt-muted, #6b675e); }
 @media (max-width: 900px) { .alt-minigrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .alt-minigrid { grid-template-columns: 1fr; } }
 .alt-mini { padding: 13px 15px; }
 /* AI job-loss map: spans two of the three columns, taller box, world/US toggle. */
-.alt-map-card { grid-column: span 2; }
-@media (max-width: 900px) { .alt-map-card { grid-column: 1 / -1; } }
+/* Map leads the "Where" section full-width; state/country lists sit under it. */
+.alt-map-card { grid-column: 1 / -1; }
 .alt-mini .alt-map-box { height: 360px; }
 .alt-mini.alt-expanded .alt-map-box { height: 600px; }
 /* Jobs-cut-per-month: promoted to a full-width hero row (matches the map's
@@ -614,13 +621,13 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 
 /* Per-dimension chip colors so stacked cross-filters read at a glance */
 .alt-af-blue   { background: #2a78d6; border-color: #2a78d6; }
-.alt-af-teal   { background: #0f8a7d; border-color: #0f8a7d; }
+.alt-af-teal   { background: #0b6a76; border-color: #0b6a76; }
 .alt-af-violet { background: #6b4bd6; border-color: #6b4bd6; }
-.alt-af-green  { background: #1e8a3c; border-color: #1e8a3c; }
+.alt-af-green  { background: #14532a; border-color: #14532a; }
 .alt-af-orange { background: #d2691e; border-color: #d2691e; }
 .alt-af-pink   { background: #c2417e; border-color: #c2417e; }
 .alt-af-slate  { background: #52607a; border-color: #52607a; }
-.alt-af-gold   { background: #9a7b0a; border-color: #9a7b0a; }
+.alt-af-gold   { background: #6e5807; border-color: #6e5807; }
 .alt-af-red    { background: #c62f2e; border-color: #c62f2e; }
 .alt-af-ink    { background: #16181d; border-color: #16181d; }
 
