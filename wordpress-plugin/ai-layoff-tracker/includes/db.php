@@ -2997,7 +2997,7 @@ function alt_reconcile_supersets($dry_run = true) {
     global $wpdb;
     $table = alt_db_table();
     $rows = $wpdb->get_results(
-        "SELECT id, company_key, source_type, job_count, layoff_date
+        "SELECT id, company_key, source_type, job_count, layoff_date, ai_explicit
          FROM $table WHERE company_key <> '' AND job_count > 0 AND edited = 0", ARRAY_A) ?: array();
     $by = array();
     $before = 0;
@@ -3015,23 +3015,53 @@ function alt_reconcile_supersets($dry_run = true) {
                 $news[] = $r;
             }
         }
-        if (!$warn || !$news || $warn_sum <= 0) continue;
-        foreach ($news as $nr) {
-            $nc = (int) $nr['job_count'];
-            if ($nc < 200 || $nc < $warn_sum * 0.5) continue;   // not plausibly the same event
-            $near = false;
-            foreach ($warn as $w) {
-                if (abs((strtotime($nr['layoff_date']) - strtotime($w['layoff_date'])) / 86400) <= 45) { $near = true; break; }
-            }
-            if (!$near) continue;
-            if ($nc >= $warn_sum) {
-                // News total is the most-complete figure -> exclude the WARN sites.
+        // (1) A news/announced company-wide total sitting on top of its own
+        //     site-level WARN rows (Spirit/Amazon/Verizon...).
+        if ($warn && $news && $warn_sum > 0) {
+            foreach ($news as $nr) {
+                $nc = (int) $nr['job_count'];
+                if ($nc < 200 || $nc < $warn_sum * 0.5) continue;   // not plausibly the same event
+                $near = false;
                 foreach ($warn as $w) {
-                    if (empty($mark[$w['id']])) { $mark[$w['id']] = (int) $nr['id']; $excluded += (int) $w['job_count']; }
+                    if (abs((strtotime($nr['layoff_date']) - strtotime($w['layoff_date'])) / 86400) <= 45) { $near = true; break; }
                 }
-            } else {
-                // WARN sum is more complete -> exclude the news total.
-                if (empty($mark[$nr['id']])) { $mark[$nr['id']] = (int) $largest_warn['id']; $excluded += $nc; }
+                if (!$near) continue;
+                if ($nc >= $warn_sum) {
+                    // News total is the most-complete figure -> exclude the WARN sites.
+                    foreach ($warn as $w) {
+                        if (empty($mark[$w['id']])) { $mark[$w['id']] = (int) $nr['id']; $excluded += (int) $w['job_count']; }
+                    }
+                } else {
+                    // WARN sum is more complete -> exclude the news total.
+                    if (empty($mark[$nr['id']])) { $mark[$nr['id']] = (int) $largest_warn['id']; $excluded += $nc; }
+                }
+            }
+        }
+        // (2) news-vs-news duplicate: the SAME company + the EXACT SAME headcount
+        //     within ~150 days is the same event reported twice (announcement +
+        //     later coverage), which the ±30-day fuzzy dedup misses — e.g.
+        //     Coinbase 700 on both May 5 (announced/AI) and Jul 24. Keep the
+        //     richest row (AI-flagged, else earliest date); mark the rest a subset.
+        if (count($news) >= 2) {
+            $by_count = array();
+            foreach ($news as $nr) {
+                if (!empty($mark[$nr['id']])) continue;   // already a subset of a WARN primary
+                $by_count[(int) $nr['job_count']][] = $nr;
+            }
+            foreach ($by_count as $dupes) {
+                if (count($dupes) < 2) continue;
+                usort($dupes, function ($a, $b) {
+                    $ai = (int) $b['ai_explicit'] - (int) $a['ai_explicit'];   // AI-flagged wins the primary slot
+                    if ($ai) return $ai;
+                    $d = strcmp((string) $a['layoff_date'], (string) $b['layoff_date']);  // else earliest date
+                    return $d !== 0 ? $d : ((int) $a['id'] - (int) $b['id']);
+                });
+                $primary = $dupes[0];
+                for ($i = 1, $n = count($dupes); $i < $n; $i++) {
+                    $m = $dupes[$i];
+                    if (abs((strtotime($m['layoff_date']) - strtotime($primary['layoff_date'])) / 86400) > 150) continue;
+                    if (empty($mark[$m['id']])) { $mark[$m['id']] = (int) $primary['id']; $excluded += (int) $m['job_count']; }
+                }
             }
         }
     }
