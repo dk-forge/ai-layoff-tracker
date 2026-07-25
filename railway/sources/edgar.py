@@ -82,6 +82,34 @@ def _parse_display_name(display_names):
     return company or "Unknown", ticker
 
 
+# 8-K Item 2.05 ("Costs Associated with Exit or Disposal Activities") is the
+# strongest receipted layoff disclosure a public company files. EFTS returns
+# each hit's item codes in `_source.items`; when 2.05 is present we mark the
+# provenance so the entry reads as a verified exit-cost disclosure. Every EDGAR
+# filing already posts at the top ("gold") verification level, so the 2.05
+# signal rides on the human-visible `source_name` — a field the poster stores
+# verbatim (extractor.py copies it straight through) — rather than a new field
+# the pipeline would silently ignore.
+EXIT_COST_ITEM = "2.05"
+
+
+def _has_exit_cost_item(items):
+    """True when the 8-K item-code array includes Item 2.05.
+
+    Fail-soft: a missing or malformed array simply means "no 2.05" and never
+    raises, so a shape change in the EFTS response cannot break the pull.
+    """
+    if not isinstance(items, (list, tuple)):
+        return False
+    return any(str(code).strip() == EXIT_COST_ITEM for code in items)
+
+
+def _edgar_source_name(form, has_exit_cost):
+    """Human-visible provenance label; flags Item 2.05 exit-cost filings."""
+    base = f"SEC EDGAR {form}"
+    return f"{base} Item 2.05 (exit/disposal costs)" if has_exit_cost else base
+
+
 def _strip_html(markup):
     text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", markup)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -188,14 +216,22 @@ def search_company_filings(company, days_back=120, max_hits=6):
                 except Exception:
                     continue
                 names = src.get("display_names") or [company]
-                comp, ticker = _split_company_ticker(names[0]) if names else (company, None)
+                comp, ticker = _parse_display_name(names)
+                items = src.get("items")
+                exit_cost = _has_exit_cost_item(items)
                 out.append({
-                    "source_type": "sec_8k",
-                    "source_name": "SEC EDGAR 8-K",
+                    # "8K"/"gold" are the server-recognized values the main
+                    # EDGAR path emits. "sec_8k" is NOT in the allowed set, so
+                    # the server silently downgraded these to news/bronze — a
+                    # primary SEC filing mislabeled as news.
+                    "source_type": "8K",
+                    "source_name": _edgar_source_name("8-K", exit_cost),
+                    "verification_level": "gold",
                     "source_url": url,
                     "company_name": comp,
                     "ticker": ticker,
                     "filing_date": src.get("file_date"),
+                    "sec_items": list(items) if isinstance(items, (list, tuple)) else [],
                     "raw_text": raw_text,
                 })
         except Exception:
@@ -242,14 +278,19 @@ def pull_edgar_filings_between(start, end):
 
             company_name, ticker = _parse_display_name(source.get("display_names"))
             form = hit.get("_alt_form", "8-K")
+            # EFTS carries the 8-K item codes in `_source.items`; Item 2.05
+            # marks a verified exit/disposal-cost disclosure (fail-soft absent).
+            items = source.get("items")
+            exit_cost = _has_exit_cost_item(items)
             candidates[doc_url] = {
                 "source_type": "8K",
-                "source_name": f"SEC EDGAR {form}",
+                "source_name": _edgar_source_name(form, exit_cost),
                 "verification_level": "gold",
                 "source_url": doc_url,
                 "company_name": company_name,
                 "ticker": ticker,
                 "filing_date": source.get("file_date", ""),
+                "sec_items": list(items) if isinstance(items, (list, tuple)) else [],
             }
 
     results = []
