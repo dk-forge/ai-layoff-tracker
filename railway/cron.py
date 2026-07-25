@@ -142,7 +142,11 @@ def run():
         # paywalled marquee layoffs (the exact gap NewsAPI's death + paywalls
         # created), so it leads the news sweep.
         ("google_news", pull_google_news),
-        ("newsapi", pull_news_articles),
+        # newsapi RETIRED 2026-07-25: the free tier is dev-only and the paid tier
+        # is ~$449/mo, so it perpetually reported degraded (dead/exhausted key)
+        # while contributing nothing. Google News RSS (keyless) replaced it and
+        # carries the headcount even for paywalled marquee layoffs. Code kept in
+        # sources/newsapi.py + the branch below, re-enablable by restoring this row.
         ("press_releases", pull_press_releases),
     ):
         try:

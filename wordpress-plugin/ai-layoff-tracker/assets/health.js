@@ -134,7 +134,11 @@
     const completeness = i.metadata_completeness || {};
     $('alt-health-updated').textContent = `Pipeline: ${s.pipeline_phase || 'live'} · last data write ${fmt(s.last_updated)} · checked ${fmt(q.generated_at)}`;
     $('alt-health-summary').innerHTML = `<div><b>${i.canonical_events.toLocaleString()}</b><span>canonical events</span></div><div><b>${i.source_reports.toLocaleString()}</b><span>retained reports</span></div><div><b>${degraded}</b><span>degraded source${degraded === 1 ? '' : 's'}</span></div><div><b>${i.source_report_hashes_remaining.toLocaleString()}</b><span>evidence hashes pending</span></div>`;
-    $('alt-health-sources').innerHTML = Object.entries(h).map(([id, x]) => {
+    // Live collectors first; retired ones sink to the bottom so a reader sees
+    // what is running before what we deliberately stood down.
+    $('alt-health-sources').innerHTML = Object.entries(h)
+      .sort(([, a], [, b]) => (a.status === 'retired' ? 1 : 0) - (b.status === 'retired' ? 1 : 0))
+      .map(([id, x]) => {
       const m = meta[id] || ['Operational collector', 'See source-health'];
       return `<tr><th>${srcLabel(id)}</th><td>${esc(m[0])}</td><td>${esc(m[1])}</td><td><time>${esc(fmt(x.checked_at))}</time></td><td>${esc(entriesLabel(x))}</td><td><span class="alt-health-status alt-health-${esc(x.status)}">${esc(x.status)}</span> ${esc(x.detail || '')}</td></tr>`;
     }).join('') || '<tr><td colspan="6">No collector reports yet.</td></tr>';

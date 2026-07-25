@@ -143,6 +143,9 @@ def main():
             elif status in ("degraded",):
                 print(f"    (benign)  {src}: {str(detail)[:60]}")
                 ok += 1
+            elif status == "retired":
+                print(f"    (retired) {src}: {str(detail)[:60]}")
+                ok += 1
             else:
                 ok += 1
         print(f"    {ok} source(s) OK.")

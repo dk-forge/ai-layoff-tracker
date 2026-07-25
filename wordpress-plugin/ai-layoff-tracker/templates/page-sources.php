@@ -108,10 +108,10 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">About GDELT &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>NewsAPI</b></td><td>Worldwide</td>
-        <td>Supplements GDELT for recent English-language coverage, same trusted-outlet allowlist.</td>
+        <td><b>Google News</b></td><td>Worldwide</td>
+        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. Same trusted-outlet standard, twice daily.</td>
         <td>Verified (named report)</td>
-        <td><a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI &#8599;</a></td>
+        <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
       <tr>
         <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Marketaux · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
@@ -145,8 +145,8 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
-        <td>Official corporate-filing systems. Discovery probes only, <em>not live</em> until a stable interface, tests and health monitoring exist.</td>
-        <td>Research candidate</td>
+        <td>Official corporate-filing systems. <em>Retired</em> as discovery probes after months live yielded zero layoff rows (these filings essentially never announce layoffs). Japan, South Korea and Brazil are covered through worldwide news instead. Client kept, re-runnable on demand.</td>
+        <td>Retired probe</td>
         <td><a href="https://disclosure2.edinet-fsa.go.jp/" target="_blank" rel="noopener">EDINET &#8599;</a></td>
       </tr>
     </tbody>
@@ -203,7 +203,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php')) include ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php'; ?>
 
   <h2 id="alt-src-news">Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
-  <p>Beyond official filings, we monitor a curated allowlist of reputable news outlets in every country, in 65+ languages, twice daily via GDELT and NewsAPI, never the open web. The full list is below, generated straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register (if any) we pull directly.</p>
+  <p>Beyond official filings, we monitor a curated allowlist of reputable news outlets in every country, in 65+ languages, twice daily via GDELT and Google News, never the open web. The full list is below, generated straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register (if any) we pull directly.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php')) : ?>
   <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
   <?php else : ?>

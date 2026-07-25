@@ -1666,9 +1666,32 @@ function alt_api_industry_backfill(WP_REST_Request $r) {
     return rest_ensure_response($out);
 }
 
+/**
+ * Collectors we deliberately retired. Declared here (not in the stored ledger)
+ * so retirement is self-healing: even if an old cron writes a 'degraded' row,
+ * the GET below coerces it to a benign 'retired' state. Keeps the health page
+ * honest (a retired source is not a breakage) without needing a keyed write.
+ */
+function alt_retired_sources() {
+    return array(
+        'newsapi' => 'Retired 2026-07-25. Replaced by keyless Google News RSS discovery, whose headlines carry the headcount even for paywalled marquee layoffs. Worldwide news coverage continues via GDELT + Google News.',
+    );
+}
+
 function alt_api_source_health_get() {
     $health = get_option('alt_source_health');
-    return rest_ensure_response(is_array($health) ? $health : array());
+    if (!is_array($health)) $health = array();
+    // Coerce any retired collector to a permanent, benign 'retired' state with a
+    // fresh timestamp, so no consumer (health page, ops_status, digest) reads it
+    // as degraded OR stale. 'retired' is a declared status, not a run claim.
+    foreach (alt_retired_sources() as $src => $why) {
+        if (isset($health[$src])) {
+            $health[$src]['status'] = 'retired';
+            $health[$src]['detail'] = $why;
+            $health[$src]['checked_at'] = gmdate('c');
+        }
+    }
+    return rest_ensure_response($health);
 }
 
 function alt_api_source_health_post(WP_REST_Request $r) {
@@ -1681,7 +1704,7 @@ function alt_api_source_health_post(WP_REST_Request $r) {
     $health = get_option('alt_source_health');
     if (!is_array($health)) $health = array();
     $health[$source] = array(
-        'status' => in_array($r->get_param('status'), array('ok', 'running', 'degraded'), true)
+        'status' => in_array($r->get_param('status'), array('ok', 'running', 'degraded', 'retired'), true)
             ? $r->get_param('status') : 'degraded',
         'entries' => max(0, (int) $r->get_param('entries')),
         'checked_at' => gmdate('c'),
