@@ -6,6 +6,11 @@ name: Superset dedup reconciliation
 # jobs_before / jobs_excluded / jobs_after without writing. Pass apply=1 to write.
 
 on:
+  # Runs DAILY after the day's ingests so fresh news+WARN overlaps are deduped
+  # automatically — the marking is a clean-slate recompute each time (resets to
+  # 0, then re-marks), so it self-maintains as new rows land, change, or dedup.
+  schedule:
+    - cron: '40 16 * * *'   # 12:40 PM ET, after WARN (11 AM) + morning news
   workflow_dispatch:
     inputs:
       apply:
@@ -20,8 +25,12 @@ jobs:
     steps:
       - name: Reconcile supersets
         run: |
+          # Scheduled runs ALWAYS apply (self-maintaining dedup); manual runs use
+          # the input and default to a safe dry-run report.
+          APPLY="${{ github.event.inputs.apply }}"
+          if [ "${{ github.event_name }}" = "schedule" ]; then APPLY=1; fi
           curl -sS --fail-with-body -X POST \
-            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=${{ github.event.inputs.apply }}" \
+            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY" \
             -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
           echo ""
