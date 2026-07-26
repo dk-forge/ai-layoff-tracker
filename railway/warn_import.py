@@ -313,6 +313,17 @@ def main():
                 _expected_g = list(_ALL_GENERIC)
             except Exception:
                 _expected_g = sorted(_generic_by_state)  # fall back to what we saw
+        # A state with a CUSTOM scraper is served by that scraper; the generic
+        # open-scraper tier is redundant backup for it, and its own structural
+        # tripwire (below) already watches it. Flagging the generic tier going
+        # dark for TX/FL/GA/OH/MI... therefore cries wolf about states whose
+        # data is arriving fine, which buries the states that are genuinely
+        # uncovered. Watch the generic tier only where it is the ONLY source.
+        try:
+            from sources.warn_custom import CUSTOM_STATES as _CUSTOM
+            _expected_g = [s for s in _expected_g if s.upper() not in _CUSTOM]
+        except Exception:
+            pass
         _generic_drift = detect_generic_state_drift(
             _generic_by_state, _expected_g,
             _parse_generic_baselines(os.environ.get("WARN_GENERIC_BASELINE")))
