@@ -2263,13 +2263,21 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
     // PHP/Python url_hash (md5 of the trimmed URL). NB: the literal percent in
     // LIKE 'http%' is doubled to '%%' because this string is run through
     // $wpdb->prepare (a bare % is read as a placeholder).
-    $sql = "SELECT DISTINCT l.source_url
+    // NEWEST FIRST. Archiving matters most for the years the tracker actively
+    // makes claims about (current + prior year): those links are the ones a
+    // journalist clicks today and the ones most likely to rot while still being
+    // cited. Older years still get archived, just after the recent backlog is
+    // clear — ordering rather than filtering, so nothing is permanently
+    // excluded and Wayback (which costs nothing but time) keeps working back.
+    $sql = "SELECT l.source_url
             FROM $layoffs l
             LEFT JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
             WHERE l.source_url <> '' AND l.source_url LIKE 'http%%'
               AND (a.url_hash IS NULL
                    OR (a.status = 'pending' AND (a.checked_at IS NULL OR a.checked_at < %s))
                    OR (a.status = 'unavailable' AND (a.checked_at IS NULL OR a.checked_at < %s)))
+            GROUP BY l.source_url
+            ORDER BY MAX(l.layoff_date) DESC
             LIMIT %d";
     $urls = $wpdb->get_col($wpdb->prepare($sql, $retry_before, $weekly_before, $limit)) ?: array();
     return rest_ensure_response(array(
