@@ -319,6 +319,11 @@ if (!is_array($alt_ps)) {
     <a href="#alt-press-signup">Contact &amp; brief</a>
   </nav>
 
+  <h2 id="alt-press-basis">Before you quote a number: which basis</h2>
+  <p>Our published US headline counts <b>jobs physically located in the US</b>. Most announcement surveys count <b>US-company announcements wherever the jobs land</b>. Those are different questions, so the totals differ by design. Both of ours are below, live, so you can quote the one that matches your comparison.</p>
+  <?php if (function_exists('alt_basis_table_html')) echo alt_basis_table_html('United States'); ?>
+  <p>If you are comparing us against an announcement survey, use the <b>employer basis</b> row. If you want the most conservative documented figure, use <b>job location</b>. Say which one you used and the number is reproducible from our public API.</p>
+
   <h2 id="alt-press-statements">Numbers you can use right now</h2>
   <p>This week, the latest complete month, and the year to date. Each card is written to be pasted into a pitch or a story, and each ends with a link that opens the live tracker filtered to the exact rows behind the number, so an editor can check the claim in one click.</p>
   <p class="alt-muted"><b>Generated <?php echo esc_html($alt_ps['generated']); ?>.</b> Figures refresh hourly; the wording stays stable. When a period rolls over, it moves to the archive below, so a number you already quoted stays reachable.</p>
@@ -488,7 +493,9 @@ if (!is_array($alt_ps)) {
       <li><span class="alt-swatch" style="background:#d4a574"></span> Accent <code>#D4A574</code></li>
       <li><span class="alt-swatch" style="background:#16181d"></span> Ink <code>#16181D</code></li>
     </ul>
-  </div>
+
+    
+</div>
   <p class="alt-muted">The wordmark and "atr" mark above may be used to credit the tracker in coverage. For high-resolution PNG or SVG logo files or a specific lockup, ask through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and we'll send them the same day.</p>
 
   <h2>Press contact</h2>

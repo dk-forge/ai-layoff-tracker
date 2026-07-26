@@ -63,6 +63,9 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
   <section class="alt-method-sec" id="m-coverage">
     <h2>Coverage and honest limitations</h2>
     <p>US depth is greatest because of WARN and SEC sources. Europe has structured coverage of large announcements through Eurofound ERM. Outside those live collectors, country-level coverage is currently worldwide news discovery and any explicitly reviewed company newsroom feed; named filing systems such as SEDAR+, RNS, ASX, TDnet and HKEXnews are research candidates, not silently assumed feeds. WARN and ERM have their own thresholds and geography rules, so they should not be summed as if they were a complete national census. Multi-state and multi-country events can overlap; the entry and source fields disclose that risk. Entries dated in the future are announced or filed but not yet completed. Filtering the table by a country also includes cuts by employers <em>headquartered</em> there whose layoff spanned multiple countries (each such row stays labeled with its true "Multiple countries" scope, never recounted as that country alone); the headline totals stay on the stricter job-location basis, so they are never inflated by a global figure.</p>
+    <h3 id="alt-counting-basis">The two counting bases, side by side</h3>
+    <p>Both numbers below are correct; they answer different questions. We publish the stricter one and disclose the other, so anyone comparing us with an external estimate can compare like with like.</p>
+    <?php if (function_exists('alt_basis_table_html')) echo alt_basis_table_html('United States'); ?>
     <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; forward-looking projections (e.g. "could cost X jobs by 2050") rather than announced or executed cuts; and retrospective summary articles that would double-count events already tracked.</p>
   </section>
 

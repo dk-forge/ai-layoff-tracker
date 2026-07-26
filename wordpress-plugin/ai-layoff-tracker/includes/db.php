@@ -2287,6 +2287,75 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
     ));
 }
 
+/**
+ * Live US counting-basis comparison, for the methodology and press pages.
+ *
+ * Two correct answers to two different questions, computed fresh from the table
+ * so they can never go stale or disagree with the tracker:
+ *   - job_location: jobs physically in the country (the PUBLIC HEADLINE basis)
+ *   - employer_any: job-location OR employer domicile, so a US-headquartered
+ *     employer's multi-country cut is included (the basis that matches how
+ *     announcement surveys count, and the basis any external comparison must use)
+ * The delta is exactly the multi-country cuts by employers domiciled here.
+ * Cached for an hour and invalidated by the dataset version.
+ */
+function alt_country_basis_compare($country = 'United States', $year = null) {
+    global $wpdb;
+    $year = $year ? (int) $year : (int) gmdate('Y');
+    $key  = 'alt_basis_cmp_' . md5($country . '|' . $year . '|' . (int) get_option('alt_data_ver', 1));
+    $hit  = get_transient($key);
+    if (is_array($hit)) return $hit;
+
+    $t = alt_db_table();
+    $strict = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COALESCE(SUM(job_count),0) FROM $t
+         WHERE superset_of = 0 AND YEAR(layoff_date) = %d AND country = %s", $year, $country));
+    $any = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COALESCE(SUM(job_count),0) FROM $t
+         WHERE superset_of = 0 AND YEAR(layoff_date) = %d
+           AND (country = %s OR employer_country = %s)", $year, $country, $country));
+    $out = array(
+        'country'       => $country,
+        'year'          => $year,
+        'job_location'  => $strict,
+        'employer_any'  => $any,
+        'difference'    => max(0, $any - $strict),
+        'as_of'         => gmdate('c'),
+    );
+    set_transient($key, $out, HOUR_IN_SECONDS);
+    return $out;
+}
+
+/**
+ * Renders the basis comparison as a self-updating table. Used on methodology
+ * and press so an external comparison can never be quoted against the wrong
+ * number. Every figure is live; nothing here is hardcoded.
+ */
+function alt_basis_table_html($country = 'United States', $year = null) {
+    $c = alt_country_basis_compare($country, $year);
+    $f = function ($n) { return number_format((int) $n); };
+    ob_start(); ?>
+    <div class="alt-health-table-wrap">
+    <table class="alt-basis-table">
+      <thead><tr><th>Counting basis</th><th><?php echo esc_html($c['country'] . ' ' . $c['year']); ?></th><th>What it counts</th></tr></thead>
+      <tbody>
+        <tr><th>Job location <span class="alt-muted">(our published headline)</span></th>
+            <td><b><?php echo esc_html($f($c['job_location'])); ?></b></td>
+            <td>Only jobs physically located in <?php echo esc_html($c['country']); ?>. The stricter, more conservative basis, so a global figure can never inflate it.</td></tr>
+        <tr><th>Employer basis <span class="alt-muted">(for like-for-like comparison)</span></th>
+            <td><b><?php echo esc_html($f($c['employer_any'])); ?></b></td>
+            <td>Job location <em>or</em> employer domicile, so a <?php echo esc_html($c['country']); ?>-headquartered employer's multi-country cut is included. This is how announcement surveys count, so it is the only fair basis to compare us against one.</td></tr>
+        <tr><th>Difference</th>
+            <td><b><?php echo esc_html($f($c['difference'])); ?></b></td>
+            <td>Multi-country cuts by employers headquartered in <?php echo esc_html($c['country']); ?>. Each stays labeled &ldquo;Multiple countries&rdquo; in the data and is never silently recounted as <?php echo esc_html($c['country']); ?>-only.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="alt-muted">Figures update automatically as records are verified. Compare like with like: quoting our job-location headline against a survey that counts by employer will understate us by the difference above, and the reverse will overstate us.</p>
+    <?php
+    return ob_get_clean();
+}
+
 /** Shared coverage tally for the candidate response and the public endpoint. */
 function alt_archive_coverage_counts() {
     global $wpdb;

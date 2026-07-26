@@ -1710,3 +1710,6 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 .alt-claims-toggle { display: flex; align-items: center; gap: 6px; margin: 2px 0 8px; font-size: 12px; color: var(--alt-ink-2, #6b6b6b); cursor: pointer; line-height: 1.3; }
 .alt-claims-toggle input { margin: 0; flex: 0 0 auto; }
 .alt-claims-toggle[hidden] { display: none; }
+
+/* Counting-basis comparison (methodology + press): live, self-updating. */
+.alt-basis-table{width:100%;border-collapse:collapse;font-size:.93rem;margin:14px 0}.alt-basis-table th,.alt-basis-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #e6e0cf;vertical-align:top;line-height:1.5}.alt-basis-table thead th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}.alt-basis-table tbody td:nth-child(2){font-variant-numeric:tabular-nums;white-space:nowrap}
