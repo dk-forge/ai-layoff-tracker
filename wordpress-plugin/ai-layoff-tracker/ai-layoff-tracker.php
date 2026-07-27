@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.208
+ * Version: 2.19.209
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.208');
+define('ALT_VERSION', '2.19.209');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1148,6 +1148,23 @@ function alt_register_admin_page() {
     );
 }
 add_action('admin_menu', 'alt_register_admin_page');
+
+// Site-admin QoL (2026-07-27): Complianz ("Website Scan") and Rank Math ("SEO
+// Details") each add a wide column to the Posts list (edit.php). Under the core
+// table-layout:auto they steal all the horizontal space and squeeze the Title
+// column until it wraps one word per line. A hard min-width floor on Title is
+// the robust lever - the browser can never shrink it below that - plus a cap on
+// the two heavy plugin columns. Scoped to admin_head-edit.php ONLY, so it can
+// never affect the front end or any other admin screen. Pure CSS, no markup.
+add_action('admin_head-edit.php', 'alt_fix_posts_list_column_widths');
+function alt_fix_posts_list_column_widths() {
+    echo '<style id="alt-posts-list-fix">'
+        . '.wp-list-table .column-title{min-width:220px;width:24%;}'
+        . '.wp-list-table .column-title a.row-title{word-break:normal;overflow-wrap:anywhere;}'
+        . '.wp-list-table .column-cmplz_scan,'
+        . '.wp-list-table .column-rank_math_seo_details{max-width:120px;overflow:hidden;text-overflow:ellipsis;}'
+        . '</style>';
+}
 
 function alt_render_admin_page() {
     if (!current_user_can('manage_options')) return;
