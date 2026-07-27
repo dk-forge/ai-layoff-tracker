@@ -182,6 +182,9 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                     <option value="product_discontinuation">Product discontinued</option>
                     <option value="cost_reduction">Cost reduction</option>
                     <option value="macroeconomic">Macroeconomic</option>
+                    <option value="closure">Plant / site closure</option>
+                    <option value="bankruptcy">Bankruptcy / insolvency</option>
+                    <option value="federal_workforce">Government / public sector</option>
                 </select>
             </div>
             <div class="alt-filter" data-dd="Roles" data-empty="All roles">

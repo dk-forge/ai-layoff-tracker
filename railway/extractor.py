@@ -39,6 +39,8 @@ ALLOWED_REASON_TAGS = {
     "macroeconomic",
     "possible_ai",
     "closure",
+    "bankruptcy",
+    "federal_workforce",
 }
 
 AI_CAUSATION = {
@@ -120,6 +122,9 @@ Reason tag definitions (only assign if explicitly supported):
 - cost_reduction: generic efficiency or cost-cutting language with no specific reason
 - macroeconomic: source cites economic conditions, market environment
 - possible_ai: source uses productivity, efficiency, or automation language that implies but does not explicitly name AI
+- closure: source states a plant, store, site or facility is closing or shutting permanently
+- bankruptcy: source cites bankruptcy, insolvency, administration, receivership, Chapter 7/11 or liquidation
+- federal_workforce: source describes a government/public-sector workforce action (federal RIF, agency reduction, public-service cuts)
 
 Response format:
 {
@@ -440,7 +445,7 @@ def classify_reason_tags(raw_text):
     if not raw_text.strip():
         return None
     prompt = """Assign layoff reason tags for the text below. Return STRICT JSON only:
-{"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
+{"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic, closure, bankruptcy, federal_workforce"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
 
 Rules:
 - Use ONLY the tag definitions from your instructions; a tag needs explicit

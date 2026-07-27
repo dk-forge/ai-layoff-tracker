@@ -47,6 +47,8 @@ function alt_allowed_reason_tags() {
         'macroeconomic',
         'possible_ai',
         'closure',
+        'bankruptcy',
+        'federal_workforce',
     );
 }
 

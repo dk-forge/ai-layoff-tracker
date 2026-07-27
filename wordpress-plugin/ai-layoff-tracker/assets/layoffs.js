@@ -42,7 +42,8 @@
         revenue_decline: 'Revenue decline', restructuring: 'Restructuring',
         merger_acquisition: 'Merger / acquisition', offshoring: 'Offshoring',
         product_discontinuation: 'Product discontinued', cost_reduction: 'Cost reduction',
-        macroeconomic: 'Macroeconomic', closure: 'Plant / site closure'
+        macroeconomic: 'Macroeconomic', closure: 'Plant / site closure',
+        bankruptcy: 'Bankruptcy / insolvency', federal_workforce: 'Government / public sector'
     };
     var VERIF_LABELS = { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' };
     // Mirrors alt_role_categories() (api.php); used by the Roles filter chip.
