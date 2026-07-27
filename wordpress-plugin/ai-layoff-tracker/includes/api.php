@@ -677,6 +677,7 @@ function alt_api_status_get() {
     $ph = alt_pipeline_phase();
     $last = (int) get_option('alt_last_write', 0);
     $resp = rest_ensure_response(array(
+        'version'        => ALT_VERSION,                         // running plugin version (cache-immune deploy probe)
         'pipeline_phase' => $ph['phase'],                        // live | refreshing | cleaning
         'pipeline_since' => $ph['at'] ? gmdate('c', $ph['at']) : '',
         'last_updated'   => $last ? gmdate('c', $last) : '',
