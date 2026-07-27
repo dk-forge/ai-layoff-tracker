@@ -75,7 +75,7 @@ jobs:
       - name: Verify secrets are configured
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           missing=0
@@ -96,7 +96,7 @@ jobs:
       - name: Verify target is a real WordPress install
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           REMOTE_DIR: ${{ secrets.WP_PLUGIN_REMOTE_DIR || '/public_html/wp-content/plugins/ai-layoff-tracker' }}
         run: |
@@ -123,7 +123,7 @@ jobs:
       - name: Deploy plugin over FTPS
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           # Change this secret if the plugin lives elsewhere on the host.
           REMOTE_DIR: ${{ secrets.WP_PLUGIN_REMOTE_DIR || '/public_html/wp-content/plugins/ai-layoff-tracker' }}
