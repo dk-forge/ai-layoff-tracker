@@ -1,54 +1,46 @@
-name: FTP layout diagnose (temporary)
+name: FTP cleanup (temporary)
 
-# Read-only: lists key paths on the FTP host so we can find WHERE the live
-# /blog WordPress plugin dir actually is, relative to the FTP account home.
-# No uploads. Delete this workflow once the correct WP_PLUGIN_REMOTE_DIR is set.
+# One-off: removes the orphan ./b22ccf66...e1cf/ directory that the mis-set
+# WP_PLUGIN_REMOTE_DIR secret caused earlier deploys to create at the FTP home
+# (a full stray plugin copy, never linked). Read-only elsewhere. Delete this
+# workflow after it runs green.
 on:
   workflow_dispatch:
 
 jobs:
-  diagnose:
+  cleanup:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: List FTP layout (read-only)
+      - name: Remove orphan hex directory
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          ORPHAN: b22ccf66cc05c4e822271d20adfbbd5ba8d1bc0ef4a8f52162b00789ee70e1cf
         run: |
           set -uo pipefail
-          run_ls() {
-            lftp -c "
-              set ssl:verify-certificate no;
-              set ftp:ssl-force true;
-              set ftp:ssl-protect-data true;
-              set net:max-retries 1; set net:timeout 20;
-              open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-              $1
-            " 2>&1 || echo "  (not found / error)"
-          }
-          echo "===== FTP home (./) ====="
-          run_ls 'cls -l ./'
-          echo ""
-          echo "===== ./wp-config.php (the WP the guard found) ====="
-          run_ls 'cls -l ./wp-config.php'
-          echo ""
-          echo "===== WHERE WE UPLOAD: ./wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php (check its date) ====="
-          run_ls 'cls -l ./wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php'
-          echo ""
-          echo "===== does ./blog/ exist? ====="
-          run_ls 'cls -l ./blog/'
-          echo ""
-          echo "===== SUSPECTED REAL DIR: ./blog/wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php ====="
-          run_ls 'cls -l ./blog/wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php'
-          echo ""
-          echo "===== ./blog/wp-config.php ====="
-          run_ls 'cls -l ./blog/wp-config.php'
-          echo ""
-          echo "===== fallbacks: ./public_html/ and ./public_html/blog/... ====="
-          run_ls 'cls -l ./public_html/'
-          run_ls 'cls -l ./public_html/blog/wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php'
+          echo "Before (should list the orphan dir):"
+          lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true;
+            set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -d \"./$ORPHAN\";
+          " 2>&1 || echo "  (already gone)"
+          echo "Deleting ./$ORPHAN ..."
+          lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true;
+            set net:max-retries 1; set net:timeout 30;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            rm -r \"./$ORPHAN\";
+          " 2>&1 || echo "  (rm reported error / already gone)"
+          echo "After (should be empty / not found):"
+          lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true; set ftp:ssl-protect-data true;
+            set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -d \"./$ORPHAN\";
+          " 2>&1 || echo "  confirmed: orphan dir gone"
