@@ -93,18 +93,32 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Verify target is a real WordPress install
+      - name: Verify target is the live plugin directory
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          REMOTE_DIR: ${{ secrets.WP_PLUGIN_REMOTE_DIR || '/public_html/wp-content/plugins/ai-layoff-tracker' }}
+          # HARDCODED path, relative to the FTP account home (2026-07-27). The
+          # FTP account homes at the blog's WordPress root, so the live plugin
+          # is at ./wp-content/plugins/ai-layoff-tracker. We used to read this
+          # from the WP_PLUGIN_REMOTE_DIR secret + fall back to an absolute
+          # /public_html path — BOTH were footguns: the absolute path failed the
+          # wp-config guard (FTP home != /public_html), and a mis-pasted secret
+          # (a 64-char hex string with no slashes) made the guard's "3 up" math
+          # resolve to "." — so wp-config.php was found (guard passed) while the
+          # mirror CREATED a stray ./<hex>/ folder and the real plugin was never
+          # written. Hardcoding the known-correct relative path removes both.
+          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
         run: |
           set -euo pipefail
-          # WordPress root = three levels up from .../wp-content/plugins/ai-layoff-tracker
           WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
           echo "Target plugin dir: $REMOTE_DIR"
           echo "Expected WordPress root: $WP_ROOT"
+          # Two-part guard. (1) wp-config.php exists at WP_ROOT (real WP install).
+          # (2) the plugin's OWN main file ALREADY exists at REMOTE_DIR — proves
+          # we are OVERWRITING the installed plugin, not creating a stray folder
+          # somewhere the mirror invented. This second check is the one that
+          # would have caught the 2026-07-27 hex-dir incident.
           if ! timeout 60 lftp -c "
             set cmd:fail-exit true;
             set ssl:verify-certificate no;
@@ -114,19 +128,20 @@ jobs:
             set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             cls -1 \"$WP_ROOT/wp-config.php\";
+            cls -1 \"$REMOTE_DIR/ai-layoff-tracker.php\";
           "; then
-            echo "::error::No wp-config.php found at $WP_ROOT — REMOTE_DIR is not inside a WordPress install. Refusing to deploy (this is the guard that stops files landing in the wrong folder)."
+            echo "::error::Guard failed — either no wp-config.php at $WP_ROOT, or no existing ai-layoff-tracker.php at $REMOTE_DIR. Refusing to deploy so files cannot land in the wrong folder."
             exit 1
           fi
-          echo "Confirmed: wp-config.php present — target is a real WordPress install."
+          echo "Confirmed: wp-config.php + existing plugin present — target is the live plugin directory."
 
       - name: Deploy plugin over FTPS
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          # Change this secret if the plugin lives elsewhere on the host.
-          REMOTE_DIR: ${{ secrets.WP_PLUGIN_REMOTE_DIR || '/public_html/wp-content/plugins/ai-layoff-tracker' }}
+          # Hardcoded (see guard step above for why the secret was dropped).
+          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
         run: |
           set -euo pipefail
           # --- FTPS (default). For SFTP-over-SSH instead, replace the open line
