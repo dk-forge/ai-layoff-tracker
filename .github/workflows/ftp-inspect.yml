@@ -54,8 +54,9 @@ jobs:
               set net:max-retries 1;
               set net:timeout 15;
               open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-              cls -l --sort=date \"$DIR\";
-            " 2>&1 | head -60 || echo "  (not present or not readable)"
+              cd \"$DIR\";
+              cls -l;
+            " 2>&1 | head -60
           done
           echo ""
           echo "Done. Look for any ai-layoff-tracker folder OUTSIDE"
