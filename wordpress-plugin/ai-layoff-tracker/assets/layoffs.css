@@ -141,6 +141,15 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-brand strong { color: var(--alt-ink-2); font-weight: 600; }
 
 .alt-muted { color: var(--alt-muted); }
+/* v2.19.208 - structured per-entry Source block: each source on its own
+   labelled row/box instead of one dot-joined run-on line (easier to scan). */
+.alt-src-list { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; }
+.alt-src-row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+    padding: 7px 10px; background: var(--alt-surface-2);
+    border: 1px solid var(--alt-border); border-radius: 7px; }
+.alt-src-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--alt-muted); min-width: 104px; flex-shrink: 0; padding-top: 1px; }
+.alt-src-val { font-size: 13px; color: var(--alt-ink); line-height: 1.4; }
 .alt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .alt-center { text-align: center; }
 .alt-empty { padding: 28px 0; text-align: center; color: var(--alt-muted); }

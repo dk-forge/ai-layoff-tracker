@@ -173,6 +173,27 @@
         }
         return '';
     }
+    // v2.19.208 — the row-detail Source block is now separate labelled rows
+    // (primary source / source list / archived copy) instead of one dot-joined
+    // run-on line, so a reader sees at a glance which link is which.
+    function srcRow(label, valueHtml) {
+        return '<div class="alt-src-row"><span class="alt-src-label">' + escapeHtml(label)
+            + '</span><span class="alt-src-val">' + valueHtml + '</span></div>';
+    }
+    // Archived-copy cell: the permanent Wayback link, or an HONEST pending note.
+    // Pending is truthful — the backfill re-checks 'pending' URLs on every run
+    // (and 'unavailable' ones weekly, forever), so it really does get captured.
+    function archiveCell(row) {
+        var a = archivedUrl(row);
+        if (a) return '<a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Wayback Machine snapshot ↗</a>';
+        if (hasSourceUrl(row)) {
+            var d = archiveCheckedDate(row);
+            return '<span class="alt-muted">Waiting to be crawled by the Internet Archive.'
+                + (d ? ' Last checked ' + escapeHtml(d) + '.' : '')
+                + ' We re-check every week until it is captured.</span>';
+        }
+        return '<span class="alt-muted">No web source to archive.</span>';
+    }
     function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
     function setStatus(id, text, isError) {
         var el = document.getElementById(id);
@@ -2185,45 +2206,48 @@
         if (row.roles) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Roles affected</span><p>' + escapeHtml(row.roles) + '</p></div>');
         var tags = (row.reason_tags || []).map(function (t) { return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[t] || t) + '</span>'; }).join(' ');
         if (tags) parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Reasons cited</span><div>' + tags + '</div></div>');
-        var verif = row.verification_level ? ' · <span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(VERIF_LABELS[row.verification_level] || 'News') + '</span>' : '';
-        var src;
+        var verifBadge = row.verification_level ? '<span class="alt-badge alt-badge-' + escapeHtml(row.verification_level) + '">' + escapeHtml(VERIF_LABELS[row.verification_level] || 'News') + '</span>' : '';
+        var srcRows = [];
+        var rollingNote = '';
         if (row.source_type === 'warn') {
             var wl = warnLinks(row);
             var warnText = wl.exact
                 ? 'View this WARN notice (' + (row.source_name || 'source') + ') ↗'
                 : 'View the state’s official WARN list (where this notice was filed) ↗';
-            src = wl.primary ? '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(warnText) + '</a>' : escapeHtml(row.source_name || '—');
+            srcRows.push(srcRow('Primary source', wl.primary
+                ? '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(warnText) + '</a>'
+                : escapeHtml(row.source_name || '—')));
             // Exact notice + a distinct state list → offer both: the specific
             // record and the official index it sits in.
             if (wl.list) {
-                src += ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow">State WARN list ↗</a>';
+                srcRows.push(srcRow('State WARN list', '<a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow">State WARN list ↗</a>'));
             }
             // California: link the PERMANENT fiscal-year PDF that actually lists
             // this notice (by notice/received date), not the rolling xlsx that
-            // has dropped it. This is the durable receipt a reader can open and
-            // find the row in. Uses announcement_date (the received date CA files
+            // has dropped it. Uses announcement_date (the received date CA files
             // under) when present, else the effective date.
             if (row.state === 'CA') {
                 var caPdf = caWarnPdfUrl(row.announcement_date || row.layoff_date);
                 if (caPdf) {
-                    src += ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(caPdf) + '" target="_blank" rel="noopener nofollow" title="California’s permanent cumulative WARN report for the fiscal year this notice was filed in. This notice is listed in it.">Official CA WARN report (PDF, permanent) ↗</a>';
+                    srcRows.push(srcRow('Permanent report', '<a href="' + escapeHtml(caPdf) + '" target="_blank" rel="noopener nofollow" title="California’s permanent cumulative WARN report for the fiscal year this notice was filed in. This notice is listed in it.">Official CA WARN report (PDF) ↗</a>'));
                 }
             }
             // Rolling-file honesty: many states publish one continuously updated
             // file, so an older notice may no longer appear in today's version.
-            // The captured details above are the record as filed.
             if (!wl.exact) {
-                src += '<div class="alt-muted alt-warn-rolling">State WARN lists are updated continuously; an older notice may have rolled into the state’s annual archive. Where a permanent report exists (linked above), this notice is listed in it; the size, date and location shown here are the details captured from the notice when it was filed.</div>';
+                rollingNote = '<div class="alt-muted alt-warn-rolling">State WARN lists are updated continuously; an older notice may have rolled into the state’s annual archive. Where a permanent report exists (linked above), this notice is listed in it; the size, date and location shown here are the details captured from the notice when it was filed.</div>';
             }
         } else {
             var url = safeUrl(row.source_url);
-            src = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>' : escapeHtml(row.source_name || '—');
+            srcRows.push(srcRow('Primary source', url
+                ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>'
+                : escapeHtml(row.source_name || '—')));
         }
-        // Permanent Wayback snapshot as a uniform second link on every row that
-        // has one (SEC/EDGAR rows are already permanent, but carry it too for
-        // consistency). Omitted entirely when no snapshot is captured yet.
-        src += archivedDetailLink(row);
-        parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div>' + src + verif + '</div></div>');
+        // Every row now carries an explicit Archived-copy row: the permanent
+        // Wayback link, or the honest "waiting to be crawled" note. Never a gap.
+        srcRows.push(srcRow('Archived copy', archiveCell(row)));
+        if (verifBadge) srcRows.push(srcRow('Verification', verifBadge));
+        parts.push('<div class="alt-detail-block"><span class="alt-detail-h">Source</span><div class="alt-src-list">' + srcRows.join('') + rollingNote + '</div></div>');
         // Corroboration: when this event was recorded from more than one source
         // (e.g. an official WARN filing AND the news article that reported it,
         // or two independent outlets), surface those other links too — the
