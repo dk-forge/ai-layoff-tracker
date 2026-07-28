@@ -324,6 +324,15 @@ def main():
             _expected_g = [s for s in _expected_g if s.upper() not in _CUSTOM]
         except Exception:
             pass
+        # Also drop states the generic tier is NOT responsible for:
+        #   * HI has its own OCR collector (warn_hi_ocr) and no ordinary register.
+        #   * AR / WY / NH publish no public register at all.
+        #   * OK publishes notices with NO affected-employee counts, so they can
+        #     never become countable rows -- 0 is the correct result, not drift.
+        # Without this the alert named HI/OK every run alongside genuinely
+        # uncovered states, which is how a real breakage gets ignored.
+        _NOT_GENERIC_TIER = {"HI", "AR", "WY", "NH", "OK"}
+        _expected_g = [s for s in _expected_g if s.upper() not in _NOT_GENERIC_TIER]
         _generic_drift = detect_generic_state_drift(
             _generic_by_state, _expected_g,
             _parse_generic_baselines(os.environ.get("WARN_GENERIC_BASELINE")))

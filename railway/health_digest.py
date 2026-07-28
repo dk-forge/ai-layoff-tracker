@@ -137,16 +137,25 @@ def main():
     if stale:
         detail += " | STALE: " + ", ".join(s for s, _, _ in stale)
 
+    # Drop benign flags BEFORE anything is signalled: a state with no public
+    # WARN register returning 0 is correct, not a breakage.
+    real_degraded = [(s, d) for s, d in degraded if not _benign_degraded(d)]
+
     if not DRY and os.environ.get("WP_API_KEY"):
         try:
             from source_health import report_source_health
-            report_source_health("health_digest", "degraded" if (stale or degraded) else "ok", ok, detail)
+            # The digest's OWN status describes whether the DIGEST ran, not what
+            # it found. Marking itself degraded because another collector is
+            # degraded double-counted one problem as two on ops_status and the
+            # health page, and read as "the digest is broken" when it had just
+            # done its job (2026-07-28: warn_us degraded -> health_digest
+            # degraded -> two amber lights for one issue). A genuinely stale
+            # collector still escalates here, since that means data is missing.
+            report_source_health(
+                "health_digest", "degraded" if stale else "ok", ok, detail)
         except Exception as exc:
             print(f"(digest health post skipped: {exc})")
         # Email ONLY on real breakage, with a ready-to-paste fix instruction.
-        # Drop benign flags first (Hawaii has no WARN register by design, so its
-        # custom scraper is *expected* to return 0) so the alert never cries wolf.
-        real_degraded = [(s, d) for s, d in degraded if not _benign_degraded(d)]
         if stale or real_degraded:
             _email_alert(stale, real_degraded)
 
