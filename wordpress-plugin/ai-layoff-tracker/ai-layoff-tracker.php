@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.218
+ * Version: 2.19.219
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.218');
+define('ALT_VERSION', '2.19.219');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -898,14 +898,31 @@ function alt_seo_head() {
     echo '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>' . "\n";
     echo '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>' . "\n";
 
-    $page_url = get_permalink();
-    if (!$page_url) $page_url = home_url('/');
+    // The two JSON-LD blocks below describe the TRACKER, and the FAQ answers
+    // are only visible on the tracker page. alt_page_needs_assets() is true for
+    // every tracker sub-page, every company page and every single-layoff
+    // permalink, so both blocks were being emitted on ~1,830 URLs (audit
+    // 2026-07-28): the identical FAQPage markup appeared on /press/, the health
+    // page and 1,798 entry pages where none of that Q&A text exists, which
+    // breaks Google's rule that structured data must match visible content, and
+    // ~1,830 Dataset nodes all named "AI Layoff Tracker" with different urls and
+    // no shared @id left the engine unable to resolve which URL IS the dataset.
+    // Emit both only where the content actually lives.
+    $alt_tracker_url = home_url('/ai-layoff-tracker/');
+    $on_tracker = is_page() && get_queried_object_id()
+        && trailingslashit(get_permalink(get_queried_object_id())) === trailingslashit($alt_tracker_url);
+    if (!$on_tracker) return;
+
+    $page_url = $alt_tracker_url;
     $title = 'AI Layoff Tracker: Live Data on Jobs Lost to AI & Automation';
     $desc  = 'A continuously updated tracker of verified layoffs worldwide, all industries and causes, flagging which ones companies attribute to AI. Filter by country, US state, industry, or period. Sourced from SEC filings, state WARN notices, and credible news globally, with the exact quote and primary source link for every entry.';
 
     $schema = array(
         '@context'            => 'https://schema.org',
         '@type'               => 'Dataset',
+        // Stable identity for the dataset entity, so every reference resolves
+        // to one node instead of competing per-URL copies.
+        '@id'                 => $alt_tracker_url . '#dataset',
         'name'                => 'AI Layoff Tracker',
         'alternateName'       => array('AI Layoffs Tracker', 'AI Job Layoff Tracker', 'Job Layoff Tracker', 'Layoff Tracker', 'Layoffs Tracker ' . gmdate('Y')),
         'description'         => $desc,

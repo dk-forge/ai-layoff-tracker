@@ -532,7 +532,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini .alt-barlist { gap: 5px; }
 /* Compact cards show every row inside a short scroll box, so all items are
    reachable without expanding (expanding removes the cap, see .alt-expanded). */
-.alt-mini:not(.alt-expanded) .alt-barlist { max-height: 320px; overflow-y: auto; padding-right: 4px; }
+.alt-mini:not(.alt-expanded) .alt-barlist { max-height: 320px; overflow-y: auto; padding-right: 12px; }
 .alt-mini .alt-barrow { padding: 5px 7px; }
 .alt-mini .alt-barrow-top { margin-bottom: 4px; }
 .alt-mini .alt-barrow-name { font-size: 13px; }
@@ -706,12 +706,33 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 }
 .alt-tap-hint { font-size: 12px; color: var(--alt-muted); white-space: nowrap; }
 .alt-ai-key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #eb6834; vertical-align: baseline; }
-.alt-barlist { display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+/* overflow-x:hidden: setting overflow-y:auto on the scrollable variants below
+   makes the browser compute overflow-x as auto too, which produced a horizontal
+   scrollbar under the bars. These lists scroll vertically only; anything too
+   wide must ellipsize, never bleed sideways. */
+.alt-barlist { display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; overflow-x: hidden; }
 /* A visible, unobtrusive scrollbar: an invisible one reads as "this list is complete". */
 .alt-barlist::-webkit-scrollbar { width: 8px; }
 .alt-barlist::-webkit-scrollbar-thumb { background: var(--alt-border); border-radius: 4px; }
 .alt-barlist::-webkit-scrollbar-track { background: transparent; }
 .alt-barlist { scrollbar-width: thin; }
+/* Collapsed methodology note. Keeps a long caveat available without letting it
+   set the card's height and strand its row-mates beside a block of whitespace. */
+.alt-chart-more { margin-top: 10px; }
+.alt-chart-more > summary {
+    cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12.5px; font-weight: 600; color: var(--alt-ink-2); padding: 3px 0;
+}
+.alt-chart-more > summary::-webkit-details-marker { display: none; }
+.alt-chart-more > summary::before {
+    content: ''; width: 6px; height: 6px; flex: 0 0 auto;
+    border-right: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor;
+    transform: rotate(-45deg); transition: transform .15s ease;
+}
+.alt-chart-more[open] > summary::before { transform: rotate(45deg); }
+.alt-chart-more > summary:focus-visible { outline: 2px solid var(--alt-blue, #2a78d6); outline-offset: 2px; border-radius: 4px; }
+.alt-chart-more > p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--alt-muted); }
+@media (prefers-reduced-motion: reduce) { .alt-chart-more > summary::before { transition: none; } }
 .alt-barrow {
     display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent;
     border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; color: inherit;
@@ -726,7 +747,14 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 /* min-width:0 lets this flex child shrink so the ellipsis actually engages; without
    it a long company name pushes the row past the card edge (mobile bleed). */
 .alt-barrow-name { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 700; color: var(--alt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.alt-barrow-val { font-size: 13.5px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* flex:0 0 auto is load-bearing. The name above has flex-grow:1, so when a row
+   is too wide the browser shrinks BOTH children in proportion to their base
+   size - and the value's base is the larger one, so the value took nearly all
+   the shrink and its nowrap text spilled out of the card while the short name
+   next to it never even ellipsized (jobless-claims card, 2026-07-28: "20,136"
+   rendered as "20,136" clipped mid-glyph). Pinning the value means the name
+   truncates instead, which is the intended behaviour. */
+.alt-barrow-val { flex: 0 0 auto; font-size: 13.5px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .alt-bartrack { position: relative; display: block; height: 9px; border-radius: 6px; background: #e8ebf3; overflow: hidden; }
 .alt-barfill { position: absolute; top: 0; bottom: 0; background: #2a78d6; border-radius: 6px; }
 .alt-barfill-ai { position: absolute; top: 0; bottom: 0; left: 0; background: #eb6834; border-radius: 6px 0 0 6px; }
@@ -1461,7 +1489,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 #alt-table thead th.sorting_asc::after { content: '\2191'; position: absolute; right: 6px; opacity: 1; color: #0072B2; }
 #alt-table thead th.sorting_desc::after { content: '\2193'; position: absolute; right: 6px; opacity: 1; color: #0072B2; }
 /* Expanded bar cards show the long tail and scroll instead of truncating. */
-.alt-expanded .alt-barlist { max-height: 55vh; overflow-y: auto; padding-right: 4px; }
+.alt-expanded .alt-barlist { max-height: 55vh; overflow-y: auto; padding-right: 12px; }
 
 /* ==== Monthly / yearly one-pager report ============================== */
 .alt-report-page { --op-green: #4f7257; }
