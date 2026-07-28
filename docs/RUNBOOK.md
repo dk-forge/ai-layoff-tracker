@@ -42,7 +42,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | foreign-filings | daily 13:30 UTC + manual | EDINET (JP) + OpenDART (KR) filing bodies → extractor (guards reject non-layoffs). Dormant per key. Low yield by design. Inputs: dry_run |
 | recall-precision | weekly + manual | Measures recall (gold set) + count precision + **AI-attribution precision** (quotable-AI-statement rate). Read-only. Inputs: RP_PRECISION_SAMPLE |
 | health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
-| tracker-diff | dormant (`COMPETITOR_FEED_URLS`) | Compares against a private competitor feed to surface gap events. Never stores competitor names |
+| tracker-diff | dormant BY DESIGN (owner decision 2026-07-28) | Optional gap-chase against a private feed. Competitor tracking is handled by the LOCAL benchmark instead; this loop is not needed, exits green on schedule, and nobody should be asked to enable it |
 
 The advisory DeepSeek spot-check inside `data-quality` retries temporary
 network/model failures and writes an explicit warning to the Actions summary
