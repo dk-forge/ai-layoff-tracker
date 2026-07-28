@@ -17,7 +17,8 @@ name: Tracker-diff discovery tripwire
 # URL lives ONLY in the secret; hardcoding it here would name a competitor in
 # the repo.
 #
-# Secrets: COMPETITOR_FEED_URLS (activates it), NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
+# Secrets: COMPETITOR_FEED_URLS or COMPETITOR_COMPANIES (either activates it),
+# NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
 
 on:
   schedule:
@@ -45,6 +46,10 @@ jobs:
         working-directory: railway
         env:
           COMPETITOR_FEED_URLS: ${{ secrets.COMPETITOR_FEED_URLS }}
+          # Inline fallback list — tracker_diff.py reads this when no feed URL
+          # is set (or in addition to it). Without this pass-through the secret
+          # existed but never reached the script.
+          COMPETITOR_COMPANIES: ${{ secrets.COMPETITOR_COMPANIES }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
