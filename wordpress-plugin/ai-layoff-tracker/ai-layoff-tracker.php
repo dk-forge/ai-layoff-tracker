@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.219
+ * Version: 2.19.220
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.219');
+define('ALT_VERSION', '2.19.220');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -641,10 +641,49 @@ add_action('init', 'alt_ensure_press_page_once', 20);
 // The health page is an operations surface for maintainers, deliberately
 // unlinked from the public pages (2026-07-19) and kept out of search.
 function alt_health_page_noindex($robots) {
-    if (is_page('ai-tracker-health')) { $robots['noindex'] = true; $robots['follow'] = true; }
+    if (alt_page_should_be_noindex()) { $robots['noindex'] = true; $robots['follow'] = true; }
     return $robots;
 }
 add_filter('wp_robots', 'alt_health_page_noindex');
+
+/**
+ * Pages that exist for operators or for one moment in a funnel, not for search.
+ *
+ * The health page is a scraper-status dashboard (a "site is degraded" snippet in
+ * a SERP is the worst possible first impression) and newsletter-confirmed is a
+ * post-signup thank-you. Both were live, indexable AND listed in page-sitemap.xml
+ * (audit 2026-07-28).
+ */
+function alt_page_should_be_noindex() {
+    return is_page(array('ai-tracker-health', 'newsletter-confirmed'));
+}
+
+/**
+ * The rule above hooks wp_robots, which is CORE's robots meta. Rank Math and
+ * Yoast REPLACE that output with their own, so on this install the health page
+ * had been serving "follow, index" the whole time despite the filter above
+ * (verified live 2026-07-28). Repeat the decision on their filters, the same
+ * dual-hook pattern used for canonicals elsewhere in this plugin.
+ */
+add_filter('rank_math/frontend/robots', function ($robots) {
+    if (alt_page_should_be_noindex()) { return array('noindex' => 'noindex', 'follow' => 'follow'); }
+    return $robots;
+});
+add_filter('wpseo_robots', function ($robots) {
+    return alt_page_should_be_noindex() ? 'noindex, follow' : $robots;
+});
+// Keep them out of the SEO plugin's sitemap too: a noindex URL sitting in a
+// sitemap is a contradictory signal, and it is what Search Console reports as
+// "Excluded by noindex tag".
+foreach (array('rank_math/sitemap/entry', 'wpseo_sitemap_entry') as $alt_sm_hook) {
+    add_filter($alt_sm_hook, function ($url, $type = '', $object = null) {
+        if (!is_array($url) || empty($url['loc'])) return $url;
+        foreach (array('/ai-tracker-health/', '/newsletter-confirmed/') as $slug) {
+            if (strpos($url['loc'], $slug) !== false) return false;
+        }
+        return $url;
+    }, 10, 3);
+}
 
 function alt_ensure_quarterly_report_page_once() {
     if (get_page_by_path('ai-layoff-tracker/state-of-layoffs')) return;
