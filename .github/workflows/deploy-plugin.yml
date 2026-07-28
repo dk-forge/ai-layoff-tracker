@@ -144,6 +144,22 @@ jobs:
           REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
         run: |
           set -euo pipefail
+          # WordPress maintenance window around the upload. `mirror` overwrites
+          # PHP files IN PLACE on the live site, so mid-upload a half-written or
+          # mismatched file fatals WordPress and every visitor AND crawler gets a
+          # raw HTTP 500. Proven 2026-07-28: the deploy ran 01:14:38-01:15:44 and
+          # the live-API test recorded a 500 at 01:15:21, inside that window;
+          # Google Search Console then reported "Server error (5xx)" for the site.
+          #
+          # Dropping WP's `.maintenance` file first turns that window into a
+          # proper 503 + Retry-After ("briefly unavailable"), which crawlers are
+          # designed to wait out and which never costs an index entry.
+          #
+          # The timestamp is a LITERAL, deliberately: WP ignores the file once
+          # `$upgrading` is over 10 minutes old, so if this job dies mid-flight
+          # the site un-maintenances itself. Writing `time()` instead would make
+          # it permanently "now" and strand the site behind a 503 forever.
+          printf '<?php $upgrading = %s; ?>' "$(date +%s)" > .maintenance
           # --- FTPS (default). For SFTP-over-SSH instead, replace the open line
           #     with:  open -u "$FTP_USER","$FTP_PASSWORD" "sftp://$FTP_HOST"
           #     and drop the three ftp:ssl* lines. ---
@@ -155,12 +171,34 @@ jobs:
             set net:max-retries 1;
             set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            put -O . .maintenance;
             mirror --reverse --delete --verbose \
               --exclude-glob .git* \
               --exclude-glob *.zip \
               wordpress-plugin/ai-layoff-tracker/ \"$REMOTE_DIR\";
+            rm -f .maintenance;
           "
           echo "Deployed wordpress-plugin/ai-layoff-tracker/ to $REMOTE_DIR"
+
+      # Belt and braces: if the mirror above failed partway, `.maintenance` is
+      # still on the server. WP would clear it itself after 10 minutes, but do
+      # not make the site wait that long for a failure we already know about.
+      - name: Always clear the maintenance flag
+        if: always()
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          timeout 60 lftp -c "
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 1;
+            set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            rm -f .maintenance;
+          " || echo "maintenance flag already clear (or unreachable); WP self-clears it after 10 minutes"
 
       - name: Verify the deployed tracker API
         env:
