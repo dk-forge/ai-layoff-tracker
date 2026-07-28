@@ -9,6 +9,32 @@ function alt_company_directory_source_url($url) {
 }
 function alt_company_directory_url($slug) { return home_url('/company-layoffs/' . rawurlencode((string) $slug) . '/'); }
 
+/**
+ * The ONE canonical directory row for a company_key.
+ *
+ * Aliases mean several directory rows can share a company_key ("Meta" and
+ * "Meta Platforms" both key to `meta`). Because the page gathers events BY
+ * company_key, every such row renders byte-identical content at a different
+ * URL — duplicate content that splits ranking signals and looks sloppy to a
+ * reporter. Both were live in the sitemap (audit 2026-07-27).
+ *
+ * The winner is deterministic and stable: approved outranks noindex, then the
+ * shortest slug (the plain brand name, "meta" over "meta-platforms"), then the
+ * lowest id as a final tiebreak so the choice never flips between requests.
+ */
+function alt_company_directory_canonical_slug($company_key) {
+    global $wpdb;
+    $company_key = (string) $company_key;
+    if ($company_key === '') return '';
+    $directory = alt_company_directory_table();
+    $slug = $wpdb->get_var($wpdb->prepare(
+        "SELECT slug FROM $directory
+         WHERE company_key = %s AND review_status IN ('approved','noindex')
+         ORDER BY (review_status = 'approved') DESC, CHAR_LENGTH(slug) ASC, id ASC
+         LIMIT 1", $company_key));
+    return (string) $slug;
+}
+
 function alt_company_directory_data($slug) {
     global $wpdb;
     $slug = sanitize_title((string) $slug);
@@ -62,6 +88,28 @@ function alt_company_directory_current() {
     $GLOBALS['alt_company_directory_current'] = alt_company_directory_data(get_query_var('alt_company_layoffs_slug'));
     return $GLOBALS['alt_company_directory_current'];
 }
+
+/**
+ * Send an alias URL to the canonical one with a 301, so duplicates consolidate
+ * instead of competing. Runs on `template_redirect` (before output), and only
+ * when the requested slug is genuinely a non-canonical alias of a real row.
+ */
+function alt_company_directory_redirect_aliases() {
+    if (!alt_company_directory_is_request()) return;
+    global $wpdb;
+    $slug = sanitize_title((string) get_query_var('alt_company_layoffs_slug'));
+    if ($slug === '') return;
+    $directory = alt_company_directory_table();
+    $key = $wpdb->get_var($wpdb->prepare(
+        "SELECT company_key FROM $directory WHERE slug = %s AND review_status IN ('approved','noindex') LIMIT 1", $slug));
+    if (!$key) return;
+    $canonical = alt_company_directory_canonical_slug($key);
+    if ($canonical && $canonical !== $slug) {
+        wp_safe_redirect(alt_company_directory_url($canonical), 301);
+        exit;
+    }
+}
+add_action('template_redirect', 'alt_company_directory_redirect_aliases', 1);
 
 function alt_company_directory_register_route() { add_rewrite_rule('^company-layoffs/([^/]+)/?$', 'index.php?alt_company_layoffs_slug=$matches[1]', 'top'); }
 add_action('init', 'alt_company_directory_register_route', 1);
@@ -138,14 +186,18 @@ function alt_company_directory_indexable_urls() {
     if (is_array($cached)) return $cached;
     $directory = alt_company_directory_table();
     $layoffs = alt_db_table(); $events = alt_events_table(); $reports = alt_source_reports_table();
+    // GROUP BY company_key so an alias pair contributes ONE url. The picked
+    // slug matches alt_company_directory_canonical_slug()'s ordering, so the
+    // sitemap and the 301 target can never disagree.
     $slugs = $wpdb->get_col(
-        "SELECT d.slug FROM $directory d
+        "SELECT SUBSTRING_INDEX(GROUP_CONCAT(d.slug ORDER BY CHAR_LENGTH(d.slug) ASC, d.id ASC), ',', 1) AS slug
+         FROM $directory d
          WHERE d.review_status = 'approved' AND (
              SELECT COUNT(*) FROM $layoffs l
              INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
              WHERE l.company_key = d.company_key AND l.event_id > 0
              AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
-         ) >= 2 ORDER BY d.slug ASC") ?: array();
+         ) >= 2 GROUP BY d.company_key ORDER BY slug ASC") ?: array();
     $urls = array_map('alt_company_directory_url', $slugs);
     set_transient($cache_key, $urls, 15 * MINUTE_IN_SECONDS);
     return $urls;
