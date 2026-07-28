@@ -56,6 +56,14 @@ class DedupLiveRegression(unittest.TestCase):
                 t = _agg(q=q, country="United States", country_basis="any", years=year)
                 break
             except urllib.error.HTTPError as e:
+                # 503 is WordPress's own maintenance response, which the deploy
+                # workflow raises deliberately for the seconds it takes to upload
+                # the plugin (added 2026-07-28 so crawlers see a wait-and-retry
+                # instead of a mid-upload fatal). A CI run that overlaps a deploy
+                # is not a data regression, and failing on it would train us to
+                # ignore this guard. Every OTHER 4xx/5xx still fails loudly.
+                if e.code == 503:
+                    self.skipTest("site is in its deploy maintenance window (HTTP 503)")
                 if e.code >= 500 and attempt == 0:
                     last = e
                     continue          # one retry: shared host 5xx blips are real
