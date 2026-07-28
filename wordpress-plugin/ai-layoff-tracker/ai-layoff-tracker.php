@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.214
+ * Version: 2.19.215
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.214');
+define('ALT_VERSION', '2.19.215');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1039,10 +1039,17 @@ function alt_live_numbers() {
         global $wpdb;
         $t = alt_db_table();
         $y = (int) gmdate('Y');
+        // The copy built from this row says "verified ... so far": announced-tier
+        // rows are excluded (the FAQ itself promises they are never mixed into
+        // verified totals), and future-dated effective dates (WARN files ahead)
+        // don't count toward "so far". Keeps this answer consistent with the
+        // press page's documented-floor figure for the same window.
         $row = $wpdb->get_row($wpdb->prepare(
             "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                     COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
-             FROM $t WHERE superset_of = 0 AND YEAR(layoff_date) = %d", $y));
+             FROM $t WHERE superset_of = 0 AND announced = 0
+               AND YEAR(layoff_date) = %d AND layoff_date <= %s",
+            $y, gmdate('Y-m-d')));
         // MIN(layoff_date) is guarded against the sentinel/zero dates that a bad
         // parse can leave behind, so the published coverage start is a real event.
         $all = $wpdb->get_row(
