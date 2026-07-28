@@ -156,7 +156,7 @@ function alt_report_period_stats($from, $to, $us_only = false) {
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
                 COALESCE(SUM(job_count),0) all_jobs,
                 COUNT(DISTINCT NULLIF(country,'')) countries
-         FROM $t WHERE layoff_date BETWEEN %s AND %s$geo", $from, $to), ARRAY_A);
+         FROM $t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s$geo", $from, $to), ARRAY_A);
 }
 } // end function_exists guard
 
@@ -181,19 +181,19 @@ $alt_ai_pct = $alt_v > 0 ? round(100 * $alt_ai_v / max(1, $alt_v)) : 0;
 
 $alt_largest = $wpdb->get_results($wpdb->prepare(
     "SELECT company, job_count, layoff_date, country, state, ai_explicit
-     FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0$alt_geo
+     FROM $alt_t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND job_count > 0$alt_geo
      ORDER BY job_count DESC, id DESC LIMIT 5", $alt_from, $alt_to), ARRAY_A) ?: array();
 // AI attributions for this period, WITH the employer's exact words. This is the
 // receipt behind the "blamed on AI" number: a reader sees the actual sentence,
 // the tier, and a link to the source. Verified tier, quote present, biggest first.
 $alt_ai_quotes = $wpdb->get_results($wpdb->prepare(
     "SELECT company, job_count, layoff_date, country, state, ai_language, ai_causation, source_url
-     FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND ai_explicit = 1 AND announced = 0
+     FROM $alt_t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND ai_explicit = 1 AND announced = 0
        AND ai_language <> ''$alt_geo
      ORDER BY job_count DESC, id DESC LIMIT 40", $alt_from, $alt_to), ARRAY_A) ?: array();
 $alt_inds = $wpdb->get_results($wpdb->prepare(
     "SELECT industry, COALESCE(SUM(job_count),0) j FROM $alt_t
-     WHERE layoff_date BETWEEN %s AND %s AND industry <> ''$alt_geo
+     WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND industry <> ''$alt_geo
      GROUP BY industry ORDER BY j DESC LIMIT 5", $alt_from, $alt_to), ARRAY_A) ?: array();
 $alt_ind_max = 0; foreach ($alt_inds as $i) { $alt_ind_max = max($alt_ind_max, (int) $i['j']); }
 
@@ -203,14 +203,14 @@ if ($alt_is_year) {
     $alt_top_co = $wpdb->get_results($wpdb->prepare(
         "SELECT company, COALESCE(SUM(job_count),0) j, COUNT(*) n,
                 MAX(ai_explicit) any_ai
-         FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND company <> ''$alt_geo
+         FROM $alt_t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND company <> ''$alt_geo
          GROUP BY company ORDER BY j DESC LIMIT 8", $alt_from, $alt_to), ARRAY_A) ?: array();
     $alt_top_co_max = 0; foreach ($alt_top_co as $c) { $alt_top_co_max = max($alt_top_co_max, (int) $c['j']); }
     $rows = $wpdb->get_results($wpdb->prepare(
         "SELECT MONTH(layoff_date) m,
                 COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai
-         FROM $alt_t WHERE layoff_date BETWEEN %s AND %s$alt_geo
+         FROM $alt_t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s$alt_geo
          GROUP BY MONTH(layoff_date)", $alt_from, $alt_to), ARRAY_A) ?: array();
     $by_m = array(); foreach ($rows as $r) { $by_m[(int) $r['m']] = $r; }
     $m_hi = ($alt_y === (int) gmdate('Y')) ? (int) gmdate('n') : 12;

@@ -37,10 +37,13 @@ if (!is_array($alt_sb_groups)) {
         // broad AI-linked measure (matches the ai_broad_jobs aggregate exactly:
         // ai_explicit OR ai_causation='ai_linked'). Both AI measures share the
         // verified-tier (announced=0) denominator so their percentages compare.
+        // superset_of=0: without it the headline counted rollup rows AND their
+        // members (+25,242 on the 2026 floor, audit 2026-07-28), contradicting
+        // the API and the FAQ on the same site.
         $sql = "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
                        COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) aiv,
                        COALESCE(SUM(CASE WHEN (ai_explicit=1 OR ai_causation='ai_linked') AND announced=0 THEN job_count END),0) aib
-                FROM $alt_t WHERE layoff_date BETWEEN %s AND %s";
+                FROM $alt_t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s";
         $a = array($from, $to); if ($cty !== '') { $sql .= " AND country = %s"; $a[] = $cty; }
         return $wpdb->get_row($wpdb->prepare($sql, $a));
     };
@@ -143,7 +146,7 @@ if (!is_array($alt_ps)) {
         "SELECT COALESCE(SUM(CASE WHEN ai_causation='primary_cause' AND announced=0 THEN job_count END),0) t1,
                 COALESCE(SUM(CASE WHEN ai_causation='contributing_cause' AND announced=0 THEN job_count END),0) t2,
                 COALESCE(SUM(CASE WHEN ai_causation='ai_linked' AND announced=0 THEN job_count END),0) t3
-         FROM $alt_pt WHERE YEAR(layoff_date) = " . (int) gmdate('Y'));
+         FROM $alt_pt WHERE superset_of=0 AND YEAR(layoff_date) = " . (int) gmdate('Y'));
 
     // One period's figures.
     $alt_pstats = function ($from, $to) use ($wpdb, $alt_pt) {
@@ -152,19 +155,19 @@ if (!is_array($alt_ps)) {
                     COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) a,
                     COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai,
                     COUNT(DISTINCT CASE WHEN announced=0 THEN company_key END) co
-             FROM $alt_pt WHERE layoff_date BETWEEN %s AND %s", $from, $to));
+             FROM $alt_pt WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s", $from, $to));
     };
     $alt_ptopcol = function ($col, $from, $to, $ai_only) use ($wpdb, $alt_pt) {
         $extra = $ai_only ? " AND ai_explicit=1" : "";
         return $wpdb->get_row($wpdb->prepare(
             "SELECT $col k, SUM(job_count) j FROM $alt_pt
-             WHERE layoff_date BETWEEN %s AND %s AND $col <> '' AND announced=0 $extra
+             WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND $col <> '' AND announced=0 $extra
              GROUP BY $col ORDER BY j DESC LIMIT 1", $from, $to));
     };
     $alt_pbig = function ($from, $to) use ($wpdb, $alt_pt) {
         return $wpdb->get_row($wpdb->prepare(
             "SELECT company, job_count, country FROM $alt_pt
-             WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND job_count > 0
+             WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND announced=0 AND job_count > 0
              ORDER BY job_count DESC, id DESC LIMIT 1", $from, $to));
     };
     $alt_stn = array('AL'=>'Alabama','AK'=>'Alaska','AZ'=>'Arizona','AR'=>'Arkansas','CA'=>'California','CO'=>'Colorado','CT'=>'Connecticut','DE'=>'Delaware','DC'=>'Washington, D.C.','FL'=>'Florida','GA'=>'Georgia','HI'=>'Hawaii','ID'=>'Idaho','IL'=>'Illinois','IN'=>'Indiana','IA'=>'Iowa','KS'=>'Kansas','KY'=>'Kentucky','LA'=>'Louisiana','ME'=>'Maine','MD'=>'Maryland','MA'=>'Massachusetts','MI'=>'Michigan','MN'=>'Minnesota','MS'=>'Mississippi','MO'=>'Missouri','MT'=>'Montana','NE'=>'Nebraska','NV'=>'Nevada','NH'=>'New Hampshire','NJ'=>'New Jersey','NM'=>'New Mexico','NY'=>'New York','NC'=>'North Carolina','ND'=>'North Dakota','OH'=>'Ohio','OK'=>'Oklahoma','OR'=>'Oregon','PA'=>'Pennsylvania','RI'=>'Rhode Island','SC'=>'South Carolina','SD'=>'South Dakota','TN'=>'Tennessee','TX'=>'Texas','UT'=>'Utah','VT'=>'Vermont','VA'=>'Virginia','WA'=>'Washington','WV'=>'West Virginia','WI'=>'Wisconsin','WY'=>'Wyoming');
