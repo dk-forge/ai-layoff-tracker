@@ -27,6 +27,7 @@ import re
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 import requests
@@ -57,15 +58,92 @@ DISCOVERY_QUERIES = (
 )
 
 
+# ---------------------------------------------------------------------------
+# NATIONAL EDITIONS. Google News runs per-country editions: the SAME query
+# against a different edition returns that country's outlets, in that country's
+# language. Until 2026-07-27 this collector only ever read the US edition
+# (hl=en-US&gl=US&ceid=US:en), so a worldwide layoff tracker was reading
+# US headlines only -- free coverage left on the table.
+#
+# BUDGET-NEUTRAL: MAX_ITEMS still caps the whole run, so rotating editions
+# changes WHICH articles we see, not HOW MANY we extract. Cost is unchanged.
+#
+# Curated for layoff coverage: the largest economies plus the markets where our
+# WARN/ERM feeds do not reach. Rotated a few per run (deterministic by day) so
+# the whole list is swept over ~2 weeks.
+GOOGLE_NEWS_LOCALES = (
+    ("US", "en-US", "US", "US:en"),
+    ("GB", "en-GB", "GB", "GB:en"),
+    ("CA", "en-CA", "CA", "CA:en"),
+    ("AU", "en-AU", "AU", "AU:en"),
+    ("IE", "en-IE", "IE", "IE:en"),
+    ("IN", "en-IN", "IN", "IN:en"),
+    ("SG", "en-SG", "SG", "SG:en"),
+    ("ZA", "en-ZA", "ZA", "ZA:en"),
+    ("PH", "en-PH", "PH", "PH:en"),
+    ("MY", "en-MY", "MY", "MY:en"),
+    ("DE", "de", "DE", "DE:de"),
+    ("AT", "de", "AT", "AT:de"),
+    ("CH", "de", "CH", "CH:de"),
+    ("FR", "fr", "FR", "FR:fr"),
+    ("BE", "nl", "BE", "BE:nl"),
+    ("NL", "nl", "NL", "NL:nl"),
+    ("IT", "it", "IT", "IT:it"),
+    ("ES", "es", "ES", "ES:es"),
+    ("PT", "pt-PT", "PT", "PT:pt-150"),
+    ("SE", "sv", "SE", "SE:sv"),
+    ("NO", "no", "NO", "NO:no"),
+    ("DK", "da", "DK", "DK:da"),
+    ("FI", "fi-FI", "FI", "FI:fi"),
+    ("PL", "pl", "PL", "PL:pl"),
+    ("CZ", "cs", "CZ", "CZ:cs"),
+    ("RO", "ro", "RO", "RO:ro"),
+    ("HU", "hu", "HU", "HU:hu"),
+    ("TR", "tr", "TR", "TR:tr"),
+    ("BR", "pt-BR", "BR", "BR:pt-419"),
+    ("MX", "es-419", "MX", "MX:es-419"),
+    ("AR", "es-419", "AR", "AR:es-419"),
+    ("CL", "es-419", "CL", "CL:es-419"),
+    ("CO", "es-419", "CO", "CO:es-419"),
+    ("JP", "ja", "JP", "JP:ja"),
+    ("KR", "ko", "KR", "KR:ko"),
+    ("TW", "zh-TW", "TW", "TW:zh-Hant"),
+    ("HK", "zh-HK", "HK", "HK:zh-Hant"),
+    ("TH", "th", "TH", "TH:th"),
+    ("VN", "vi", "VN", "VN:vi"),
+    ("ID", "en-ID", "ID", "ID:en"),
+    ("IL", "en-IL", "IL", "IL:en"),
+    ("AE", "ar", "AE", "AE:ar"),
+    ("NG", "en-NG", "NG", "NG:en"),
+    ("KE", "en-KE", "KE", "KE:en"),
+    ("NZ", "en-NZ", "NZ", "NZ:en"),
+)
+# Editions per run beyond the always-on US edition. 0 disables rotation.
+LOCALES_PER_RUN = max(0, min(8, int(os.environ.get("GOOGLE_NEWS_LOCALES_PER_RUN", "4"))))
+
+
+def _locales_for_now():
+    """US always, plus a deterministic rotating slice of the rest."""
+    us = GOOGLE_NEWS_LOCALES[0]
+    rest = GOOGLE_NEWS_LOCALES[1:]
+    if not LOCALES_PER_RUN or not rest:
+        return [us]
+    now = datetime.now(timezone.utc)
+    run_of_day = 0 if now.hour < 17 else 1
+    start = ((now.timetuple().tm_yday * 2 + run_of_day) * LOCALES_PER_RUN) % len(rest)
+    picked = [rest[(start + i) % len(rest)] for i in range(LOCALES_PER_RUN)]
+    return [us] + picked
+
+
 def _clean(text):
     """Strip tags/entities, collapse whitespace."""
     text = re.sub(r"<[^>]+>", " ", text or "")
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
-def _rss_url(query):
+def _rss_url(query, hl="en-US", gl="US", ceid="US:en"):
     return f"{RSS}?" + urllib.parse.urlencode(
-        {"q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"})
+        {"q": query, "hl": hl, "gl": gl, "ceid": ceid})
 
 
 def _iso_date(pubdate):
@@ -119,18 +197,30 @@ def pull_google_news(queries=None, company_names=None):
         if c:
             qs.insert(0, f'"{c}" (layoffs OR "job cuts" OR "lays off" OR restructuring)')
 
+    # Each query runs against the US edition plus a rotating slice of national
+    # editions, so the same vocabulary surfaces LOCAL outlets in local languages.
+    # Company-targeted queries (inserted at the front) stay US-only: a chase is
+    # for one named employer, and fanning it across editions would spend the cap
+    # on duplicates of the same story.
+    locales = _locales_for_now()
+    n_company = len([c for c in (company_names or []) if str(c or "").strip()])
+    jobs = []
+    for i, q in enumerate(qs):
+        for loc in ([locales[0]] if i < n_company else locales):
+            jobs.append((q, loc))
+
     results, seen = [], set()
     errors = 0
-    # Per-query slice: every query gets a fair share of the global cap, so a
-    # later query (the euphemism sweep, a company chase) can never be starved
-    # by an earlier broad one returning ~100 items.
-    per_q = max(15, MAX_ITEMS // max(1, len(qs)))
-    for q in qs:
+    # Per-job slice: every (query, edition) pair gets a fair share of the global
+    # cap, so a later job (the euphemism sweep, a company chase, a non-US
+    # edition) can never be starved by an earlier one returning ~100 items.
+    per_q = max(8, MAX_ITEMS // max(1, len(jobs)))
+    for q, loc in jobs:
         if len(results) >= MAX_ITEMS:
             break
         taken_this_q = 0
         try:
-            r = requests.get(_rss_url(q), headers=UA, timeout=30)
+            r = requests.get(_rss_url(q, loc[1], loc[2], loc[3]), headers=UA, timeout=30)
             if r.status_code != 200:
                 errors += 1
                 pull_google_news.last_error = f"HTTP {r.status_code}"
@@ -173,9 +263,10 @@ def pull_google_news(queries=None, company_names=None):
 
     # A run where every query errored (and nothing came back) is a real outage,
     # not a quiet day — surface it.
-    if errors and errors == len(qs) and not results:
+    if errors and errors == len(jobs) and not results:
         pull_google_news.last_error = pull_google_news.last_error or "all queries failed"
-    print(f"Google News: {len(results)} unique items across {len(qs)} queries"
+    print(f"Google News: {len(results)} unique items across {len(qs)} queries "
+          f"x {len(locales)} edition(s) [{', '.join(l[0] for l in locales)}]"
           + (f" ({errors} query error(s))" if errors else ""))
     return results
 
