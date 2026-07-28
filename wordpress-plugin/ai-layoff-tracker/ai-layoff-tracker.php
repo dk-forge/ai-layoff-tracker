@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.217
+ * Version: 2.19.218
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.217');
+define('ALT_VERSION', '2.19.218');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -333,6 +333,7 @@ register_deactivation_hook(__FILE__, 'alt_deactivate');
  * this and clears the whole page cache.)
  */
 function alt_flush_caches_on_deploy() {
+    global $wpdb;
     if (get_option('alt_deployed_version') === ALT_VERSION) return;
     update_option('alt_deployed_version', ALT_VERSION, false);
 
@@ -379,6 +380,28 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('wp_cache_flush')) {
         wp_cache_flush();                     // object cache, harmless otherwise
     }
+    // The SEO plugin caches its sitemap INDEX, so a sitemap this plugin newly
+    // appends to that index stays invisible until the cache turns over. Found
+    // 2026-07-28: /layoff-reports-sitemap.xml served 200 with 62 URLs while
+    // sitemap_index.xml still listed only the older set, so nothing in the
+    // report archive was discoverable. Invalidate through the plugin's own API
+    // where it exists, then sweep the transients directly, because the class
+    // and method names have moved between Rank Math versions and a missed
+    // rename must not silently skip the flush.
+    if (class_exists('\RankMath\Sitemap\Cache')
+        && method_exists('\RankMath\Sitemap\Cache', 'invalidate_storage')) {
+        \RankMath\Sitemap\Cache::invalidate_storage();
+    }
+    if (class_exists('\RankMath\Sitemap\Cache_Watcher')
+        && method_exists('\RankMath\Sitemap\Cache_Watcher', 'invalidate_storage')) {
+        \RankMath\Sitemap\Cache_Watcher::invalidate_storage();
+    }
+    $wpdb->query(
+        "DELETE FROM $wpdb->options
+         WHERE option_name LIKE '\_transient\_rank\_math\_sitemap%'
+            OR option_name LIKE '\_transient\_timeout\_rank\_math\_sitemap%'
+            OR option_name LIKE '\_transient\_wpseo\_sitemap%'
+            OR option_name LIKE '\_transient\_timeout\_wpseo\_sitemap%'");
     // Compact the historical wall of identical automated-enrichment log rows
     // into single accumulating entries (idempotent).
     if (function_exists('alt_compact_corrections_log')) alt_compact_corrections_log();
