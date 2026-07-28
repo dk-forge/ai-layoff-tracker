@@ -324,6 +324,14 @@ def main():
             _expected_g = [s for s in _expected_g if s.upper() not in _CUSTOM]
         except Exception:
             pass
+        try:
+            # NM (and now KS) are served by warn_new_states scrapers; the
+            # generic tier is redundant backup for them, so a generic zero is
+            # not drift (F22, audit 2026-07-28 — NM was still crying wolf).
+            from sources.warn_new_states import NEW_CUSTOM_STATES as _NEWC
+            _expected_g = [s for s in _expected_g if s.upper() not in _NEWC]
+        except Exception:
+            pass
         # Also drop states the generic tier is NOT responsible for:
         #   * HI has its own OCR collector (warn_hi_ocr) and no ordinary register.
         #   * AR / WY / NH publish no public register at all.

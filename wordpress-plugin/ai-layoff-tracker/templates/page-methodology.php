@@ -19,6 +19,7 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <a href="#m-sources">Where the data comes from</a> ·
     <a href="#m-extract">Extraction &amp; checks</a> ·
     <a href="#m-ai">How the AI tag works</a> ·
+    <a href="#m-reasons">Reason tags</a> ·
     <a href="#m-roles">Roles most impacted</a> ·
     <a href="#m-coverage">Coverage &amp; limits</a> ·
     <a href="#m-differ">Why our totals differ</a> ·
@@ -48,6 +49,11 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
   <section class="alt-method-sec" id="m-extract">
     <h2>How entries are extracted and checked</h2>
     <p>Discovery searches a dialect-aware vocabulary (layoffs, redundancies, retrenchment, dismissals, sackings, workforce reduction and more than thirty other phrasings) across GDELT's 65-language translated index, so coverage that never uses the word "layoff" still surfaces. News and filings are machine-extracted; core facts must appear in the source text. Counts parse conservatively (ranges resolve to the lower bound). Countries and industries normalize through fixed vocabularies; implausible values are rejected. New records carry an evidence confidence and publication status. Exact fingerprints, same-company guards and cross-source comparison prevent double counting; uncertain candidates remain provisional instead of silently inflating verified totals. WARN filings skip the language model and remain exempt from fuzzy dedup because one employer can legally file several distinct notices.</p>
+  </section>
+
+  <section class="alt-method-sec" id="m-reasons">
+    <h2>Reason tags</h2>
+    <p>Each event can carry one or more reason tags, assigned only when the stored source text explicitly supports them; an event whose source states no reason stays untagged rather than guessed. The fixed vocabulary: <b>AI: company-stated</b> (employer names AI/automation, quote on file), <b>AI-linked (broad)</b> (press ties the cuts to AI without the employer saying it), <b>Revenue decline</b>, <b>Restructuring</b>, <b>Merger / acquisition</b>, <b>Offshoring</b>, <b>Product discontinued</b>, <b>Cost reduction</b>, <b>Macroeconomic</b>, <b>Plant / site closure</b>, <b>Bankruptcy / insolvency</b>, and <b>Government / public sector</b> (public-sector workforce actions such as federal reductions in force; a private contractor losing government work does not qualify). Tags are filterable on the tracker and returned in the API as <code>reason_tags</code>.</p>
   </section>
 
   <section class="alt-method-sec" id="m-ai">

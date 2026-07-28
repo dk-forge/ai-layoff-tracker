@@ -26,7 +26,7 @@ $alt_letter = isset($_GET['letter']) && preg_match('/^[A-Z]$/', strtoupper((stri
 
 // Require a real quote (>=8 non-space chars), so a stray/empty ai_language never
 // renders as bare "" on this page (the whole page's promise is a verbatim quote).
-$where = array("ai_explicit = 1", "CHAR_LENGTH(TRIM(ai_language)) >= 8");
+$where = array("ai_explicit = 1", "superset_of = 0", "CHAR_LENGTH(TRIM(ai_language)) >= 8");
 $params = array();
 if ($alt_year)    { $where[] = "YEAR(layoff_date) = %d"; $params[] = $alt_year; }
 if ($alt_ind)     { $where[] = "industry = %s"; $params[] = $alt_ind; }

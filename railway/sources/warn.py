@@ -202,7 +202,10 @@ def _count(s):
 # earlier version of this list (IL and PA are top-5 layoff states!).
 ALL_STATES = [
     "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
-    "IL", "IN", "KS", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
+    "IL", "IN", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
+    # KS moved to warn_new_states.fetch_ks (2026-07-28): the open scraper walks
+    # the ENTIRE kansasworks history and started timing out (420s, every run),
+    # leaving Kansas dark since ~May. The bounded custom fetcher replaces it.
     "NJ", "NM", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
     "VA", "VT", "WI",
     # WA and KY moved to custom scrapers (warn_new_states.fetch_wa /

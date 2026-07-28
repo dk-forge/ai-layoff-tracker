@@ -53,7 +53,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
-          WATCHLIST_BATCH: ${{ github.event.inputs.batch || '60' }}
+          WATCHLIST_BATCH: ${{ github.event.inputs.batch || '150' }}  # 60 -> 150 (2026-07-28): per-company checks are free API reads; 60/day meant a 157-day rotation over the 9,397-company universe
           WATCHLIST_DRY_RUN: ${{ github.event.inputs.dry_run }}
           WATCHLIST_DEADLINE_SECONDS: '1500'
         run: python company_watchlist.py

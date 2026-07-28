@@ -65,6 +65,13 @@ def run():
             report_source_health("gdelt_historical", "running", 0, f"window {label}: collection in progress")
             remaining = max_articles - considered if max_articles else 250
             entries = pull_gdelt_between(w_start, w_end, max_records=min(250, remaining))
+            # Same-URL re-reads cost LLM tokens and yield nothing new; the
+            # shared pre-check drops them before extraction (fails open).
+            try:
+                from seen_urls import filter_already_seen
+                entries = filter_already_seen(entries)
+            except Exception:
+                pass
             report_source_health("gdelt_historical", "ok", len(entries), f"window {label}")
         except Exception as exc:
             report_source_health("gdelt_historical", "degraded", 0, f"window {label}: {exc}")

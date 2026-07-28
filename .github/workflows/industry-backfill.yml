@@ -18,10 +18,14 @@ on:
     # and makes no model calls, so leaving this on does not keep costing money -
     # it just runs more often than needed. Revert to the cheap trickle with:
     #   cron -> '55 4 * * *'   |   matrix shard -> [0]   |   INDUSTRY_SHARDS -> '1'
-    # HOURLY for the pre-launch close: 8 shards x 200 rows x 24 runs = the whole
-    # 20,955-row backlog labels in ~13 hours. Self-limiting as before: an empty
-    # backlog run makes zero model calls.
-    - cron: '55 * * * *'
+    # SPRINT ENDED 2026-07-28. The 20,955-row backlog is drained; what remains is
+    # ~400 rows where the two passes DISAGREE, and a disagreement writes NO
+    # marker, so those rows re-enter the queue forever. The "self-limiting"
+    # premise above is FALSE for that residue: measured 2026-07-28, the hourly
+    # sprint was re-classifying 1,423 rows/run (99.7% identical hour to hour,
+    # 0.2% yield) = ~68,000 LLM calls/day ~= $7/day for ~3 fills. Reverted to
+    # the daily trickle per the instructions above.
+    - cron: '55 4 * * *'
   workflow_dispatch:
     inputs:
       batch:
@@ -58,7 +62,7 @@ jobs:
       # improve as it drains (see fetch_candidates). Drop back to [0] after.
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        shard: [0]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -72,7 +76,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INDUSTRY_BACKFILL_BATCH: ${{ github.event.inputs.batch || '200' }}
           INDUSTRY_SHARD: ${{ matrix.shard }}
-          INDUSTRY_SHARDS: '8'
+          INDUSTRY_SHARDS: '1'
           INDUSTRY_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
           INDUSTRY_BACKFILL_SINGLE_PASS: ${{ github.event.inputs.single_pass || '' }}
           # Stops safely between rows well below the job timeout; the daily

@@ -2339,10 +2339,10 @@ function alt_basis_table_html($country = 'United States', $year = null) {
     <table class="alt-basis-table">
       <thead><tr><th>Counting basis</th><th><?php echo esc_html($c['country'] . ' ' . $c['year']); ?></th><th>What it counts</th></tr></thead>
       <tbody>
-        <tr><th>Job location <span class="alt-muted">(our published headline)</span></th>
+        <tr><th>Job location <span class="alt-muted">(verified + announced, as the tracker's location totals count)</span></th>
             <td><b><?php echo esc_html($f($c['job_location'])); ?></b></td>
             <td>Only jobs physically located in <?php echo esc_html($c['country']); ?>. The stricter, more conservative basis, so a global figure can never inflate it.</td></tr>
-        <tr><th>Employer basis <span class="alt-muted">(for like-for-like comparison)</span></th>
+        <tr><th>Employer basis <span class="alt-muted">(verified + announced, for like-for-like survey comparison)</span></th>
             <td><b><?php echo esc_html($f($c['employer_any'])); ?></b></td>
             <td>Job location <em>or</em> employer domicile, so a <?php echo esc_html($c['country']); ?>-headquartered employer's multi-country cut is included. This is how announcement surveys count, so it is the only fair basis to compare us against one.</td></tr>
         <tr><th>Difference</th>

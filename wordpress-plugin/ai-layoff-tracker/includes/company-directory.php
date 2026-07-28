@@ -12,6 +12,14 @@ function alt_company_directory_url($slug) { return home_url('/company-layoffs/' 
 /**
  * The ONE canonical directory row for a company_key.
  *
+ * SCOPE (audit 2026-07-28): the directory table carries UNIQUE KEY company_key,
+ * so two rows can never share a key TODAY - this helper and the 301 below are
+ * a guard for the day that constraint is relaxed or bypassed, not a fix for
+ * the observed Meta/Meta-Platforms pair. That pair holds two DIFFERENT stale
+ * keys (layoff rows keep the company_key computed at write time; nothing
+ * re-normalizes history when an alias is added), so merging it requires the
+ * entity re-key repair tracked in HANDOFF.md, not URL canonicalisation.
+ *
  * Aliases mean several directory rows can share a company_key ("Meta" and
  * "Meta Platforms" both key to `meta`). Because the page gathers events BY
  * company_key, every such row renders byte-identical content at a different
@@ -104,8 +112,19 @@ function alt_company_directory_redirect_aliases() {
         "SELECT company_key FROM $directory WHERE slug = %s AND review_status IN ('approved','noindex') LIMIT 1", $slug));
     if (!$key) return;
     $canonical = alt_company_directory_canonical_slug($key);
+    // Loop guard: if a row ever lands with an unsanitised slug (manual insert,
+    // import), redirecting to it would bounce forever between the sanitised
+    // request and the raw stored value. Never redirect to a slug that does not
+    // round-trip sanitize_title() unchanged.
+    if ($canonical !== sanitize_title($canonical)) return;
     if ($canonical && $canonical !== $slug) {
-        wp_safe_redirect(alt_company_directory_url($canonical), 301);
+        $target = alt_company_directory_url($canonical);
+        // Keep the inbound query string (utm_* etc.) - the redirect exists to
+        // consolidate referral traffic, so dropping attribution defeats it.
+        if (!empty($_SERVER['QUERY_STRING'])) {
+            $target .= '?' . sanitize_text_field(wp_unslash($_SERVER['QUERY_STRING']));
+        }
+        wp_safe_redirect($target, 301);
         exit;
     }
 }
@@ -190,14 +209,14 @@ function alt_company_directory_indexable_urls() {
     // slug matches alt_company_directory_canonical_slug()'s ordering, so the
     // sitemap and the 301 target can never disagree.
     $slugs = $wpdb->get_col(
-        "SELECT SUBSTRING_INDEX(GROUP_CONCAT(d.slug ORDER BY CHAR_LENGTH(d.slug) ASC, d.id ASC), ',', 1) AS slug
+        "SELECT SUBSTRING_INDEX(GROUP_CONCAT(d.slug ORDER BY CHAR_LENGTH(d.slug) ASC, d.id ASC), ',', 1) AS canon_slug
          FROM $directory d
          WHERE d.review_status = 'approved' AND (
              SELECT COUNT(*) FROM $layoffs l
              INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
              WHERE l.company_key = d.company_key AND l.event_id > 0
              AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
-         ) >= 2 GROUP BY d.company_key ORDER BY slug ASC") ?: array();
+         ) >= 2 GROUP BY d.company_key ORDER BY canon_slug ASC") ?: array();
     $urls = array_map('alt_company_directory_url', $slugs);
     set_transient($cache_key, $urls, 15 * MINUTE_IN_SECONDS);
     return $urls;

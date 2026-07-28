@@ -66,7 +66,7 @@ def _entry(agency, jobs, date, yyyymm):
         "state": "",
         "roles": None,
         "excerpt": excerpt,
-        "reason_tags": ["restructuring"],
+        "reason_tags": ["federal_workforce"],  # was restructuring; the Government/public-sector filter returned ZERO rows from the one collector built for it (F21). /bulk field-updates on hash match, so the next monthly import re-tags existing rows in place.,
         "ai_explicit": False,
         "ai_language": None,
         "source_url": SOURCE_URL,

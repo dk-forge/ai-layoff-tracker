@@ -109,7 +109,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Google News</b></td><td>Worldwide</td>
-        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. Read across <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more), so each market is searched in its own language and its own outlets rather than through a US lens. Same trusted-outlet standard, twice daily.</td>
+        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. Read across <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more), so each market is searched in its own language and its own outlets rather than through a US lens. Same trusted-outlet standard; editions rotate across the twice-daily runs so the full set is swept about every six days.</td>
         <td>Verified (named report)</td>
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>

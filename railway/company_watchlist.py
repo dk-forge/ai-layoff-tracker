@@ -162,6 +162,11 @@ def run():
         chunk = missing[i:i + 20]
         try:
             entries = pull_news_articles(days_back=DAYS_BACK, queries=[query_for(c) for c in chunk])
+            try:
+                from seen_urls import filter_already_seen
+                entries = filter_already_seen(entries)
+            except Exception:
+                pass
         except Exception as exc:
             print(f"news fetch failed for a chunk: {exc}")
             continue

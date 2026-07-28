@@ -42,8 +42,10 @@ CRITICAL: conservative parsing throughout. If a row does not cleanly yield
 company + count + date, it is SKIPPED (fewer rows) rather than guessed. A wrong
 number is far worse than a missing one.
 """
+import html as _html_mod
 import re
-from datetime import date as _date
+import time
+from datetime import date as _date, timedelta as _timedelta
 
 import requests
 
@@ -449,7 +451,106 @@ def fetch_wa(max_pages=200):
 # sources/warn_hi_ocr.py) because its notices are image scans, so it is NOT in
 # this list. The old no-op fetch_hi (list-page parse, never yielded a count) is
 # kept below only for reference.
-NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "NM": fetch_nm, "WA": fetch_wa}
+
+# --------------------------------------------------------------------------- KS
+# Kansas (kansasworks.com). The open warn-scraper's KS module walks the ENTIRE
+# warn_lookups history and started timing out (420s per run, every run) around
+# 2026-05, leaving Kansas dark for ~3 months. The portal itself is fine when
+# asked a bounded question: a Ransack date filter returns instantly. So this
+# fetcher asks only for notices from the last ~15 months and reads each row's
+# detail page for the one field the listing omits, the affected-employee count.
+# Historical KS rows (799 of them) already exist from when the generic tier
+# worked; re-imports upsert by dedup_hash, so no purge is needed.
+_KS_BASE = "https://www.kansasworks.com"
+_KS_LIST = (_KS_BASE + "/search/warn_lookups?commit=Search"
+            "&q%5Bnotice_on_gteq%5D={since}&page={page}")
+_KS_DETAIL_RX = re.compile(r'href="(/search/warn_lookups/(\d+))"')
+_KS_MAX_DETAILS = 150   # bound the per-run detail fetches; the window is small
+
+
+def _ks_listing_ids(html_text):
+    """Ordered unique detail-page ids from a listing page."""
+    seen, out = set(), []
+    for path, nid in _KS_DETAIL_RX.findall(html_text or ""):
+        if nid not in seen:
+            seen.add(nid)
+            out.append(nid)
+    return out
+
+
+def _ks_detail_fields(html_text):
+    """(company, city, notice_iso, jobs) from a detail page, all "" / 0 when absent.
+
+    The page is a label/value list: Company Name / Address / Notice Date /
+    Number of Employees Affected. Parsed as flattened text lines so markup
+    changes that keep the labels do not break it.
+    """
+    txt = re.sub(r"<script.*?</script>", " ", html_text or "", flags=re.S)
+    txt = re.sub(r"<[^>]+>", "\n", txt)
+    lines = [_html_mod.unescape(l).strip() for l in txt.split("\n")]
+    lines = [l for l in lines if l]
+    company = city = date = ""
+    jobs = 0
+    for i, line in enumerate(lines):
+        low = line.lower()
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        if low == "company name" and not company:
+            company = nxt
+        elif low == "address" and not city:
+            # Address block: street, then "City, Kansas 66801". Take the city
+            # from the LAST address-looking line before the next label.
+            for cand in lines[i + 1:i + 4]:
+                m = re.match(r"([A-Za-z .\'-]+),\s*Kansas\b", cand)
+                if m:
+                    city = m.group(1).strip()
+                    break
+        elif low == "notice date" and not date:
+            date = _iso(nxt)
+        elif low == "number of employees affected" and not jobs:
+            m = re.search(r"\d[\d,]*", nxt)
+            if m:
+                jobs = int(m.group(0).replace(",", ""))
+    return company, city, date, jobs
+
+
+def fetch_ks():
+    """Kansas WARN via bounded kansasworks queries + per-notice detail pages."""
+    since = (_date.today() - _timedelta(days=456)).isoformat()   # ~15 months
+    ids, out = [], []
+    for page in range(1, 6):                                     # window is small
+        try:
+            resp = requests.get(_KS_LIST.format(since=since, page=page),
+                                headers=UA, timeout=45)
+            if resp.status_code != 200:
+                break
+            page_ids = _ks_listing_ids(resp.text)
+        except Exception as exc:
+            print(f"    KS listing page {page}: {exc}")
+            break
+        new = [i for i in page_ids if i not in ids]
+        if not new:
+            break                                                # past the end
+        ids.extend(new)
+    for nid in ids[:_KS_MAX_DETAILS]:
+        try:
+            resp = requests.get(f"{_KS_BASE}/search/warn_lookups/{nid}",
+                                headers=UA, timeout=45)
+            if resp.status_code != 200:
+                continue
+            company, city, date, jobs = _ks_detail_fields(resp.text)
+        except Exception as exc:
+            print(f"    KS detail {nid}: {exc}")
+            continue
+        e = _entry("KS", company, jobs, date, city,
+                   detail_url=f"{_KS_BASE}/search/warn_lookups/{nid}")
+        if e:
+            out.append(e)
+        time.sleep(0.4)                                          # polite
+    print(f"WARN KS (custom): {len(out)} notices kept from {len(ids)} listed")
+    return out
+
+
+NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "NM": fetch_nm, "WA": fetch_wa, "KS": fetch_ks}
 
 
 if __name__ == "__main__":

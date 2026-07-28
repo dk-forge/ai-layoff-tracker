@@ -44,10 +44,26 @@ class DedupLiveRegression(unittest.TestCase):
         # escaped as an ERROR and reddened CI while the data was correct
         # (2026-07-28: Spirit 7,069 and Tyson 7,184 both well inside bounds).
         # A real dedup regression still FAILS loudly on the assertions below.
-        try:
-            t = _agg(q=q, country="United States", country_basis="any", years=year)
-        except Exception as e:
-            self.skipTest(f"live API unreachable during check ({e})")
+        # Skip ONLY on transport problems (URLError/timeout). An HTTP 4xx/5xx
+        # or non-JSON body is a SERVER regression on the parameterised path -
+        # exactly what this guard exists to catch - and must FAIL, not skip:
+        # setUp's plain aggregate can succeed while q=/country_basis= is broken,
+        # and a blanket skip would stay green forever (F27, audit 2026-07-28).
+        import urllib.error
+        last = None
+        for attempt in range(2):
+            try:
+                t = _agg(q=q, country="United States", country_basis="any", years=year)
+                break
+            except urllib.error.HTTPError as e:
+                if e.code >= 500 and attempt == 0:
+                    last = e
+                    continue          # one retry: shared host 5xx blips are real
+                self.fail(f"parameterised aggregate returned HTTP {e.code} - server regression, not a blip")
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                self.skipTest(f"network unavailable during check ({e})")
+        else:
+            self.skipTest(f"live API unreachable after retry ({last})")
         return int(t.get("jobs") or 0), int(t.get("entries") or 0)
 
     def test_coinbase_counts_once(self):

@@ -66,6 +66,12 @@ def _raw(source_name, title, url, content):
 
 def _ingest(label, articles):
     posted = ai = 0
+    # Same-URL re-reads cost LLM tokens for nothing; shared pre-check, fails open.
+    try:
+        from seen_urls import filter_already_seen
+        articles = filter_already_seen(articles)
+    except Exception:
+        pass
     for a in articles:
         try:
             ex = extract_layoff_data(a)

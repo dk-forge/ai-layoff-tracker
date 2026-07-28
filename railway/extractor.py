@@ -447,9 +447,21 @@ def classify_reason_tags(raw_text):
     prompt = """Assign layoff reason tags for the text below. Return STRICT JSON only:
 {"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic, closure, bankruptcy, federal_workforce"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
 
+Tag definitions (the ONLY guidance for this call - it uses a minimal system prompt):
+- ai_automation: employer itself names AI/automation/robots/ML as a reason
+- possible_ai: text ties the cuts to AI without the employer stating it
+- revenue_decline: revenue/financial performance/earnings cited
+- restructuring: reorganization/realignment/restructuring language
+- merger_acquisition: M&A cited; offshoring: jobs moving to another country
+- product_discontinuation: a product/division shutting down
+- cost_reduction: generic efficiency/cost language with no specific reason
+- macroeconomic: economic conditions/market environment cited
+- closure: a plant/store/site/facility closing permanently
+- bankruptcy: bankruptcy/insolvency/administration/receivership/Chapter 7 or 11/liquidation
+- federal_workforce: a government/public-sector workforce action (federal RIF, agency reduction, public-service cuts) - NOT a private contractor losing government work
+
 Rules:
-- Use ONLY the tag definitions from your instructions; a tag needs explicit
-  supporting language in this text. Multiple tags are allowed.
+- A tag needs explicit supporting language in this text. Multiple tags are allowed.
 - If the text states no reason for the cuts, return {"reason_tags":[],"ai_evidence":null}.
 - ai_automation ONLY when the employer itself states AI/automation/robots/
   machine learning as a reason, with the exact quote in ai_evidence.

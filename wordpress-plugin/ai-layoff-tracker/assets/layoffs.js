@@ -163,17 +163,7 @@
         if (hasSourceUrl(row)) return ' <span class="alt-muted" title="' + escapeHtml(archivePendingTitle(row)) + '">(archive pending)</span>';
         return '';
     }
-    // Full secondary link for the row-detail Source block.
-    function archivedDetailLink(row) {
-        var a = archivedUrl(row);
-        if (a) return ' <span class="alt-src-sep">·</span> <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Archived copy (Wayback Machine) ↗</a>';
-        if (hasSourceUrl(row)) {
-            var d = archiveCheckedDate(row);
-            return ' <span class="alt-src-sep">·</span> <span class="alt-muted" title="' + escapeHtml(archivePendingTitle(row)) + '">Archive pending, re-checked weekly'
-                + (d ? ' (last checked ' + escapeHtml(d) + ')' : '') + '</span>';
-        }
-        return '';
-    }
+    // archivedDetailLink removed 2026-07-28: superseded by archiveCell (F28).
     // v2.19.208 — the row-detail Source block is now separate labelled rows
     // (primary source / source list / archived copy) instead of one dot-joined
     // run-on line, so a reader sees at a glance which link is which.
@@ -193,7 +183,10 @@
                 + (d ? ' Last checked ' + escapeHtml(d) + '.' : '')
                 + ' We re-check every week until it is captured.</span>';
         }
-        return '<span class="alt-muted">No web source to archive.</span>';
+        // WARN rows without an article URL still show the official state list
+        // link as their source, so a bare "No web source" directly under a
+        // working link read as false (F29). Name the real situation instead.
+        return '<span class="alt-muted">Source is the official state register (linked above); no separate article URL to archive.</span>';
     }
     function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
     function setStatus(id, text, isError) {

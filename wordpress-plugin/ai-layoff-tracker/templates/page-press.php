@@ -45,13 +45,18 @@ if (!is_array($alt_sb_groups)) {
         return $wpdb->get_row($wpdb->prepare($sql, $a));
     };
     $alt_top = function ($col, $from, $to, $cty) use ($wpdb, $alt_t) {
-        $sql = "SELECT $col k, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND $col <> ''";
+        // announced=0 + superset_of=0: these cards sit on the SAME page as the
+        // verified headline, and without the filters the top-country card read
+        // "United States 370,097" against a worldwide verified 368,220 — a
+        // single country exceeding the world total (audit 2026-07-28). Announced
+        // plans and rollup duplicates must never leak into a quotable card.
+        $sql = "SELECT $col k, SUM(job_count) j FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND superset_of=0 AND $col <> ''";
         $a = array($from, $to); if ($cty !== '') { $sql .= " AND country = %s"; $a[] = $cty; }
         $sql .= " GROUP BY $col ORDER BY j DESC LIMIT 1";
         return $wpdb->get_row($wpdb->prepare($sql, $a));
     };
     $alt_bigcut = function ($from, $to, $cty) use ($wpdb, $alt_t) {
-        $sql = "SELECT company, job_count FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND job_count > 0";
+        $sql = "SELECT company, job_count FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND superset_of=0 AND job_count > 0";
         $a = array($from, $to); if ($cty !== '') { $sql .= " AND country = %s"; $a[] = $cty; }
         $sql .= " ORDER BY job_count DESC, id DESC LIMIT 1";
         return $wpdb->get_row($wpdb->prepare($sql, $a));
@@ -60,7 +65,7 @@ if (!is_array($alt_sb_groups)) {
         if (!function_exists('alt_role_categories')) return null;
         $best = null; $bj = 0; $bs = '';
         foreach (alt_role_categories() as $slug => $lab) {
-            $j = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(job_count),0) FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND role_categories LIKE %s", $from, $to, '%,' . $slug . ',%'));
+            $j = (int) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(job_count),0) FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND superset_of=0 AND role_categories LIKE %s", $from, $to, '%,' . $slug . ',%'));
             if ($j > $bj) { $bj = $j; $best = $lab; $bs = $slug; }
         }
         return $best ? array('label' => $best, 'slug' => $bs, 'j' => $bj) : null;
@@ -300,7 +305,9 @@ if (!is_array($alt_ps)) {
 }
 ?>
 <main class="alt-wrap alt-press-page">
-  <?php if (function_exists('alt_dataset_jsonld') && !defined('ALT_PRESS_LD_DONE')) { define('ALT_PRESS_LD_DONE', 1); alt_output_jsonld(array(alt_dataset_jsonld())); } ?>
+  <?php /* Dataset JSON-LD intentionally not emitted here: alt_seo_head() already
+     emits the single Dataset block on tracker-family pages; a second one with a
+     different url read as two conflicting datasets (audit 2026-07-28). */ ?>
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press &amp; Media Kit</h1>
   <p class="alt-lead"><span class="alt-lead-text">Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>

@@ -41,7 +41,7 @@ SOFT_DEGRADED = {"gdelt_historical", "source_audit"}  # historical recovery is r
 
 # States with no public WARN register: a custom scraper returning 0 for them is
 # correct, not drift, so a drift-detail naming ONLY these is benign.
-_BENIGN_STATES = {"AR", "WY", "NH"}  # HI now flows via the OCR importer; NV via the Bluehost mirror
+_BENIGN_STATES = {"AR", "WY", "NH", "OK"}  # OK publishes no headcounts; 0 is correct (F23)  # HI now flows via the OCR importer; NV via the Bluehost mirror
 
 
 def _benign_degraded(detail):

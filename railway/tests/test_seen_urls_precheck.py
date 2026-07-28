@@ -12,11 +12,13 @@ import types
 import unittest
 from unittest import mock
 
+sys.modules.setdefault("requests", types.ModuleType("requests"))  # seen_urls imports it; tests patch it anyway
 sys.modules.setdefault("openai", types.ModuleType("openai"))
 sys.modules["openai"].OpenAI = lambda *a, **k: None
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import cron  # noqa: E402
+import seen_urls  # noqa: E402  (the pre-check moved here 2026-07-28; cron delegates)
 
 
 def _entries():
@@ -36,20 +38,20 @@ class SeenUrlsPrecheckTests(unittest.TestCase):
         resp = mock.Mock(status_code=200)
         resp.json.return_value = {"seen": ["https://x.test/a"]}
         fake = mock.Mock(); fake.post.return_value = resp
-        with mock.patch.object(cron, "requests", fake):
+        with mock.patch.object(seen_urls, "requests", fake):
             kept = cron.filter_already_seen(_entries())
         self.assertEqual([e.get("source_url") for e in kept],
                          ["https://x.test/b", None])
 
     def test_http_error_fails_open(self):
         fake = mock.Mock(); fake.post.return_value = mock.Mock(status_code=500)
-        with mock.patch.object(cron, "requests", fake):
+        with mock.patch.object(seen_urls, "requests", fake):
             kept = cron.filter_already_seen(_entries())
         self.assertEqual(len(kept), 3)
 
     def test_exception_fails_open(self):
         fake = mock.Mock(); fake.post.side_effect = OSError("net down")
-        with mock.patch.object(cron, "requests", fake):
+        with mock.patch.object(seen_urls, "requests", fake):
             kept = cron.filter_already_seen(_entries())
         self.assertEqual(len(kept), 3)
 

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.213
+ * Version: 2.19.214
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.213');
+define('ALT_VERSION', '2.19.214');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1042,14 +1042,14 @@ function alt_live_numbers() {
         $row = $wpdb->get_row($wpdb->prepare(
             "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                     COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
-             FROM $t WHERE YEAR(layoff_date) = %d", $y));
+             FROM $t WHERE superset_of = 0 AND YEAR(layoff_date) = %d", $y));
         // MIN(layoff_date) is guarded against the sentinel/zero dates that a bad
         // parse can leave behind, so the published coverage start is a real event.
         $all = $wpdb->get_row(
             "SELECT COUNT(*) entries, COUNT(DISTINCT NULLIF(country,'')) countries,
                     COUNT(DISTINCT NULLIF(state,'')) states,
                     MIN(CASE WHEN layoff_date > '2000-01-01' THEN layoff_date END) min_date
-             FROM $t");
+             FROM $t WHERE superset_of = 0");
         $n = array(
             'y'         => $y,
             'entries'   => $row ? (int) $row->entries : 0,
@@ -1077,7 +1077,7 @@ function alt_faq_items() {
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus NewsAPI. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
         array('What sources do you use?',
             'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . $f($n['states']) . ' US states (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),

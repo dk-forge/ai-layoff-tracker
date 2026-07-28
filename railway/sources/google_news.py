@@ -18,7 +18,7 @@ We do NOT fetch the article body: the item link is a Google redirect to the
 Google News link is stored as the source_url — it resolves to the article in a
 browser and is Wayback-archivable like any other source.
 
-No key. Optional env: GOOGLE_NEWS_MAX (items/run cap, default 300),
+No key. Optional env: GOOGLE_NEWS_MAX (items/run cap, default 150),
 GOOGLE_NEWS_GAP_SECONDS (polite gap between queries, default 1).
 """
 import html
@@ -41,7 +41,15 @@ UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 # Lean default (was 300) to hold the monthly LLM spend near the ~$5-10 target:
 # Google News returns most-relevant first, so the marquee cuts are in the top
 # slice; raise GOOGLE_NEWS_MAX if you later want deeper coverage over cost.
-MAX_ITEMS = max(10, int(os.environ.get("GOOGLE_NEWS_MAX", "150")))
+def _env_int(name, default):
+    try:
+        return int(str(os.environ.get(name, default)).strip() or default)
+    except (TypeError, ValueError):
+        print(f"{name} invalid; using default {default}")
+        return int(default)
+
+
+MAX_ITEMS = max(10, _env_int("GOOGLE_NEWS_MAX", 150))
 GAP = max(0.0, float(os.environ.get("GOOGLE_NEWS_GAP_SECONDS", "1")))
 
 # Broad layoff sweeps + a dedicated AI/automation sweep, mirroring newsapi's
@@ -70,7 +78,7 @@ DISCOVERY_QUERIES = (
 #
 # Curated for layoff coverage: the largest economies plus the markets where our
 # WARN/ERM feeds do not reach. Rotated a few per run (deterministic by day) so
-# the whole list is swept over ~2 weeks.
+# the whole list is swept in ~6 days.
 GOOGLE_NEWS_LOCALES = (
     ("US", "en-US", "US", "US:en"),
     ("GB", "en-GB", "GB", "GB:en"),
@@ -119,7 +127,7 @@ GOOGLE_NEWS_LOCALES = (
     ("NZ", "en-NZ", "NZ", "NZ:en"),
 )
 # Editions per run beyond the always-on US edition. 0 disables rotation.
-LOCALES_PER_RUN = max(0, min(8, int(os.environ.get("GOOGLE_NEWS_LOCALES_PER_RUN", "4"))))
+LOCALES_PER_RUN = max(0, min(8, _env_int("GOOGLE_NEWS_LOCALES_PER_RUN", 4)))
 
 
 def _locales_for_now():
@@ -129,7 +137,10 @@ def _locales_for_now():
     if not LOCALES_PER_RUN or not rest:
         return [us]
     now = datetime.now(timezone.utc)
-    run_of_day = 0 if now.hour < 17 else 1
+    # Schedule-agnostic half-day index: the previous `hour < 17` was silently
+    # coupled to railway.toml's exact cron hours; any schedule change could
+    # collapse both runs onto the same rotation slice with no signal.
+    run_of_day = now.hour // 12
     start = ((now.timetuple().tm_yday * 2 + run_of_day) * LOCALES_PER_RUN) % len(rest)
     picked = [rest[(start + i) % len(rest)] for i in range(LOCALES_PER_RUN)]
     return [us] + picked
@@ -204,13 +215,19 @@ def pull_google_news(queries=None, company_names=None):
     # on duplicates of the same story.
     locales = _locales_for_now()
     n_company = len([c for c in (company_names or []) if str(c or "").strip()])
-    jobs = []
-    for i, q in enumerate(qs):
-        for loc in ([locales[0]] if i < n_company else locales):
+    # LOCALE-MAJOR order (audit 2026-07-28): company chases first (US only),
+    # then EVERY discovery query on the US edition, then the rotating editions.
+    # The previous query-major order meant per-query slices exhausted MAX_ITEMS
+    # before the last query ever ran — the bankruptcy/shutdown sweep (the feed
+    # for the new bankruptcy tag) executed zero times on every run.
+    jobs = [(qs[i], locales[0]) for i in range(n_company)]
+    for loc in locales:
+        for q in qs[n_company:]:
             jobs.append((q, loc))
 
     results, seen = [], set()
-    errors = 0
+    seen_titles = set()   # same story surfaces in several editions under
+    errors = 0            # different redirect URLs; one LLM read is enough
     # Per-job slice: every (query, edition) pair gets a fair share of the global
     # cap, so a later job (the euphemism sweep, a company chase, a non-US
     # edition) can never be starved by an earlier one returning ~100 items.
@@ -224,18 +241,25 @@ def pull_google_news(queries=None, company_names=None):
             if r.status_code != 200:
                 errors += 1
                 pull_google_news.last_error = f"HTTP {r.status_code}"
+                time.sleep(GAP)
                 continue
             items = _parse_items(r.text)
         except Exception as e:
             errors += 1
             pull_google_news.last_error = f"{type(e).__name__}: {e}"
-            continue
+            time.sleep(GAP)   # the error paths skipped the politeness gap,
+            continue          # hammering the endpoint exactly when it 429s
         for it in items:
             link = (it.get("link") or "").strip()
             if not link or link in seen:
                 continue
             seen.add(link)
             title = _clean(it.get("title"))
+            tkey = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()[:120]
+            if tkey and tkey in seen_titles:
+                continue
+            if tkey:
+                seen_titles.add(tkey)
             desc = _clean(it.get("description"))
             source = (it.get("source") or "").strip()
             # The headcount lives in the title; the description is usually just a
@@ -265,9 +289,9 @@ def pull_google_news(queries=None, company_names=None):
     # not a quiet day — surface it.
     if errors and errors == len(jobs) and not results:
         pull_google_news.last_error = pull_google_news.last_error or "all queries failed"
-    print(f"Google News: {len(results)} unique items across {len(qs)} queries "
-          f"x {len(locales)} edition(s) [{', '.join(l[0] for l in locales)}]"
-          + (f" ({errors} query error(s))" if errors else ""))
+    print(f"Google News: {len(results)} unique items; {len(jobs)} query-edition "
+          f"jobs planned across editions [{', '.join(l[0] for l in locales)}]"
+          + (f" ({errors} error(s))" if errors else ""))
     return results
 
 
