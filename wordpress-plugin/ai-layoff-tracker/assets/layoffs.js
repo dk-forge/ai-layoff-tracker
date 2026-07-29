@@ -54,6 +54,23 @@
         content_trust_safety: 'Content & trust and safety', finance_admin: 'Finance & admin',
         manufacturing: 'Manufacturing & production', retail_staff: 'Retail staff'
     };
+    // /aggregate returns top_roles keyed by LABEL (db.php builds it from
+    // alt_role_categories()), but the Roles filter sends slugs — so a tap on a
+    // role bar has to translate back. Derived, never hand-kept in step.
+    var ROLE_SLUG_BY_LABEL = {};
+    Object.keys(ROLE_LABELS).forEach(function (k) { ROLE_SLUG_BY_LABEL[ROLE_LABELS[k]] = k; });
+    // Declared here (not next to the chart that draws them) because the
+    // active-filter chip table below needs them at definition time.
+    var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings', '8K': 'SEC 8-K filings',
+        erm: 'Eurofound ERM', press_release: 'Company releases', federal_rif: 'US federal RIFs (OPM)', seed: 'Curated (sourced)' };
+    // The `sources` param deliberately accepts BOTH vocabularies (verification
+    // tier from the dropdown, source_type from the "By data source" chart —
+    // db.php matches either column), so the chip label map has to cover both.
+    var SOURCE_FILTER_LABELS = {};
+    Object.keys(VERIF_LABELS).forEach(function (k) { SOURCE_FILTER_LABELS[k] = VERIF_LABELS[k]; });
+    Object.keys(SOURCE_TYPE_LABELS).forEach(function (k) {
+        if (!SOURCE_FILTER_LABELS[k]) SOURCE_FILTER_LABELS[k] = SOURCE_TYPE_LABELS[k];
+    });
     var AI_CAUSATION_LABELS = {
         primary_cause: 'AI primary cause', contributing_cause: 'AI contributing cause',
         selection_or_operations: 'AI used in selection / operations', context_only: 'AI context only',
@@ -443,8 +460,18 @@
             industry: 'alt-f-industry', country: 'alt-f-country', state: 'alt-f-state',
             sources: 'alt-f-verification', reasons: 'alt-f-reasons', roles: 'alt-f-roles'
         };
+        // Label lookups for values a shared link may carry that the dropdown has
+        // no option for — a source_type from the "By data source" chart, or a
+        // country that only ever appears as an employer HQ. writeControl matches
+        // on existing options, so without this the filter would silently vanish
+        // for the recipient and the link would not mean what the sender saw.
+        var URL_VALUE_LABELS = { sources: SOURCE_FILTER_LABELS, reasons: REASON_LABELS, roles: ROLE_LABELS };
         Object.keys(mappings).forEach(function (key) {
-            if (query.has(key)) writeControl(mappings[key], query.get(key).split(',').filter(Boolean));
+            if (!query.has(key)) return;
+            var vals = query.get(key).split(',').filter(Boolean);
+            var labels = URL_VALUE_LABELS[key];
+            vals.forEach(function (v) { ensureOption(mappings[key], v, (labels && labels[v]) || v); });
+            writeControl(mappings[key], vals);
         });
         [['from', 'alt-f-from'], ['to', 'alt-f-to'], ['q', 'alt-search'], ['company', 'alt-f-company'],
          ['keyword', 'alt-f-keyword'], ['min_jobs', 'alt-f-minjobs']].forEach(function (pair) {
@@ -554,6 +581,67 @@
         return toggled;
     }
 
+    // A chart can legitimately show a value the matching dropdown has no option
+    // for: /facets lists the location vocabularies only, and the "By data
+    // source" chart speaks source_type (news/erm/press_release) while the
+    // dropdown lists verification tiers. Both are accepted by the same `sources`
+    // param server-side, so add the option rather than letting a tap silently
+    // do nothing — the control then SHOWS the chart-applied filter, which is the
+    // whole point of tap-to-filter (you can see why the page narrowed, and undo
+    // it from the dropdown or the chip).
+    function ensureOption(id, value, text) {
+        var el = document.getElementById(id);
+        if (!el || value === '' || value == null) return null;
+        var has = Array.prototype.some.call(el.options, function (o) { return o.value === value; });
+        if (!has) {
+            var opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = text || value;
+            el.appendChild(opt);
+        }
+        return el;
+    }
+
+    // Tapping a month on a time-series chart scopes the page to that month,
+    // through the SAME Years/Months controls the dropdowns write — so the
+    // dropdowns, the chips, the exports and the address bar all show it, and
+    // the keyboard route to the identical state is those dropdowns. Tapping the
+    // month that is already scoped drops the month and leaves the year, i.e. it
+    // zooms back out one step rather than to all time (the year has its own
+    // chip if you want that too). Quarters are left alone: the chart can only
+    // ever draw months the current quarter filter already admits.
+    function pickMonth(monthKey) {
+        if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return;
+        var y = monthKey.slice(0, 4);
+        var m = String(parseInt(monthKey.slice(5, 7), 10));
+        var years = selectedList('alt-f-years');
+        var months = selectedList('alt-f-months');
+        var alreadyOn = years.length === 1 && years[0] === y && months.length === 1 && months[0] === m;
+        if (alreadyOn) {
+            writeControl('alt-f-months', []);
+            return;
+        }
+        ensureOption('alt-f-years', y, y);
+        writeControl('alt-f-years', [y]);
+        writeControl('alt-f-months', [m]);
+    }
+
+    // Put the current view in the address bar so it can simply be copied.
+    // Same querystring the per-card share buttons already build (currentParams),
+    // and restoreFiltersFromUrl() reads it back on load, so a chart tap survives
+    // being pasted to someone else. replaceState, not pushState: a history entry
+    // per keystroke in the search box would bury the back button. The default
+    // view (this year, nothing else) keeps a clean, param-free URL.
+    var URL_BASELINE = 'years=' + new Date().getFullYear();
+    function syncUrlFromFilters() {
+        if (window.altData && window.altData.embedParams) return; // embed iframe: not a shareable view
+        try {
+            var q = qs(currentParams());
+            history.replaceState(null, '',
+                window.location.pathname + ((q && q !== URL_BASELINE) ? '?' + q : '') + window.location.hash);
+        } catch (e) { /* a URL we cannot write is not worth failing the render for */ }
+    }
+
     var TABLE = null;
     var DASH_PRESENT = false;
     var LAST_AGG = null;
@@ -578,6 +666,7 @@
 
     function refreshAll() {
         saveFilters();
+        syncUrlFromFilters();
         if (TABLE) TABLE.ajax.reload(null, true);
         fetchAndRenderAggregate();
         updateActiveFilterBar();
@@ -641,7 +730,11 @@
         { id: 'alt-f-state', label: 'State', kind: 'multi', color: 'pink' },
         { id: 'alt-f-reasons', label: 'Reason', kind: 'multi', map: REASON_LABELS, color: 'slate' },
         { id: 'alt-f-roles', label: 'Role', kind: 'multi', map: ROLE_LABELS, color: 'teal' },
-        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: VERIF_LABELS, color: 'gold' },
+        { id: 'alt-f-verification', label: 'Source', kind: 'multi', map: SOURCE_FILTER_LABELS, color: 'gold' },
+        // Company is what the "Largest single job cuts" and "Repeat layoffs"
+        // charts write, so it needs a chip like every other chart-applied
+        // filter — otherwise a tap narrowed the page with no visible ✕ to undo.
+        { id: 'alt-f-company', label: 'Company', kind: 'single', color: 'blue' },
         { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only', color: 'red' },
         { id: 'alt-f-announced', label: '', kind: 'bool', on: 'Announced only', color: 'gold' }
     ];
@@ -1107,13 +1200,24 @@
             .map(function (e) { return [e[0], Math.round(100 * e[2] / e[1]), Math.round(100 * e[2] / e[1])]; })
             .sort(function (a, b) { return b[1] - a[1]; })
             .slice(0, 8);
-        renderBarList('alt-bars-ai-intensity', intensity, null, [], null, '%');
+        // Same industry vocabulary as the "By industry" card, so a tap goes
+        // through the identical Industries control.
+        renderBarList('alt-bars-ai-intensity', intensity, wired ? 'alt-f-industry' : null,
+            selectedList('alt-f-industry'), null, '%');
         // Roles most impacted: fixed-category jobs with the AI-attributed
         // share as the orange segment — the AI-vs-all comparison per team.
         // Coverage is partial by construction (only events whose sources name
         // the affected teams carry categories), so the subtitle states the
         // honest denominator instead of implying every event is categorized.
-        renderBarList('alt-bars-roles', agg.top_roles, null, []);
+        // /aggregate keys these by label; the filter takes slugs. Carry the slug
+        // as the row's value and the label as its display text, so the tap
+        // writes the Roles control exactly as picking it from the dropdown does.
+        // A label with no slug (vocabulary drift) stays a plain, non-filtering row.
+        var rolesWired = !!document.getElementById('alt-f-roles');
+        var roleRows = (agg.top_roles || []).map(function (e) {
+            return [ROLE_SLUG_BY_LABEL[e[0]] || e[0], e[1], e[2], e[0]];
+        });
+        renderBarList('alt-bars-roles', roleRows, rolesWired ? 'alt-f-roles' : null, selectedList('alt-f-roles'));
         var rolesSub = document.getElementById('alt-roles-sub');
         var rolesCard = document.getElementById('alt-roles-card');
         if (rolesSub) {
@@ -1127,11 +1231,18 @@
                 + 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
                 + ' and 🤖 number are the AI-attributed share. Built from only the <b>' + fmt(rke)
                 + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> records whose source named which teams were cut'
-                + '; a non-representative sample of where cuts land, <b>not</b> a breakdown of the total.';
+                + '; a non-representative sample of where cuts land, <b>not</b> a breakdown of the total. Tap a role to filter the page.';
         }
+        // Keep the raw source_type as the row value (the `sources` param accepts
+        // it directly alongside the verification tiers — db.php matches either
+        // column) and show the friendly label. The Sources dropdown only gains
+        // the option when a bar is actually tapped (renderBarList's handler), so
+        // the control stays short until someone uses it and then shows exactly
+        // what they picked.
+        var srcWired = !!document.getElementById('alt-f-verification');
         renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
-            return [SOURCE_TYPE_LABELS[e[0]] || e[0], e[1], e[2]];
-        }), null, []);
+            return [e[0], e[1], e[2], SOURCE_TYPE_LABELS[e[0]] || e[0]];
+        }), srcWired ? 'alt-f-verification' : null, selectedList('alt-f-verification'));
         renderBarList('alt-bars-leaders', leaderEntries, null,
             companyBox && companyBox.value ? [companyBox.value] : [],
             companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null);
@@ -1204,7 +1315,8 @@
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + ((filterId || onPick) ? '' : ' disabled')
                 + (tip ? ' title="' + escapeHtml(tip) + '"' : '')
-                + ' data-val="' + escapeHtml(label) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
+                + ' data-val="' + escapeHtml(label) + '" data-label="' + escapeHtml(display) + '"'
+                + ' aria-pressed="' + (isActive ? 'true' : 'false') + '">'
                 + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(display) + '</span>'
                 + '<span class="alt-barrow-val">' + valTxt + '</span></span>'
                 + '<span class="alt-bartrack">'
@@ -1224,8 +1336,16 @@
                     // Multi-select: each click adds/removes that value, so bars
                     // compose (e.g. CA + WA + Technology). onPick overrides for
                     // non-multi targets (e.g. the company text filter).
-                    if (onPick) { onPick(btn.getAttribute('data-val')); }
-                    else { toggleMultiFilter(filterId, btn.getAttribute('data-val')); }
+                    var val = btn.getAttribute('data-val');
+                    if (onPick) { onPick(val); }
+                    else {
+                        // A chart can show a value /facets never listed (an
+                        // employer-HQ-only country, a source_type). Give the
+                        // dropdown the option first so the toggle lands AND the
+                        // control visibly reflects it.
+                        ensureOption(filterId, val, btn.getAttribute('data-label') || val);
+                        toggleMultiFilter(filterId, val);
+                    }
                     refreshAll();
                 });
             });
@@ -1420,6 +1540,16 @@
         if (!series || !series.length) { clearChart('alt-chart-weekly'); return; }
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Jobs cut') + ': ' + fmt(ctx.parsed.y); } };
+        // Tap a month to scope the whole page to it (same Years/Months controls
+        // the dropdowns write; tap again to clear). Canvas has no focusable
+        // parts, so the keyboard route to this exact state is the Years +
+        // Months dropdowns above, which is what this writes.
+        options.onClick = function (evt, els) {
+            if (els && els.length && series[els[0].index]) { pickMonth(series[els[0].index].month); refreshAll(); }
+        };
+        options.onHover = function (evt, els) {
+            if (evt.native) evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
+        };
         // Verified is the primary line (matches the main stat card); the
         // dashed announced line keeps plan-stage months (incl. future WARN
         // effective dates) visible without mixing the two numbers.
@@ -1666,14 +1796,17 @@
         var options = cloneOptions();
         options.scales.y.ticks.callback = function (v) { return v + '%'; };
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
+        options.onClick = function (evt, els) {
+            if (els && els.length && pts[els[0].index]) { pickMonth(pts[els[0].index].month); refreshAll(); }
+        };
+        options.onHover = function (evt, els) {
+            if (evt.native) evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
+        };
         mountChart('alt-chart-ai-share-trend', { type: 'line', data: {
             labels: pts.map(function (p) { return monthLabel(p.month); }),
             datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(213,94,0,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
         }, options: options });
     }
-
-    var SOURCE_TYPE_LABELS = { warn: 'WARN notices', news: 'News reports', sec: 'SEC filings', '8K': 'SEC 8-K filings',
-        erm: 'Eurofound ERM', press_release: 'Company releases', federal_rif: 'US federal RIFs (OPM)', seed: 'Curated (sourced)' };
 
     var CMP_AI_SEQ = 0;
     function renderCompareAiCumulative(cmp) {
@@ -2598,8 +2731,14 @@
                 })
                 .on('click', function (event, p) {
                     event.stopPropagation();
-                    if (scope === 'us') writeControl('alt-f-state', [p.label]);
-                    else writeControl('alt-f-country', [p.label]);
+                    // Toggle, not overwrite: tapping the lit bubble again takes
+                    // the filter off, matching every bar row on the page. Routed
+                    // through toggleMultiFilter so the country path is the same
+                    // one the dropdown uses (and so keeps country_basis=any for
+                    // the table while the headline stats stay job-location).
+                    var id = scope === 'us' ? 'alt-f-state' : 'alt-f-country';
+                    ensureOption(id, p.label, p.label);
+                    toggleMultiFilter(id, p.label);
                     if (typeof refreshAll === 'function') refreshAll();
                 });
             node.append('circle').attr('class', 'b-all')

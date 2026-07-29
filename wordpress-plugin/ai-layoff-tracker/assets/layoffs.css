@@ -739,6 +739,10 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     transition: background .12s ease, border-color .12s ease, opacity .12s ease;
 }
 .alt-barrow:hover { background: var(--alt-surface-2); }
+/* Every bar row is a real <button> that applies a page-wide filter, so a
+   keyboard user must be able to see which one they are on. Without this the
+   rows were tabbable but drew no ring at all. */
+.alt-barrow:focus-visible { outline: 2px solid var(--alt-blue, #2a78d6); outline-offset: 2px; background: var(--alt-surface-2); }
 .alt-barrow:disabled { cursor: default; }
 .alt-barrow:disabled:hover { background: none; }
 .alt-barrow-on { border-color: var(--alt-blue, #2a78d6); background: var(--alt-blue-tint, #eef4fc); }
