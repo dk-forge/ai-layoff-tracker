@@ -283,6 +283,31 @@ def _win_key(raw):
     return name
 
 
+def _covered_by_allowlist(outlet, trusted):
+    """Is this win's outlet already admitted by the allowlist?
+
+    `_win_key` yields EITHER a real hostname ('inc42.com') or, for Google News
+    redirects, the RSS outlet NAME ('techcrunch', 'globes english'), so both
+    shapes have to be judged and they are judged differently.
+
+    This used to be one substring test — the outlet's first label appearing
+    anywhere inside any trusted domain. That silently suppressed genuine
+    candidates: 'news.example.com' matched because 'news' sits inside
+    'apnews.com', 'ft.co.za' because of 'ft.com', 'post.co.uk' because of
+    'washingtonpost.com'. Since suppression means "already covered, do not
+    suggest", the bug starved the exact learning loop this function feeds.
+    """
+    if "." in outlet and " " not in outlet:
+        # A hostname: covered when the allowlist admits this host or its parent,
+        # the same test gdelt._is_trusted applies to every collected article.
+        return any(outlet == d or outlet.endswith("." + d) for d in trusted)
+    # An outlet name: covered when it names the FIRST LABEL of a trusted domain
+    # ('techcrunch' -> techcrunch.com). A whole-label comparison, never a
+    # substring, so 'news' cannot match 'apnews.com'.
+    name = re.sub(r"[^a-z0-9]+", "", outlet)
+    return bool(name) and any(name == d.split(".")[0] for d in trusted)
+
+
 def outlet_suggestions(wins, trusted_domains):
     """Outlets that closed >=2 gaps but are not in the allowlist — ranked,
     these are the permanent-net candidates that shrink future dependence.
@@ -295,8 +320,7 @@ def outlet_suggestions(wins, trusted_domains):
         if int(cnt) < 2 or not key:
             continue
         outlet = key.split(" · ")[0].strip()
-        token = re.sub(r"[^a-z0-9]+", "", outlet.split(".")[0])
-        if outlet in trusted or any(token and token in d for d in trusted):
+        if _covered_by_allowlist(outlet, trusted):
             continue
         out.append((key, int(cnt)))
     return out[:10]

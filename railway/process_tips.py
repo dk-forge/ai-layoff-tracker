@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from extractor import extract_layoff_data, classify_industry  # noqa: F401  (extractor warms shared config)
 from wp_poster import post_to_wordpress
 from sources.newsapi import TRUSTED_DOMAINS
+from sources.warn import STATE_WARN_URL
 from http_retry import get_with_retry
 
 try:
@@ -54,21 +55,58 @@ LIVE = os.environ.get("TIPS_LIVE", "").lower() in {"1", "true", "yes"}
 MAX_TIPS = max(1, int(os.environ.get("TIPS_MAX") or "25"))
 TIMEOUT = 40
 
-# Official primary sources always clear the allowlist gate.
-_OFFICIAL_RX = re.compile(r"(sec\.gov|\.gov\b|\.gov\.|edgar|warn)", re.I)
 _ALLOWED = set(d.strip().lower() for d in TRUSTED_DOMAINS.replace("\n", "").split(",") if d.strip())
+
+
+def _host_of(url):
+    """Bare lowercase hostname: no port, no leading www. '' when unparseable."""
+    try:
+        host = urlparse(url).netloc.lower().split(":")[0]  # drop any :port
+    except Exception:
+        return ""
+    if host.startswith("www."):
+        host = host[4:]  # strip the prefix; str.lstrip('www.') would eat
+                         # leading w/./ chars ("wsj.com"->"sj.com")
+    return host
+
+
+# Official primary sources always clear the allowlist gate. This is matched
+# against the HOST ONLY. It used to be re.search(r"...|edgar|warn", url) over
+# the WHOLE URL, which trusted anything merely CONTAINING those substrings
+# anywhere: warnerbros.com, ".../warning-signs", "?q=edgar" and
+# "notreal.com/fake.gov/x" all read as official filing hosts. That matters more
+# here than in a discovery collector, because this gate feeds the auto-publish
+# branch below, not just the human review queue.
+#
+# The non-.gov official WARN portals are DERIVED from sources.warn's
+# STATE_WARN_URL — the same map the importer stamps onto notices, already
+# guarded by tests/test_warn_url_parity.py — so there is no second
+# hand-maintained host list here to drift out of step with it.
+_OFFICIAL_WARN_HOSTS = frozenset(
+    h for h in (_host_of(u) for u in STATE_WARN_URL.values()) if h
+)
+
+
+def _is_official_host(host):
+    """A government filing host, or an official state WARN portal that does not
+    sit under .gov. Structural matching only — a label has to be a whole
+    dot-delimited label, so 'warnerbros.com' is not a WARN portal and
+    'fake.gov.evil.com' is not a government host."""
+    if not host:
+        return False
+    if host == "gov" or host.endswith(".gov"):
+        return True
+    if re.search(r"(?:^|\.)gov\.[a-z]{2}$", host):   # gov.uk, gov.au, ...
+        return True
+    return any(host == d or host.endswith("." + d) for d in _OFFICIAL_WARN_HOSTS)
 
 
 def _domain_trusted(url):
     """True when the source is a trusted outlet or an official filing host."""
-    try:
-        host = urlparse(url).netloc.lower().split(":")[0]  # drop any :port
-        if host.startswith("www."):
-            host = host[4:]  # strip the prefix; str.lstrip('www.') would eat
-                             # leading w/./ chars ("wsj.com"->"sj.com")
-    except Exception:
+    host = _host_of(url)
+    if not host:
         return False
-    if _OFFICIAL_RX.search(url):
+    if _is_official_host(host):
         return True
     return any(host == d or host.endswith("." + d) for d in _ALLOWED)
 

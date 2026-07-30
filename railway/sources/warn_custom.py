@@ -683,6 +683,44 @@ _NV_CITIES = [
     "Zephyr Cove", "Round Mountain", "Eureka", "Remote", "Statewide", "Various",
 ]
 
+# Alternations are built longest-first so "North Las Vegas" always wins over
+# "Las Vegas" (Python alternation is leftmost-first, so ordering IS the
+# precedence rule and sorting by length makes it independent of hand-ordering).
+_NV_CITY_ALT = "|".join(re.escape(c) for c in sorted(_NV_CITIES, key=len, reverse=True))
+
+# Both strips tolerate a MISSING space before the place text. pdfplumber glues
+# the city and county together on multi-site notices, which is how
+# "Spirit Airlines Las Vegas/Reno Clark/Washoe" reached the live tracker stored
+# as the employer "Spirit Airlines Las Vegas/RenoClark/Washoe": the county strip
+# wanted \s+ before "Clark", found "...Reno" instead, so nothing was stripped
+# and the whole line became the company name. A "/"-joined run of cities or
+# counties is one place, not several.
+_NV_COUNTY_RX = re.compile(
+    r"(?:\s+|(?<=[a-z]))(?:%s)(?:\s*/\s*(?:%s))*\s*$" % (_NV_COUNTIES, _NV_COUNTIES))
+_NV_CITY_RX = re.compile(
+    r"(?:\s+|^)((?:%s)(?:\s*/\s*(?:%s))*)\s*$" % (_NV_CITY_ALT, _NV_CITY_ALT))
+
+
+def _nv_place_split(rest):
+    """Split the NV master PDF's "<company> <city> <county>" run into
+    (company, city). The PDF carries no delimiters, so the split is
+    vocabulary-driven.
+
+    A city the vocabulary does not know leaves the company UNCHANGED and the
+    city blank, and `fetch_nv` reports the count. That is deliberate: guessing
+    would mean stripping any trailing place-like word, and truncating a real
+    employer ("... Enterprise", "... Paradise") is a worse, less visible
+    failure than an empty city column. The caller's diagnostic is what turns
+    the vocabulary's ceiling from silent into observable.
+    """
+    rest = _NV_COUNTY_RX.sub("", (rest or "").strip()).strip()
+    m = _NV_CITY_RX.search(rest)
+    if not m:
+        return rest, ""
+    city = re.sub(r"\s*/\s*", "/", m.group(1).strip())
+    return rest[: m.start()].strip(), city
+
+
 # Nevada DETR now sits behind an Akamai bot-wall: the /Page/WARN landing HTML
 # 403s for non-browsers, so link discovery is dead. The cumulative master PDF
 # under /content/media/ IS reachable, but ONLY with a full browser-like header
@@ -713,7 +751,6 @@ def fetch_nv():
     """Nevada DETR cumulative master PDF. Landing page is Akamai-403 (no link
     discovery); fetch the known master URL directly with browser headers."""
     import pdfplumber
-    county_re = re.compile(r"\s+(?:%s)(?:\s*/\s*(?:%s))*$" % (_NV_COUNTIES, _NV_COUNTIES))
     out = []
     for url in _NV_MASTER_PDFS:
         try:
@@ -723,6 +760,7 @@ def fetch_nv():
         if resp.status_code != 200 or not resp.content.startswith(b"%PDF"):
             continue
         before = len(out)
+        unplaced = []
         with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
             for page in pdf.pages:
                 for line in (page.extract_text() or "").splitlines():
@@ -732,21 +770,26 @@ def fetch_nv():
                     m = _NV_ROW.match(line)
                     if not m:
                         continue
-                    rest = county_re.sub("", m.group("rest").strip()).strip()
-                    city = ""
-                    for c in _NV_CITIES:
-                        if rest.endswith(" " + c) or rest == c:
-                            city, rest = c, rest[: -len(c)].strip() if rest != c else ""
-                            break
-                    e = _entry("NV", rest, _count(m.group("jobs")),
+                    company, city = _nv_place_split(m.group("rest"))
+                    e = _entry("NV", company, _count(m.group("jobs")),
                                _to_iso_date(m.group("eff") or "") or _to_iso_date(m.group("recv") or ""),
                                city, kind=m.group("kind"), detail_url=url)
                     if e:
                         out.append(e)
+                        if not city:
+                            unplaced.append(e["company_name"])
         # The master PDF is cumulative, so the first source that yields rows has
         # everything; stop so a residential run does not parse the mirror AND
         # DETR and double the list.
         if len(out) > before:
+            # Every NV line carries a city, so an unresolved one means the place
+            # text is still glued to the employer name. Say so: a thin
+            # vocabulary that fails silently is how a wrong company name reaches
+            # the public tracker and nobody finds out.
+            if unplaced:
+                print(f"NV: {len(unplaced)} of {len(out) - before} notices had no "
+                      f"recognisable city, so place text may remain in the employer "
+                      f"name: {'; '.join(unplaced[:8])}")
             break
     return out
 
