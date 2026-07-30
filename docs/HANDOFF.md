@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
-- **SINCE:** 2026-07-29
-- **WORKING ON:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code)
+- **SINCE:** 2026-07-30
+- **WORKING ON:** Port the sibling talent tracker's card layout to the results table; source link + archived copy on every row, both products.
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
