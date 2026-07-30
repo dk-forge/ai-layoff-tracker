@@ -34,8 +34,29 @@ jobs:
           APPLY="${{ github.event.inputs.apply }}"
           DETAIL="${{ github.event.inputs.detail }}"
           if [ "${{ github.event_name }}" = "schedule" ]; then APPLY=1; fi
-          curl -sS --fail-with-body -X POST \
+          curl -sS --fail-with-body -X POST -o response.json \
             "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY&detail=$DETAIL" \
             -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
-          echo ""
+          # A detail=1 body is one enormous JSON line, and the Actions log
+          # uploader silently DROPS a line that big — the run goes green and
+          # prints nothing. Print the summary, then a bounded per-company
+          # rollup of the marks that changed, one line each.
+          python3 - <<'PY'
+          import json
+          d = json.load(open('response.json'))
+          changed = d.pop('changed', [])
+          print(json.dumps(d))
+          if not changed:
+              raise SystemExit(0)
+          by = {}
+          for c in changed:
+              b = by.setdefault(c['company_key'], {'rows': 0, 'newly_excluded': 0, 'un_excluded': 0, 'name': c['company']})
+              b['rows'] += 1
+              if c['now'] and not c['was']:
+                  b['newly_excluded'] += c['job_count']
+              elif c['was'] and not c['now']:
+                  b['un_excluded'] += c['job_count']
+          for key, b in sorted(by.items(), key=lambda kv: -(kv[1]['newly_excluded'] + kv[1]['un_excluded'])):
+              print(f"  {key}\t rows={b['rows']}\t newly_excluded={b['newly_excluded']}\t un_excluded={b['un_excluded']}\t {b['name']}")
+          PY
