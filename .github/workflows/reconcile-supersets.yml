@@ -59,4 +59,7 @@ jobs:
                   b['un_excluded'] += c['job_count']
           for key, b in sorted(by.items(), key=lambda kv: -(kv[1]['newly_excluded'] + kv[1]['un_excluded'])):
               print(f"  {key}\t rows={b['rows']}\t newly_excluded={b['newly_excluded']}\t un_excluded={b['un_excluded']}\t {b['name']}")
+          print("--- rows ---")
+          for c in changed:
+              print(f"  {c['id']}\t{c['company_key']}\t{c['layoff_date']}\t{c['state']}\t{c['source_type']}\t{c['job_count']}\twas={c['was']}\tnow={c['now']}")
           PY
