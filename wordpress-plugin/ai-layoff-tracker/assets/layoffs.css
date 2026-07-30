@@ -1754,3 +1754,149 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 
 /* Counting-basis comparison (methodology + press): live, self-updating. */
 .alt-basis-table{width:100%;border-collapse:collapse;font-size:.93rem;margin:14px 0}.alt-basis-table th,.alt-basis-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #e6e0cf;vertical-align:top;line-height:1.5}.alt-basis-table thead th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}.alt-basis-table tbody td:nth-child(2){font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* The job count's unit. Off on the desktop table, where the column header
+   already says "Jobs"; on by itself in the phone card, where the header is
+   visually gone and the figure is the card's headline. */
+.alt-jobs-unit { display: none; }
+
+/* ===========================================================================
+   Phones and small tablets: every feed row becomes a three-band card.
+   Nine columns squeezed into a 375px screen leave the employer name about one
+   word of width, and side-scrolling a table means the employer scrolls out of
+   view while you read what happened to them. The row already scrolled inside
+   its own container rather than bleeding the page, which is the floor, not the
+   goal; a card is the thing a person can actually read on a phone.
+
+   Three bands, in the order a reader needs them:
+     WHO          the employer, as a quiet eyebrow
+     HOW BIG      the job count, as the headline
+     ON WHAT      one quiet evidence line: the compact tag row (verification
+                  tier, AI attribution, reasons) then date, place and source
+   Ordered by the `alt-cell-*` classes the column definitions set in
+   layoffs.js, never by nth-child: keyed to column position these rules would
+   be a coincidence of today's column order rather than a layout.
+
+   860px to match the sibling talent tracker, so the two products change shape
+   at the same width and a reader moving between them is not surprised.
+
+   Known cost, accepted deliberately: changing a table's `display` drops the
+   table role in every engine, so cell-to-header association is gone here. That
+   is why the one genuinely ambiguous value (the bare job count) carries its
+   unit as real text in the markup, and why thead is CLIPPED rather than
+   display:none — it stays in the accessibility tree for the desktop layout.
+   =========================================================================== */
+@media (max-width: 860px) {
+    /* The container stops scrolling because there is nothing wide left in it.
+       Cards carry their own border, so the wrapper's rounding would draw a
+       stray corner around the stack. */
+    .alt-table-scroll { overflow-x: visible; border-radius: 0; }
+    .alt-tracker-wrap .dataTables_wrapper { overflow-x: visible; }
+    .alt-tracker-wrap table.dataTable { display: block; width: 100%; }
+    .alt-tracker-wrap table.dataTable tbody { display: block; }
+
+    /* Clipped, not removed: see the note above. */
+    .alt-tracker-wrap table.dataTable thead {
+        position: absolute; width: 1px; height: 1px;
+        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+
+    /* The card. 14px between cards rather than a shared 1px rule: the gap is
+       what makes a stack of these read as separate events instead of one long
+       list, and it is the single thing that changed how the feed feels. */
+    .alt-tracker-wrap table.dataTable tbody tr {
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 10px;
+        border: 1px solid var(--alt-border); border-radius: 12px;
+        background: var(--alt-surface); box-shadow: var(--alt-shadow);
+        padding: 14px 16px; margin: 0 0 14px;
+    }
+    .alt-tracker-wrap table.dataTable tbody tr:hover { background: var(--alt-surface); }
+
+    /* Full width is the default and every band opts out of it, rather than the
+       other way round: a cell nobody thought about stacks readably instead of
+       landing unsized beside its neighbour. */
+    .alt-tracker-wrap table.dataTable tbody td {
+        display: block; border: 0; padding: 0; flex: 1 0 100%;
+        text-align: left; min-width: 0;
+    }
+    /* An empty cell still eats a 10px gap and leaves the card looking mis-set.
+       Reasons and the AI flag are both legitimately empty on most rows. */
+    .alt-tracker-wrap table.dataTable tbody td:empty { display: none; }
+
+    /* --- Band 1: who ------------------------------------------------------ */
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-company {
+        order: 1; font-size: 14px; line-height: 1.3;
+    }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-company strong { font-weight: 700; }
+
+    /* --- Band 2: how big -------------------------------------------------- */
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-jobs {
+        order: 2; font-size: 24px; font-weight: 700; line-height: 1.15;
+        letter-spacing: -0.02em; color: var(--alt-ink);
+    }
+    .alt-cell-jobs .alt-jobs-unit {
+        display: inline; font-size: 14px; font-weight: 600;
+        letter-spacing: 0; color: var(--alt-muted);
+    }
+
+    /* --- Band 3: on what evidence ---------------------------------------- */
+    /* ONE tag row, three kinds of tag sharing it: the evidence tier, the AI
+       flag, and the reasons. All three are separate COLUMNS on the desktop
+       table, so the obvious card treatment stacks them as three rows saying one
+       thing each. `flex: 0 1 auto` on all three lets them run together and wrap
+       as one line, which is the whole point: what kind of evidence, and what
+       the employer said, read together or not at all. */
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-verification { order: 3; flex: 0 1 auto; }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-ai { order: 4; flex: 0 1 auto; }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-reasons { order: 5; flex: 0 1 auto; }
+    /* Kill the tags' own vertical margin: the flex gap already spaces the row,
+       and the two together measured about 24px between one-line items. */
+    .alt-cell-reasons .alt-tag { margin: 0; }
+    /* Several reason tags in one cell still need air between THEM, and the
+       cell's own gap cannot reach inside it. */
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-reasons {
+        display: flex; flex-wrap: wrap; gap: 5px 6px;
+    }
+
+    /* The quiet meta line. Short self-describing values sharing one wrapping
+       row, separated by spacing and not by punctuation: a middot rendered as
+       each item's ::before lands at the START of a wrapped line, where it reads
+       as a bullet that has lost its text. */
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-date { order: 6; flex: 0 1 auto; }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-industry { order: 7; flex: 0 1 auto; }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-country { order: 8; flex: 0 1 auto; }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-link { order: 9; flex: 0 1 auto; }
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-date,
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-industry,
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-country,
+    .alt-tracker-wrap table.dataTable tbody td.alt-cell-link {
+        font-size: 12.5px; line-height: 1.3; color: var(--alt-muted);
+    }
+    .alt-cell-link a { font-weight: 600; }
+
+    /* --- The expanded detail --------------------------------------------- */
+    /* Welded to the card it belongs to rather than floating below it as a
+       second card: the open card loses its bottom rounding and its gap, and the
+       detail closes the shape. */
+    .alt-tracker-wrap table.dataTable tbody tr.alt-row-open {
+        margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+        border-bottom: 0; background: var(--alt-blue-tint);
+    }
+    .alt-tracker-wrap table.dataTable tbody tr.alt-row-detail {
+        display: block; padding: 0; margin: 0 0 14px;
+        border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;
+        box-shadow: var(--alt-shadow); overflow: hidden;
+    }
+    .alt-tracker-wrap table.dataTable tbody td.alt-row-detail { flex: 1 0 100%; }
+    /* The detail's own grid is a single column at this width, and its left rule
+       would double the card's border. */
+    .alt-tracker-wrap .alt-detail { grid-template-columns: 1fr; border-left: 0; }
+
+    /* --- The empty state ------------------------------------------------- */
+    /* The other row shape the table can produce: one cell with a colspan. The
+       :not() matters — the detail row's cell ALSO carries a colspan, and
+       centring it centred every line of the expanded detail. */
+    .alt-tracker-wrap table.dataTable tbody td[colspan]:not(.alt-row-detail) {
+        flex: 1 0 100%; text-align: center;
+    }
+}

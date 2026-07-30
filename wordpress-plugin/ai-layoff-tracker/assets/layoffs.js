@@ -2161,8 +2161,15 @@
                 if (!info.recordsDisplay) { el.textContent = 'No layoffs match the current filters.'; return; }
                 el.textContent = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' layoffs';
             },
+            // Every column carries a stable `alt-cell-*` class. The desktop
+            // table needs none of them: they exist so the phone card layout can
+            // order the bands by MEANING instead of by column position. Keying
+            // the card rules to nth-child would have made them a coincidence of
+            // this table's current column order, and the next column inserted
+            // would silently reshuffle the card. See the card block at the end
+            // of layoffs.css.
             columns: [
-                { data: 'layoff_date', render: function (d, t, row) {
+                { data: 'layoff_date', className: 'alt-cell-date', render: function (d, t, row) {
                     if (t !== 'display') return d || '';
                     if (!d) return '<span class="alt-muted">unknown</span>';
                     // WARN filings are legally filed 60+ days ahead — flag cuts
@@ -2181,31 +2188,40 @@
                         + (badges.length ? '<span class="alt-date-badges">' + badges.join('') + '</span>' : '')
                         + '</span>';
                 } },
-                { data: 'company_name', render: function (d, t, row) {
+                { data: 'company_name', className: 'alt-cell-company', render: function (d, t, row) {
                     if (t !== 'display') return d || '';
                     var h = '<strong>' + escapeHtml(d) + '</strong>';
                     if (row.ticker) h += ' <span class="alt-ticker">' + escapeHtml(row.ticker) + '</span>';
                     return h;
                 } },
-                { data: 'job_count', className: 'alt-num', render: function (d, t) { return t === 'display' ? fmt(d) : d; } },
-                { data: 'industry', render: function (d, t) { return t === 'display' ? escapeHtml(d || '—') : (d || ''); } },
-                { data: 'country', render: function (d, t, row) {
+                // The unit is REAL text, not a CSS ::after. Changing a table's
+                // display to build cards drops the table role in every engine,
+                // so on a phone nothing tells a screen reader that "1,200" is a
+                // job count; generated content is not a dependable substitute.
+                // The span is display:none on the desktop table, where the
+                // column header still says it.
+                { data: 'job_count', className: 'alt-num alt-cell-jobs', render: function (d, t) {
+                    if (t !== 'display') return d;
+                    return fmt(d) + '<span class="alt-jobs-unit"> jobs</span>';
+                } },
+                { data: 'industry', className: 'alt-cell-industry', render: function (d, t) { return t === 'display' ? escapeHtml(d || '—') : (d || ''); } },
+                { data: 'country', className: 'alt-cell-country', render: function (d, t, row) {
                     if (t !== 'display') return (d || '') + ' ' + (row.state || '');
                     var c = escapeHtml(d || '—');
                     if (row.state) c += ' <span class="alt-state">' + escapeHtml(row.state) + '</span>';
                     return c;
                 } },
-                { data: 'reason_tags', orderable: false, render: function (d, t) {
+                { data: 'reason_tags', className: 'alt-cell-reasons', orderable: false, render: function (d, t) {
                     var tags = Array.isArray(d) ? d : [];
                     if (t !== 'display') return tags.join(' ');
                     return tags.map(function (x) { return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[x] || x) + '</span>'; }).join(' ');
                 } },
-                { data: 'verification_level', render: function (d, t) { return t === 'display' ? verificationBadge(d) : (d || ''); } },
-                { data: 'ai_explicit', className: 'alt-center', render: function (d, t) {
+                { data: 'verification_level', className: 'alt-cell-verification', render: function (d, t) { return t === 'display' ? verificationBadge(d) : (d || ''); } },
+                { data: 'ai_explicit', className: 'alt-center alt-cell-ai', render: function (d, t) {
                     if (t === 'display') return d ? '<span class="alt-ai-yes" title="Explicitly AI-attributed">AI</span>' : '';
                     return d ? 1 : 0;
                 } },
-                { data: 'source_url', orderable: false, render: function (d, t, row) {
+                { data: 'source_url', className: 'alt-cell-link', orderable: false, render: function (d, t, row) {
                     if (t !== 'display') return row.source_name || '';
                     var arch = archivedCellLink(row);
                     if (row.source_type === 'warn') {
@@ -2292,7 +2308,13 @@
             var row = table.row(this);
             if (!row.data()) return;
             if (row.child.isShown()) { row.child.hide(); $(this).removeClass('alt-row-open'); }
-            else { row.child(formatDetail(row.data())).show(); $(this).addClass('alt-row-open'); }
+            // Name the detail row. DataTables 1.10 puts the second argument on
+            // both the generated <tr> and its <td>, and without a name of its
+            // own the only handle on it is `td[colspan]` — which also matches
+            // the empty-table cell, and needs :has() to reach the <tr>. On the
+            // phone card layout the detail has to be visibly welded to the card
+            // it belongs to, so it needs a real class.
+            else { row.child(formatDetail(row.data()), 'alt-row-detail').show(); $(this).addClass('alt-row-open'); }
         });
     }
 
