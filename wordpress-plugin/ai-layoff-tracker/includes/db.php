@@ -4013,7 +4013,10 @@ function alt_tracker_bootstrap_payload() {
     // year ("All time" is one click away). Site timezone, like the site copy.
     $year = (string) current_time('Y');
     $aggregate_params = array('years' => $year);
-    // Mirrors the table's first DataTables draw: newest first, 25 per page.
+    // Mirrors the results list's first request: newest first, 25 per page.
+    // These params must stay byte-identical to what queryParams() builds in
+    // layoffs.js, or takeBoot() rejects the payload and the zero-fetch first
+    // paint silently becomes a fetch.
     $query_params = array(
         'years'    => $year,
         'per_page' => '25',

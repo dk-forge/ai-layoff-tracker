@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.225
+ * Version: 2.19.226
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.225');
+define('ALT_VERSION', '2.19.226');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -771,8 +771,8 @@ function alt_render_chart_embed_route() {
 add_action('template_redirect', 'alt_render_chart_embed_route', 1);
 
 /**
- * Only load DataTables/Chart.js on pages that actually use a plugin shortcode
- * — loading two CDN libraries on every page of the site would be wasteful.
+ * Only load Chart.js on pages that actually use a plugin shortcode — loading
+ * a CDN library on every page of the site would be wasteful.
  * Filter `alt_enqueue_assets` to force-enable on custom templates.
  */
 function alt_page_needs_assets() {
@@ -818,20 +818,16 @@ function alt_enqueue_assets() {
         return;
     }
 
-    // DataTables
-    wp_enqueue_style(
-        'datatables-css',
-        'https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css',
-        array(),
-        '1.10.21'
-    );
-    wp_enqueue_script(
-        'datatables-js',
-        'https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js',
-        array('jquery'),
-        '1.10.21',
-        true
-    );
+    // DataTables is GONE as of 2.19.226, and with it a render-blocking
+    // stylesheet plus 29KB of script from cdnjs on the flagship page. It was
+    // running in serverSide mode, so /query was already doing the ORDER BY and
+    // the LIMIT/OFFSET (db.php alt_api_query_compute) — the library only drew
+    // the pager and the sortable headers. The results are now a list of cards
+    // that layoffs.js renders and pages against the same endpoint, so nothing
+    // it was actually doing had to be replaced.
+    //
+    // jQuery went with it: those six call sites were the only ones in the
+    // file, so alt-js no longer declares it as a dependency.
 
     // Chart.js (UMD build, no dependencies)
     wp_enqueue_script(
@@ -858,12 +854,14 @@ function alt_enqueue_assets() {
     wp_enqueue_script(
         'alt-js',
         ALT_PLUGIN_URL . 'assets/layoffs.js',
-        array('jquery', 'datatables-js', 'chartjs'),
+        array('chartjs'),
         $alt_asset_ver('assets/layoffs.js'),
-        // Autoptimize defers our dependencies (jquery/datatables/chartjs).
-        // Since our file is AO-excluded it MUST defer too, or it executes
-        // before deferred jQuery exists and dies on its first line
-        // (2026-07-19 blank-page incident).
+        // Autoptimize defers our remaining dependency (chartjs). Since our
+        // file is AO-excluded it MUST defer too, or it executes before the
+        // deferred library exists and dies on its first line (2026-07-19
+        // blank-page incident). Deferred also means DOMContentLoaded may
+        // already have fired when it runs, which is why layoffs.js checks
+        // document.readyState rather than only listening for the event.
         array('in_footer' => true, 'strategy' => 'defer')
     );
 
@@ -932,8 +930,11 @@ add_filter('rank_math/frontend/title', 'alt_title_string_no_emdash', 99);
 
 function alt_seo_head() {
     if (!alt_page_needs_assets()) return;
-    // Full preconnect (DNS+TCP+TLS) to both CDNs: the DataTables CSS on
-    // cdnjs is render-blocking, so the handshake sits on the critical path.
+    // Full preconnect (DNS+TCP+TLS) to both CDNs. Nothing render-blocking is
+    // fetched from either any more (the DataTables stylesheet was the last
+    // one, removed in 2.19.226); both now serve deferred or lazy-loaded
+    // script, so this buys the handshake ahead of the first execution rather
+    // than off the critical path.
     echo '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>' . "\n";
     echo '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>' . "\n";
 

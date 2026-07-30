@@ -442,23 +442,21 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
 
     <div id="alt-table-status" class="alt-status" role="status" style="display:none"></div>
 
-    <div class="alt-table-scroll">
-        <table id="alt-table" class="display" style="width:100%">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Company</th>
-                    <th>Jobs</th>
-                    <th>Industry</th>
-                    <th>Country</th>
-                    <th>Reasons</th>
-                    <th>Source</th>
-                    <th>AI</th>
-                    <th>Link</th>
-                </tr>
-            </thead>
-        </table>
-    </div>
+    <?php /* The results are a list of cards, not a table, and they are the same
+             card the sibling talent tracker renders so a reader moving between
+             the two products meets one component rather than two.
+
+             It is an <ol> because the order is the content: "newest first" and
+             "largest cuts" are the two things the sort control says out loud,
+             and an unordered list would tell a screen reader the opposite.
+
+             Rows are fetched and paged SERVER-side (25 at a time, `/query`
+             already does ORDER BY + LIMIT/OFFSET), so the card being taller
+             than a table row costs nothing at 63,000 events: the browser never
+             holds more than one page of them. */ ?>
+    <ol class="alt-cards" id="alt-cards" aria-busy="true"></ol>
+
+    <nav class="alt-pager" id="alt-pager" aria-label="Result pages" hidden></nav>
 
 
     <section class="alt-methodology alt-faq" itemscope>

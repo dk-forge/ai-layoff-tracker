@@ -1,7 +1,7 @@
 <?php
 /**
  * Shortcodes:
- *   [alt_tracker]                            Full filterable DataTables table
+ *   [alt_tracker]                            Full filterable results list (cards)
  *   [alt_stats_bar]                          Headline stats
  *   [alt_dashboard]                          All charts
  *   [alt_ai_tracker]                         AI displacement view

@@ -16,6 +16,11 @@
     --alt-red-tint: #fdeeee;
     --alt-gold: #eda100;
     --alt-shadow: 0 1px 2px rgba(16, 18, 24, 0.04), 0 4px 14px rgba(16, 18, 24, 0.05);
+    /* A display serif against the body grotesque, at zero bytes and zero
+       requests: every face here ships with the OS. The sibling talent tracker
+       declares the identical stack, so the two products set display type the
+       same way without either of them loading a webfont. */
+    --alt-serif: ui-serif, "New York", Georgia, "Iowan Old Style", "Times New Roman", serif;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     color: var(--alt-ink);
     -webkit-font-smoothing: antialiased;
@@ -688,7 +693,6 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-count-strong { font-size: 14px; font-weight: 600; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Zero-result state is unmissable: light red pill on the count + the table cell */
 .alt-count-empty { background: #fdecea; color: #b3261e; border: 1px solid #f5c6c0; border-radius: 8px; padding: 4px 10px; white-space: normal; }
-.alt-table-scroll td.dataTables_empty { background: #fdecea; color: #b3261e; font-weight: 600; padding: 18px 12px; }
 
 /* "Where the cuts are" bar lists */
 .alt-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
@@ -876,35 +880,194 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 }
 .alt-filter-toggle input { width: 16px; height: 16px; accent-color: var(--alt-red); }
 
-/* ---------------- Table ---------------- */
+/* ===========================================================================
+   The results list: cards.
 
-.alt-table-scroll { overflow-x: auto; max-width: 100%; border-radius: 12px; -webkit-overflow-scrolling: touch; }
-.alt-tracker-wrap .dataTables_wrapper { max-width: 100%; min-width: 0; }
-.alt-tracker-wrap table.dataTable {
-    font-size: 14px;
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
+   This was a nine-column table driven by DataTables until 2.19.226. The table
+   is gone, and so are the render-blocking stylesheet and the 29KB of script it
+   pulled from cdnjs. The card is the sibling talent tracker's results card, so
+   a reader moving between the two products meets one component and not two.
+
+   Each card is a two-part shape: a left RAIL saying who and where, and a BODY
+   saying what happened, on what evidence, and where that evidence lives. On a
+   phone the rail stacks above the body and nothing else changes, because the
+   reading order was already the order a reader needs.
+
+   One page of cards exists at a time (25 by default, paged server-side), so a
+   card being taller than a table row costs nothing against 63,000 events.
+   =========================================================================== */
+
+.alt-cards { list-style: none; margin: 0; padding: 0; }
+
+.alt-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px 20px;
+    border: 1px solid var(--alt-border);
+    border-radius: 12px;
+    background: var(--alt-surface);
+    box-shadow: var(--alt-shadow);
+    padding: 14px 16px;
+    margin: 0 0 10px;
+    /* The gap between cards is what makes a stack of these read as separate
+       events rather than one long list. */
 }
-.alt-tracker-wrap table.dataTable thead th {
-    color: var(--alt-ink-2);
-    font-size: 11.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    background: var(--alt-surface-2);
-    border-bottom: 1px solid var(--alt-grid);
-    padding: 11px 12px;
-    white-space: nowrap;
+@media (min-width: 700px) {
+    /* The rail is a fixed column so every employer name starts at the same x
+       and the eye can run straight down them, which is the one thing the table
+       genuinely did well. */
+    .alt-card { grid-template-columns: 190px minmax(0, 1fr); }
 }
-.alt-tracker-wrap table.dataTable tbody td {
-    border-bottom: 1px solid var(--alt-grid);
-    padding: 11px 12px;
-    vertical-align: top;
+.alt-card:hover { background: var(--alt-blue-tint); }
+.alt-card-open { background: var(--alt-blue-tint); }
+
+/* --- The rail: who, and where ------------------------------------------- */
+.alt-card-rail { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.alt-card-employer {
+    font-family: var(--alt-serif);
+    font-size: 17px; font-weight: 600; line-height: 1.25;
+    color: var(--alt-ink); overflow-wrap: anywhere;
 }
-.alt-tracker-wrap table.dataTable tbody tr { transition: background 0.1s ease; }
-.alt-tracker-wrap table.dataTable tbody tr:hover { background: var(--alt-blue-tint); }
-.alt-tracker-wrap table.dataTable tbody tr:hover td { background: transparent; }
+.alt-card-industry {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--alt-muted);
+}
+.alt-card-where { font-size: 13px; line-height: 1.35; color: var(--alt-ink-2); }
+/* A record we could not place, or could not date. Said out loud rather than
+   left blank, and never guessed. */
+.alt-card-nowhere { color: var(--alt-muted); font-style: italic; }
+
+/* --- The body: what happened, on what evidence -------------------------- */
+.alt-card-body { min-width: 0; }
+.alt-card-badges {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    margin: 0 0 7px;
+}
+/* The tags carry their own margin for the places they appear outside a card;
+   inside one the flex gap already spaces them and the two together measured
+   about double. */
+.alt-card-badges .alt-tag { margin: 0; }
+
+/* The job count is the number a reader scans for, and the one thing a table
+   did better than a card. It gets the weight a headline figure deserves
+   without becoming the headline. */
+.alt-card-jobs {
+    font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+    color: var(--alt-ink); font-variant-numeric: tabular-nums;
+    background: var(--alt-surface-2); border: 1px solid var(--alt-grid);
+    border-radius: 7px; padding: 2px 9px; white-space: nowrap;
+}
+/* Real text, not a CSS ::after: a bare "1,200" tells a screen reader nothing,
+   and generated content is not a dependable substitute for saying so. */
+.alt-card-jobs-unit { font-size: 12px; font-weight: 600; color: var(--alt-muted); letter-spacing: 0; }
+.alt-card-jobs-none { font-size: 12px; font-weight: 600; color: var(--alt-muted); }
+
+/* The fact. Blue only ever means clickable, so the headline is blue when the
+   entry has a page of its own and plain ink when it does not. */
+.alt-card-h {
+    display: block; font-size: 16px; font-weight: 600; line-height: 1.35;
+    color: var(--alt-blue); text-decoration: none; overflow-wrap: anywhere;
+}
+a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
+.alt-card-h-plain { color: var(--alt-ink); }
+
+/* Our plain-English read of the record, visually separated from the sourced
+   fact above it so the two are never mistaken for each other. */
+.alt-card-rt {
+    margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--alt-ink-2);
+    border-left: 3px solid var(--alt-grid); padding-left: 10px;
+}
+
+/* --- The footer: when, and the receipts --------------------------------- */
+/* Short self-describing values sharing one wrapping row, separated by spacing
+   and not by punctuation: a middot rendered as each item's ::before lands at
+   the START of a wrapped line, where it reads as a bullet that lost its text. */
+.alt-card-foot {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+    margin: 9px 0 0; font-size: 12.5px; line-height: 1.35; color: var(--alt-muted);
+}
+.alt-card-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alt-card-foot .alt-upcoming { margin-left: 0; }
+.alt-card-src { min-width: 0; overflow-wrap: anywhere; }
+.alt-card-src a { color: var(--alt-blue); text-decoration: none; font-weight: 600; }
+.alt-card-src a:hover { text-decoration: underline; }
+/* The archived copy sits quietly beside the publisher's own link. It is the
+   fallback for a reader whose click landed on a moved or removed page, never a
+   competing citation, so it is deliberately the quieter of the two. */
+.alt-archived { white-space: nowrap; font-size: 12px; color: var(--alt-muted); }
+.alt-card-src .alt-archived a,
+.alt-card-src .alt-muted { color: var(--alt-ink-2); font-weight: 500; }
+
+.alt-card-more {
+    margin-left: auto; font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--alt-ink-2); background: none; border: 1px solid var(--alt-border);
+    border-radius: 7px; padding: 3px 10px; cursor: pointer;
+}
+.alt-card-more:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
+.alt-card-more:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
+.alt-card-detail { margin: 10px 0 0; }
+/* The detail sits INSIDE the card now rather than as a second table row, so it
+   needs its own rounded edge; the accent rule stays as the thing that says
+   "this belongs to the card above it". */
+.alt-card-detail .alt-detail { border-radius: 0 8px 8px 0; }
+/* Links inside a card and inside its detail used to take their colour from a
+   `table.dataTable a` rule. That table is gone, so they say it themselves
+   rather than falling through to whatever the theme sets. */
+.alt-card a, .alt-detail a { color: var(--alt-blue); text-decoration: none; }
+.alt-card a:hover, .alt-detail a:hover { color: var(--alt-blue-dark); text-decoration: underline; }
+.alt-card a:focus-visible, .alt-card button:focus-visible, .alt-detail a:focus-visible {
+    outline: 2px solid var(--alt-blue); outline-offset: 2px; border-radius: 3px;
+}
+
+/* --- The empty state ---------------------------------------------------- */
+.alt-cards-empty {
+    border: 1px solid var(--alt-border); border-radius: 12px;
+    background: var(--alt-surface); box-shadow: var(--alt-shadow);
+    padding: 34px 18px; text-align: center;
+}
+.alt-cards-empty-h { margin: 0 0 5px; font-size: 18px; font-weight: 700; color: var(--alt-ink); }
+.alt-cards-empty-p { margin: 0 0 14px; font-size: 14px; color: var(--alt-ink-2); }
+.alt-cards-empty-clear {
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--alt-ink);
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 9px; padding: 9px 16px; cursor: pointer;
+}
+.alt-cards-empty-clear:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
+.alt-cards-empty-clear:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
+
+/* --- Paging ------------------------------------------------------------- */
+/* Server-side, so these buttons ask for a page rather than reveal one. */
+.alt-pager {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--alt-grid);
+}
+.alt-page-nums { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.alt-page-btn {
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--alt-ink-2);
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 7px; padding: 6px 11px; cursor: pointer;
+    font-variant-numeric: tabular-nums;
+}
+.alt-page-btn:hover:not(:disabled) { border-color: var(--alt-blue); color: var(--alt-blue); }
+.alt-page-btn:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
+.alt-page-btn:disabled { opacity: 0.45; cursor: default; }
+.alt-page-nav { font-weight: 600; }
+/* Selection is a fill, a weight change and aria-current together, never colour
+   on its own. */
+.alt-page-on, .alt-page-on:hover {
+    background: var(--alt-blue); border-color: var(--alt-blue); color: #fff; font-weight: 700;
+}
+.alt-page-gap { color: var(--alt-muted); padding: 0 2px; }
+.alt-page-size {
+    display: inline-flex; align-items: center; gap: 7px; margin-left: auto;
+    font-size: 12.5px; color: var(--alt-muted);
+}
+.alt-page-size select {
+    font: inherit; font-size: 13px; padding: 5px 9px; color: var(--alt-ink);
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 8px; cursor: pointer;
+}
+.alt-page-size select:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
 
 .alt-ticker {
     display: inline-block;
@@ -931,6 +1094,13 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     margin: 1px 3px 1px 0;
     white-space: nowrap;
 }
+/* The stated / not-stated pair on each card. Colour is always a SECOND read:
+   both carry their own words, so nothing is lost without it. */
+.alt-tag-ai {
+    background: var(--alt-red-tint); color: #8c3d00;
+    border-color: #f3c6ab; font-weight: 600;
+}
+.alt-tag-quiet { color: var(--alt-muted); }
 
 .alt-badge {
     display: inline-block;
@@ -961,23 +1131,6 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     vertical-align: middle;
 }
 
-/* The date and its planned/announced state are one data point. Grouping the
-   badges prevents a narrow DataTables cell from orphaning a state badge below
-   the date and making the whole row look broken on mobile. */
-.alt-date-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: max-content;
-    white-space: nowrap;
-}
-.alt-date-badges {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.alt-date-cell .alt-upcoming { margin-left: 0; }
-
 .alt-ai-yes {
     display: inline-block;
     font-size: 10px;
@@ -989,8 +1142,6 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     letter-spacing: 0.06em;
 }
 
-.alt-tracker-wrap table.dataTable a { color: var(--alt-blue); text-decoration: none; }
-.alt-tracker-wrap table.dataTable a:hover { text-decoration: underline; }
 
 .alt-tracker-foot {
     margin: 16px 2px 0;
@@ -1039,8 +1190,6 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-legend-hint { margin-left: auto; color: var(--alt-muted); font-style: italic; }
 
 /* Expandable row detail */
-.alt-tracker-wrap table.dataTable tbody tr { cursor: pointer; }
-.alt-tracker-wrap table.dataTable tbody tr.alt-row-open { background: var(--alt-blue-tint); }
 .alt-detail {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1074,38 +1223,6 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 
 @media (max-width: 600px) {
     .alt-legend-hint { margin-left: 0; flex-basis: 100%; }
-}
-
-/* DataTables built-in controls */
-.alt-tracker-wrap .dataTables_wrapper .dataTables_filter input,
-.alt-tracker-wrap .dataTables_wrapper .dataTables_length select {
-    border: 1px solid var(--alt-grid);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 14px;
-    color: var(--alt-ink);
-}
-.alt-tracker-wrap .dataTables_wrapper .dataTables_filter input:focus {
-    outline: none; border-color: var(--alt-blue); box-shadow: 0 0 0 3px var(--alt-blue-tint);
-}
-.alt-tracker-wrap .dataTables_wrapper .dataTables_filter,
-.alt-tracker-wrap .dataTables_wrapper .dataTables_length,
-.alt-tracker-wrap .dataTables_wrapper .dataTables_info,
-.alt-tracker-wrap .dataTables_wrapper .dataTables_paginate { font-size: 13px; color: var(--alt-ink-2); margin-top: 12px; }
-.alt-tracker-wrap .dataTables_wrapper .paginate_button {
-    border-radius: 7px !important;
-    padding: 5px 11px !important;
-    border: 1px solid transparent !important;
-}
-.alt-tracker-wrap .dataTables_wrapper .paginate_button.current {
-    background: var(--alt-blue) !important;
-    border-color: var(--alt-blue) !important;
-    color: #fff !important;
-}
-.alt-tracker-wrap .dataTables_wrapper .paginate_button:hover {
-    background: var(--alt-surface-2) !important;
-    border-color: var(--alt-grid) !important;
-    color: var(--alt-ink) !important;
 }
 
 @media (max-width: 600px) {
@@ -1488,10 +1605,6 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 #alt-conversion-note { margin: 10px 0 0; font-size: 12px; }
 
 /* Column sorting is live on 7 columns; make it visible and inviting. */
-#alt-table thead th.sorting, #alt-table thead th.sorting_asc, #alt-table thead th.sorting_desc { cursor: pointer; position: relative; padding-right: 20px; }
-#alt-table thead th.sorting::after { content: '\2195'; position: absolute; right: 6px; opacity: .35; }
-#alt-table thead th.sorting_asc::after { content: '\2191'; position: absolute; right: 6px; opacity: 1; color: #0072B2; }
-#alt-table thead th.sorting_desc::after { content: '\2193'; position: absolute; right: 6px; opacity: 1; color: #0072B2; }
 /* Expanded bar cards show the long tail and scroll instead of truncating. */
 .alt-expanded .alt-barlist { max-height: 55vh; overflow-y: auto; padding-right: 12px; }
 
@@ -1754,157 +1867,6 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 
 /* Counting-basis comparison (methodology + press): live, self-updating. */
 .alt-basis-table{width:100%;border-collapse:collapse;font-size:.93rem;margin:14px 0}.alt-basis-table th,.alt-basis-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #e6e0cf;vertical-align:top;line-height:1.5}.alt-basis-table thead th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}.alt-basis-table tbody td:nth-child(2){font-variant-numeric:tabular-nums;white-space:nowrap}
-
-/* The job count's unit. Off on the desktop table, where the column header
-   already says "Jobs"; on by itself in the phone card, where the header is
-   visually gone and the figure is the card's headline. */
-.alt-jobs-unit { display: none; }
-
-/* ===========================================================================
-   Phones and small tablets: every feed row becomes a three-band card.
-   Nine columns squeezed into a 375px screen leave the employer name about one
-   word of width, and side-scrolling a table means the employer scrolls out of
-   view while you read what happened to them. The row already scrolled inside
-   its own container rather than bleeding the page, which is the floor, not the
-   goal; a card is the thing a person can actually read on a phone.
-
-   Three bands, in the order a reader needs them:
-     WHO          the employer, as a quiet eyebrow
-     HOW BIG      the job count, as the headline
-     ON WHAT      one quiet evidence line: the compact tag row (verification
-                  tier, AI attribution, reasons) then date, place and source
-   Ordered by the `alt-cell-*` classes the column definitions set in
-   layoffs.js, never by nth-child: keyed to column position these rules would
-   be a coincidence of today's column order rather than a layout.
-
-   860px to match the sibling talent tracker, so the two products change shape
-   at the same width and a reader moving between them is not surprised.
-
-   Known cost, accepted deliberately, and worse than it first looks. Changing a
-   table's `display` drops the IMPLICIT table roles in every engine, so
-   cell-to-header association is gone here. DataTables does not rescue it:
-   1.10.21 sets an explicit role="grid" on the table and role="row" on every
-   row, but never role="gridcell" on a cell (verified against the shipped
-   minified file), so what survives is a grid of rows containing nothing. That is
-   why the one genuinely ambiguous value, the bare job count, carries its unit as
-   REAL text in the markup rather than as a CSS ::after, and why thead is CLIPPED
-   rather than display:none, so it stays in the accessibility tree for the
-   desktop layout that still needs it.
-   =========================================================================== */
-@media (max-width: 860px) {
-    /* The container stops scrolling because there is nothing wide left in it.
-       Cards carry their own border, so the wrapper's rounding would draw a
-       stray corner around the stack. */
-    .alt-table-scroll { overflow-x: visible; border-radius: 0; }
-    .alt-tracker-wrap .dataTables_wrapper { overflow-x: visible; }
-    .alt-tracker-wrap table.dataTable { display: block; width: 100%; }
-    .alt-tracker-wrap table.dataTable tbody { display: block; }
-
-    /* Clipped, not removed: see the note above. */
-    .alt-tracker-wrap table.dataTable thead {
-        position: absolute; width: 1px; height: 1px;
-        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-    }
-
-    /* The card. 14px between cards rather than a shared 1px rule: the gap is
-       what makes a stack of these read as separate events instead of one long
-       list, and it is the single thing that changed how the feed feels. */
-    .alt-tracker-wrap table.dataTable tbody tr {
-        display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 10px;
-        border: 1px solid var(--alt-border); border-radius: 12px;
-        background: var(--alt-surface); box-shadow: var(--alt-shadow);
-        padding: 14px 16px; margin: 0 0 14px;
-    }
-    .alt-tracker-wrap table.dataTable tbody tr:hover { background: var(--alt-surface); }
-
-    /* Full width is the default and every band opts out of it, rather than the
-       other way round: a cell nobody thought about stacks readably instead of
-       landing unsized beside its neighbour. */
-    .alt-tracker-wrap table.dataTable tbody td {
-        display: block; border: 0; padding: 0; flex: 1 0 100%;
-        text-align: left; min-width: 0;
-    }
-    /* An empty cell still eats a 10px gap and leaves the card looking mis-set.
-       Reasons and the AI flag are both legitimately empty on most rows. */
-    .alt-tracker-wrap table.dataTable tbody td:empty { display: none; }
-
-    /* --- Band 1: who ------------------------------------------------------ */
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-company {
-        order: 1; font-size: 14px; line-height: 1.3;
-    }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-company strong { font-weight: 700; }
-
-    /* --- Band 2: how big -------------------------------------------------- */
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-jobs {
-        order: 2; font-size: 24px; font-weight: 700; line-height: 1.15;
-        letter-spacing: -0.02em; color: var(--alt-ink);
-    }
-    .alt-cell-jobs .alt-jobs-unit {
-        display: inline; font-size: 14px; font-weight: 600;
-        letter-spacing: 0; color: var(--alt-muted);
-    }
-
-    /* --- Band 3: on what evidence ---------------------------------------- */
-    /* ONE tag row, three kinds of tag sharing it: the evidence tier, the AI
-       flag, and the reasons. All three are separate COLUMNS on the desktop
-       table, so the obvious card treatment stacks them as three rows saying one
-       thing each. `flex: 0 1 auto` on all three lets them run together and wrap
-       as one line, which is the whole point: what kind of evidence, and what
-       the employer said, read together or not at all. */
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-verification { order: 3; flex: 0 1 auto; }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-ai { order: 4; flex: 0 1 auto; }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-reasons { order: 5; flex: 0 1 auto; }
-    /* Kill the tags' own vertical margin: the flex gap already spaces the row,
-       and the two together measured about 24px between one-line items. */
-    .alt-cell-reasons .alt-tag { margin: 0; }
-    /* Several reason tags in one cell still need air between THEM, and the
-       cell's own gap cannot reach inside it. */
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-reasons {
-        display: flex; flex-wrap: wrap; gap: 5px 6px;
-    }
-
-    /* The quiet meta line. Short self-describing values sharing one wrapping
-       row, separated by spacing and not by punctuation: a middot rendered as
-       each item's ::before lands at the START of a wrapped line, where it reads
-       as a bullet that has lost its text. */
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-date { order: 6; flex: 0 1 auto; }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-industry { order: 7; flex: 0 1 auto; }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-country { order: 8; flex: 0 1 auto; }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-link { order: 9; flex: 0 1 auto; }
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-date,
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-industry,
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-country,
-    .alt-tracker-wrap table.dataTable tbody td.alt-cell-link {
-        font-size: 12.5px; line-height: 1.3; color: var(--alt-muted);
-    }
-    .alt-cell-link a { font-weight: 600; }
-
-    /* --- The expanded detail --------------------------------------------- */
-    /* Welded to the card it belongs to rather than floating below it as a
-       second card: the open card loses its bottom rounding and its gap, and the
-       detail closes the shape. */
-    .alt-tracker-wrap table.dataTable tbody tr.alt-row-open {
-        margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
-        border-bottom: 0; background: var(--alt-blue-tint);
-    }
-    .alt-tracker-wrap table.dataTable tbody tr.alt-row-detail {
-        display: block; padding: 0; margin: 0 0 14px;
-        border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;
-        box-shadow: var(--alt-shadow); overflow: hidden;
-    }
-    .alt-tracker-wrap table.dataTable tbody td.alt-row-detail { flex: 1 0 100%; }
-    /* The detail's own grid is a single column at this width, and its left rule
-       would double the card's border. */
-    .alt-tracker-wrap .alt-detail { grid-template-columns: 1fr; border-left: 0; }
-
-    /* --- The empty state ------------------------------------------------- */
-    /* The other row shape the table can produce: one cell with a colspan. The
-       :not() matters — the detail row's cell ALSO carries a colspan, and
-       centring it centred every line of the expanded detail. */
-    .alt-tracker-wrap table.dataTable tbody td[colspan]:not(.alt-row-detail) {
-        flex: 1 0 100%; text-align: center;
-    }
-}
 
 /* ===========================================================================
    Sources and Roles as pill strips, not dropdowns.

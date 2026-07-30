@@ -3,20 +3,25 @@
  *
  * Everything is driven by three REST endpoints so the browser never loads the
  * whole dataset (it scales to 100K+ rows):
- *   query      paginated + filtered + sorted rows (DataTables server-side mode)
+ *   query      one page of filtered rows, ordered and paged by the SERVER
  *   aggregate  filtered totals, top-N, monthly series, reason breakdown, leaders
  *   facets     distinct industry/country/state + date range (dropdowns + period)
  *
  * Filters, the period selector, and chart clicks all set the same controls and
- * then re-fetch query + aggregate, so table, charts, and headline numbers move
- * together.
+ * then re-fetch query + aggregate, so the results list, charts, and headline
+ * numbers move together.
+ *
+ * The results list is cards, not a table, and it holds exactly one page of
+ * them at a time. No third-party table library is involved: /query already
+ * does the ORDER BY and the LIMIT/OFFSET, so sorting orders all 63,000 events
+ * and the browser never renders more than one page of cards.
  *
  * First paint: the tracker template inlines the default-filter responses for
  * all three endpoints as window.ALT_BOOTSTRAP (computed server-side by the
  * same endpoint callbacks), so an unfiltered first load renders with zero
  * REST round-trips; see takeBoot() below. Filter changes always fetch live.
  */
-(function ($) {
+(function () {
     'use strict';
 
     if (typeof window.altData === 'undefined') return;
@@ -173,11 +178,17 @@
             + 'automatically every week and add the archived copy the moment the '
             + 'Internet Archive captures this source.' + (d ? ' Last checked ' + d + '.' : '');
     }
-    // Compact secondary link for the table source cell.
+    // The archived copy on a result card: always a SECOND link, never instead
+    // of the publisher's own. Wording, separator and tone match the sibling
+    // talent tracker (`archived`, after a middot, in the quieter ink) so the
+    // two products say the same thing the same way. What is ours and not the
+    // sibling's is the pending state: a row whose source has not been captured
+    // yet says so and says when it was last checked, rather than showing
+    // nothing and leaving a reader to guess whether we simply did not bother.
     function archivedCellLink(row) {
         var a = archivedUrl(row);
-        if (a) return ' <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="Permanent Internet Archive (Wayback Machine) snapshot of this source">(archived)</a>';
-        if (hasSourceUrl(row)) return ' <span class="alt-muted" title="' + escapeHtml(archivePendingTitle(row)) + '">(archive pending)</span>';
+        if (a) return '<span class="alt-archived"> · <a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="A copy saved by the Internet Archive, for when the publisher’s own page has moved or gone">archived</a></span>';
+        if (hasSourceUrl(row)) return '<span class="alt-archived"> · <span class="alt-muted" title="' + escapeHtml(archivePendingTitle(row)) + '">archive pending</span></span>';
         return '';
     }
     // archivedDetailLink removed 2026-07-28: superseded by archiveCell (F28).
@@ -642,7 +653,6 @@
         } catch (e) { /* a URL we cannot write is not worth failing the render for */ }
     }
 
-    var TABLE = null;
     var DASH_PRESENT = false;
     var LAST_AGG = null;
 
@@ -667,7 +677,10 @@
     function refreshAll() {
         saveFilters();
         syncUrlFromFilters();
-        if (TABLE) TABLE.ajax.reload(null, true);
+        // Any filter change is a new result set, so it starts at page one.
+        // Paging itself calls loadRows() directly and keeps its page.
+        PAGE = 1;
+        loadRows();
         fetchAndRenderAggregate();
         updateActiveFilterBar();
         updateQuickViewStates();
@@ -2155,152 +2168,349 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Tracker table (server-side)                                         */
+    /* Results: a list of cards, fetched and paged SERVER-side              */
     /* ------------------------------------------------------------------ */
+    /* This replaced a DataTables table in 2.19.226. DataTables was already
+       running in serverSide mode, so it was never sorting or paging in the
+       browser — /query did the ORDER BY and the LIMIT/OFFSET (db.php
+       alt_api_query_compute) and DataTables only drew the chrome. What it did
+       cost was a render-blocking stylesheet and 29KB of script from cdnjs, and
+       a nine-column table that had to scroll sideways on a phone.
+
+       The card is the sibling talent tracker's results card, so a reader
+       moving between the two products meets one component: employer eyebrow,
+       a badge row, the fact, our plain-English read of it, then the date and
+       the source. The one thing this product adds is the job count as a
+       prominent badge, which is the number a reader scans for and the thing a
+       table genuinely did better than a card. */
 
     function verificationBadge(level) {
         var safe = escapeHtml(level || 'bronze');
         return '<span class="alt-badge alt-badge-' + safe + '">' + escapeHtml(VERIF_LABELS[level] || 'News') + '</span>';
     }
 
-    function initTracker() {
-        var tableEl = document.getElementById('alt-table');
-        if (!tableEl) return;
-        if (typeof $.fn.DataTable === 'undefined') {
-            setStatus('alt-table-status', 'The table library failed to load (CDN blocked?). Raw data: ' + API + 'query', true);
+    // The sort control is now the only sort UI. It always ordered the whole
+    // filtered set, not the loaded page: these two params go to /query, which
+    // has its own $sortable allowlist (layoff_date, job_count, company,
+    // country, state, industry).
+    var SORT_PARAMS = {
+        newest:   ['layoff_date', 'desc'],
+        oldest:   ['layoff_date', 'asc'],
+        largest:  ['job_count', 'desc'],
+        smallest: ['job_count', 'asc']
+    };
+    var PER_PAGE_CHOICES = [10, 25, 50, 100];
+
+    var PAGE = 1, PER_PAGE = 25, TOTAL = 0, ROWS = [], QUERY_SEQ = 0;
+
+    // Local calendar date, not UTC, so "upcoming" doesn't flip early or late
+    // around midnight for a reader west of Greenwich.
+    function todayLocal() {
+        var n = new Date();
+        return n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate());
+    }
+    // The date the record carries, in the sibling's format (30 Jul 2026).
+    // Split by hand rather than through Date(), which reads a bare YYYY-MM-DD
+    // as UTC midnight and can show the previous day.
+    function cardWhen(d) {
+        var p = String(d || '').slice(0, 10).split('-');
+        if (p.length !== 3) return '';
+        return String(+p[2]) + ' ' + (MONTHS[+p[1] - 1] || '') + ' ' + p[0];
+    }
+
+    // Where the jobs were. The rail says so plainly, and says so out loud when
+    // the record does not carry a place, rather than leaving the line blank.
+    function cardWhere(row) {
+        var bits = [];
+        if (row.state) bits.push(String(row.state));
+        if (row.country) bits.push(String(row.country));
+        if (!bits.length) return '<span class="alt-card-nowhere">Location not stated</span>';
+        return escapeHtml(bits.join(', '));
+    }
+
+    // The fact, in one line. A WARN notice filed for a future effective date,
+    // and anything on the announced tier, has not happened yet: saying "cut"
+    // of either would be the tracker asserting something it cannot.
+    function cardHeadline(row) {
+        var co = row.company_name ? String(row.company_name) : 'This employer';
+        var n = Number(row.job_count || 0);
+        var planned = !!row.announced || (row.layoff_date && row.layoff_date > todayLocal());
+        var what = n > 0 ? (fmt(n) + ' job' + (n === 1 ? '' : 's')) : 'jobs';
+        return co + (planned ? ' plans to cut ' : ' cut ') + what;
+    }
+
+    // Our plain-English read of the record, kept visually separate from the
+    // fact above it (same convention as the sibling's read-through). The
+    // stored excerpt is the most specific thing we have; the tier sentences
+    // are the honest fallback when a row carries none.
+    var VERIF_MEANING = {
+        gold: 'Disclosed in an SEC filing, so the figure is the company’s own.',
+        warn: 'Filed with the state as a legal WARN notice, so the size, date and location are on the public record. A WARN notice records the cut, not its cause.',
+        silver: 'Announced by the company in its own release.',
+        bronze: 'Reported by a named news source.'
+    };
+    function cardMeaning(row) {
+        if (row.excerpt) return String(row.excerpt);
+        return VERIF_MEANING[row.verification_level] || '';
+    }
+
+    // Publisher link first, archived copy second and never instead. The
+    // publisher's own URL is the citation; the Internet Archive snapshot is
+    // what keeps the evidence reachable when that URL moves or goes. Wording
+    // matches the sibling so the two products read alike.
+    function cardSourceLinks(row) {
+        var arch = archivedCellLink(row);
+        var name = escapeHtml(row.source_name || 'source');
+        if (row.source_type === 'warn') {
+            var wl = warnLinks(row);
+            if (!wl.primary) return escapeHtml(row.source_name || 'Source not recorded');
+            if (wl.exact) {
+                var suffix = wl.list
+                    ? ' <a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="The state’s official WARN list this notice is filed in">(list)</a>'
+                    : '';
+                return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens this exact WARN notice">' + name + ' ↗</a>' + suffix + arch;
+            }
+            return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive; the recorded details here were captured from the notice when it was filed.">' + name + ' ↗</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>' + arch;
+        }
+        var url = safeUrl(row.source_url);
+        if (!url) return escapeHtml(row.source_name || 'Source not recorded');
+        return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="Opens the primary source">' + name + ' ↗</a>' + arch;
+    }
+
+    function cardHtml(row, i) {
+        var d = row.layoff_date || '';
+        var when = cardWhen(d);
+        var flags = '';
+        if (d && d > todayLocal()) flags += '<span class="alt-upcoming" title="Filed in advance. The effective date has not arrived yet.">upcoming</span>';
+        if (row.announced) flags += '<span class="alt-upcoming" title="Announcement of planned cuts, not yet executed or filed">announced</span>';
+
+        // The stated / not-stated pair, which is the distinction this whole
+        // tracker rests on. Never colour alone: each carries its words.
+        var aiBadge = row.ai_explicit
+            ? '<span class="alt-tag alt-tag-ai" title="The employer named AI or automation as a cause, in words we can quote">AI-attributed</span>'
+            : '<span class="alt-tag alt-tag-quiet" title="No cause attributed to AI in this record">Cause not stated</span>';
+
+        var tags = (Array.isArray(row.reason_tags) ? row.reason_tags : []).map(function (x) {
+            return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[x] || x) + '</span>';
+        }).join('');
+
+        var n = Number(row.job_count || 0);
+        // Real text, never a CSS ::after: a generated unit is not a dependable
+        // thing for a screen reader to read, and a bare "1,200" says nothing.
+        var jobs = n > 0
+            ? '<span class="alt-card-jobs">' + fmt(n) + '<span class="alt-card-jobs-unit"> jobs</span></span>'
+            : '<span class="alt-card-jobs alt-card-jobs-none" title="This record names no headcount">Count not stated</span>';
+
+        // Blue only ever means clickable. The headline links to the entry's own
+        // page when it has one (those permalinks were previously rendered
+        // nowhere at all), and is plain ink when it does not.
+        var perma = safeUrl(row.permalink);
+        var head = perma
+            ? '<a class="alt-card-h" href="' + escapeHtml(perma) + '">' + escapeHtml(cardHeadline(row)) + '</a>'
+            : '<span class="alt-card-h alt-card-h-plain">' + escapeHtml(cardHeadline(row)) + '</span>';
+
+        var meaning = cardMeaning(row);
+        var industry = row.industry
+            ? '<span class="alt-card-industry">' + escapeHtml(row.industry) + '</span>'
+            : '';
+        var ticker = row.ticker ? ' <span class="alt-ticker">' + escapeHtml(row.ticker) + '</span>' : '';
+
+        return '<li class="alt-card" data-i="' + i + '">'
+            + '<div class="alt-card-rail">'
+            +   '<span class="alt-card-employer">' + escapeHtml(row.company_name || 'Employer not named') + ticker + '</span>'
+            +   industry
+            +   '<span class="alt-card-where">' + cardWhere(row) + '</span>'
+            + '</div>'
+            + '<div class="alt-card-body">'
+            +   '<div class="alt-card-badges">' + aiBadge + verificationBadge(row.verification_level) + jobs + tags + '</div>'
+            +   head
+            +   (meaning ? '<p class="alt-card-rt">' + escapeHtml(meaning) + '</p>' : '')
+            +   '<div class="alt-card-foot">'
+            +     (when ? '<time class="alt-card-when" datetime="' + escapeHtml(d) + '">' + escapeHtml(when) + '</time>'
+                        : '<span class="alt-card-when alt-card-nowhere">Date not stated</span>')
+            +     flags
+            +     '<span class="alt-card-src">' + cardSourceLinks(row) + '</span>'
+            +     '<button type="button" class="alt-card-more" aria-expanded="false">Details</button>'
+            +   '</div>'
+            +   '<div class="alt-card-detail" hidden></div>'
+            + '</div>'
+            + '</li>';
+    }
+
+    function renderCards() {
+        var list = document.getElementById('alt-cards');
+        if (!list) return;
+        list.setAttribute('aria-busy', 'false');
+        if (!ROWS.length) {
+            list.innerHTML = '<li class="alt-cards-empty">'
+                + '<p class="alt-cards-empty-h">No layoffs match the current filters</p>'
+                + '<p class="alt-cards-empty-p">We would rather show you nothing than guess.</p>'
+                + '<button type="button" class="alt-cards-empty-clear">Reset all filters</button>'
+                + '</li>';
+            return;
+        }
+        list.innerHTML = ROWS.map(cardHtml).join('');
+    }
+
+    // Numbered pages, windowed so 2,547 pages do not print 2,547 buttons.
+    function pageWindow(cur, last) {
+        var out = [], i;
+        var lo = Math.max(2, cur - 1), hi = Math.min(last - 1, cur + 1);
+        out.push(1);
+        if (lo > 2) out.push('gap');
+        for (i = lo; i <= hi; i++) out.push(i);
+        if (hi < last - 1) out.push('gap');
+        if (last > 1) out.push(last);
+        return out;
+    }
+
+    function renderPager() {
+        var nav = document.getElementById('alt-pager');
+        if (!nav) return;
+        var last = Math.max(1, Math.ceil(TOTAL / PER_PAGE));
+        if (!TOTAL) { nav.hidden = true; nav.innerHTML = ''; return; }
+        nav.hidden = false;
+        var html = '<button type="button" class="alt-page-btn alt-page-nav" data-page="' + (PAGE - 1) + '"'
+            + (PAGE <= 1 ? ' disabled' : '') + '>Previous</button>';
+        html += '<span class="alt-page-nums">';
+        pageWindow(PAGE, last).forEach(function (p) {
+            if (p === 'gap') { html += '<span class="alt-page-gap" aria-hidden="true">…</span>'; return; }
+            html += '<button type="button" class="alt-page-btn' + (p === PAGE ? ' alt-page-on' : '') + '" data-page="' + p + '"'
+                + (p === PAGE ? ' aria-current="page"' : '')
+                + ' aria-label="Page ' + p + ' of ' + last + '">' + fmt(p) + '</button>';
+        });
+        html += '</span>';
+        html += '<button type="button" class="alt-page-btn alt-page-nav" data-page="' + (PAGE + 1) + '"'
+            + (PAGE >= last ? ' disabled' : '') + '>Next</button>';
+        html += '<label class="alt-page-size"><span>Per page</span><select id="alt-per-page">'
+            + PER_PAGE_CHOICES.map(function (n) {
+                return '<option value="' + n + '"' + (n === PER_PAGE ? ' selected' : '') + '>' + n + '</option>';
+            }).join('')
+            + '</select></label>';
+        nav.innerHTML = html;
+    }
+
+    function renderCount() {
+        var el = document.getElementById('alt-table-count');
+        if (!el) return;
+        el.classList.toggle('alt-count-empty', !TOTAL);
+        if (!TOTAL) { el.textContent = 'No layoffs match the current filters.'; return; }
+        var start = (PAGE - 1) * PER_PAGE + 1;
+        var end = Math.min(TOTAL, PAGE * PER_PAGE);
+        el.textContent = 'Showing ' + fmt(start) + '–' + fmt(end) + ' of ' + fmt(TOTAL) + ' layoffs';
+    }
+
+    // The params the results list asks for. Kept in one place so the bootstrap
+    // match, the fetch and the export links can never drift apart.
+    function queryParams() {
+        var p = currentParams();
+        // The list uses the inclusive country basis so a US-HQ company's global
+        // cut (labeled "Multiple countries") surfaces under a US filter. The
+        // headline stats (/aggregate, currentParams) stay on the strict
+        // job-location basis, so the US total isn't inflated.
+        if (p.country) p.country_basis = 'any';
+        var s = SORT_PARAMS[currentSort()] || SORT_PARAMS.newest;
+        p.per_page = String(PER_PAGE);
+        p.page = String(PAGE);
+        p.sort = s[0];
+        p.dir = s[1];
+        return p;
+    }
+
+    function loadRows() {
+        var list = document.getElementById('alt-cards');
+        if (!list) return;
+        var p = queryParams();
+
+        // Zero-fetch first paint, unchanged: the server inlined this exact
+        // response as window.ALT_BOOTSTRAP, and it is used only when the
+        // request we were about to make matches it key for key.
+        var boot = takeBoot('query', p);
+        if (boot) {
+            TOTAL = boot.total; ROWS = boot.data || [];
+            renderCards(); renderPager(); renderCount();
+            setStatus('alt-table-status', null);
             return;
         }
 
-        // column index -> server sort field (null = not sortable)
-        var sortFields = ['layoff_date', 'company', 'job_count', 'industry', 'country', null, 'verification_level', null, null];
-
-        var table = $(tableEl).DataTable({
-            serverSide: true,
-            processing: true,
-            searching: false,
-            order: [[0, 'desc']],
-            pageLength: 25,
-            lengthMenu: [10, 25, 50, 100],
-            dom: 'lrtip',
-            language: {
-                processing: 'Loading…',
-                emptyTable: 'No layoff entries match the current filters.',
-                zeroRecords: 'No layoff entries match the current filters.'
-            },
-            ajax: function (dtData, callback) {
-                var p = currentParams();
-                // Table uses the inclusive country basis so a US-HQ company's
-                // global cut (labeled "Multiple countries") surfaces under a US
-                // filter. The headline stats (/aggregate, currentParams) stay on
-                // the strict job-location basis, so the US total isn't inflated.
-                if (p.country) p.country_basis = 'any';
-                p.per_page = dtData.length;
-                p.page = Math.floor(dtData.start / dtData.length) + 1;
-                var ord = dtData.order && dtData.order[0];
-                if (ord && sortFields[ord.column]) { p.sort = sortFields[ord.column]; p.dir = ord.dir; }
-                var boot = takeBoot('query', p);
-                if (boot) {
-                    callback({ draw: dtData.draw, recordsTotal: boot.total, recordsFiltered: boot.total, data: boot.data });
-                    return;
-                }
-                apiGet('query', p).then(function (res) {
-                    callback({ draw: dtData.draw, recordsTotal: res.total, recordsFiltered: res.total, data: res.data });
-                }).catch(function () {
-                    setStatus('alt-table-status', 'Could not load layoff data.', true);
-                    callback({ draw: dtData.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
-                });
-            },
-            drawCallback: function () {
-                var el = document.getElementById('alt-table-count');
-                if (!el) return;
-                var info = this.api().page.info();
-                el.classList.toggle('alt-count-empty', !info.recordsDisplay);
-                if (!info.recordsDisplay) { el.textContent = 'No layoffs match the current filters.'; return; }
-                el.textContent = 'Showing ' + fmt(info.start + 1) + '–' + fmt(info.end) + ' of ' + fmt(info.recordsDisplay) + ' layoffs';
-            },
-            // Every column carries a stable `alt-cell-*` class. The desktop
-            // table needs none of them: they exist so the phone card layout can
-            // order the bands by MEANING instead of by column position. Keying
-            // the card rules to nth-child would have made them a coincidence of
-            // this table's current column order, and the next column inserted
-            // would silently reshuffle the card. See the card block at the end
-            // of layoffs.css.
-            columns: [
-                { data: 'layoff_date', className: 'alt-cell-date', render: function (d, t, row) {
-                    if (t !== 'display') return d || '';
-                    if (!d) return '<span class="alt-muted">unknown</span>';
-                    // WARN filings are legally filed 60+ days ahead — flag cuts
-                    // whose effective date hasn't arrived yet as planned, not
-                    // done. Local calendar date, not UTC, so the tag doesn't
-                    // flip early/late around midnight.
-                    var n = new Date();
-                    var today = n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate());
-                    var badges = [];
-                    if (d > today) badges.push('<span class="alt-upcoming" title="Filed in advance. The effective date has not arrived yet.">upcoming</span>');
-                    if (row.announced) badges.push('<span class="alt-upcoming" title="Announcement of planned cuts, not yet executed or filed">announced</span>');
-                    // Keep date-state labels as one compact unit.  Plain
-                    // inline whitespace let DataTables wrap "announced" onto
-                    // a detached second line on narrow screens.
-                    return '<span class="alt-date-cell"><time datetime="' + escapeHtml(d) + '">' + escapeHtml(d) + '</time>'
-                        + (badges.length ? '<span class="alt-date-badges">' + badges.join('') + '</span>' : '')
-                        + '</span>';
-                } },
-                { data: 'company_name', className: 'alt-cell-company', render: function (d, t, row) {
-                    if (t !== 'display') return d || '';
-                    var h = '<strong>' + escapeHtml(d) + '</strong>';
-                    if (row.ticker) h += ' <span class="alt-ticker">' + escapeHtml(row.ticker) + '</span>';
-                    return h;
-                } },
-                // The unit is REAL text, not a CSS ::after. Changing a table's
-                // display to build cards drops the table role in every engine,
-                // so on a phone nothing tells a screen reader that "1,200" is a
-                // job count; generated content is not a dependable substitute.
-                // The span is display:none on the desktop table, where the
-                // column header still says it.
-                { data: 'job_count', className: 'alt-num alt-cell-jobs', render: function (d, t) {
-                    if (t !== 'display') return d;
-                    return fmt(d) + '<span class="alt-jobs-unit"> jobs</span>';
-                } },
-                { data: 'industry', className: 'alt-cell-industry', render: function (d, t) { return t === 'display' ? escapeHtml(d || '—') : (d || ''); } },
-                { data: 'country', className: 'alt-cell-country', render: function (d, t, row) {
-                    if (t !== 'display') return (d || '') + ' ' + (row.state || '');
-                    var c = escapeHtml(d || '—');
-                    if (row.state) c += ' <span class="alt-state">' + escapeHtml(row.state) + '</span>';
-                    return c;
-                } },
-                { data: 'reason_tags', className: 'alt-cell-reasons', orderable: false, render: function (d, t) {
-                    var tags = Array.isArray(d) ? d : [];
-                    if (t !== 'display') return tags.join(' ');
-                    return tags.map(function (x) { return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[x] || x) + '</span>'; }).join(' ');
-                } },
-                { data: 'verification_level', className: 'alt-cell-verification', render: function (d, t) { return t === 'display' ? verificationBadge(d) : (d || ''); } },
-                { data: 'ai_explicit', className: 'alt-center alt-cell-ai', render: function (d, t) {
-                    if (t === 'display') return d ? '<span class="alt-ai-yes" title="Explicitly AI-attributed">AI</span>' : '';
-                    return d ? 1 : 0;
-                } },
-                { data: 'source_url', className: 'alt-cell-link', orderable: false, render: function (d, t, row) {
-                    if (t !== 'display') return row.source_name || '';
-                    var arch = archivedCellLink(row);
-                    if (row.source_type === 'warn') {
-                        var wl = warnLinks(row);
-                        if (!wl.primary) return escapeHtml(row.source_name || '—');
-                        if (wl.exact) {
-                            // Exact notice + distinct state list → both links; the
-                            // list stays a compact secondary so the cell reads clean.
-                            var suffix = wl.list
-                                ? ' <a href="' + escapeHtml(wl.list) + '" target="_blank" rel="noopener nofollow" class="alt-muted" title="The state’s official WARN list this notice is filed in">(list)</a>'
-                                : '';
-                            return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens this exact WARN notice">' + escapeHtml(row.source_name || 'source') + '</a>' + suffix + arch;
-                        }
-                        return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive; the recorded details here were captured from the notice when it was filed.">' + escapeHtml(row.source_name || 'source') + '</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>' + arch;
-                    }
-                    var url = safeUrl(d);
-                    if (!url) return escapeHtml(row.source_name || '—');
-                    return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="Opens the primary source">' + escapeHtml(row.source_name || 'source') + '</a>' + arch;
-                } }
-            ]
+        var seq = ++QUERY_SEQ;   // drop responses that resolve out of order
+        list.setAttribute('aria-busy', 'true');
+        apiGet('query', p).then(function (res) {
+            if (seq !== QUERY_SEQ) return;
+            TOTAL = res.total; ROWS = res.data || [];
+            renderCards(); renderPager(); renderCount();
+            setStatus('alt-table-status', null);
+        }).catch(function () {
+            if (seq !== QUERY_SEQ) return;
+            list.setAttribute('aria-busy', 'false');
+            setStatus('alt-table-status', 'Could not load layoff data.', true);
         });
-        TABLE = table;
+    }
+
+    function gotoPage(p) {
+        var last = Math.max(1, Math.ceil(TOTAL / PER_PAGE));
+        p = Math.min(last, Math.max(1, p));
+        if (p === PAGE) return;
+        PAGE = p;
+        loadRows();
+        var row = document.getElementById('alt-count-row');
+        if (row && row.scrollIntoView) row.scrollIntoView({ block: 'start' });
+    }
+
+    function initTracker() {
+        var list = document.getElementById('alt-cards');
+        if (!list) return;
+
+        PAGE = 1;
+        loadRows();
+
+        // One delegated handler for the whole list. Expanding is a real
+        // <button> with aria-expanded, so the detail is reachable by keyboard;
+        // clicking the card body anywhere else still toggles it for a mouse,
+        // which is what the table rows used to do and the only thing they did.
+        list.addEventListener('click', function (e) {
+            var clear = e.target.closest && e.target.closest('.alt-cards-empty-clear');
+            if (clear) {
+                clearFilters();
+                writeControl('alt-f-years', [String(new Date().getFullYear())]);
+                updateDropdownSummaries();
+                refreshAll();
+                return;
+            }
+            var card = e.target.closest && e.target.closest('.alt-card');
+            if (!card) return;
+            if (e.target.closest('a')) return;                     // let links be links
+            var btn = card.querySelector('.alt-card-more');
+            var panel = card.querySelector('.alt-card-detail');
+            if (!btn || !panel) return;
+            // A click on any other control inside the card is that control's.
+            if (e.target.closest('button') && e.target.closest('button') !== btn) return;
+            var open = btn.getAttribute('aria-expanded') === 'true';
+            if (!open && !panel.innerHTML) {
+                var row = ROWS[Number(card.getAttribute('data-i'))];
+                if (row) panel.innerHTML = formatDetail(row);
+            }
+            btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+            btn.textContent = open ? 'Details' : 'Hide details';
+            panel.hidden = open;
+            card.classList.toggle('alt-card-open', !open);
+        });
+
+        var nav = document.getElementById('alt-pager');
+        if (nav) {
+            nav.addEventListener('click', function (e) {
+                var b = e.target.closest && e.target.closest('.alt-page-btn');
+                if (!b || b.disabled) return;
+                gotoPage(Number(b.getAttribute('data-page')));
+            });
+            nav.addEventListener('change', function (e) {
+                if (!e.target || e.target.id !== 'alt-per-page') return;
+                PER_PAGE = Number(e.target.value) || 25;
+                PAGE = 1;
+                loadRows();
+            });
+        }
+
         setStatus('alt-table-status', null);
 
         var redraw = null;
@@ -2359,20 +2569,6 @@
             });
         });
 
-        // expand a row for the exact quote + source
-        $(tableEl).on('click', 'tbody tr', function (e) {
-            if (e.target && e.target.closest && e.target.closest('a')) return;
-            var row = table.row(this);
-            if (!row.data()) return;
-            if (row.child.isShown()) { row.child.hide(); $(this).removeClass('alt-row-open'); }
-            // Name the detail row. DataTables 1.10 puts the second argument on
-            // both the generated <tr> and its <td>, and without a name of its
-            // own the only handle on it is `td[colspan]` — which also matches
-            // the empty-table cell, and needs :has() to reach the <tr>. On the
-            // phone card layout the detail has to be visibly welded to the card
-            // it belongs to, so it needs a real class.
-            else { row.child(formatDetail(row.data()), 'alt-row-detail').show(); $(this).addClass('alt-row-open'); }
-        });
     }
 
     function formatDetail(row) {
@@ -3387,11 +3583,13 @@
     /* Toolbar chrome: search, sort, Filters panel, quick views            */
     /* ------------------------------------------------------------------ */
 
-    var SORT_MAP = { newest: [0, 'desc'], oldest: [0, 'asc'], largest: [2, 'desc'], smallest: [2, 'asc'] };
+    // Writing the control IS applying the sort: queryParams() reads it through
+    // currentSort() on every fetch, and the caller follows with refreshAll().
+    // It used to also have to tell DataTables the column index to order by,
+    // which meant the sort options were coupled to the table's column order.
     function setSort(val) {
         var sel = document.getElementById('alt-sort');
-        if (sel && sel.value !== val) sel.value = val;
-        if (TABLE && SORT_MAP[val]) TABLE.order(SORT_MAP[val]);
+        if (sel && SORT_PARAMS[val] && sel.value !== val) sel.value = val;
     }
     function currentSort() { var s = document.getElementById('alt-sort'); return s ? s.value : 'newest'; }
 
@@ -3752,7 +3950,15 @@
         });
     }
 
-    $(function () {
+    // Was jQuery's $(fn). The script is deferred, so DOMContentLoaded may
+    // already have fired by the time it runs; check readyState rather than
+    // waiting for an event that has been and gone.
+    function onReady(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    onReady(function () {
         // Embed mode: a single frame-safe chart driven by URL filter params
         // (window.altData.embedParams). Render only the one chart present and
         // skip the whole filter/table/tabs surface.
@@ -3798,7 +4004,7 @@
         initStatsMeta();
         renderSourceHealth();
 
-        var needsData = document.getElementById('alt-table') || document.getElementById('alt-stats-bar')
+        var needsData = document.getElementById('alt-cards') || document.getElementById('alt-stats-bar')
             || document.querySelector('.alt-dashboard') || document.querySelector('.alt-ai-tracker')
             || document.querySelector('.alt-company-history');
         if (!needsData) return;
@@ -3818,7 +4024,7 @@
         initMethodologyAnchors();
         renderProvenance();
 
-        var hasFilterSurface = document.getElementById('alt-table') || document.getElementById('alt-stats-bar') || DASH_PRESENT;
+        var hasFilterSurface = document.getElementById('alt-cards') || document.getElementById('alt-stats-bar') || DASH_PRESENT;
         if (!hasFilterSurface) return;
 
         // The whole filter surface waits on facets, so the server-inlined copy
@@ -3868,4 +4074,4 @@
             fetchAndRenderAggregate();
         });
     });
-})(jQuery);
+})();
