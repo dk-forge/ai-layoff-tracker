@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code) #14
 - **SINCE:** 2026-07-30
-- **WORKING ON:** —
+- **WORKING ON:** CI failure -> email alerting (workflow_run listener + cause-keyed dedupe in /alert) and a [4] RECENT CI section in ops_status.py. Touches .github/workflows/ci-alert.yml, railway/ci_alert.py, railway/ops_status.py, includes/api.php, CLAUDE.md.
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by

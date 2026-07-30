@@ -3,7 +3,13 @@
 
 Read-only. No dependencies (stdlib only), no keys needed. Prints the live
 version, the source-health triage (what's degraded/stale and what to DO about
-it), the LIVE DATA-INTEGRITY verdict, and the four surfaces to keep current.
+it), the LIVE DATA-INTEGRITY verdict, ANY WORKFLOW THAT IS CURRENTLY RED, and
+the four surfaces to keep current.
+
+Section [4] shells out to the `gh` CLI, which is the one part that needs
+something beyond stdlib and the one part that is allowed to be absent: no gh, no
+auth or no egress prints UNKNOWN and exits 3. It never prints a clean bill of
+health off a signal it could not read.
 
 WHY IT CHECKS THE DATA, NOT JUST THE COLLECTORS (added 2026-07-30)
 ------------------------------------------------------------------
@@ -24,9 +30,10 @@ Exit codes:
     0  ALL CLEAR — healthy, data-integrity checks verified and passing.
     2  A human is needed: a source needs one -> RUNBOOK 'a data source broke',
        and/or a LIVE DATA-INTEGRITY check is FAILING -> RUNBOOK 'a data-integrity
-       check is failing'. A failing integrity check is at least as serious as a
-       stale collector (it is wrong data on a live public surface, not missing
-       data), so it never exits 0. Doubles as a CI check.
+       check is failing', and/or a WORKFLOW IS CURRENTLY RED. A failing integrity
+       check is at least as serious as a stale collector (it is wrong data on a
+       live public surface, not missing data), so it never exits 0. Doubles as a
+       CI check.
     3  Surfaces are unreachable FROM THIS ENVIRONMENT only (egress/network-policy
        block, e.g. a cloud session denied asktherecruiter.com) — NOT a source
        outage. Deploys still work via git push; see docs/CLOUD-SESSION.md.
@@ -111,9 +118,90 @@ def _low_volume_warn(src, detail):
     return not any(c in HIGH_VOLUME for c in codes)
 
 
+def _gh(args, timeout=30):
+    """Run a `gh` command. Returns (ok, stdout, why_not).
+
+    Every failure mode — gh not installed, not authenticated, rate limited,
+    egress blocked — comes back as a REASON, never as an empty success. A tool
+    that turns "I could not look" into "nothing is wrong" is the exact bug this
+    section exists to prevent.
+    """
+    import subprocess
+    try:
+        proc = subprocess.run(["gh"] + args, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return False, "", "the gh CLI is not installed here"
+    except subprocess.TimeoutExpired:
+        return False, "", f"gh timed out after {timeout}s (network or rate limit)"
+    except OSError as exc:
+        return False, "", f"could not run gh: {exc}"
+    if proc.returncode != 0:
+        err = " ".join(proc.stderr.split())[:160] or f"gh exited {proc.returncode}"
+        return False, "", err
+    return True, proc.stdout, ""
+
+
+def _report_ci():
+    """(failures, unknown_reason) for the latest run of each workflow on main.
+
+    Offline-safe by construction: no exception escapes, and every not-looked-at
+    path returns a reason string rather than an empty failure list.
+    """
+    ok, out, why = _gh(["run", "list", "-L", "80", "--branch", "main",
+                        "--json", "name,conclusion,status,url,createdAt"], timeout=30)
+    if not ok:
+        return [], why
+    try:
+        runs = json.loads(out or "[]")
+    except ValueError:
+        return [], "gh returned output that was not JSON"
+
+    latest = {}
+    for run in runs:
+        name = run.get("name")
+        # Only COMPLETED runs carry a verdict. A workflow whose newest run is
+        # still in progress is judged on its newest FINISHED one, not called green.
+        if not name or run.get("status") != "completed":
+            continue
+        if name not in latest or run.get("createdAt", "") > latest[name].get("createdAt", ""):
+            latest[name] = run
+
+    red = [(n, r) for n, r in sorted(latest.items())
+           if r.get("conclusion") in ("failure", "timed_out", "startup_failure")]
+
+    failures = []
+    for name, run in red[:6]:
+        cause = "(cause line not read)"
+        # Only pay for the log when something is actually red, and only for the
+        # first few. The extractor is SHARED with railway/ci_alert.py on purpose:
+        # the email and this dashboard must never describe the same failure
+        # differently — that drift is the same class of bug as a test bound
+        # disagreeing with the health page.
+        try:
+            import os as _o
+            _here = _o.path.dirname(_o.path.abspath(__file__))
+            if _here not in sys.path:
+                sys.path.insert(0, _here)
+            import ci_alert
+            repo = "dk-forge/ai-layoff-tracker"
+            log_ok, log, _ = _gh(["run", "view", str(run.get("url", "")).rsplit("/", 1)[-1],
+                                  "-R", repo, "--log-failed"], timeout=45)
+            if log_ok:
+                extracted, _ctx = ci_alert.extract_cause(log)
+                if extracted:
+                    cause = extracted
+        except Exception:
+            pass  # a cause we could not read must not cost us the RED itself
+        failures.append((name, run.get("url", ""), cause))
+    if len(red) > 6:
+        failures.append((f"...and {len(red) - 6} more failing workflow(s)", "", "run: gh run list"))
+    return failures, ""
+
+
 def main():
     issues = []
     egress_blocked = []
+    unverified = []
     print("=" * 64)
     print("AI LAYOFF TRACKER — OPS STATUS")
     print("=" * 64)
@@ -235,10 +323,40 @@ def main():
         print(f"    UNKNOWN — could not run the integrity checks: {exc}")
         issues.append("DATA INTEGRITY: checker could not run")
 
-    # 4+5. Surfaces to keep current
-    print("\n[4] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
+    # 4. RECENT CI — is any workflow red right now?
+    #
+    # Section [3] deliberately re-queries the live API instead of reading a CI
+    # conclusion, because the DATA changes with no commit and a green tick from
+    # the last push says nothing about the numbers now. That reasoning does not
+    # transfer here and the distinction is worth keeping straight: the last CI
+    # conclusion is a cached verdict about the data, but it is the PRIMARY
+    # SOURCE about the workflows. "Is anything red?" has no better answer.
+    #
+    # This exists because a red run used to reach GitHub Actions and stop there.
+    # test_dedup_live.py caught Spirit reading 11,069 jobs instead of ~7,069 and
+    # reddened CI eight times over an afternoon while this tool — the one
+    # CLAUDE.md tells every session to run FIRST — said nothing about it.
+    print("\n[4] RECENT CI  (latest run per workflow on main)")
+    ci_failures, ci_unknown = _report_ci()
+    for label, url, cause in ci_failures:
+        print(f"    RED       {label}")
+        print(f"              {cause}")
+        print(f"              {url}")
+        issues.append(f"CI red: {label}")
+    if ci_unknown:
+        # Never a clean bill of health off a signal we could not read. The
+        # sibling repo printed "Nothing queued, nothing lost" from a stale local
+        # file while 15 runs had been destroyed; absence of a signal is not a pass.
+        print(f"    UNKNOWN — could not read CI state: {ci_unknown}")
+        print("              This is NOT 'everything is green'. It is 'nobody looked'.")
+        unverified.append("recent CI runs")
+    elif not ci_failures:
+        print("    No workflow is currently failing on main.")
+
+    # 5+6. Surfaces to keep current
+    print("\n[5] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
     print("      -> must list EXACTLY the live collectors; update on any source add/remove.")
-    print("[5] BENCHMARK      scratchpad/bm-live.html (LOCAL ONLY, never commit)")
+    print("[6] BENCHMARK      scratchpad/bm-live.html (LOCAL ONLY, never commit)")
     print("      -> refresh vs-competitor read; every table shows ours + theirs.")
 
     print("\n" + "-" * 64)
@@ -280,10 +398,15 @@ def main():
     # integrity checks did not resolve to a pass, say so and do not exit 0 — the
     # sibling repo printed "Nothing queued, nothing lost" off a stale local file
     # while 15 runs had been destroyed. Absence of a signal is not a pass.
-    if integrity is None or integrity.verdict != "pass":
-        print("NOT VERIFIED: sources look healthy, but the live data-integrity checks did")
-        print("    not return a pass. The data may or may not be correct — this run did not")
-        print("    establish it. Re-run with network access before trusting the numbers.")
+    if integrity is None or integrity.verdict != "pass" or unverified:
+        if integrity is None or integrity.verdict != "pass":
+            print("NOT VERIFIED: sources look healthy, but the live data-integrity checks did")
+            print("    not return a pass. The data may or may not be correct — this run did not")
+            print("    establish it. Re-run with network access before trusting the numbers.")
+        if unverified:
+            print(f"NOT VERIFIED: {', '.join(unverified)} could not be read from this")
+            print("    environment. Nothing here established that CI is green — it established")
+            print("    only that nobody looked. Re-run where `gh auth status` succeeds.")
         return 3
     print(f"ALL CLEAR — system healthy, {len(integrity.passed)} data-integrity check(s) "
           f"verified passing, all surfaces current. Nothing needs a human.")

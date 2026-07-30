@@ -1,0 +1,78 @@
+name: CI failure alert
+
+# A red run becomes an email. Until this existed, a failure reached GitHub
+# Actions and stopped there: test_dedup_live.py caught Spirit Airlines reading
+# 11,069 jobs instead of ~7,069 and reddened CI EIGHT times over several hours
+# while the wrong number stayed live, because the only person who could act was
+# not watching the tab.
+#
+# WHY A workflow_run LISTENER, and not the two obvious alternatives
+# -----------------------------------------------------------------
+# 1. A `if: failure()` step in each workflow — this repo has 66 workflow files.
+#    Sixty-six edits, sixty-six chances to forget one, and the one you forget is
+#    the one that breaks. Worse, a step inside the failing job runs on the SAME
+#    runner as the failure: an OOM, a timeout kill or a cancelled job takes the
+#    alerting step with it, so the alert is least reliable exactly when the
+#    failure is most severe.
+# 2. A reusable workflow / composite action — better, but still needs a `jobs:`
+#    entry added to all 66, so it has the same coverage-by-diligence problem.
+#
+# This listener subscribes to EVERY workflow in the repo from one file, so a
+# workflow added tomorrow is covered the moment it exists, with nothing to
+# remember. It fires for `schedule` runs as well as push/PR/dispatch — the
+# `workflow_run` event keys off a run COMPLETING, not off how it started, which
+# matters here because most of this repo's data-writing jobs are cron-only.
+# And because it runs in its own job on its own runner, it cannot be taken down
+# by whatever took down the run it is reporting on, and it can never mask that
+# original failure — the failing run is already red before this starts.
+#
+# Cost: nothing. This repo is public, so Actions minutes are free.
+
+on:
+  workflow_run:
+    workflows: ['*']
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read          # needed to read the failed run's log
+
+jobs:
+  alert:
+    # `cancelled` and `skipped` are deliberately not alertable: superseded
+    # pushes and concurrency groups cancel runs routinely, and mailing about
+    # those is precisely the noise that gets a sender filtered.
+    #
+    # The name check is a recursion guard. GitHub does not re-trigger
+    # workflow_run for a run this token started, but a loop here would mail in
+    # a loop, and that is not a failure mode worth discovering empirically.
+    if: >-
+      github.event.workflow_run.name != 'CI failure alert' &&
+      contains(fromJSON('["failure","timed_out","startup_failure","success"]'),
+               github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # No `continue-on-error`: if the alert cannot be delivered, this run goes
+      # RED, and ops_status.py [4] surfaces a failing alerter at the next
+      # session start. A notifier that fails silently is worse than none, because
+      # it buys the false confidence that you would have been told.
+      - name: Alert on failure / clear on recovery
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 railway/ci_alert.py \
+            --run-id     "${{ github.event.workflow_run.id }}" \
+            --workflow   "${{ github.event.workflow_run.name }}" \
+            --conclusion "${{ github.event.workflow_run.conclusion }}" \
+            --branch     "${{ github.event.workflow_run.head_branch }}" \
+            --event      "${{ github.event.workflow_run.event }}" \
+            --run-url    "${{ github.event.workflow_run.html_url }}"

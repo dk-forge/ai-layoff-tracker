@@ -690,19 +690,143 @@ function alt_api_status_get() {
 /* Route callbacks                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Open CI alerts, keyed on CAUSE.
+ *
+ * Deliberately an option and not a transient: a transient can be evicted by an
+ * object cache at any moment, and an evicted "we already told them" record
+ * re-sends an alert the owner has already read, while an evicted "this is open"
+ * record silently swallows the RECOVERED notice. Neither failure announces
+ * itself. Stored with autoload = false, so it costs nothing on normal requests.
+ */
+function alt_alert_state() {
+    $state = get_option('alt_ci_alert_state', array());
+    return is_array($state) ? $state : array();
+}
+
+function alt_alert_state_save($state) {
+    // A caller looping on a mutating cause key could otherwise grow wp_options
+    // without bound. Keep the newest 200 and drop the rest.
+    if (count($state) > 200) {
+        uasort($state, function ($a, $b) {
+            return ((int) ($a['first'] ?? 0)) <=> ((int) ($b['first'] ?? 0));
+        });
+        $state = array_slice($state, -200, null, true);
+    }
+    update_option('alt_ci_alert_state', $state, false);
+}
+
+/**
+ * Mail the owner that something needs a human.
+ *
+ * THREE CALLING SHAPES, and the difference is the whole point:
+ *
+ *   {subject, body}                — legacy. Suppressed by SUBJECT for 3 days.
+ *                                    health_digest.py, link_check.py,
+ *                                    openrouter_balance_check.py, process_tips.py.
+ *   {subject, body, dedupe_key}    — an alarm is RAISED for that cause key. The
+ *                                    same key stays quiet until it is resolved.
+ *   {subject, body, resolve_scope} — an alarm is CLEARED. Mails once if anything
+ *                                    was open under that scope, silent if not.
+ *
+ * WHY DEDUPE BY CAUSE RATHER THAN BY RUN. On 2026-07-30 one assertion (Spirit
+ * Airlines counting 11,069 jobs instead of ~7,069) reddened CI eight consecutive
+ * times in an afternoon. Eight identical emails would have taught the owner to
+ * filter this sender, which recreates the original problem — an alarm nobody
+ * reads — in a new form. This repo has already paid for that lesson once: a
+ * `newsapi` staleness alarm sat at a 2-day ceiling over a WEEKLY job, so it read
+ * red five days in seven forever, and that un-clearable amber was the ONLY thing
+ * ops_status showed on the day Spirit was live and wrong.
+ *
+ * The caller normalises run-to-run numbers out of the message before hashing it,
+ * so 11,069 and 11,071 are one cause and mail once, while a genuinely different
+ * assertion mails immediately.
+ *
+ * AND IT CLEARS. `resolve_scope` is posted on every green run, so a fixed
+ * breakage says so exactly once. That is what lets the owner stop worrying
+ * without going and checking, which is the actual ask.
+ */
 function alt_api_alert($request) {
     $subject = sanitize_text_field((string) $request->get_param('subject'));
     $body    = (string) $request->get_param('body');
     if ($subject === '' || trim($body) === '') {
         return new WP_REST_Response(array('ok' => false, 'error' => 'subject and body required'), 400);
     }
-    // De-dupe: a persistent breakage would otherwise email every run. Only
-    // re-send the same alert (keyed on subject) once every 3 days.
+
+    $to      = defined('ALT_CONTACT_TO') ? ALT_CONTACT_TO : get_option('admin_email');
+    $dedupe  = sanitize_text_field((string) $request->get_param('dedupe_key'));
+    $resolve = sanitize_text_field((string) $request->get_param('resolve_scope'));
+    $safe    = '/^[a-z0-9][a-z0-9:._-]{0,159}$/';
+
+    // ---- RECOVERY -------------------------------------------------------
+    if ($resolve !== '') {
+        if (!preg_match($safe, $resolve)) {
+            return new WP_REST_Response(array('ok' => false, 'error' => 'bad resolve_scope'), 400);
+        }
+        $state = alt_alert_state();
+        $open  = array();
+        foreach ($state as $k => $v) {
+            if (strpos($k, $resolve . ':') === 0) { $open[] = $k; }
+        }
+        if (!$open) {
+            // The overwhelmingly common case: a green run of something that was
+            // already green. Silence here is what makes it safe to post a
+            // resolve on EVERY success without the clear becoming noise itself.
+            return new WP_REST_Response(array('ok' => true, 'sent' => false,
+                'reason' => 'nothing was open for this scope'), 200);
+        }
+        $extra = "\n\nThis clears " . count($open) . " open alert(s):\n";
+        foreach ($open as $k) {
+            $extra .= '  - ' . (string) ($state[$k]['subject'] ?? $k) . "\n";
+        }
+        $sent = wp_mail($to, '[AI Layoff Tracker] ' . $subject,
+                        wp_strip_all_tags($body . $extra));
+        // Cleared whether or not the mail landed. The flag answers "is there an
+        // unresolved failure", and the answer is now no; leaving it open would
+        // suppress the NEXT genuine alert for this cause, which is the more
+        // expensive mistake of the two.
+        foreach ($open as $k) { unset($state[$k]); }
+        alt_alert_state_save($state);
+        return new WP_REST_Response(array('ok' => (bool) $sent, 'sent' => (bool) $sent,
+            'cleared' => count($open)), 200);
+    }
+
+    // ---- CAUSE-KEYED ALARM ----------------------------------------------
+    if ($dedupe !== '') {
+        if (!preg_match($safe, $dedupe)) {
+            return new WP_REST_Response(array('ok' => false, 'error' => 'bad dedupe_key'), 400);
+        }
+        $state = alt_alert_state();
+        $now   = time();
+        $first = $now;
+        if (isset($state[$dedupe])) {
+            $first = (int) ($state[$dedupe]['first'] ?? $now);
+            $last  = (int) ($state[$dedupe]['last'] ?? $first);
+            if (($now - $last) < 14 * DAY_IN_SECONDS) {
+                return new WP_REST_Response(array('ok' => true, 'sent' => false,
+                    'reason' => 'suppressed: this exact cause is already open (raised '
+                                . human_time_diff($first, $now) . ' ago)'), 200);
+            }
+            // One reminder a fortnight, no more. Total silence until a green run
+            // would mean a breakage the owner missed once is never mentioned
+            // again; twice a month is a reminder, not alarm fatigue.
+            $subject = 'STILL FAILING: ' . $subject;
+        }
+        $sent = wp_mail($to, '[AI Layoff Tracker] ' . $subject, wp_strip_all_tags($body));
+        if ($sent) {
+            // Only recorded on a successful send. An alarm that was never
+            // delivered is not "already reported" — the next failure must retry.
+            $state[$dedupe] = array('first' => $first, 'last' => $now, 'subject' => $subject);
+            alt_alert_state_save($state);
+        }
+        return new WP_REST_Response(array('ok' => (bool) $sent, 'sent' => (bool) $sent), 200);
+    }
+
+    // ---- LEGACY: suppress by subject for 3 days --------------------------
     $key = 'alt_alert_' . md5($subject);
     if (get_transient($key)) {
         return new WP_REST_Response(array('ok' => true, 'sent' => false, 'reason' => 'suppressed (alerted within 3 days)'), 200);
     }
-    $to = defined('ALT_CONTACT_TO') ? ALT_CONTACT_TO : get_option('admin_email');
     $sent = wp_mail($to, '[AI Layoff Tracker] ' . $subject, wp_strip_all_tags($body));
     if ($sent) {
         set_transient($key, 1, 3 * DAY_IN_SECONDS);

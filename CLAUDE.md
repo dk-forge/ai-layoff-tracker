@@ -8,15 +8,27 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
 - **Public API base:** `https://asktherecruiter.com/blog/wp-json/layoffs/v1/`
 
 ## Start here (every session, especially cloud/remote)
-Run `python3 railway/ops_status.py` first — read-only, no deps/keys. It prints the
+Run `python3 railway/ops_status.py` first — read-only, stdlib-only, no keys. It prints the
 live version, triages source health (what's broken + what to do), reports the
-**live data-integrity verdict**, and lists the 4 surfaces. Exit 0 = healthy and
+**live data-integrity verdict**, shows **any workflow that is currently RED with
+its actual failing assertion** `[4]`, and lists the 4 surfaces. Exit 0 = healthy and
 verified; exit 2 = a human is needed — either a source broke (→ RUNBOOK "a data
-source broke") **or a data-integrity check is FAILING** (→ RUNBOOK "a data-integrity
+source broke"), **a data-integrity check is FAILING** (→ RUNBOOK "a data-integrity
 check is failing", and do that one FIRST: a stale source is data we have not
-gathered, a failing invariant is a wrong number already published). Exit 3 = the
-surfaces were unreachable from this environment, so integrity is **UNKNOWN, not
-clear** — never treat a run that could not check as a pass. **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
+gathered, a failing invariant is a wrong number already published), **or a workflow
+is red**. Exit 3 = something could not be checked from this environment, so that
+part is **UNKNOWN, not clear** — never treat a run that could not check as a pass.
+Section `[4]` needs the `gh` CLI; without it (or without auth) it prints UNKNOWN
+and exits 3 rather than implying green.
+
+**Red CI now emails the owner** and does not wait to be noticed:
+`.github/workflows/ci-alert.yml` listens for EVERY workflow completing and runs
+`railway/ci_alert.py`, which extracts the real failing assertion and POSTs it to
+the keyed `/alert`. It is deduped **by cause, not by run** (numbers normalised out
+before hashing, open/resolved state held in the endpoint), and it mails
+**RECOVERED once** on the next green run. Do not "fix" the quiet on a repeat — the
+Spirit assertion reddened CI eight times in one afternoon, and eight identical
+emails is how an alert channel gets filtered. **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
 
 ## Read these before changing anything
 | Doc | What it holds |
