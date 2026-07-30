@@ -256,8 +256,18 @@ def _percent_only_mention(job_count, raw_text):
     """
     if not raw_text or not job_count or job_count > 100:
         return False
-    as_percent = re.search(rf"\b{job_count}\s*(%|percent\b)", raw_text, re.I)
-    as_count = re.search(rf"\b{job_count}\b(?!\s*(%|percent))", raw_text, re.I)
+    # A number binds to its percent sign TIGHTLY and on ONE LINE. This was `\s*`,
+    # and `\s` matches `\n`, so on any path that does not flatten whitespace
+    # (PDF/OCR, tables) a headcount at the end of one line and a "Percent of
+    # workforce" column header at the start of the next read as a single
+    # "17 percent" and the record was thrown away — a figure that IS verbatim in
+    # the source, discarded as though the model had invented it. That is the same
+    # defect the sibling tracker hit. `[^\S\r\n]` is "whitespace, but not a line
+    # break"; the {0,2} bound also stops a percent sign several columns away from
+    # capturing the number.
+    gap = r"[^\S\r\n]{0,2}"
+    as_percent = re.search(rf"\b{job_count}{gap}(%|percent\b)", raw_text, re.I)
+    as_count = re.search(rf"\b{job_count}\b(?!{gap}(%|percent))", raw_text, re.I)
     return bool(as_percent and not as_count)
 
 
@@ -275,8 +285,18 @@ def _count_in_text(job_count, raw_text):
         return False
     n = int(job_count)
     grouped = f"{n:,}"
+    # Every thousands separator listed in `sep` below must ALSO be generated as
+    # a variant here, or the guard rejects a number that is plainly present.
+    # U+202F was in `sep` but not in this set, so "12 000" written with the
+    # narrow no-break space — the standard French/Swiss/Canadian grouping, and
+    # what Word and many CMSs emit — failed the verbatim check and the record
+    # was discarded as though the model had invented a figure that was sitting
+    # right there. U+2009 (thin space) is the same story from typeset sources.
+    # Widening this cannot admit a DERIVED number: each variant is still matched
+    # as an exact literal, fenced by the same lookarounds.
     variants = {str(n), grouped, grouped.replace(",", " "), grouped.replace(",", "."),
-                grouped.replace(",", " ")}
+                grouped.replace(",", " "), grouped.replace(",", " "),
+                grouped.replace(",", " ")}
     if n % 1000 == 0 and n >= 1000:
         variants.update({f"{n // 1000}k", f"{n // 1000}K"})
     # A variant must not be the PREFIX of a longer grouped number: the old
@@ -284,7 +304,11 @@ def _count_in_text(job_count, raw_text):
     # "$500,000" and "12" inside "12,500 employees" — the guard's whole job is
     # to stop exactly that misread. Also forbid a following thousands-group
     # (separator + 3 digits). Lookbehind already blocks matching from the left.
-    sep = r"[.,   ]"
+    # Must stay in lockstep with `variants` above: a separator that can GROUP a
+    # number must also be one this lookahead refuses to match across, or "12"
+    # is accepted as a standalone count out of "12 500". U+2009 was missing
+    # here and the whitespace test caught it the moment variants gained it.
+    sep = r"[.,    ]"
     if not any(
         re.search(rf"(?<![\d.,]){re.escape(v)}(?![\d])(?!{sep}\d{{3}})", raw_text)
         for v in variants

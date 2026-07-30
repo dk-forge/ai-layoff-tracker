@@ -126,3 +126,65 @@ class CountInTextVerbatimGuardTests(unittest.TestCase):
         for n, text in self.ACCEPT:
             self.assertTrue(_count_in_text(n, text),
                             f"should ACCEPT {n} in {text!r}")
+
+class WhitespaceShapeGuardTests(unittest.TestCase):
+    """Whitespace was the blind spot in both number guards (found 2026-07-30).
+
+    Every fixture in the tables above is a single line separated by ASCII
+    spaces, so neither guard was ever exercised against a line break, a tab, or
+    a typographic space — which is exactly where the sibling tracker's
+    "verbatim figure read as invented, record silently discarded" bug lived.
+    Two real defects were found and fixed; these pin both.
+    """
+
+    NBSP = "\u00a0"      # no-break space
+    NNBSP = "\u202f"     # narrow no-break space (French/Swiss/Canadian grouping)
+    THIN = "\u2009"      # thin space (typeset sources)
+
+    def test_every_typographic_thousands_separator_is_recognised(self):
+        # `sep` in _count_in_text listed U+202F but `variants` never generated
+        # it, so a French source's "12 000" was read as absent and the record
+        # was thrown away with the number sitting right there in the text.
+        for name, sep in (("ASCII", " "), ("NBSP", self.NBSP),
+                          ("NNBSP", self.NNBSP), ("THIN", self.THIN)):
+            text = f"Le groupe supprimera 12{sep}000 postes."
+            self.assertTrue(_count_in_text(12000, text),
+                            f"{name} separator ({sep!r}) not recognised")
+
+    def test_widened_separators_still_reject_a_prefix_of_a_bigger_number(self):
+        # Adding separators must not weaken the prefix guard: the new variants
+        # are still exact literals fenced by the same lookarounds.
+        for sep in (self.NBSP, self.NNBSP, self.THIN, " "):
+            self.assertFalse(_count_in_text(12, f"12{sep}500 employees remain"),
+                             f"12 wrongly accepted before {sep!r}500")
+
+    def test_count_survives_surrounding_line_breaks_and_tabs(self):
+        for text in ("Affected workers: 12,000\nEffective date: 2026-01-01",
+                     "Affected: 12,000\r\nNext line",
+                     "Acme\t12,000\tjobs",
+                     "Total affected 12,000"):
+            self.assertTrue(_count_in_text(12000, text), repr(text))
+
+    def test_percent_gate_does_not_read_across_a_line_break(self):
+        # `\s*` matches `\n`, so on any path that does not flatten whitespace
+        # (PDF/OCR, tables) a headcount ending one line and a "Percent of
+        # workforce" header starting the next read as one "17 percent" and the
+        # record died — with the 17 verbatim in the source.
+        raw = "Employees affected: 17\nPercent of workforce: 3\n"
+        self.assertTrue(_count_in_text(17, raw), "17 is verbatim in the source")
+        self.assertFalse(_percent_only_mention(17, raw),
+                         "a count and a percent COLUMN are not '17 percent'")
+        self.assertFalse(_percent_only_mention(17, "Cuts: 17\r\n% of staff: 3"))
+
+    def test_percent_gate_still_catches_a_real_percentage(self):
+        # The Intuit misread this guard exists for must keep failing.
+        for text in ("Intuit said it would cut 17% of its staff.",
+                     "The company is laying off 17 percent of employees.",
+                     "A 17% reduction was announced.",
+                     "cut 17 % of the workforce"):
+            self.assertTrue(_percent_only_mention(17, text), repr(text))
+
+    def test_percent_gate_still_passes_a_genuine_small_headcount(self):
+        for text in ("The plant will lay off 17 workers in March.",
+                     "Notice covers 17 employees; that is 3% of staff."):
+            self.assertFalse(_percent_only_mention(17, text), repr(text))
