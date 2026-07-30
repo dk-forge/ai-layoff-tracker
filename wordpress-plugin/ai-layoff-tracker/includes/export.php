@@ -40,10 +40,29 @@ function alt_export_filters() {
     return alt_db_where($req); // array($where_sql, $params)
 }
 
+/**
+ * Does this export carry a filter? Decides whether the download is named
+ * `ai-layoff-tracker-filtered-<date>` or `ai-layoff-tracker-<date>`, so getting
+ * it wrong ships a partial extract under the full-dataset filename.
+ *
+ * Reads the single canonical list in db.php instead of keeping its own copy —
+ * its own copy is exactly what drifted, sitting 6 params behind alt_db_where
+ * (ai_primary, employer_country, review_status and the three *_missing backlog
+ * filters). The function_exists fallback is the FTP-deploy race rule: db.php can
+ * be mid-upload, and a hard dependency would fatal the export. The fallback is
+ * deliberately the corrected, broader list so a mid-deploy request still labels
+ * these correctly. `date_basis` is dropped on purpose: it reinterprets the other
+ * filters rather than narrowing anything by itself, so alone it does not make an
+ * export partial.
+ */
 function alt_export_is_filtered() {
-    $keys = array('years', 'quarters', 'months', 'industry', 'country', 'state',
-        'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
-        'ai', 'ai_broad', 'date_basis', 'stage');
+    $keys = function_exists('alt_filter_param_names')
+        ? alt_filter_param_names()
+        : array('years', 'quarters', 'months', 'from', 'to', 'industry', 'country',
+            'employer_country', 'state', 'sources', 'reasons', 'roles', 'q',
+            'company', 'keyword', 'min_jobs', 'stage', 'ai', 'ai_broad',
+            'ai_primary', 'review_status', 'context_missing', 'industry_missing',
+            'roles_missing');
     foreach ($keys as $k) {
         if (!empty($_GET[$k])) return true;
     }

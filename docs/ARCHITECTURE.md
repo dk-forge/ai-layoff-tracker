@@ -140,6 +140,38 @@ reasons` (+ `from,to,q,company,keyword,min_jobs,ai`). Dimensions AND together; v
 dimension OR. Slicer charts call /aggregate ignoring their own dimension (`except`) so you can
 always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; every write bumps it.
 
+### The param list above is exact, and getting it wrong FAILS SILENTLY (two ways)
+Note the naming is not internally consistent — `years/quarters/months/sources/reasons/roles` are
+plural while `industry/country/state/employer_country` are singular, even though every one of them
+accepts a comma-joined list. So the plural of a singular one is a natural guess, and it is wrong.
+There is no `args` schema on the public routes, so WordPress accepts unknown params without
+complaint. Measured against production 2026-07-30, `/query` total on an unfiltered call = **63,671**:
+
+| Request | total | What happened |
+|---|---|---|
+| `?state=NV` | 15 | correct |
+| `?states=NV` | **63,671** | param name not recognised → filter dropped, **everything** returned |
+| `?industries=Technology` | **63,671** | same (`?industry=Technology` → 3,993) |
+| `?countries=US` | **63,671** | same |
+| `?state=nv` | 15 | values are case-insensitive |
+| `?state=Nevada` | **0** | value shape wrong (2-letter codes only) → **nothing** returned |
+| `?country=US` / `?country=USA` | **0** | same (`?country=United States` → 43,378; full names, not ISO codes) |
+
+Both failure modes are dangerous in opposite directions and neither raises: **a bad param NAME
+over-reports** (you get the whole corpus and may read it as one state's), **a bad param VALUE
+under-reports** (0 rows reads as "no layoffs there"). This has already bitten once — TECHLOG records
+a press-page evidence-ladder deep link built on `ai_primary=1`, a param the front-end ignores, so the
+link advertised a filtered view and served an unfiltered one.
+
+**Decision (2026-07-30): the plurals are NOT accepted as aliases.** Aliasing `states/countries/
+industries` would fix the one guess someone happened to report while leaving the `state=Nevada` → 0
+case and every other typo just as silent, and it would permanently carry two public names for one
+filter — against the project's "normalise through fixed vocabularies, nothing freeform" rule. The
+fix that actually closes the class is for `/query` and `/aggregate` to echo what they applied (an
+additive `applied_filters` key, plus the received-but-unrecognised names), so a caller can see the
+filter was dropped instead of trusting a number. That is not built yet; until it is, this table is
+the contract. `tests/test_filter_param_contract.py` pins it to the code.
+
 ## Caching layers
 Request chain for `/blog/*` (observed 2026-07-19): **Cloudflare → Railway root app (reverse-proxies
 /blog) → Bluehost Apache** (`x-railway-*` headers + base64 `host-header: shared.bluehost.com` on

@@ -692,8 +692,41 @@ function alt_db_migrate() {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Every request param that NARROWS the result set in alt_db_where().
+ *
+ * One list, because two lists drift. `alt_export_is_filtered()` kept its own
+ * copy and had fallen 6 params behind (2026-07-30): ai_primary, employer_country,
+ * review_status, context_missing, industry_missing, roles_missing. A CSV or JSON
+ * export narrowed by any of those therefore downloaded as
+ * `ai-layoff-tracker-<date>.csv` — the filename that means "the whole dataset" —
+ * so a partial extract was labelled complete. On a product whose entire promise
+ * is provenance, that is the same class of defect as an unguarded page-level SUM.
+ *
+ * Deliberately EXCLUDED: `date_basis` and `country_basis` re-interpret the other
+ * filters rather than narrowing anything on their own, and `except` is internal
+ * slicer plumbing. Pinned against alt_db_where's source by
+ * railway/tests/test_filter_param_contract.py, which fails if a new filter is
+ * read here without being listed.
+ */
+function alt_filter_param_names() {
+    return array(
+        'years', 'quarters', 'months', 'from', 'to',
+        'industry', 'country', 'employer_country', 'state',
+        'sources', 'reasons', 'roles',
+        'q', 'company', 'keyword', 'min_jobs', 'stage',
+        'ai', 'ai_broad', 'ai_primary', 'review_status',
+        'context_missing', 'industry_missing', 'roles_missing',
+    );
+}
+
+/**
  * Build a parameterized WHERE clause from request filters. `$except` drops one
  * dimension (for slicer charts). Returns array($sql, $params).
+ *
+ * NOTE: the public routes register no `args` schema, so an unrecognised param
+ * name is accepted and silently ignored — `?states=NV` returns the whole corpus
+ * rather than Nevada. The accepted names are exact and documented in
+ * docs/ARCHITECTURE.md "Filter model"; plurals are deliberately not aliased.
  */
 function alt_db_where(WP_REST_Request $r, $except = '') {
     global $wpdb;
