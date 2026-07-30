@@ -33,6 +33,58 @@ function alt_shortcode_tracker() {
 }
 add_shortcode('alt_tracker', 'alt_shortcode_tracker');
 
+/*
+ * DO NOT ADD A SELF-GUARD TO THESE SHORTCODES. Investigated and refused
+ * 2026-07-30; refused once before on 2026-07-29. The reasoning is not "we did
+ * not get to it" — it is that the obvious fix is known to break the live page.
+ *
+ * The tempting change is to make each shortcode render only its FIRST call, the
+ * way alt_dashboard already yields to alt_tracker below. It has been tried here
+ * and it took the flagship page down, twice, in three commits on 2026-07-23:
+ *
+ *   e277e8b (2.19.164)  define()-based once-flag, set before the emit.
+ *                       The tracker never appeared on the live page: a
+ *                       non-visible the_content pass claimed the single emit
+ *                       into discarded output.
+ *   2a4b260 (2.19.165)  fixed it the obvious way — !doing_action('wp_head')
+ *                       plus set-the-flag-only-after-echo. STILL BROKEN.
+ *   cd88c00 (2.19.167)  reverted both. THIS THEME RENDERS POST CONTENT DURING
+ *                       wp_head, and that pass's output is what reaches the
+ *                       body. So "skip the wp_head pass" suppresses the only
+ *                       pass that matters, and a flag set by an earlier
+ *                       discarded pass blanks the real render.
+ *
+ * That rules out the discriminators one would reach for: doing_action('wp_head')
+ * and did_action('wp_head') are inverted here, and in_the_loop()/is_main_query()
+ * are untested against a theme that renders content inside wp_head. The plugin
+ * itself never re-renders (it registers no the_content/the_excerpt filter and
+ * calls do_shortcode nowhere), so every extra pass comes from the theme or from
+ * Rank Math / Easy Table of Contents — none of which this repo can simulate.
+ * See the postmortem comment at templates/page-tracker.php:23-35.
+ *
+ * The hazard being guarded against is also currently ABSENT, measured: 0
+ * duplicate element IDs across all 9 public pages in raw HTML and 0 in the live
+ * DOM (195 id nodes, 174 bar buttons, 6 canvases). So a self-guard would be
+ * prophylaxis against a hazard measured absent, carrying a failure mode measured
+ * present on this exact template.
+ *
+ * WHAT WOULD SETTLE IT (the only thing that can — the HTML cannot distinguish
+ * "rendered once" from "rendered twice, first copy discarded"): deploy a
+ * counter that OBSERVES and never suppresses. Increment a request-scoped counter
+ * in each shortcode callback, record current_filter() and did_action('wp_head')
+ * at each call, and emit the tally as an HTML comment on the LAST shutdown hook.
+ * Load the tracker page and read the comment. If it says 1, there is no pre-pass
+ * on this theme and a first-render-wins guard is safe. If it says 2+, the tally
+ * also names which pass came first, which is the fact every attempt so far has
+ * been missing. Until that number exists, adding a guard is guessing, and the
+ * downside of guessing wrong is a blank flagship page that still returns 200.
+ *
+ * Note the guard below carries a milder form of the same hazard already: the
+ * flag is set on ENTRY to alt_tracker (line above), not after a successful emit,
+ * so a discarded pre-pass would permanently suppress alt_dashboard for the rest
+ * of the request. It has never bitten only because the two are not co-located on
+ * any page. Do not copy this pattern to a shortcode that shares a page.
+ */
 function alt_shortcode_dashboard() {
     // The tracker embeds the same charts (same element IDs); rendering both on
     // one page would duplicate IDs and leave the second set dead.
