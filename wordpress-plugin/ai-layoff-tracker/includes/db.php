@@ -1721,7 +1721,16 @@ function alt_retired_sources() {
     // retirement (a 'within N days' window instead wrongly un-retired every
     // source for its first N days — caught 2026-07-25).
     return array(
-        'newsapi' => array('2026-07-25', 'Retired 2026-07-25. Replaced by keyless Google News RSS discovery, whose headlines carry the headcount even for paywalled marquee layoffs. Worldwide news coverage continues via GDELT + Google News.'),
+        // Date moved 2026-07-25 -> 2026-07-30. The retirement was silently VOID for
+        // five weeks: news_catchup.py kept POSTing health under this id every
+        // Monday, and a fresh checked_at is always AFTER the retirement date, so
+        // the masking loop below hit its `continue` and the public health page
+        // went on advertising a retired collector as live. news_catchup.py now
+        // reports under its own id; this later date covers its final post
+        // (2026-07-27) so the frozen row finally masks. Retiring a source is
+        // THREE steps: drop it from cron.py, add it here, and stop every
+        // remaining path that posts health under the id.
+        'newsapi' => array('2026-07-30', 'Retired 2026-07-25. Replaced by keyless Google News RSS discovery, whose headlines carry the headcount even for paywalled marquee layoffs. Worldwide news coverage continues via GDELT + Google News.'),
         // JP/KR/BR filing probes: after months live they ingested zero layoff rows
         // (those filings essentially never announce layoffs); coverage comes from
         // worldwide news + ERM. Discovery gated off (RUN_DISCOVERY_PROBES) and the

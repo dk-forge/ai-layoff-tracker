@@ -28,10 +28,14 @@ DRY = os.environ.get("HEALTH_DIGEST_DRY", "").lower() in {"1", "true", "yes"}
 # source not listed here uses DEFAULT_MAX_AGE. Discovery-only probes and
 # low-priority backfills are given a longer leash; the daily live collectors a
 # short one, because those going quiet is real coverage loss.
+# A ceiling MUST match the job's real cadence — "newsapi" sat at 2 days here
+# while the only job still posting under that id ran WEEKLY, so it read stale
+# 5 days out of 7 forever (see news_catchup.py). Renamed to news_catchup @ 9d.
 MAX_AGE_DAYS = {
-    "edgar": 2, "newsapi": 2, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
+    "edgar": 2, "news_catchup": 9, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
     "press_releases": 3, "warn_hi_ocr": 3, "warn_mazowieckie": 3,
+    "data_integrity": 2,
 }
 DEFAULT_MAX_AGE = 10
 # Sources whose 0/degraded is expected-by-design or transient, so a DEGRADED
@@ -52,27 +56,52 @@ def _benign_degraded(detail):
     return bool(codes) and all(c in _BENIGN_STATES for c in codes)
 
 
-def _email_alert(stale, degraded):
+def _email_alert(stale, degraded, integrity_failed=()):
     """POST an actionable breakage email to the owner via the site's /alert."""
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     key = os.environ.get("WP_API_KEY", "")
     if not (site and key):
         return
     names = [s for s, _, _ in stale] + [s for s, _ in degraded]
-    subject = f"{len(names)} data source(s) need attention: {', '.join(names[:4])}"
+    integrity_failed = list(integrity_failed)
+    if integrity_failed:
+        # Lead the subject line with it. A wrong published number outranks a
+        # collector that stopped: one is misinformation already served, the
+        # other is coverage we have not collected yet.
+        subject = (f"WRONG NUMBER LIVE: {len(integrity_failed)} data-integrity check(s) failing"
+                   + (f" (+{len(names)} source issue(s))" if names else ""))
+    else:
+        subject = f"{len(names)} data source(s) need attention: {', '.join(names[:4])}"
     lines = ["The weekly health check found collectors that stopped or degraded.\n"]
+    if integrity_failed:
+        lines = ["The weekly health check found the live site publishing a number that "
+                 "fails a data-integrity guard.\n"]
+        for r in integrity_failed:
+            lines.append(f"DATA INTEGRITY — {r.inv.label}: {r.detail}")
+        lines.append(
+            "\nThis means a published figure is WRONG right now, not merely missing. "
+            "Paste this into a Claude Code session in the ai-layoff-tracker repo:\n"
+            f'  "railway/data_integrity.py reports these live invariants failing: '
+            f'{", ".join(r.inv.key for r in integrity_failed)}. Run python3 '
+            'railway/data_integrity.py, then follow docs/RUNBOOK.md \'a data-integrity '
+            'check is failing\'."\n')
     for s, a, m in stale:
         lines.append(f"STALE — {s}: last reported {a} days ago (expected within {m}). It likely stopped running.")
     for s, d in degraded:
         lines.append(f"DEGRADED — {s}: {str(d)[:160]}")
-    lines.append(
-        "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n"
-        f'  "The health digest flagged these sources: {", ".join(names)}. '
-        'For each, find its collector in railway/ (or railway/sources/), check whether the '
-        'third-party site changed, and fix the parser; a scraper returning 0 usually means the '
-        'page layout changed. Then dry-run it to confirm."\n'
-        "\nMost breakages are a government/state site changing its page layout — the fix is a "
-        "quick re-recon of that one scraper.")
+    # The source-repair paste-line only makes sense when a SOURCE is implicated.
+    # An integrity-only email already carries its own instruction above, and
+    # appending "flagged these sources: " with an empty list is the kind of
+    # nonsense that teaches an owner to stop reading these.
+    if names:
+        lines.append(
+            "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n"
+            f'  "The health digest flagged these sources: {", ".join(names)}. '
+            'For each, find its collector in railway/ (or railway/sources/), check whether the '
+            'third-party site changed, and fix the parser; a scraper returning 0 usually means the '
+            'page layout changed. Then dry-run it to confirm."\n'
+            "\nMost breakages are a government/state site changing its page layout — the fix is a "
+            "quick re-recon of that one scraper.")
     body = "\n".join(lines)
     try:
         requests.post(f"{site}/wp-json/layoffs/v1/alert",
@@ -125,13 +154,44 @@ def main():
         else:
             ok += 1
 
+    # LIVE DATA INTEGRITY — "did the collectors run?" is not "is the data right?".
+    #
+    # WHY THIS IS HERE AND WHY IT IS NOT ENOUGH ON ITS OWN. This digest runs
+    # MONDAYS 12:00 UTC. A live data regression (a company suddenly reading
+    # 4,000 jobs too high because a news row started stacking on its WARN
+    # notices) misleads every reader of the tracker, the press page and the API
+    # from the moment it lands — up to SEVEN DAYS before this email goes out.
+    # Weekly is the right cadence for "a scraper quietly died"; it is far too
+    # slow for "we are publishing a wrong number right now".
+    #
+    # So this is the BACKSTOP for an unattended week, deliberately not the
+    # primary alarm. The fast paths are, in order: ops_status.py section [3],
+    # run at the top of every session; the daily data-integrity.yml run; and
+    # tests/test_dedup_live.py on every push. Do not move this signal to the
+    # digest alone. It is included here only so the owner sees it in the inbox
+    # without reading CI — requirement 4 of the 2026-07-30 build.
+    integrity = None
+    try:
+        from data_integrity import check_all
+        integrity = check_all()
+        print(f"DATA INTEGRITY: {integrity.one_line()}")
+        for r in integrity.failed:
+            print(f"  ::error:: DATA INTEGRITY {r.inv.key}: {r.detail}")
+        for r in integrity.unknown:
+            print(f"  ::warning:: DATA INTEGRITY {r.inv.key} NOT VERIFIED: {r.detail}")
+    except Exception as exc:
+        print(f"  ::warning:: DATA INTEGRITY could not be checked ({exc}) — state UNKNOWN, not ok")
+
     print(f"HEALTH DIGEST: {ok} ok · {len(degraded)} degraded · {len(stale)} stale")
     for s, d in degraded:
         print(f"  ::warning:: DEGRADED {s}: {str(d)[:120]}")
     for s, a, m in stale:
         print(f"  ::error:: STALE {s}: last reported {a}d ago (expected <= {m}d) — collector may have stopped")
 
+    integrity_failed = list(integrity.failed) if integrity is not None else []
     detail = f"{ok} ok, {len(degraded)} degraded, {len(stale)} stale"
+    if integrity is not None and integrity.verdict != "pass":
+        detail += " | " + integrity.one_line()
     if degraded:
         detail += " | degraded: " + ", ".join(s for s, _ in degraded)
     if stale:
@@ -156,12 +216,14 @@ def main():
         except Exception as exc:
             print(f"(digest health post skipped: {exc})")
         # Email ONLY on real breakage, with a ready-to-paste fix instruction.
-        if stale or real_degraded:
-            _email_alert(stale, real_degraded)
+        if stale or real_degraded or integrity_failed:
+            _email_alert(stale, real_degraded, integrity_failed)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.
-    if stale:
+    # A FAILING data-integrity check is at least as serious: it is a wrong number
+    # already published, not coverage we might miss, so it fails the run too.
+    if stale or integrity_failed:
         return 2
     return 0
 

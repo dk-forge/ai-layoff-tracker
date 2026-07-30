@@ -9,9 +9,14 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
 
 ## Start here (every session, especially cloud/remote)
 Run `python3 railway/ops_status.py` first — read-only, no deps/keys. It prints the
-live version, triages source health (what's broken + what to do), and lists the 4
-surfaces. Exit 0 = healthy; exit 2 = a source needs a human (→ RUNBOOK "a data
-source broke"). **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
+live version, triages source health (what's broken + what to do), reports the
+**live data-integrity verdict**, and lists the 4 surfaces. Exit 0 = healthy and
+verified; exit 2 = a human is needed — either a source broke (→ RUNBOOK "a data
+source broke") **or a data-integrity check is FAILING** (→ RUNBOOK "a data-integrity
+check is failing", and do that one FIRST: a stale source is data we have not
+gathered, a failing invariant is a wrong number already published). Exit 3 = the
+surfaces were unreachable from this environment, so integrity is **UNKNOWN, not
+clear** — never treat a run that could not check as a pass. **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
 
 ## Read these before changing anything
 | Doc | What it holds |
@@ -64,6 +69,8 @@ the end check.
 - **Never write a row directly.** A new source builds a raw dict and calls `extract_layoff_data` → `post_to_wordpress`. The raw dict MUST set `raw_text` (the extractor reads ONLY that and returns None if empty — the bug that made supplemental news silently post zero). Mirror `sources/newsapi.py`. Ship key-gated sources DORMANT with dry-run diagnostics. See RUNBOOK "add a new source".
 - **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Competitor tracking lives ENTIRELY in the local benchmark (`gen.py` reads only our own `agg_*.json`; the competitor figures are maintained by hand in `scratchpad/bm-live.html`). **No secret is involved and none is needed.** The `COMPETITOR_FEED_URLS`/`COMPETITOR_COMPANIES` secrets power a SEPARATE, OPTIONAL automated loop (`tracker-diff`) that is **dormant by the owner's decision (2026-07-28)** — it exits green on its schedule and costs nothing. **Do not ask the owner to add those secrets.**
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
+- **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
+- **Retiring a source takes THREE steps**, and skipping the third silently voids the second: (1) drop it from `cron.py`, (2) add it to `alt_retired_sources()` in db.php, (3) **stop every remaining path that posts health under that id**. `alt_retired_sources()` deliberately refuses to mask a row whose last run postdates the retirement, so one forgotten weekly job keeps a retired collector looking live forever. Also: a staleness ceiling must match the job's REAL cadence — a 2-day ceiling on a weekly job is permanent noise that hides real breakage.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 
 ## Verify a change is actually live

@@ -1,4 +1,12 @@
-"""Regression guards for NewsAPI catch-up health telemetry."""
+"""Regression guards for the weekly news catch-up's health telemetry.
+
+The id is pinned on purpose. This job posted under the RETIRED "newsapi" id for
+five weeks after that collector was stood down, which both voided the retirement
+(alt_retired_sources() only masks a row whose last run predates the retirement
+date) and produced a permanent "newsapi stale" alarm on ops_status, because
+"newsapi" carried a twice-daily ceiling while this job runs weekly. Pinning the
+id here means a future rename has to be a deliberate, reviewed change.
+"""
 import os
 import sys
 import unittest
@@ -24,10 +32,10 @@ class NewsCatchupHealthTests(unittest.TestCase):
              patch.object(news_catchup, "pull_news_articles", return_value=[]):
             news_catchup.run()
 
-        self.assertEqual(reports[0], ("newsapi", "running", 0, "manual 7-day catch-up in progress"))
+        self.assertEqual(reports[0], ("news_catchup", "running", 0, "7-day catch-up in progress"))
         self.assertEqual(reports[-1], (
-            "newsapi", "ok", 0,
-            "manual 7-day catch-up: 0 posted, 0 duplicates, 0 non-events, 0 processing failures",
+            "news_catchup", "ok", 0,
+            "7-day catch-up: 0 posted, 0 duplicates, 0 non-events, 0 processing failures",
         ))
 
     def test_collection_exception_is_visible_as_degraded_and_propagates(self):
@@ -39,17 +47,26 @@ class NewsCatchupHealthTests(unittest.TestCase):
                 news_catchup.run()
 
         self.assertEqual(reports[-1], (
-            "newsapi", "degraded", 0,
-            "manual 7-day catch-up failed: upstream unavailable",
+            "news_catchup", "degraded", 0,
+            "7-day catch-up failed: upstream unavailable",
         ))
 
     def test_health_write_failure_fails_the_manual_workflow(self):
         with patch.dict(os.environ, {"NEWS_DAYS_BACK": "7"}, clear=False), \
              patch.object(news_catchup, "report_source_health", return_value=False), \
              patch.object(news_catchup, "pull_news_articles") as collector:
-            with self.assertRaisesRegex(RuntimeError, "Could not publish NewsAPI catch-up health status"):
+            with self.assertRaisesRegex(RuntimeError, "Could not publish news catch-up health status"):
                 news_catchup.run()
         collector.assert_not_called()
+
+    def test_never_reports_under_the_retired_newsapi_id(self):
+        # The retired collector must receive no further posts, or
+        # alt_retired_sources() can never mask it and ops_status shows a
+        # permanent, un-clearable "newsapi stale".
+        self.assertEqual(news_catchup.HEALTH_ID, "news_catchup")
+        src = Path(news_catchup.__file__).read_text(encoding="utf-8")
+        body = src.split('"""', 2)[-1]          # skip the module docstring
+        self.assertNotIn('report_source_health("newsapi"', body)
 
 
 if __name__ == "__main__":

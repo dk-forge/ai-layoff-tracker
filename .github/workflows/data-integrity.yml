@@ -1,0 +1,57 @@
+name: Live data-integrity check
+
+# Asserts that known duplicate events still count ONCE on the LIVE site, and
+# publishes the verdict to the public health ledger.
+#
+# WHY THIS EXISTS SEPARATELY FROM tests.yml
+# -----------------------------------------
+# tests/test_dedup_live.py asserts the same invariants, but tests.yml only runs
+# on `pull_request` and `push: [main]`. This data changes WITHOUT a commit: WARN
+# imports land daily and reconcile-supersets runs at 16:40 UTC. The 2026-07-30
+# Spirit Airlines defect (11,069 jobs instead of ~7,069) appeared because a
+# running all-time WARN sum crossed a threshold — no code changed on the day it
+# broke. So on a quiet week the guard would not have run at all.
+#
+# Scheduled 17:30 UTC: 50 minutes AFTER reconcile-supersets (16:40 UTC), so it
+# checks the data as the daily dedup pass leaves it. Checking before that pass
+# would test yesterday's state.
+#
+# Read-only: public GETs against the aggregate endpoint. The only key it uses is
+# WP_API_KEY, and only to write the verdict to the health ledger (--report), so
+# the owner sees it on the health page and in the weekly digest without reading
+# CI. Fails the run (exit 2) on a failing invariant, exit 3 when it could not
+# verify — a run that did not check has NOT passed.
+
+on:
+  schedule:
+    - cron: '30 17 * * *'   # 1:30 PM ET, after reconcile-supersets (12:40 PM ET)
+  workflow_dispatch:
+
+concurrency:
+  group: data-integrity
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # data_integrity.check_all() is stdlib-only by design (it has to run in
+      # ops_status, which is dependency-free). Only the --report ledger write
+      # needs `requests`.
+      - name: Install the minimum for the ledger write
+        run: pip install requests
+
+      - name: Run the live data-integrity invariants
+        working-directory: railway
+        env:
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          set -o pipefail
+          python data_integrity.py --report | tee "$GITHUB_STEP_SUMMARY"

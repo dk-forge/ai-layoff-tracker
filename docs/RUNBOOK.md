@@ -41,7 +41,8 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | distress-watchlist | weekly Tue + manual | CourtListener bankruptcy + Companies House insolvency → distressed names → watchlist news search. Dormant per key. Inputs: dry_run |
 | foreign-filings | daily 13:30 UTC + manual | EDINET (JP) + OpenDART (KR) filing bodies → extractor (guards reject non-layoffs). Dormant per key. Low yield by design. Inputs: dry_run |
 | recall-precision | weekly + manual | Measures recall (gold set) + count precision + **AI-attribution precision** (quotable-AI-statement rate). Read-only. Inputs: RP_PRECISION_SAMPLE |
-| health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
+| data-integrity | daily 17:30 UTC + manual | **Is the published data CORRECT?** Runs `railway/data_integrity.py` — the live invariants (known duplicate events must count once) shared with `tests/test_dedup_live.py` — and writes the verdict to the health ledger as `data_integrity`. Scheduled 50 min AFTER reconcile-supersets so it sees that pass's result. Exit 2 = failing, exit 3 = could not verify (never a silent pass) |
+| health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades, **or when a live data-integrity check is failing** (subject leads "WRONG NUMBER LIVE"). Weekly is the backstop only — the fast paths are `ops_status.py` [3] and the daily data-integrity run. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
 | tracker-diff | dormant BY DESIGN (owner decision 2026-07-28) | Optional gap-chase against a private feed. Competitor tracking is handled by the LOCAL benchmark instead; this loop is not needed, exits green on schedule, and nobody should be asked to enable it |
 
 The advisory DeepSeek spot-check inside `data-quality` retries temporary
@@ -74,6 +75,40 @@ read the diagnostics (they log the raw API status) before trusting live output.
 
 ## "X is broken" playbooks
 
+**A data-integrity check is failing (START HERE — this outranks a broken source)**
+`ops_status.py` section [3] said `FAILING`, or a red `Live data-integrity check`
+run, or an email subject beginning "WRONG NUMBER LIVE". **Do this before any
+source-staleness item.** A stale collector means data we have not gathered yet; a
+failing integrity check means the live tracker, the press page and the public API
+are serving a **wrong number to readers right now**.
+
+The invariants live in `railway/data_integrity.py` (`INVARIANTS`) and are shared
+verbatim with `railway/tests/test_dedup_live.py` — one definition, so the guard
+and the dashboard can never disagree. Each says a known duplicate event must
+count **once**.
+
+1. **See it.** `python3 railway/data_integrity.py` — prints each check, the
+   observed number, its bound and what a breach means. No keys, no deps.
+2. **Do not "fix" the bound.** The bounds are tripwires set just above a value a
+   specific double-counting bug produces. Raising one to whatever the site
+   currently says silences the alarm and keeps the wrong number. If you believe a
+   bound is genuinely wrong, that is a deliberate, documented change with the
+   reasoning written into the `Invariant`.
+3. **Find which dedup pass broke.** The `regression` string on the failing
+   invariant names it: news-vs-news exact-count, news-vs-WARN superset, or
+   within-WARN revision. All three live in `alt_reconcile_supersets()` in
+   `wordpress-plugin/ai-layoff-tracker/includes/db.php`.
+4. **Inspect what the reconciler sees.** Dispatch `reconcile-supersets.yml` with
+   `dry_run` + `detail=1` (and `probe=<employer>` to dump the rows it loads for
+   one company). Compare `jobs_before` / `jobs_excluded` / `jobs_after`; a
+   non-zero `changes` on a quiet day is drift.
+5. **Fix, deploy, re-verify live.** Bump `Version:` + `ALT_VERSION`, push, wait
+   for the deploy run matching your SHA, then re-run step 1. Do not trust a green
+   tick — the data can regress with no commit at all (that is how the 2026-07-30
+   Spirit defect appeared: a running all-time WARN sum crossed a threshold).
+6. **If it says UNKNOWN, not FAILING**, nothing was verified — that is not a
+   pass. Re-run somewhere with network access to `asktherecruiter.com`.
+
 **A data source broke — you got a "data source(s) need attention" email (START HERE)**
 The weekly `health-digest` emails info@asktherecruiter.com when a collector goes
 STALE (stopped reporting) or degraded (usually a scraper returning 0 because a
@@ -91,7 +126,7 @@ by the health-digest email. Only then continue below. To fix:
 1. **Identify the collector.** Source id → file:
    - `warn_custom_states` / `warn_custom_legacy` → a state scraper in `railway/sources/warn_new_states.py` or `railway/sources/warn_custom.py` (the email/detail names the state code).
    - `warn_us` → `railway/sources/warn.py` (the open `warn-scraper` lib) + `railway/warn_import.py`.
-   - `gdelt` → `railway/sources/gdelt.py`; `newsapi` → `railway/sources/newsapi.py`; `edgar` → `railway/sources/edgar.py`; `eurofound_erm` → `railway/erm_import.py`.
+   - `gdelt` → `railway/sources/gdelt.py`; `google_news` → `railway/sources/google_news.py`; `news_catchup` → `railway/news_catchup.py` (weekly; uses `sources/newsapi.py`, whose twice-daily `newsapi` collector identity is RETIRED); `edgar` → `railway/sources/edgar.py`; `eurofound_erm` → `railway/erm_import.py`.
    - `supplemental_news` → `railway/supplemental_news.py`; `company_watchlist` → `railway/company_watchlist.py`; distress/foreign → `railway/distress_watchlist.py` / `railway/foreign_filings_ingest.py`.
 2. **Confirm the breakage.** Run that workflow with `dry_run=1` (Actions tab → the workflow → Run workflow) and read the log. A `0 notices`/`HTTP 4xx`/`::warning::` line confirms drift.
 3. **Re-recon the site.** `curl` the state's official WARN URL (from the Sources page or `warn.py`/`warn_new_states.py`) and diff the HTML/PDF structure against what the parser expects (selectors, table columns, download links). State sites redesign a couple times a year — the fix is almost always updating the parse selectors or the fetch URL.
