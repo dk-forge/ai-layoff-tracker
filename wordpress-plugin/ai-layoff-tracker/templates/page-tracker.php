@@ -161,15 +161,6 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                 <label for="alt-f-state">US states</label>
                 <select id="alt-f-state" multiple></select>
             </div>
-            <div class="alt-filter" data-dd="Sources" data-empty="All sources">
-                <label for="alt-f-verification">Sources</label>
-                <select id="alt-f-verification" multiple>
-                    <option value="gold">SEC filing (8-K/6-K)</option>
-                    <option value="warn">WARN notice</option>
-                    <option value="silver">Press release</option>
-                    <option value="bronze">News</option>
-                </select>
-            </div>
             <div class="alt-filter" data-dd="Reasons" data-empty="All reasons">
                 <label for="alt-f-reasons">Reasons</label>
                 <select id="alt-f-reasons" multiple>
@@ -187,14 +178,6 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                     <option value="federal_workforce">Government / public sector</option>
                 </select>
             </div>
-            <div class="alt-filter" data-dd="Roles" data-empty="All roles">
-                <label for="alt-f-roles">Roles most impacted</label>
-                <select id="alt-f-roles" multiple>
-                    <?php foreach (alt_role_categories() as $alt_rk => $alt_rlabel) : ?>
-                    <option value="<?php echo esc_attr($alt_rk); ?>"><?php echo esc_html($alt_rlabel); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
             <div class="alt-filter">
                 <label for="alt-f-company">Company</label>
                 <input type="text" id="alt-f-company" placeholder="Type to search, e.g. Amazon" list="alt-company-suggest" autocomplete="off">
@@ -207,6 +190,40 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <div class="alt-filter">
                 <label for="alt-f-minjobs">Min job count</label>
                 <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
+            </div>
+        </div>
+        <!-- Two facets that belong in the open, as pill strips rather than
+             behind a dropdown chevron.
+             Evidence tier is the distinction this whole tracker rests on ("a
+             verified floor, not a survey"), and it was a 160px dropdown whose
+             summary truncated so you could not read what you had picked. Roles
+             is the newest facet and the one the roles chart writes when you tap
+             a bar, so a visible strip is where that chart-applied filter now
+             lands, is legible, and can be undone with one tap.
+             Both are short, fixed vocabularies where every option fits at once.
+             The long and dynamic facets above (51 countries, 50 states, every
+             year we hold) keep the checkbox dropdown, which scales; pills do
+             not, and swapping them would have been a downgrade dressed as
+             consistency. Out of the grid rather than spanning it, so a
+             variable-height strip can never shunt the twelve fixed controls
+             about. -->
+        <div class="alt-filterbar-pills">
+            <div class="alt-filter" data-dd="Sources" data-pills data-empty="All sources">
+                <label id="alt-lbl-verification" for="alt-f-verification">Sources</label>
+                <select id="alt-f-verification" multiple>
+                    <option value="gold">SEC filing (8-K/6-K)</option>
+                    <option value="warn">WARN notice</option>
+                    <option value="silver">Press release</option>
+                    <option value="bronze">News</option>
+                </select>
+            </div>
+            <div class="alt-filter" data-dd="Roles" data-pills data-empty="All roles">
+                <label id="alt-lbl-roles" for="alt-f-roles">Roles most impacted</label>
+                <select id="alt-f-roles" multiple>
+                    <?php foreach (alt_role_categories() as $alt_rk => $alt_rlabel) : ?>
+                    <option value="<?php echo esc_attr($alt_rk); ?>"><?php echo esc_html($alt_rlabel); ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
         </div>
         <div class="alt-filterbar-reset">

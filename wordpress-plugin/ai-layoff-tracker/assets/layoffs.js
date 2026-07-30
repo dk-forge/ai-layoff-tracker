@@ -1048,12 +1048,69 @@
         }
     }
 
+    /* Toggle pills over a hidden native multi-select, for the two SHORT fixed
+       vocabularies (Sources, Roles) marked `data-pills` in the template. Pills
+       show every option at once, which is the point: evidence tier is the
+       distinction this tracker rests on and it was hiding behind a chevron in a
+       160px box whose summary truncated. The long facets keep the dropdown —
+       fifty-one countries as pills would be a wall.
+
+       This deliberately hangs off the SAME two hooks the checkbox dropdown uses,
+       and adds none of its own: `cell._altDdRender` (which
+       updateDropdownSummaries already calls after every refreshAll, every URL
+       restore, every chart tap and every reset) and a 'change' listener on the
+       select. So the select stays the single source of truth and the whole
+       existing state machine — querystring, chips bar, exports, quick views,
+       click-to-filter, sessionStorage — keeps reading and writing it untouched.
+       Toggling goes through toggleMultiFilter, the same helper a chart bar uses,
+       rather than a second copy of the same three lines.
+
+       With JavaScript off the native select simply remains, exactly as before. */
+    function initPillGroup(cell) {
+        var select = cell.querySelector('select[multiple]');
+        if (!select || cell.querySelector('.alt-pillgroup')) return;
+        // Presentation-hidden, not removed: it is still the state, and it is
+        // still the control a no-JS reader gets.
+        select.style.display = 'none';
+        select.tabIndex = -1;
+        select.setAttribute('aria-hidden', 'true');
+
+        var group = document.createElement('div');
+        group.className = 'alt-pillgroup';
+        group.setAttribute('role', 'group');
+        // The <label for> now points at a hidden control, so the group needs the
+        // label named at it directly or the pills are an unlabelled cluster.
+        var lbl = cell.querySelector('label');
+        if (lbl && lbl.id) group.setAttribute('aria-labelledby', lbl.id);
+        cell.appendChild(group);
+
+        function render() {
+            group.innerHTML = Array.prototype.map.call(select.options, function (o) {
+                if (!o.value) return '';
+                return '<button type="button" class="alt-pill' + (o.selected ? ' alt-pill-on' : '')
+                    + '" data-value="' + escapeHtml(o.value) + '"'
+                    + ' aria-pressed="' + (o.selected ? 'true' : 'false') + '">'
+                    + escapeHtml(o.textContent) + '</button>';
+            }).join('');
+        }
+        group.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('button[data-value]') : null;
+            if (!btn) return;
+            if (!toggleMultiFilter(select.id, btn.getAttribute('data-value'))) return;
+            select.dispatchEvent(new Event('change', { bubbles: false }));
+        });
+        select.addEventListener('change', render);
+        cell._altDdRender = render;
+        render();
+    }
+
     /* Custom checkbox-dropdowns over the hidden native multi-selects. The
        native select stays the single source of truth (readControl/writeControl,
        persistence, chips, quick views all keep working); the dropdown is pure
        presentation and dispatches 'change' on the select when toggled. */
     function initMultiDropdowns() {
         document.querySelectorAll('.alt-filter[data-dd]').forEach(function (cell) {
+            if (cell.hasAttribute('data-pills')) { initPillGroup(cell); return; }
             var select = cell.querySelector('select[multiple]');
             if (!select || cell.querySelector('.alt-dd')) return;
             select.style.display = 'none';

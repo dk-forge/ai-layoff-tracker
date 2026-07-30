@@ -1900,3 +1900,56 @@ figure.alt-soundbite figcaption.alt-sb-actions,
         flex: 1 0 100%; text-align: center;
     }
 }
+
+/* ===========================================================================
+   Sources and Roles as pill strips, not dropdowns.
+   Evidence tier is the distinction this whole tracker rests on, and it was a
+   160px dropdown whose summary label truncated: "SEC filing (8-K/6-K) +1" told
+   you a filter was on but not which one. Roles has the same problem and is
+   additionally what the roles chart writes when a bar is tapped, so it needs a
+   visible home a reader can see and undo.
+
+   Pills only where the vocabulary is short, fixed and fully visible. The eleven
+   controls above keep the checkbox dropdown, because fifty-one countries or
+   every year in the table as pills is a wall, not a filter. The two products
+   agree on the treatment, not on applying it everywhere.
+
+   Deliberately the SAME pill language as the quick views above (.alt-qv): the
+   filter panel should read as one system rather than as three inventions.
+   Selection is a fill, a weight change and aria-pressed together, never colour
+   on its own.
+   =========================================================================== */
+.alt-filterbar-pills {
+    display: grid; gap: 14px 24px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--alt-grid);
+}
+@media (min-width: 760px) {
+    .alt-filterbar-pills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Wraps to its own height. Never scrolls sideways: these strips sit inside the
+   filter card, and a filter you have to scroll to find is the thing the
+   dropdown was already doing badly. */
+.alt-pillgroup { display: flex; flex-wrap: wrap; gap: 6px; }
+.alt-pill {
+    font-size: 13px; font-weight: 600; font-family: inherit; color: var(--alt-ink-2);
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 20px; padding: 6px 13px; cursor: pointer; line-height: 1.2;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.alt-pill:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
+.alt-pill:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
+.alt-pill-on, .alt-pill-on:hover {
+    background: var(--alt-ink); border-color: var(--alt-ink); color: #fff; font-weight: 700;
+}
+@media (max-width: 560px) {
+    /* Smaller pills on phones ONLY. At the desktop size the ten role labels
+       wrapped to eight rows on a 390px screen, about 350px of filter panel for
+       one facet. The sibling's answer for a strip this long is to scroll it in
+       its own box, and that would have honoured the no-sideways-bleed rule, but
+       it hides options behind a swipe — which is the exact failing the pills
+       were brought in to fix. Two points of type and a tighter gutter fit two
+       pills per row instead of one, so every option stays visible in about half
+       the height and nothing scrolls at all. */
+    .alt-pill { font-size: 12px; padding: 5px 10px; }
+    .alt-pillgroup { gap: 5px; }
+}
