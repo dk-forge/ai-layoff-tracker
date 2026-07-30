@@ -14,10 +14,20 @@ name: EDGAR history sweep (rotating)
 
 on:
   schedule:
-    # SPRINT-TO-CLOSE: hourly — 76 month-windows remained (walker at 2020-03);
-    # one/day was 2.5 more months of drip. Hourly finishes in ~4 days, then the
-    # walker self-idles at the present. Revert to '20 5 * * *' after it closes.
-    - cron: '20 * * * *'   # hourly, one month-window per run
+    # DAILY, and it must stay daily. The 2026-07-23 "sprint to close" set this
+    # hourly believing that meant 24x the progress. It does not, and cannot:
+    # backfill.rotating_window() picks its month with
+    # `months[now.toordinal() % len(months)]`, and datetime.toordinal() is the
+    # ordinal of the DATE — the hour is not in it. So every run inside one UTC
+    # day sweeps the IDENTICAL window, and the walker advances exactly one month
+    # per calendar day at ANY cadence. Measured 2026-07-29/30: 22 scheduled runs
+    # in a day, the 22:40 and 23:41 runs both swept 2020-09 and both pulled the
+    # same 194 filings; 00:51 and 02:04 both swept 2020-10 and both pulled the
+    # same 274. backfill.py has no seen-URL pre-check (only gdelt_backfill.py
+    # does), so each of those filings is a fresh full-prompt extraction call:
+    # ~5,150 LLM calls/day where ~234 do all the work, ~$3.80/day burned for
+    # zero additional rows. Asserted by tests/test_rotating_cron_cadence.py.
+    - cron: '20 5 * * *'   # daily, one month-window per run
   workflow_dispatch:
     inputs:
       anchor_year:
@@ -25,9 +35,9 @@ on:
         required: false
         default: '2015'
 
-# Hourly sprint safety: a run that outlives the hour must NOT overlap the
-# next one - two walkers racing the same cursor window would double-spend
-# LLM calls on the same articles (dedup keeps the DATA clean, not the bill).
+# Kept from the hourly sprint and still worth having: a manual dispatch beside
+# the scheduled run would race the same window and double-spend LLM calls on the
+# same filings (dedup keeps the DATA clean, not the bill).
 concurrency:
   group: edgar-history-sweep
   cancel-in-progress: false

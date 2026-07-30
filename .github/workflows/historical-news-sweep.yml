@@ -1,18 +1,39 @@
 name: Historical global news sweep
 
-# One rotating 14-day window per day. This eventually covers the complete
-# GDELT-era history without repeatedly rescanning every prior year. GDELT caps
-# each seven-day request at 250 articles, so a run has a hard ceiling of 500
-# model candidates before normal extraction/dedup guards. It is intentionally
-# separate from the live feed and safe to pause by disabling this workflow.
+# One rotating SEVEN-day window per RUN (historical_news_sweep.WINDOW_DAYS = 7 —
+# this header said "14-day window per day" until 2026-07-30 and was wrong on both
+# counts). Eventually covers the complete GDELT-era history without repeatedly
+# rescanning every prior year. The per-run ceiling on model candidates is
+# BACKFILL_MAX_ARTICLES below, currently **10** — not the 500 this header used to
+# claim from GDELT's own 250-per-request cap, which stopped being the binding
+# limit once the cap was set. It is intentionally separate from the live feed and
+# safe to pause by disabling this workflow.
 on:
   schedule:
-    # SPRINT-TO-CLOSE: hourly instead of daily. 494 seven-day windows remained
-    # (cursor at 2017-01-29) — one/day meant 16 more months of drip-feed history.
-    # Hourly closes the whole historical universe in ~3 weeks, then the job
-    # self-idles (cursor reaches today; each run becomes a no-op). The script is
-    # success-anchored and 429-safe, so a rate-limited hour just retries later.
-    # After the cursor reaches today, revert to '40 5 * * *' to cut Actions noise.
+    # HOURLY, DELIBERATELY — audited 2026-07-30 and kept, unlike its two sibling
+    # sprints (edgar-history-sweep, archive-backfill), both of which were reverted
+    # the same day because hourly bought them nothing. The difference is where the
+    # cursor lives. This job's cursor is SERVER-side and success-anchored
+    # (`/historical-gdelt-cursor`), so it advances one window per RUN and cadence
+    # maps 1:1 to progress — proven in the logs: the 00:00Z run took
+    # 2019-07-21..27 and the 01:05Z run took 2019-07-28..08-03. edgar's cursor is
+    # `now.toordinal() % len(months)`, i.e. keyed on the calendar DATE, so its
+    # 22 runs/day all swept the identical window.
+    #
+    # Remaining work at 2026-07-30: cursor 2019-08-04, so 2,552 days = 365
+    # windows left. At ~22 runs/day that closes in ~17 days; at one/day it is
+    # ~365 days. Cost is bounded by BACKFILL_MAX_ARTICLES=10, so <=230 extraction
+    # calls/day, ~$0.18/day — buying a year of history closure for pennies.
+    #
+    # The 2026-07-28 industry-drain postmortem's warning that "self-limiting when
+    # empty" is FALSE does NOT apply here. That warning is about rows whose two
+    # classifier passes disagree and write no marker, so they re-queue forever.
+    # This cursor is monotonic and persisted: a completed window is never
+    # revisited, and when it reaches today every run really is a no-op.
+    #
+    # THEN revert to '40 5 * * *'. Check with:
+    #   curl -s .../wp-json/layoffs/v1/historical-gdelt-cursor  (keyed)
+    # or just read `Success-anchored historical GDELT window:` in the newest run.
     - cron: '40 * * * *'
   workflow_dispatch:
     inputs:
@@ -21,7 +42,11 @@ on:
         required: false
         default: ''
       end:
-        description: 'Optional override end date YYYY-MM-DD (max 14 days after start)'
+        # Was "max 14 days after start" and that input CRASHED the run:
+        # historical_news_sweep raises unless (end - start) < WINDOW_DAYS = 7, so
+        # start+7 and anything above it is a RuntimeError, and the documented
+        # maximum was twice the real one. Pinned by test_rotating_cron_cadence.
+        description: 'Optional override end date YYYY-MM-DD (max 6 days after start)'
         required: false
         default: ''
 

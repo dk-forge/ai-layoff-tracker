@@ -14,10 +14,20 @@ name: Source-archive backfill
 # an "Archived copy (Wayback Machine)" link beside each official source.
 on:
   schedule:
-    # SPRINT: hourly until the 24,853-URL backlog is archived, then it self-idles
-    # (empty candidate list = no-op). Most URLs are already in Wayback (free, fast
-    # availability hits); only never-crawled ones need a rate-limited save.
-    - cron: '25 * * * *'
+    # DAILY. The 2026-07-23 hourly sprint has CLOSED — measured 2026-07-30, three
+    # consecutive runs handed out 0, 2 and 7 candidate URLs against a per-run
+    # limit of 1,500, and coverage sat flat at 21,110/25,029 distinct source URLs
+    # (84.3%). What is left is not a backlog, it is the ~9 brand-new rows a day
+    # the daily run picks up anyway; the difference hourly buys is that a new
+    # row's Wayback copy lands within an hour instead of within a day, which is
+    # not worth ~20 min/day of Actions minutes on a 9-second no-op.
+    # NOTE for whoever wants coverage above 84%: raising the CADENCE will not do
+    # it. The 3,965 URLs recorded `pending` never re-enter the candidate list
+    # (distinct URLs grew 25,020 -> 25,029 while `archived` moved 21,108 ->
+    # 21,110 and `pending` grew 3,963 -> 3,965), so a Save-Page-Now request that
+    # never confirms is stuck forever. That needs a re-check of pending rows,
+    # which does not exist yet — not a smaller cron interval.
+    - cron: '25 5 * * *'
   workflow_dispatch:
     inputs:
       limit:
@@ -53,9 +63,10 @@ jobs:
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
-          # Sprint throughput: Pass 1 (free availability) clears most of the
-          # 24,853-URL backlog fast, so a high per-run limit + hourly cron covers
-          # it in ~1-2 days rather than ~5. Pass 2 saves stay rate-limited.
+          # The 1,500 limit is a leftover from the backlog sprint and is harmless
+          # to keep: the server hands out only what is actually un-archived, and
+          # that is now single digits per run. It stays high so a future bulk
+          # import of a new source drains in one daily run instead of many.
           ARCHIVE_BACKFILL_LIMIT: ${{ github.event.inputs.limit || '1500' }}
           ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '80' }}
           ARCHIVE_FLUSH_EVERY: '25'
