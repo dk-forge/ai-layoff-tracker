@@ -21,6 +21,10 @@ on:
         description: 'Set to 1 to also LIST the rows whose mark changes (max 500).'
         required: false
         default: ''
+      probe:
+        description: 'Employer name fragment: dump what the reconciler loads for it.'
+        required: false
+        default: ''
 
 jobs:
   reconcile:
@@ -33,9 +37,11 @@ jobs:
           # the input and default to a safe dry-run report.
           APPLY="${{ github.event.inputs.apply }}"
           DETAIL="${{ github.event.inputs.detail }}"
+          PROBE="${{ github.event.inputs.probe }}"
           if [ "${{ github.event_name }}" = "schedule" ]; then APPLY=1; fi
           curl -sS --fail-with-body -X POST -o response.json \
             "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY&detail=$DETAIL" \
+            --data-urlencode "probe=$PROBE" \
             -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
           # A detail=1 body is one enormous JSON line, and the Actions log
@@ -46,6 +52,9 @@ jobs:
           import json
           d = json.load(open('response.json'))
           changed = d.pop('changed', [])
+          for p in d.pop('probed', []):
+              print(f"  PROBE {p['id']}\t{p['company_key']!r}\t{p['company']!r}\t{p['layoff_date']}\t"
+                    f"{p['state']}\t{p['source_type']}\t{p['job_count']}\twas={p['was']}\tnow={p['now']}")
           print(json.dumps(d))
           if not changed:
               raise SystemExit(0)

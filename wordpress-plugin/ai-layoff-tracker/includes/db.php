@@ -3170,7 +3170,7 @@ function alt_api_event_migrate(WP_REST_Request $r) {
  * rows from unrelated YEARS as members of one news total in the other
  * direction. Both sides are now scoped to the +/-45-day window.
  */
-function alt_reconcile_supersets($dry_run = true, $detail = false) {
+function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') {
     global $wpdb;
     $table = alt_db_table();
     $rows = $wpdb->get_results(
@@ -3316,13 +3316,38 @@ function alt_reconcile_supersets($dry_run = true, $detail = false) {
     );
     // Bounded: this is an ops diagnostic on a keyed endpoint, not a data feed.
     if ($detail) $out['changed'] = array_slice($changed, 0, 500);
+    // `probe` answers the question this function could never be asked before:
+    // what does the reconciler actually SEE for one employer? It shows the rows
+    // it loaded, the company_key it grouped them under (rows that look like the
+    // same employer but key differently never meet), and the mark each one
+    // gets. Working that out from the outside cost most of a session.
+    if ($probe !== '') {
+        $hits = array();
+        foreach ($rows as $r) {
+            if (stripos((string) $r['company'], $probe) === false) continue;
+            $hits[] = array(
+                'id'          => (int) $r['id'],
+                'company'     => (string) $r['company'],
+                'company_key' => (string) $r['company_key'],
+                'layoff_date' => $r['layoff_date'],
+                'state'       => (string) $r['state'],
+                'source_type' => (string) $r['source_type'],
+                'job_count'   => (int) $r['job_count'],
+                'was'         => (int) $r['superset_of'],
+                'now'         => isset($mark[$r['id']]) ? (int) $mark[$r['id']] : 0,
+            );
+            if (count($hits) >= 200) break;
+        }
+        $out['probed'] = $hits;
+    }
     return $out;
 }
 
 /** Key-protected. Default DRY-RUN; pass apply=1 to actually mark rows. */
 function alt_api_reconcile_supersets(WP_REST_Request $r) {
     $dry = $r->get_param('apply') !== '1';
-    return rest_ensure_response(alt_reconcile_supersets($dry, $r->get_param('detail') === '1'));
+    return rest_ensure_response(alt_reconcile_supersets(
+        $dry, $r->get_param('detail') === '1', (string) $r->get_param('probe')));
 }
 
 /** Public: return the cached unemployment-claims backdrop payload (or empty). */
