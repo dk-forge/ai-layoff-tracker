@@ -1780,11 +1780,16 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    860px to match the sibling talent tracker, so the two products change shape
    at the same width and a reader moving between them is not surprised.
 
-   Known cost, accepted deliberately: changing a table's `display` drops the
-   table role in every engine, so cell-to-header association is gone here. That
-   is why the one genuinely ambiguous value (the bare job count) carries its
-   unit as real text in the markup, and why thead is CLIPPED rather than
-   display:none — it stays in the accessibility tree for the desktop layout.
+   Known cost, accepted deliberately, and worse than it first looks. Changing a
+   table's `display` drops the IMPLICIT table roles in every engine, so
+   cell-to-header association is gone here. DataTables does not rescue it:
+   1.10.21 sets an explicit role="grid" on the table and role="row" on every
+   row, but never role="gridcell" on a cell (verified against the shipped
+   minified file), so what survives is a grid of rows containing nothing. That is
+   why the one genuinely ambiguous value, the bare job count, carries its unit as
+   REAL text in the markup rather than as a CSS ::after, and why thead is CLIPPED
+   rather than display:none, so it stays in the accessibility tree for the
+   desktop layout that still needs it.
    =========================================================================== */
 @media (max-width: 860px) {
     /* The container stops scrolling because there is nothing wide left in it.
