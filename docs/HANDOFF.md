@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code)
 - **SINCE:** 2026-07-30
-- **WORKING ON:** —
+- **WORKING ON:** superset dedup regression — Spirit US-2026 back to 11,069 (news 4,000 stacking on WARN)
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
