@@ -5,7 +5,7 @@ name: Industry propagate (deterministic)
 # through the /industry-backfill endpoint, so it inherits blank-only + closed-
 # vocabulary validation. Complements the LLM classifier, which handles the rows
 # that have no tagged sibling to learn from.
-# Weekly + manual; required secret: WP_API_KEY.
+# Daily + manual (see the cron note below — it was weekly); required secret: WP_API_KEY.
 
 on:
   schedule:

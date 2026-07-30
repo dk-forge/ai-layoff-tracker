@@ -2,7 +2,9 @@ name: WARN notice import (US states)
 
 # Pulls state WARN Act notices (via the open warn-scraper), maps them to the
 # tracker schema, and posts them directly (no LLM, so no API cost). Idempotent.
-# Runs daily at 15:00 UTC (11 AM ET during EDT) and on manual dispatch.
+# Runs daily at 13:00 UTC (9 AM ET during EDT) and on manual dispatch.
+# NB other workflows time themselves against this one, so keep this line and
+# the cron below in step: several of them used to say "after WARN (11 AM)".
 # Required secret: WP_API_KEY.
 
 on:

@@ -5,7 +5,7 @@ name: Data quality report (anomaly flags)
 #   - the same company filing in several states within 60 days (possible
 #     overlapping multi-state counts, like remote-workforce filings)
 #   - huge notices that only link to a state list page (no exact document)
-# Runs DAILY (an hour after the daily WARN import) and on demand; read the
+# Runs DAILY (two hours after the 9 AM ET WARN import) and on demand; read the
 # output in the Actions log.
 
 on:

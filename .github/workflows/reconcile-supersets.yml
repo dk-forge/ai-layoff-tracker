@@ -10,7 +10,7 @@ on:
   # automatically — the marking is a clean-slate recompute each time (resets to
   # 0, then re-marks), so it self-maintains as new rows land, change, or dedup.
   schedule:
-    - cron: '40 16 * * *'   # 12:40 PM ET, after WARN (11 AM) + morning news
+    - cron: '40 16 * * *'   # 12:40 PM ET, after WARN (9 AM ET) + morning news
   workflow_dispatch:
     inputs:
       apply:
