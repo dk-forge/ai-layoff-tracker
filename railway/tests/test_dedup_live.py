@@ -82,6 +82,16 @@ class DedupLiveRegression(unittest.TestCase):
 
     def test_spirit_counts_once(self):
         # The May-5 news 4,000 must not stack on top of the ~6-7k May-2 WARN sites.
+        #
+        # 2026-07-30: this bound did its job. Spirit went 7,069 -> 11,069, exactly
+        # +4,000, and the cause was real: alt_reconcile_supersets asked "is there a
+        # WARN row within 45 days" per row but ran its >=50% plausibility test
+        # against the company's ALL-TIME WARN sum. Spirit's news 4,000 covers 6,109
+        # jobs of May-2026 WARN sites, but was measured against 8,922 jobs of Spirit
+        # WARN notices going back to 2020; the day that all-time sum crossed 8,000
+        # the news row stopped being a subset and started stacking. Fixed in
+        # 2.19.227 by scoping both the test and the marking to the +/-45-day window.
+        # The bound stays at 11,000 - it is the guard, not the number.
         jobs, _ = self._company_jobs("Spirit Airlines")
         self.assertTrue(0 < jobs < 11000, f"Spirit US-2026={jobs}: news-vs-WARN dedup regressed")
 

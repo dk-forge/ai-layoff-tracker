@@ -91,7 +91,9 @@ automatable or licensed for reuse.
 - **Superset dedup** (`alt_reconcile_supersets`, `superset_of` column, daily `reconcile-supersets.yml`): the fuzzy
   ±30-day rule misses cross-channel + far-apart duplicates, which double-count job TOTALS. Three passes mark the
   smaller side of an overlap as a subset of the same event's primary row: (1) a company-wide news/announced total
-  sitting on top of its own site-level WARN rows; (2) news-vs-news with the EXACT same count within ~150 days (an
+  sitting on top of its own site-level WARN rows — **scoped to the ±45-day window on BOTH sides** (the ≥50% test
+  and the marking use only the WARN rows near the news date, never the company's all-time WARN sum, which only
+  grows and silently un-matches old pairs — see TECHLOG 2026-07-30); (2) news-vs-news with the EXACT same count within ~150 days (an
   announcement + later coverage — e.g. Coinbase 700 twice); (3) within-WARN same-state exact-count (≥100) refiled
   revisions (Tyson 1,761 Amarillo). Aggregate job SUMs use `superset_of = 0` (headline/bars/monthly), so an event
   counts ONCE; the row LIST still shows every member (no lost site detail). Self-maintaining (daily), reversible

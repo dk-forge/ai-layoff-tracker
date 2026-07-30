@@ -3152,47 +3152,69 @@ function alt_api_event_migrate(WP_REST_Request $r) {
  * primary row via `superset_of`, so one real event is counted ONCE.
  *
  * Conservative matching (never drops a standalone layoff): a group forms only
- * when, for one company_key, a news/erm/8k/press total of >=200 sits within 45
- * days of a WARN row and is >= half the WARN sum (i.e. plausibly the same
- * event). The larger of {news total, WARN sum} stays; the smaller side's rows
- * get superset_of = primary id. Idempotent. $dry_run reports without writing.
+ * when, for one company_key, a news/erm/8K/press total of >=200 sits within 45
+ * days of a WARN row and is >= half the sum of the WARN rows IN THAT WINDOW
+ * (i.e. plausibly the same event). The larger of {news total, windowed WARN
+ * sum} stays; the smaller side's rows get superset_of = primary id. Idempotent.
+ * $dry_run reports without writing.
+ *
+ * The window is the whole point of pass (1) and it used to be applied
+ * inconsistently, which is how the Spirit regression of 2026-07-30 happened:
+ * "is there a WARN row within 45 days" was asked per row, but the >=50% test
+ * and the marking both used the company's ALL-TIME WARN sum. That denominator
+ * only ever grows, so every match sat on a fuse: Spirit's May-2026 news total
+ * of 4,000 covers 6,109 jobs of May-2026 WARN sites, but was measured against
+ * 8,922 jobs of Spirit WARN notices reaching back to 2020, and the moment that
+ * all-time sum crossed 8,000 the news row silently stopped being a subset and
+ * started stacking (+4,000, US-2026 7,069 -> 11,069). The same bug marked WARN
+ * rows from unrelated YEARS as members of one news total in the other
+ * direction. Both sides are now scoped to the +/-45-day window.
  */
-function alt_reconcile_supersets($dry_run = true) {
+function alt_reconcile_supersets($dry_run = true, $detail = false) {
     global $wpdb;
     $table = alt_db_table();
     $rows = $wpdb->get_results(
-        "SELECT id, company_key, source_type, job_count, layoff_date, ai_explicit, state
+        "SELECT id, company, company_key, source_type, job_count, layoff_date, ai_explicit, state, superset_of
          FROM $table WHERE company_key <> '' AND job_count > 0 AND edited = 0", ARRAY_A) ?: array();
     $by = array();
     $before = 0;
     foreach ($rows as $r) { $before += (int) $r['job_count']; $by[$r['company_key']][] = $r; }
     $mark = array();      // member id => primary id (the row it's a subset of)
     $excluded = 0;
+    // EDGAR writes source_type '8K' (uppercase — see sources/edgar.py and the
+    // 8K literals elsewhere in this file). A strict in_array against '8k' never
+    // matched, so every SEC filing was invisible to this dedup and an 8-K
+    // company-wide total stacked on its own WARN sites forever. Compare folded.
     $news_types = array('news', 'erm', '8k', 'press_release');
     foreach ($by as $grp) {
-        $warn = array(); $news = array(); $warn_sum = 0; $largest_warn = null;
+        $warn = array(); $news = array();
         foreach ($grp as $r) {
-            if ($r['source_type'] === 'warn' && $r['layoff_date']) {
-                $warn[] = $r; $warn_sum += (int) $r['job_count'];
-                if (!$largest_warn || (int) $r['job_count'] > (int) $largest_warn['job_count']) $largest_warn = $r;
-            } elseif (in_array($r['source_type'], $news_types, true) && $r['layoff_date']) {
+            $st = strtolower((string) $r['source_type']);
+            if ($st === 'warn' && $r['layoff_date']) {
+                $warn[] = $r;
+            } elseif (in_array($st, $news_types, true) && $r['layoff_date']) {
                 $news[] = $r;
             }
         }
         // (1) A news/announced company-wide total sitting on top of its own
-        //     site-level WARN rows (Spirit/Amazon/Verizon...).
-        if ($warn && $news && $warn_sum > 0) {
+        //     site-level WARN rows (Spirit/Amazon/Verizon...). Both the test and
+        //     the marking use ONLY the WARN rows within +/-45 days of the news
+        //     report — the rows that actually document the same event.
+        if ($warn && $news) {
             foreach ($news as $nr) {
                 $nc = (int) $nr['job_count'];
-                if ($nc < 200 || $nc < $warn_sum * 0.5) continue;   // not plausibly the same event
-                $near = false;
+                if ($nc < 200) continue;
+                $near = array(); $near_sum = 0; $largest_warn = null;
                 foreach ($warn as $w) {
-                    if (abs((strtotime($nr['layoff_date']) - strtotime($w['layoff_date'])) / 86400) <= 45) { $near = true; break; }
+                    if (abs((strtotime($nr['layoff_date']) - strtotime($w['layoff_date'])) / 86400) > 45) continue;
+                    $near[] = $w; $near_sum += (int) $w['job_count'];
+                    if (!$largest_warn || (int) $w['job_count'] > (int) $largest_warn['job_count']) $largest_warn = $w;
                 }
-                if (!$near) continue;
-                if ($nc >= $warn_sum) {
+                if (!$near || $near_sum <= 0) continue;
+                if ($nc < $near_sum * 0.5) continue;   // not plausibly the same event
+                if ($nc >= $near_sum) {
                     // News total is the most-complete figure -> exclude the WARN sites.
-                    foreach ($warn as $w) {
+                    foreach ($near as $w) {
                         if (empty($mark[$w['id']])) { $mark[$w['id']] = (int) $nr['id']; $excluded += (int) $w['job_count']; }
                     }
                 } else {
@@ -3254,6 +3276,29 @@ function alt_reconcile_supersets($dry_run = true) {
             }
         }
     }
+    // What this run CHANGES versus what is already stored. The marking is a
+    // clean-slate recompute, so a silent drift (a pair that quietly stops
+    // matching and starts double-counting, which is exactly how the Spirit
+    // regression went unseen) shows up here as a non-zero `changes` on a day
+    // nothing should have moved. Cheap to compute, and it makes a dry-run a
+    // real diff instead of three totals.
+    $changed = array();
+    foreach ($rows as $r) {
+        $now = isset($mark[$r['id']]) ? (int) $mark[$r['id']] : 0;
+        $was = (int) $r['superset_of'];
+        if ($now === $was) continue;
+        $changed[] = array(
+            'id'          => (int) $r['id'],
+            'company'     => (string) $r['company'],
+            'company_key' => (string) $r['company_key'],
+            'layoff_date' => $r['layoff_date'],
+            'state'       => (string) $r['state'],
+            'source_type' => (string) $r['source_type'],
+            'job_count'   => (int) $r['job_count'],
+            'was'         => $was,
+            'now'         => $now,
+        );
+    }
     if (!$dry_run) {
         $wpdb->query("UPDATE $table SET superset_of = 0 WHERE superset_of <> 0");  // clean slate, then re-mark
         foreach ($mark as $id => $primary) {
@@ -3261,19 +3306,23 @@ function alt_reconcile_supersets($dry_run = true) {
         }
         if (function_exists('alt_flush_caches')) alt_flush_caches();
     }
-    return array(
+    $out = array(
         'dry_run'        => (bool) $dry_run,
         'members_marked' => count($mark),
         'jobs_before'    => (int) $before,
         'jobs_excluded'  => (int) $excluded,
         'jobs_after'     => (int) ($before - $excluded),
+        'changes'        => count($changed),
     );
+    // Bounded: this is an ops diagnostic on a keyed endpoint, not a data feed.
+    if ($detail) $out['changed'] = array_slice($changed, 0, 500);
+    return $out;
 }
 
 /** Key-protected. Default DRY-RUN; pass apply=1 to actually mark rows. */
 function alt_api_reconcile_supersets(WP_REST_Request $r) {
     $dry = $r->get_param('apply') !== '1';
-    return rest_ensure_response(alt_reconcile_supersets($dry));
+    return rest_ensure_response(alt_reconcile_supersets($dry, $r->get_param('detail') === '1'));
 }
 
 /** Public: return the cached unemployment-claims backdrop payload (or empty). */
