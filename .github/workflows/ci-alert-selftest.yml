@@ -1,0 +1,55 @@
+name: CI alert self-test
+
+# Proves the whole notification path on demand: a failure reaches the owner's
+# inbox, a REPEAT of the same cause does not, and a recovery says so once.
+#
+# It exists because the alerting path is the one piece of infrastructure whose
+# breakage is, by construction, silent — if it stops working you find out by NOT
+# getting an email, which is indistinguishable from everything being fine. The
+# sibling repo's health_digest.py carries a `--test` flag for the same reason.
+#
+# HOW TO USE IT (about four minutes, costs nothing):
+#   gh workflow run ci-alert-selftest.yml -f mode=fail -f marker=101
+#   gh workflow run ci-alert-selftest.yml -f mode=fail -f marker=102   # must NOT mail
+#   gh workflow run ci-alert-selftest.yml -f mode=pass                 # mails RECOVERED
+#
+# The two different markers are the point: they make the assertion text differ
+# run-to-run exactly the way a real drifting count does. If the second one mails,
+# cause-normalisation has regressed and the owner is about to be trained to
+# filter this sender.
+#
+# Manual dispatch only — no schedule, so it never costs a minute unasked.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'fail = raise a fake assertion; pass = go green and clear it'
+        type: choice
+        options: [fail, pass]
+        default: fail
+      marker:
+        description: 'a number to embed in the assertion (vary it to test dedupe)'
+        default: '101'
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Simulate a failing guard
+        if: inputs.mode == 'fail'
+        run: |
+          python3 - <<'PY'
+          import sys
+          marker = "${{ inputs.marker }}"
+          # Deliberately shaped like the real thing: a unittest assertion whose
+          # message carries its own diagnosis and a number that drifts.
+          raise AssertionError(
+              f"False is not true : CI-ALERT SELF-TEST count={marker}: "
+              "this is a drill, nothing is actually broken")
+          PY
+
+      - name: Pass
+        if: inputs.mode == 'pass'
+        run: echo "green — the CI failure alert should now mail RECOVERED once"
