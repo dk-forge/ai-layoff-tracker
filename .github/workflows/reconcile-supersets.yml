@@ -17,6 +17,10 @@ on:
         description: 'Set to 1 to WRITE (mark rows). Empty = dry-run report only.'
         required: false
         default: ''
+      detail:
+        description: 'Set to 1 to also LIST the rows whose mark changes (max 500).'
+        required: false
+        default: ''
 
 jobs:
   reconcile:
@@ -28,9 +32,10 @@ jobs:
           # Scheduled runs ALWAYS apply (self-maintaining dedup); manual runs use
           # the input and default to a safe dry-run report.
           APPLY="${{ github.event.inputs.apply }}"
+          DETAIL="${{ github.event.inputs.detail }}"
           if [ "${{ github.event_name }}" = "schedule" ]; then APPLY=1; fi
           curl -sS --fail-with-body -X POST \
-            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY" \
+            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY&detail=$DETAIL" \
             -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
             -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
           echo ""
