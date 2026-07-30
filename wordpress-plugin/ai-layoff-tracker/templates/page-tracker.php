@@ -75,7 +75,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                <span id="alt-range-label">Date range</span>
+                <span id="alt-range-label">Date Range</span>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
             </button>
             <span class="alt-range-note-data" id="alt-range-note"></span>
@@ -88,11 +88,11 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                     <label for="alt-f-to">To</label>
                     <input type="date" id="alt-f-to">
                 </div>
-                <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear dates</button>
+                <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear Dates</button>
             </div>
         </div>
         <div class="alt-datebasis-wrap" role="group" aria-label="Count layoffs by">
-            <span class="alt-datebasis-label">Count layoffs by:</span>
+            <span class="alt-datebasis-label">Count Layoffs By:</span>
             <span class="alt-datebasis-switch">
             <button type="button" class="alt-datebasis-opt alt-datebasis-on" data-basis="effective" aria-pressed="true"
                 title="Counts each layoff on the day the cut takes effect, the day the jobs actually end. This is our default.">When it takes effect</button>
@@ -106,21 +106,21 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         </div>
         <label class="alt-sort"><span>Sort</span>
             <select id="alt-sort">
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="largest">Largest cuts</option>
-                <option value="smallest">Smallest cuts</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="largest">Largest Cuts</option>
+                <option value="smallest">Smallest Cuts</option>
             </select>
         </label>
     </div>
 
     <div class="alt-quickviews">
-        <span class="alt-qv-label">Quick views:</span>
-        <button type="button" class="alt-qv" data-qv="month">This month</button>
-        <button type="button" class="alt-qv" data-qv="largest">Largest cuts</button>
+        <span class="alt-qv-label">Quick Views:</span>
+        <button type="button" class="alt-qv" data-qv="month">This Month</button>
+        <button type="button" class="alt-qv" data-qv="largest">Largest Cuts</button>
         <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
-        <button type="button" class="alt-qv" data-qv="announced">Announced only</button>
-        <button type="button" class="alt-qv" data-qv="tech">Tech industry</button>
+        <button type="button" class="alt-qv" data-qv="announced">Announced Only</button>
+        <button type="button" class="alt-qv" data-qv="tech">Tech Industry</button>
     </div>
 
     <div class="alt-filterbar">
@@ -158,7 +158,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                 <select id="alt-f-country" multiple></select>
             </div>
             <div class="alt-filter" data-dd="US states" data-empty="All states">
-                <label for="alt-f-state">US states</label>
+                <label for="alt-f-state">US States</label>
                 <select id="alt-f-state" multiple></select>
             </div>
             <div class="alt-filter" data-dd="Reasons" data-empty="All reasons">
@@ -184,11 +184,11 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                 <datalist id="alt-company-suggest"></datalist>
             </div>
             <div class="alt-filter">
-                <label for="alt-f-keyword">Keyword in excerpt</label>
+                <label for="alt-f-keyword">Keyword in Excerpt</label>
                 <input type="text" id="alt-f-keyword" placeholder="Search excerpts">
             </div>
             <div class="alt-filter">
-                <label for="alt-f-minjobs">Min job count</label>
+                <label for="alt-f-minjobs">Minimum Job Count</label>
                 <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
             </div>
         </div>
@@ -218,7 +218,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                 </select>
             </div>
             <div class="alt-filter" data-dd="Roles" data-pills data-empty="All roles">
-                <label id="alt-lbl-roles" for="alt-f-roles">Roles most impacted</label>
+                <label id="alt-lbl-roles" for="alt-f-roles">Roles Most Impacted</label>
                 <select id="alt-f-roles" multiple>
                     <?php foreach (alt_role_categories() as $alt_rk => $alt_rlabel) : ?>
                     <option value="<?php echo esc_attr($alt_rk); ?>"><?php echo esc_html($alt_rlabel); ?></option>
@@ -227,7 +227,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             </div>
         </div>
         <div class="alt-filterbar-reset">
-            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset all filters</button>
+            <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset All Filters</button>
         </div>
         <!-- Hidden state holders: quick-view pills are the visible controls -->
         <input type="checkbox" id="alt-f-ai" hidden>
