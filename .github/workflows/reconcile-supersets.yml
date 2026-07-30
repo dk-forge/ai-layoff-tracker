@@ -58,6 +58,8 @@ jobs:
           print(json.dumps(d))
           if not changed:
               raise SystemExit(0)
+          if len(changed) < d['changes']:
+              print(f"  NOTE: listing {len(changed)} of {d['changes']} changes (truncated)")
           by = {}
           for c in changed:
               b = by.setdefault(c['company_key'], {'rows': 0, 'newly_excluded': 0, 'un_excluded': 0, 'name': c['company']})

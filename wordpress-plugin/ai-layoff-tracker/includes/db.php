@@ -3315,7 +3315,9 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
         'changes'        => count($changed),
     );
     // Bounded: this is an ops diagnostic on a keyed endpoint, not a data feed.
-    if ($detail) $out['changed'] = array_slice($changed, 0, 500);
+    // Compare `changes` against count($out['changed']) before reading the list
+    // as complete — a truncated list once made a working fix look broken.
+    if ($detail) $out['changed'] = array_slice($changed, 0, 2000);
     // `probe` answers the question this function could never be asked before:
     // what does the reconciler actually SEE for one employer? It shows the rows
     // it loaded, the company_key it grouped them under (rows that look like the
