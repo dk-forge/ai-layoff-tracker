@@ -28,7 +28,29 @@ the keyed `/alert`. It is deduped **by cause, not by run** (numbers normalised o
 before hashing, open/resolved state held in the endpoint), and it mails
 **RECOVERED once** on the next green run. Do not "fix" the quiet on a repeat — the
 Spirit assertion reddened CI eight times in one afternoon, and eight identical
-emails is how an alert channel gets filtered. **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
+emails is how an alert channel gets filtered.
+
+**`/alert` is a route on the host it reports about, so the alert has to survive
+that host.** On 2026-07-31 Bluehost 504'd under `/blog/` twice (~6 min in the
+afternoon, ~7 min at night) and in the sibling tracker the alerter failed four
+times saying "HTTP 504 from /alert" — mute at exactly the moment it was needed,
+and exiting non-zero so the outage manufactured extra red runs. Three rules now:
+- **An undeliverable alert is HELD, not lost.** `railway/ci_alert.py` retries
+  transient failures in-run, then writes it to `railway/alert_outbox.json`
+  (committed). `alert-drain.yml` delivers it every 30 minutes — and an empty
+  outbox makes **no request to the host at all**, which is why that tick is free.
+- **A delivery failure is NOT a red run.** Holding exits 0. The only non-zero
+  left is "could neither deliver NOR hold". **Do not restore the old `exit 1` on
+  a failed POST**: that is what let one outage manufacture red runs which
+  manufacture alerts which also fail. `ops_status.py [4b]` shows what is held.
+- **The unattended host watch lives in the SIBLING repo**, on purpose: both
+  trackers share one Bluehost account, so `host-watch.yml` over there probes it
+  every 15 minutes and opens ONE GitHub issue per sustained outage. A second
+  identical watchdog here would double the load and send two emails per outage.
+  This repo's own check is `ops_status.py [1]`, at session start, and it is
+  independent of the sibling.
+
+**Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
 
 ## Read these before changing anything
 | Doc | What it holds |
