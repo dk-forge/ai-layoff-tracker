@@ -1,0 +1,117 @@
+name: Alert drain
+
+# Deliver the CI alerts that were held while the WordPress host was unreachable.
+#
+# THE DEFECT THIS COMPLETES THE FIX FOR. `/alert` is a route on the same site the
+# alerts are about. On 2026-07-31 Bluehost answered 504 for everything under
+# /blog/ for about seven minutes, and in the sibling tracker the CI alerter
+# failed four times reporting the jobs that failed for the same reason — mute at
+# exactly the moment it was needed, and exiting non-zero so the outage
+# manufactured extra red runs while it was. `railway/ci_alert.py` now HOLDS an
+# undeliverable alert in `railway/alert_outbox.json` and exits 0. This is the
+# run that delivers it.
+#
+# COST: nothing, twice over. The repo is public so Actions minutes are free, and
+# an empty outbox — the normal case — exits in under a second HAVING MADE NO
+# REQUEST TO THE HOST AT ALL. The tick only touches the site when there is
+# something held, and then the delivery attempt IS the reachability check.
+#
+# WHY THIS DOES NOT ALSO PROBE THE HOST ON A TIMER. Both trackers share one
+# Bluehost account, so there is one host and it should be watched once. The
+# talent tracker's `host-watch.yml` does that every 15 minutes and opens exactly
+# ONE GitHub issue on a sustained outage. A second identical watchdog here would
+# double the load on a host that has hit its ceiling twice in a day and send the
+# owner two emails per outage instead of one — an undeduped alarm, which is the
+# problem this whole change exists to fix. What this repo still does for itself:
+# `ops_status.py [1]` fetches the live tracker at every session start and exits 2
+# if it cannot (it printed `UNREACHABLE: HTTP Error 504` during that window), so
+# the session-time check does not depend on the sibling at all.
+#
+# WHY A DOWN HOST LEAVES THIS RUN GREEN. A red run fires the CI failure alert,
+# which posts to /alert, which is on the host that is down. That is the
+# amplification loop. `railway/alert_drain.py` goes non-zero only for things a
+# human can fix HERE: the host answered and refused (wrong key, missing route),
+# or the queue could not be written.
+on:
+  schedule:
+    # Every 30 minutes. Fast enough that an alert held during a short outage
+    # arrives while it is still worth reading, slow enough to be invisible.
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List what is held and deliver nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # commit the drained outbox
+  issues: write     # the fallback channel, when the queue stops moving
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # No `pip install`. alert_drain.py, alert_outbox.py, gh_fallback.py and
+      # ci_alert.py are stdlib-only, so the one job whose purpose is to work
+      # when things are broken cannot be broken by dependency resolution.
+      - name: Deliver what was held
+        id: drain
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        working-directory: railway
+        run: python3 alert_drain.py ${DRY:-}
+
+      # `!cancelled()` rather than the default success gate: the attempt counts
+      # and the last error are worth recording even when the step then failed,
+      # and without them a stuck queue looks the same on every tick.
+      - name: Commit the outbox
+        if: ${{ !inputs.dry_run && !cancelled() }}
+        run: |
+          set -euo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git add railway/alert_outbox.json 2>/dev/null || true
+            if git diff --staged --quiet; then
+              echo "The outbox is unchanged."
+              exit 0
+            fi
+            git commit -q -m "alert: outbox drained $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push origin HEAD:main; then
+              echo "Recorded on attempt $attempt."
+              exit 0
+            fi
+            # Re-derive rather than replay a JSON diff: reset onto main and run
+            # the drain again. It is idempotent — a delivered entry is already
+            # marked delivered on the remote, and a still-held one is still held.
+            echo "Push rejected (attempt $attempt) — re-deriving on current main."
+            git fetch origin main
+            git reset --hard origin/main
+            (cd railway && python3 alert_drain.py) || true
+            sleep $((attempt * 5))
+          done
+
+          echo "::error::Could not record the outbox after 5 attempts. Alerts"
+          echo "::error::delivered this run may be re-sent on the next tick, and"
+          echo "::error::alerts still held have lost this run's attempt count."
+          exit 1
+
+      - name: What is held
+        if: ${{ always() }}
+        working-directory: railway
+        run: python3 alert_outbox.py status || true

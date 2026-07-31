@@ -45,6 +45,7 @@ Exit codes:
 import json
 import sys
 import uuid
+from pathlib import Path
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -196,6 +197,61 @@ def _report_ci():
     if len(red) > 6:
         failures.append((f"...and {len(red) - 6} more failing workflow(s)", "", "run: gh run list"))
     return failures, ""
+
+
+def _outbox_doc():
+    """The held-alert queue, read straight off disk.
+
+    Deliberately not imported through alert_outbox: this file promises no deps
+    and no side effects, and the queue is three lines of JSON. If the file is
+    missing or unreadable the answer is "nothing held", the same way the queue
+    itself treats it — this runs in the same neighbourhood as a failure path and
+    must not become one.
+    """
+    import json
+
+    path = Path(__file__).resolve().parent / "alert_outbox.json"
+    try:
+        doc = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {"entries": []}
+    return doc if isinstance(doc, dict) else {"entries": []}
+
+
+#: Mirrors alert_outbox.FAIL_LOUD_ATTEMPTS. Duplicated rather than imported for
+#: the reason above; if they ever disagree the queue's own value wins and this
+#: one only makes ops_status escalate at a slightly different point.
+_HELD_ALERT_FAIL_LOUD = 12
+
+
+def _held_alerts():
+    return [e for e in _outbox_doc().get("entries", [])
+            if e.get("state") == "pending"]
+
+
+def _held_alerts_need_a_human():
+    """A queue that quietly never drains is the original silence with extra
+    steps. A queue that is holding an alert through a ten-minute outage is the
+    design working, and must NOT page."""
+    return any(e.get("attempts", 0) >= _HELD_ALERT_FAIL_LOUD for e in _held_alerts())
+
+
+def _report_held_alerts():
+    held = _held_alerts()
+    if not held:
+        return ["none — every alert raised has reached the owner"]
+    worst = max(e.get("attempts", 0) for e in held)
+    lines = [f"{len(held)} held (most-tried: x{worst}); alert-drain.yml delivers "
+             f"them when the host answers"]
+    for e in held[:4]:
+        subject = (e.get("payload") or {}).get("subject", e.get("key", ""))
+        lines.append(f"  {e.get('raised_at')}  x{e.get('attempts', 0)}  {subject[:66]}")
+    if len(held) > 4:
+        lines.append(f"  ... and {len(held) - 4} more")
+    if worst >= _HELD_ALERT_FAIL_LOUD:
+        lines.append("  These have failed too many times to be an outage. Check "
+                     "WP_API_KEY and that the plugin carrying /alert is live.")
+    return lines
 
 
 def main():
@@ -352,6 +408,20 @@ def main():
         unverified.append("recent CI runs")
     elif not ci_failures:
         print("    No workflow is currently failing on main.")
+
+    # 4b. Did anything we tried to SAY about a red run actually get out?
+    #
+    # [1] above already tells a session whether the host is reachable right now
+    # — it printed `UNREACHABLE: HTTP Error 504` during the 2026-07-31 window.
+    # What it could not tell anyone is that /alert is a route on that same host,
+    # so while it was down the CI alerter could not send mail either. Alerts
+    # raised in that window are HELD in railway/alert_outbox.json and delivered
+    # by alert-drain.yml; this is where a session sees what is still waiting.
+    print("\n[4b] HELD ALERTS  (raised, not yet delivered — /alert lives on the host)")
+    for line in _report_held_alerts():
+        print(f"    {line}")
+    if _held_alerts_need_a_human():
+        issues.append("alerts are held and not being delivered")
 
     # 5+6. Surfaces to keep current
     print("\n[5] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
