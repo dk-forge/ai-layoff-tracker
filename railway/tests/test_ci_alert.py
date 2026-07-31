@@ -124,9 +124,10 @@ class DedupeByCause(unittest.TestCase):
 class Behaviour(unittest.TestCase):
     def _run(self, argv, **env):
         import os
-        old = {k: os.environ.get(k) for k in ("WP_SITE_URL", "WP_API_KEY")}
+        old = {k: os.environ.get(k)
+               for k in ("WP_SITE_URL", "WP_API_KEY", "ALERT_ENVELOPE")}
         os.environ.update({k: v for k, v in env.items()})
-        for k in ("WP_SITE_URL", "WP_API_KEY"):
+        for k in ("WP_SITE_URL", "WP_API_KEY", "ALERT_ENVELOPE"):
             if k not in env:
                 os.environ.pop(k, None)
         buf = io.StringIO()
@@ -160,12 +161,51 @@ class Behaviour(unittest.TestCase):
         self.assertEqual(code, 1, "a missing key must redden this run")
         self.assertIn("::error::", out)
 
-    def test_a_failed_post_reddens_the_run(self):
+    def test_an_undeliverable_alert_is_held_and_does_not_redden_the_run(self):
+        """THE 2026-07-31 DEFECT, in one assertion.
+
+        Bluehost 504'd under /blog/ for seven minutes. In the sibling tracker —
+        same alerter, same host — the alarm failed four times saying "HTTP 504
+        from /alert", because /alert is a route on the host it reports about.
+        Exiting 1 there turned one outage into four EXTRA red runs, each of
+        which read as "the alerter is broken" when the alerter was working and
+        the host was down.
+
+        A held alert is a kept promise. It exits 0, and it says so loudly.
+        """
+        import json
+        import tempfile
+
         calls = []
 
-        def boom(site, key, payload):
+        def boom(site, key, payload, sleep=None):
             calls.append(payload)
-            return False, "HTTP 503 from /alert"
+            return False, "HTTP 504 from /alert", True
+
+        with tempfile.TemporaryDirectory() as tmp:
+            envelope = f"{tmp}/held.json"
+            orig, ci_alert.post_alert = ci_alert.post_alert, boom
+            try:
+                code, out = self._run(
+                    ["--run-id", "1", "--workflow", "Tests",
+                     "--conclusion", "failure", "--envelope", envelope],
+                    WP_SITE_URL="https://example.invalid", WP_API_KEY="k")
+            finally:
+                ci_alert.post_alert = orig
+            self.assertEqual(code, 0,
+                             "an outage must not manufacture a red run of its own")
+            self.assertIn("::warning::", out)
+            self.assertIn("HELD", out)
+            with open(envelope) as fh:
+                held = json.load(fh)
+        self.assertEqual(held["key"], calls[0]["dedupe_key"])
+        self.assertTrue(held["payload"]["subject"].startswith("CI RED:"))
+
+    def test_an_undeliverable_alert_with_nowhere_to_go_is_red(self):
+        """The one alerting failure still worth a red run: it could not be
+        delivered AND could not be held, so nobody is going to be told."""
+        def boom(site, key, payload, sleep=None):
+            return False, "HTTP 504 from /alert", True
 
         orig, ci_alert.post_alert = ci_alert.post_alert, boom
         try:
@@ -176,14 +216,43 @@ class Behaviour(unittest.TestCase):
             ci_alert.post_alert = orig
         self.assertEqual(code, 1)
         self.assertIn("::error::", out)
-        self.assertIn("dedupe_key", calls[0])
+        self.assertIn("nobody will be told", out.lower())
+
+    def test_transient_failures_are_retried_inside_the_run(self):
+        """A single bad response from a shared host is not an outage. Retrying
+        is the cheap half of the fix; the outbox is the half that survives one."""
+        answers = [(False, "HTTP 503", True), (False, "HTTP 503", True),
+                   (True, "emailed the owner", False)]
+        orig, ci_alert._post_once = ci_alert._post_once, lambda *a, **k: answers.pop(0)
+        try:
+            ok, _note, _t = ci_alert.post_alert("https://x.invalid", "k", {},
+                                                sleep=lambda _s: None)
+        finally:
+            ci_alert._post_once = orig
+        self.assertTrue(ok)
+        self.assertEqual(answers, [], "it stopped retrying before it succeeded")
+
+    def test_a_settled_refusal_is_not_retried(self):
+        tries = []
+
+        def once(*a, **k):
+            tries.append(1)
+            return False, "HTTP 404", False
+
+        orig, ci_alert._post_once = ci_alert._post_once, once
+        try:
+            ci_alert.post_alert("https://x.invalid", "k", {}, sleep=lambda _s: None)
+        finally:
+            ci_alert._post_once = orig
+        self.assertEqual(len(tries), 1,
+                         "retrying a settled no only makes the run longer")
 
     def test_success_posts_a_resolve_and_never_a_dedupe_key(self):
         calls = []
 
-        def capture(site, key, payload):
+        def capture(site, key, payload, sleep=None):
             calls.append(payload)
-            return True, "emailed the owner"
+            return True, "emailed the owner", False
 
         orig, ci_alert.post_alert = ci_alert.post_alert, capture
         try:
