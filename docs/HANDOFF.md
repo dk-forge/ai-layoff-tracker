@@ -6,10 +6,12 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
-- **SINCE:** 2026-07-30
-- **WORKING ON:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code)
+- **SINCE:** 2026-07-31
+- **WORKING ON:** the alerter must survive the host it alerts about — durable
+  outbox for undeliverable alerts, no red run for a held one, and a drainer.
+  Touches railway/ci_alert.py, a new railway/alert_outbox.py, ci-alert.yml.
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
