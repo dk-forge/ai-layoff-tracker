@@ -948,6 +948,24 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
    about double. */
 .alt-card-badges .alt-tag { margin: 0; }
 
+/* Badge one of the shared card contract (docs/card-contract.json): which way
+   headcount moved, in the words the sibling talent tracker uses for the same
+   thing. Colour never carries it on its own, which is why the strings are the
+   part the contract pins and this rule is not. */
+.alt-card-dir {
+    display: inline-block;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
+    border-radius: 20px; padding: 2px 10px; white-space: nowrap;
+    background: var(--alt-surface-2); color: var(--alt-ink-2);
+    border: 1px solid var(--alt-grid);
+}
+/* Everything this product holds is a cut, so only these two ever render. The
+   other two directions exist in the vocabulary and are simply absent here. */
+.alt-card-dir-displacement {
+    background: var(--alt-red-tint); color: #8c3d00; border-color: #f3c6ab;
+}
+.alt-card-dir-neutral { color: var(--alt-muted); }
+
 /* The job count is the number a reader scans for, and the one thing a table
    did better than a card. It gets the weight a headline figure deserves
    without becoming the headline. */
@@ -960,7 +978,9 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 /* Real text, not a CSS ::after: a bare "1,200" tells a screen reader nothing,
    and generated content is not a dependable substitute for saying so. */
 .alt-card-jobs-unit { font-size: 12px; font-weight: 600; color: var(--alt-muted); letter-spacing: 0; }
-.alt-card-jobs-none { font-size: 12px; font-weight: 600; color: var(--alt-muted); }
+/* There is no "Count not stated" pill any more. Under the shared contract the
+   amount badge is simply absent when there is no amount, and the direction
+   badge says "Headcount Not Stated" instead of a second badge repeating it. */
 
 /* The fact. Blue only ever means clickable, so the headline is blue when the
    entry has a page of its own and plain ink when it does not. */

@@ -2184,9 +2184,13 @@
        prominent badge, which is the number a reader scans for and the thing a
        table genuinely did better than a card. */
 
-    function verificationBadge(level) {
+    // `extra` carries the shared card contract's evidence class when this badge
+    // is rendered inside a card (docs/card-contract.json, badges.card-ev). The
+    // badge itself is unchanged everywhere else it appears.
+    function verificationBadge(level, extra) {
         var safe = escapeHtml(level || 'bronze');
-        return '<span class="alt-badge alt-badge-' + safe + '">' + escapeHtml(VERIF_LABELS[level] || 'News') + '</span>';
+        return '<span class="' + (extra ? extra + ' ' : '') + 'alt-badge alt-badge-' + safe + '">'
+            + escapeHtml(VERIF_LABELS[level] || 'News') + '</span>';
     }
 
     // The sort control is now the only sort UI. It always ordered the whole
@@ -2216,6 +2220,30 @@
         var p = String(d || '').slice(0, 10).split('-');
         if (p.length !== 3) return '';
         return String(+p[2]) + ' ' + (MONTHS[+p[1] - 1] || '') + ' ' + p[0];
+    }
+
+    // The shared card vocabulary. MIRRORS direction_labels IN
+    // docs/card-contract.json AND MUST STAY IDENTICAL TO IT, byte for byte, and
+    // to the sibling talent tracker's DIRECTION_LABEL. Pinned by
+    // railway/tests/test_card_contract.py; a change here that is not a change
+    // there fails the build in both repos.
+    //
+    // Two of the four never appear on this product: everything it holds is a
+    // cut, so there is no adding and no pay change. They are absent, never
+    // renamed and never quietly reused for something else. The keys are ours
+    // and are derived, not stored: this tracker has no signal_direction column.
+    var DIRECTION_LABEL = {
+        hiring: 'Adding Roles',
+        displacement: 'Cutting Roles',
+        comp_shift: 'Pay Change',
+        neutral: 'Headcount Not Stated'
+    };
+    // A record that names a headcount is a cut we can size. One that does not is
+    // the sibling's `neutral` bucket exactly: the source says nothing about
+    // headcount. Saying that in the direction badge is why the card no longer
+    // carries a second badge reading "Count not stated" beside it.
+    function cardDirection(row) {
+        return Number(row.job_count || 0) > 0 ? 'displacement' : 'neutral';
     }
 
     // Where the jobs were. The rail says so plainly, and says so out loud when
@@ -2294,12 +2322,21 @@
             return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[x] || x) + '</span>';
         }).join('');
 
+        // Badge one of the shared contract: which way headcount moved, in the
+        // words both trackers use.
+        var dirKey = cardDirection(row);
+        var dir = '<span class="alt-card-dir alt-card-dir-' + dirKey + '">'
+            + escapeHtml(DIRECTION_LABEL[dirKey]) + '</span>';
+
         var n = Number(row.job_count || 0);
+        // Badge three: the amount, and ONLY when there is one. When there is
+        // not, the direction badge above has already said so and a second badge
+        // repeating it was the duplicate the shared contract removed.
         // Real text, never a CSS ::after: a generated unit is not a dependable
         // thing for a screen reader to read, and a bare "1,200" says nothing.
         var jobs = n > 0
-            ? '<span class="alt-card-jobs">' + fmt(n) + '<span class="alt-card-jobs-unit"> jobs</span></span>'
-            : '<span class="alt-card-jobs alt-card-jobs-none" title="This record names no headcount">Count not stated</span>';
+            ? '<span class="alt-card-amt alt-card-jobs">' + fmt(n) + '<span class="alt-card-jobs-unit"> jobs</span></span>'
+            : '';
 
         // Blue only ever means clickable. The headline links to the entry's own
         // page when it has one (those permalinks were previously rendered
@@ -2322,7 +2359,12 @@
             +   '<span class="alt-card-where">' + cardWhere(row) + '</span>'
             + '</div>'
             + '<div class="alt-card-body">'
-            +   '<div class="alt-card-badges">' + aiBadge + verificationBadge(row.verification_level) + jobs + tags + '</div>'
+            // Contract order: direction, evidence, amount. This product's own
+            // badges (AI attribution, reason tags) follow them. See
+            // docs/card-contract.json -> badges.order.
+            +   '<div class="alt-card-badges">'
+            +     dir + verificationBadge(row.verification_level, 'alt-card-ev') + jobs + aiBadge + tags
+            +   '</div>'
             +   head
             +   (meaning ? '<p class="alt-card-rt">' + escapeHtml(meaning) + '</p>' : '')
             +   '<div class="alt-card-foot">'
