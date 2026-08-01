@@ -1,10 +1,27 @@
 name: Recall + precision measurement
 
-# The "measure, don't guess" harness. RECALL: diff a held-out gold set of real
-# layoffs against our data → recall % + which geo/sector cell the misses cluster
-# in (the discovery roadmap). PRECISION: re-fetch published sources and confirm
-# the stored count appears verbatim → false-positive rate (the guard roadmap).
-# Read-only except a health-status post. Weekly.
+# The "measure, don't guess" harness, and since 2026-08-01 the only place the
+# recall claim can FAIL.
+#
+# RECALL: re-runs the frozen, independently assembled SEC Item 2.05 gold set
+#   (docs/recall-reference-sets/sec-item-205-us-2025-07_2026-06.goldset.json)
+#   against live data, COMMITS the result to railway/recall_measurement.json,
+#   and exits non-zero if fewer than recall_goldset.MATCHED_FLOOR of the events
+#   an editor confirmed the tracker held are still there.
+# PRECISION: re-fetches published sources and confirms the stored count appears
+#   verbatim; exits non-zero when the Wilson 95% LOWER BOUND falls below
+#   recall_precision.PRECISION_LOWER_FLOOR.
+#
+# The commit is why this job needs write permission: the data being measured
+# changes without a commit, so a result that lives only in the runner is a
+# result that resets every night. ops_status.py and tests/test_dedup_live.py
+# read the committed file through data_integrity.RecallFloorInvariant, so a
+# regression is visible at the top of the next session without re-measuring.
+#
+# It also legitimately runs a whole week without producing a change: if the same
+# events are still there, the file's only delta is its timestamp. That is
+# committed on purpose -- a measurement whose age cannot be read resolves to
+# UNKNOWN, not to a pass.
 #
 # Required secret (only for the health post): WP_API_KEY
 
@@ -18,10 +35,17 @@ on:
         required: false
         default: '40'
 
+permissions:
+  contents: write
+
+concurrency:
+  group: recall-precision
+  cancel-in-progress: false
+
 jobs:
   measure:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -31,9 +55,36 @@ jobs:
         working-directory: railway
         run: pip install -r requirements.txt
       - name: Run recall + precision
+        id: measure
         working-directory: railway
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           RP_PRECISION_SAMPLE: ${{ github.event.inputs.sample || '40' }}
-        run: python recall_precision.py
+        # The exit code is captured rather than allowed to end the job, so the
+        # measurement is still committed before the run is failed below. A
+        # breach that leaves no committed evidence is the worst of both.
+        run: |
+          set +e
+          python recall_precision.py
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit the measurement
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add railway/recall_measurement.json
+          git diff --cached --quiet && { echo "no change to commit"; exit 0; }
+          git commit -m "recall: SEC Item 2.05 gold-set measurement $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1
+      - name: Fail the run on a breached bound
+        run: |
+          rc="${{ steps.measure.outputs.rc }}"
+          case "$rc" in
+            0) echo "recall + precision inside every bound" ;;
+            3) echo "::error::recall/precision could not be verified (exit 3). UNKNOWN is not a pass."; exit 3 ;;
+            *) echo "::error::recall/precision bound breached (exit $rc) - see the step above for the failing assertion"; exit "$rc" ;;
+          esac

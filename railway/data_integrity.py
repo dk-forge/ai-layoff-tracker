@@ -97,6 +97,21 @@ that bug unwritable is still in db.php. The distinction matters: a magnitude
 check would never have caught the Spirit defect, because every row in it was
 correct and the comparison was not.
 
+A THIRD KIND, ADDED 2026-08-01: IS A NUMBER MISSING?
+----------------------------------------------------
+Everything above asks whether a published number is WRONG. None of them can see
+an event that never arrived, and until now nothing could: recall_precision.py
+printed a recall percentage and returned 0 whatever it printed.
+
+    recall_floor    at least MATCHED_FLOOR of a frozen, independently
+                    assembled gold set of 57 SEC Item 2.05 workforce
+                    reductions is still in the published data
+
+It is the only check here that reads a committed file rather than the live API,
+and the reason is in its own docstring. Its bound lives in
+railway/recall_goldset.py so the workflow's exit code, this dashboard and the
+tests all read one definition.
+
 USAGE
 -----
     from data_integrity import check_all
@@ -739,6 +754,59 @@ class DenominatorProvenanceInvariant:
                              "alt_dedup_window(), and the verdict refuses anything else")
 
 
+class RecallFloorInvariant:
+    """Coverage may not silently fall — the recall claim has to be able to fail.
+
+    WHAT IT ASSERTS. That the committed measurement in
+    railway/recall_measurement.json still finds at least
+    recall_goldset.MATCHED_FLOOR of the 57 frozen SEC Item 2.05 gold events in
+    the published data. The gold set, how it was assembled, why it is
+    independent and the per-row editor decisions live in
+    docs/recall-reference-sets/sec-item-205-us-2025-07_2026-06.goldset.json.
+
+    WHY IT READS A FILE AND NOT THE LIVE API, unlike every other check here.
+    Re-measuring costs ~60 requests to a host that 504'd twice on 2026-07-31,
+    and ops_status is on the critical path of every session's first command. So
+    recall-precision.yml re-measures weekly and commits the result, and this
+    check reads it. The consequence is stated rather than hidden: a recall
+    regression is caught within a WEEK, not within a day. That is the cadence
+    the measurement job actually runs at, and a ceiling a job cannot meet is not
+    a monitor, it is noise that hides real breakage.
+
+    WHAT IT DOES NOT DO. It does not turn 42% into a claim. 42% is recall
+    against ONE source family over ONE window at n=57, and the interval around
+    it is [30%, 55%]. The floor is a regression tripwire on a FROZEN set, not an
+    estimate of coverage — see the module docstring for why those are different
+    questions.
+
+    MISSING DATA. No measurement file, an unreadable one, one older than
+    recall_goldset.MAX_MEASUREMENT_AGE_DAYS, or one where too much of the set
+    was unreachable -> UNKNOWN, never a pass.
+    """
+
+    key = "recall_floor"
+    label = "Gold-set recall has not fallen"
+    reads_live_data = False        # reads the committed measurement, not the site
+
+    def __init__(self, measurement_path=None):
+        self.measurement_path = measurement_path
+
+    def run(self, ctx):
+        try:
+            import recall_goldset
+        except ImportError:                                  # pragma: no cover - path fallback
+            sys.path.insert(0, str(HERE))
+            import recall_goldset
+        measurement = recall_goldset.load_measurement(self.measurement_path)
+        state, detail = recall_goldset.judge(measurement)
+        # A measurement that has never been written is PENDING: still UNKNOWN on
+        # the dashboard, on the ledger and in the daily workflow's exit code,
+        # but the unit suite may skip rather than redden a push on a checkout
+        # where the weekly job has not run yet.
+        return Result(self, state, detail=detail,
+                      pending=(state == UNKNOWN and measurement is None))
+
+
 def _php_function_body(src, name):
     """Source between `function name(` and the next top-level closing brace."""
     start = src.find(f"function {name}(")
@@ -821,6 +889,11 @@ INVARIANTS = (
     ConcentrationInvariant(),
     MovementInvariant(),
     DenominatorProvenanceInvariant(),
+    # The six above all ask "is a published number wrong?". This one asks the
+    # other half of the question — "is a number MISSING?" — which nothing here
+    # could ask before 2026-08-01, because recall_precision.py had no threshold
+    # and returned 0 whatever it measured.
+    RecallFloorInvariant(),
 )
 
 

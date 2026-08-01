@@ -138,12 +138,20 @@ class DedupLiveRegression(unittest.TestCase):
         # on anything not window-scoped).
         self._assert("dedup_denominator_scoped")
 
+    def test_gold_set_recall_has_not_fallen(self):
+        # The other half of the question every check above asks. They all test
+        # whether a published number is WRONG; none of them can see an event
+        # that never arrived. This one reads the committed measurement of the
+        # frozen SEC Item 2.05 gold set and fails when the tracker has lost
+        # events an editor confirmed it held.
+        self._assert("recall_floor")
+
     def test_every_registered_invariant_is_asserted(self):
         # Adding an invariant to the shared registry must not silently skip CI.
         asserted = {"coinbase_news_vs_news", "spirit_news_vs_warn",
                     "tyson_warn_revision", "att_no_fake_outlier",
                     "headline_concentration", "headline_movement",
-                    "dedup_denominator_scoped"}
+                    "dedup_denominator_scoped", "recall_floor"}
         missing = {i.key for i in INVARIANTS} - asserted
         self.assertFalse(missing, (
             f"data_integrity.INVARIANTS gained {sorted(missing)} with no test method here. "

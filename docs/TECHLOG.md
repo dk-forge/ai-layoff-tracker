@@ -6,6 +6,126 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-01 — the recall claim becomes measurable, and able to fail (no plugin change)
+
+**What was wrong.** `railway/recall_precision.py` had printed a recall
+percentage since it was written and `main()` ended in `return 0` whatever it
+printed. There was no threshold anywhere, so a coverage collapse could not
+redden CI, could not reach `ci_alert.py`, and could not appear in `ops_status`.
+That is the "a check that resolves to a silent pass" failure this repo forbids,
+one level above the bug `data_integrity.py` exists to catch.
+
+It was also measuring something weaker than it sounded. `seed_data/recall_goldset.csv`
+is 40 hand-listed companies from a research sweep — Amazon, Microsoft, Meta,
+Oracle, Volkswagen — matched by asking whether that company appears **anywhere**
+in our data **that year**. Company-presence-in-a-year is not event recall, and a
+set made of the year's most-reported cuts cannot fall far. Its 80% is a smoke
+test, not a coverage figure. It is kept, still printed, now labelled for what it
+is, and carries no threshold. Nothing was deleted or weakened.
+
+**The gold set, and why it is independent.** Every SEC Form 8-K filed
+2025-07-01..2026-06-30 whose **structured** `items` array carries code 2.05
+(Costs Associated with Exit or Disposal Activities) — the code the filer put in
+the SGML header, not a text match: 215 accessions. The enumeration was
+re-pulled month by month with an independent query ("exit or disposal
+activities") and it returned **zero** item-2.05 filings the first query had
+missed, in all twelve months; two further controls added nothing. Every document
+of every filing was fetched from `www.sec.gov/Archives` and the 64 with a
+number-plus-employee-noun sentence were read by hand. A filing enters the set
+only if it states an **absolute** count of affected employees. Five were excluded
+for stating only a percentage, a retained headcount or a pre-action total —
+Intel's "end the year with a core workforce of about 75,000" is the remaining
+staff, Atara's "15" is who is kept, Geron's "260" is the pre-cut total — because
+`extractor.py` rejects derived counts by design and scoring a documented design
+decision as a miss would be measuring the wrong thing. Two accessions were the
+same announcement filed twice and were collapsed. **57 events.** Primary
+regulator index, no aggregator, no competitor list, selection rule fixed before
+any tracker query. It is *not* independent of the tracker's design: an EDGAR
+collector already reads this corpus, so it measures whether the pipeline
+captures what its own primary source publishes.
+
+**THE MEASUREMENT: 24 of 57 = 42.1%, Wilson 95% CI [30.2%, 55.0%].** The
+interval is the honest form. n=57 supports "well under half" and supports no
+figure to the nearest percent, and it describes ONE source family (US public
+companies filing Item 2.05 with an explicit count) over ONE window. It says
+nothing about private employers, non-US employers, WARN-only or news-only
+events, and must never be quoted as "the tracker's recall". Also measured, with
+intervals for the first time: count precision **38/39 = 97.4% [86.8%, 99.5%]**
+(56/57 on a wider draw), AI-attribution precision **53/53 = 100% [93.2%, 100%]**
+— which is exactly why the interval matters, because 53 observations are not
+certainty.
+
+**The misses are not a source outage.** `ops_status.py` was ALL CLEAR with the
+EDGAR collector healthy while HP's 4,000-6,000, Newell's 900, Autoliv's 2,200
+Türkiye, Molson Coors' 400, Elanco's 300, Domtar's 350, GoPro's 145 and Beyond
+Meat's 44 were absent from the published data, each disclosed in an 8-K the
+tracker's own collector reads. `sources/edgar.py` caps at
+`MAX_PAGES_PER_KEYWORD = 3` (30 hits per keyword per form) and prints a warning
+when a keyword matches more; that is one candidate cause and is left for a
+follow-up, not fixed here.
+
+**THE MACHINE MUST NOT PROMOTE ITS OWN RECALL.** The deterministic alias/window
+matcher scored **31** of 57 against the editor's **24** — twelve points of
+inflation. It had accepted a Hormel Georgia WARN filed ten weeks *before* the
+announcement it was meant to represent, an Italian composites maker for HP Inc,
+Dow Jones for Dow, and an Ohio WARN for a plan explicitly scoped to EMEA. So the
+numerator counts only editor-confirmed events; a row that newly satisfies the
+rule for a not-matched event is printed as `ADJUDICATE` and never counted. The
+rejected candidates are recorded per row so they do not resurface every week.
+Separately, the live `company=` filter is a substring LIKE and it returned
+Experian for Xperi, Capgemini for Gemini, Insight Behavioral for Sight Sciences
+and a Baltic fish processor for KALA BIO — hence a token-**prefix** match, with
+a test naming all four pairs.
+
+**The threshold, and why it is a count and not the interval's lower bound.**
+`recall_goldset.MATCHED_FLOOR = 20 of 57`. Two different questions were on the
+table and mixing them is the scope error `plausibility_ratio()` refuses: the
+Wilson bound describes uncertainty about the **population**, while the gold set
+is **frozen** and re-measured, so between runs the denominator cannot move and
+the numerator changes only on real gain or loss. There is no sampling noise to
+absorb. Twenty is four events below today's 24 — enough headroom that a company
+rename breaking one alias or a dedup merge does not redden CI, few enough that a
+collector regression or a bad purge-reload does. Precision is the opposite case
+(the sample IS redrawn each run), so its floor is on the **Wilson lower bound at
+0.80**, which trips at six bad rows in 57: about one false alarm every 200 runs
+if the true rate is 98%. A 0.85 floor would trip at four and fire ~1.5 times a
+year for nothing, and eight identical emails is how an alert channel gets
+filtered.
+
+**Wiring.** New stdlib-only `railway/recall_goldset.py` holds the bound, the
+Wilson helper, the matcher and `judge()` — one definition, read by
+`recall_precision.py`'s exit code, by `data_integrity.RecallFloorInvariant`
+(registered in `INVARIANTS`, so `ops_status` [3] renders it and
+`tests/test_dedup_live.py` asserts it) and by the tests. `recall-precision.yml`
+now commits `railway/recall_measurement.json` and exits non-zero on a breach, so
+`ci_alert.py` mails the real assertion. The invariant is the only one that reads
+a committed file rather than the live API, because re-measuring is ~60 requests
+against a host that 504'd twice on 2026-07-31 and `ops_status` is the first
+command of every session: the cost is that a regression surfaces within a
+**week**, which is the cadence the job actually runs at, and the staleness
+ceiling (9 days) matches it.
+
+**Three states, kept apart.** An event whose lookup fails is UNREACHABLE, never
+a miss; above 6 of 57 unreachable the whole measurement is UNKNOWN. A missing or
+stale measurement is UNKNOWN. A host outage cannot manufacture a recall
+regression — the same rule `ci_alert.py` learned on 2026-07-31.
+
+**Not published.** The set is `internal_regression_reference_not_published_to_benchmarks_recall`
+and a test asserts it. `/benchmarks/recall` stays reserved for the California
+sample that cleared the three-reviewer independence gate.
+
+**Verified:** 24 offline tests green in `tests/test_recall_goldset.py`; full
+`railway/tests` green apart from the known `test_archive_backfill` missing-
+`requests` failure; `ops_status.py` ALL CLEAR exit 0 with **8** data-integrity
+checks; `python3 railway/data_integrity.py` prints the new line with its
+interval. **Unverified:** the weekly workflow's commit step has not run in
+Actions yet (its git push loop is untested in situ); the ~60-request measurement
+has only been run from one machine, so its behaviour under a Bluehost 504 is
+proven by unit test, not in the field; and no second editor has reviewed the 57
+match decisions.
+
+---
+
 ## 2.19.233 — one company page per employer (the gate was never the problem)
 
 **What was wrong.** 29 employers had a page against ~41k distinct employer names

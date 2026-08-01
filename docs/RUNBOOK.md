@@ -40,7 +40,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | supplemental-news | daily 14:05 UTC + manual | NewsData.io + Marketaux + Finnhub (non-English/EU news). Dormant per key. Inputs: dry_run |
 | distress-watchlist | weekly Tue + manual | CourtListener bankruptcy + Companies House insolvency → distressed names → watchlist news search. Dormant per key. Inputs: dry_run |
 | foreign-filings | daily 13:30 UTC + manual | EDINET (JP) + OpenDART (KR) filing bodies → extractor (guards reject non-layoffs). Dormant per key. Low yield by design. Inputs: dry_run |
-| recall-precision | weekly + manual | Measures recall (gold set) + count precision + **AI-attribution precision** (quotable-AI-statement rate). Read-only. Inputs: RP_PRECISION_SAMPLE |
+| recall-precision | weekly Mon 16:10 UTC + manual | **The only place the recall claim can FAIL.** Re-runs the frozen SEC Item 2.05 gold set (57 events) against live data, **commits** `railway/recall_measurement.json`, and exits 2 below `recall_goldset.MATCHED_FLOOR`; also measures count precision (exits 2 when the Wilson 95% lower bound drops under 80%) and AI-attribution precision. Every rate is printed **with its interval**. Needs `contents: write` for the commit. Inputs: RP_PRECISION_SAMPLE |
 | data-integrity | daily 17:30 UTC + manual | **Is the published data CORRECT?** Runs `railway/data_integrity.py` — the live invariants (known duplicate events must count once) shared with `tests/test_dedup_live.py` — and writes the verdict to the health ledger as `data_integrity`. Scheduled 50 min AFTER reconcile-supersets so it sees that pass's result. Exit 2 = failing, exit 3 = could not verify (never a silent pass) |
 | health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades, **or when a live data-integrity check is failing** (subject leads "WRONG NUMBER LIVE"). Weekly is the backstop only — the fast paths are `ops_status.py` [3] and the daily data-integrity run. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
 | tracker-diff | dormant BY DESIGN (owner decision 2026-07-28) | Optional gap-chase against a private feed. Competitor tracking is handled by the LOCAL benchmark instead; this loop is not needed, exits green on schedule, and nobody should be asked to enable it |
@@ -108,6 +108,28 @@ count **once**.
    Spirit defect appeared: a running all-time WARN sum crossed a threshold).
 6. **If it says UNKNOWN, not FAILING**, nothing was verified — that is not a
    pass. Re-run somewhere with network access to `asktherecruiter.com`.
+
+**`recall_floor` is the one invariant that works the other way round.** Every
+other check asks whether a published number is WRONG; this one asks whether a
+number is MISSING, and it is the only one that reads a committed file rather
+than the live API (re-measuring is ~60 requests, and ops_status is on the
+critical path of every session's first command).
+
+- **FAILING** means the tracker has LOST events an editor confirmed it held —
+  the gold set is frozen, so this is never sampling noise. The detail names the
+  events. Check the last `/bulk-purge`, the last `reconcile-supersets` run, and
+  whether an employer was renamed (the match is a token-prefix on company name,
+  so "Alector LLC" -> "Alector Inc" is fine but a rebrand is not). Fix the cause;
+  do not lower `MATCHED_FLOOR`.
+- **UNKNOWN** means the measurement is missing or older than 9 days, which means
+  `recall-precision.yml` has stopped. Check that workflow before anything else,
+  then `python3 railway/recall_goldset.py --write` and commit.
+- **The 42% it reports is not a claim.** It is recall against ONE source family
+  (US public companies filing 8-K Item 2.05 with an explicit count) over ONE
+  twelve-month window at n=57, interval [30%, 55%]. Never quote it as "our
+  recall", and never post it to `/benchmarks/recall` — that endpoint is reserved
+  for a sample that has been through the three-reviewer chain in
+  `docs/RECALL_BENCHMARK_PROTOCOL.md`, and this set has not.
 
 **Which check failed, and what each one wants you to do**
 

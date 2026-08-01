@@ -58,3 +58,33 @@ The EDD report is publicly linked by the agency. This project uses it only for
 a small manual, source-linked factual reference sample; the State's site terms
 do not supply an explicit automated/commercial bulk-reuse licence. Do not turn
 this draft into a scraper or republish the official PDF.
+
+## SEC Item 2.05 internal regression set (2025-07 → 2026-06)
+
+`sec-item-205-us-2025-07_2026-06.goldset.json` is a **different kind of file**
+from the California manifest above, and the difference is the whole reason it is
+allowed to exist without the three-reviewer chain:
+
+| | California WARN June 2026 | SEC Item 2.05 2025-07..2026-06 |
+|---|---|---|
+| Purpose | a **public** country-period benchmark | an **internal** regression tripwire |
+| Endpoint | `/benchmarks/recall` after the review gate | none, ever |
+| Review | three distinct actors, complete | one session, stated in the manifest |
+| Denominator | 12 | 57 |
+| Read by | the public read endpoint | `railway/recall_goldset.py`, `data_integrity.recall_floor`, CI |
+
+It is enumerated from the filer's own structured item code in SEC EDGAR — a
+primary regulator index, not an aggregator and not a competitor list — with a
+selection rule fixed before any tracker query, and a control query in every
+month of the window returned zero item-2.05 filings the first query missed. Full
+method, per-row count evidence and per-row match decisions are inside the file.
+
+Two rules about it:
+
+1. **It is never posted to `/benchmarks/recall`.** Its `publication_status` says
+   so and `tests/test_recall_goldset.py` asserts it. The public endpoint is
+   reserved for a sample that has cleared the independence gate; this one has
+   one author.
+2. **Its number is not "our recall".** 24 of 57 with a Wilson 95% interval of
+   [30%, 55%] describes one source family over one window. It is a floor to
+   detect loss, not a coverage claim.

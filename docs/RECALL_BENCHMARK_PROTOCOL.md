@@ -45,6 +45,22 @@ company-name search, or a model suggestion cannot substitute for a completed
 same-event review. Keep the denominator and numerator absent until that gate
 is complete.
 
+## What this protocol does NOT cover
+
+This protocol governs **publication** of a country-period recall figure. It does
+not govern internal measurement, and the two must not be confused.
+
+`recall-reference-sets/sec-item-205-us-2025-07_2026-06.goldset.json` is an
+internal regression reference: 57 workforce reductions enumerated from SEC Form
+8-K structured item code 2.05 over 2025-07-01..2026-06-30, adjudicated by one
+session, frozen, and re-measured weekly by `recall-precision.yml`. It exists so
+that a coverage regression can redden CI, which nothing could do before
+2026-08-01. It has **one author, not three reviewers**, so it is not eligible
+for `/benchmarks/recall` and its `publication_status` records that. Its measured
+figure (24 of 57, Wilson 95% [30%, 55%]) must not be published, quoted as "the
+tracker's recall", or compared with a figure from this protocol: different
+source family, different denominator, different review standard.
+
 ## Current status
 
 The historical June–July 2026 5/35 result was collected before the later
