@@ -143,11 +143,21 @@ class SlicerDimensionTests(unittest.TestCase):
     def test_a_page_never_requests_its_own_dimension_block(self):
         fn = MODULE.split("function alt_facet_aggregate_blocks(")[1].split("\n}")[0]
         self.assertIn("if ($dim !== 'industry') $blocks[] = 'top_industries';", fn)
-        self.assertIn("if ($dim !== 'state')    $blocks[] = 'top_states';", fn)
-        self.assertIn("if ($dim !== 'country')  $blocks[] = 'top_countries';", fn)
+        self.assertIn("if ($dim !== 'state') $blocks[] = 'top_states';", fn)
+        # And never its own dimension, which the slicer would answer globally.
+        self.assertNotIn("$dim !== 'country') $blocks[] = 'top_countries'", fn)
+
+    def test_state_pages_do_not_get_a_one_item_country_list(self):
+        # Live at 2.19.242 Texas rendered "Countries affected here: United
+        # States, 224,107 jobs" — the page's own scope, restated as a list.
+        fn = MODULE.split("function alt_facet_aggregate_blocks(")[1].split("\n}")[0]
+        self.assertIn("if ($dim === 'industry') $blocks[] = 'top_countries';", fn)
 
     def test_breakdown_rendering_skips_the_page_dimension(self):
         self.assertIn("if ($bd === $dim || empty($agg[$key])) continue;", MODULE)
+
+    def test_a_one_item_breakdown_is_not_rendered(self):
+        self.assertIn("if (count($rows) >= 2) $breakdowns[$bd] = $rows;", MODULE)
 
 
 class AggregateIncludeTests(unittest.TestCase):

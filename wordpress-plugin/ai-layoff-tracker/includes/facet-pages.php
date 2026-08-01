@@ -226,8 +226,16 @@ function alt_facet_query_params($dim, $value) {
 function alt_facet_aggregate_blocks($dim) {
     $blocks = array('repeat_companies');
     if ($dim !== 'industry') $blocks[] = 'top_industries';
-    if ($dim !== 'state')    $blocks[] = 'top_states';
-    if ($dim !== 'country')  $blocks[] = 'top_countries';
+    // Countries only where the page can actually span more than one. On a US
+    // STATE page every row is in the United States by construction, so the
+    // block rendered as a one-item list repeating the page's own scope
+    // ("Countries affected here: United States, 224,107 jobs" on Texas, live at
+    // 2.19.242). The state page links up to its country in the footer, which is
+    // the same relationship said once and in the right place.
+    if ($dim === 'industry') $blocks[] = 'top_countries';
+    // States on a country page (empty and unrendered for a non-US country,
+    // since only US rows carry a state) and on an industry page.
+    if ($dim !== 'state') $blocks[] = 'top_states';
     return $blocks;
 }
 
@@ -369,7 +377,11 @@ function alt_facet_data($dim, $slug) {
             );
             if (count($rows) >= 10) break;
         }
-        if ($rows) $breakdowns[$bd] = $rows;
+        // A ONE-item breakdown is a restatement, not a breakdown, whatever the
+        // dimension. The state pages are excluded from the country block above
+        // so they never build this list at all; this catches the general case,
+        // such as a small country whose events all sit in one sector.
+        if (count($rows) >= 2) $breakdowns[$bd] = $rows;
     }
 
     $data = array(
