@@ -37,7 +37,7 @@ $alt_bd_titles = array(
         This page lists every layoff event we hold
         <?php echo $alt_f['dim'] === 'industry'
             ? 'for the ' . esc_html($alt_f['display']) . ' sector'
-            : 'for ' . esc_html($alt_f['display']); ?>
+            : 'for ' . esc_html(alt_facet_phrase($alt_f['dim'], $alt_f['display'])); ?>
         that still links to its original source. It is a record of what we have verified,
         not a complete count of layoffs
         <?php echo $alt_f['dim'] === 'industry' ? 'in this sector' : 'in this ' . esc_html($alt_meta['noun']); ?>.

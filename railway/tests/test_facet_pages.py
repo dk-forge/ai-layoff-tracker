@@ -364,6 +364,13 @@ class RenderingTests(unittest.TestCase):
         # children shrink in proportion and the value's text spills (2.19.220).
         self.assertIn(".alt-facet-links-val { flex: 0 0 auto;", block)
 
+    def test_country_names_taking_the_article_get_it(self):
+        # Live at 2.19.241 the H1, <title> and meta description of the biggest
+        # page in the set all read "Layoffs in United States".
+        self.assertIn("'United States', 'United Kingdom', 'Netherlands', 'Philippines'", MODULE)
+        self.assertIn("return 'Layoffs in ' . alt_facet_phrase(", MODULE)
+        self.assertIn("alt_facet_phrase($alt_f['dim'], $alt_f['display'])", TEMPLATE)
+
     def test_plurals_agree_with_their_counts(self):
         # Live at 2.19.239: "4,000 jobs across 1 employers".
         self.assertIn("=== 1 ? ' employer. ' : ' employers. '", MODULE)

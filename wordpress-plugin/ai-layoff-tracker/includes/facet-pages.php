@@ -483,10 +483,32 @@ add_filter('template_include', 'alt_facet_template');
 /* SEO head                                                            */
 /* ------------------------------------------------------------------ */
 
-/** "Layoffs in Germany", "Layoffs in California", "Technology layoffs". */
+/**
+ * The display name as it reads INSIDE a sentence.
+ *
+ * A handful of country names take the definite article, and the biggest pages
+ * in the set are among them: "Layoffs in United States" was the live H1, title
+ * and meta description at 2.19.241. A closed list rather than a rule, because
+ * there is no rule (it is "the Netherlands" but "Germany", "the Philippines"
+ * but "Japan"), and a wrong guess is worse than none.
+ */
+function alt_facet_article_countries() {
+    return array('United States', 'United Kingdom', 'Netherlands', 'Philippines',
+                 'UAE', 'Isle of Man', 'Czech Republic');
+}
+
+function alt_facet_phrase($dim, $display) {
+    $display = (string) $display;
+    if ($dim === 'country' && in_array($display, alt_facet_article_countries(), true)) {
+        return 'the ' . $display;
+    }
+    return $display;
+}
+
+/** "Layoffs in Germany", "Layoffs in the United States", "Technology layoffs". */
 function alt_facet_heading($data) {
     if ($data['dim'] === 'industry') return $data['display'] . ' layoffs';
-    return 'Layoffs in ' . $data['display'];
+    return 'Layoffs in ' . alt_facet_phrase($data['dim'], $data['display']);
 }
 
 function alt_facet_title($data) {
@@ -500,7 +522,9 @@ function alt_facet_title($data) {
 function alt_facet_description($data) {
     $bits = number_format((int) $data['entries']) . ' recorded layoff '
           . ($data['entries'] === 1 ? 'event' : 'events') . ' '
-          . ($data['dim'] === 'industry' ? 'in the ' . $data['display'] . ' sector' : 'in ' . $data['display']);
+          . ($data['dim'] === 'industry'
+              ? 'in the ' . $data['display'] . ' sector'
+              : 'in ' . alt_facet_phrase($data['dim'], $data['display']));
     if ($data['min_date'] !== '' && $data['max_date'] !== '') {
         $from = substr($data['min_date'], 0, 4);
         $to = substr($data['max_date'], 0, 4);
