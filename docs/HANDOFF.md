@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code)
 - **SINCE:** 2026-08-01
-- **WORKING ON:** —
+- **WORKING ON:** measurable recall — independent SEC Item 2.05 gold set, Wilson intervals, a recall floor that can fail
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
