@@ -63,6 +63,20 @@ misconfigured; the mechanism could not finish, and had no way to say so.
    regardless. Rendered pages are now cacheable for 10 minutes; a MISS is still
    uncacheable, because that slug becomes real the moment the indexer admits it.
 
+**2.19.234, the same day: the fix that could not reach the employers it was for.**
+Dropping the "qualifying events disagree on the company name" park was correct
+but inert on its own. A parked key already had a `pending` directory row, the
+candidate query treated ANY directory row as "already mapped", and so the
+employers the old rule had caught stayed invisible forever. That set is not
+random: it is the largest employers, because scale is what produces name
+variants. Boeing files as "Boeing", "Boeing Co", "Boeing Company", "The Boeing
+Company" and two misspellings, so its 324 events bought it a pending row and no
+page, and `/company-layoffs/boeing/` was a 404 AFTER the coverage work landed.
+Only `approved`/`noindex` counts as mapped now. The identity sanity gate still
+runs on every reconsidered key, so this promotes nothing that could not be
+admitted fresh. **The general lesson: when you retire an admission rule, the
+records it already rejected do not re-enter the funnel by themselves.**
+
 **Also:** the sitemap query ran one correlated COUNT per approved directory row
 (fine at 29, a timeout at thousands) and is now a single grouped join; the public
 `/company-directory` listing is paged (it returned one row per page in one

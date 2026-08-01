@@ -135,6 +135,17 @@ class CoverageTests(unittest.TestCase):
                           f"capped run against tens of thousands of employers "
                           f"never drains the backlog")
 
+    def test_pending_rows_are_reconsidered(self):
+        # A pending row must NOT count as "already mapped". The v1 rule parked
+        # every employer whose filings spelled the name two ways, which is the
+        # largest employers (Boeing: 324 events, six spellings, no page), and a
+        # pending row satisfying "already mapped" meant dropping that rule
+        # changed nothing for exactly the employers it had already caught.
+        self.assertIn(
+            "AND d.review_status IN ('approved','noindex'))", DB_PHP,
+            "the indexer must reconsider pending keys, or fixing an admission "
+            "rule can never reach the employers the old rule excluded")
+
     def test_sitemap_query_is_set_based(self):
         # The old shape ran one correlated COUNT per approved directory row.
         # Invisible at 29 companies, a timeout at thousands.

@@ -1549,6 +1549,17 @@ function alt_company_directory_park_pending($key, $name) {
  * is nothing on the page to link to, and a page whose only claim is "every row
  * has a source" cannot be built out of rows that have none.
  *
+ * PENDING ROWS ARE RECONSIDERED, and this is not a detail. The v1 rule parked
+ * any key whose qualifying rows disagreed on the company name, which selects
+ * almost exactly the largest employers: Boeing files as "Boeing", "Boeing Co",
+ * "Boeing Company", "The Boeing Company" and two misspellings, so 324 events
+ * bought it a `pending` row and no page. Dropping that rule was not enough,
+ * because a pending row still satisfied "already mapped" and the indexer never
+ * looked at it again — the fix for the rule would have silently excluded every
+ * employer the old rule had already caught. Only 'approved'/'noindex' counts as
+ * mapped now. This cannot promote junk: the identity sanity gate still runs, so
+ * a key parked for a generic or unusable name fails again and stays pending.
+ *
  * RESUMABLE, because one pass cannot finish inside a shared-host request. Each
  * call takes the next `limit` unmapped keys in company_key order and returns
  * `next_cursor`; the workflow loops until `complete` comes back true. Ordering
@@ -1582,7 +1593,8 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
          WHERE l.event_id > 0 AND l.company_key <> '' AND l.superset_of = 0
            AND l.company_key > %s
            AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
-           AND NOT EXISTS (SELECT 1 FROM $directory d WHERE d.company_key = l.company_key)
+           AND NOT EXISTS (SELECT 1 FROM $directory d WHERE d.company_key = l.company_key
+                           AND d.review_status IN ('approved','noindex'))
          GROUP BY l.company_key HAVING COUNT(*) >= %d
          ORDER BY l.company_key ASC LIMIT %d", $after_key, $min_events, $limit), ARRAY_A) ?: array();
     $mappings = array(); $skipped = array(); $names_by_key = array();
