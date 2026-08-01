@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "attempts": 1,
+      "key": "resolve:tests:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-01T02:44:25+00:00",
+      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "payload": {
+        "body": "'Tests' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30680566733\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "tests:main",
+        "subject": "RECOVERED: Tests is green again"
+      },
+      "raised_at": "2026-08-01T02:44:25+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30680566733",
+      "scope": "tests:main",
+      "state": "pending"
+    }
+  ],
+  "updated_at": "2026-08-01T02:44:25+00:00",
+  "version": 1
+}
