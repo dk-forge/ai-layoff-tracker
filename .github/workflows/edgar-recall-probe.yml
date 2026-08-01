@@ -1,0 +1,55 @@
+name: EDGAR recall probe (dry run)
+
+# Diagnostic for the SEC Item 2.05 recall gap. Takes the committed gold set and
+# asks, per filing, WHICH STAGE drops it: the full-text search pagination cap,
+# the document fetch, the extractor's 2000-char truncation, or the LLM. Prints a
+# stage tally and uploads the per-filing decisions.
+#
+# DRY RUN: no WP_API_KEY is passed, so nothing can be posted, edited or reported
+# to source health. Manual dispatch only — this spends LLM calls and answers a
+# question, it is not a data job.
+#
+# Required secret: OPENROUTER_API_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Which gold-set events to probe'
+        required: false
+        default: 'misses'
+        type: choice
+        options: [misses, matched, all]
+      limit:
+        description: 'Cap the number of filings probed (blank = no cap)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        working-directory: railway
+        run: pip install -r requirements.txt
+      - name: Probe (prints the stage tally, posts nothing)
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
+          PROBE_ONLY: ${{ github.event.inputs.only }}
+          PROBE_LIMIT: ${{ github.event.inputs.limit }}
+          PROBE_OUT: ${{ runner.temp }}/edgar-recall-probe.json
+        run: python edgar_recall_probe.py
+      - name: Upload per-filing decisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edgar-recall-probe
+          path: ${{ runner.temp }}/edgar-recall-probe.json
+          if-no-files-found: warn
