@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local
 - **SINCE:** 2026-08-01
-- **WORKING ON:** —
+- **WORKING ON:** finding where the 33 missed SEC Item 2.05 gold-set filings are lost (EDGAR pull cap vs extractor rejection vs cron window)
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
