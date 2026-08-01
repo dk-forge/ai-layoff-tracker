@@ -1,11 +1,20 @@
 name: EDGAR history sweep (rotating)
 
 # Scheduled self-completing historical backfill from SEC EDGAR. Each daily run
-# backfills ONE month window, deterministically walking the whole
-# BACKFILL_ANCHOR_YEAR..now range and wrapping (the calendar date IS the cursor,
-# no server-side state). So every past and current-year month — 2025, 2026, and
-# back to the anchor — keeps getting re-verified and any gap self-fills, with no
-# human. Idempotent (dedup guard), so re-sweeping the same month is safe.
+# backfills ONE month window, deterministically chosen from the calendar date
+# (the date IS the cursor, no server-side state). One run in three re-verifies a
+# month from the last twelve; the rest walk the whole BACKFILL_ANCHOR_YEAR..now
+# range. Idempotent (dedup guard), so re-sweeping the same month is safe.
+#
+# The recency share is not decoration. Until 2026-08-01 the walk was
+# `months[now.toordinal() % len(months)]`, which is not a cycle over an array
+# that grows a new entry every calendar month: measured over three years it had
+# NEVER swept 2026-01..2026-06 and left 2025-11/12 235 days stale. Since the
+# daily cron (railway/cron.py) only searches a 2-day window, this sweep is the
+# ONLY path by which a past month is re-searched — so an EDGAR keyword
+# improvement could never reach the months it would have helped. That is how 29
+# verified SEC Item 2.05 filings the current pipeline accepts on replay stayed
+# missing for a year. See docs/TECHLOG.md 2026-08-01.
 #
 # This complements the manual one-shot "Historical backfill (EDGAR)" workflow,
 # which stays available for a targeted date range.

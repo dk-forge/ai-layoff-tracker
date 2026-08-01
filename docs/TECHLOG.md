@@ -6,6 +6,137 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-01 — where the missing SEC Item 2.05 filings actually go (no plugin change)
+
+The gold-set measurement earlier today said 24 of 57 (42.1%, Wilson 95% CI
+[30.2%, 55.0%]). It said HOW MANY we miss. This entry is the follow-up that
+says WHERE they are lost, because the obvious answers were all wrong and each
+one was refuted by a measurement rather than by an argument.
+
+**The framing fact nobody had looked at.** Of the 24 events scored `matched`,
+exactly ONE — Ultragenyx, 2026-02-12 — reads "sourced from this very 8-K". The
+other 23 matched through WARN, ERM or news. So the 42.1% is carried almost
+entirely by other collectors, and the SEC path contributes ~2% of it. Rows with
+`source_type=8K` per year, straight off `/query`:
+
+| 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|
+| 219 | 30 | 10 | 7 | 115 | **4** | **8** |
+
+Zero in eleven of the twelve gold months; 1 in 2026-04; 6 in 2026-07. All the
+while `edgar` reported `ok` twice a day with 17-50 candidate documents, and
+`ops_status.py` printed ALL CLEAR. This is the "source health is not data
+integrity" split in CLAUDE.md, and it is the sharpest example we have: **the
+collector was healthy and the collector was producing almost nothing.**
+
+**Candidate 1 — the `MAX_PAGES_PER_KEYWORD = 3` cap — is not it.** Measured
+against live EFTS, no hypothesis:
+
+| window shape | (keyword, form, window) probes | cap binds |
+|---|---|---|
+| 12 monthly windows (history-sweep shape) | 432 | 12.0% — 23.6% on 8-K |
+| 8 two-day windows (daily-cron shape) | 288 | **0%** |
+| keyword `item 2.05`, 8-K, each gold month | 12 | **0%** (busiest month 27 hits vs a cap of 30) |
+
+Then the direct test: replay the production search over every one of the 33
+misses, in both window shapes, capped and uncapped. **33 of 33 reachable under
+the cap in both shapes. 0 lost to the cap. 0 UNKNOWN.** The cap does discard
+945 hits/year on high-volume generic phrases (`layoffs`, `restructuring plan`),
+which is worth revisiting on cost/coverage grounds — but not one of these
+filings is lost there, and raising it would have "fixed" nothing.
+
+**Candidate 2 — the extractor discarding them as non-events — is not it
+either.** `railway/edgar_recall_probe.py` (new, dry run, manual dispatch only)
+rebuilds each miss's raw dict through the real collector and runs the real
+extraction with the real gate functions imported from `extractor.py`. Result:
+
+```
+  29  accepted            <- would post today
+   3  model_returned_no_job_count
+   1  count_not_verbatim_in_window
+```
+
+**29 of 33 are accepted by the pipeline as it stands**, and 28 of those recover
+the filing's exact stated headcount. The model is not throwing these away. All
+four drops share one cause and it is not judgment — the stated count was outside
+the text the extractor reads:
+
+* **EnerSys 2026-03-25 (474)** — "approximately 474 employees", 1,756 characters
+  after the Item 2.05 heading. Inside the 3000-char window `edgar.py` built on
+  purpose; outside the 2000-char truncation `extractor.py` applied. Fixed below.
+* **Codexis (46), PLAYSTUDIOS (177)** — the count is nowhere in the stripped
+  primary document; it lives in the EX-99.1 exhibit. A known limit, not fixed
+  today, recorded so it is not rediscovered as a mystery.
+* **Wabash National (270)** — the gold set's 270 is the SUM of four separately
+  stated components ("3 salaried and 53 hourly" + "21 salaried and 193 hourly").
+  Our extractor refuses derived counts by design. **This one is working
+  correctly and must not be "fixed"** — weakening `_count_in_text` to admit it
+  would re-open the exact hole that published Intuit as 17 jobs.
+
+**Candidate 3 — the window and the schedule — is where it breaks, but not in
+the half we expected.** The daily cron is fine: `days_back=1` at 13:00 and 22:00
+UTC gives every calendar day two independent covering windows, and the run
+ledger shows two `ok` runs a day with no missing day. The broken half is the
+**rotating history sweep**, which is the only path by which a past month is ever
+searched again:
+
+```
+2025-07..2025-10   last swept 2026-02-25..28   (154-157 days ago)
+2025-11, 2025-12   last swept 2025-12-09/10    (234-235 days ago)
+2026-01..2026-06   NEVER swept in a 3-year lookback; next due 2027-07
+```
+
+`months[now.toordinal() % len(months)]` is not a cycle over that array, because
+`len(months)` grows by one every calendar month and the newest months sit at the
+top — exactly where the moving wrap-point keeps jumping past them. Only **8.5%**
+of runs (80 of 944 simulated) landed on a month from the last twelve. The
+workflow header promised "every past and current-year month keeps getting
+re-verified and any gap self-fills". That was false for the entire recent past,
+and it had never been asserted anywhere.
+
+**What this does and does not explain.** 10 of the 33 misses are reachable ONLY
+through keywords added on 2026-07-18 (`item 2.05` targeting) and 2026-07-20
+(restructuring/headcount phrases). For those ten the chain is complete: the net
+widened, the daily cron only ever looks two days back, and the sweep that was
+supposed to replay the improvement over past months never returned to them. The
+other 23 were reachable with the older keyword list too, and **why they were not
+ingested at the time is not established** — this repo's git history begins
+2026-07-14, so the code that ran during the gold period is not available to
+inspect, and guessing would be worse than saying so. What is established is that
+the recovery path was structurally absent in every case: nothing re-searches a
+month once it has scrolled out of the 2-day window.
+
+**Fixes shipped.**
+1. `backfill.rotating_month()` replaces the modulo walk. One run in three
+   re-verifies a month from the last twelve; the rest walk the whole history,
+   both indexed from the NEWEST end so a month joining the rotation perturbs
+   ancient history instead of the recent past. Still purely date-keyed, so the
+   once-a-day cadence rule and its test still hold. Measured over a 120-day
+   window: recent months re-verified 12 of 12, against 0 of 12 before.
+2. `extractor.RAW_TEXT_LIMIT` (3000, was a bare `2000` at the call site) now
+   covers the largest window any collector builds. `sources/gdelt.py` builds the
+   same 3000-char window, so this had been silently cutting the news path too,
+   not just SEC.
+
+**Guards added, both of which fail on the old code (checked, not assumed):**
+`tests/test_extractor_text_budget.py` pins the extraction budget as a ceiling
+over every collector's declared window, and pins the truncation to the named
+constant so a pasted literal cannot restore the bug.
+`tests/test_rotating_cron_cadence.py` gains
+`RotatingWindowReachesRecentMonthsTests`, which fails unless every month of the
+last twelve was re-verified within 120 days — while still asserting the deep
+history keeps being walked, so "recency priority" cannot quietly become
+"recency only".
+
+**The floor is NOT raised in this entry.** `recall_goldset.MATCHED_FLOOR` stays
+at 20. Recall is measured against what is actually published, and none of these
+filings are published yet — the fixes change what the pipeline WILL do, not what
+the data currently holds. Raising the floor on the strength of a replay would be
+exactly the kind of unearned number this repo keeps writing incident entries
+about. It moves when a re-measurement moves, and not before.
+
+---
+
 ## 2026-08-01 — the recall claim becomes measurable, and able to fail (no plugin change)
 
 **What was wrong.** `railway/recall_precision.py` had printed a recall
@@ -535,6 +666,7 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 
 | Incident | Root cause | Standing guard |
 |---|---|---|
+| **The "self-completing" EDGAR history sweep had never swept the recent past, and the SEC collector produced 4 rows in a year while reporting `ok` twice a day** — measured 2026-08-01. `source_type=8K` rows: 219 in 2020, 115 in 2024, **4 in 2025, 8 in 2026**, zero in eleven of the twelve gold-set months. Of 24 gold events scored `matched`, exactly one came from the 8-K itself; the other 23 came from WARN/ERM/news. `ops_status.py` printed ALL CLEAR throughout, because the collector WAS running — it pulled 17-50 candidate documents every run | Not the pagination cap (measured: 0 of 33 misses lost to it; 0% binding on `item 2.05` in all 12 months) and not the LLM (measured: 29 of 33 replay to `accepted`, 28 with the exact stated headcount). `backfill.rotating_window` picked its month with `months[now.toordinal() % len(months)]`, which is not a cycle over an array that gains an entry every calendar month — the newest months sit at the top, precisely where the moving wrap-point jumps past them. **2026-01..2026-06 had NEVER been swept in a 3-year lookback; next due 2027-07.** Since the daily cron only searches a 2-day window, this sweep is the sole path that re-searches a past month, so no search improvement could ever reach the months it would have helped. Separately, `extractor.py` truncated `raw_text` to a bare `2000` while `sources/edgar.py` AND `sources/gdelt.py` both build 3000-char windows on purpose — the tail was cut before the model and before the verbatim count guard, so a headcount stated there was dropped as if invented | `backfill.rotating_month()`: one run in three re-verifies a month from the last twelve, the rest walk the full history, both indexed from the NEWEST end so a new month perturbs ancient history rather than the recent past — still date-keyed, so the once-a-day cadence rule survives. `extractor.RAW_TEXT_LIMIT` is now a named constant covering the largest collector window. Two guards that both fail on the old code: `tests/test_rotating_cron_cadence.py::RotatingWindowReachesRecentMonthsTests` (every month of the last twelve re-verified within 120 days, AND the deep history still walked, so recency priority cannot become recency-only) and `tests/test_extractor_text_budget.py` (the extraction budget is a ceiling over every collector's declared window, and the truncation must use the constant, not a pasted number). `railway/edgar_recall_probe.py` + `edgar-recall-probe.yml` make "which stage dropped this filing?" a dry-run question anyone can re-ask. **The lesson: a backfill that says it self-completes must ASSERT it, or "self-healing" is just a comment** |
 | **THE PATTERN, written down as an incident in its own right** — 2026-07-31. Read the rows below together and they are one story told repeatedly: a single row, or a single mis-scoped comparison, moves a number the site publishes as fact, and it is live before anyone notices. RI 98,912 (real 9,891). NJ 2.4 **trillion** jobs. AT&T 78,788, a state TEST notice. Coal India 73,800, a by-2050 projection. Intuit 17 (real ~3,000). Oracle counted twice. Spirit +4,000. Each was caught by a person, or by a tripwire written after the previous one | **Every guard was retrospective.** The four live invariants named four companies, and a fifth company was always unguarded. Worse, the Spirit defect proves magnitude checking is not enough on its own: **every row in it was correct**, and the comparison was wrong — a ±45-day numerator against a six-year denominator. No bound on any number would have seen it, because no number was out of bounds | **Three shape guards, in the same registry, that know no event names** (2.19.233). `headline_concentration` bounds ONE row's share of a published headline, with the numerator and denominator produced by one query pair over one filter set so they cannot describe different populations. `headline_movement` fails a headline that moves when the row population did not. `dedup_denominator_scoped` asserts the reconciler still **cannot compute a sum at all** — its denominator can only come from `alt_dedup_window()`, whose constructor is the window filter, and `alt_dedup_subset_verdict()` throws on anything not window-scoped. In Python the same rule is a type error: `plausibility_ratio()` raises `UnboundedDenominator` on an all-time cumulative denominator. The lesson to keep: **a tripwire named after an event only ever guards the past; guard the SHAPE** |
 | **The alerting system depended on the host it was alerting about, and the outage MULTIPLIED the red runs it produced** — 2026-07-31 00:48-00:55 UTC. Bluehost answered 504 for everything under `/blog/` (its second window that day; ~6 min in the afternoon). In the sibling talent tracker, `enrich` failed because it could not reach the host, `drain-writers` correctly went red refusing to auto-retry a failed writer, and then the CI failure alert failed FOUR times: "HTTP 504 from /alert", "CI alert could not be delivered". The alarm was mute at exactly the moment it was most needed. **The outage was found by the owner in a browser** — nothing in either repo watched whether the site serving all of it was reachable | Two faults, and the second is the one worth remembering. (1) `/alert` is a REST route on the same WordPress host every alert is about, so host down = alerting down, with no durable state anywhere: an alert raised during the window existed only in a runner that was about to be discarded. (2) `ci_alert.py` exited **1** on a failed POST, on the reasoning that a notifier failing silently is worse than none. True, but it made a delivery failure indistinguishable from an alerter defect, and it AMPLIFIED: an outage reddens N workflows, each spawns an alert run, each of those fails and goes red too, and a session reading `ops_status` is told the ALERTER is broken when the alerter is working perfectly | **A durable, committed outbox.** `railway/alert_outbox.py` + `railway/alert_outbox.json` (mirrored as `alert_outbox.py` / `data/alert_outbox.json` in the sibling): a POST that fails is retried in-run for transient statuses only, then HELD in a committed file that outlives the runner and the outage, and delivered later by `alert-drain.yml` (30 min here; the sibling's `host-watch.yml` at 15 min). **Holding exits 0** — that is the explicit break in the amplification loop, and the module says so in as many words so nobody restores the `exit 1`. Non-zero survives for exactly one case: could neither deliver NOR hold. A recovery queued behind its own un-sent failure CANCELS both, so an outage that heals never mails a stale RED and a stale RECOVERED. **Something watches the host now:** the sibling's `host-watch.yml` GETs one public REST route every 15 minutes, records `data/host_status.json` (committed only on a change or a 6h heartbeat) and surfaces it in `ops_status [2f]`; three consecutive failed runs is a SUSTAINED outage, which opens **one** GitHub issue — the channel that is not on the host, deduped by construction because editing an issue body emails nobody (2 emails per outage against the ~15 raw run notifications sent for one defect). A down host deliberately does NOT redden that watchdog: a red run there would fire the CI alert, which posts to the down host. Held alerts show in `ops_status [4b]` here |
 | **`ops_status.py` reported "ACTION NEEDED: 1 item(s) -> newsapi stale" and said NOTHING about a company being overstated by 4,000 jobs on the live site** — 2026-07-30, while `test_dedup_live::test_spirit_counts_once` was red for the fifth time. The one tool CLAUDE.md tells every session to run FIRST, whose whole job is to say what needs a human, was structurally blind to whether the data was correct | Two independent faults compounding. (1) **ops_status only ever read the source-health ledger**, which answers "did the collectors run?" and cannot answer "is what they produced right?". The live invariants existed but lived only in a test file, surfaced only in CI, and only on `push`/`pull_request` — so on a quiet week nothing ran them at all, even though this data changes *without a commit* (WARN lands daily, reconcile-supersets at 16:40 UTC; the Spirit defect appeared when a running all-time sum crossed a threshold, no code changed). (2) **The single item it DID report was permanent noise.** `newsapi` was retired 2026-07-25 but `news_catchup.py` kept POSTing health under that id every Monday; `alt_retired_sources()` deliberately declines to mask a row whose last run POSTdates the retirement, so the retirement was void, and the id carried a 2-day ceiling while the only surviving job runs WEEKLY — stale 5 days in 7, forever. An alarm that can never be cleared is an alarm nobody reads, and it was the only thing on screen while a wrong number was live | **`railway/data_integrity.py`**: the invariants extracted into one registry that `tests/test_dedup_live.py`, `ops_status.py` [3] and `health_digest.py` all import, so a bound cannot drift between the guard that reddens CI and the dashboard that says all is well. Three states, never two — PASS / FAIL / **UNKNOWN**, and UNKNOWN is never folded into PASS, so ops_status cannot print a clean bill of health it did not verify (`DegradationContract` tests pin this). Exit 2 on a failing check, exit 3 on unverified. New daily `data-integrity.yml` at 17:30 UTC (50 min after reconcile) closes the "only runs on push" gap and writes the verdict to the public health ledger; the weekly digest leads with "WRONG NUMBER LIVE" but is explicitly the BACKSTOP, not the alarm — weekly is up to 7 days too slow for a wrong published number. `news_catchup.py` now reports as `news_catchup` @ 9-day ceiling, `alt_retired_sources()['newsapi']` date moved to 2026-07-30 so the frozen row finally masks, and `test_news_catchup_health::test_never_reports_under_the_retired_newsapi_id` stops it recurring. **Retiring a source is THREE steps: drop it from cron.py, add it to `alt_retired_sources()`, and stop every remaining path that posts health under that id** — step 3 was missed and silently voided step 2 |

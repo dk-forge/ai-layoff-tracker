@@ -28,6 +28,20 @@ CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", MODEL)
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "45"))
 
+# How much of a source's raw_text the extraction prompt reads.
+#
+# This MUST NOT be smaller than the window any collector deliberately builds, or
+# the collector's care is silently discarded here. It was 2000 while
+# sources/edgar.py built a 3000-char keyword-centred window "so the relevant
+# passage survives the length cap" — so the last third of every SEC filing
+# window was cut off before the model ever saw it, and any headcount living
+# there could not pass the verbatim guard at line ~757 no matter what the model
+# returned. Measured on the SEC Item 2.05 gold set (2026-08-01): EnerSys
+# 2026-03-25 stated "approximately 474 employees" 1,756 characters after the
+# Item 2.05 heading — inside edgar's window, outside this limit. Pinned against
+# every collector's window by tests/test_extractor_text_budget.py.
+RAW_TEXT_LIMIT = int(os.environ.get("EXTRACTOR_RAW_TEXT_LIMIT", "3000"))
+
 ALLOWED_REASON_TAGS = {
     "ai_automation",
     "revenue_decline",
@@ -694,7 +708,7 @@ def extract_layoff_data(raw_entry):
 
     Returns a dict ready for wp_poster, or None if the entry should be skipped.
     """
-    raw_text = (raw_entry.get("raw_text") or "")[:2000]
+    raw_text = (raw_entry.get("raw_text") or "")[:RAW_TEXT_LIMIT]
     if not raw_text.strip():
         return None
 

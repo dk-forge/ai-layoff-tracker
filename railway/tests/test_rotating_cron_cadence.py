@@ -72,15 +72,75 @@ class RotatingWindowIsDateKeyedTests(unittest.TestCase):
             "by hour, an hourly cron is no longer pure waste and the cadence "
             "rule below should be revisited rather than silently kept.")
 
-    def test_consecutive_days_advance_exactly_one_month(self):
+    def test_one_calendar_day_advances_the_cursor_at_most_one_step(self):
+        # The cadence rule needs the cursor to move with the DATE and only with
+        # the date. It does not need "exactly one month later" — that was the
+        # old walk's shape, and it is what starved the recent past (see
+        # RotatingWindowReachesRecentMonthsTests below).
         from backfill import rotating_window
         base = datetime(2026, 7, 27, 12, tzinfo=timezone.utc)
         starts = [rotating_window(2015, base + timedelta(days=d))[0]
-                  for d in range(4)]
-        for earlier, later in zip(starts, starts[1:]):
-            months = (later.year - earlier.year) * 12 + later.month - earlier.month
-            self.assertEqual(months, 1,
-                             f"{earlier:%Y-%m} -> {later:%Y-%m} is not one month")
+                  for d in range(6)]
+        self.assertEqual(len(set(starts)), len(starts),
+                         "consecutive days must not re-sweep the same month; "
+                         f"got {[f'{s:%Y-%m}' for s in starts]}")
+
+
+class RotatingWindowReachesRecentMonthsTests(unittest.TestCase):
+    """The sweep's whole promise is that any gap self-fills. Assert that.
+
+    Measured 2026-08-01: the previous `months[now.toordinal() % len(months)]`
+    had NEVER swept 2026-01..2026-06 in a three-year lookback, and 2025-11/12
+    were 235 days stale — because `len(months)` grows by one each calendar
+    month, so the moving wrap-point keeps jumping past the newest entries. The
+    daily cron only searches a 2-day window, so this sweep is the ONLY way a
+    past month is ever re-searched with an improved keyword list. When it never
+    reaches the recent past, a coverage fix can never apply to it.
+    """
+
+    def _swept(self, days, anchor=2015, end=datetime(2026, 8, 1, tzinfo=timezone.utc)):
+        from backfill import rotating_month
+        return [rotating_month(anchor, end - timedelta(days=d))
+                for d in range(days)]
+
+    def test_every_recent_month_is_re_verified_within_a_bounded_window(self):
+        # The window a regression would have to beat: a month that has been in
+        # the rotation for a year must have been swept inside the last 120 days.
+        swept = set(self._swept(120))
+        end = datetime(2026, 8, 1, tzinfo=timezone.utc)
+        expected = []
+        y, m = end.year, end.month
+        for _ in range(12):
+            y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+            expected.append((y, m))
+        missing = [f"{y}-{m:02d}" for y, m in expected if (y, m) not in swept]
+        self.assertEqual(
+            missing, [],
+            f"the rotating sweep did not re-verify {missing} in 120 days. "
+            f"Recent months are where new filings land and where a widened "
+            f"search has to be replayed; starving them is how 29 verified SEC "
+            f"Item 2.05 filings stayed missing for a year.")
+
+    def test_the_deep_history_still_gets_walked(self):
+        # Recency priority must not become recency-only: the anchor year has to
+        # keep coming round, or "self-completing backfill" stops being true.
+        swept = set(self._swept(500))
+        self.assertTrue(
+            any(y == 2015 for y, _ in swept),
+            "no 2015 month swept in 500 days — the history walk has stalled")
+        self.assertGreaterEqual(
+            len(swept), 100,
+            f"only {len(swept)} distinct months swept in 500 runs; the walk "
+            f"should cover most of the rotation in that time")
+
+    def test_the_month_chosen_is_always_inside_the_rotation(self):
+        from backfill import rotating_month
+        for d in range(400):
+            now = datetime(2026, 8, 1, tzinfo=timezone.utc) - timedelta(days=d)
+            y, m = rotating_month(2015, now)
+            self.assertGreaterEqual((y, m), (2015, 1), f"{y}-{m} precedes anchor")
+            self.assertLessEqual((y, m), (now.year, now.month),
+                                 f"{y}-{m} is in the future for {now:%Y-%m-%d}")
 
 
 class DateKeyedCronCadenceTests(unittest.TestCase):

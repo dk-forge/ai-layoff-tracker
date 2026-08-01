@@ -36,8 +36,9 @@ GOLDSET = os.environ.get(
                  "docs", "recall-reference-sets",
                  "sec-item-205-us-2025-07_2026-06.goldset.json"))
 
-# extractor.extract_layoff_data truncates raw_text to this before anything else.
-EXTRACTOR_TEXT_LIMIT = 2000
+# Read the live constant rather than a copy: this probe exists to report what
+# production does, so a number pasted here could only ever lie about it.
+EXTRACTOR_TEXT_LIMIT = extractor.RAW_TEXT_LIMIT
 
 
 def _daily_window(filing_date):

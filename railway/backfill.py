@@ -28,17 +28,70 @@ import os
 from datetime import datetime, timedelta, timezone
 
 
-def rotating_window(anchor_year, now=None):
-    """Deterministic single-month [start, end] that advances one month per
-    calendar day and wraps — so a daily cron walks the entire history and keeps
-    re-verifying it. No persisted cursor: the date IS the cursor."""
-    now = now or datetime.now(timezone.utc)
+# One run in RECENT_EVERY re-verifies a month from the last RECENT_MONTHS
+# instead of continuing the history walk.
+#
+# WHY (measured 2026-08-01, the SEC Item 2.05 recall investigation): the walk
+# below used to be `months[now.toordinal() % len(months)]`, and that is NOT a
+# cycle over the array, because `len(months)` grows by one every calendar month.
+# The newest months sit at the TOP of the array, which is exactly where the
+# moving wrap-point keeps jumping past them. Measured over a 3-year lookback:
+# 2026-01 through 2026-06 had NEVER been swept, 2025-11/12 were 235 days stale,
+# and only 8.5% of runs landed on a month from the last 12. The next sweep of
+# 2026-01 was due in 2027-07.
+#
+# That is what made a search-coverage improvement unrecoverable. EDGAR keyword
+# coverage widened on 2026-07-18 (Item 2.05 targeting) and 2026-07-20
+# (restructuring/headcount phrases), but the daily cron only ever looks at a
+# 2-day window, so a widened net applies FORWARD only. This sweep is the sole
+# path by which a past month is ever re-searched — and it was not reaching the
+# recent past at all. 29 of the 33 missed gold-set filings are accepted by the
+# current pipeline on replay; they were simply never searched again.
+#
+# So recent months are re-verified on a bounded, checkable period, and the walk
+# itself is anchored to the NEWEST end of the array so that a month joining the
+# rotation shifts ancient history rather than the recent past.
+RECENT_MONTHS = 12
+RECENT_EVERY = 3
+
+
+def _months_since(anchor_year, now):
+    """Every (year, month) from the anchor through `now`, oldest first."""
     months = []
     y, m = anchor_year, 1
     while (y, m) <= (now.year, now.month):
         months.append((y, m))
         y, m = (y + 1, 1) if m == 12 else (y, m + 1)
-    wy, wm = months[now.toordinal() % len(months)]
+    return months
+
+
+def rotating_month(anchor_year, now):
+    """The single (year, month) this run sweeps. Pure function of the DATE.
+
+    Still date-keyed, so `tests/test_rotating_cron_cadence.py` and the
+    once-a-day cron rule it enforces both continue to hold: every run inside one
+    UTC day sweeps the same month, and running more often buys nothing.
+    """
+    months = _months_since(anchor_year, now)
+    step = now.toordinal()
+    if step % RECENT_EVERY == 0:
+        recent = months[-RECENT_MONTHS:]
+        # Offset 0 is the current month; count backwards from the newest.
+        return recent[len(recent) - 1 - ((step // RECENT_EVERY) % len(recent))]
+    # The remaining runs walk the whole history, also indexed from the newest
+    # end. `history` advances by one on exactly the days this branch runs.
+    history = step - 1 - (step // RECENT_EVERY)
+    return months[len(months) - 1 - (history % len(months))]
+
+
+def rotating_window(anchor_year, now=None):
+    """Deterministic single-month [start, end] chosen from the calendar date.
+
+    No persisted cursor: the date IS the cursor. See rotating_month for how the
+    month is picked and why recent months get their own share of the runs.
+    """
+    now = now or datetime.now(timezone.utc)
+    wy, wm = rotating_month(anchor_year, now)
     start = datetime(wy, wm, 1, tzinfo=timezone.utc)
     nxt = datetime(wy + 1, 1, 1, tzinfo=timezone.utc) if wm == 12 \
         else datetime(wy, wm + 1, 1, tzinfo=timezone.utc)
