@@ -135,6 +135,29 @@ automatable or licensed for reuse.
 - **Company directory:** `/company-layoffs/{slug}/` resolves only through a reviewed identity registry.
   Raw `company_key` is a dedup aid, not a legal-entity assertion. Directory rows require canonical events
   with retained source URLs; low-value reviewed records are noindex and unknown/pending keys are 404.
+- **Facet pages** (`includes/facet-pages.php`, added 2026-08-01): `/country-layoffs/{slug}/`,
+  `/state-layoffs/{slug}/`, `/industry-layoffs/{slug}/`, sitemapped together at
+  `/layoff-facets-sitemap.xml`. Built on the company-page pattern: rows through
+  `alt_api_query_compute()`, stats through `alt_api_aggregate_compute()`, ONE floor helper
+  (`alt_facet_indexable_floor()`, **10** source-linked canonical events) read by the page AND the
+  sitemap, `noindex, follow` below it rather than absent.
+  - **One population per page** — `sourced=1` + `exclude_supersets=1` for the headline, the floor and
+    the rows alike, so a page cannot contradict itself.
+  - **Country pages use the STRICT job-location basis, never `country_basis=any`.** The inclusive
+    basis is correct where it is used and documented as intentional, but on a page titled "Layoffs in
+    Germany" it would list rows whose own country reads "Multiple countries" and publish a figure no
+    other surface shows. Measured 2026-08-01: +61 events for Germany, +126 for the US. The page says
+    which basis it used and links to the inclusive view.
+  - **State pages are US-only by construction** (`state` is CHAR(2), populated only by the US WARN
+    path; `state=CA` and `state=CA&country=United States` return identical totals).
+  - **No city pages, and this is a data fact not an omission:** there is no city column. The WARN
+    scrapers parse a city into free text and deliberately keep it out of the dedup hash, and
+    `alt_short_location()` states the product is not city-level.
+  - **Slug aliases 301** through the existing normalizers (`/country-layoffs/usa/` →
+    `united-states/`, `/state-layoffs/ca/` → `california/`). `Multiple countries` gets no page: it is
+    the honest bucket for "Global"/"EMEA"/"India and US", not a place.
+  - **A slicer never renders its own dimension.** `$topN` drops the dimension it charts from the
+    WHERE, so `top_states` on a state page would return every state in the country.
 
 ## Filter model (front-end ⇄ API)
 Multi-select params, comma-joined: `years, quarters, months, industry, country, state, sources,
@@ -150,6 +173,24 @@ always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; e
 | `company_key` | **Exact** normalized employer identity, comma-joined. `company` is a LIKE substring match and is the wrong tool for a per-employer view: `company=Meta` also returns Metabolix and Metaswitch. |
 | `sourced=1` | Row is the CANONICAL row of a merged event AND that event still retains at least one reachable source URL. Anything else is a duplicate view of an event, or an event we can no longer point a reader at. |
 | `exclude_supersets=1` | Drops rows already folded into a more complete row for the same event by `/reconcile-supersets`. `/aggregate` and the report pages have always appended `AND superset_of = 0` by hand; this names it so a caller can ask for count-once semantics instead of re-deriving them. |
+
+**Aggregate block selection** (added 2026-08-01 for the facet pages, `/aggregate` only):
+
+| Param | Meaning |
+|---|---|
+| `include` | Comma-joined list of the blocks to build (`totals` is always built and is not nameable). Unrecognised names are dropped; an `include` naming no valid block falls back to the default set. **Not a filter** and deliberately absent from `alt_filter_param_names()`, so it never makes an export think it is narrowed. |
+
+Omitting `include` returns exactly what it always did. The full aggregate is ~31 statements, most of
+them per-tag loops (`reasons` is 10 SUMs, `top_roles` one per role category, `map_*` re-runs `top_*`
+at a bigger LIMIT); measured against production 2026-08-01 that is **8.1s for `country=United States`
+and 19.0s with `sourced=1`**, which a server-rendered page cannot wear on a cold cache.
+
+`facet_counts` is the one block that is **opt-in only** and not in the default set: it is three
+grouped `COUNT(*)`s over the whole table, returns `{dimension: {value: events}}` for
+country/state/industry, and only the facet sitemap reads it. It is a NAMED block rather than a fourth
+element on the `[label, jobs, ai_jobs]` triple because `renderBarList()` in `layoffs.js` already reads
+index `[3]` as a display label and `top_industries`/`top_states` are handed to it unmapped — a fourth
+element would have printed event counts as bar names.
 
 `sourced` is the only filter that correlates a subquery back to the outer row, so it is the only one
 that cares what the caller called the layoffs table. `alt_db_where()` takes an `$alias` argument for
