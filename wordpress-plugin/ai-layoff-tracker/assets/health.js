@@ -21,7 +21,7 @@
     source_audit: ['Monthly self-audit (rows re-verified against their sources)', 'Monthly', 'Internal QA', 'Read-only accuracy check'],
     newsapi: ['Retired collector (replaced by Google News RSS)', 'Retired 2026-07-25', 'Worldwide', 'Licensed news API'],
     news_catchup: ['Weekly catch-up sweep of credible outlets (fills weekend gaps)', 'Weekly', 'Worldwide', 'Licensed news API'],
-    data_integrity: ['Live data-integrity guards: known duplicate events must count once', 'Daily', 'Internal QA', 'Read-only assertions against the public API'],
+    data_integrity: ['Live data-integrity guards: known duplicates count once, no single row carries a headline, no headline moves without rows to explain it', 'Daily', 'Internal QA', 'Read-only assertions against the public API'],
     google_news: ['Free worldwide layoff-headline discovery (no key)', 'Twice daily', 'Worldwide', 'Google News RSS'],
     gdelt: ['Worldwide multilingual news discovery', 'Twice daily', 'Worldwide', 'Open news-index API'],
     gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],
