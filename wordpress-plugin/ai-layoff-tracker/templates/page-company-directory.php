@@ -112,7 +112,7 @@ $alt_verif = array(
             // sentence, so Boeing's first event showed "CA WARN notice
             // (official WARN list; ...)" twice and read as a bug. Name what
             // each link actually opens, and say the shared explanation once.
-            $alt_warn_note_done = false; ?>
+            ?>
             <?php foreach ($alt_event['sources'] as $alt_source) : ?>
                 <?php
                 $alt_is_warn = $alt_source['type'] === 'warn';
@@ -124,11 +124,7 @@ $alt_verif = array(
                 }
                 ?>
                 <li><a href="<?php echo esc_url($alt_source['url']); ?>" target="_blank" rel="noopener nofollow"><?php
-                    echo esc_html($alt_source['name'] ?: 'Cited source') . $alt_warn_kind; ?></a><?php
-                    if ($alt_is_warn && !$alt_warn_note_done) {
-                        $alt_warn_note_done = true;
-                        echo '. Official WARN list; the notice was filed here, and older ones roll into the state archive.';
-                    } ?></li>
+                    echo esc_html($alt_source['name'] ?: 'Cited source') . $alt_warn_kind; ?></a></li>
             <?php endforeach; ?>
             <?php // The entry's own permalink. These pages existed but were linked from
                   // nowhere on the site (audit item 2: 1,798 orphans); this is the link
@@ -140,6 +136,22 @@ $alt_verif = array(
         </li>
     <?php endforeach; ?>
     </ol>
+    <?php
+    // Said ONCE, not once per event. Boeing has 321 events and nearly all of
+    // them cite a WARN notice, so the per-event version printed this sentence
+    // 316 times and added ~28KB to a page that is already the longest on the
+    // site. A note that repeats 316 times is not read 316 times.
+    $alt_has_warn = false;
+    foreach ($alt_dir['events'] as $alt_e) {
+        foreach ($alt_e['sources'] as $alt_s) {
+            if (($alt_s['type'] ?? '') === 'warn') { $alt_has_warn = true; break 2; }
+        }
+    }
+    if ($alt_has_warn) : ?>
+    <p class="alt-company-source-note">A state page link goes to that state's
+    official WARN list and a data file link goes to the file it publishes. The
+    notice was filed at that source; older notices roll into the state archive.</p>
+    <?php endif; ?>
 
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
