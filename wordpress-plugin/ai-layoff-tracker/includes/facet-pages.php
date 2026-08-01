@@ -509,7 +509,8 @@ function alt_facet_description($data) {
     $bits .= '. ';
     if ((int) $data['jobs'] > 0) {
         $bits .= number_format((int) $data['jobs']) . ' jobs across '
-              . number_format((int) $data['companies']) . ' employers. ';
+              . number_format((int) $data['companies'])
+              . ((int) $data['companies'] === 1 ? ' employer. ' : ' employers. ');
     }
     if ((int) $data['ai_entries'] > 0) {
         $bits .= number_format((int) $data['ai_entries']) . ' of them the employer attributed to AI. ';

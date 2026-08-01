@@ -354,10 +354,53 @@ class RenderingTests(unittest.TestCase):
         # children shrink in proportion and the value's text spills (2.19.220).
         self.assertIn(".alt-facet-links-val { flex: 0 0 auto;", block)
 
+    def test_plurals_agree_with_their_counts(self):
+        # Live at 2.19.239: "4,000 jobs across 1 employers".
+        self.assertIn("=== 1 ? ' employer. ' : ' employers. '", MODULE)
+        self.assertIn("=== 1 ? 'employer' : 'employers'", TEMPLATE)
+
     def test_no_em_dashes_in_rendered_copy(self):
         rendered = re.sub(r"<\?php.*?\?>", "", TEMPLATE, flags=re.S)
         rendered = re.sub(r"//.*", "", rendered)
         self.assertNotIn("—", rendered)
+
+
+class DocumentShellTests(unittest.TestCase):
+    """get_header() in a BLOCK theme loads wp-includes/theme-compat/header.php.
+
+    That legacy shim printed a second <title> and an <h1> containing the SITE
+    NAME above the page's own <h1>, and rendered no site header, footer or
+    navigation at all. It shipped on every company page from 2.19.233 and was
+    invisible to the status code, the sitemap count and every assertion about
+    the body content.
+    """
+
+    def test_both_templates_use_the_shared_shell(self):
+        for template in (TEMPLATE, COMPANY_TEMPLATE):
+            self.assertIn("alt_render_page_header();", template)
+            self.assertIn("alt_render_page_footer();", template)
+            self.assertNotIn("\nget_header();", template)
+            self.assertNotIn("get_footer(); ?>", template)
+
+    def test_block_themes_get_the_real_header_and_footer_parts(self):
+        self.assertIn("block_template_part('header');", BOOTSTRAP)
+        self.assertIn("block_template_part('footer');", BOOTSTRAP)
+
+    def test_classic_themes_still_use_get_header(self):
+        self.assertIn("get_header();\n        return;", BOOTSTRAP)
+        self.assertIn("get_footer();\n        return;", BOOTSTRAP)
+
+    def test_the_shell_still_runs_wp_head_and_wp_footer(self):
+        # The SEO plugin, the canonical and our stylesheet all hang off these.
+        self.assertIn("wp_head();", BOOTSTRAP)
+        self.assertIn("wp_footer();", BOOTSTRAP)
+
+    def test_the_shell_does_not_add_a_second_viewport(self):
+        shell = BOOTSTRAP.split("function alt_render_page_header()")[1].split("\n}")[0]
+        self.assertNotIn("viewport", shell.split("//")[0])
+
+    def test_the_shell_degrades_rather_than_fatals(self):
+        self.assertIn("!function_exists('block_template_part')", BOOTSTRAP)
 
 
 if __name__ == "__main__":

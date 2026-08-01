@@ -15,7 +15,7 @@
 if (!defined('ABSPATH')) exit;
 $alt_dir = alt_company_directory_current();
 if (!$alt_dir) return;
-get_header();
+alt_render_page_header();
 $alt_company = $alt_dir['company'];
 $alt_name = $alt_company['display_name'];
 $alt_count = count($alt_dir['events']);
@@ -165,4 +165,4 @@ $alt_verif = array(
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 </main>
-<?php get_footer(); ?>
+<?php alt_render_page_footer(); ?>

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.239
+ * Version: 2.19.240
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.239');
+define('ALT_VERSION', '2.19.240');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -776,6 +776,67 @@ add_action('template_redirect', 'alt_render_chart_embed_route', 1);
  * a CDN library on every page of the site would be wasteful.
  * Filter `alt_enqueue_assets` to force-enable on custom templates.
  */
+/**
+ * Document shell for the plugin's OWN routed pages (company + facet pages).
+ *
+ * WHY THIS EXISTS, found by rendering the page rather than by any test.
+ * `get_header()` in a BLOCK theme has no header.php to load, so WordPress falls
+ * back to `wp-includes/theme-compat/header.php` — the legacy shim. On this site
+ * (twentytwentyfive) that shipped three defects on every company page from
+ * 2.19.233:
+ *   1. a SECOND <title>, because the shim prints its own and the SEO plugin
+ *      then prints the real one;
+ *   2. an <h1> containing the SITE NAME, emitted BEFORE the page's own <h1>,
+ *      so the first heading on "Boeing Company layoffs" read
+ *      "AskTheRecruiter.com";
+ *   3. no site header, footer or navigation at all, just a bare <hr />, which
+ *      is also why those pages had no way back into the site.
+ * None of it is visible to a status code, a sitemap count or an assertion about
+ * the body content, which is why 400 green tests and a verified 7,491-URL
+ * sitemap all missed it.
+ *
+ * In a block theme we therefore emit the document ourselves and render the
+ * theme's real header/footer template parts. `wp_head()` still runs, so the SEO
+ * plugin, the canonical, the viewport meta core adds for block themes and our
+ * own stylesheet all behave exactly as they do on a normal page. Classic themes
+ * keep get_header()/get_footer(), which is correct for them.
+ */
+function alt_render_page_header() {
+    if (!function_exists('wp_is_block_theme') || !wp_is_block_theme()
+        || !function_exists('block_template_part')) {
+        get_header();
+        return;
+    }
+    echo '<!DOCTYPE html>' . "\n";
+    echo '<html ' . get_language_attributes() . ">\n<head>\n";
+    echo '<meta charset="' . esc_attr(get_bloginfo('charset')) . '" />' . "\n";
+    // No viewport meta here on purpose: core adds one for block themes inside
+    // wp_head(), and two would be a contradiction rather than a fallback.
+    wp_head();
+    echo "</head>\n";
+    echo '<body ' . alt_body_class_attr() . '>' . "\n";
+    if (function_exists('wp_body_open')) wp_body_open();
+    block_template_part('header');
+}
+
+function alt_render_page_footer() {
+    if (!function_exists('wp_is_block_theme') || !wp_is_block_theme()
+        || !function_exists('block_template_part')) {
+        get_footer();
+        return;
+    }
+    block_template_part('footer');
+    wp_footer();
+    echo "\n</body>\n</html>";
+}
+
+/** body_class() writes straight to output; this returns it instead. */
+function alt_body_class_attr() {
+    ob_start();
+    body_class();
+    return trim((string) ob_get_clean());
+}
+
 function alt_page_needs_assets() {
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
     if (function_exists('alt_facet_is_request') && alt_facet_is_request()) return true;

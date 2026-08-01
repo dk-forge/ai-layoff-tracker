@@ -14,7 +14,7 @@
 if (!defined('ABSPATH')) exit;
 $alt_f = alt_facet_current();
 if (!$alt_f) return;
-get_header();
+alt_render_page_header();
 $alt_dims = alt_facet_dimensions();
 $alt_meta = $alt_dims[$alt_f['dim']];
 $alt_verif = array(
@@ -55,7 +55,8 @@ $alt_bd_titles = array(
         <strong><?php echo number_format((int) $alt_f['entries']); ?></strong> recorded events
         <?php if ((int) $alt_f['jobs'] > 0) : ?>
             <br><strong><?php echo number_format((int) $alt_f['jobs']); ?></strong> jobs across
-            <?php echo number_format((int) $alt_f['companies']); ?> employers
+            <?php echo number_format((int) $alt_f['companies']); ?>
+            <?php echo (int) $alt_f['companies'] === 1 ? 'employer' : 'employers'; ?>
         <?php endif; ?>
         <?php if ((int) $alt_f['ai_entries'] > 0) : ?>
             <br><strong><?php echo number_format((int) $alt_f['ai_entries']); ?></strong>
@@ -218,4 +219,4 @@ $alt_bd_titles = array(
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 </main>
-<?php get_footer(); ?>
+<?php alt_render_page_footer(); ?>
