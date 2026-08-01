@@ -105,11 +105,30 @@ $alt_verif = array(
             <?php endif; ?>
 
             <ul class="alt-company-source-list">
+            <?php
+            // Two WARN links on one event is NORMAL, not a duplicate: a state
+            // publishes a rolling data file and a landing page, and we cite
+            // both. They were rendering as the same words followed by the same
+            // sentence, so Boeing's first event showed "CA WARN notice
+            // (official WARN list; ...)" twice and read as a bug. Name what
+            // each link actually opens, and say the shared explanation once.
+            $alt_warn_note_done = false; ?>
             <?php foreach ($alt_event['sources'] as $alt_source) : ?>
-                <li><a href="<?php echo esc_url($alt_source['url']); ?>" target="_blank" rel="noopener nofollow"><?php echo esc_html($alt_source['name'] ?: 'Cited source'); ?></a><?php
-                    echo $alt_source['type'] === 'warn'
-                        ? ' (official WARN list; the notice was filed here, and older ones roll into the state archive)'
-                        : ''; ?></li>
+                <?php
+                $alt_is_warn = $alt_source['type'] === 'warn';
+                $alt_warn_kind = '';
+                if ($alt_is_warn) {
+                    $alt_warn_kind = preg_match('/\.(xlsx?|csv|pdf)(\?|$)/i', $alt_source['url'])
+                        ? ' (data file)'
+                        : ' (state page)';
+                }
+                ?>
+                <li><a href="<?php echo esc_url($alt_source['url']); ?>" target="_blank" rel="noopener nofollow"><?php
+                    echo esc_html($alt_source['name'] ?: 'Cited source') . $alt_warn_kind; ?></a><?php
+                    if ($alt_is_warn && !$alt_warn_note_done) {
+                        $alt_warn_note_done = true;
+                        echo '. Official WARN list; the notice was filed here, and older ones roll into the state archive.';
+                    } ?></li>
             <?php endforeach; ?>
             <?php // The entry's own permalink. These pages existed but were linked from
                   // nowhere on the site (audit item 2: 1,798 orphans); this is the link
