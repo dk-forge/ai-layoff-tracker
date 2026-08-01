@@ -716,6 +716,7 @@ function alt_filter_param_names() {
         'q', 'company', 'keyword', 'min_jobs', 'stage',
         'ai', 'ai_broad', 'ai_primary', 'review_status',
         'context_missing', 'industry_missing', 'roles_missing',
+        'company_key', 'sourced', 'exclude_supersets',
     );
 }
 
@@ -727,11 +728,22 @@ function alt_filter_param_names() {
  * name is accepted and silently ignored — `?states=NV` returns the whole corpus
  * rather than Nevada. The accepted names are exact and documented in
  * docs/ARCHITECTURE.md "Filter model"; plurals are deliberately not aliased.
+ *
+ * `$alias` is the name the CALLER gave the layoffs table in its own FROM clause.
+ * Every filter above `sourced` uses bare column names, which bind correctly
+ * whether or not the table is aliased — but `sourced` correlates a subquery back
+ * to the outer row, and a correlated reference has to name something that is
+ * actually in scope. MySQL HIDES the real table name once an alias is given, so
+ * `wp_alt_layoffs.event_id` is an unknown-column error inside
+ * /conversion's `FROM $table a`. Callers that alias must say so; the one that
+ * does is alt_api_conversion_compute().
  */
-function alt_db_where(WP_REST_Request $r, $except = '') {
+function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
     global $wpdb;
     $where = array("1=1");
     $params = array();
+    // What a correlated subquery must call the outer row.
+    $self = ($alias !== '') ? $alias : alt_db_table();
     // Date basis for period filtering:
     //   (default)      -> layoff_date: when the layoff takes EFFECT (our
     //                     conservative floor; what the public UI shows).
@@ -889,6 +901,41 @@ function alt_db_where(WP_REST_Request $r, $except = '') {
     if ($stage === 'announced') { $where[] = "announced = 1"; }
     elseif ($stage === 'verified') { $where[] = "announced = 0"; }
     if (($v = $r->get_param('company'))) { $where[] = "company LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
+    // `company_key` is the EXACT normalized employer identity; `company` above is
+    // a LIKE substring match. A per-employer PAGE must use this one: `company`
+    // would publish Metabolix's and Metaswitch's cuts on the page titled "Meta
+    // layoffs". Comma-joined like the other multi-selects.
+    if ($except !== 'company_key') {
+        $keys = array_filter(array_map('trim', explode(',', (string) $r->get_param('company_key'))), 'strlen');
+        if ($keys) {
+            $ph = implode(',', array_fill(0, count($keys), '%s'));
+            $where[] = "company_key IN ($ph)";
+            foreach ($keys as $v) { $params[] = $v; }
+        }
+    }
+    // `sourced=1` is the evidence gate the company pages publish under: the row
+    // is the CANONICAL row of a merged event AND that event still retains at
+    // least one reachable source URL. Anything else is either a duplicate view
+    // of an event already shown, or an event we can no longer point a reader at
+    // — neither belongs on a page whose whole claim is "every row has a source".
+    if ($r->get_param('sourced') === '1' || $r->get_param('sourced') === 'true') {
+        $events_t = alt_events_table();
+        $reports_t = alt_source_reports_table();
+        $where[] = "event_id > 0"
+            . " AND EXISTS (SELECT 1 FROM $events_t alt_e"
+            . " WHERE alt_e.id = $self.event_id AND alt_e.canonical_layoff_id = $self.id)"
+            . " AND EXISTS (SELECT 1 FROM $reports_t alt_r"
+            . " WHERE alt_r.event_id = $self.event_id AND alt_r.source_url <> '')";
+    }
+    // `exclude_supersets=1` drops rows already folded into a more complete row
+    // for the same event by /reconcile-supersets (a company-wide news total and
+    // its per-site WARN rows are ONE event). /aggregate and the report pages
+    // have always appended `AND superset_of = 0` by hand; naming it as a filter
+    // lets a caller ask for count-once semantics instead of re-deriving them,
+    // which is how the company page used to double-count a rollup plus members.
+    if ($r->get_param('exclude_supersets') === '1' || $r->get_param('exclude_supersets') === 'true') {
+        $where[] = "superset_of = 0";
+    }
     if (($v = $r->get_param('keyword'))) { $where[] = "excerpt LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
     // Unified search box: company OR industry OR excerpt OR state OR country.
     if (($v = $r->get_param('q'))) {
@@ -1283,13 +1330,35 @@ function alt_register_query_routes() {
     ));
 }
 
-/** Public, read-only registry listing: reviewed mappings and their evidence support. */
-function alt_api_company_directory_get() {
+/**
+ * Public, read-only registry listing: reviewed mappings and their evidence
+ * support.
+ *
+ * PAGED since the indexer covers every employer rather than a curated few.
+ * Unbounded, this returned one row per company page in a single response, which
+ * was a reasonable shape at 29 companies and a multi-megabyte reply at the real
+ * employer count. `status` narrows to one side of the indexability floor.
+ */
+// $r is untyped on purpose: a typed `WP_REST_Request $r = null` is an implicit
+// nullable parameter, which PHP 8.4 deprecates and would log on every request.
+function alt_api_company_directory_get($r = null) {
     global $wpdb;
     $directory = alt_company_directory_table();
-    $rows = $wpdb->get_results(
+    $per_page = 200; $page = 1; $status = '';
+    if ($r) {
+        $per_page = min(1000, max(1, (int) ($r->get_param('per_page') ?: 200)));
+        $page = max(1, (int) ($r->get_param('page') ?: 1));
+        $status = sanitize_key((string) $r->get_param('status'));
+    }
+    $statuses = in_array($status, array('approved', 'noindex'), true)
+        ? array($status) : array('approved', 'noindex');
+    $ph = implode(',', array_fill(0, count($statuses), '%s'));
+    $total = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $directory WHERE review_status IN ($ph)", $statuses));
+    $rows = $wpdb->get_results($wpdb->prepare(
         "SELECT slug, display_name, review_status, reviewed_at FROM $directory
-         WHERE review_status IN ('approved','noindex') ORDER BY display_name ASC", ARRAY_A) ?: array();
+         WHERE review_status IN ($ph) ORDER BY display_name ASC, id ASC LIMIT %d OFFSET %d",
+        array_merge($statuses, array($per_page, ($page - 1) * $per_page))), ARRAY_A) ?: array();
     $out = array();
     foreach ($rows as $row) {
         $out[] = array(
@@ -1300,8 +1369,18 @@ function alt_api_company_directory_get() {
             'url' => alt_company_directory_url($row['slug']),
         );
     }
+    $floor = function_exists('alt_company_directory_indexable_floor')
+        ? alt_company_directory_indexable_floor() : 2;
     return rest_ensure_response(array(
-        'methodology' => 'Company pages exist only for admitted identity mappings, added by editor review or by a published automated evidence-threshold policy (autopilot-v1), and render only source-linked canonical events. A listed mapping is an identity record, not a completeness claim for that employer.',
+        'methodology' => 'Company pages exist only for admitted identity mappings, added by editor review or by a '
+            . 'published automated evidence-threshold policy (autopilot-v2), and render only source-linked canonical '
+            . 'events. A listed mapping is an identity record, not a completeness claim for that employer. An employer '
+            . "with at least $floor such events is offered to search engines; one below that keeps its page and is "
+            . 'marked noindex, because that page repeats what the individual entry already says.',
+        'coverage' => function_exists('alt_company_directory_coverage') ? alt_company_directory_coverage() : null,
+        'total' => $total,
+        'page' => $page,
+        'per_page' => $per_page,
         'mappings' => $out,
     ));
 }
@@ -1343,13 +1422,20 @@ function alt_company_directory_admit_mappings(array $mappings) {
             continue;
         }
         // Server-side evidence count: source-linked canonical events only —
-        // the same shape the public page query uses.
-        $supported = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $layoffs l INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
-             WHERE l.company_key = %s AND l.event_id > 0
-             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')", $key));
-        if ($status === 'approved' && $supported < 2) {
-            $out['rejected'][] = array('company_key' => $key, 'why' => "approved requires >=2 source-linked canonical events; found $supported");
+        // the SAME helper the page, the sitemap and the coverage report use, so
+        // the count that admits a page and the count that indexes it cannot
+        // drift apart. (function_exists is the FTP-deploy race guard:
+        // company-directory.php can be mid-upload while this file is already new.)
+        $floor = function_exists('alt_company_directory_indexable_floor')
+            ? alt_company_directory_indexable_floor() : 2;
+        $supported = function_exists('alt_company_directory_supported_count')
+            ? alt_company_directory_supported_count($key)
+            : (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $layoffs l INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
+                 WHERE l.company_key = %s AND l.event_id > 0 AND l.superset_of = 0
+                 AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')", $key));
+        if ($status === 'approved' && $supported < $floor) {
+            $out['rejected'][] = array('company_key' => $key, 'why' => "approved requires >=$floor source-linked canonical events; found $supported");
             continue;
         }
         if ($status === 'noindex' && $supported < 1) {
@@ -1444,17 +1530,40 @@ function alt_company_directory_park_pending($key, $name) {
 }
 
 /**
- * Automated weekly admission. Selects unmapped company keys with at least
- * min_events source-linked canonical events (floor 3 — deliberately above the
- * manual two-event threshold), picks the most frequently reported company
- * name for the key, applies the identity sanity gate, and admits through the
- * same validator as the manual writer. The Actions run log plus this
- * response are the audit trail; the policy string is returned every run.
+ * The employer indexer: one page per employer with retained evidence.
+ *
+ * WHAT CHANGED AND WHY (2026-07-31). This ran weekly, admitted at most 25
+ * companies a run, and only considered keys with >=3 source-linked events. The
+ * INDEXABILITY gate was never the problem — the audit found it sound — the
+ * THROUGHPUT was: 29 employers had a page against ~41k distinct employer names
+ * in the table, and 17 of the 24 largest employers by event count had none.
+ * At 25 a week the backlog outran the indexer permanently.
+ *
+ * So the floor drops to ONE source-linked canonical event, which is the floor
+ * for a page EXISTING, and the review_status now records which side of the
+ * indexability floor the employer falls on:
+ *   >= alt_company_directory_indexable_floor()  -> 'approved' (indexable, sitemapped)
+ *   exactly 1                                   -> 'noindex'  (page renders, not indexed)
+ *   0                                           -> no row, no page, 404
+ * Zero is a real floor and not a formality: with no retained source URL there
+ * is nothing on the page to link to, and a page whose only claim is "every row
+ * has a source" cannot be built out of rows that have none.
+ *
+ * RESUMABLE, because one pass cannot finish inside a shared-host request. Each
+ * call takes the next `limit` unmapped keys in company_key order and returns
+ * `next_cursor`; the workflow loops until `complete` comes back true. Ordering
+ * by key (not by event count) is what makes the cursor stable: admitting a row
+ * removes it from the candidate set, so an ORDER BY on a count that changes
+ * under ingest would skip employers silently.
+ *
+ * The Actions run log plus this response are the audit trail; the policy string
+ * is returned every run.
  */
 function alt_api_company_directory_autopilot(WP_REST_Request $r) {
     global $wpdb;
-    $min_events = max(3, min(10, (int) ($r->get_param('min_events') ?: 3)));
-    $limit = max(1, min(50, (int) ($r->get_param('limit') ?: 25)));
+    $min_events = max(1, min(10, (int) ($r->get_param('min_events') ?: 1)));
+    $limit = max(1, min(500, (int) ($r->get_param('limit') ?: 200)));
+    $after_key = (string) $r->get_param('after_key');
     // Idempotency: a workflow retry after an ambiguous gateway error replays
     // the stored response instead of admitting a second batch, so one run can
     // never exceed its documented cap or lose its audit record.
@@ -1470,32 +1579,43 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
     $candidates = $wpdb->get_results($wpdb->prepare(
         "SELECT l.company_key, COUNT(*) supported
          FROM $layoffs l INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
-         WHERE l.event_id > 0 AND l.company_key <> ''
+         WHERE l.event_id > 0 AND l.company_key <> '' AND l.superset_of = 0
+           AND l.company_key > %s
            AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
            AND NOT EXISTS (SELECT 1 FROM $directory d WHERE d.company_key = l.company_key)
          GROUP BY l.company_key HAVING COUNT(*) >= %d
-         ORDER BY supported DESC, l.company_key ASC LIMIT %d", $min_events, $limit), ARRAY_A) ?: array();
+         ORDER BY l.company_key ASC LIMIT %d", $after_key, $min_events, $limit), ARRAY_A) ?: array();
     $mappings = array(); $skipped = array(); $names_by_key = array();
+    $supported_by_key = array(); $last_key = $after_key;
+    $floor = function_exists('alt_company_directory_indexable_floor')
+        ? alt_company_directory_indexable_floor() : 2;
     foreach ($candidates as $candidate) {
         $key = $candidate['company_key'];
+        $last_key = $key;
+        $supported_by_key[$key] = (int) $candidate['supported'];
         // Name candidates come ONLY from the qualifying evidence rows — the
         // same canonical, source-linked set the threshold counted — never
         // from unrelated rows that happen to share the normalized key.
+        //
+        // MOST FREQUENTLY REPORTED name wins. The docstring has always said so;
+        // the code took whatever row a DISTINCT happened to return first, which
+        // is not the same thing and is not stable. Ties break on the SHORTER
+        // name, which is the plain brand ("Boeing" over "Boeing Company").
         $names = $wpdb->get_col($wpdb->prepare(
-            "SELECT DISTINCT l.company FROM $layoffs l
+            "SELECT l.company FROM $layoffs l
              INNER JOIN $events e ON e.id = l.event_id AND e.canonical_layoff_id = l.id
-             WHERE l.company_key = %s AND l.event_id > 0 AND l.company <> ''
-             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')", $key)) ?: array();
-        $distinct = array_values(array_unique(array_map(
-            function_exists('mb_strtolower') ? 'mb_strtolower' : 'strtolower',
-            array_map('trim', $names))));
+             WHERE l.company_key = %s AND l.event_id > 0 AND l.company <> '' AND l.superset_of = 0
+             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')
+             GROUP BY l.company ORDER BY COUNT(*) DESC, CHAR_LENGTH(l.company) ASC, l.company ASC", $key)) ?: array();
         $name = sanitize_text_field((string) ($names[0] ?? ''));
         $names_by_key[$key] = $name;
-        if (count($distinct) !== 1) {
-            $skipped[] = array('company_key' => $key, 'why' => 'qualifying events disagree on the company name; parked pending manual identity review');
-            alt_company_directory_park_pending($key, $name);
-            continue;
-        }
+        // Spelling variants across an employer's own filings ("Boeing" /
+        // "Boeing Company" / "The Boeing Co") are NORMAL, not an identity
+        // problem — they are exactly what company_key exists to collapse, and
+        // parking on any disagreement denied a page to precisely the large,
+        // heavily-reported employers the pages are most useful for. The page
+        // prints each row's own reported name, so a reader sees the variants.
+        // What still parks is a name that fails the sanity gate below.
         $why = alt_company_directory_name_rejection($name);
         if ($why !== '') {
             $skipped[] = array('company_key' => $key, 'why' => $why . '; parked pending manual identity review');
@@ -1508,7 +1628,14 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
             alt_company_directory_park_pending($key, $name);
             continue;
         }
-        $mappings[] = array('company_key' => $key, 'slug' => $slug, 'display_name' => $name, 'review_status' => 'approved');
+        // The thin-content decision, made here and recorded in the row: an
+        // employer at or above the floor is offered to the index, one below it
+        // still gets a page and is marked noindex. Neither is a judgement about
+        // the employer; it is a judgement about whether THIS URL adds anything
+        // the entry permalink does not already say.
+        $indexable = $supported_by_key[$key] >= $floor;
+        $mappings[] = array('company_key' => $key, 'slug' => $slug, 'display_name' => $name,
+                            'review_status' => $indexable ? 'approved' : 'noindex');
     }
     $out = $mappings ? alt_company_directory_admit_mappings($mappings) : array('admitted' => array(), 'rejected' => array());
     // Validator-rejected keys (e.g. slug owned by another mapping) are parked
@@ -1520,14 +1647,30 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
     }
     $out['skipped_identity_checks'] = $skipped;
     $out['candidates_considered'] = count($candidates);
-    $out['policy'] = "autopilot-v1: unmapped company keys with >=$min_events source-linked canonical events, "
-        . 'a single agreed company name across the qualifying evidence rows passing identity sanity checks, '
-        . 'and a unique slug; validated by the same server-side admission rules as manual review. '
-        . 'Unadmittable keys are parked as pending for manual review.';
+    // Resumption state. `complete` is true only when this run saw fewer
+    // candidates than it asked for, which is the only reliable end-of-set
+    // signal: admitted and parked keys both leave the candidate set, but a key
+    // that can do neither would otherwise be re-read forever, so the caller
+    // advances past it with the cursor rather than looping on it.
+    $out['next_cursor'] = $last_key;
+    $out['complete'] = count($candidates) < $limit;
+    $out['index_floor_events'] = $floor;
+    $out['policy'] = "autopilot-v2: unmapped company keys with >=$min_events source-linked canonical events "
+        . '(canonical row of a merged event, retaining a source URL, superset members excluded), named by the '
+        . "most frequently reported company name for the key, passing identity sanity checks, with a unique slug. "
+        . "Admitted 'approved' (indexable, sitemapped) at >=$floor such events and 'noindex' (page renders, "
+        . 'stays out of the index) below that; validated by the same server-side admission rules as manual '
+        . 'review. Unadmittable keys are parked as pending for manual review.';
+    // Flush BEFORE reading coverage: the coverage numbers are cached against
+    // alt_data_ver, so computing them first would report the state this run
+    // started from and make a working indexer look stalled.
+    if (function_exists('alt_flush_caches')) alt_flush_caches();
+    if (function_exists('alt_company_directory_coverage')) {
+        $out['coverage'] = alt_company_directory_coverage();
+    }
     if ($token !== '') {
         update_option('alt_directory_autopilot_last', array('token' => $token, 'response' => $out), false);
     }
-    if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
 }
 
@@ -4004,7 +4147,9 @@ function alt_api_conversion_compute(WP_REST_Request $r) {
     // side only. Verified matches stay unfiltered on purpose: execution of a
     // multi-country plan can surface anywhere WARN/SEC/news records it.
     // Date filters are excluded and re-applied against the anchor below.
-    list($fw, $params) = alt_db_where($r, 'date');
+    // 'a' is this query's alias for the layoffs table; alt_db_where needs it so a
+    // correlated filter (sourced) points at a name that is still in scope here.
+    list($fw, $params) = alt_db_where($r, 'date', 'a');
     $conds = "a.announced = 1 AND a.company_key <> '' AND a.job_count > 0"
         . " AND $anchor IS NOT NULL AND $anchor > '2000-01-01'";
     $anchor_params = array();

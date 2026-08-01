@@ -6,6 +6,71 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2.19.233 — one company page per employer (the gate was never the problem)
+
+**What was wrong.** 29 employers had a page against ~41k distinct employer names
+in the table, and 17 of the 24 largest employers by event count had none (Boeing:
+324 events, no page). The audit of 2026-07-28 had already named the cause and it
+is worth repeating because it is the opposite of the obvious diagnosis: **the
+indexability gate was sound, the THROUGHPUT was the defect.** The autopilot
+considered only keys with >=3 source-linked events and admitted at most 25 a
+week, so the backlog grew faster than the indexer drained it. Nothing was
+misconfigured; the mechanism could not finish, and had no way to say so.
+
+**What changed.**
+- The indexer floor drops to ONE source-linked canonical event, which is the
+  floor for a page EXISTING. `review_status` now records which side of the
+  indexability floor the employer falls on: `approved` (indexable, sitemapped)
+  at >= 2 such events, `noindex` (page renders, stays out of search) at one.
+  Zero is a real floor: with no retained source URL there is nothing to link to.
+- **Resumable.** Each call returns `next_cursor` + `complete`; the workflow loops
+  until the server says complete. Ordering is by `company_key`, not by event
+  count, because admitting a row removes it from the candidate set and an ORDER
+  BY on a count that moves under ingest skips employers silently.
+- The page's rows now come through `alt_api_query_compute()` instead of its own
+  SQL. That is not tidying: it is how the page had become **the one surface that
+  never learned about supersets.** `/aggregate`, the report pages and the press
+  page all append `superset_of = 0`; this did not, so a reconciled rollup row and
+  the per-site rows it absorbed were both listed AND both summed into the page
+  total. Three filters were added to the shared builder to make that possible:
+  `company_key` (exact identity), `sourced=1` (canonical row of an event that
+  retains a source URL) and `exclude_supersets=1`.
+- **Meta description, and a Dataset node** on indexable pages only, `isPartOf`
+  the tracker's dataset so it reads as a slice rather than a rival dataset with
+  the same name. Company pages had no description at all (audit item 4).
+- **The 1,798 orphan entry permalinks now have a path.** The company page links
+  each entry, and each entry links back up to its employer. They were indexable
+  and linked from nowhere.
+
+**Three defects found while doing it, none of them the assignment.**
+1. `alt_db_where()` was not alias-safe. Every existing filter uses bare column
+   names, which bind under any alias, so it had never mattered; a correlated
+   filter must name the outer row, and MySQL **hides the real table name once an
+   alias is given**, so `sourced=1` on `/conversion` (`FROM $table a`) would have
+   been an unknown-column 500. `$alias` is now a parameter and that one caller
+   passes it.
+2. The autopilot's docstring said it picked "the most frequently reported company
+   name"; the code took whatever row a `SELECT DISTINCT` returned first. Now
+   actually modal, ties to the shorter name. Related: it **parked any key whose
+   rows disagreed on the name**, which denied a page to precisely the large,
+   heavily-reported employers pages are most useful for. Spelling variants are
+   what `company_key` exists to collapse; the page prints each row's own reported
+   name, so the variants stay visible.
+3. Company pages set `DONOTCACHEPAGE` + `nocache_headers()` unconditionally.
+   Invisible at 29 URLs; at one per employer it makes every crawler hit an origin
+   request on a shared host that returned 504 twice on 2026-07-31. It never
+   bought freshness either, since the data sits in a 5-minute transient
+   regardless. Rendered pages are now cacheable for 10 minutes; a MISS is still
+   uncacheable, because that slug becomes real the moment the indexer admits it.
+
+**Also:** the sitemap query ran one correlated COUNT per approved directory row
+(fine at 29, a timeout at thousands) and is now a single grouped join; the public
+`/company-directory` listing is paged (it returned one row per page in one
+response); the health page publicly claimed a "three or more" threshold while the
+gate was two.
+
+---
+
 ## THE RESULT CARD CONTRACT (canonical spec, shared with the sibling tracker)
 
 **Machine-readable copy:** `docs/card-contract.json`

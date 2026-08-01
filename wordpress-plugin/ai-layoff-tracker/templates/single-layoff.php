@@ -55,6 +55,20 @@ $cite = sprintf(
     <p><a class="alt-btn alt-btn-primary" href="<?php echo esc_url($src_url); ?>" target="_blank" rel="noopener nofollow">View primary source (<?php echo esc_html($e['source_name'] ?: 'source'); ?>) &#8599;</a></p>
     <?php endif; ?>
 
+    <?php
+    // Link up to the employer's page when one exists. These entry permalinks
+    // were indexable and linked from nowhere (audit item 2), so a crawler that
+    // found one had no path onward and a reader had no way to see the rest of
+    // that employer's record. function_exists is the FTP-deploy race guard.
+    $company_page = function_exists('alt_company_directory_url_for_company')
+        ? alt_company_directory_url_for_company($e['company_name'] ?? '') : '';
+    if ($company_page !== '') : ?>
+    <p class="alt-company-entry-link">
+        See every recorded layoff for
+        <a href="<?php echo esc_url($company_page); ?>"><?php echo esc_html($e['company_name']); ?></a>.
+    </p>
+    <?php endif; ?>
+
     <div class="alt-single-block alt-cite">
         <span class="alt-detail-h">Cite this entry</span>
         <code><?php echo esc_html($cite); ?></code>

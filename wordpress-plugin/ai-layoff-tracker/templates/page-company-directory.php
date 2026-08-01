@@ -1,25 +1,128 @@
 <?php
-/** Source-linked company-directory page; data is prepared by company-directory.php. */
+/**
+ * Source-linked company page; data is prepared by company-directory.php.
+ *
+ * Deliberately a LIST and not a table. The hard formatting bar on this project
+ * is no horizontal bleed at 375px, and a 6-column table of dates, counts,
+ * locations and source links either overflows or needs its own scroll container
+ * that hides half the columns from a phone. A list wraps.
+ *
+ * Nothing here is written copy about the employer. Every sentence is assembled
+ * from fields the row actually carries, and a field that is absent produces no
+ * sentence rather than a hedge, so a three-event company reads as a short
+ * honest page instead of a padded one.
+ */
 if (!defined('ABSPATH')) exit;
-$alt_company_directory = alt_company_directory_current();
-if (!$alt_company_directory) return;
-get_header(); $alt_company = $alt_company_directory['company'];
+$alt_dir = alt_company_directory_current();
+if (!$alt_dir) return;
+get_header();
+$alt_company = $alt_dir['company'];
+$alt_name = $alt_company['display_name'];
+$alt_count = count($alt_dir['events']);
+$alt_verif = array(
+    'gold'   => 'SEC filing',
+    'warn'   => 'State WARN notice',
+    'silver' => 'Press release',
+    'bronze' => 'News report',
+);
 ?>
 <main class="alt-wrap alt-company-directory">
     <p class="alt-eyebrow">Source-linked company record</p>
-    <h1><?php echo esc_html($alt_company['display_name']); ?> layoffs</h1>
-    <p class="alt-company-summary">This page lists <?php echo count($alt_company_directory['events']); ?> recorded layoff event<?php echo count($alt_company_directory['events']) === 1 ? '' : 's'; ?>, each with its original source. It is not a complete employment history.</p>
-    <?php if (!$alt_company_directory['indexable']) : ?><p class="alt-directory-notice">This reviewed record is available for direct research but is not indexed as a directory page because it does not yet have enough source-linked events to be listed as a directory page.</p><?php endif; ?>
-    <p class="alt-company-directory-total"><strong><?php echo number_format((int) $alt_company_directory['total_jobs']); ?></strong> jobs across the recorded layoff events, each linked to a source</p>
-    <p><a href="<?php echo esc_url($alt_company_directory['tracker_url']); ?>">Search this company name in the full tracker</a></p>
+    <h1><?php echo esc_html($alt_name); ?> layoffs</h1>
+
+    <p class="alt-company-summary">
+        This page lists <?php echo (int) $alt_count; ?> recorded layoff event<?php echo $alt_count === 1 ? '' : 's'; ?>
+        <?php if ($alt_dir['first_date'] !== '' && $alt_dir['last_date'] !== '') :
+            $alt_from = substr($alt_dir['first_date'], 0, 4);
+            $alt_to = substr($alt_dir['last_date'], 0, 4);
+            echo $alt_from === $alt_to ? 'in ' . esc_html($alt_from) : 'from ' . esc_html($alt_from) . ' to ' . esc_html($alt_to);
+        endif; ?>, each with its original source. It is a record of what we have
+        verified, not a complete employment history for this employer.
+    </p>
+
+    <?php if (!$alt_dir['indexable']) : ?>
+        <p class="alt-directory-notice">This record is published for direct research and citation, and is
+        kept out of search results: with
+        <?php echo (int) $alt_count; ?> recorded event<?php echo $alt_count === 1 ? '' : 's'; ?> it repeats what the
+        individual entry below already says. Pages reach search results at
+        <?php echo (int) alt_company_directory_indexable_floor(); ?> or more source-linked events.</p>
+    <?php endif; ?>
+
+    <?php if (!empty($alt_dir['truncated'])) : ?>
+        <p class="alt-directory-notice">Showing the <?php echo (int) $alt_count; ?> most recent of
+        <?php echo number_format((int) $alt_dir['total_known']); ?> recorded events for this employer.
+        <a href="<?php echo esc_url($alt_dir['tracker_url']); ?>">See all of them in the tracker</a>.</p>
+    <?php endif; ?>
+
+    <p class="alt-company-directory-total">
+        <strong><?php echo number_format((int) $alt_dir['total_jobs']); ?></strong> jobs across the recorded
+        layoff events, each linked to a source
+        <?php if ((int) $alt_dir['ai_events'] > 0) : ?>
+            <br><strong><?php echo (int) $alt_dir['ai_events']; ?></strong>
+            of these <?php echo $alt_dir['ai_events'] === 1 ? 'is an event the employer' : 'are events the employer'; ?>
+            attributed to AI in its own words
+        <?php endif; ?>
+    </p>
+
+    <p><a href="<?php echo esc_url($alt_dir['tracker_url']); ?>">Search this company name in the full tracker</a></p>
+
     <ol class="alt-company-event-list">
-    <?php foreach ($alt_company_directory['events'] as $event) : ?>
-        <li><h2><?php echo esc_html($event['layoff_date'] ?: 'Date not stated'); ?> · <?php echo number_format((int) $event['job_count']); ?> jobs</h2>
-            <p><?php echo $event['announced'] ? 'Announcement-stage record.' : 'Filed or independently reported record.'; ?><?php echo $event['country'] ? ' Affected-job location: ' . esc_html($event['country']) . ($event['state'] ? ' (' . esc_html($event['state']) . ')' : '') . '.' : ''; ?></p>
-            <ul class="alt-company-source-list"><?php foreach ($event['sources'] as $source) : ?><li><a href="<?php echo esc_url($source['url']); ?>" target="_blank" rel="noopener nofollow"><?php echo esc_html($source['name'] ?: 'Cited source'); ?></a><?php echo $source['type'] === 'warn' ? ' (official WARN list; the notice was filed here, and older ones roll into the state archive)' : ''; ?></li><?php endforeach; ?></ul>
+    <?php foreach ($alt_dir['events'] as $alt_event) :
+        $alt_jobs = (int) $alt_event['job_count'];
+        $alt_loc = function_exists('alt_short_location')
+            ? alt_short_location($alt_event['state'] ?? '', $alt_event['country'] ?? '') : '';
+        $alt_level = $alt_verif[$alt_event['verification_level'] ?? ''] ?? '';
+    ?>
+        <li>
+            <h2>
+                <?php echo esc_html($alt_event['layoff_date'] ?: 'Date not stated'); ?>
+                <?php if ($alt_jobs > 0) : ?>&middot; <?php echo number_format($alt_jobs); ?> jobs<?php endif; ?>
+            </h2>
+
+            <p class="alt-company-event-meta">
+                <?php echo !empty($alt_event['announced'])
+                    ? 'Announcement-stage record.'
+                    : 'Filed or independently reported record.'; ?>
+                <?php if ($alt_loc !== '') : ?>Location: <?php echo esc_html($alt_loc); ?>.<?php endif; ?>
+                <?php if (!empty($alt_event['industry'])) : ?>Industry: <?php echo esc_html($alt_event['industry']); ?>.<?php endif; ?>
+                <?php if ($alt_level !== '') : ?>Evidence: <?php echo esc_html($alt_level); ?>.<?php endif; ?>
+                <?php // The name on THIS filing, when the employer files under a variant of
+                      // the page's name. Shown rather than smoothed over, so a reader can
+                      // see why these rows are grouped together.
+                      $alt_row_name = trim((string) ($alt_event['company_name'] ?? ''));
+                      if ($alt_row_name !== '' && strcasecmp($alt_row_name, $alt_name) !== 0) : ?>
+                    Filed as: <?php echo esc_html($alt_row_name); ?>.
+                <?php endif; ?>
+            </p>
+
+            <?php if (!empty($alt_event['ai_explicit'])) : ?>
+                <p class="alt-company-event-ai">The employer attributed this to AI.</p>
+                <?php if (!empty($alt_event['ai_language'])) : ?>
+                    <blockquote class="alt-company-event-quote">&ldquo;<?php echo esc_html($alt_event['ai_language']); ?>&rdquo;</blockquote>
+                <?php endif; ?>
+            <?php elseif (($alt_event['ai_causation'] ?? '') === 'explicitly_denied') : ?>
+                <p class="alt-company-event-ai">The employer explicitly denied AI was a cause.</p>
+            <?php endif; ?>
+
+            <ul class="alt-company-source-list">
+            <?php foreach ($alt_event['sources'] as $alt_source) : ?>
+                <li><a href="<?php echo esc_url($alt_source['url']); ?>" target="_blank" rel="noopener nofollow"><?php echo esc_html($alt_source['name'] ?: 'Cited source'); ?></a><?php
+                    echo $alt_source['type'] === 'warn'
+                        ? ' (official WARN list; the notice was filed here, and older ones roll into the state archive)'
+                        : ''; ?></li>
+            <?php endforeach; ?>
+            <?php // The entry's own permalink. These pages existed but were linked from
+                  // nowhere on the site (audit item 2: 1,798 orphans); this is the link
+                  // that puts them back on a crawlable path.
+                  if (!empty($alt_event['permalink'])) : ?>
+                <li><a href="<?php echo esc_url($alt_event['permalink']); ?>">Full entry on this site</a></li>
+            <?php endif; ?>
+            </ul>
         </li>
     <?php endforeach; ?>
     </ol>
-    <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a> and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
+
+    <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a>
+    and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 </main>
 <?php get_footer(); ?>

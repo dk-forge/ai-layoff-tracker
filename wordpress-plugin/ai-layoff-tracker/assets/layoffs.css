@@ -1397,6 +1397,22 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-company-event-list h2 { margin: 0 0 6px; font-size: 16px; }
 .alt-company-event-list p { margin: 0 0 8px; color: var(--alt-ink-2); font-size: 14px; }
 .alt-company-source-list { margin: 0; padding-left: 18px; font-size: 13px; }
+/* Long source names and long AI quotes are free text from a filing, so they can
+   be arbitrarily long with no spaces (URLs pasted as titles). break-word keeps
+   them inside the column instead of pushing the page sideways on a phone. */
+.alt-company-source-list li { overflow-wrap: break-word; word-break: break-word; }
+.alt-company-event-meta { margin: 0 0 8px; }
+.alt-company-event-ai { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.alt-company-event-quote {
+    margin: 0 0 10px; padding: 8px 12px; font-size: 14px; font-style: italic;
+    border-left: 3px solid var(--alt-grid); color: var(--alt-ink-2);
+    overflow-wrap: break-word; word-break: break-word;
+}
+.alt-directory-notice {
+    margin: 0 0 14px; padding: 10px 14px; font-size: 14px;
+    border: 1px solid var(--alt-grid); border-radius: 8px; color: var(--alt-ink-2);
+}
+.alt-company-entry-link { margin: 14px 0 0; font-size: 14px; }
 
 /* ---------------- Export shortcode ---------------- */
 

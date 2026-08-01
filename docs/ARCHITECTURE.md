@@ -142,6 +142,20 @@ reasons` (+ `from,to,q,company,keyword,min_jobs,ai`). Dimensions AND together; v
 dimension OR. Slicer charts call /aggregate ignoring their own dimension (`except`) so you can
 always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; every write bumps it.
 
+**Identity and evidence filters** (added 2026-07-31 for the company pages, available on `/query`,
+`/aggregate` and the exports like any other filter):
+
+| Param | Meaning |
+|---|---|
+| `company_key` | **Exact** normalized employer identity, comma-joined. `company` is a LIKE substring match and is the wrong tool for a per-employer view: `company=Meta` also returns Metabolix and Metaswitch. |
+| `sourced=1` | Row is the CANONICAL row of a merged event AND that event still retains at least one reachable source URL. Anything else is a duplicate view of an event, or an event we can no longer point a reader at. |
+| `exclude_supersets=1` | Drops rows already folded into a more complete row for the same event by `/reconcile-supersets`. `/aggregate` and the report pages have always appended `AND superset_of = 0` by hand; this names it so a caller can ask for count-once semantics instead of re-deriving them. |
+
+`sourced` is the only filter that correlates a subquery back to the outer row, so it is the only one
+that cares what the caller called the layoffs table. `alt_db_where()` takes an `$alias` argument for
+that reason; every caller but `alt_api_conversion_compute()` (which uses `FROM $table a`) queries the
+table unaliased and passes nothing.
+
 ### The param list above is exact, and getting it wrong FAILS SILENTLY (two ways)
 Note the naming is not internally consistent — `years/quarters/months/sources/reasons/roles` are
 plural while `industry/country/state/employer_country` are singular, even though every one of them

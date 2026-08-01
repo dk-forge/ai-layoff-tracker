@@ -1,11 +1,20 @@
 name: Company directory autopilot
 
-# Weekly automated admission of company pages under the published
-# autopilot-v1 policy. The SERVER decides everything that matters: it only
-# considers unmapped company keys with >=3 source-linked canonical events,
-# applies identity sanity checks, and validates through the same admission
-# rules as manual review — so this workflow can never publish a page without
-# retained evidence. The run log is the audit trail.
+# The employer indexer: one page per employer that has retained evidence.
+#
+# The SERVER decides everything that matters. It counts source-linked canonical
+# events itself, applies identity sanity checks, and validates through the same
+# admission rules as manual review, so this workflow can never publish a page
+# without evidence behind it. It also decides indexability: at or above the
+# floor a company is admitted 'approved' (indexable, sitemapped), below it
+# 'noindex' (the page renders and is not offered to search). The run log is the
+# audit trail.
+#
+# LOOPS UNTIL DRAINED, which is the point of the rewrite. The previous version
+# admitted 25 companies a week against a backlog of tens of thousands, so the
+# backlog grew faster than the indexer cleared it and 29 employers had a page.
+# Each call returns next_cursor and complete; this walks until the server says
+# complete, bounded by MAX_CALLS so a bug cannot spend a whole runner.
 
 on:
   schedule:
@@ -13,13 +22,17 @@ on:
   workflow_dispatch:
     inputs:
       min_events:
-        description: 'Minimum source-linked canonical events (3-10)'
+        description: 'Minimum source-linked canonical events for a page to exist (1-10)'
         required: false
-        default: '3'
+        default: '1'
       limit:
-        description: 'Maximum admissions per run (1-50)'
+        description: 'Companies per call (1-500)'
         required: false
-        default: '25'
+        default: '200'
+      max_calls:
+        description: 'Safety ceiling on calls in one run (1-400)'
+        required: false
+        default: '200'
 
 concurrency:
   group: company-directory
@@ -28,57 +41,113 @@ concurrency:
 jobs:
   autopilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 50
     steps:
-      - name: Admit qualifying companies
+      - name: Index qualifying companies
         env:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
-          MIN_EVENTS: ${{ github.event.inputs.min_events || '3' }}
-          LIMIT: ${{ github.event.inputs.limit || '25' }}
+          MIN_EVENTS: ${{ github.event.inputs.min_events || '1' }}
+          LIMIT: ${{ github.event.inputs.limit || '200' }}
+          MAX_CALLS: ${{ github.event.inputs.max_calls || '200' }}
+          RUN_ID: ${{ github.run_id }}
         run: |
+          set -uo pipefail
           [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
-          case "$MIN_EVENTS$LIMIT" in *[!0-9]*) echo "inputs must be integers" >&2; exit 2 ;; esac
-          # Retry transient shared-host gateway errors; the endpoint admits
-          # "whatever qualifies and is still unmapped", so a re-POST after an
-          # ambiguous 522 is safe. Real errors still fail loudly.
-          attempt=0
-          while :; do
-            attempt=$((attempt+1))
-            http="$(curl -sS -o /tmp/resp.json -w '%{http_code}' --connect-timeout 20 --max-time 180 -X POST \
-              -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
-              -H "X-Layoff-API-Key: $WP_API_KEY" \
-              -H 'Content-Type: application/json' \
-              --data "{\"min_events\":$MIN_EVENTS,\"limit\":$LIMIT,\"run_token\":\"gh-${{ github.run_id }}\"}" \
-              https://asktherecruiter.com/blog/wp-json/layoffs/v1/company-directory/autopilot)" || http=000
-            [ "$http" = "200" ] && break
-            case "$http" in
-              000|502|503|504|520|521|522|524)
-                if [ "$attempt" -ge 4 ]; then
-                  echo "Autopilot call failed after $attempt attempts (last HTTP $http)" >&2
-                  cat /tmp/resp.json 2>/dev/null; exit 22
-                fi
-                echo "Transient HTTP $http on attempt $attempt; retrying in 45s"
-                sleep 45 ;;
-              *)
-                echo "Autopilot call returned HTTP $http" >&2
-                cat /tmp/resp.json 2>/dev/null; exit 22 ;;
-            esac
-          done
-          cat /tmp/resp.json
-          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
+          case "$MIN_EVENTS$LIMIT$MAX_CALLS" in *[!0-9]*) echo "inputs must be integers" >&2; exit 2 ;; esac
+
+          cursor=""
+          call=0
+          admitted_total=0
+          approved_total=0
+          noindex_total=0
+          complete=0
+          : > /tmp/summary.txt
+
+          while [ "$call" -lt "$MAX_CALLS" ]; do
+            call=$((call+1))
+            # Retry transient shared-host gateway errors. The endpoint takes
+            # "whatever qualifies and is still unmapped after this cursor", so a
+            # re-POST after an ambiguous 522 is safe. Real errors fail loudly.
+            attempt=0
+            while :; do
+              attempt=$((attempt+1))
+              body="$(python3 -c 'import json,sys; print(json.dumps({"min_events":int(sys.argv[1]),"limit":int(sys.argv[2]),"after_key":sys.argv[3],"run_token":sys.argv[4]}))' \
+                       "$MIN_EVENTS" "$LIMIT" "$cursor" "gh-${RUN_ID}-${call}")"
+              http="$(curl -sS -o /tmp/resp.json -w '%{http_code}' --connect-timeout 20 --max-time 300 -X POST \
+                -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+                -H "X-Layoff-API-Key: $WP_API_KEY" \
+                -H 'Content-Type: application/json' \
+                --data "$body" \
+                https://asktherecruiter.com/blog/wp-json/layoffs/v1/company-directory/autopilot)" || http=000
+              [ "$http" = "200" ] && break
+              case "$http" in
+                000|502|503|504|520|521|522|524)
+                  if [ "$attempt" -ge 4 ]; then
+                    echo "::error::Autopilot call $call failed after $attempt attempts (last HTTP $http)"
+                    cat /tmp/resp.json 2>/dev/null; exit 22
+                  fi
+                  echo "Transient HTTP $http on call $call attempt $attempt; retrying in 45s"
+                  sleep 45 ;;
+                *)
+                  echo "::error::Autopilot call $call returned HTTP $http"
+                  cat /tmp/resp.json 2>/dev/null; exit 22 ;;
+              esac
+            done
+
+            cp /tmp/resp.json /tmp/last.json
+            python3 - <<'PY' > /tmp/vars.sh
+          import json, shlex
           r = json.load(open('/tmp/resp.json'))
-          print('## Company-directory autopilot')
-          print()
-          print(f"- Policy: {r.get('policy', '?')}")
-          print(f"- Candidates considered: **{r.get('candidates_considered', 0)}**")
-          print(f"- Admitted: **{len(r.get('admitted', []))}**")
-          for a in r.get('admitted', []):
-              print(f"  - {a['slug']} ({a['source_linked_canonical_events']} source-linked events) -> {a['url']}")
-          print(f"- Rejected by admission rules: **{len(r.get('rejected', []))}**")
-          for x in r.get('rejected', []):
-              print(f"  - {x.get('company_key', '?')}: {x.get('why')}")
-          print(f"- Skipped by identity checks: **{len(r.get('skipped_identity_checks', []))}**")
-          for x in r.get('skipped_identity_checks', []):
-              print(f"  - {x.get('company_key', '?')}: {x.get('why')}")
+          adm = r.get('admitted', [])
+          print("n_admitted=%d" % len(adm))
+          print("n_approved=%d" % sum(1 for a in adm if a.get('review_status') == 'approved'))
+          print("n_noindex=%d" % sum(1 for a in adm if a.get('review_status') == 'noindex'))
+          print("complete=%d" % (1 if r.get('complete') else 0))
+          print("cursor=%s" % shlex.quote(str(r.get('next_cursor', ''))))
+          with open('/tmp/summary.txt', 'a') as fh:
+              for a in adm:
+                  fh.write("  - %s (%s events, %s)\n" % (
+                      a.get('slug'), a.get('source_linked_canonical_events'), a.get('review_status')))
+              for x in r.get('rejected', []):
+                  fh.write("  - REJECTED %s: %s\n" % (x.get('company_key', '?'), x.get('why')))
+              for x in r.get('skipped_identity_checks', []):
+                  fh.write("  - HELD %s: %s\n" % (x.get('company_key', '?'), x.get('why')))
           PY
+            . /tmp/vars.sh
+
+            admitted_total=$((admitted_total + n_admitted))
+            approved_total=$((approved_total + n_approved))
+            noindex_total=$((noindex_total + n_noindex))
+            echo "call $call: admitted $n_admitted (approved $n_approved, noindex $n_noindex)"
+            [ "$complete" = "1" ] && break
+          done
+
+          {
+            echo '## Company directory indexer'
+            echo
+            echo "- Calls: **$call** (ceiling $MAX_CALLS)"
+            echo "- Admitted this run: **$admitted_total** (approved $approved_total, noindex $noindex_total)"
+            python3 - <<'PY'
+          import json
+          r = json.load(open('/tmp/last.json'))
+          print("- Backlog drained: **%s**" % ('yes' if r.get('complete') else 'no, hit the call ceiling'))
+          print("- Policy: %s" % r.get('policy', '?'))
+          c = r.get('coverage') or {}
+          if c:
+              print()
+              print('| Coverage | Count |')
+              print('|---|---|')
+              for k, v in c.items():
+                  print('| %s | %s |' % (k.replace('_', ' '), v))
+          PY
+            echo
+            echo '<details><summary>Per-company detail</summary>'
+            echo
+            head -c 200000 /tmp/summary.txt
+            echo
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$complete" != "1" ]; then
+            echo "::notice::Hit the call ceiling with backlog remaining; the next run continues from the start of the unmapped set."
+          fi
