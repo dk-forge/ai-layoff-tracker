@@ -580,6 +580,47 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>
     </div>
 
+    <?php
+    // The facet mesh had no on-site entry point. 103 indexable country, state
+    // and industry pages shipped at 2.19.243 reachable only from a company page
+    // or the sitemap, which is most of an internal-linking structure missing
+    // the part that makes it one: links from the page that has the authority.
+    //
+    // alt_facet_index() already returns ONLY what clears
+    // alt_facet_indexable_floor(), so this cannot link a noindex page, and it
+    // reads alt_facet_counts() -- one memoised 6-hour transient keyed on
+    // alt_data_ver, not a query per value. The counts shown are therefore the
+    // same numbers the destination prints, including the strict job-location
+    // basis the country pages use and explain.
+    $alt_browse = function_exists('alt_facet_index') ? alt_facet_index() : array();
+    if ($alt_browse) :
+        $alt_browse_groups = array();
+        foreach ($alt_browse as $alt_f) { $alt_browse_groups[$alt_f['dim']][] = $alt_f; }
+        $alt_browse_labels = array(
+            'country'  => 'By country',
+            'state'    => 'By US state',
+            'industry' => 'By industry',
+        );
+    ?>
+    <section class="alt-browse" aria-labelledby="alt-browse-title">
+        <h2 id="alt-browse-title" class="alt-browse-title">Browse the record</h2>
+        <p class="alt-browse-intro">Every page below lists the source-linked layoff events behind its own figure. Counts are events, not jobs.</p>
+        <?php foreach ($alt_browse_labels as $alt_dim => $alt_label) :
+            if (empty($alt_browse_groups[$alt_dim])) continue; ?>
+            <div class="alt-browse-group">
+                <h3 class="alt-browse-heading"><?php echo esc_html($alt_label); ?></h3>
+                <ul class="alt-browse-list">
+                <?php foreach ($alt_browse_groups[$alt_dim] as $alt_f) : ?>
+                    <li><a href="<?php echo esc_url($alt_f['url']); ?>"><?php
+                        echo esc_html($alt_f['display']); ?><span class="alt-browse-n"><?php
+                        echo esc_html(number_format((int) $alt_f['events'])); ?></span></a></li>
+                <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endforeach; ?>
+    </section>
+    <?php endif; ?>
+
     <div class="alt-journalist">
         <div class="alt-journalist-text">
             <strong>Built for journalists &amp; researchers</strong>
