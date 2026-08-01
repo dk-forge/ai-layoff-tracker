@@ -51,6 +51,19 @@ verified 7,491-URL sitemap and a matched deploy SHA, and still had a citation
 that read as a duplicated link and a footnote that printed 316 times. Both were
 found in under a minute by opening the page at 375px.
 
+**2b. When something looks odd, do not stop at the first explanation that makes
+it fine.** The same day, every company page was rendering WordPress's legacy
+`theme-compat/header.php` (a block theme has no `header.php` for `get_header()`
+to load), shipping a **duplicate `<title>`, the site name as the page's first
+`<h1>`, and no site header, footer or navigation at all** across 34,677 URLs. A
+session looked at that page, saw the bare site name where the header belongs,
+wrote "it looks unstyled" -- and then checked the stylesheets, found
+`layoffs.css` loading and the theme font applied, and concluded it was merely
+minimal. **The first observation was right and the follow-up check answered a
+different question.** "Is the CSS loading" is not "is the header there". When
+the evidence and the explanation disagree, the explanation is the thing to
+doubt.
+
 **3. Measure the premise before you build on it.** Briefs are guesses until
 something checks them. On 2026-08-01, in the sibling repo: a "24 missing
 languages" gap was reproduced at 7x and then a language-neutral control showed
