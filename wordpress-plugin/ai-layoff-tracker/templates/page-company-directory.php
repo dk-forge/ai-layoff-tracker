@@ -153,6 +153,15 @@ $alt_verif = array(
     notice was filed at that source; older notices roll into the state archive.</p>
     <?php endif; ?>
 
+    <?php if (!empty($alt_dir['facet_links'])) : ?>
+        <p class="alt-company-facet-links">Browse the wider record:
+        <?php $alt_parts = array();
+              foreach ($alt_dir['facet_links'] as $alt_fl) {
+                  $alt_parts[] = '<a href="' . esc_url($alt_fl['url']) . '">' . esc_html($alt_fl['display']) . '</a>';
+              }
+              echo implode(', ', $alt_parts); // already escaped above ?>.</p>
+    <?php endif; ?>
+
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 </main>

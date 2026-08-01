@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.238
+ * Version: 2.19.239
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.238');
+define('ALT_VERSION', '2.19.239');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -17,6 +17,7 @@ require_once ALT_PLUGIN_DIR . 'includes/cpt.php';
 require_once ALT_PLUGIN_DIR . 'includes/db.php';
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
+require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-seo.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';
 require_once ALT_PLUGIN_DIR . 'includes/export.php';
@@ -777,6 +778,7 @@ add_action('template_redirect', 'alt_render_chart_embed_route', 1);
  */
 function alt_page_needs_assets() {
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
+    if (function_exists('alt_facet_is_request') && alt_facet_is_request()) return true;
     if (!is_singular()) return false;
     if (is_singular('layoffs')) return true;   // per-entry permalink pages
     $post = get_post();

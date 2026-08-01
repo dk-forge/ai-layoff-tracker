@@ -7,7 +7,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
 - **STATUS:** HELD
-- **HOLDER:** local (Claude Code) #18
+- **HOLDER:** local (Claude Code) #19
 - **SINCE:** 2026-08-01
 - **WORKING ON:** crawlable country / US state / industry pages (audit #9 item 1), mirroring the company-page build
 

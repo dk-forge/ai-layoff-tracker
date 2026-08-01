@@ -4027,9 +4027,47 @@ function alt_api_aggregate(WP_REST_Request $r) {
     });
 }
 
+/**
+ * The blocks alt_api_aggregate_compute() can build, as an opt-in list.
+ *
+ * WHY THIS EXISTS. The full aggregate is ~31 SQL statements, and most of them
+ * are per-tag loops nothing but the tracker's own charts read: `reasons` is 10
+ * separate SUMs, `top_roles` is one per role category, and `map_states` /
+ * `map_countries` re-run `top_states` / `top_countries` at a bigger LIMIT. On
+ * the flagship page that is paid once and cached; measured against production
+ * on 2026-08-01 it is 8.1s for `country=United States` and 19.0s with the
+ * `sourced=1` evidence gate, against a shared host that returned 504 twice on
+ * 2026-07-31. A server-rendered facet page cannot wear that on a cold cache.
+ *
+ * `totals` is not optional: every other block is reported against it, and a
+ * caller that could drop the denominator while keeping a numerator is the
+ * scope-mixing this file spent 2026-07-30 removing.
+ *
+ * DEFAULT IS EVERYTHING. `include` is read only from an explicit request param,
+ * so /aggregate with no `include` returns byte-identical output to before.
+ */
+function alt_aggregate_blocks() {
+    return array('concentration', 'top_industries', 'top_countries', 'top_states',
+                 'map_states', 'map_countries', 'top_roles', 'source_types',
+                 'reasons', 'series', 'leaders', 'repeat_companies', 'facet_counts');
+}
+
 function alt_api_aggregate_compute(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
+    // Opt-in block list. An unrecognised name is dropped rather than honoured,
+    // so a typo narrows nothing silently — it is simply not in the allowlist,
+    // and an `include` that names no valid block falls back to everything.
+    $include = null;
+    $raw_include = (string) $r->get_param('include');
+    if ($raw_include !== '') {
+        $asked = array_filter(array_map('sanitize_key', explode(',', $raw_include)));
+        $valid = array_values(array_intersect($asked, alt_aggregate_blocks()));
+        if ($valid) $include = $valid;
+    }
+    $want = function ($block) use ($include) {
+        return $include === null || in_array($block, $include, true);
+    };
     list($where, $params) = alt_db_where($r);
     // Superset-deduped WHERE: excludes rows marked as a subset of the same
     // event's primary (a company-wide news total sitting on top of its WARN
@@ -4082,9 +4120,9 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // 2026-07-30 Spirit defect one level up (a ±45-day numerator tested against
     // an all-time sum). `headline_jobs` is repeated inside the block on purpose:
     // it is the denominator this numerator belongs to, travelling with it.
-    $conc = $wpdb->get_row(alt_db_prep(
+    $conc = $want('concentration') ? $wpdb->get_row(alt_db_prep(
         "SELECT id, company, job_count, layoff_date, source_type
-         FROM $table WHERE $where_dd ORDER BY job_count DESC, id ASC LIMIT 1", $params));
+         FROM $table WHERE $where_dd ORDER BY job_count DESC, id ASC LIMIT 1", $params)) : null;
 
     // Top-N helpers (each slicer ignores its own dimension). Each entry is
     // [label, total jobs, AI-attributed jobs] so bars can show the AI share.
@@ -4100,12 +4138,38 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         return $out;
     };
 
+    // Per-value EVENT COUNTS for the three facet dimensions, as
+    // {dimension: {value: entries}}, uncapped.
+    //
+    // Its own block rather than a fourth element on the $topN triple, and that
+    // is not a style preference: renderBarList() in layoffs.js already reads
+    // index [3] of these rows as a DISPLAY LABEL (the country flag, the source
+    // type's friendly name), and `top_industries` / `top_states` are handed to
+    // it unmapped. Appending the count there would have silently printed "1,384"
+    // as the name of a bar. A named block cannot collide with a positional one.
+    //
+    // COUNT(*), not SUM(job_count): the facet pages' index floor is a count of
+    // EVENTS for the same reason the company floor is (a job-count floor indexes
+    // only the big employers), and this is the number that decides which facet
+    // URLs enter the sitemap.
+    $facet_counts = array();
+    if ($want('facet_counts')) {
+        foreach (array('country', 'state', 'industry') as $facet_col) {
+            $rows = $wpdb->get_results(alt_db_prep(
+                "SELECT $facet_col k, COUNT(*) n FROM $table
+                  WHERE $where_dd AND $facet_col <> '' GROUP BY $facet_col", $params));
+            $bucket = array();
+            foreach ($rows ?: array() as $row) { $bucket[(string) $row->k] = (int) $row->n; }
+            $facet_counts[$facet_col] = $bucket;
+        }
+    }
+
     // Reason breakdown (9 fixed tags → one SUM each)
     $reason_tags = array('ai_automation','possible_ai','revenue_decline','restructuring',
         'merger_acquisition','offshoring','product_discontinuation','cost_reduction','macroeconomic','closure');
     list($rw, $rp) = alt_db_where($r, 'reasons');
     $reasons = array();
-    foreach ($reason_tags as $tag) {
+    foreach ($want('reasons') ? $reason_tags : array() as $tag) {
         $val = (int) $wpdb->get_var(alt_db_prep(
             "SELECT COALESCE(SUM(job_count),0) FROM $table WHERE $rw AND superset_of = 0 AND reason_tags LIKE %s",
             array_merge($rp, array('%,' . $tag . ',%'))));
@@ -4118,7 +4182,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // matches the topN triple so the same bar list can chart AI-vs-all.
     // 'unknown' (checked, roles not stated) is deliberately not charted.
     $top_roles = array();
-    if (function_exists('alt_role_categories')) {
+    if ($want('top_roles') && function_exists('alt_role_categories')) {
         foreach (alt_role_categories() as $slug => $label) {
             $row = $wpdb->get_row(alt_db_prep(
                 "SELECT COALESCE(SUM(job_count),0) v,
@@ -4133,7 +4197,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // Monthly series (all jobs + AI jobs) for trend + cumulative charts.
     // CONCAT(YEAR,LPAD(MONTH)) avoids '%' so it's safe whether or not this SQL
     // is run through $wpdb->prepare (which would otherwise eat DATE_FORMAT's %).
-    $months = $wpdb->get_results(alt_db_prep(
+    $months = !$want('series') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT CONCAT(YEAR(layoff_date),'-',LPAD(MONTH(layoff_date),2,'0')) m,
                 SUM(job_count) jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
@@ -4158,7 +4222,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // company (e.g. a company that legally filed WARN notices in six different
     // cities/states) read as the distinct events they are, not as duplicates.
     list($w2, $p2) = alt_db_where($r);
-    $top_events = $wpdb->get_results(alt_db_prep(
+    $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT company, job_count, layoff_date, ai_explicit, state, country
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 10", $p2));
     $leaders = array();
@@ -4179,7 +4243,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // showed "Twitch - 89 rounds". Resolve the label from the company directory
     // (which knows the canonical "Amazon" for the key), falling back to the raw
     // name only when the directory has no entry.
-    $repeat_rows = $wpdb->get_results(alt_db_prep(
+    $repeat_rows = !$want('repeat_companies') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT company_key, MAX(company) company, COUNT(*) n, COALESCE(SUM(job_count),0) jobs
          FROM $table WHERE $where AND company_key <> ''
          GROUP BY company_key HAVING COUNT(*) >= 2
@@ -4244,15 +4308,16 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'min_date'   => $totals->min_date,
             'max_date'   => $totals->max_date,
         ),
-        'top_industries' => $topN('industry', 'industry'),
-        'top_countries'  => $topN('country', 'country'),
-        'top_states'     => $topN('state', 'state'),
+        'top_industries' => $want('top_industries') ? $topN('industry', 'industry') : array(),
+        'top_countries'  => $want('top_countries') ? $topN('country', 'country') : array(),
+        'top_states'     => $want('top_states') ? $topN('state', 'state') : array(),
         // Uncapped-ish sets for the map so every state/country with data shows
         // a bubble (the top-24 lists above are for the ranked bar cards).
-        'map_states'     => $topN('state', 'state', 60),
-        'map_countries'  => $topN('country', 'country', 260),
+        'map_states'     => $want('map_states') ? $topN('state', 'state', 60) : array(),
+        'map_countries'  => $want('map_countries') ? $topN('country', 'country', 260) : array(),
         'top_roles'      => $top_roles,
-        'source_types'   => $topN('source_type', 'sources'),
+        'facet_counts'   => $facet_counts,
+        'source_types'   => $want('source_types') ? $topN('source_type', 'sources') : array(),
         'reasons'        => $reasons,
         'series'         => $series,
         'leaders'        => $leaders,

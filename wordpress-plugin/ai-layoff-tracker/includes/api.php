@@ -488,6 +488,32 @@ function alt_normalize_roles($value) {
 }
 
 /**
+ * US state code => display name. The INVERSE of alt_normalize_state().
+ *
+ * One definition, because two lists drift and this one already had three
+ * copies: page-press.php carried two byte-identical inline arrays and the
+ * facet pages needed a third. It is the source of the state page slugs
+ * (`/state-layoffs/california/`), so an edit here moves a live URL — the codes
+ * are the stored values and must not be renamed, and DC is spelled the way the
+ * press page has always spelled it.
+ */
+function alt_us_state_names() {
+    return array(
+        'AL'=>'Alabama','AK'=>'Alaska','AZ'=>'Arizona','AR'=>'Arkansas','CA'=>'California',
+        'CO'=>'Colorado','CT'=>'Connecticut','DE'=>'Delaware','DC'=>'Washington, D.C.',
+        'FL'=>'Florida','GA'=>'Georgia','HI'=>'Hawaii','ID'=>'Idaho','IL'=>'Illinois',
+        'IN'=>'Indiana','IA'=>'Iowa','KS'=>'Kansas','KY'=>'Kentucky','LA'=>'Louisiana',
+        'ME'=>'Maine','MD'=>'Maryland','MA'=>'Massachusetts','MI'=>'Michigan','MN'=>'Minnesota',
+        'MS'=>'Mississippi','MO'=>'Missouri','MT'=>'Montana','NE'=>'Nebraska','NV'=>'Nevada',
+        'NH'=>'New Hampshire','NJ'=>'New Jersey','NM'=>'New Mexico','NY'=>'New York',
+        'NC'=>'North Carolina','ND'=>'North Dakota','OH'=>'Ohio','OK'=>'Oklahoma','OR'=>'Oregon',
+        'PA'=>'Pennsylvania','RI'=>'Rhode Island','SC'=>'South Carolina','SD'=>'South Dakota',
+        'TN'=>'Tennessee','TX'=>'Texas','UT'=>'Utah','VT'=>'Vermont','VA'=>'Virginia',
+        'WA'=>'Washington','WV'=>'West Virginia','WI'=>'Wisconsin','WY'=>'Wyoming',
+    );
+}
+
+/**
  * Return a 2-letter US state code, or '' if not a recognizable US state.
  * Accepts codes ("ca") or full names ("California").
  */

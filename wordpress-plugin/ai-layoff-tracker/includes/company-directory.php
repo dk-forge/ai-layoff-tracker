@@ -177,6 +177,11 @@ function alt_company_directory_data($slug) {
     $fetched = alt_company_directory_event_rows($company['company_key']);
     $event_rows = array(); $total_jobs = 0; $ai_events = 0;
     $first_date = ''; $last_date = ''; $countries = array();
+    // Modal country / state / industry across this employer's events, so the
+    // page can link OUT to the three facet pages it belongs to. Counted rather
+    // than taken from the first row: an employer's one-off notice in another
+    // state should not decide which state page it points at.
+    $tally = array('country' => array(), 'state' => array(), 'industry' => array());
     foreach ($fetched['rows'] as $row) {
         $sources = alt_company_directory_row_sources($row);
         if (!$sources) continue;   // no reachable source, no row on this page
@@ -191,9 +196,36 @@ function alt_company_directory_data($slug) {
         }
         $country = trim((string) ($row['country'] ?? ''));
         if ($country !== '') $countries[$country] = true;
+        foreach ($tally as $dim => $_) {
+            $v = trim((string) ($row[$dim === 'country' ? 'country' : $dim] ?? ''));
+            if ($dim === 'state') $v = strtoupper($v);
+            if ($v === '') continue;
+            $tally[$dim][$v] = ($tally[$dim][$v] ?? 0) + 1;
+        }
     }
     if (!$event_rows) return null;
+    // Links out to the country / US state / industry pages this employer's
+    // records belong to. Only to facets that HAVE an indexable page, so a
+    // company page never links into a thin one, and said once at the foot of
+    // the page rather than per event (the note that printed 316 times on Boeing
+    // is the standing lesson here).
+    $facet_links = array();
+    if (function_exists('alt_facet_url') && function_exists('alt_facet_count')) {
+        $catalogue = alt_facet_catalogue();
+        foreach ($tally as $dim => $counts) {
+            if (!$counts) continue;
+            arsort($counts);
+            $top = (string) key($counts);
+            if (!isset($catalogue[$dim][$top])) continue;
+            if (alt_facet_count($dim, $top) < alt_facet_indexable_floor()) continue;
+            $facet_links[] = array(
+                'display' => (string) $catalogue[$dim][$top],
+                'url'     => alt_facet_url($dim, $catalogue[$dim][$top]),
+            );
+        }
+    }
     $data = array(
+        'facet_links' => $facet_links,
         'company'     => $company,
         'events'      => $event_rows,
         'total_jobs'  => $total_jobs,

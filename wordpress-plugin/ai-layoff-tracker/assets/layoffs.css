@@ -1414,6 +1414,41 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 }
 .alt-company-entry-link { margin: 14px 0 0; font-size: 14px; }
 
+/* ---------------- Country / state / industry pages ---------------- */
+
+/* Shares the company page's event-list rules deliberately (same markup, same
+   375px bar). Only the facet-specific blocks are declared here. */
+.alt-facet-page { max-width: 860px; }
+.alt-facet-summary { color: var(--alt-ink-2); font-size: 14px; margin: 0 0 14px; }
+.alt-facet-basis { color: var(--alt-muted); font-size: 13px; margin: 0 0 22px; }
+.alt-facet-total { font-size: 16px; color: var(--alt-ink-2); line-height: 1.9; }
+.alt-facet-total strong { color: var(--alt-ink); font-size: 24px; font-variant-numeric: tabular-nums; }
+.alt-facet-page h2 { font-size: 17px; margin: 26px 0 10px; }
+.alt-facet-page .alt-company-event-list h3 { margin: 0 0 6px; font-size: 16px; }
+
+/* A two-column link list that collapses to one column rather than scrolling
+   sideways. `minmax(0, 1fr)` is load-bearing: a grid track's default min-width
+   is auto, so one long country or employer name would otherwise widen the track
+   past the viewport and bleed the whole page on a phone. */
+.alt-facet-links {
+    list-style: none; margin: 0 0 6px; padding: 0;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 20px;
+}
+.alt-facet-links li {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 6px 0; border-bottom: 1px solid var(--alt-grid); font-size: 14px;
+    min-width: 0;
+}
+/* The name ellipsizes and the value keeps its intrinsic width. Without
+   `flex: 0 0 auto` on the value both children shrink in proportion to their
+   base size, the larger value absorbs the shrink, and its text spills while the
+   name never truncates. That exact defect shipped on the bar lists (2.19.220). */
+.alt-facet-links li > a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alt-facet-links-val { flex: 0 0 auto; color: var(--alt-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+    .alt-facet-links { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---------------- Export shortcode ---------------- */
 
 .alt-export-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
