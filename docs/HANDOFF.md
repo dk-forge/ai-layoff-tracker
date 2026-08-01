@@ -30,7 +30,77 @@ The push itself is the real gate: git rejects the second concurrent push, so
 whoever lands the "claim" commit first wins and the other must rebase and see
 the baton is taken.
 
+## How to work on this repo without publishing a wrong number
+
+Written 2026-08-01, from the mistakes that actually happened rather than from
+principle. Every line below is something that went wrong here, to a session
+that believed it was being careful. None of it is about being clever; it is
+about which evidence is admissible.
+
+**1. Read facts from `origin/main`, never from the local working tree.** The
+shared checkout runs behind and holds other sessions' uncommitted files. On
+2026-08-01 it was **180 commits stale**, and two numbers were reported to the
+owner from it before anyone noticed: a collector called dead that had run and
+stored 48 rows, and a row count off by 700. `git show origin/main:path` costs
+one command. A stale tree does not announce itself; it just answers confidently.
+
+**2. Look at the page.** A green deploy proves an upload. A passing test proves
+an assertion. A sitemap count proves a number. **None of them can see two links
+that say the same thing.** The company pages shipped with 400 tests green, a
+verified 7,491-URL sitemap and a matched deploy SHA, and still had a citation
+that read as a duplicated link and a footnote that printed 316 times. Both were
+found in under a minute by opening the page at 375px.
+
+**3. Measure the premise before you build on it.** Briefs are guesses until
+something checks them. On 2026-08-01, in the sibling repo: a "24 missing
+languages" gap was reproduced at 7x and then a language-neutral control showed
+**five sixths of it was which feeds are wired, not which languages are read**;
+and a geography fix, applied as briefed, would have stamped a wrong country on
+the exact rows it was meant to fix, because `en-GB` returns **100% the same
+items as `en-US`**. An agent that measures and contradicts the brief is doing
+the job. Say so, then build the part that survived.
+
+**4. A green run can do nothing at all.** `deploy-plugin.yml` defaults to
+`dry_run=true`: green, zero bytes uploaded. `collect-structured.yml` succeeded
+six times while the collectors inside it had never produced a health row. Ask
+what the run *did*, not whether it passed, and prefer an artifact you can count
+over an exit code.
+
+**5. Absence of a signal is not a pass.** PASS / FAIL / **UNKNOWN** are three
+states and this repo enforces that in `data_integrity.py`. The corollary for
+sampling: **0 of 40 is not evidence of zero.** A session declared the archiver
+broken on "0 of 40 rows have `archive_url`" when the real rate was 72/17,533 —
+at 0.4%, a 40-row sample finds nothing about 86% of the time. Compute what your
+sample could have detected before concluding from it.
+
+**6. Cite the file when briefing an agent.** An agent was briefed to design
+against the Form D and M&A overstatements; those are the SIBLING repo's
+incidents. It grepped, found nothing, said so, and designed against this repo's
+real ones. It was right and the brief was wrong. Memory across two similar
+projects is exactly where this fails.
+
+**7. Fix the cause, not the symptom, and check the escape hatch too.** Five
+failed tickets kept `drain-writers` red; `-f resolve=all` reported success and
+cleared none of them, because "all" iterated only orphans while failed tickets
+needed an exact ID — and the help text promised otherwise. **The command that
+exists to clear a permanently-red job was itself keeping it red.** When a
+documented remedy does not work, read it before running it again.
+
+**8. Say what you did not verify, in the same breath as what you did.** Every
+entry in the log below has an UNVERIFIED line. That is not hedging; it is the
+only thing that tells the next session where to look first.
+
 ## Handoff log (newest first — what each session did + what's next)
+- 2026-08-01 local (Claude Code) #18: **HEADLINE GUARDRAILS (7 live invariants, the Spirit class made structurally impossible), and two company-page defects that only rendering the page could find. 2.19.235 -> 2.19.238, all deployed and verified live.**
+  **THE SPIRIT CLASS IS NOW IMPOSSIBLE TO WRITE, not merely tested for.** Spirit was not a bad row: every row in it was correct. A +/-45-day numerator was tested against a six-year cumulative denominator, and a denominator that only grows eventually makes any real cluster look implausible (64 companies double-counting 60,367 jobs; 43 companies with 113,786 real jobs suppressed to zero, Boeing's genuine 17,000 among them). **No magnitude bound would ever have caught that**, which is why the fix is structural: `alt_reconcile_supersets()` pass (1) can no longer compute a sum at all. Its denominator can only come from `alt_dedup_window()`, whose constructor IS the window filter, with no argument that yields an unwindowed total, no default window, and anything wider than `ALT_DEDUP_MAX_WINDOW_DAYS` (200) rejected as an all-time sum in disguise. The >=50% verdict lives only in `alt_dedup_subset_verdict()`, which THROWS on a denominator not carrying window scope. Proved behaviour-identical to the old inline version over 5,469 randomised company groups / 3,914 marks, zero mismatches.
+  **THE BRIEF WAS WRONG AND THE AGENT SAID SO, which is the behaviour to keep.** It was briefed to design against the Form D ($86bn) and M&A ($14bn) overstatements. Those are **the SIBLING talent tracker's incidents** (`../AI Talent Intelligence Dashboard/docs/HANDOVER.md`), not this repo's; this tracker counts jobs, not dollars. It grepped, found nothing, said so, and designed against the incidents this repo actually logs: RI 98,912 (real 9,891, count parser stripped non-digits), NJ **2.4 trillion** jobs (digit-concatenated county list), AT&T 78,788 (a Florida TEST notice), Coal India 73,800 (a by-2050 projection), Intuit 17 (real ~3,000, "17% of staff"), Oracle counted twice, and Spirit. **Never brief an agent on incidents from memory; cite the file.**
+  **THREE CHECKS, in the existing `railway/data_integrity.py` registry** (one definition, imported by the test, ops_status and the digest; no parallel set). `headline_concentration`: the largest single counted row stays under a measured share bound (trailing-90d worldwide 20% against a live 3.51%, AI all-time 25% against 9.98%, worldwide all-time 1% against 0.30%, US all-time 2% against 0.86%) AND the block's denominator equals `totals.jobs`, so numerator and denominator travel together. `headline_movement`: day-over-day against a committed `railway/headline_baseline.json`, passing only if the rows that arrived or LEFT carry the move; the recorder **refuses to advance a failing slice**, because recording it makes today's defect tomorrow's normal. `dedup_denominator_scoped`: asserts the structural guard above is still in db.php and the reconciler still owns no local sum.
+  **THE HONEST CEILING, written into the docstring rather than glossed:** the movement guard does NOT catch Spirit itself. A 4,000-job un-match on one company is inside daily noise at headline scale, and a bound tight enough to see it would fire every day. That drift is the per-company invariants' job.
+  **`Result.pending` is a fourth word for a third state.** UNKNOWN that this environment cannot answer YET (build predates the field; baseline not yet written). Still UNKNOWN on the dashboard, the ledger and the exit code; it only stops every push reddening for the two minutes an FTPS deploy takes. `ops_status` prints `NOT WATCHING YET` and exits 3. Also fixed `Report.one_line()`, which rendered a shape guard's failure as `"... = None"` — the alert would have carried the label with the cause removed.
+  **TWO COMPANY-PAGE DEFECTS THAT 400 TESTS, A GREEN DEPLOY AND A 7,491-URL SITEMAP COUNT ALL MISSED**, found by opening the page in a browser at 375px. (1) Boeing's first event listed "CA WARN notice (official WARN list; the notice was filed here...)" **twice**. The two hrefs are genuinely different (the state's rolling xlsx and its WARN landing page) and citing both is correct, but identical words pointing at different places reads as a duplicate-link bug. Links now say `(data file)` / `(state page)`. (2) That explanation then printed **316 times** on one page, roughly 28KB. Moved to one page-level note rendered only when the page cites a WARN source: Boeing went 366,153 -> 330,584 bytes. **The general rule: curl proves a page exists and says what you expect; only rendering it shows what it looks like to a reader.**
+  **VERIFIED LIVE:** ver=2.19.238; `concentration` block present with `headline_jobs == totals.jobs`; `data_integrity.py` 7/7; `ops_status.py` ALL CLEAR exit 0 with 7 checks; `data-integrity.yml` green with the baseline committed on attempt 1; Boeing page 375px `scrollWidth == clientWidth` (no mobile overflow), unique meta description carrying real figures, canonical, `follow, index`, and BreadcrumbList + Dataset + CollectionPage JSON-LD. 478 offline tests green.
+  **UNVERIFIED:** desktop rendering of the company pages was not seen (the browser pane here is fixed at mobile width); `move_floor` values are reasoned, not measured, because until `headline_baseline.json` existed nothing had recorded this site's day-over-day deltas — RUNBOOK says raise a noisy floor and write down why, never delete it and never fit it to today's move.
+  **NOT DONE / NEXT:** (a) **#9 item 1 is IN FLIGHT** — a session is building the country / state-city / industry pages on the company-page template; if that agent did not land, it is the biggest SEO item left. (b) The private benchmark (`scratchpad/bm-live.html`) was NOT refreshed and needs the owner: it is local-only and its competitor figures are hand-maintained. (c) #9 items 4, 5, 6 (137KB inline CSS) and 7 (og:image is a 512x512 favicon) remain. (d) `recall_precision.py` still has no threshold and always exits 0.
 - 2026-08-01 local (Claude Code) #17: **ONE COMPANY PAGE PER EMPLOYER. 29 pages -> 34,677, of which 7,491 are indexable. 2.19.233 + 2.19.234, both deployed and verified live.**
   **THE GATE WAS NEVER THE PROBLEM, and the audit (#9 item 3) had already said so.** 29 employers had a page against 38,086 employers that have at least one source-linked canonical event, and 17 of the 24 largest by event count had none. The indexability rule (>=2 sourced events) was sound; the THROUGHPUT was the defect. The autopilot considered only keys with >=3 sourced events and admitted **25 a week**, so the backlog grew faster than the indexer drained it. Nothing was misconfigured. The mechanism could not finish and had no way to say so.
   **NO NEW ROUTE.** `/company-layoffs/{slug}/` already existed with alias 301s, breadcrumbs and a self-served sitemap. Minting a second URL space would have orphaned the 29 live pages and their accumulated signals for no gain. What changed is coverage, correctness and the SEO head.
