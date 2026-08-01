@@ -51,23 +51,27 @@ $alt_bd_titles = array(
         <?php echo (int) alt_facet_indexable_floor(); ?> or more source-linked events.</p>
     <?php endif; ?>
 
-    <p class="alt-facet-total">
-        <strong><?php echo number_format((int) $alt_f['entries']); ?></strong> recorded events
+    <?php // One block per statistic, not <br>-separated lines. The figure is set
+          // much larger than the label, so a <br> layout sets an outsized
+          // line-height for the whole run and a label that wraps leaves its tail
+          // stranded on a line of its own, reading as a separate item. ?>
+    <div class="alt-facet-total">
+        <p><strong><?php echo number_format((int) $alt_f['entries']); ?></strong> recorded events</p>
         <?php if ((int) $alt_f['jobs'] > 0) : ?>
-            <br><strong><?php echo number_format((int) $alt_f['jobs']); ?></strong> jobs across
+            <p><strong><?php echo number_format((int) $alt_f['jobs']); ?></strong> jobs across
             <?php echo number_format((int) $alt_f['companies']); ?>
-            <?php echo (int) $alt_f['companies'] === 1 ? 'employer' : 'employers'; ?>
+            <?php echo (int) $alt_f['companies'] === 1 ? 'employer' : 'employers'; ?></p>
         <?php endif; ?>
         <?php if ((int) $alt_f['ai_entries'] > 0) : ?>
-            <br><strong><?php echo number_format((int) $alt_f['ai_entries']); ?></strong>
+            <p><strong><?php echo number_format((int) $alt_f['ai_entries']); ?></strong>
             <?php echo $alt_f['ai_entries'] === 1 ? 'event the employer' : 'events the employer'; ?>
-            attributed to AI in its own words
+            attributed to AI in its own words</p>
         <?php endif; ?>
         <?php if ($alt_f['min_date'] !== '' && $alt_f['max_date'] !== '') : ?>
-            <br>Covering <?php echo esc_html(substr($alt_f['min_date'], 0, 4)); ?>
-            to <?php echo esc_html(substr($alt_f['max_date'], 0, 4)); ?>
+            <p class="alt-facet-total-range">Covering <?php echo esc_html(substr($alt_f['min_date'], 0, 4)); ?>
+            to <?php echo esc_html(substr($alt_f['max_date'], 0, 4)); ?></p>
         <?php endif; ?>
-    </p>
+    </div>
 
     <?php // The basis, said plainly, because the tracker's results list uses a
           // different one on purpose and a reader comparing the two numbers
@@ -143,7 +147,13 @@ $alt_bd_titles = array(
                 <?php echo !empty($alt_event['announced'])
                     ? 'Announcement-stage record.'
                     : 'Filed or independently reported record.'; ?>
-                <?php if ($alt_loc !== '' && $alt_f['dim'] !== 'state') : ?>Location: <?php echo esc_html($alt_loc); ?>.<?php endif; ?>
+                <?php // Only when it ADDS something. On a state page every row is
+                      // in that state, and on the Germany page alt_short_location()
+                      // returns "Germany" for every row, so the line read
+                      // "Location: Germany." 50 times. On the United States page it
+                      // returns the state code, which is genuinely new information.
+                      if ($alt_loc !== '' && $alt_f['dim'] !== 'state'
+                          && strcasecmp($alt_loc, (string) $alt_f['display']) !== 0) : ?>Location: <?php echo esc_html($alt_loc); ?>.<?php endif; ?>
                 <?php if (!empty($alt_event['industry']) && $alt_f['dim'] !== 'industry') : ?>Industry: <?php echo esc_html($alt_event['industry']); ?>.<?php endif; ?>
                 <?php if ($alt_level !== '') : ?>Evidence: <?php echo esc_html($alt_level); ?>.<?php endif; ?>
             </p>

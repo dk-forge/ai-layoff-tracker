@@ -4043,13 +4043,24 @@ function alt_api_aggregate(WP_REST_Request $r) {
  * caller that could drop the denominator while keeping a numerator is the
  * scope-mixing this file spent 2026-07-30 removing.
  *
- * DEFAULT IS EVERYTHING. `include` is read only from an explicit request param,
- * so /aggregate with no `include` returns byte-identical output to before.
+ * DEFAULT IS EVERYTHING THAT EXISTED BEFORE THIS PARAM. `include` is read only
+ * from an explicit request param, so /aggregate with no `include` returns
+ * byte-identical output to before.
+ *
+ * `facet_counts` is the one exception and is OPT-IN ONLY. It is new, nothing
+ * that reads /aggregate today expects it, and it is three grouped COUNTs over
+ * the whole table. Defaulting it on would have put that cost on the flagship
+ * tracker page's cold aggregate to serve a block only the facet-page sitemap
+ * reads. A new block should earn its place in the default, not inherit it.
  */
 function alt_aggregate_blocks() {
+    return array_merge(alt_aggregate_default_blocks(), array('facet_counts'));
+}
+
+function alt_aggregate_default_blocks() {
     return array('concentration', 'top_industries', 'top_countries', 'top_states',
                  'map_states', 'map_countries', 'top_roles', 'source_types',
-                 'reasons', 'series', 'leaders', 'repeat_companies', 'facet_counts');
+                 'reasons', 'series', 'leaders', 'repeat_companies');
 }
 
 function alt_api_aggregate_compute(WP_REST_Request $r) {
@@ -4066,7 +4077,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         if ($valid) $include = $valid;
     }
     $want = function ($block) use ($include) {
-        return $include === null || in_array($block, $include, true);
+        return in_array($block, $include === null ? alt_aggregate_default_blocks() : $include, true);
     };
     list($where, $params) = alt_db_where($r);
     // Superset-deduped WHERE: excludes rows marked as a subset of the same

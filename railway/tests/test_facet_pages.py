@@ -153,9 +153,17 @@ class SlicerDimensionTests(unittest.TestCase):
 class AggregateIncludeTests(unittest.TestCase):
     """The opt-in block list must never change /aggregate's default output."""
 
-    def test_default_is_everything(self):
+    def test_default_is_everything_that_existed_before(self):
         self.assertIn("$include = null;", DB_PHP)
-        self.assertIn("return $include === null || in_array($block, $include, true);", DB_PHP)
+        self.assertIn("$include === null ? alt_aggregate_default_blocks() : $include", DB_PHP)
+
+    def test_facet_counts_is_opt_in_and_not_a_default(self):
+        # Three grouped COUNTs over the whole table. Defaulting it on would put
+        # that cost on the flagship tracker page's cold aggregate to serve a
+        # block only the facet sitemap reads.
+        default = DB_PHP.split("function alt_aggregate_default_blocks()")[1].split("\n}")[0]
+        self.assertNotIn("facet_counts", default)
+        self.assertIn("array_merge(alt_aggregate_default_blocks(), array('facet_counts'))", DB_PHP)
 
     def test_an_include_naming_no_valid_block_falls_back_to_everything(self):
         self.assertIn("if ($valid) $include = $valid;", DB_PHP)
@@ -174,8 +182,10 @@ class AggregateIncludeTests(unittest.TestCase):
         self.assertNotIn("'include'", names)
 
     def test_every_gated_block_is_declared(self):
-        declared = set(re.findall(r"'([a-z_]+)'", DB_PHP.split(
-            "function alt_aggregate_blocks()")[1].split("\n}")[0]))
+        declared = set()
+        for fn in ("alt_aggregate_blocks", "alt_aggregate_default_blocks"):
+            body = DB_PHP.split("function %s()" % fn)[1].split("\n}")[0]
+            declared |= set(re.findall(r"'([a-z_]+)'", body))
         used = set(re.findall(r"\$want\('([a-z_]+)'\)", DB_PHP))
         self.assertTrue(used, "expected gated blocks")
         self.assertEqual(used - declared, set(),

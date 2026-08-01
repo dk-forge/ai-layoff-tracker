@@ -1421,8 +1421,10 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-facet-page { max-width: 860px; }
 .alt-facet-summary { color: var(--alt-ink-2); font-size: 14px; margin: 0 0 14px; }
 .alt-facet-basis { color: var(--alt-muted); font-size: 13px; margin: 0 0 22px; }
-.alt-facet-total { font-size: 16px; color: var(--alt-ink-2); line-height: 1.9; }
+.alt-facet-total { margin: 0 0 18px; }
+.alt-facet-total p { margin: 0 0 6px; font-size: 16px; color: var(--alt-ink-2); line-height: 1.45; }
 .alt-facet-total strong { color: var(--alt-ink); font-size: 24px; font-variant-numeric: tabular-nums; }
+.alt-facet-total-range { color: var(--alt-muted); font-size: 14px; }
 .alt-facet-page h2 { font-size: 17px; margin: 26px 0 10px; }
 .alt-facet-page .alt-company-event-list h3 { margin: 0 0 6px; font-size: 16px; }
 
