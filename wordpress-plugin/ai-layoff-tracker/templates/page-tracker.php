@@ -53,7 +53,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
     <div class="alt-narrative" id="alt-narrative"></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     <?php $alt_warn_states = function_exists('alt_state_warn_urls') ? count(alt_state_warn_urls()) : 42; ?>
-    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>every SEC 8-K filing, all 50 US states (direct WARN feeds from <?php echo (int) $alt_warn_states; ?>), and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>SEC 8-K filings, all 50 US states (direct WARN feeds from <?php echo (int) $alt_warn_states; ?>), and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
     <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
@@ -482,6 +482,17 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
             <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo (int) $alt_warn_states; ?> US states and DC, Eurofound ERM for the EU), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News, allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
+            <p class="alt-muted"><b>How complete is that, measured?</b> We
+            enumerated every SEC 8-K filed between 1 July 2025 and 30 June 2026
+            whose structured filing header carries Item 2.05 and that states an
+            absolute number of affected employees, then checked how many appear
+            here. <b>24 of 57</b>, or 42% (95% confidence interval 30% to 55%).
+            So this is a floor and not a census, and it is why the page does not
+            claim to hold every filing. Where a count is published, it is
+            accurate: 38 of 39 checked figures appear verbatim in the cited
+            source. That measurement covers one source family over one year and
+            says nothing about private employers, non-US events, or the WARN and
+            news routes, which are counted separately.</p>
             <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
         </div>
     </details>
