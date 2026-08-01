@@ -79,6 +79,15 @@ class DedupLiveRegression(unittest.TestCase):
             self.skipTest(f"live API unreachable ({result.detail})")
         if "503" in result.detail:
             self.skipTest("site is in its deploy maintenance window (HTTP 503)")
+        if getattr(result, "pending", False):
+            # The site answered, but the thing this guard reads is not there
+            # yet: a build that predates the field, or a baseline the daily job
+            # has not written. Reddening every push for the two minutes an FTPS
+            # deploy takes would train people to ignore this file. It is still
+            # UNKNOWN in ops_status [3], still UNKNOWN on the health ledger, and
+            # data-integrity.yml still exits 3 (a red run, which emails), so a
+            # guard that never arms cannot hide here.
+            self.skipTest(f"not provisioned yet, NOT passing: {result.detail}")
         self.fail(f"{result.inv.label}: {result.detail} — server regression, not a blip")
 
     def test_coinbase_counts_once(self):
@@ -108,28 +117,70 @@ class DedupLiveRegression(unittest.TestCase):
         # The trashed+suppressed FL test notice (AT&T 78,788) must stay gone.
         self._assert("att_no_fake_outlier")
 
+    def test_no_single_row_carries_a_headline(self):
+        # The shape guard the four above cannot be: they know four events by
+        # name, this one knows none and asks the question anyway — how much of
+        # this published number is one line? The RI 98,912 misparse, the AT&T
+        # 78,788 test notice and the Coal India by-2050 projection each read
+        # 25-34% of the trailing-90-day headline.
+        self._assert("headline_concentration")
+
+    def test_no_headline_moves_without_rows_to_explain_it(self):
+        # A published total that moves when the row population did not is
+        # something re-scoring already-published rows: a mass re-mark, a bad
+        # purge-reload, an unannounced correction.
+        self._assert("headline_movement")
+
+    def test_dedup_cannot_use_an_all_time_denominator(self):
+        # Structural, and offline: asserts db.php still makes the 2026-07-30
+        # Spirit comparison unwritable (no local sum in the reconciler; the
+        # denominator can only come from alt_dedup_window(); the verdict throws
+        # on anything not window-scoped).
+        self._assert("dedup_denominator_scoped")
+
     def test_every_registered_invariant_is_asserted(self):
         # Adding an invariant to the shared registry must not silently skip CI.
         asserted = {"coinbase_news_vs_news", "spirit_news_vs_warn",
-                    "tyson_warn_revision", "att_no_fake_outlier"}
+                    "tyson_warn_revision", "att_no_fake_outlier",
+                    "headline_concentration", "headline_movement",
+                    "dedup_denominator_scoped"}
         missing = {i.key for i in INVARIANTS} - asserted
         self.assertFalse(missing, (
             f"data_integrity.INVARIANTS gained {sorted(missing)} with no test method here. "
             f"ops_status would report it but CI would not fail on it — add a test_ method."))
 
 
+LIVE_ONLY = tuple(i for i in INVARIANTS if getattr(i, "reads_live_data", True))
+
+
 class DegradationContract(unittest.TestCase):
     """Offline unit tests for the honest-degradation rules. These need no
     network, so they still run (and still protect the contract) in the CI job
-    that has no egress."""
+    that has no egress.
+
+    They are scoped to the invariants that READ THE LIVE SITE (`LIVE_ONLY`).
+    "A dead network can never produce a pass" is a claim about those. The
+    structural guard over db.php in this checkout is correct to pass with no
+    network at all — including it here would turn a true statement about the
+    network into a false one about the whole registry."""
 
     def test_unreachable_is_unknown_never_pass(self):
         def dead(url, timeout):
             raise OSError("Network is unreachable")
-        report = data_integrity.check_all(fetch=dead)
+        report = data_integrity.check_all(fetch=dead, invariants=LIVE_ONLY)
         self.assertEqual(report.verdict, UNKNOWN)
         self.assertEqual(report.passed, [])
         self.assertTrue(all(r.transport for r in report.unknown))
+
+    def test_a_structural_guard_is_not_excused_by_a_dead_network(self):
+        # The other half of the same rule: a network outage must not turn the
+        # db.php guard into a skip. It reads a file; it answers either way.
+        def dead(url, timeout):
+            raise OSError("Network is unreachable")
+        report = data_integrity.check_all(fetch=dead, invariants=INVARIANTS)
+        structural = [r for r in report.results if r.inv.key == "dedup_denominator_scoped"]
+        self.assertEqual(len(structural), 1)
+        self.assertIn(structural[0].state, (PASS, FAIL))
 
     def test_empty_payload_is_unknown_not_pass(self):
         # The sibling repo's failure mode in miniature: a response that carries

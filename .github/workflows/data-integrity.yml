@@ -1,7 +1,9 @@
 name: Live data-integrity check
 
-# Asserts that known duplicate events still count ONCE on the LIVE site, and
-# publishes the verdict to the public health ledger.
+# Asserts that known duplicate events still count ONCE on the LIVE site, that no
+# single row is carrying a published headline, and that no headline has moved in
+# a way the rows do not explain — then publishes the verdict to the public health
+# ledger and records today's figures as tomorrow's baseline.
 #
 # WHY THIS EXISTS SEPARATELY FROM tests.yml
 # -----------------------------------------
@@ -31,12 +33,17 @@ concurrency:
   group: data-integrity
   cancel-in-progress: false
 
+permissions:
+  contents: write   # commit railway/headline_baseline.json
+
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -54,4 +61,49 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
         run: |
           set -o pipefail
-          python data_integrity.py --report | tee "$GITHUB_STEP_SUMMARY"
+          python data_integrity.py --report --record-baseline | tee "$GITHUB_STEP_SUMMARY"
+
+      # THE BASELINE THIS RUN JUST OBSERVED.
+      #
+      # headline_movement compares each published headline against what it read
+      # yesterday, and that comparison has to survive the runner being thrown
+      # away — so the observation is committed. It is data, not code: the deploy
+      # workflow is path-filtered to wordpress-plugin/, so this commit ships
+      # nothing to the site.
+      #
+      # `!cancelled()` and not the default success gate: a run that FAILED is
+      # exactly when this must still happen. record_baseline() refuses to
+      # advance a FAILING slice (recording it would make the defect tomorrow's
+      # normal) but does advance the slices that passed, so one bad headline
+      # cannot freeze the others' baselines into staleness.
+      - name: Commit the headline baseline
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          for attempt in 1 2 3; do
+            git add railway/headline_baseline.json 2>/dev/null || true
+            if git diff --staged --quiet; then
+              echo "Baseline unchanged."
+              exit 0
+            fi
+            git commit -q -m "data-integrity: headline baseline $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push origin HEAD:main; then
+              echo "Recorded on attempt $attempt."
+              exit 0
+            fi
+            # Re-derive rather than replay: reset onto main and observe again.
+            # A baseline is a reading of the live site, so re-taking it is always
+            # correct and never merges two runs' numbers into one row.
+            echo "Push rejected (attempt $attempt) — re-observing on current main."
+            git fetch origin main
+            git reset --hard origin/main
+            (cd railway && python3 data_integrity.py --record-baseline >/dev/null) || true
+            sleep $((attempt * 5))
+          done
+          # Not fatal to the CHECK, which has already reported. A baseline that
+          # could not be written makes tomorrow's movement guard read UNKNOWN,
+          # which is loud enough on its own and is the honest state.
+          echo "::warning::Could not commit the headline baseline after 3 attempts."
+          echo "::warning::headline_movement will report UNKNOWN until it lands."

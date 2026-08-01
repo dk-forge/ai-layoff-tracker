@@ -3333,7 +3333,106 @@ function alt_api_event_migrate(WP_REST_Request $r) {
  * started stacking (+4,000, US-2026 7,069 -> 11,069). The same bug marked WARN
  * rows from unrelated YEARS as members of one news total in the other
  * direction. Both sides are now scoped to the +/-45-day window.
+ *
+ * 2.19.235 goes one step further and makes the mistake unwritable rather than
+ * merely fixed: pass (1) can no longer compute a sum at all. Its denominator
+ * comes only from alt_dedup_window(), whose constructor IS the window filter,
+ * and the >=50% verdict lives only in alt_dedup_subset_verdict(), which throws
+ * if handed anything that is not window-scoped. `$warn` — the company's whole
+ * history — stays in scope for grouping and is never summed.
  */
+// The widest window a superset denominator may ever span. A "window" of two
+// years is not a window; it is an all-time sum wearing a parameter.
+if (!defined('ALT_DEDUP_MAX_WINDOW_DAYS')) define('ALT_DEDUP_MAX_WINDOW_DAYS', 200);
+// The window pass (1) actually uses. One number, one place.
+if (!defined('ALT_DEDUP_WINDOW_DAYS')) define('ALT_DEDUP_WINDOW_DAYS', 45);
+
+/**
+ * The ONLY legal way to build a denominator for a superset plausibility test.
+ *
+ * WHY THIS FUNCTION EXISTS AT ALL. On 2026-07-30 the reconciler asked "is there
+ * a WARN row within ±45 days of this news report" per row, and then tested
+ * plausibility — and marked rows — against the company's ALL-TIME WARN sum. The
+ * numerator described a fortnight; the denominator described six years. That
+ * sum only ever grows, so every already-matched pair sat on a fuse: Spirit's
+ * margin was 38 jobs, and the day the all-time sum crossed 8,000 the news row
+ * silently stopped being a subset and started stacking (+4,000 on a published
+ * page). 64 companies were double-counting 60,367 jobs and 43 companies had
+ * 113,786 real jobs suppressed to zero, Boeing's genuine 17,000 among them.
+ *
+ * The 2.19.227 fix scoped the comparison correctly. It did not stop anyone
+ * writing the same line again, because the unwindowed row set was still sitting
+ * in scope one variable away. THIS is what stops it: the constructor of the
+ * denominator IS the window filter. There is no argument you can pass to get an
+ * unwindowed sum out of it, no default window, and a window wide enough to be
+ * an all-time sum in disguise is rejected outright.
+ *
+ * Returns a WINDOW: rows inside it, their sum, the largest of them, and the
+ * scope that produced them, carried together so a later comparison cannot lose
+ * track of what the number describes.
+ *
+ * @throws InvalidArgumentException on a missing centre or an absent/absurd window.
+ */
+function alt_dedup_window(array $rows, $center_date, $window_days) {
+    $center = $center_date ? strtotime((string) $center_date) : false;
+    if ($center === false) {
+        throw new InvalidArgumentException(
+            'alt_dedup_window: a window needs a centre date. Got ' . var_export($center_date, true));
+    }
+    $days = (int) $window_days;
+    if ($days <= 0 || $days > ALT_DEDUP_MAX_WINDOW_DAYS) {
+        throw new InvalidArgumentException(
+            'alt_dedup_window: window_days must be 1..' . ALT_DEDUP_MAX_WINDOW_DAYS . ', got ' . $days
+            . '. A denominator that spans everything is the 2026-07-30 Spirit defect.');
+    }
+    $in = array(); $sum = 0; $largest = null;
+    foreach ($rows as $row) {
+        $t = empty($row['layoff_date']) ? false : strtotime((string) $row['layoff_date']);
+        if ($t === false) continue;
+        if (abs(($center - $t) / 86400) > $days) continue;
+        $in[] = $row;
+        $sum += (int) $row['job_count'];
+        if (!$largest || (int) $row['job_count'] > (int) $largest['job_count']) $largest = $row;
+    }
+    return array(
+        'rows'        => $in,
+        'sum'         => $sum,
+        'largest'     => $largest,
+        'window_days' => $days,
+        'center'      => (string) $center_date,
+        'scoped'      => true,   // the marker alt_dedup_subset_verdict demands
+    );
+}
+
+/**
+ * Is $candidate_jobs plausibly the same event as the rows in $window?
+ *
+ * The ≥50% test and the primary/member decision live here and NOWHERE else, and
+ * this function refuses to answer unless its denominator came out of
+ * alt_dedup_window(). Hand it a plain array — an all-time sum, a company total,
+ * anything not window-scoped — and it throws rather than returning a verdict
+ * that looks right and is measured against the wrong thing.
+ *
+ * Returns '' (no verdict: nothing in the window, or not plausibly the same
+ * event), 'candidate_is_primary' (the candidate is the most-complete figure, so
+ * the window's rows are its subsets) or 'candidate_is_member' (the window is
+ * more complete, so the candidate is the subset).
+ *
+ * @throws InvalidArgumentException when the denominator is not window-scoped.
+ */
+function alt_dedup_subset_verdict($candidate_jobs, $window, $min_share = 0.5) {
+    if (!is_array($window) || empty($window['scoped']) || empty($window['window_days'])) {
+        throw new InvalidArgumentException(
+            'alt_dedup_subset_verdict: the denominator must come from alt_dedup_window(). '
+            . 'A cumulative or company-total sum is not a denominator for a plausibility test — '
+            . 'that is the 2026-07-30 Spirit defect, and it published a wrong number for months.');
+    }
+    $sum = (int) $window['sum'];
+    if ($sum <= 0 || !$window['rows']) return '';
+    if ((int) $candidate_jobs < $sum * $min_share) return '';
+    return ((int) $candidate_jobs >= $sum) ? 'candidate_is_primary' : 'candidate_is_member';
+}
+
 function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') {
     global $wpdb;
     $table = alt_db_table();
@@ -3368,22 +3467,22 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
             foreach ($news as $nr) {
                 $nc = (int) $nr['job_count'];
                 if ($nc < 200) continue;
-                $near = array(); $near_sum = 0; $largest_warn = null;
-                foreach ($warn as $w) {
-                    if (abs((strtotime($nr['layoff_date']) - strtotime($w['layoff_date'])) / 86400) > 45) continue;
-                    $near[] = $w; $near_sum += (int) $w['job_count'];
-                    if (!$largest_warn || (int) $w['job_count'] > (int) $largest_warn['job_count']) $largest_warn = $w;
-                }
-                if (!$near || $near_sum <= 0) continue;
-                if ($nc < $near_sum * 0.5) continue;   // not plausibly the same event
-                if ($nc >= $near_sum) {
+                // The denominator is CONSTRUCTED by the window, not filtered
+                // after the fact: alt_dedup_window() is the only thing here that
+                // can produce a sum, and it cannot produce an unwindowed one.
+                // $warn (the company's whole history) is deliberately never
+                // summed in this scope — see the Spirit note on those helpers.
+                $near = alt_dedup_window($warn, $nr['layoff_date'], ALT_DEDUP_WINDOW_DAYS);
+                $verdict = alt_dedup_subset_verdict($nc, $near);
+                if ($verdict === '') continue;         // nothing near, or not the same event
+                if ($verdict === 'candidate_is_primary') {
                     // News total is the most-complete figure -> exclude the WARN sites.
-                    foreach ($near as $w) {
+                    foreach ($near['rows'] as $w) {
                         if (empty($mark[$w['id']])) { $mark[$w['id']] = (int) $nr['id']; $excluded += (int) $w['job_count']; }
                     }
                 } else {
-                    // WARN sum is more complete -> exclude the news total.
-                    if (empty($mark[$nr['id']])) { $mark[$nr['id']] = (int) $largest_warn['id']; $excluded += $nc; }
+                    // Windowed WARN sum is more complete -> exclude the news total.
+                    if (empty($mark[$nr['id']])) { $mark[$nr['id']] = (int) $near['largest']['id']; $excluded += $nc; }
                 }
             }
         }
@@ -3965,6 +4064,28 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 MAX(layoff_date) max_date
          FROM $table WHERE $where_dd", $params));
 
+    // ONE ROW'S CONTRIBUTION TO THIS HEADLINE.
+    //
+    // Every published number on this site is a SUM, and a sum tells you nothing
+    // about whether one row is carrying it. That is how a misparsed count
+    // ("9,891 … (2 from RI)" read as 98,912), a state TEST notice (AT&T 78,788)
+    // and a by-2050 projection (Coal India 73,800) each moved a headline before
+    // a human noticed. This block publishes the largest SINGLE counted row for
+    // exactly the filter set that produced $totals, so a consumer can bound one
+    // row's share of the figure it is about to quote.
+    //
+    // THE CO-SCOPING IS THE POINT, and it is why this is computed here rather
+    // than left to the caller. It uses $where_dd — the same WHERE, the same
+    // params, the same superset-deduped population as `totals.jobs` — and ships
+    // in the same response. A caller therefore cannot accidentally measure a
+    // row against a differently-scoped denominator, which is precisely the
+    // 2026-07-30 Spirit defect one level up (a ±45-day numerator tested against
+    // an all-time sum). `headline_jobs` is repeated inside the block on purpose:
+    // it is the denominator this numerator belongs to, travelling with it.
+    $conc = $wpdb->get_row(alt_db_prep(
+        "SELECT id, company, job_count, layoff_date, source_type
+         FROM $table WHERE $where_dd ORDER BY job_count DESC, id ASC LIMIT 1", $params));
+
     // Top-N helpers (each slicer ignores its own dimension). Each entry is
     // [label, total jobs, AI-attributed jobs] so bars can show the AI share.
     $topN = function ($col, $except, $limit = 24) use ($wpdb, $table, $r) {
@@ -4085,6 +4206,18 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
 
     return array(
         'repeat_companies' => $repeat,
+        // See the block comment above: numerator and denominator are produced by
+        // ONE query pair over ONE filter set, and travel together.
+        'concentration' => array(
+            'largest_row_jobs'        => $conc ? (int) $conc->job_count : 0,
+            'largest_row_company'     => $conc ? (string) $conc->company : '',
+            'largest_row_id'          => $conc ? (int) $conc->id : 0,
+            'largest_row_date'        => $conc && $conc->layoff_date ? (string) $conc->layoff_date : '',
+            'largest_row_source_type' => $conc ? (string) $conc->source_type : '',
+            'headline_jobs'           => (int) $totals->jobs,
+            'headline_entries'        => (int) $totals->entries,
+            'basis' => 'Largest single superset-deduped row in this exact filter set, with the headline it contributes to. Same WHERE, same params, one response: a share computed from these two numbers cannot mix scopes.',
+        ),
         'totals' => array(
             'jobs'       => (int) $totals->jobs,
             'entries'    => (int) $totals->entries,

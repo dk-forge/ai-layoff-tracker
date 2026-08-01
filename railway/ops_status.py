@@ -254,10 +254,22 @@ def _report_held_alerts():
     return lines
 
 
+def _print_wrapped(text, width=86, indent="        "):
+    """One slice per line, wrapped, so a multi-slice verdict stays readable."""
+    import textwrap
+    for part in str(text).split("; "):
+        for line in textwrap.wrap(part, width) or [""]:
+            print(indent + line)
+
+
 def main():
     issues = []
     egress_blocked = []
     unverified = []
+    # Guards that exist but are not watching yet: the deployed build predates the
+    # field they read, or the first baseline has not been written. Exit 3, never
+    # 0 — an unarmed guard is not a passing guard.
+    not_provisioned = []
     print("=" * 64)
     print("AI LAYOFF TRACKER — OPS STATUS")
     print("=" * 64)
@@ -350,11 +362,17 @@ def main():
             sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
         import data_integrity
         integrity = data_integrity.check_all()
+        # The shape guards cover several slices each, so their detail is a
+        # sentence per slice. Wrap it here rather than shortening the message:
+        # the full text is what ci_alert.py extracts into the failure email, and
+        # a truncated cause is how an alert stops being actionable.
         for r in integrity.results:
             if r.state == data_integrity.FAIL:
-                print(f"    FAILING   {r.inv.label}: {r.detail}")
+                print(f"    FAILING   {r.inv.label}:")
+                _print_wrapped(r.detail)
             elif r.state == data_integrity.UNKNOWN:
-                print(f"    UNKNOWN   {r.inv.label}: {r.detail}")
+                print(f"    UNKNOWN   {r.inv.label}:")
+                _print_wrapped(r.detail)
         if integrity.verdict == data_integrity.PASS:
             print(f"    {len(integrity.passed)} check(s) verified and passing.")
         elif integrity.verdict == data_integrity.FAIL:
@@ -363,15 +381,29 @@ def main():
             print("    This is WRONG DATA on a live public surface, not missing data.")
             issues.extend(f"DATA INTEGRITY: {r.inv.key}" for r in integrity.failed)
         else:
-            # UNKNOWN is never rendered as a pass. Route it by CAUSE: if we could
-            # not reach the host at all, that is this environment's egress block
-            # (exit 3, honest and non-alarming). If the site ANSWERED but
-            # answered wrongly on the parameterised path, that is a real server
-            # regression on exactly the query readers use -> a human (exit 2).
+            # UNKNOWN is never rendered as a pass. Route it by CAUSE, in three
+            # buckets, because "we could not check" has three quite different
+            # meanings and collapsing them is how a real regression gets read as
+            # a network hiccup:
+            #   transport  the host was never reached -> this environment's
+            #              egress block (exit 3, honest and non-alarming).
+            #   pending    the host answered, but the thing being read is not
+            #              there yet: a build that predates the field, or a
+            #              baseline the daily job has not written. Exit 3, and
+            #              the line says what to wait for. Still NOT a pass.
+            #   otherwise  the site ANSWERED and answered wrongly on the
+            #              parameterised path readers use -> a human (exit 2).
             print(f"    {len(integrity.unknown)} check(s) NOT VERIFIED — integrity state is "
                   f"UNKNOWN, which is NOT a pass.")
             if all(r.transport for r in integrity.unknown):
                 egress_blocked.append("data-integrity checks (site unreachable)")
+            elif all(r.transport or getattr(r, "pending", False) for r in integrity.unknown):
+                for r in integrity.unknown:
+                    if getattr(r, "pending", False):
+                        print(f"    PENDING   {r.inv.key}: waiting on a deploy or on the first "
+                              f"baseline write — this guard is not watching yet.")
+                not_provisioned.extend(r.inv.key for r in integrity.unknown
+                                       if getattr(r, "pending", False))
             else:
                 issues.append("DATA INTEGRITY: unverifiable (the live API answered, but wrongly)")
     except Exception as exc:
@@ -452,6 +484,16 @@ def main():
         if any(not i.startswith("DATA INTEGRITY") for i in issues):
             print("See docs/RUNBOOK.md 'a data source broke (START HERE)'.")
         return 2
+    if not_provisioned and not egress_blocked:
+        print(f"NOT WATCHING YET: {len(not_provisioned)} data-integrity guard(s) are armed in "
+              f"the code but have nothing to read")
+        print(f"    ({', '.join(not_provisioned)}).")
+        print("    Either the deployed plugin predates the field the guard reads (wait for a")
+        print("    green 'Deploy WordPress plugin' run, then re-check), or the first baseline")
+        print("    has not been written (run `python3 railway/data_integrity.py")
+        print("    --record-baseline`, or wait for data-integrity.yml at 17:30 UTC).")
+        print("    THIS IS NOT A PASS. Until it resolves, nothing is watching that number.")
+        return 3
     if egress_blocked:
         print(f"ENVIRONMENT BLOCK: {len(egress_blocked)} surface(s) unreachable FROM THIS "
               f"ENVIRONMENT")

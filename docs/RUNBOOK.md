@@ -109,6 +109,53 @@ count **once**.
 6. **If it says UNKNOWN, not FAILING**, nothing was verified — that is not a
    pass. Re-run somewhere with network access to `asktherecruiter.com`.
 
+**Which check failed, and what each one wants you to do**
+
+The registry holds two kinds of check. The first four are **named-event
+tripwires** (Coinbase, Spirit, Tyson, AT&T): steps 1-6 above are written for
+those. The other three are **shape guards** — they know no event names and cover
+the row that has not gone wrong yet. Their playbooks differ:
+
+- **`headline_concentration` — one row is carrying a published number.**
+  The detail names the row: share, job count, company and row id. Open that row
+  and check it against its own source. Historically this shape has been a count
+  misparse (RI 9,891 stored as 98,912), a state TEST notice (AT&T 78,788), or a
+  projection filed as an event (Coal India 73,800 "by 2050"). If the row is
+  WRONG: `apply-correction.yml` or `trash-rows.yml`, and disclose it in the
+  corrections log. If the row is genuinely that big and genuinely correct, that
+  is the one case for widening the bound — change `max_share` on that `Headline`
+  with the reasoning in the code, and add the new live reading to
+  `test_headline_guards.test_every_shipped_headline_has_headroom_over_its_live_reading`.
+- **`headline_movement` — a published total moved and no row explains it.**
+  The detail gives the before/after, the change in entry count, and what the
+  rows that changed could have carried. Δentries near zero with jobs moving is
+  the signal: something re-scored rows that were already published. Check, in
+  this order, the last `reconcile-supersets` run (its `changes` count on a quiet
+  day is drift), any `bulk-purge` / re-import, and `data-corrections`. The
+  baseline is `railway/headline_baseline.json`; **do not hand-edit it to clear
+  the alarm** — the recorder already refuses to advance a failing slice, because
+  recording a bad number makes it tomorrow's normal.
+- **`dedup_denominator_scoped` — the structural guard came off.**
+  Offline and instant: it asserts that `alt_reconcile_supersets()` in db.php
+  still cannot compute a sum of its own, that its denominator can only come from
+  `alt_dedup_window()`, and that `alt_dedup_subset_verdict()` still throws when
+  handed anything not window-scoped. A failure means someone reintroduced an
+  inline share comparison or a local sum. That is the exact 2026-07-30 shape;
+  restore the helpers rather than re-fixing the arithmetic.
+
+**"Not watching yet" is not "fine".** If `ops_status` prints `NOT WATCHING YET`
+or a check reads PENDING, the guard is armed in the code but has nothing to read:
+either the deployed plugin predates the field (wait for a green Deploy run) or
+the first baseline has not been written (`python3 railway/data_integrity.py
+--record-baseline`, or wait for the 17:30 UTC job). Exit code 3, never 0.
+
+**If a shape guard proves noisy in its first weeks:** raise its `move_floor` and
+write down why, in the commit message and in TECHLOG. Do not delete the check and
+do not fit the bound to whatever today's move happened to be. `max_share` bounds
+were measured against live readings; `move_floor` values were reasoned from the
+failure modes, because until `headline_baseline.json` existed nothing had ever
+recorded this site's day-over-day deltas.
+
 **A data source broke — you got a "data source(s) need attention" email (START HERE)**
 The weekly `health-digest` emails info@asktherecruiter.com when a collector goes
 STALE (stopped reporting) or degraded (usually a scraper returning 0 because a
