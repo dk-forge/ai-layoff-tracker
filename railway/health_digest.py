@@ -31,11 +31,20 @@ DRY = os.environ.get("HEALTH_DIGEST_DRY", "").lower() in {"1", "true", "yes"}
 # A ceiling MUST match the job's real cadence — "newsapi" sat at 2 days here
 # while the only job still posting under that id ran WEEKLY, so it read stale
 # 5 days out of 7 forever (see news_catchup.py). Renamed to news_catchup @ 9d.
+# federal_rif is the same defect one rung down: it is imported by a MONTHLY job
+# (federal-rif-import.yml, the 6th of each month) and nothing else posts under
+# that id, but it was missing here and fell through to DEFAULT_MAX_AGE = 10. So
+# from day 11 of every month until the next run it read STALE — ~2 weeks in 3,
+# every month, turning the weekly digest red and mailing the owner a breakage
+# that never happened. ops_status.py already had it right at 35; this file did
+# not, and the two comments each claimed to match the other.
+# test_source_registry_parity now asserts the two maps agree, so the next
+# divergence fails CI instead of becoming background noise.
 MAX_AGE_DAYS = {
     "edgar": 2, "news_catchup": 9, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
     "press_releases": 3, "warn_hi_ocr": 3, "warn_mazowieckie": 3,
-    "data_integrity": 2,
+    "data_integrity": 2, "warn_quebec": 3, "federal_rif": 35,
 }
 DEFAULT_MAX_AGE = 10
 # Sources whose 0/degraded is expected-by-design or transient, so a DEGRADED

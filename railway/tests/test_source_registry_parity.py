@@ -26,6 +26,7 @@ import unittest
 HERE = os.path.dirname(__file__)
 RAILWAY = os.path.abspath(os.path.join(HERE, ".."))
 OPS_STATUS = os.path.join(RAILWAY, "ops_status.py")
+HEALTH_DIGEST = os.path.join(RAILWAY, "health_digest.py")
 HEALTH_JS = os.path.abspath(os.path.join(
     RAILWAY, "..", "wordpress-plugin", "ai-layoff-tracker", "assets", "health.js"))
 
@@ -61,6 +62,26 @@ def _ops_status_max_age_keys():
     block = re.search(r"MAX_AGE = \{(.*?)\}", text, re.S)
     assert block, "could not locate the MAX_AGE map in ops_status.py"
     return set(re.findall(r'"([a-z0-9_]+)":', block.group(1)))
+
+
+def _health_digest_max_age():
+    """{id: ceiling} from health_digest.py MAX_AGE_DAYS, plus its default."""
+    with open(HEALTH_DIGEST, encoding="utf-8") as fh:
+        text = fh.read()
+    block = re.search(r"MAX_AGE_DAYS = \{(.*?)\}", text, re.S)
+    assert block, "could not locate MAX_AGE_DAYS in health_digest.py"
+    default = re.search(r"^DEFAULT_MAX_AGE\s*=\s*(\d+)", text, re.M)
+    assert default, "could not locate DEFAULT_MAX_AGE in health_digest.py"
+    return ({k: int(v) for k, v in re.findall(r'"([a-z0-9_]+)":\s*(\d+)', block.group(1))},
+            int(default.group(1)))
+
+
+def _ops_status_max_age():
+    """{id: ceiling} from ops_status.py MAX_AGE."""
+    with open(OPS_STATUS, encoding="utf-8") as fh:
+        block = re.search(r"MAX_AGE = \{(.*?)\}", fh.read(), re.S)
+    assert block, "could not locate the MAX_AGE map in ops_status.py"
+    return {k: int(v) for k, v in re.findall(r'"([a-z0-9_]+)":\s*(\d+)', block.group(1))}
 
 
 def _literal_health_reporters():
@@ -102,6 +123,38 @@ class SourceRegistryParityTest(unittest.TestCase):
             f"meta{{}} label nor an entry in KNOWN_UNLABELLED: {unaccounted}. Give "
             f"each a health-page label in assets/health.js, or classify it in "
             f"KNOWN_UNLABELLED with a one-line reason."))
+
+    def test_staleness_ceilings_agree_across_the_two_monitors(self):
+        """ops_status.py and health_digest.py must not disagree about a ceiling.
+
+        Both files carry a comment saying they match the other, and on
+        2026-08-02 they did not: federal_rif was 35 in ops_status (correct — the
+        importer is a MONTHLY workflow) and absent here, so the digest applied
+        DEFAULT_MAX_AGE and called it STALE from day 11 of every month onward.
+        A ceiling a job cannot meet is not a monitor, it is permanent noise —
+        the same defect the retired `newsapi` id caused, and the reason a real
+        breakage can sit unnoticed among the amber.
+        """
+        ops = _ops_status_max_age()
+        digest, default = _health_digest_max_age()
+        conflicts = sorted(
+            f"{k}: ops_status={ops[k]}d vs health_digest={digest[k]}d"
+            for k in set(ops) & set(digest) if ops[k] != digest[k])
+        self.assertFalse(conflicts, (
+            f"The two staleness monitors disagree: {conflicts}. They are meant "
+            f"to be one definition — reconcile them to the job's REAL cadence."))
+        # A ceiling present in ops_status but missing here silently becomes
+        # DEFAULT_MAX_AGE in the digest, which is the federal_rif defect. Only
+        # flag it when the default is actually TIGHTER than the declared
+        # ceiling, i.e. when the omission can manufacture a false STALE.
+        implicit = sorted(
+            f"{k}: declared {ops[k]}d, digest would use {default}d"
+            for k in set(ops) - set(digest) if ops[k] > default)
+        self.assertFalse(implicit, (
+            f"These sources are monitored in ops_status.py with a ceiling LOOSER "
+            f"than health_digest's DEFAULT_MAX_AGE ({default}d), but are missing "
+            f"from MAX_AGE_DAYS: {implicit}. The digest will report them STALE "
+            f"on a normal cadence. Add them to health_digest.MAX_AGE_DAYS."))
 
     def test_classified_reporters_are_not_also_labelled(self):
         # If a KNOWN_UNLABELLED id gains a real meta{} label, drop it from the

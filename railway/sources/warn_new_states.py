@@ -38,6 +38,12 @@ gory details):
       Header-keyed column map, effective date falls back Layoff -> Received ->
       Notice, city falls back to county.
 
+  AL  Alabama's headerless CSV export (workforce.alabama.gov). Taken over from
+      the open scraper on 2026-08-02 after Alabama retired the madeinalabama.com
+      page the released module still parses. Strict 8-column positional parse;
+      keyed on date_action (the effective date), which is what the generic tier
+      used, so re-imports upsert onto the existing dedup hashes.
+
 CRITICAL: conservative parsing throughout. If a row does not cleanly yield
 company + count + date, it is SKIPPED (fewer rows) rather than guessed. A wrong
 number is far worse than a missing one.
@@ -550,7 +556,115 @@ def fetch_ks():
     return out
 
 
-NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "NM": fetch_nm, "WA": fetch_wa, "KS": fetch_ks}
+# --------------------------------------------------------------------------- AL
+# Alabama. The open warn-scraper's AL module (PyPI 1.2.143, the newest release)
+# still parses an HTML <table> on the OLD madeinalabama.com page. Alabama moved
+# the list to workforce.alabama.gov during 2026 and now blocks automated reads of
+# the human-facing page, so the table selector matches nothing and the module
+# dies on `table[0]` with IndexError. `_run_scraper` calls it with check=False,
+# so the traceback went to the log and the sweep carried on with no al.csv --
+# Alabama simply vanished from the per-state counts (851 -> 0 on 2026-08-02).
+#
+# The state does still publish the same data as a headerless CSV, and that
+# endpoint is not blocked (robots.txt disallows only /wp-content/uploads/).
+# Upstream git has already switched to it, but that fix is unreleased and imports
+# `niquests`, which is not in the installed dependency set -- injecting the file
+# the way the workflow injects nd.py would ImportError. So AL follows the same
+# route KS and WA took: a bounded custom fetcher here, and AL dropped from
+# warn.ALL_STATES so the broken module is no longer run at all.
+#
+# Columns are positional and headerless:
+#   0 _id1 | 1 action_type | 2 date_notice | 3 date_action | 4 company
+#   5 location | 6 affected | 7 _id2
+#
+# layoff_date is keyed on date_NOTICE, not date_action, and that is deliberate.
+# date_action is the effective date, which is the tracker's usual preference, but
+# the retired HTML-table module wrote an al.csv whose column names made warn.py's
+# `_date_from` land on the notice date, so that is what every stored Alabama row
+# already holds -- verified 2026-08-02 against the live API for six notices where
+# the two dates differ (BASF 07/22 not 09/30, LineQuest 04/23 not 08/01, Legacy
+# Cabinets 06/11 not 06/06, Serta 04/15 not 04/17, ...). dedup_hash is
+# company+date+jobs+state, so switching to the effective date would give all 272
+# rows NEW hashes and duplicate Alabama against the 825 rows already published
+# rather than upserting onto them. Re-keying to the effective date is a real
+# improvement, but it is a /bulk-purge + full re-import job (see CLAUDE.md), not
+# something to slip into an outage fix.
+_AL_CSV = "https://workforce.alabama.gov/documents/warn-list/"
+_AL_COLS = 8
+
+
+def _al_name(value):
+    """Alabama company/location text in the form the tracker already stores.
+
+    company feeds dedup_hash, so this fetcher has to reproduce the retired HTML
+    module's strings EXACTLY or every Alabama notice publishes a second copy of a
+    layoff already on the site. The CSV export differs from the page in three
+    mechanical ways, all verified against all 825 stored AL rows on 2026-08-02:
+
+      * the CSV pads names ("Salon Centric  Inc") where the page does not;
+      * the page renders the apostrophe as U+2019 ("David's" -> "David’s"),
+        37 stored rows;
+      * the page renders the SPACED separator as an en dash U+2013
+        ("WALMART - STORE #763" -> "WALMART – STORE #763"), 17 stored rows.
+
+    Only the SPACED form becomes an en dash. Unspaced hyphens are part of the
+    name ("Winn-Dixie", "JELD-WEN", "KMART CORPORATION-STORE 4836") and stay
+    ASCII in all 80 stored rows that carry one, which is why this is a
+    space-anchored substitution and not a bare character swap.
+
+    With this applied, all 259 distinct notices the CSV yields hash onto rows
+    that already exist -- 259 upserts, 0 new rows, 0 duplicates.
+    """
+    s = re.sub(r"\s+", " ", value or "").strip()
+    return re.sub(r" - ", " – ", s.replace("'", "’"))
+
+
+def fetch_al():
+    """Alabama WARN via the state's headerless CSV export.
+
+    Positional parse with a strict width check: a row that is not exactly 8
+    fields is skipped rather than guessed at, so if Alabama ever adds or removes
+    a column this returns fewer rows (which trips the zero-result drift alarm)
+    instead of silently mis-assigning company/count/date.
+
+    Note the coverage floor: `_entry` drops anything before 2015, which is the
+    convention for every custom scraper, while the generic tier accepted 2002+.
+    The pre-2015 Alabama rows are ALREADY stored from when the generic module
+    worked and nothing purges them, so this narrows what is RE-imported each run,
+    not what the tracker holds.
+    """
+    out = []
+    try:
+        resp = requests.get(_AL_CSV, headers=UA, timeout=TIMEOUT)
+        if resp.status_code != 200:
+            print(f"    AL csv: HTTP {resp.status_code}")
+            return out
+        text = resp.text
+    except Exception as exc:
+        print(f"    AL csv: fetch failed ({exc})")
+        return out
+    # A blocked/redirected fetch returns the HTML page, not the CSV. Say so
+    # loudly rather than returning 0 rows that look like a quiet week.
+    if "<html" in text[:2000].lower():
+        print("    AL csv: got HTML, not CSV — endpoint may now be blocked")
+        return out
+    import csv as _csv
+    from io import StringIO as _StringIO
+    for row in _csv.reader(_StringIO(text)):
+        if len(row) != _AL_COLS:
+            continue
+        _, kind, date_notice, _date_action, company, location, affected, _ = row
+        e = _entry("AL", _al_name(company), _count(affected), _iso(date_notice),
+                   _al_name(location), kind=kind,
+                   detail_url=STATE_WARN_URL.get("AL", ""))
+        if e:
+            out.append(e)
+    print(f"WARN AL (custom): {len(out)} notices kept")
+    return out
+
+
+NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "NM": fetch_nm, "WA": fetch_wa,
+                     "KS": fetch_ks, "AL": fetch_al}
 
 
 if __name__ == "__main__":
