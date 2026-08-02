@@ -42,10 +42,14 @@ try:
 except Exception:
     OpenAI = None
 
+# Google News RSS, not NewsAPI. NewsAPI was retired 2026-07-25, and this sweep
+# kept querying it six times per event, printing "0 unique articles" every
+# single time -- wasted HTTP on a corpse, found by the 2026-08-02 per-job cost
+# attribution. Same discovery route the daily cron already uses.
 try:
-    from sources.newsapi import pull_news_articles
+    from sources.google_news import pull_google_news
 except Exception:
-    pull_news_articles = None
+    pull_google_news = None
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -183,9 +187,9 @@ def main():
         company = str(row.get("company_name") or "").strip()
         # Re-read the stored source, then a targeted AI-focused press search.
         texts = [_fetch_text(row.get("source_url"))]
-        if pull_news_articles:
+        if pull_google_news:
             try:
-                for a in pull_news_articles(days_back=200, queries=[
+                for a in pull_google_news(queries=[
                         f'"{company}" (AI OR automation) (layoffs OR "job cuts")']):
                     texts.append(str(a.get("raw_text") or a.get("description") or ""))
             except Exception:
