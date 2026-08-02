@@ -54,6 +54,30 @@ month); "largest:" entries carry location from the row's own fields (state for
 US, country otherwise), including in the Copy-as-post text.
 
 ---
+## 2026-08-02 — a weekly CI-noise report over the alert layer (no plugin change)
+
+**WHY.** The 7-day run audit (2026-07-26..08-02, both trackers) split every
+non-green run into (a) real-and-alerted-once, (b) noise, (c) latent. This
+repo came out largely clean — the earlier structural fixes are holding: 15
+Tests reds were push-CI catching real defects during active dev (correct), 3
+were CI-alert self-tests, 1 historical-sweep failure alerted once, and 3
+cancelled scheduled runs were one-offs (one, EDGAR history sweep 2026-07-28,
+was a zero-job concurrency displacement — invisible in the UI). The sibling
+was NOT clean: 180 red drain ticks for a handful of already-reported items.
+Nothing was WATCHING the shape of the week in either repo; per-run dedup
+cannot see "the same cause reddened nine runs".
+
+**WHAT.** `railway/ci_noise_report.py` + `ci-noise-report.yml` (Mondays 12:20
+UTC, after the health digest): reads the week's run list, groups failures by
+`ci_alert.extract_cause` (the SAME extractor as the email, normalised the
+same way), counts repeat reds (n-1 per cause; the FIRST red of a cause is
+signal and counts zero) and zero-job cancellations, and POSTs ONE summary to
+the keyed `/alert` ONLY when noise > 0. A quiet week posts nothing. UNKNOWN
+stays a third state: no `gh` exits 3, never "quiet"; an unknown job count is
+never read as zero; an undeliverable report is HELD in the outbox like any
+alert. Guards in `railway/tests/test_ci_noise_report.py` (18 tests), incl.
+"first red of a cause is never noise" so this can never become pressure to
+silence a real alarm.
 
 ## 2026-08-02 — an invariant that went quiet on its own: it HEALED, and that is the bug
 
