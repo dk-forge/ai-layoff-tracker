@@ -43,6 +43,7 @@ import os
 
 from sources.newsapi import pull_news_articles
 from extractor import extract_layoff_data
+import spend
 from source_health import report_source_health
 from wp_poster import post_to_wordpress
 
@@ -92,6 +93,7 @@ def run():
 
     print(f"News catch-up complete: {posted} posted ({ai} AI-attributed), "
           f"{dupes} duplicates, {skipped} non-events, {failed} failed")
+    spend.record_job_run(items=len(entries), stored=posted)
     if not report_source_health(
         HEALTH_ID,
         "ok",

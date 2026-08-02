@@ -14,6 +14,7 @@ import sys
 from source_health import report_source_health
 from sources.warn_hi_ocr import fetch_hi_ocr
 import warn_import  # reuse post_bulk + the FAILED_BATCHES loud-fail counter
+import spend
 
 
 def main():
@@ -32,6 +33,7 @@ def main():
         sys.exit(1)
     upserted = warn_import.post_bulk(entries)
     print(f"Hawaii WARN OCR import done: {upserted} upserted from {len(entries)} notices")
+    spend.record_job_run(items=len(entries), stored=upserted)
     if warn_import.FAILED_BATCHES:
         report_source_health("warn_hi_ocr", "degraded", upserted,
                              f"{warn_import.FAILED_BATCHES} batch(es) rejected by the API")

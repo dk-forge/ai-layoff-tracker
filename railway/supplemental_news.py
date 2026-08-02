@@ -24,6 +24,7 @@ import requests
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
+import spend
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 DRY = os.environ.get("SUPP_NEWS_DRY", "").lower() in {"1", "true", "yes"}
@@ -199,6 +200,7 @@ def run():
     print("supplemental news:", detail)
     if not DRY:
         report_source_health("supplemental_news", "ok", total_posted, detail)
+    spend.record_job_run(stored=total_posted)
 
 
 def main():

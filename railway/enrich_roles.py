@@ -23,6 +23,7 @@ import time
 import requests
 
 from extractor import extract_role_categories, CreditsExhaustedError
+import spend
 from reclassify_legacy_ai import UA
 
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -113,6 +114,7 @@ def main():
         )
         report_health("ok", updated, detail)
         print(f"{detail} updated={updated}")
+        spend.record_job_run(items=checked, changed=updated)
         # A run where every attempted row failed at the model must be a
         # visible failure, not a quiet no-op that looks like a clean pass.
         return 1 if checked and model_failures == checked else 0

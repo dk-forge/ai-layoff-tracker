@@ -29,6 +29,7 @@ import requests
 
 from sources.newsapi import pull_news_articles
 from extractor import extract_layoff_data
+import spend
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
@@ -197,6 +198,7 @@ def run():
     detail = (f"checked {len(todays)} watchlist companies, {len(missing)} missing, "
               f"{posted} posted ({ai} AI-attributed), {extract_fail} extract fails")
     print("watchlist sweep:", detail)
+    spend.record_job_run(items=len(todays), stored=posted)
     if not DRY_RUN and not report_source_health("company_watchlist", "ok", posted, detail):
         # Completion telemetry: the sweep already finished, so a failed health
         # write is a warning, never a reason to fail the run and page the owner.

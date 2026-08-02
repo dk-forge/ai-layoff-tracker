@@ -202,6 +202,9 @@ def main():
     tips = _get_tips()
     print(f"{len(tips)} new tip(s) to process")
     if not tips:
+        # No work, no model client opened: a $0.0000 ledger entry is the
+        # evidence that this job is usually free, not an unmetered gap.
+        spend.record_job_run(items=0, stored=0)
         return 0
 
     posted = queued = rejected = 0
@@ -289,6 +292,7 @@ def main():
     print(f"done: {posted} {'would-post' if not LIVE else 'posted'}, "
           f"{queued} queued for review, {rejected} rejected")
     _email_digest(digest)
+    spend.record_job_run(items=posted + queued + rejected, stored=posted)
     return 0
 
 

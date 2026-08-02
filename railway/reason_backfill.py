@@ -47,6 +47,7 @@ from datetime import date
 import requests
 
 from extractor import classify_reason_tags, CreditsExhaustedError
+import spend
 from source_health import report_source_health
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
@@ -239,6 +240,7 @@ def run():
             # A vanished id means the row set changed mid-run (dedupe/purge);
             # visible, but the other applied edits remain valid.
             print(f"WARNING: ids not found: {not_found}")
+    spend.record_job_run(items=checked, changed=len(edited))
 
     # A fully failed attempted model pass must be visible in Actions rather
     # than reading as a quiet no-op day (reclassify worker rule).

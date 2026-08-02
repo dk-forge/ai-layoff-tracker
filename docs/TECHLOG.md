@@ -80,6 +80,51 @@ alert. Guards in `railway/tests/test_ci_noise_report.py` (18 tests), incl.
 silence a real alarm.
 
 ## 2026-08-02 — an invariant that went quiet on its own: it HEALED, and that is the bug
+## 2026-08-02 — per-job spend attribution: the ledger, the named ceilings, and the job that ignored the guard
+
+**WHY.** The only cost signal was a daily account balance plus a whole-process
+meter. Neither could attribute a cent to any of the dozen small daily LLM jobs,
+so "$5/month" was a hope, not a property. Now every LLM job closes with
+`spend.record_job_run(...)`, which prints one `SPEND_LEDGER_V1` JSON line
+(job, date, exact metered cost from OpenRouter's usage object, calls, items,
+stored/changed). Runners are ephemeral, so `spend.py --harvest` — run by the
+daily balance job, the ONE workflow that commits — re-reads those lines out of
+the day's run logs into the committed `railway/spend_jobs.json` (60-day
+retention, idempotent by (job, run_id, attempt)). One commit a day, instead of
+a dozen pushes a day each rebuilding Railway and re-running the test suite.
+`ops_status.py [2a]` renders the per-job table ($/day, $/run, $/row, share of
+ceiling) from the committed file; a job with no metered run prints UNKNOWN,
+never a guess, and an empty ledger is exit-3 UNKNOWN, not a pass.
+
+**NAMED CEILINGS.** `spend.JOB_RUN_CEILINGS_USD` gives each job a per-run
+ceiling; the guard step resolves the job from GITHUB_WORKFLOW_REF and writes
+`ALT_RUN_CEILING_USD` to GITHUB_ENV, so the existing state-free brake enforces
+it — degrade mid-run, resume next run, never halt. The ladder is in the table's
+docstring with MEASURED/COUNTED/MODELLED labels: ingest ~$5.1/mo MEASURED,
+small jobs MODELLED at ~$6-8.5/mo unthrottled, so the interim $10 holds only
+with industry-backfill, company-watchlist and supplemental-news explicitly
+THROTTLED (each already resumes where it stopped). The $5 target is documented
+as requiring the ingest cost-funnel port first — not pretended.
+
+**THE HOLE FOUND BY MEASURING THE PREMISE.** The brief said every small job
+"runs under the guard". `dedupe_llm.py` was not: its workflow ran the degrade
+step, the flag landed in GITHUB_ENV, and the script — its own raw urllib
+client — never read it and never metered. A spent month still bought ~60
+cluster reviews/day (~$0.02/day MODELLED). It now gates on
+`paid_reads_enabled()` (before the loop and per cluster) and meters every
+response. Three more self-client scripts (ai_evidence_sweep, the daily
+spot-check, the monthly source audit) gated but did not meter — the per-run
+ceiling was blind to their spend; all meter now, and dict-shaped `usage`
+objects are charged, not silently zeroed.
+
+**MEASURED IN SITU, not asserted:** a read-only `--harvest` against the real
+repo listed the day's runs and read 6 job logs (the 401-on-redirect trap —
+GitHub's /logs endpoint 302s to blob storage, which rejects the bearer token —
+is fixed by following the redirect without the Authorization header, same as
+`gh api`). 673 offline tests green, 27 new in `tests/test_spend_ledger.py`,
+including the arithmetic guard: the named ceilings' worst-case monthly sum
+must leave the measured ingest room inside the allowance, so widening a
+ceiling without redoing the ladder is a red test.
 
 **WHAT HAPPENED.** `data_integrity.headline_movement` reddened the Tests run for
 the 2.19.246 deploy (SHA `73b2606`, 2026-08-02T03:33:07Z):

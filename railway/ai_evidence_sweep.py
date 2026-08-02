@@ -92,6 +92,7 @@ def _ai_quote(company, text):
             temperature=0, max_tokens=120,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
         )
+        spend.record_usage("deepseek/deepseek-chat", getattr(resp, "usage", None))
         quote = resp.choices[0].message.content.strip().strip('"').strip()
         if not quote or quote.upper().startswith("NONE") or len(quote) < 12:
             return ""
@@ -121,6 +122,7 @@ def _second_pass_agrees(company, quote):
             temperature=0, max_tokens=4,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
         )
+        spend.record_usage("deepseek/deepseek-chat", getattr(resp, "usage", None))
         return resp.choices[0].message.content.strip().lower().startswith("y")
     except Exception:
         return False
@@ -170,6 +172,12 @@ def main():
     print(f"{len(events)} big untagged 2026 event(s) to check")
     upgraded = checked = 0
     for row in events:
+        if not spend.paid_reads_enabled():
+            # Per-run ceiling tripped mid-sweep: keep what was decided,
+            # defer the rest to the next schedule.
+            print("  per-run spend ceiling reached — deferring the remaining "
+                  "events to the next run")
+            break
         checked += 1
         rid = row.get("id")
         company = str(row.get("company_name") or "").strip()
@@ -197,6 +205,7 @@ def main():
         time.sleep(0.5)
     print(f"done: {checked} checked, {upgraded} "
           f"{'would upgrade' if not LIVE else 'upgraded'} with an employer AI quote")
+    spend.record_job_run(items=checked, changed=upgraded)
     return 0
 
 

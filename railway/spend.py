@@ -115,6 +115,87 @@ PAID_READS_ENV = "ALT_PAID_READS"
 SNAPSHOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "spend_month.json")
 
+# ---------------------------------------------------------------------------
+# Per-job budget shares — ONE table, and the arithmetic behind it
+# ---------------------------------------------------------------------------
+#
+# Each scheduled LLM job gets a NAMED per-run ceiling. The `--degrade` step
+# looks up the job (from GITHUB_WORKFLOW_REF, so no workflow needs an
+# argument), writes ALT_RUN_CEILING_USD for the steps that follow, and the
+# existing in-process brake (`paid_reads_enabled`) enforces it mid-run: the
+# job DEGRADES at its ceiling — deferred candidates return on a later run —
+# it never halts and never reddens.
+#
+# THE LADDER, honestly (2026-08-02). Three kinds of number, labelled:
+#   MEASURED  main ingest (Railway cron): ~$0.09/run x 2/day = ~$5.1/month,
+#             from record_usage() on real runs. The account-level burn
+#             ($6.99/day, 2026-07-26..08-02) is NOT this repo's figure: it
+#             includes the sibling tracker and the since-fixed backfill
+#             re-read parasite (~$4/day).
+#   COUNTED   per-job daily volumes, from the 2026-08-02 Actions run logs:
+#             dedupe-llm 60 clusters; ai-evidence-sweep 20 checks;
+#             enrich-roles 40; reason-backfill 40 model reads;
+#             industry-backfill 200 rows x 2 confirm calls; reclassify <=5;
+#             company-watchlist 143 queued, deadline after 40 companies,
+#             0 posted; supplemental-news ~55 candidates for 2 stored;
+#             hi-warn 34 notices; news-catchup ~113/week; process-tips 0.
+#   MODELLED  DeepSeek prices x typical call sizes (extract ~3.1K in/250 out
+#             = ~$0.0011; classify ~500 in/20 out = ~$0.00015; dedupe cluster
+#             ~1.2K in/100 out = ~$0.0004). Small jobs at today's volumes
+#             model to ~$0.20-0.28/day (~$6-8.5/month) — which does NOT fit
+#             $5/month on top of a $5.1 ingest, and does not even fit $10.
+#
+# So the ceilings below are set to make the $10 INTERIM allowance hold:
+# ingest $5.1 MEASURED + small jobs capped at ~$0.175/day of dailies
+# (~$5.25/month worst case) + ~$1.1/month of weekly/monthly jobs. The three
+# jobs whose modelled appetite exceeds their share — industry-backfill,
+# company-watchlist, supplemental-news — run THROTTLED against it: each
+# already resumes where it stopped, so a ceiling slows the queue drain, it
+# never loses coverage. That is a stated throttle, not a silent cut.
+#
+# THE $5/MONTH TARGET is documented here and NOT yet enforced: it requires
+# (a) the ingest funnel port (dedup-before-LLM + headline gate on the cron's
+# news path, the sibling's cost-funnel template) taking MEASURED ingest to
+# ~$3.5/month, and (b) small jobs at ~$1.5/month: dedupe-llm and
+# ai-evidence-sweep at 3x/week, company-watchlist weekly, supplemental-news
+# gated on the pre-extract dedup. Flip MONTHLY_ALLOWANCE_USD to 5.0 only
+# after (a) is measured, not before.
+#
+# Keys are workflow file basenames (sans .yml). A job not listed here keeps
+# the global RUN_CEILING_USD default. `railway-cron` is deliberately absent:
+# Railway runs no --degrade step and the cron keeps the default ceiling, so
+# free ingest is untouched by this table.
+JOB_RUN_CEILINGS_USD = {
+    # job id                 per-run $   cadence      basis for the number
+    "dedupe-llm":              0.025,  # daily    MODELLED 60 x $0.0004
+    "ai-evidence-sweep":       0.015,  # daily    MODELLED 20 x ~$0.0008
+    "enrich-context":          0.005,  # daily    COUNTED ~1-25 small reads
+    "enrich-roles":            0.010,  # daily    MODELLED 40 x ~$0.0003
+    "reason-backfill":         0.005,  # daily    MODELLED 40 x $0.00015
+    "industry-backfill":       0.025,  # daily    THROTTLE of MODELLED $0.06
+    "reclassify-legacy-ai":    0.005,  # daily    COUNTED <=5 reads
+    "company-watchlist":       0.030,  # daily    THROTTLE of MODELLED $0.055
+    "supplemental-news":       0.030,  # daily    THROTTLE of MODELLED $0.06
+    "data-quality":            0.005,  # daily    COUNTED ~2 calls
+    "process-tips":            0.010,  # daily    COUNTED usually 0 tips
+    "hi-warn-import":          0.015,  # daily    COUNTED few new notices
+    "hi-warn-dryrun":          0.015,  # manual   same probe, dry
+    "foreign-filings":         0.020,  # dormant  cron commented out
+    "news-catchup":            0.150,  # weekly   MODELLED ~113 x $0.0011
+    "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
+    "source-verification-audit": 0.200,  # monthly  bigger sampled audit
+}
+
+# The committed per-job ledger. One entry per (job, run): what it cost, how
+# many items it touched, what it stored or changed. Jobs only PRINT their
+# SPEND_LEDGER_V1 line; `--harvest` (run by the daily balance job, the only
+# workflow that commits) is the file's single writer, collecting those lines
+# out of the day's run logs. One commit a day instead of one push per job.
+LEDGER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "spend_jobs.json")
+LEDGER_MARKER = "SPEND_LEDGER_V1"
+LEDGER_KEEP_DAYS = 60
+
 # Published prices, USD per token, as a floor under a failed price lookup. These
 # are only a FALLBACK: prices are fetched live from the keyless /models endpoint
 # so a provider price change cannot silently make the meter lie. Fetched
@@ -188,9 +269,15 @@ def record_usage(model, usage) -> float:
     never be able to break the pipeline it measures.
     """
     try:
-        prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
-        completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
-    except (TypeError, ValueError):
+        if isinstance(usage, dict):
+            # Raw urllib callers (dedupe_llm, the spot-check, the audit) hold
+            # the parsed JSON, not an SDK object. Same charged counts.
+            prompt_tokens = int(usage.get("prompt_tokens") or 0)
+            completion_tokens = int(usage.get("completion_tokens") or 0)
+        else:
+            prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+            completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+    except (TypeError, ValueError, AttributeError):
         return 0.0
     p_rate, c_rate = price_for(model)
     cost = prompt_tokens * p_rate + completion_tokens * c_rate
@@ -259,6 +346,214 @@ def reset_run_meter() -> None:
     _run.update({"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
                  "completion_tokens": 0})
     _run_ceiling_tripped = False
+
+
+# --------------------------------------------------------------------------
+# The per-job ledger
+# --------------------------------------------------------------------------
+
+def current_job() -> str:
+    """The job id this process runs as: ALT_JOB if set, else the workflow
+    file's basename (GITHUB_WORKFLOW_REF is 'owner/repo/.github/workflows/
+    dedupe-llm.yml@refs/...'), else 'local'. No workflow needs to pass its
+    own name for attribution to work."""
+    explicit = (os.environ.get("ALT_JOB") or "").strip()
+    if explicit:
+        return explicit
+    ref = os.environ.get("GITHUB_WORKFLOW_REF") or ""
+    base = ref.split("@")[0].rsplit("/", 1)[-1]
+    if base.endswith((".yml", ".yaml")):
+        return base.rsplit(".", 1)[0]
+    return "local"
+
+
+def _load_ledger() -> dict:
+    try:
+        with open(LEDGER_PATH) as fh:
+            data = json.load(fh)
+        if isinstance(data, dict) and isinstance(data.get("entries"), list):
+            return data
+    except (OSError, ValueError):
+        pass
+    return {"v": 1, "entries": []}
+
+
+def _merge_ledger_entries(ledger: dict, new_entries: list[dict]) -> int:
+    """Upsert entries keyed by (job, run_id-or-date, attempt). Returns how
+    many were actually new. Trims to LEDGER_KEEP_DAYS so the committed file
+    stays a ledger, not an archive."""
+    def _key(e):
+        return (e.get("job"), str(e.get("run_id") or e.get("date")),
+                str(e.get("attempt") or ""))
+    seen = {_key(e) for e in ledger["entries"]}
+    added = 0
+    for e in new_entries:
+        if not isinstance(e, dict) or not e.get("job") or not e.get("date"):
+            continue
+        if _key(e) in seen:
+            continue
+        seen.add(_key(e))
+        ledger["entries"].append(e)
+        added += 1
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(days=LEDGER_KEEP_DAYS)).strftime("%Y-%m-%d")
+    ledger["entries"] = sorted(
+        (e for e in ledger["entries"] if str(e.get("date", "")) >= cutoff),
+        key=lambda e: (str(e.get("date")), str(e.get("job"))))
+    return added
+
+
+def _write_ledger(ledger: dict) -> bool:
+    try:
+        with open(LEDGER_PATH, "w") as fh:
+            json.dump(ledger, fh, indent=1, sort_keys=True)
+            fh.write("\n")
+        return True
+    except OSError:
+        return False
+
+
+def record_job_run(items: int | None = None, stored: int | None = None,
+                   changed: int | None = None, job: str | None = None) -> dict:
+    """Close out this run's ledger entry: exact metered cost + what it bought.
+
+    Called once at the end of each LLM job. Never raises — a ledger must not
+    be able to break the job it measures. It only PRINTS: the SPEND_LEDGER_V1
+    line in the run log is the record, and the daily `--harvest` re-reads it
+    into the committed railway/spend_jobs.json. `items` is
+    what the run looked at, `stored` what it posted as new rows, `changed`
+    what it edited/merged in place. None means the job did not count that —
+    recorded as UNKNOWN, never guessed at zero.
+    """
+    entry = {
+        "job": job or current_job(),
+        "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+        "cost_usd": round(_run["cost_usd"], 6),
+        "calls": _run["calls"],
+        "prompt_tokens": _run["prompt_tokens"],
+        "completion_tokens": _run["completion_tokens"],
+        "items": items,
+        "stored": stored,
+        "changed": changed,
+    }
+    run_id = os.environ.get("GITHUB_RUN_ID")
+    if run_id:
+        entry["run_id"] = run_id
+        entry["attempt"] = os.environ.get("GITHUB_RUN_ATTEMPT") or "1"
+    try:
+        rows_known = stored if stored is not None else changed
+        print(run_summary(rows_known))
+        print(f"{LEDGER_MARKER} {json.dumps(entry, sort_keys=True)}")
+        # Deliberately NO file write here: the committed ledger has exactly
+        # one writer (`--harvest`, in the balance job). A job-side write would
+        # be lost on the ephemeral runner anyway, and on a dev machine or in
+        # the test suite it would dirty the committed file with 'local' rows.
+    except Exception as exc:  # noqa: BLE001 — meter must never break the job
+        try:
+            print(f"spend: could not record the job ledger entry ({exc})")
+        except Exception:
+            pass
+    return entry
+
+
+def parse_ledger_lines(text: str) -> list[dict]:
+    """Pull SPEND_LEDGER_V1 entries out of raw log text. Actions prefixes
+    every line with a timestamp, so match the marker anywhere in the line."""
+    out = []
+    for line in text.splitlines():
+        idx = line.find(LEDGER_MARKER)
+        if idx < 0:
+            continue
+        payload = line[idx + len(LEDGER_MARKER):].strip()
+        try:
+            e = json.loads(payload)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and e.get("job") and e.get("date"):
+            out.append(e)
+    return out
+
+
+def harvest(days: int = 2) -> int:
+    """Collect the last `days` of SPEND_LEDGER_V1 lines from Actions run logs
+    into the committed ledger. Run by the daily balance job — the ONE
+    workflow that commits — so per-job attribution costs one commit a day,
+    not one per job. Exit-0 discipline belongs to the caller; this returns
+    how many new entries landed, and prints what it could not do rather than
+    raising: a bookkeeping harvester must never redden CI.
+    """
+    token = (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip()
+    repo = (os.environ.get("GITHUB_REPOSITORY") or "").strip()
+    if not (token and repo):
+        print("harvest: GH_TOKEN/GITHUB_TOKEN or GITHUB_REPOSITORY missing — "
+              "the per-job ledger was NOT updated this run (UNKNOWN, not a pass)")
+        return 0
+
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):  # noqa: D102
+            return None
+
+    _plain = urllib.request.build_opener(_NoRedirect)
+
+    def _api(path: str, raw: bool = False):
+        req = urllib.request.Request(
+            f"https://api.github.com{path}",
+            headers={"Authorization": f"Bearer {token}",
+                     "Accept": "application/vnd.github+json",
+                     "User-Agent": USER_AGENT})
+        try:
+            with _plain.open(req, timeout=60) as resp:
+                body = resp.read()
+        except urllib.error.HTTPError as err:
+            # The /logs endpoint answers 302 to short-lived blob storage.
+            # Follow it WITHOUT the Authorization header: the blob host
+            # rejects GitHub bearer tokens with a 401 (measured 2026-08-02;
+            # `gh api` strips auth on redirect for the same reason).
+            if err.code not in (301, 302, 303, 307, 308):
+                raise
+            loc = err.headers.get("Location")
+            if not loc:
+                raise
+            with urllib.request.urlopen(
+                    urllib.request.Request(loc, headers={"User-Agent": USER_AGENT}),
+                    timeout=60) as resp:
+                body = resp.read()
+        return body.decode("utf-8", "replace") if raw else json.loads(body)
+
+    since = (datetime.datetime.now(datetime.timezone.utc)
+             - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+    wanted = set(JOB_RUN_CEILINGS_USD)
+    found: list[dict] = []
+    scanned = 0
+    try:
+        runs = _api(f"/repos/{repo}/actions/runs?created=>{since}"
+                    f"&status=completed&per_page=100").get("workflow_runs") or []
+    except Exception as exc:
+        print(f"harvest: could not list runs ({exc}) — ledger NOT updated")
+        return 0
+    for run in runs:
+        path = str(run.get("path") or "")
+        job_id = path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        if job_id not in wanted:
+            continue
+        try:
+            jobs = _api(f"/repos/{repo}/actions/runs/{run['id']}/jobs").get("jobs") or []
+            for j in jobs:
+                text = _api(f"/repos/{repo}/actions/jobs/{j['id']}/logs", raw=True)
+                found.extend(parse_ledger_lines(text))
+                scanned += 1
+        except Exception as exc:
+            # One unreadable run must not lose the rest of the day.
+            print(f"harvest: skipped run {run.get('id')} ({job_id}): {exc}")
+    ledger = _load_ledger()
+    added = _merge_ledger_entries(ledger, found)
+    if added and not _write_ledger(ledger):
+        print("harvest: found entries but could not write the ledger file")
+        return 0
+    print(f"harvest: {scanned} job log(s) read, {len(found)} ledger line(s) "
+          f"seen, {added} new entr{'y' if added == 1 else 'ies'} committed-ready "
+          f"in railway/spend_jobs.json")
+    return added
 
 
 # --------------------------------------------------------------------------
@@ -350,6 +645,42 @@ def degrade(over: bool) -> None:
               f"steps will spend as normal; the per-run ceiling still applies")
 
 
+def apply_job_ceiling() -> None:
+    """Give the steps after the guard THIS job's named per-run ceiling.
+
+    Looks the job up in JOB_RUN_CEILINGS_USD and writes ALT_RUN_CEILING_USD to
+    GITHUB_ENV (and this process) so the job step's own import of spend.py
+    enforces it via the existing state-free brake. An explicit
+    ALT_RUN_CEILING_USD already in the environment wins — an operator
+    override must not be silently re-tightened. Jobs not in the table keep
+    the global default, which is how the Railway cron stays untouched.
+    """
+    job = current_job()
+    ceiling = JOB_RUN_CEILINGS_USD.get(job)
+    if ceiling is None:
+        print(f"  per-job ceiling: none named for '{job}' — global "
+              f"${RUN_CEILING_USD:.2f} default applies")
+        return
+    if os.environ.get("ALT_RUN_CEILING_USD"):
+        print(f"  per-job ceiling: ALT_RUN_CEILING_USD already set "
+              f"(${float(os.environ['ALT_RUN_CEILING_USD']):.3f}) — override kept, "
+              f"table value ${ceiling:.3f} for '{job}' not applied")
+        return
+    os.environ["ALT_RUN_CEILING_USD"] = str(ceiling)
+    print(f"  per-job ceiling: '{job}' gets ${ceiling:.3f} this run "
+          f"(railway/spend.py JOB_RUN_CEILINGS_USD); at the ceiling the job "
+          f"degrades and resumes next run, it does not halt")
+    github_env = os.environ.get("GITHUB_ENV")
+    if not github_env:
+        return
+    try:
+        with open(github_env, "a") as fh:
+            fh.write(f"ALT_RUN_CEILING_USD={ceiling}\n")
+    except OSError as exc:
+        print(f"  COULD NOT SET ALT_RUN_CEILING_USD for later steps: {exc} — "
+              f"the global ${RUN_CEILING_USD:.2f} default still applies there")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Report and enforce LLM spend.")
     parser.add_argument("--enforce", action="store_true",
@@ -357,7 +688,14 @@ def main() -> int:
     parser.add_argument("--degrade", action="store_true",
                         help="always exit 0; switch paid reads off when over the "
                              "allowance, leaving the free collectors running")
+    parser.add_argument("--harvest", action="store_true",
+                        help="collect SPEND_LEDGER_V1 lines from recent Actions "
+                             "run logs into railway/spend_jobs.json; always exit 0")
     args = parser.parse_args()
+
+    if args.harvest:
+        harvest()
+        return 0  # bookkeeping must never redden CI; failures printed above
 
     key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
     print("=" * 60)
@@ -370,6 +708,8 @@ def main() -> int:
         print("  nothing about spend could be measured here. This is not a")
         print("  statement that spend is within budget.")
         print(f"  monthly allowance   ${MONTHLY_ALLOWANCE_USD:,.2f} (policy, in railway/spend.py)")
+        if args.degrade:
+            apply_job_ceiling()  # the per-run brake needs no key
         return 0 if args.degrade else (1 if args.enforce else 0)
 
     try:
@@ -377,6 +717,8 @@ def main() -> int:
     except (urllib.error.URLError, OSError, ValueError) as exc:
         print(f"  UNKNOWN: could not read OpenRouter key state ({exc}).")
         print("  Spend was NOT measured. Treat this as unchecked, not as clear.")
+        if args.degrade:
+            apply_job_ceiling()  # the per-run brake needs no key
         # A monitoring job must not redden CI over its own bookkeeping.
         return 0
 
@@ -431,6 +773,7 @@ def main() -> int:
     # accident.
     if args.degrade:
         degrade(over)
+        apply_job_ceiling()
         return 0
     if args.enforce and over:
         print("\nSTOPPING: spend ceiling reached. Paid collection will not run.",

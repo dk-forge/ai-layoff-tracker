@@ -28,6 +28,7 @@ from datetime import date, datetime, time as dt_time, timedelta
 import requests
 
 from extractor import extract_context_evidence
+import spend
 from reclassify_legacy_ai import UA, clean_html
 from source_registry import discovery_terms
 from sources import gdelt_bq
@@ -302,6 +303,7 @@ def main():
         )
         report_health("ok", updated, detail)
         print(f"{detail} queued={len(updates)}")
+        spend.record_job_run(items=checked, changed=updated)
         return 0
     except Exception as exc:
         report_health("degraded", detail=str(exc))

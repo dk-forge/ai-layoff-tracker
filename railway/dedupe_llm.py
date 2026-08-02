@@ -32,6 +32,7 @@ import urllib.request
 from collections import defaultdict
 
 from source_health import report_source_health
+import spend
 
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
@@ -231,6 +232,8 @@ def ask_llm(group):
     for attempt in range(3):
         try:
             out = json.load(urllib.request.urlopen(req, timeout=150))
+            spend.record_usage(out.get("model") or "deepseek/deepseek-chat",
+                               out.get("usage"))
             c = out["choices"][0]["message"]["content"]
             c = c[c.find("{"): c.rfind("}") + 1]
             return json.loads(c).get("events", [])
@@ -266,8 +269,26 @@ def main():
     print(f"{len(rows)} entries, {len(all_clusters)} candidate clusters; "
           f"{len(clusters)} selected for this rotating review")
 
+    # Spend guard: this script builds its own OpenRouter client, so
+    # extractor.py's gate does not cover it. Until 2026-08-02 that meant this
+    # job IGNORED the guard entirely — the workflow's --degrade step set
+    # ALT_PAID_READS=off and nothing here ever read it. Skip cleanly instead:
+    # the rotation re-selects the same clusters on the next run, so a
+    # deferred review costs a day, never coverage.
+    if not spend.paid_reads_enabled():
+        print("paid reads are OFF (spend ceiling) — skipping the LLM dedup "
+              "review this run; the rotation resumes on the next schedule")
+        spend.record_job_run(items=0, changed=0)
+        return
+
     merges, skipped = [], 0
     for group in clusters:
+        if not spend.paid_reads_enabled():
+            # The per-run ceiling tripped mid-review. Merge what was already
+            # adjudicated; the untouched clusters rotate back tomorrow.
+            print("  per-run spend ceiling reached — deferring the remaining "
+                  "clusters to the next run")
+            break
         try:
             events = ask_llm(group)
             for ev in events:
@@ -309,6 +330,7 @@ def main():
             fails += 1
             print(f"  merge batch failed (will retry next run): {e}")
     print(f"\nDone: {merged} merged, {fails} batch(es) deferred, {skipped} cluster(s) skipped")
+    spend.record_job_run(items=len(clusters), changed=merged)
 
     # Observability: publish what the dedup pass did to the same public health
     # ledger every other collector reports to, so "is dedup working?" is answered

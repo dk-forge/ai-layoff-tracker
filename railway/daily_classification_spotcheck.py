@@ -52,6 +52,8 @@ def ask_model(prompt):
         # budget bounded so a slow provider cannot hold the whole report open.
         {"Authorization": "Bearer " + key}, attempts=2, timeout=45,
     )
+    spend.record_usage(response.get("model") or "deepseek/deepseek-chat",
+                       response.get("usage"))
     try:
         content = response["choices"][0]["message"]["content"]
         content = content[content.find("{"):content.rfind("}") + 1]
@@ -121,4 +123,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    code = main()
+    # The sample size varies by path here, so items is left UNKNOWN rather
+    # than guessed; the metered cost and call count are exact either way.
+    spend.record_job_run()
+    sys.exit(code)

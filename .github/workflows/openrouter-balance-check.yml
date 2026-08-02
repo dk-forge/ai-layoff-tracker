@@ -52,6 +52,18 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python railway/spend.py --degrade
 
+      # Per-job attribution: every LLM job prints one SPEND_LEDGER_V1 line
+      # (job, date, exact metered cost, items, stored/changed). Runners are
+      # ephemeral, so this step re-reads those lines out of the day's run
+      # logs into the committed railway/spend_jobs.json — ONE commit a day
+      # here, instead of one push per job (which would rebuild Railway and
+      # re-run the test suite a dozen times daily). Never fails the run.
+      - name: Harvest per-job spend ledger lines from run logs
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python railway/spend.py --harvest
+
       # The runway alert is only as good as its history, and a workflow that
       # writes a file without committing it has recorded nothing. The reading
       # is one line a day and the alert is worthless without the slope.
@@ -60,7 +72,7 @@ jobs:
         run: |
           git config user.name  'layoff-tracker-bot'
           git config user.email 'bot@users.noreply.github.com'
-          git add railway/openrouter_balance_history.json railway/spend_month.json || true
+          git add railway/openrouter_balance_history.json railway/spend_month.json railway/spend_jobs.json || true
           if git diff --staged --quiet; then
             echo "No new reading to commit."
             exit 0

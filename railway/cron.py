@@ -280,6 +280,9 @@ def run():
     # was unanswerable from a run's own output — the only cost signal in the repo
     # was a daily account balance that could not attribute a cent to a run.
     print(spend.run_summary(rows_stored=posted))
+    # Railway has no GITHUB_WORKFLOW_REF and cannot commit, so this entry is
+    # print-only there; it still names the run in the log with exact cost.
+    spend.record_job_run(items=len(entries), stored=posted, job="railway-cron")
     deferred = spend_deferral_count()
     if deferred:
         # Loud in the log, deliberately NOT a row on the health ledger: the

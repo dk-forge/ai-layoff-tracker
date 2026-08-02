@@ -20,6 +20,7 @@ import time
 
 from sources import edinet, opendart
 from extractor import extract_layoff_data
+import spend
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
@@ -116,6 +117,7 @@ def run():
         tot_p += p
         tot_ai += a
     print(f"foreign filings: {tot_p} posted ({tot_ai} AI)", flush=True)
+    spend.record_job_run(stored=tot_p)
 
 
 def main():

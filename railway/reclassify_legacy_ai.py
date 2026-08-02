@@ -21,6 +21,7 @@ import time
 import requests
 
 from extractor import classify_ai_evidence
+import spend
 
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -118,6 +119,7 @@ def main():
         print(f"reclassified={len(result.get('updated', []))} rejected={len(result.get('rejected', []))}")
     print(f"checked={checked} queued={len(updates)} blocked={blocked} empty={empty} "
           f"unreadable={unreadable} model_failures={model_failures}")
+    spend.record_job_run(items=checked, changed=len(updates))
     # A total failure should be visible in Actions rather than silently looking
     # like a successful historical clean-up.
     # Fail only on a REAL breakage: nothing written AND every row we could

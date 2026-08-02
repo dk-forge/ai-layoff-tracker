@@ -26,6 +26,7 @@ import requests
 from company_watchlist import query_for, already_have
 from sources.newsapi import pull_news_articles
 from extractor import extract_layoff_data
+import spend
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
@@ -188,6 +189,7 @@ def run():
             report_source_health(label, "ok", posted,
                                  f"{len(companies)} distressed, {posted} layoffs posted ({ai} AI)")
     print(f"distress feeder: {total_posted} posted ({total_ai} AI)")
+    spend.record_job_run(stored=total_posted)
 
 
 def main():

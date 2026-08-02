@@ -48,7 +48,7 @@ import uuid
 from pathlib import Path
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 BASE = "https://asktherecruiter.com/blog"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
@@ -274,6 +274,66 @@ def _report_run_cost():
 
     here = os.path.dirname(os.path.abspath(__file__))
     problems, unverified = [], []
+
+    # --- per-job attribution, from the committed ledger -------------------
+    # railway/spend_jobs.json is filled by each job's SPEND_LEDGER_V1 line,
+    # harvested daily out of the Actions run logs by the balance job (the one
+    # workflow that commits). A job with no entry since metering began is
+    # UNKNOWN — never a guessed number, and never a pass.
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    try:
+        import spend as _spend
+        _ceilings = dict(_spend.JOB_RUN_CEILINGS_USD)
+        _ledger = _spend._load_ledger()["entries"]
+    except Exception as exc:
+        _ceilings, _ledger = {}, None
+        print(f"    per-job: UNKNOWN — could not read spend.py/spend_jobs.json ({exc})")
+        unverified.append("per-job LLM cost attribution")
+    if _ledger is not None:
+        window_days = 14
+        cutoff = (datetime.now(timezone.utc)
+                  - timedelta(days=window_days)).strftime("%Y-%m-%d")
+        recent = [e for e in _ledger if str(e.get("date", "")) >= cutoff]
+        jobs = sorted(set(_ceilings) | {e.get("job") for e in recent if e.get("job")})
+        metered = {}
+        for e in recent:
+            metered.setdefault(e["job"], []).append(e)
+        if not recent:
+            print(f"    per-job     UNKNOWN — no metered run in the ledger yet "
+                  f"(railway/spend_jobs.json); the daily harvest fills it. "
+                  f"Not a pass.")
+            unverified.append("per-job LLM cost attribution")
+        else:
+            print(f"    per-job (last {window_days}d, railway/spend_jobs.json; "
+                  f"$/row over stored+changed):")
+            print(f"      {'job':26} {'runs':>4} {'$/day':>8} {'$/run':>8} "
+                  f"{'rows':>6} {'$/row':>9}  ceiling")
+            for job in jobs:
+                entries = metered.get(job)
+                ceiling = _ceilings.get(job)
+                ceil_txt = f"${ceiling:.3f}/run" if ceiling is not None else "default"
+                if not entries:
+                    print(f"      {job:26} {'—':>4} {'UNKNOWN':>8} {'':8} "
+                          f"{'':6} {'':9}  {ceil_txt} (no metered run yet)")
+                    continue
+                cost = sum(float(e.get("cost_usd") or 0) for e in entries)
+                rows_vals = [(e.get("stored") or 0) + (e.get("changed") or 0)
+                             for e in entries
+                             if e.get("stored") is not None or e.get("changed") is not None]
+                rows = sum(rows_vals) if rows_vals else None
+                per_run = cost / len(entries)
+                per_row = (f"${cost / rows:.4f}" if rows else
+                           ("bought 0" if cost > 0 and rows == 0 else "UNKNOWN"))
+                print(f"      {job:26} {len(entries):>4} {cost / window_days:>8.4f} "
+                      f"{per_run:>8.4f} {(str(rows) if rows is not None else 'UNK'):>6} "
+                      f"{per_row:>9}  {ceil_txt}")
+                worst = max(float(e.get("cost_usd") or 0) for e in entries)
+                if ceiling is not None and worst > ceiling * 1.25:
+                    problems.append(
+                        f"{job} spent ${worst:.3f} in one run, past its "
+                        f"${ceiling:.3f} named ceiling — the per-job brake is "
+                        f"not holding")
 
     # --- is the guard armed at all? ---
     snap_path = os.path.join(here, "spend_month.json")

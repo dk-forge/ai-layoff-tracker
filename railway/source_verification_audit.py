@@ -81,6 +81,7 @@ def _verify(row, text):
             temperature=0, max_tokens=80,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
         )
+        spend.record_usage("deepseek/deepseek-chat", getattr(resp, "usage", None))
         ans = resp.choices[0].message.content.strip()
         head = ans.split()[0].upper() if ans else "UNCLEAR"
         if head.startswith("PASS"):
@@ -188,6 +189,7 @@ def main():
                f"Monthly source-verification audit passed.\n\n{summary}\n\nNo mismatches. "
                f"This is the number you can publish: the tracker audits itself and every "
                f"sampled row still matches its source.")
+    spend.record_job_run(items=len(rows), changed=len(mismatches))
     return 0
 
 

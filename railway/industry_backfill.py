@@ -45,6 +45,7 @@ from datetime import date, datetime, timezone
 import requests
 
 from extractor import classify_industry, INDUSTRY_VOCABULARY, CreditsExhaustedError
+import spend
 from source_health import report_source_health
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
@@ -356,6 +357,7 @@ def run():
 
     total_filled = len(det_filled) + len(filled)
     pending = max(0, len(candidates) - total_filled)
+    spend.record_job_run(items=checked, changed=total_filled)
     detail = (f"{total_filled} industries filled ({len(det_filled)} deterministic + "
               f"{len(filled)} 2-pass LLM, fixed vocabulary, blank fields only); "
               f"{unconfirmed} left blank as unconfirmed/unknown; {failures} model "

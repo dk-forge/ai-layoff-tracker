@@ -362,7 +362,8 @@ class EveryPaidWorkflowIsGuarded(unittest.TestCase):
         OpenAI client. These four do, so each needs its own check."""
         for rel in ("railway/ai_evidence_sweep.py", "railway/process_tips.py",
                     "railway/source_verification_audit.py",
-                    "railway/daily_classification_spotcheck.py"):
+                    "railway/daily_classification_spotcheck.py",
+                    "railway/dedupe_llm.py"):
             with self.subTest(script=rel):
                 src = (ROOT / rel).read_text()
                 self.assertIn("spend.paid_reads_enabled()", src,
