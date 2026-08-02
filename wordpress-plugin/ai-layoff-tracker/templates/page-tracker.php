@@ -372,6 +372,13 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             </div>
             <label class="alt-claims-toggle" id="alt-claims-toggle-wrap" hidden><input type="checkbox" id="alt-claims-toggle" checked> <span>Overlay US jobless claims (BLS/DOL), background context</span></label>
             <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+            <?php /* The whole-record trajectory. Filled by layoffs.js (drawTrajectory)
+                     and hidden until it has real months to draw, so a failed or
+                     skipped fetch leaves no empty frame behind. It is deliberately
+                     inside this card rather than a card of its own: it answers
+                     "where does the charted window sit on the record", which is a
+                     question about the chart above it. */ ?>
+            <div class="alt-tj" id="alt-trend-full" hidden></div>
             <p class="alt-chart-note" id="alt-claims-note" hidden>Grey bars = US initial unemployment claims (everyone who filed for benefits that month, ~hundreds of thousands, right axis). The blue/amber areas are the layoffs we can document (left axis). Claims are the whole labor market's churn; our tracked layoffs are the verifiable slice inside it. Context, never added to our counts.</p>
         </div>
         <div class="alt-mini alt-chart-card">

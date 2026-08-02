@@ -1238,6 +1238,9 @@
             renderAiCumulative(agg.series);
             renderReasons(agg.reasons, document.getElementById('alt-f-reasons') ? 'alt-f-reasons' : null, readControl('alt-f-reasons'));
         }
+        // Outside the Chart.js guard on purpose: the trajectory strip is plain
+        // SVG, so it still draws on a browser where the chart library failed.
+        renderTrendTrajectory();
         renderLeaderboard(agg.leaders);
         var wired = !!document.getElementById('alt-f-industry');
         renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
@@ -1663,6 +1666,274 @@
             data: { labels: series.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
             options: options
         });
+    }
+
+    /* The whole-record trajectory strip -------------------------------- */
+    /*
+      WHY THIS EXISTS. The page opens filtered to the current calendar year, so
+      the chart above opens with the months of that year and nothing else: five
+      points in May, eight on 1 August, one on 1 January (which is why the
+      renderer above has to switch point markers back on below three points, or
+      the card renders as an empty box). The table under it holds 307 months.
+      A reader's first sight of the trend was therefore a handful of columns
+      with a curve laid over them, and with the jobless-claims bars behind it,
+      it read as a bar chart rather than a trajectory.
+
+      The chart above is NOT changed to draw all 307 months. It is the filtered
+      view, it says so, tapping a month scopes the page, and drawing months the
+      filter excludes would put the chart at odds with the filter chips. So the
+      shape over time is drawn beside it, and the filtered window is shaded on
+      it, which is the question the reader actually has: where does the slice I
+      am looking at sit on the whole record.
+
+      THE TECHNIQUE IS THE SIBLING TALENT TRACKER'S, not a new one. Its trend
+      card had the same problem for the same reason (a chart in a card narrower
+      than its own axis labels) and the answer was to take the TEXT out of the
+      drawing: the axis values and the two dates are HTML beside the SVG, so
+      they stay CSS pixels in a 200px card, in an expanded card and on a phone,
+      while the SVG holds geometry only. Grid and lines carry
+      vector-effect="non-scaling-stroke" so a 2px line is 2px at any width, and
+      the endpoint dots are a SECOND svg with no viewBox, so their radius is a
+      real pixel rather than an ellipse stretched by preserveAspectRatio.
+
+      NOTHING IS INTERPOLATED. A month with no matching row is a break in the
+      path, never a zero and never a line drawn straight across it: we do not
+      hold a figure for it, and joining the two months either side would draw a
+      slope nothing measured. The count of those months is printed under the
+      strip so a broken line reads as missing data rather than as a rendering
+      fault.
+
+      NO LEGEND. The two colours are the two the Chart.js legend directly above
+      already names; a second key would be the same words twice.
+    */
+    var TJ = { revealed: false, observing: false, key: null, series: null, seq: 0 };
+    var TJ_PERIOD_PARAMS = ['from', 'to', 'years', 'quarters', 'months'];
+
+    function periodFiltered(params) {
+        return TJ_PERIOD_PARAMS.some(function (k) {
+            return params[k] != null && params[k] !== '';
+        });
+    }
+    function withoutPeriod(params) {
+        var out = {};
+        Object.keys(params).forEach(function (k) {
+            if (TJ_PERIOD_PARAMS.indexOf(k) === -1) out[k] = params[k];
+        });
+        return out;
+    }
+    // Short axis values. fmt() gives "200,000", which is most of the width of
+    // the label column in a card this narrow; the strip is a shape, not a
+    // readout, and the exact figures are in the chart's own tooltips.
+    function tjShort(v) {
+        if (v >= 1000000) return (Math.round(v / 100000) / 10) + 'M';
+        if (v >= 1000) return (Math.round(v / 100) / 10) + 'k';
+        return fmt(Math.round(v));
+    }
+    function tjMonthSeq(startKey, endKey) {
+        var out = [];
+        var y = parseInt(startKey.slice(0, 4), 10), m = parseInt(startKey.slice(5, 7), 10);
+        var ey = parseInt(endKey.slice(0, 4), 10), em = parseInt(endKey.slice(5, 7), 10);
+        var guard = 0;
+        while ((y < ey || (y === ey && m <= em)) && guard++ < 2400) {
+            out.push(y + '-' + pad2(m));
+            m++; if (m > 12) { m = 1; y++; }
+        }
+        return out;
+    }
+    // Zero-based, topped at a round number two steps up: 0 / 100k / 200k reads
+    // instantly where 0 / 93k / 186k does not. Two steps rather than the
+    // sibling's four because this strip is ~80px tall and five labels in that
+    // column collide.
+    function tjNiceMax(raw) {
+        var max = Math.max(1, raw);
+        var q = max / 2;
+        var mag = Math.pow(10, Math.floor(Math.log(q) / Math.LN10));
+        var mults = [1, 2, 2.5, 5, 10];
+        for (var i = 0; i < mults.length; i++) {
+            if (q <= mag * mults[i] + 1e-9) { q = mag * mults[i]; break; }
+        }
+        return 2 * q;
+    }
+
+    function observeTrajectoryReveal() {
+        if (TJ.observing || TJ.revealed) return;
+        var card = document.querySelector('.alt-trend-card');
+        if (!card || !('IntersectionObserver' in window)) { TJ.revealed = true; renderTrendTrajectory(); return; }
+        TJ.observing = true;
+        var io = new IntersectionObserver(function (entries) {
+            if (entries.some(function (e) { return e.isIntersecting; })) {
+                io.disconnect();
+                TJ.observing = false;
+                TJ.revealed = true;
+                renderTrendTrajectory();
+            }
+        }, { rootMargin: '1200px 0px' });
+        io.observe(card);
+    }
+
+    /*
+      COST. The whole-record series is a SECOND /aggregate call, and it asks for
+      `include=series` only: one grouped monthly SUM plus the totals row the
+      endpoint will not let a caller drop, against the ~31 statements the
+      default aggregate runs. It is also fetched only once the card is near the
+      viewport (the card sits ~9,600px down), so a visitor who never scrolls to
+      the trend pays nothing, and the first paint is untouched. When no period
+      filter is set the chart above IS the whole record, so the strip hides
+      itself and makes no request at all. A failure hides the strip; a trend
+      that could not be drawn must not become a trend drawn wrong.
+    */
+    function renderTrendTrajectory() {
+        var box = document.getElementById('alt-trend-full');
+        if (!box) return;
+        var params = currentParams();
+        if (!periodFiltered(params)) { box.hidden = true; return; }
+        if (!TJ.revealed) { observeTrajectoryReveal(); return; }
+        var rest = withoutPeriod(params);
+        var key = qs(rest);
+        if (TJ.key === key && TJ.series) { drawTrajectory(box, TJ.series); return; }
+        var seq = ++TJ.seq;
+        rest.include = 'series';
+        apiGet('aggregate', rest).then(function (a) {
+            if (seq !== TJ.seq) return;
+            TJ.key = key;
+            TJ.series = (a && a.series) || [];
+            drawTrajectory(box, TJ.series);
+        }).catch(function () { box.hidden = true; });
+    }
+
+    function drawTrajectory(box, full) {
+        var nowKey = new Date().getFullYear() + '-' + pad2(new Date().getMonth() + 1);
+        var rows = (full || []).filter(function (s) { return s.month && s.month <= nowKey; });
+        if (rows.length < 2) { box.hidden = true; return; }
+        var by = {};
+        rows.forEach(function (s) { by[s.month] = s; });
+        var keys = tjMonthSeq(rows[0].month, rows[rows.length - 1].month);
+        if (keys.length < 2) { box.hidden = true; return; }
+
+        var verified = function (s) { return (s.verified_jobs != null) ? s.verified_jobs : (s.jobs || 0); };
+        var announced = function (s) { return s.announced_jobs || 0; };
+        var peak = 0, peakRow = null, hasAnnounced = false;
+        rows.forEach(function (s) {
+            if (verified(s) > peak) { peak = verified(s); peakRow = s; }
+            peak = Math.max(peak, announced(s));
+            if (announced(s) > 0) hasAnnounced = true;
+        });
+        var max = tjNiceMax(peak);
+
+        var W = 300, H = 90, padT = 3, padB = 3;
+        var plotH = H - padT - padB;
+        var n = keys.length;
+        var x = function (i) { return Math.round(W * i / (n - 1)); };
+        var y = function (v) { return Math.round(padT + plotH - (plotH * Math.min(v, max) / max)); };
+
+        // Contiguous runs only. A run of one month is drawn as a zero-length
+        // line so the round cap renders it as a dot: an isolated month must be
+        // visible, and a bare moveto draws nothing at all.
+        function pathFor(pick) {
+            var segs = [], cur = null;
+            keys.forEach(function (k, i) {
+                var row = by[k];
+                if (!row) { cur = null; return; }
+                var pt = x(i) + ' ' + y(pick(row));
+                if (!cur) { cur = [pt]; segs.push(cur); } else cur.push(pt);
+            });
+            return segs.map(function (s) {
+                return 'M' + s[0] + (s.length === 1 ? ' L' + s[0] : ' L' + s.slice(1).join(' L'));
+            }).join(' ');
+        }
+
+        // The months the chart above is currently drawing, marked on the whole
+        // record. Runs, not one span: a Quarter or Month filter selects months
+        // that are not next to each other, and a single band across them would
+        // shade months the page has excluded.
+        var scoped = {};
+        ((LAST_AGG && LAST_AGG.series) || []).forEach(function (s) {
+            if (s.month && s.month <= nowKey) scoped[s.month] = 1;
+        });
+        var half = W / (n - 1) / 2;
+        var bands = [], run = null;
+        keys.forEach(function (k, i) {
+            if (scoped[k]) { if (run) run[1] = i; else run = [i, i]; }
+            else if (run) { bands.push(run); run = null; }
+        });
+        if (run) bands.push(run);
+        // A one-month scope is one 296th of the span, which is under a pixel of
+        // the drawn width and therefore no marker at all. The floor is 4 user
+        // units (about 2.5 CSS px in the narrow card) so the marker is visible;
+        // it is a pointer to a position, and the exact window is named in the
+        // filter chips and the chart heading above it.
+        var bandSvg = bands.map(function (b) {
+            var x0 = Math.max(0, x(b[0]) - half), x1 = Math.min(W, x(b[1]) + half);
+            var wide = Math.max(4, x1 - x0);
+            return '<rect class="alt-tj-band" x="' + Math.min(x0, W - wide).toFixed(1)
+                + '" y="0" width="' + wide.toFixed(1) + '" height="' + H + '"/>';
+        }).join('');
+
+        var gaps = keys.filter(function (k) { return !by[k]; }).length;
+        var firstRow = by[keys[0]], lastRow = by[keys[n - 1]];
+        var startLabel = monthLabel(keys[0]), endLabel = monthLabel(keys[n - 1]);
+        var describe = 'Verified job cuts by month, ' + startLabel + ' to ' + endLabel + '. '
+            + (firstRow ? fmt(verified(firstRow)) + ' in ' + startLabel + '. ' : '')
+            + (lastRow ? fmt(verified(lastRow)) + ' in ' + endLabel + '. ' : '')
+            + (gaps ? gaps + ' of these ' + n + ' months have no recorded event and are not drawn.' : '');
+
+        var lines = '<path d="' + pathFor(verified) + '" class="alt-tj-line" stroke="' + SEQ_BLUE
+            + '" vector-effect="non-scaling-stroke"/>';
+        var dots = '<circle cx="100%" cy="' + (lastRow ? (100 * y(verified(lastRow)) / H).toFixed(1) : '50')
+            + '%" r="3" fill="' + SEQ_BLUE + '"/>';
+        if (hasAnnounced) {
+            lines += '<path d="' + pathFor(announced) + '" class="alt-tj-line alt-tj-line-dash" stroke="'
+                + ALT_AMBER + '" vector-effect="non-scaling-stroke"/>';
+            if (lastRow) {
+                dots += '<circle cx="100%" cy="' + (100 * y(announced(lastRow)) / H).toFixed(1)
+                    + '%" r="3" fill="' + ALT_AMBER + '"/>';
+            }
+        }
+
+        var grid = '';
+        for (var g = 0; g <= 2; g++) {
+            var gy = y(max * g / 2);
+            grid += '<line x1="0" x2="' + W + '" y1="' + gy + '" y2="' + gy
+                + '" class="alt-tj-grid" vector-effect="non-scaling-stroke"/>';
+        }
+
+        box.innerHTML =
+            // The band is only mentioned when there is one to see. The charted
+            // window can fall entirely on months this view holds nothing for,
+            // and pointing at a marker that is not drawn is worse than silence.
+            '<div class="alt-tj-h">The whole record <span>every month we hold under these filters'
+            + (bands.length ? '. The shaded band is the period charted above.' : '.') + '</span></div>'
+            + '<div class="alt-tj-plot">'
+            + '<div class="alt-tj-ys" aria-hidden="true"><span>' + escapeHtml(tjShort(max))
+            + '</span><span>' + escapeHtml(tjShort(max / 2)) + '</span><span>0</span></div>'
+            + '<div class="alt-tj-box">'
+            + '<svg class="alt-tj-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"'
+            + ' role="img" aria-label="' + escapeHtml(describe) + '">'
+            + bandSvg + grid + lines + '</svg>'
+            + '<svg class="alt-tj-dots" aria-hidden="true" focusable="false">' + dots + '</svg>'
+            + '</div></div>'
+            + '<p class="alt-tj-xs" aria-hidden="true"><span>' + escapeHtml(startLabel)
+            + '</span><span>' + escapeHtml(endLabel) + '</span></p>'
+            + '<p class="alt-tj-note">' + escapeHtml(
+                (gaps
+                    ? gaps + ' of these ' + fmt(n) + ' months have no event we can source, so the line breaks '
+                        + 'there rather than being drawn as zero. '
+                    : 'Every one of these ' + fmt(n) + ' months has at least one sourced event. ')
+                /*
+                  THE AXIS IS ZERO-BASED AND THE PEAK IS NAMED, which is one
+                  decision rather than two. Over the full record one month
+                  (Mar 2020, 709,906) is about seventy times the median, so a
+                  true zero-based axis leaves two decades reading as a low
+                  band under one tower. That IS the shape of this dataset and
+                  rescaling to hide it would be the lie; what a reader cannot
+                  do is tell whether a flat-looking stretch is a quiet market
+                  or a broken chart. Naming the tallest month answers that in
+                  words, at no cost to the drawing.
+                */
+                + (peakRow ? 'Tallest month: ' + monthLabel(peakRow.month) + ', at '
+                    + fmt(verified(peakRow)) + ' verified cuts, against a scale that starts at zero.' : ''))
+            + '</p>';
+        box.hidden = false;
     }
 
     // Align the claims series to the chart's months; national by default, or the

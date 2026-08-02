@@ -6,6 +6,83 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-01 — the trend card shows a trajectory again (2.19.246)
+
+**THE DEFECT WAS THE DEFAULT SCOPE, not the chart.** The tracker opens filtered
+to the current calendar year, so "Jobs cut per month" opened with the months of
+that year and nothing else: eight points on 1 August, five in May, one on
+1 January. `renderTrend()` already had to switch its point markers back on below
+three points or the card rendered as an empty box, which is the same defect
+noticed and worked around rather than fixed. With the jobless-claims bars behind
+it, the flagship trend read as a bar chart with a curve laid over it, on a table
+holding 296 charted months.
+
+**WHAT SHIPPED: a whole-record trajectory strip inside the same card**, under the
+chart, showing every month held under the current non-period filters, with the
+charted window shaded on it. The Chart.js chart above is deliberately NOT changed
+to draw all 296 months: it is the filtered view, it says so, tapping a month
+scopes the page, and drawing months the filter excludes would put it at odds with
+the filter chips two inches above it. The question the strip answers is the one
+the reader actually has, which is where the slice they are looking at sits on the
+record.
+
+**THE TECHNIQUE IS THE SIBLING TALENT TRACKER'S**, not a new one
+(`tit_trend_svg()` in its shortcodes.php). Its trend card had the same problem for
+the same reason, a chart in a card narrower than its own axis labels, and the
+answer was to take the TEXT out of the drawing: axis values and the two dates are
+HTML beside the SVG so they stay CSS pixels at every width, the SVG holds geometry
+only, grid and lines carry `vector-effect="non-scaling-stroke"` so a 2px line is
+2px in a 190px card and in a 700px expanded one, and the endpoint dots are a
+SECOND svg with no viewBox so their radius is a real pixel rather than an ellipse
+stretched by `preserveAspectRatio="none"`.
+
+**NOTHING IS INTERPOLATED, and that is the one rule the strip exists to keep.**
+The Chart.js path runs its series through `fillMonths()`, which substitutes
+`{jobs: 0}` for a month with no rows. Defensible inside a dense selected year;
+not defensible over 296 months, where it would publish a month we hold nothing
+for as a month in which nobody was laid off. The strip breaks its path at those
+months instead, never draws a slope across them, and prints the count underneath,
+because a broken line on its own does not tell a reader whether the break was
+meant. A one-month run is emitted as a zero-length line so the round cap renders
+it as a dot; a bare moveto draws nothing and the month would vanish silently.
+
+**THE AXIS IS ZERO-BASED AND THE PEAK IS NAMED, which is one decision.** Over the
+full record Mar 2020 (709,906 verified cuts) is about seventy times the median
+month, so a true zero-based axis leaves two decades reading as a low band under
+one tower. That IS the shape of this dataset and rescaling to hide it would be
+the lie. What a reader cannot do is tell whether a flat-looking stretch is a
+quiet market or a broken chart, so the tallest month is named in the caption,
+which costs the drawing nothing.
+
+**COST: two SQL statements, and not on the cold render.** The whole-record series
+is a second `/aggregate` asking `include=series` only, which is one grouped
+monthly SUM plus the totals row the endpoint will not let a caller drop, against
+the ~31 statements the default runs (measured 8.1s for `country=United States`,
+19.0s with `sourced=1`). It is fetched only once the card nears the viewport, and
+the card sits ~9,600px down the page, so a visitor who never scrolls to the trend
+pays nothing and the first paint is untouched. With NO period filter set the
+chart above already IS the whole record, so the strip hides itself and makes no
+request at all. `include=series` measured 2.2s live against the default
+aggregate's 8.1s+; a failure hides the strip, because a trend that could not be
+drawn must not become a trend drawn wrong. No new block was added to
+`alt_aggregate_default_blocks()`.
+
+**VERIFIED, not asserted:** five cases rendered in a browser at the real mobile
+column width (219px) before the deploy, against live production series data, and
+each one changed something: a single-month scope band was under a pixel wide and
+invisible until the marker got a floor; the "shaded band" sentence printed with
+no band drawn when the charted window fell on months a filtered view holds
+nothing for; and the sparse-history case is what showed the lone-month dots
+working. 19 new offline tests, two of which were made to fail by hand (a zero
+substituted for a gap, and a dropped `include`).
+
+**UNVERIFIED:** the private benchmark (`scratchpad/bm-live.html`) was not
+refreshed. `data_integrity.headline_movement` was already FAILING live when this
+session started (+63,899 jobs on rows carrying at most 61,211) and is untouched
+by this change, which adds no rows and alters no aggregate arithmetic.
+
+---
+
 ## 2026-08-01 — where the missing SEC Item 2.05 filings actually go (no plugin change)
 
 The gold-set measurement earlier today said 24 of 57 (42.1%, Wilson 95% CI

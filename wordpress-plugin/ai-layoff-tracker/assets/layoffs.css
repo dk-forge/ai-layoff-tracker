@@ -504,6 +504,40 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-trend-card .alt-chart-box { height: 300px; }
 .alt-trend-card.alt-expanded .alt-chart-box { height: 460px; }
 @media (max-width: 560px) { .alt-trend-card .alt-chart-box { height: 240px; } }
+/* Whole-record trajectory strip under the trend chart.
+   THE TEXT IS NOT IN THE DRAWING. The axis values and the two dates are HTML
+   here, so they stay these sizes in a 200px column, in an expanded card and on
+   a phone; the SVG holds geometry only and scales cleanly to any width. The
+   line weights are pinned by vector-effect="non-scaling-stroke" in the markup,
+   which is why this rule can state stroke-width once and have it hold at every
+   card size. */
+.alt-tj { margin: 12px 0 0; padding-top: 11px; border-top: 1px solid var(--alt-grid); }
+.alt-tj-h { margin: 0 0 7px; font-size: 12.5px; font-weight: 600; color: var(--alt-ink-2); }
+.alt-tj-h span { font-weight: 400; color: var(--alt-muted); }
+.alt-tj-plot { display: flex; align-items: stretch; gap: 7px; }
+/* Top value first, zero last, so the column reads down the axis it labels. The
+   half-line negative margin is what centres the first and last values on the
+   grid lines they name. In flow rather than at percentages, so the column sizes
+   itself to its widest value and pins no width at any viewport. */
+.alt-tj-ys { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: space-between;
+    margin: -0.5em 0; text-align: right; font-size: 10.5px; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--alt-muted); }
+.alt-tj-box { position: relative; flex: 1 1 auto; min-width: 0; height: 86px; }
+.alt-tj-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.alt-tj-grid { stroke: var(--alt-grid); stroke-width: 1; }
+.alt-tj-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.alt-tj-line-dash { stroke-dasharray: 5 4; }
+.alt-tj-band { fill: var(--alt-blue); opacity: 0.12; }
+/* No viewBox on the dot layer, so its user unit IS a CSS pixel and the radius
+   is honest at every card width; a circle inside the stretched plot above would
+   render as an ellipse. Overflow is visible because the last point sits at 100%
+   and half of its dot falls outside the box. */
+.alt-tj-dots { position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible; pointer-events: none; }
+.alt-tj-xs { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0 0;
+    font-size: 10.5px; color: var(--alt-muted); }
+.alt-tj-note { margin: 6px 0 0; font-size: 11px; line-height: 1.45; color: var(--alt-muted); }
+@media (max-width: 560px) { .alt-tj-box { height: 74px; } }
 .alt-map-toggle { display: inline-flex; border: 1px solid var(--alt-border); border-radius: 7px; overflow: hidden; margin-right: 4px; }
 .alt-map-scope { background: #fff; border: 0; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--alt-ink-2); cursor: pointer; }
 .alt-map-scope + .alt-map-scope { border-left: 1px solid var(--alt-border); }
