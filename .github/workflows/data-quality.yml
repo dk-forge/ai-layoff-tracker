@@ -102,6 +102,14 @@ jobs:
               print("\nNo anomalies flagged this week.")
           PY
 
+      # Spend guard (railway/spend.py). Sets ALT_PAID_READS=off for the steps
+      # below when the month is past its allowance. Never fails the job: the
+      # free anomaly report above has already run and is the part that matters.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python3 railway/spend.py --degrade
+
       - name: Classification spot-check (LLM second opinion)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

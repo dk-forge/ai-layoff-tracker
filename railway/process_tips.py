@@ -42,6 +42,7 @@ from wp_poster import post_to_wordpress
 from sources.newsapi import TRUSTED_DOMAINS
 from sources.warn import STATE_WARN_URL
 from http_retry import get_with_retry
+import spend
 
 try:
     from openai import OpenAI
@@ -56,7 +57,6 @@ MAX_TIPS = max(1, int(os.environ.get("TIPS_MAX") or "25"))
 TIMEOUT = 40
 
 _ALLOWED = set(d.strip().lower() for d in TRUSTED_DOMAINS.replace("\n", "").split(",") if d.strip())
-
 
 def _host_of(url):
     """Bare lowercase hostname: no port, no leading www. '' when unparseable."""
@@ -186,6 +186,14 @@ def _email_digest(lines):
 
 
 def main():
+    # Spend guard: this script builds its own OpenRouter client, so
+    # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
+    # failing — a deferred public-tip processing is re-run on its next
+    # schedule, and reddening CI over a budget decision is noise.
+    if not spend.paid_reads_enabled():
+        print("paid reads are OFF (spend ceiling) — skipping the public-tip processing "
+              "this run; it resumes on the next schedule")
+        return 0
     if not SITE:
         print("WP_SITE_URL required")
         return 1

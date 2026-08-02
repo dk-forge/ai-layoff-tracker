@@ -41,6 +41,17 @@ jobs:
           ALERT_RUNWAY_DAYS: ${{ github.event.inputs.runway || '10' }}
         run: python openrouter_balance_check.py
 
+      # This job OWNS the month-start snapshot that railway/spend.py measures
+      # month-to-date against. Every other workflow reads the committed file;
+      # only this one persists it, because only a committed snapshot survives
+      # an ephemeral runner. `--degrade` here is a no-op for this job (it makes
+      # no paid calls) and is run purely to take the reading.
+      - name: Take the month-start spend snapshot
+        if: ${{ !cancelled() }}
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+
       # The runway alert is only as good as its history, and a workflow that
       # writes a file without committing it has recorded nothing. The reading
       # is one line a day and the alert is worthless without the slope.
@@ -49,7 +60,7 @@ jobs:
         run: |
           git config user.name  'layoff-tracker-bot'
           git config user.email 'bot@users.noreply.github.com'
-          git add railway/openrouter_balance_history.json || true
+          git add railway/openrouter_balance_history.json railway/spend_month.json || true
           if git diff --staged --quiet; then
             echo "No new reading to commit."
             exit 0

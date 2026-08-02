@@ -13,9 +13,10 @@ from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
 from sources.press_releases import pull_press_releases, reviewed_feed_count
-from extractor import extract_layoff_data
+from extractor import extract_layoff_data, spend_deferral_count
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
+import spend
 
 
 def _mark_phase(phase):
@@ -102,8 +103,53 @@ def filter_already_seen(entries):
     return _shared(entries)
 
 
+def _spend_preflight():
+    """Decide, before any paid call, whether this run may spend.
+
+    This is the ONLY scheduled process on Railway, it carries its own OpenRouter
+    key, and until 2026-08-02 it was invisible to every cost check in the repo:
+    `openrouter_balance_check.py` runs in GitHub Actions and reads the Actions
+    key, so the largest consumer had no measurement and no brake.
+
+    Best-effort by construction. Ingest must not depend on a budget lookup
+    succeeding: if the check cannot run, the per-run ceiling inside
+    `spend.paid_reads_enabled()` still bounds this run, and the free collectors
+    are unaffected either way.
+    """
+    try:
+        key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+        if not key:
+            print("spend: OPENROUTER_API_KEY not set in this runtime — paid "
+                  "extraction will fail anyway; free collectors continue")
+            return
+        state = spend.fetch_key_state(key)
+        used = float(state.get("usage") or 0)
+        month_spend, month, persisted = spend.month_delta(
+            used, spend.key_fingerprint(key))
+        ceiling = spend.MONTHLY_ALLOWANCE_USD * spend.STOP_AT_FRACTION
+        if persisted:
+            print(f"spend: ${month_spend:.4f} spent in {month} of a "
+                  f"${spend.MONTHLY_ALLOWANCE_USD:.2f} allowance "
+                  f"(per-run ceiling ${spend.RUN_CEILING_USD:.2f})")
+            if month_spend >= ceiling:
+                spend.degrade(True)
+        else:
+            # Railway has no persistent volume, so the month-start snapshot
+            # cannot be refreshed here. That makes month-to-date UNKNOWN, and
+            # UNKNOWN is not a pass — say so, and lean on the per-run ceiling,
+            # which needs no stored state.
+            print(f"spend: month-to-date is UNKNOWN in this runtime (the "
+                  f"month-start snapshot is not writable here). Not treating "
+                  f"that as within budget. The ${spend.RUN_CEILING_USD:.2f} "
+                  f"per-run ceiling is what is enforcing on this run.")
+    except Exception as e:
+        print(f"spend: preflight could not run ({e}) — per-run ceiling still "
+              f"applies; free collectors unaffected")
+
+
 def run():
     _mark_phase("refreshing")
+    _spend_preflight()
     entries = []
 
     # Pull from sources — one source failing must not kill the run
@@ -230,6 +276,21 @@ def run():
         f"{skipped_dupes} duplicates skipped, {skipped_not_layoff} non-events skipped, "
         f"{failed} failed"
     )
+    # What did that cost, and did it buy anything? Before this line the question
+    # was unanswerable from a run's own output — the only cost signal in the repo
+    # was a daily account balance that could not attribute a cent to a run.
+    print(spend.run_summary(rows_stored=posted))
+    deferred = spend_deferral_count()
+    if deferred:
+        # Loud in the log, deliberately NOT a row on the health ledger: the
+        # health page labels any unrecognised id "Operational collector"
+        # (assets/health.js), and the Sources page must list exactly the live
+        # collectors. A spend decision is not a collector, and inventing one to
+        # carry it would put a wrong claim on two public surfaces to buy a
+        # signal that belongs in ops_status. See ops_status.py [2a].
+        print(f"::warning::spend ceiling: {deferred} candidate(s) went unread "
+              f"this run. They are UNMARKED and will be re-pulled on a later "
+              f"run. WARN/SEC/ERM and every free collector ran normally.")
     # FAIL LOUD (CLAUDE.md iron rule): the per-source health above covers
     # COLLECTION. This covers POSTING. A cycle that pulled real work but posted
     # nothing while failures piled up is an outage (rotated WP_API_KEY / WP host

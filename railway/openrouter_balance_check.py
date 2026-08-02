@@ -82,6 +82,28 @@ def _history():
         return []
 
 
+def _live_row_count():
+    """Total rows on the live site, or None.
+
+    Recorded alongside the balance so cost per stored row is derivable from one
+    committed file (ops_status.py [2a]). A balance alone answers "how much is
+    left" and never "did that money buy anything" — `backfill.py` firing ~5,150
+    calls/day for ~234 useful rows was invisible for exactly as long as nobody
+    divided one by the other. Best-effort: a failed read records no count
+    rather than blocking the balance reading this job exists to take.
+    """
+    try:
+        req = urllib.request.Request(
+            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/aggregate",
+            headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=25) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        return int(((data.get("totals") or {}).get("entries")) or 0) or None
+    except Exception as exc:
+        print(f"row-count read failed ({exc}) — recording the balance without it")
+        return None
+
+
 def _record(balance):
     """Append today's reading and return the trimmed history.
 
@@ -92,7 +114,11 @@ def _record(balance):
     import datetime
     today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     rows = [r for r in _history() if r.get("date") != today]
-    rows.append({"date": today, "balance": balance})
+    reading = {"date": today, "balance": balance}
+    live_rows = _live_row_count()
+    if live_rows is not None:
+        reading["rows"] = live_rows
+    rows.append(reading)
     rows = sorted(rows, key=lambda r: r["date"])[-30:]
     try:
         with open(HISTORY, "w") as fh:

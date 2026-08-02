@@ -10,10 +10,10 @@ import os
 import sys
 import time
 import urllib.request
+import spend
 
 API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
-
 
 def summary(text):
     path = os.environ.get("GITHUB_STEP_SUMMARY")
@@ -61,6 +61,14 @@ def ask_model(prompt):
 
 
 def main():
+    # Spend guard: this script builds its own OpenRouter client, so
+    # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
+    # failing — a deferred classification spot-check is re-run on its next
+    # schedule, and reddening CI over a budget decision is noise.
+    if not spend.paid_reads_enabled():
+        print("paid reads are OFF (spend ceiling) — skipping the classification spot-check "
+              "this run; it resumes on the next schedule")
+        return 0
     try:
         newest = request_json(API + "query?sort=layoff_date&dir=desc&per_page=15")
         biggest = request_json(API + "query?sort=job_count&dir=desc&per_page=15")

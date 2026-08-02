@@ -41,11 +41,13 @@ def llm_count_from_text(text, label=""):
         "MUST appear verbatim in the text.\n\nTEXT:\n" + snippet
     )
     try:
+        import spend
         from extractor import _get_client, _parse_json_response, MODEL
         resp = _get_client().chat.completions.create(
             model=MODEL, max_tokens=40, temperature=0,
             messages=[{"role": "user", "content": prompt}],
         )
+        spend.record_usage(MODEL, getattr(resp, "usage", None))
         data = _parse_json_response(resp.choices[0].message.content or "")
         v = int(data.get("affected"))
     except Exception:

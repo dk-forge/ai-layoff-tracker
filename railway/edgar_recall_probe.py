@@ -28,6 +28,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import extractor
+import spend
 from sources import edgar
 
 GOLDSET = os.environ.get(
@@ -94,6 +95,7 @@ def classify(raw, gold_count):
             model=extractor.MODEL, max_tokens=1000,
             messages=[{"role": "system", "content": extractor.SYSTEM_PROMPT},
                       {"role": "user", "content": prompt}])
+        spend.record_usage(extractor.MODEL, getattr(resp, "usage", None))
     except Exception as exc:
         return {"verdict": "unknown", "stage": "llm_error", "detail": str(exc)[:200],
                 "gold_count_in_window": windowed}
