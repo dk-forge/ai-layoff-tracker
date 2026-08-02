@@ -201,7 +201,13 @@ def _count(s):
 # site-packages/warn/scrapers/ — an audit found HI, IL, PA missing from an
 # earlier version of this list (IL and PA are top-5 layoff states!).
 ALL_STATES = [
-    "AK", "AL", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
+    # AL moved to warn_new_states.fetch_al (2026-08-02): the open scraper's AL
+    # module still parses the retired madeinalabama.com HTML table, so it dies
+    # on `table[0]` (IndexError) now that Alabama serves the list from
+    # workforce.alabama.gov. check=False swallowed the traceback and Alabama
+    # silently fell out of the sweep (851 -> 0). The state's CSV export is not
+    # blocked; the custom fetcher reads that.
+    "AK", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
     "IL", "IN", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
     # KS moved to warn_new_states.fetch_ks (2026-07-28): the open scraper walks
     # the ENTIRE kansasworks history and started timing out (420s, every run),
@@ -221,7 +227,19 @@ def _run_scraper(states, workdir):
         cmd = ["warn-scraper", "--data-dir", workdir,
                "--cache-dir", os.path.join(workdir, "cache"), "-l", "error", st]
         try:
-            subprocess.run(cmd, check=False, timeout=420)
+            proc = subprocess.run(cmd, check=False, timeout=420)
+            # check=False is deliberate — one dead state must not kill the sweep.
+            # But saying NOTHING about a non-zero exit is how Alabama disappeared
+            # on 2026-08-02: the module raised IndexError, wrote no al.csv, and
+            # the state simply stopped appearing in the per-state counts with no
+            # error anywhere in the log. The drift tripwire still caught it, but
+            # only after a day, and the cause took a log dig to find. Name the
+            # failure at the moment it happens.
+            if proc.returncode != 0:
+                print(f"::warning:: warn-scraper {st} exited {proc.returncode} — "
+                      f"no data for {st} this run (its module raised; the "
+                      f"traceback is above). If this repeats, the state's site "
+                      f"changed: fix or move {st} to a custom fetcher.")
         except Exception as e:
             print(f"warn-scraper {st} error/timeout: {e}")
 
