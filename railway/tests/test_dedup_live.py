@@ -80,14 +80,17 @@ class DedupLiveRegression(unittest.TestCase):
         if "503" in result.detail:
             self.skipTest("site is in its deploy maintenance window (HTTP 503)")
         if getattr(result, "pending", False):
-            # The site answered, but the thing this guard reads is not there
-            # yet: a build that predates the field, or a baseline the daily job
-            # has not written. Reddening every push for the two minutes an FTPS
-            # deploy takes would train people to ignore this file. It is still
-            # UNKNOWN in ops_status [3], still UNKNOWN on the health ledger, and
-            # data-integrity.yml still exits 3 (a red run, which emails), so a
-            # guard that never arms cannot hide here.
-            self.skipTest(f"not provisioned yet, NOT passing: {result.detail}")
+            # The site answered, but this reading is not one this guard is
+            # entitled to judge: a build that predates the field, a baseline the
+            # daily job has not written, or a baseline younger than one ingest
+            # cycle (see MIN_CYCLE_SPAN_DAYS — a push-time check landing inside a
+            # running backfill reads a batch, not a day). Reddening every push
+            # for the two minutes an FTPS deploy takes, or for whichever
+            # collector happens to be writing, would train people to ignore this
+            # file. It is still UNKNOWN in ops_status [3], still UNKNOWN on the
+            # health ledger, and data-integrity.yml still exits 3 (a red run,
+            # which emails), so a guard that never arms cannot hide here.
+            self.skipTest(f"UNKNOWN, NOT passing: {result.detail}")
         self.fail(f"{result.inv.label}: {result.detail} — server regression, not a blip")
 
     def test_coinbase_counts_once(self):

@@ -369,6 +369,49 @@ HEADLINES = (
 # check reports UNKNOWN rather than stretching its budget to fit.
 MAX_BASELINE_AGE_DAYS = 14
 
+# The other end of the same rule, and it was missing until 2026-08-02.
+#
+# A baseline is captured ONCE a day, by data-integrity.yml at 17:30 UTC, 50
+# minutes after the reconciler. That is the pairing MovementInvariant is
+# calibrated for: two readings a whole ingest cycle apart, so the rows that
+# arrived between them are a day's worth of rows. But tests.yml runs the same
+# live check on EVERY push, at any hour, and therefore routinely compares a
+# reading taken PART WAY through a cycle against a baseline taken at the end of
+# the previous one. A partial cycle is not a small day. The rows inside it are
+# whatever collector happened to be mid-batch, and collectors differ by an order
+# of magnitude in how many jobs a row carries: state WARN rows are hundreds,
+# EDGAR and news rows are thousands.
+#
+# THE INCIDENT. 2026-08-02T03:33Z, SHA 73b2606, worldwide_all_time:
+#   +63,899 jobs over 1.0d on +16 entries (20,186,665 -> 20,250,564). The rows
+#   that changed carry at most 61,211 and the largest single row is 60,000.
+# Twenty minutes later, SHA 11bc4ce at 03:53Z, the same check passed. Nothing
+# had been done to it: the committed baseline blob was byte-identical in both
+# checkouts (039a0fad) and record_baseline had refused nothing, because the
+# recorder had not run in between at all. What was running was `Historical
+# backfill (EDGAR)`, 02:39:27Z -> 07:40:04Z — a five-hour writer. Both reads
+# landed inside it. At 03:33 the 16 rows that had arrived carried 3,994 jobs
+# each, measured against a model built from the standing population's mean of
+# 319; by 03:53 more rows had landed and the ratio fell back inside. The verdict
+# was a function of where in a batch the sampler happened to land, which is a
+# race with the writers, not a finding about the data.
+#
+# So: below this span, the numerator and the denominator of the plausibility
+# test do not describe the same thing, and this check does not render that
+# verdict. It reports UNKNOWN — a third state, never a pass — and the daily run,
+# which by construction spans a whole cycle, judges the move in full.
+#
+# What is NOT excused, because no later arrival can undo it: a headline of zero,
+# and a headline that moved while the row population stood still. Δentries == 0
+# with jobs moving means already-published rows were re-scored, and that is true
+# at the instant it is observed regardless of what arrives afterwards. It is
+# also the condition this guard was actually built for.
+#
+# This is deliberately NOT a raised move_floor. The floor is untouched; a bigger
+# floor would have been fitted to one afternoon's move and would have gone quiet
+# for real defects of the same size at every other hour of the day.
+MIN_CYCLE_SPAN_DAYS = 0.95
+
 # TUNING THE MOVEMENT FLOORS — read this before changing one.
 #
 # max_share is measured: each bound sits well clear of the live reading recorded
@@ -412,9 +455,20 @@ def _excusable(err):
     return True
 
 
-def _out(state, detail, observed=None, pending=False):
-    """One slice's verdict inside a multi-slice check."""
-    return {"state": state, "detail": detail, "observed": observed, "pending": pending}
+def _out(state, detail, observed=None, pending=False, suppressed=False):
+    """One slice's verdict inside a multi-slice check.
+
+    `suppressed` marks the one UNKNOWN that is standing in for a verdict this
+    reading was not entitled to render — today, the partial-cycle case. The
+    baseline recorder must not advance over it: doing so would let a reading
+    that dodged its own FAIL become tomorrow's normal, which is the exact
+    laundering record_baseline exists to prevent. It is NOT set for the other
+    UNKNOWNs (no baseline, stale baseline, unreachable API), because those
+    suppressed no verdict — there was none to render — and refusing to record
+    them would freeze the guard permanently unarmed.
+    """
+    return {"state": state, "detail": detail, "observed": observed,
+            "pending": pending, "suppressed": suppressed}
 
 
 def _roll_up(inv, ctx, per_slice):
@@ -557,6 +611,15 @@ class MovementInvariant:
     or a live read that failed -> UNKNOWN. A missing baseline is never a pass,
     and the recorder deliberately refuses to advance a baseline over a FAILING
     slice, so a bad number cannot become tomorrow's normal.
+
+    A BASELINE YOUNGER THAN ONE INGEST CYCLE (MIN_CYCLE_SPAN_DAYS) is the other
+    end of that rule and was missing until 2026-08-02. The plausibility test
+    models what an arriving row carries from the STANDING population's mean; part
+    way through a cycle the rows that have arrived are whichever collector is
+    mid-batch, so the verdict depends on when you sampled rather than on the
+    data. In that state the plausibility verdict is not rendered at all: UNKNOWN,
+    and the recorder refuses to advance over it too. A headline of zero and a
+    headline moving on Δentries == 0 keep their FAIL at any span.
     """
 
     key = "headline_movement"
@@ -573,7 +636,8 @@ class MovementInvariant:
         per = []
         for h in self.headlines:
             out = self._one(ctx, h, slices.get(h.name))
-            ctx.observations[h.name] = (out["state"], out.get("observed"))
+            ctx.observations[h.name] = (out["state"], out.get("observed"),
+                                        out.get("suppressed", False))
             per.append((h, out))
         return _roll_up(self, ctx, per)
 
@@ -655,6 +719,20 @@ class MovementInvariant:
             return _out(PASS,
                         f"{d_jobs:+,} jobs over {span:.1f}d — one arriving row of "
                         f"{largest:,} accounts for it", observed=observed)
+
+        # PARTIAL CYCLE -> UNKNOWN, never a quiet pass and never a FAIL the rest
+        # of the day will erase. See MIN_CYCLE_SPAN_DAYS for the incident that
+        # put this here. Δentries == 0 is exempt: a headline that moves while the
+        # row population stands still is a re-scoring of already-published rows,
+        # which is true at the instant it is read and is the defect class this
+        # guard exists for, so it keeps its FAIL at any span.
+        if days < MIN_CYCLE_SPAN_DAYS and d_entries != 0:
+            return _out(UNKNOWN,
+                        f"{d_jobs:+,} jobs on {d_entries:+,} entries, but the baseline is only "
+                        f"{days * 24:.1f}h old — less than one ingest cycle, so the rows that "
+                        f"would explain this move have not all arrived. UNJUDGED, not fine: "
+                        f"the daily data-integrity run spans a whole cycle and judges it",
+                        observed=observed, pending=True, suppressed=True)
 
         return _out(FAIL,
                     f"{d_jobs:+,} jobs over {span:.1f}d on {d_entries:+,} entries "
@@ -1031,7 +1109,7 @@ class Ctx:
         self.cachebust = cachebust
         self.today = today or datetime.now(timezone.utc).date()
         self.errors = {}          # slice name -> transport exception, for Result.transport
-        self.observations = {}    # slice name -> (state, {jobs, entries, captured_at})
+        self.observations = {}    # slice name -> (state, {jobs, entries, captured_at}, suppressed)
 
     def fetch(self, url, timeout):
         if url not in self._cache:
@@ -1077,13 +1155,22 @@ def record_baseline(ctx, report, path=None):
     current = load_baseline(path) or {}
     slices = dict(current.get("slices") or {})
     notes = []
-    for name, (state, observed) in sorted(ctx.observations.items()):
+    for name, (state, observed, suppressed) in sorted(ctx.observations.items()):
         if observed is None:
             notes.append(f"{name}: nothing observed, baseline untouched")
             continue
         if state == FAIL:
             notes.append(f"{name}: FAILING, baseline deliberately NOT advanced "
                          f"(recording it would make the defect tomorrow's normal)")
+            continue
+        if suppressed:
+            # An UNKNOWN that stood in for a verdict this reading was not
+            # entitled to render (the partial-cycle case). Recording it would
+            # launder exactly the number the check declined to judge, so it is
+            # held to the same rule as a FAIL.
+            notes.append(f"{name}: verdict SUPPRESSED, baseline deliberately NOT advanced "
+                         f"(recording an unjudged reading is the same laundering as "
+                         f"recording a failing one)")
             continue
         slices[name] = {"jobs": observed["jobs"], "entries": observed["entries"],
                         "captured_at": observed["captured_at"]}

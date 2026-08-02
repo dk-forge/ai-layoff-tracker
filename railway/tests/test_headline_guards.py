@@ -297,6 +297,67 @@ class Movement(unittest.TestCase):
             di.record_baseline(ctx, report, path=path)
             self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"], 1_000_400)
 
+    # ---------------------------------------------------------------
+    # A verdict that depends on WHEN you sampled is not a verdict.
+    # 2026-08-02: worldwide_all_time FAILED on SHA 73b2606 at 03:33Z and
+    # passed on 11bc4ce at 03:53Z with a byte-identical baseline
+    # (039a0fad) and no recorder run in between. `Historical backfill
+    # (EDGAR)` was running 02:39Z-07:40Z; both reads landed inside it.
+    # ---------------------------------------------------------------
+    WORLDWIDE = (di.Headline(name="one", label="One", params={}, max_share=0.01,
+                             move_floor=25000, mean_factor=12),)
+
+    def test_the_2026_08_02_partial_cycle_reading_is_unknown_not_a_failure(self):
+        # The incident's own numbers. On the old code this returns FAIL.
+        prior = {"jobs": 20_186_665, "entries": 63_319, "captured_at": _stamp(0.404)}
+        r, _ = self._run(_agg(jobs=20_250_564, entries=63_335, largest=60_000),
+                         prior, headlines=self.WORLDWIDE)
+        self.assertEqual(r.state, di.UNKNOWN,
+                         "a move judged part way through an ingest cycle is UNJUDGED")
+        self.assertTrue(r.pending)
+        self.assertIn("less than one ingest cycle", r.detail)
+
+    def test_the_recorder_refuses_to_advance_over_a_suppressed_verdict(self):
+        # The hole the fix would otherwise open: an UNKNOWN standing in for a
+        # FAIL must be held to the same anti-masking rule, or the reading that
+        # dodged its verdict becomes tomorrow's normal.
+        prior = {"jobs": 20_186_665, "entries": 63_319, "captured_at": _stamp(0.404)}
+        body = _agg(jobs=20_250_564, entries=63_335, largest=60_000)
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "baseline.json"
+            path.write_text(json.dumps({"slices": {"one": prior}}))
+            inv = di.MovementInvariant(self.WORLDWIDE, baseline_path=path)
+            ctx = _ctx(body)
+            report = di.check_all(fetch=_feed(body), invariants=(inv,), ctx=ctx)
+            self.assertEqual(report.verdict, di.UNKNOWN)
+            _, notes = di.record_baseline(ctx, report, path=path)
+            self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"],
+                             20_186_665, "an unjudged reading was recorded as the baseline")
+            self.assertTrue(any("SUPPRESSED" in n for n in notes))
+
+    def test_a_headline_moving_on_no_new_rows_still_fails_inside_a_partial_cycle(self):
+        # The condition this guard was actually built for is time-of-day
+        # independent: jobs moved, the row population did not, so already
+        # published rows were re-scored. No later arrival undoes that, and the
+        # partial-cycle rule must not have bought quiet for it.
+        prior = {"jobs": 1_000_000, "entries": 5000, "captured_at": _stamp(0.1)}
+        r, _ = self._run(_agg(jobs=946_000, entries=5000, largest=900), prior)
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("NO ROW EXPLAINS THIS", r.detail)
+
+    def test_a_zero_headline_still_fails_inside_a_partial_cycle(self):
+        prior = {"jobs": 1_000_000, "entries": 5000, "captured_at": _stamp(0.1)}
+        r, _ = self._run(_agg(jobs=0, entries=0), prior)
+        self.assertEqual(r.state, di.FAIL)
+
+    def test_a_full_cycle_keeps_the_full_verdict(self):
+        # The daily run is unchanged: over a whole cycle an unexplained move is
+        # still a FAIL, so the fix bought quiet only where the check was never
+        # calibrated.
+        prior = {"jobs": 1_000_000, "entries": 5000, "captured_at": _stamp(1)}
+        r, _ = self._run(_agg(jobs=1_100_000, entries=5001, largest=900), prior)
+        self.assertEqual(r.state, di.FAIL)
+
     def test_the_sliding_window_slice_is_not_watched_for_movement(self):
         # Its from=/to= move every day, so day-over-day figures describe
         # different populations. Comparing them would be the very mistake the

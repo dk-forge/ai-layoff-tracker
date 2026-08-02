@@ -6,6 +6,80 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — an invariant that went quiet on its own: it HEALED, and that is the bug
+
+**WHAT HAPPENED.** `data_integrity.headline_movement` reddened the Tests run for
+the 2.19.246 deploy (SHA `73b2606`, 2026-08-02T03:33:07Z):
+
+    Worldwide jobs, all time: +63,899 jobs over 1.0d on +16 entries
+    (20,186,665 -> 20,250,564). The rows that changed carry at most 61,211 and
+    the largest single row is 60,000, so NO ROW EXPLAINS THIS.
+
+Twenty minutes later the same check passed (SHA `11bc4ce`, 03:53:31Z) with no
+intervention. A guard that goes quiet on its own is the failure mode this repo
+has written rules against three times, so the two readings had to be told apart:
+did the defect HEAL, or did the BASELINE move over it?
+
+**IT HEALED. The baseline did not move, and here is the proof.** The committed
+`railway/headline_baseline.json` blob is byte-identical in both checkouts —
+`git rev-parse 73b2606:railway/headline_baseline.json 11bc4ce:...` returns
+`039a0fad` for both. `record_baseline` had not run in between at all: the file's
+whole history is four commits (`7e76754`, `413a8b8`, `f83e1e2` at 08-01T17:51Z,
+`7ffb81c` at 08-02T17:51Z), and the 08-02 write advanced worldwide_all_time from a
+run that reported success. The refusal-to-advance rule has no hole on this path;
+`record_baseline` skips any slice whose per-slice state is FAIL, and
+`MovementInvariant` is the only writer of `ctx.observations`.
+
+**WHAT ACTUALLY MOVED WAS THE SAMPLING POINT.** `Historical backfill (EDGAR)` ran
+02:39:27Z -> 07:40:04Z. Both reads landed inside that five-hour writer. The
+arithmetic reproduces exactly: prior 20,186,665 jobs / 63,319 entries gives a mean
+of 318.809 jobs per row, times `mean_factor` 12 times 16 arrived entries = 61,211
+— the allowance in the message, to the job. So at 03:33 the 16 rows that had
+arrived carried 3,994 jobs each, judged against a model built from the STANDING
+population's 319-job mean; by 03:53 more rows had landed and the ratio fell back
+inside. It missed the one-row clause by 899 jobs too (63,899 vs 60,000 x 1.05).
+
+**THE DEFECT, STATED PROPERLY.** A baseline is captured once a day by
+data-integrity.yml at 17:30 UTC. That is the pairing the check is calibrated for:
+two readings a whole ingest cycle apart, so the rows between them are a day's
+worth of rows. But tests.yml runs the same LIVE check on every push, at any hour,
+and therefore routinely compares part of a cycle against the end of the previous
+one. A partial cycle is not a small day — the rows inside it are whichever
+collector is mid-batch, and collectors differ by an order of magnitude in jobs
+per row (state WARN in the hundreds, EDGAR and news in the thousands). The
+verdict became a function of where in a batch the sampler landed. That is a race
+with the writers, not a finding about the data.
+
+**THE FIX (and what it deliberately is not).** `MIN_CYCLE_SPAN_DAYS = 0.95`.
+Below that span the plausibility verdict is not rendered: UNKNOWN, `pending`, a
+third state and never a pass, and `record_baseline` now refuses to advance over
+it exactly as it refuses over a FAIL (`_out(..., suppressed=True)` — otherwise the
+fix would have opened the very laundering hole it was protecting). The daily run
+spans a whole cycle by construction and keeps its full FAIL power. What keeps its
+FAIL at ANY span, because no later arrival undoes it: a headline of zero, and a
+headline moving while the row population stands still (Δentries == 0) — which is
+the mass-re-mark / bad-purge class this guard was actually built for.
+
+**`move_floor` was NOT touched.** Raising it would have fitted the bound to one
+afternoon's move and bought quiet at every hour of the day for defects the floor
+is correctly sized to catch. The noise was a timing problem, not a bound problem,
+and RUNBOOK now says to check which before reaching for a floor.
+
+**Tests that fail on the old code:**
+`test_headline_guards.Movement.test_the_2026_08_02_partial_cycle_reading_is_unknown_not_a_failure`
+(the incident's own numbers, FAIL -> UNKNOWN) and
+`test_the_recorder_refuses_to_advance_over_a_suppressed_verdict`. Pinned
+alongside: `test_a_headline_moving_on_no_new_rows_still_fails_inside_a_partial_cycle`,
+`test_a_zero_headline_still_fails_inside_a_partial_cycle`, and
+`test_a_full_cycle_keeps_the_full_verdict`, so the quiet cannot spread.
+
+**Still UNKNOWN.** Which rows the EDGAR backfill posted between 17:51Z and 03:33Z
+was not reconstructed — the live API exposes no created-at filter and re-reading
+filings costs money the spend guard has rationed. The timing correlation and the
+exact arithmetic reproduction are what settle it; the row-level ledger does not.
+
+---
+
 ## 2026-08-02 — the spend guard, and what the Railway cron actually costs
 
 **THE ACCOUNT HAD NO BRAKE AND NO METER.** Between 2026-07-26 and 2026-08-02 the

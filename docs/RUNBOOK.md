@@ -157,6 +157,14 @@ the row that has not gone wrong yet. Their playbooks differ:
   baseline is `railway/headline_baseline.json`; **do not hand-edit it to clear
   the alarm** — the recorder already refuses to advance a failing slice, because
   recording a bad number makes it tomorrow's normal.
+  **If it reads "less than one ingest cycle", that is UNKNOWN, not a failure and
+  not a pass.** The baseline is written once a day; a push-time run that lands
+  part way through a cycle is comparing against a batch, not a day, and since
+  2026-08-02 the check declines to render the plausibility verdict there (see
+  `MIN_CYCLE_SPAN_DAYS`). The recorder refuses to advance over that reading too.
+  Wait for the 17:30 UTC run, which spans a whole cycle and judges it in full.
+  A headline of zero and a headline moving on Δentries == 0 still FAIL at any
+  span, so the defect class this guard exists for is not affected.
 - **`dedup_denominator_scoped` — the structural guard came off.**
   Offline and instant: it asserts that `alt_reconcile_supersets()` in db.php
   still cannot compute a sum of its own, that its denominator can only come from
@@ -173,7 +181,11 @@ the first baseline has not been written (`python3 railway/data_integrity.py
 
 **If a shape guard proves noisy in its first weeks:** raise its `move_floor` and
 write down why, in the commit message and in TECHLOG. Do not delete the check and
-do not fit the bound to whatever today's move happened to be. `max_share` bounds
+do not fit the bound to whatever today's move happened to be. **And before you
+touch a floor, check whether the noise is a bound problem at all**: the 2026-08-02
+`headline_movement` noise was a TIMING problem (a push-time read taken inside a
+five-hour backfill), and raising the floor would have bought quiet at every hour
+of the day for a defect the floor was correctly sized to catch. `max_share` bounds
 were measured against live readings; `move_floor` values were reasoned from the
 failure modes, because until `headline_baseline.json` existed nothing had ever
 recorded this site's day-over-day deltas.
