@@ -8,10 +8,10 @@ stored. Company names arrive ONLY via a secret (never committed, per the
 standalone-brand rule), and only counts/slice indices are logged — never the list.
 
 Two ways to supply the list (use either or both):
-  * COMPETITOR_FEED_URLS  — comma-separated URLs, each returning a JSON array of
+  * BENCHMARK_FEED_URLS  — comma-separated URLs, each returning a JSON array of
     {company, date?, jobs?} objects (or {"data":[...]}/{"events":[...]}) OR a CSV
     with a `company`/`company_name`/`name` column.
-  * COMPETITOR_COMPANIES  — the list pasted inline (comma- or newline-separated
+  * BENCHMARK_COMPANIES  — the list pasted inline (comma- or newline-separated
     company names). Use this when the competitor has no machine feed but you can
     see their list: paste the names into this secret and the cron chases them.
 
@@ -21,7 +21,7 @@ competitor data. The owner adds a secret to activate.
 Each daily run chases a rotating slice (TRACKER_DIFF_MAX companies), so over a few
 days the WHOLE list is walked — not just the first slice each time.
 
-Env: COMPETITOR_FEED_URLS, COMPETITOR_COMPANIES (secrets), TRACKER_DIFF_MAX
+Env: BENCHMARK_FEED_URLS, BENCHMARK_COMPANIES (secrets), TRACKER_DIFF_MAX
 (default 40 companies per run), TRACKER_DIFF_DRY=1 (log, don't post).
 """
 import csv
@@ -44,8 +44,8 @@ from wp_poster import post_to_wordpress
 from source_health import report_source_health
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
-FEEDS = [u.strip() for u in (os.environ.get("COMPETITOR_FEED_URLS") or "").split(",") if u.strip()]
-INLINE = [n.strip() for n in re.split(r"[,\n]", os.environ.get("COMPETITOR_COMPANIES") or "") if n.strip()]
+FEEDS = [u.strip() for u in (os.environ.get("BENCHMARK_FEED_URLS") or "").split(",") if u.strip()]
+INLINE = [n.strip() for n in re.split(r"[,\n]", os.environ.get("BENCHMARK_COMPANIES") or "") if n.strip()]
 MAX_CHASE = max(1, int(os.environ.get("TRACKER_DIFF_MAX", "40")))
 # Recall alarm: email the owner when our coverage of the reference list drops
 # below this percent. Names go ONLY to the owner's inbox (never the repo, health
@@ -410,9 +410,9 @@ def _email_learning(vocab_misses, suggestions):
 
 def run():
     if not FEEDS and not INLINE:
-        print("Neither COMPETITOR_FEED_URLS nor COMPETITOR_COMPANIES set — tripwire "
+        print("Neither BENCHMARK_FEED_URLS nor BENCHMARK_COMPANIES set — tripwire "
               "dormant, nothing to diff. Paste a competitor company list into the "
-              "COMPETITOR_COMPANIES secret (or a feed URL into COMPETITOR_FEED_URLS) "
+              "BENCHMARK_COMPANIES secret (or a feed URL into BENCHMARK_FEED_URLS) "
               "to activate; either stays out of the repo.")
         return
     by_key = {}

@@ -40,7 +40,7 @@ before you ship. See `scripts/setup_test_db.sh` header for the exact diff harnes
 
 ## The sliver that stays human even fully equipped (by design)
 - **Secrets/credentials** — a session never reads or sets API keys /
-  `COMPETITOR_FEED_URLS` / `COMPETITOR_COMPANIES`. Security boundary, not a gap.
+  `BENCHMARK_FEED_URLS` / `BENCHMARK_COMPANIES`. Security boundary, not a gap.
 - **Editorial + novel-source judgment + the competitor-data-stays-local rule** —
   the credibility calls. This is the ~1% the docs already name; keep it human.
 

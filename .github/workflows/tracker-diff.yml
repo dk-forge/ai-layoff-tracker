@@ -9,7 +9,7 @@ name: Tracker-diff discovery tripwire
 # per-company call: it is bulk-imported daily, so a missing company is by
 # definition not in a WARN notice we already hold.
 #
-# COMPETITOR_FEED_URLS accepts JSON, CSV, OR a SITEMAP url. A tag/company
+# BENCHMARK_FEED_URLS accepts JSON, CSV, OR a SITEMAP url. A tag/company
 # sitemap is the cleanest feed: ONE url that auto-expands to the whole
 # (self-refreshing) company list, so the secret holds a single link, not a
 # static list that goes stale. Ships DORMANT: unset it and the job exits clean,
@@ -17,7 +17,7 @@ name: Tracker-diff discovery tripwire
 # URL lives ONLY in the secret; hardcoding it here would name a competitor in
 # the repo.
 #
-# Secrets: COMPETITOR_FEED_URLS or COMPETITOR_COMPANIES (either activates it),
+# Secrets: BENCHMARK_FEED_URLS or BENCHMARK_COMPANIES (either activates it),
 # NEWSAPI_KEY, OPENROUTER_API_KEY, WP_API_KEY
 
 on:
@@ -55,11 +55,11 @@ jobs:
       - name: Run tracker-diff
         working-directory: railway
         env:
-          COMPETITOR_FEED_URLS: ${{ secrets.COMPETITOR_FEED_URLS }}
+          BENCHMARK_FEED_URLS: ${{ secrets.BENCHMARK_FEED_URLS }}
           # Inline fallback list — tracker_diff.py reads this when no feed URL
           # is set (or in addition to it). Without this pass-through the secret
           # existed but never reached the script.
-          COMPETITOR_COMPANIES: ${{ secrets.COMPETITOR_COMPANIES }}
+          BENCHMARK_COMPANIES: ${{ secrets.BENCHMARK_COMPANIES }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}

@@ -399,10 +399,10 @@ free. Steps:
   NL/FR/DE publish NO public per-company register (confidential) — not buildable.
 - **Benchmark refresh** (survey baselines in the private `gen.py`/`bm-live.html`):
   MUST stay local — competitor names/numbers may never enter the public repo or
-  GitHub logs (standalone-brand rule; competitor URLs go in `COMPETITOR_FEED_URLS`
+  GitHub logs (standalone-brand rule; competitor URLs go in `BENCHMARK_FEED_URLS`
   secret only). A cloud cron would leak them.
 - **New-source discovery**: event-gap discovery is automatable (`tracker-diff`,
-  needs `COMPETITOR_FEED_URLS`); discovering brand-new source *types* is a human
+  needs `BENCHMARK_FEED_URLS`); discovering brand-new source *types* is a human
   judgment call, not a cron.
 - **Autonomy ceiling**: ~99%. The irreducible human sliver = repairing a scraper
   when a third-party site redesigns (now auto-detected + emailed), refreshing the

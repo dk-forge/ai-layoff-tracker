@@ -49,7 +49,7 @@ new files are live). The only thing the block prevents is the final visual
 - **Competitor data stays private.** Competitor names or
   numbers NEVER enter the repo or CI logs. The benchmark (`gen.py`,
   `scratchpad/bm-live.html`) is LOCAL ONLY; competitor URLs live in the
-  `COMPETITOR_FEED_URLS` secret. This one is non-negotiable.
+  `BENCHMARK_FEED_URLS` secret. This one is non-negotiable.
 - **Deploy = `git push` to main** (FTPS auto-deploy). There is no other path.
   Bump the plugin `Version:` + `ALT_VERSION` on every plugin change.
 - **Verify live before claiming anything.** `curl` the `ver=` on the page and the
