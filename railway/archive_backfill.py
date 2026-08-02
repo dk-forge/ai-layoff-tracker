@@ -170,7 +170,16 @@ def save_page_now(url, session):
 # --- server I/O ------------------------------------------------------------
 
 def fetch_candidates():
-    """Distinct un-archived source URLs from the server (already the gap)."""
+    """Distinct un-archived source URLs from the server (already the gap).
+
+    The server caps one response at 500 URLs, so run() fetches REPEATEDLY:
+    recorded URLs drop out of the candidate list (or move to the back of the
+    oldest-attempt-first ordering), so each fetch pages naturally through the
+    due pool until the run's LIMIT, deadline, or an empty batch stops it. One
+    batch per run was the quiet defect that made the weekly re-check promise
+    unkeepable: a ~4,000-URL pending pool needs ~1,300 re-checks a day and a
+    single 500 batch cannot deliver that.
+    """
     try:
         r = requests.get(f"{SITE}/wp-json/layoffs/v1/archive-candidates",
                          params={"limit": LIMIT},
@@ -195,22 +204,16 @@ def post_records(items):
 
 
 def run():
-    urls, coverage_before = fetch_candidates()
-    print(f"archive backfill: {len(urls)} candidate URL(s) this run; "
-          f"coverage before: {coverage_before}")
-    if not urls:
-        detail = (f"nothing to archive this run; coverage {coverage_before.get('archived', 0)}/"
-                  f"{coverage_before.get('distinct_source_urls', 0)} distinct source URLs "
-                  f"({coverage_before.get('coverage_pct', 0)}%)")
-        if not DRY_RUN:
-            report_source_health("archive_backfill", "ok", 0, detail)
-        print(detail)
-        return {"archived": 0, "pending": 0, "checked": 0}
-
     session = requests.Session()
     records = []
     archived = pending = checked = saves = rate_limited = 0
     started = time.monotonic()
+    seen = set()
+    coverage_before = None
+    batches = 0
+
+    def past_deadline():
+        return time.monotonic() - started >= DEADLINE_SECONDS
 
     def flush(force=False):
         """Post accumulated records so progress is DURABLE and visible DURING
@@ -227,59 +230,94 @@ def run():
             except Exception as exc:
                 print(f"::warning::flush failed ({exc}); will retry the batch next flush")
 
-    # PASS 1 — free availability checks over ALL candidates FIRST. Most WARN
-    # files and much crawled news are already in Wayback, so this lands the
-    # bulk of the links FAST and independent of candidate ordering. A Wayback
-    # miss is queued for the (slow, rate-limited) save pass below rather than
-    # blocking the quick wins behind a 90s capture.
-    misses = []
-    for url in urls:
-        if time.monotonic() - started >= DEADLINE_SECONDS:
-            print(f"deadline ({DEADLINE_SECONDS}s) reached during availability pass "
-                  f"after {checked} URL(s)")
-            break
-        checked += 1
-        snap = check_availability(url, session)
-        if snap:
-            archived += 1
-            records.append({"url": url, "archived_url": snap, "status": "archived"})
-            print(f"  [archived:availability] {url} -> {snap}")
-            flush()
-        else:
-            misses.append(url)
+    def process(urls):
+        """One batch: the free availability pass, then the bounded SPN pass."""
+        nonlocal archived, pending, checked, saves, rate_limited
+        # PASS 1 — free availability checks over ALL candidates FIRST. Most WARN
+        # files and much crawled news are already in Wayback, so this lands the
+        # bulk of the links FAST and independent of candidate ordering. A Wayback
+        # miss is queued for the (slow, rate-limited) save pass below rather than
+        # blocking the quick wins behind a 90s capture.
+        misses = []
+        for url in urls:
+            if past_deadline():
+                print(f"deadline ({DEADLINE_SECONDS}s) reached during availability pass "
+                      f"after {checked} URL(s)")
+                break
+            checked += 1
+            snap = check_availability(url, session)
+            if snap:
+                archived += 1
+                records.append({"url": url, "archived_url": snap, "status": "archived"})
+                print(f"  [archived:availability] {url} -> {snap}")
+                flush()
+            else:
+                misses.append(url)
 
-    # PASS 2 — spend the bounded Save-Page-Now budget on the misses (slow,
-    # rate-limited). Over budget / past deadline / dry-run: record 'pending'
-    # (unchanged behavior) so the URL is retried on a later run.
-    for url in misses:
-        past_deadline = time.monotonic() - started >= DEADLINE_SECONDS
-        if DRY_RUN or saves >= SPN_MAX or past_deadline:
-            pending += 1
-            records.append({"url": url, "archived_url": "", "status": "pending"})
+        # PASS 2 — spend the bounded Save-Page-Now budget on the misses (slow,
+        # rate-limited). Over budget / past deadline / dry-run: record 'pending'.
+        # Recording without a save is HONEST — pass 1 just re-checked Wayback for
+        # this URL — and it is what stamps checked_at, so the row's public
+        # "next check by <date>" moves forward off a check that really happened.
+        for url in misses:
+            if DRY_RUN or saves >= SPN_MAX or past_deadline():
+                pending += 1
+                records.append({"url": url, "archived_url": "", "status": "pending"})
+                flush()
+                continue
+            spn = save_page_now(url, session)
+            saves += 1
+            if spn == RATE_LIMITED:
+                rate_limited += 1
+                # Back off harder when throttled, then keep going.
+                time.sleep(SPN_GAP_SECONDS * 3)
+            else:
+                time.sleep(SPN_GAP_SECONDS)
+            status, permalink = classify_outcome(None, spn)
+            if status == "archived":
+                archived += 1
+            else:
+                pending += 1
+            records.append({"url": url, "archived_url": permalink, "status": status})
+            print(f"  [{status}:{'save' if permalink else 'pending'}] {url}"
+                  + (f" -> {permalink}" if permalink else ""))
             flush()
-            continue
-        spn = save_page_now(url, session)
-        saves += 1
-        if spn == RATE_LIMITED:
-            rate_limited += 1
-            # Back off harder when throttled, then keep going.
-            time.sleep(SPN_GAP_SECONDS * 3)
-        else:
-            time.sleep(SPN_GAP_SECONDS)
-        status, permalink = classify_outcome(None, spn)
-        if status == "archived":
-            archived += 1
-        else:
-            pending += 1
-        records.append({"url": url, "archived_url": permalink, "status": status})
-        print(f"  [{status}:{'save' if permalink else 'pending'}] {url}"
-              + (f" -> {permalink}" if permalink else ""))
-        flush()
+        return misses
+
+    # Batch loop: page through the due pool (the server hands out at most 500
+    # per response) until the run LIMIT, the deadline, or an empty batch. The
+    # `seen` guard makes the loop terminate even if a flush failed and the
+    # server hands the same URLs back.
+    dry_misses = 0
+    while len(seen) < LIMIT and not past_deadline():
+        urls, coverage = fetch_candidates()
+        if coverage_before is None:
+            coverage_before = coverage
+        urls = [u for u in urls if u not in seen][: LIMIT - len(seen)]
+        batches += 1
+        print(f"archive backfill: batch {batches}: {len(urls)} candidate URL(s); "
+              f"coverage before: {coverage}")
+        if not urls:
+            break
+        seen.update(urls)
+        dry_misses += len(process(urls))
+        if DRY_RUN:
+            break   # nothing was recorded, so a second fetch would repeat this batch
+
+    if not seen:
+        coverage_before = coverage_before or {}
+        detail = (f"nothing to archive this run; coverage {coverage_before.get('archived', 0)}/"
+                  f"{coverage_before.get('distinct_source_urls', 0)} distinct source URLs "
+                  f"({coverage_before.get('coverage_pct', 0)}%)")
+        if not DRY_RUN:
+            report_source_health("archive_backfill", "ok", 0, detail)
+        print(detail)
+        return {"archived": 0, "pending": 0, "checked": 0}
 
     if DRY_RUN:
         print(f"DRY RUN: checked={checked} would-archive={archived} "
-              f"would-pend={len(misses)}; no writes.")
-        return {"archived": 0, "pending": len(misses), "checked": checked}
+              f"would-pend={dry_misses}; no writes.")
+        return {"archived": 0, "pending": dry_misses, "checked": checked}
 
     flush(force=True)  # post the remainder
     # FAIL LOUD: flush() swallows a failed post so it can retry, but if the

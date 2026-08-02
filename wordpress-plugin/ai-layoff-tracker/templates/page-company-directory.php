@@ -126,6 +126,14 @@ $alt_verif = array(
                 <li><a href="<?php echo esc_url($alt_source['url']); ?>" target="_blank" rel="noopener nofollow"><?php
                     echo esc_html($alt_source['name'] ?: 'Cited source') . $alt_warn_kind; ?></a></li>
             <?php endforeach; ?>
+            <?php // The row's permanent Wayback copy, or an honest note with the REAL
+                  // date of its next automatic archive check (derived from the cron
+                  // schedule in alt_archive_next_check_date(), never typed). Same state
+                  // the tracker's own cards show, so every listing surface agrees.
+                  $alt_arch = function_exists('alt_archive_note_html') ? alt_archive_note_html($alt_event) : '';
+                  if ($alt_arch !== '') : ?>
+                <li><?php echo $alt_arch; // built from esc_url/esc_html above ?></li>
+            <?php endif; ?>
             <?php // The entry's own permalink. These pages existed but were linked from
                   // nowhere on the site (audit item 2: 1,798 orphans); this is the link
                   // that puts them back on a crawlable path.

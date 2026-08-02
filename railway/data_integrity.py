@@ -885,6 +885,94 @@ class RecallFloorInvariant:
                       pending=(state == UNKNOWN and measurement is None))
 
 
+class ArchiveRecheckInvariant:
+    """The pages' archive promise is kept, not just typed.
+
+    Every listing surface prints, beside a row whose source has no Wayback
+    snapshot yet: "No archive snapshot yet. We re-check weekly; next check by
+    <date>." The date is DERIVED (db.php alt_archive_next_check_date) from the
+    daily archive-backfill cron (05:25 UTC), the 72h 'pending' retry spacing and
+    the 7-day 'unavailable' re-check. This check is what makes that sentence
+    falsifiable: it reads the public /archive-coverage summary and FAILS when
+    the OLDEST un-archived URL's last attempt is older than the promised
+    cadence plus slack.
+
+    THE CADENCE MATH. The slowest promised re-check is 7 days ('unavailable').
+    A URL becomes eligible at day 7 and is handed out by the next daily run, so
+    the worst honest age is 8 days. Two more days of slack cover a failed or
+    missed daily run before a human is called:
+
+        MAX_AGE_DAYS = 7 (promise) + 1 (daily-run granularity) + 2 (slack) = 10
+
+    'queued' URLs (no attempt recorded yet) carry no timestamp to judge; their
+    failure mode — the daily run not draining them — shows up here anyway,
+    because the same dead cron lets the pending/unavailable pool age past the
+    bound (3,900+ such URLs exist, so the pool is never empty in practice).
+
+    MISSING DATA. No response, a non-JSON body, or a build that predates the
+    coverage fields (plugin < 2.19.248) -> UNKNOWN, never a pass.
+    """
+
+    key = "archive_recheck_cadence"
+    label = "Unarchived sources are re-checked on the promised cadence"
+    reads_live_data = True
+
+    MAX_AGE_DAYS = 10
+
+    def run(self, ctx):
+        url = BASE + "archive-coverage?" + urllib.parse.urlencode({"cb": ctx.cachebust})
+        try:
+            payload = json.loads(ctx.fetch(url, ctx.timeout)) or {}
+        except urllib.error.HTTPError as e:
+            why = ("site is in its deploy maintenance window (HTTP 503)" if e.code == 503
+                   else f"live API returned HTTP {e.code}")
+            return Result(self, UNKNOWN, detail=why, error=e, pending=_excusable(e))
+        except Exception as e:                                  # noqa: BLE001 — any transport fault
+            return Result(self, UNKNOWN, error=e, pending=True,
+                          detail=f"could not reach the live API ({e})")
+        if not isinstance(payload, dict) or "oldest_unarchived_checked_at" not in payload:
+            return Result(self, UNKNOWN, pending=True,
+                          detail="no archive-cadence fields in /archive-coverage — the deployed "
+                                 "plugin predates 2.19.248, so the re-check promise is "
+                                 "UNMEASURED, not fine")
+        try:
+            pending_n = int(payload.get("pending") or 0)
+            unavailable_n = int(payload.get("unavailable") or 0)
+            archived_n = int(payload.get("archived") or 0)
+        except (TypeError, ValueError):
+            return Result(self, UNKNOWN, detail=f"non-numeric archive counts: {payload!r}")
+        if archived_n <= 0:
+            # 21k archived rows do not vanish legitimately; an empty index under
+            # a live table is the archive store broken, not a clean slate.
+            return Result(self, FAIL, observed=archived_n,
+                          detail="archive index reports 0 archived source URLs — the index is "
+                                 "gone or the coverage query broke")
+        oldest = payload.get("oldest_unarchived_checked_at")
+        if oldest in (None, ""):
+            if pending_n == 0 and unavailable_n == 0:
+                return Result(self, PASS,
+                              detail=f"no URL is awaiting a snapshot (archived {archived_n:,}, "
+                                     f"queued {int(payload.get('queued') or 0):,} for the next "
+                                     f"daily run)")
+            return Result(self, UNKNOWN,
+                          detail=f"{pending_n + unavailable_n:,} URLs await a snapshot but no "
+                                 f"last-attempt timestamp came back — cannot verify the cadence")
+        try:
+            when = datetime.strptime(str(oldest), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            return Result(self, UNKNOWN,
+                          detail=f"unparseable oldest_unarchived_checked_at: {oldest!r}")
+        age = (datetime.now(timezone.utc) - when).total_seconds() / 86400.0
+        shown = (f"oldest un-archived attempt {age:.1f}d ago "
+                 f"({pending_n:,} pending, {unavailable_n:,} not yet in Wayback)")
+        if age > self.MAX_AGE_DAYS:
+            return Result(self, FAIL, observed=round(age, 1),
+                          detail=f"{shown} — bound is {self.MAX_AGE_DAYS}d (7d promise + 1d run "
+                                 f"granularity + 2d slack). The pages are promising a re-check "
+                                 f"the cron is not delivering; check archive-backfill.yml")
+        return Result(self, PASS, detail=f"{shown}, bound {self.MAX_AGE_DAYS}d")
+
+
 def _php_function_body(src, name):
     """Source between `function name(` and the next top-level closing brace."""
     start = src.find(f"function {name}(")
@@ -972,6 +1060,10 @@ INVARIANTS = (
     # could ask before 2026-08-01, because recall_precision.py had no threshold
     # and returned 0 whatever it measured.
     RecallFloorInvariant(),
+    # The listing surfaces promise "we re-check weekly; next check by <date>"
+    # beside every source without a Wayback snapshot. This one fails when the
+    # live data shows that promise is not being kept.
+    ArchiveRecheckInvariant(),
 )
 
 

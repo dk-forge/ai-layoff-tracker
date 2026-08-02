@@ -149,12 +149,21 @@ class DedupLiveRegression(unittest.TestCase):
         # events an editor confirmed it held.
         self._assert("recall_floor")
 
+    def test_archive_recheck_promise_is_kept(self):
+        # Every listing surface prints "No archive snapshot yet. We re-check
+        # weekly; next check by <date>." beside an un-archived source. This
+        # fails when the live /archive-coverage shows the oldest un-archived
+        # URL's last attempt is older than the promised cadence plus slack —
+        # a typed promise the crons keep, or a red build.
+        self._assert("archive_recheck_cadence")
+
     def test_every_registered_invariant_is_asserted(self):
         # Adding an invariant to the shared registry must not silently skip CI.
         asserted = {"coinbase_news_vs_news", "spirit_news_vs_warn",
                     "tyson_warn_revision", "att_no_fake_outlier",
                     "headline_concentration", "headline_movement",
-                    "dedup_denominator_scoped", "recall_floor"}
+                    "dedup_denominator_scoped", "recall_floor",
+                    "archive_recheck_cadence"}
         missing = {i.key for i in INVARIANTS} - asserted
         self.assertFalse(missing, (
             f"data_integrity.INVARIANTS gained {sorted(missing)} with no test method here. "

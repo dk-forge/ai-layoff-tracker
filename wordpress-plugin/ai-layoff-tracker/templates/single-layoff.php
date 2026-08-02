@@ -53,6 +53,22 @@ $cite = sprintf(
 
     <?php if ($src_url !== '') : ?>
     <p><a class="alt-btn alt-btn-primary" href="<?php echo esc_url($src_url); ?>" target="_blank" rel="noopener nofollow">View primary source (<?php echo esc_html($e['source_name'] ?: 'source'); ?>) &#8599;</a></p>
+    <?php
+    // The source's permanent Wayback copy, or an honest note carrying the real
+    // date of the next automatic archive check — the same state the tracker
+    // cards, company pages and facet pages show (alt_archive_note_html()).
+    if (function_exists('alt_archive_lookup') && function_exists('alt_archive_note_html')) {
+        $alt_arec = alt_archive_lookup($src_url);
+        $alt_arch = alt_archive_note_html(array(
+            'source_url'          => $src_url,
+            'archived_url'        => is_array($alt_arec) && ($alt_arec['status'] ?? '') === 'archived'
+                                        ? (string) ($alt_arec['archived_url'] ?? '') : '',
+            'archive_status'      => is_array($alt_arec) ? (string) ($alt_arec['status'] ?? 'queued') : 'queued',
+            'archive_checked_at'  => is_array($alt_arec) ? (string) ($alt_arec['checked_at'] ?? '') : '',
+        ));
+        if ($alt_arch !== '') echo '<p class="alt-single-archive">' . $alt_arch . '</p>';
+    }
+    ?>
     <?php endif; ?>
 
     <?php

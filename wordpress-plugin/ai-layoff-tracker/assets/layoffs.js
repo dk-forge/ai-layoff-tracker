@@ -193,6 +193,31 @@
         var c = row && row.archive_checked_at ? String(row.archive_checked_at) : '';
         return c ? c.slice(0, 10) : '';
     }
+    // Mirror of the server's archive re-check cadence (db.php
+    // ALT_ARCHIVE_RETRY_HOURS / ALT_ARCHIVE_RECHECK_DAYS / ALT_ARCHIVE_DAILY_RUN_UTC,
+    // themselves pinned to the archive-backfill cron). One promise, two
+    // renderers; railway/tests/test_archive_promise.py asserts these constants
+    // stay equal to the PHP ones.
+    var ARCHIVE_RETRY_HOURS = 72, ARCHIVE_RECHECK_DAYS = 7, ARCHIVE_RUN_UTC = [5, 25];
+    // The REAL date (UTC, YYYY-MM-DD) of the next automatic archive attempt for
+    // this row's source, derived from its recorded state + the cron schedule —
+    // never a typed promise. Queued rows are picked up by the next daily run;
+    // 'pending' retries after the spacing window; 'unavailable' re-checks weekly.
+    function archiveNextCheckDate(row) {
+        var status = row && row.archive_status ? String(row.archive_status) : 'queued';
+        var raw = row && row.archive_checked_at ? String(row.archive_checked_at) : '';
+        var checked = raw ? Date.parse(raw.replace(' ', 'T') + 'Z') : NaN;
+        var eligible = Date.now();
+        if (!isNaN(checked)) {
+            if (status === 'pending') eligible = checked + ARCHIVE_RETRY_HOURS * 3600000;
+            else if (status === 'unavailable') eligible = checked + ARCHIVE_RECHECK_DAYS * 86400000;
+        }
+        if (eligible < Date.now()) eligible = Date.now();
+        var d = new Date(eligible);
+        var run = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ARCHIVE_RUN_UTC[0], ARCHIVE_RUN_UTC[1], 0);
+        if (run < eligible) run += 86400000;
+        return new Date(run).toISOString().slice(0, 10);
+    }
     // Every row with a source URL shows EITHER a permanent Wayback link OR a
     // truthful, dated "archive pending" disclaimer — never a silent gap. The
     // backfill re-checks the Internet Archive weekly and adds the link the moment
@@ -201,7 +226,8 @@
         var d = archiveCheckedDate(row);
         return 'No permanent Internet Archive (Wayback) copy exists yet. We re-check '
             + 'automatically every week and add the archived copy the moment the '
-            + 'Internet Archive captures this source.' + (d ? ' Last checked ' + d + '.' : '');
+            + 'Internet Archive captures this source. Next check by ' + archiveNextCheckDate(row) + '.'
+            + (d ? ' Last checked ' + d + '.' : '');
     }
     // The archived copy on a result card: always a SECOND link, never instead
     // of the publisher's own. Wording, separator and tone match the sibling
@@ -232,9 +258,9 @@
         if (a) return '<a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Wayback Machine snapshot ↗</a>';
         if (hasSourceUrl(row)) {
             var d = archiveCheckedDate(row);
-            return '<span class="alt-muted">Waiting to be crawled by the Internet Archive.'
-                + (d ? ' Last checked ' + escapeHtml(d) + '.' : '')
-                + ' We re-check every week until it is captured.</span>';
+            return '<span class="alt-muted">No archive snapshot yet. We re-check weekly; next check by '
+                + escapeHtml(archiveNextCheckDate(row)) + '.'
+                + (d ? ' Last checked ' + escapeHtml(d) + '.' : '') + '</span>';
         }
         // WARN rows without an article URL still show the official state list
         // link as their source, so a bare "No web source" directly under a
@@ -3777,15 +3803,27 @@
             // name sets the Company filter; a period's numbers set the date
             // range (or year), so the whole page re-scopes to what was clicked.
             var esc = function (v) { return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); };
+            // Location for the "largest:" entries only, from the row's OWN
+            // fields (state for US rows, the stored country otherwise) — never
+            // inferred, and never added to the rest of the strip.
+            var largestLoc = function (ld) {
+                var c = ld && ld.country ? String(ld.country) : '';
+                var s = ld && ld.state ? String(ld.state).toUpperCase() : '';
+                if (c === 'United States') return s ? s + ', US' : 'US';
+                return c;
+            };
             var largest = function (ld) {
-                return (ld && ld.job_count)
-                    ? ' · largest: <a href="#" class="alt-nfilter" data-company="' + esc(ld.company_name) + '" title="Filter the page to this company">' + b(esc(ld.company_name)) + '</a> (' + fmt(ld.job_count) + ')'
-                    : '';
+                if (!(ld && ld.job_count)) return '';
+                var l = largestLoc(ld);
+                return ' · largest: <a href="#" class="alt-nfilter" data-company="' + esc(ld.company_name) + '" title="Filter the page to this company">' + b(esc(ld.company_name)) + '</a> (' + fmt(ld.job_count) + (l ? ' · ' + esc(l) : '') + ')';
             };
             var row = function (label, body, filterAttrs) {
                 var open = filterAttrs ? '<a href="#" class="alt-nfilter" ' + filterAttrs + ' title="Filter the page to this period">' : '<span>';
                 var close = filterAttrs ? '</a>' : '</span>';
-                return '<div class="alt-nrow">' + open + '<span class="alt-nlabel">' + label + '</span>' + close + '<span>' + body + '</span></div>';
+                // The single space after the label wrapper is REAL text, not
+                // CSS margin: without it, copied text and screen readers read
+                // "Today1,366 workers" as one fused token.
+                return '<div class="alt-nrow">' + open + '<span class="alt-nlabel">' + label + '</span>' + close + ' <span>' + body + '</span></div>';
             };
             // "events affecting N workers", never "layoffs with N people"
             // (readers mistook event counts for people counts). Every number
@@ -3798,19 +3836,29 @@
             }
             var rows = '';
             var tdJ = td.jobs || 0, tdE = td.entries || 0;
+            var mJ = m.jobs || 0, mE = m.entries || 0;
+            var tdLead = ((r[4] || {}).leaders || [])[0];
+            // On the 1st of the month (or any day the month's figures are all
+            // today's), "This month" repeats "Today" verbatim, and repeated
+            // identical figures read as a bug. Collapse the two identical
+            // periods into ONE line rather than printing the same numbers twice.
+            var sameAsMonth = tdJ > 0 && tdJ === mJ && tdE === mE
+                && ((tdLead && tdLead.company_name) || '') === ((mLead && mLead.company_name) || '');
             if (tdJ > 0) {
-                rows += row('Today', b(fmt(tdJ)) + ' workers · ' + b(fmt(tdE)) + ' verified layoff' + (tdE === 1 ? '' : 's') + largest(((r[4] || {}).leaders || [])[0]),
+                rows += row(sameAsMonth ? 'Today and this month' : 'Today',
+                    b(fmt(tdJ)) + ' workers · ' + b(fmt(tdE)) + ' verified layoff' + (tdE === 1 ? '' : 's') + largest(tdLead),
                     'data-from="' + iso(now) + '" data-to="' + iso(now) + '"');
             }
             rows += row('This week', wJ > 0
                 ? b(fmt(wJ)) + ' workers · ' + b(fmt(wE)) + ' verified layoff' + (wE === 1 ? '' : 's') + largest(wLead) + weekDelta
                 : 'no verified job cuts reported yet',
                 'data-from="' + iso(d7) + '" data-to="' + iso(now) + '"');
-            var mJ = m.jobs || 0, mE = m.entries || 0;
-            rows += row('This month', mJ > 0
-                ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified layoff' + (mE === 1 ? '' : 's') + largest(mLead)
-                : 'no verified job cuts reported yet',
-                'data-from="' + y + '-' + pad2(now.getMonth() + 1) + '-01" data-to="' + iso(now) + '"');
+            if (!sameAsMonth) {
+                rows += row('This month', mJ > 0
+                    ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified layoff' + (mE === 1 ? '' : 's') + largest(mLead)
+                    : 'no verified job cuts reported yet',
+                    'data-from="' + y + '-' + pad2(now.getMonth() + 1) + '-01" data-to="' + iso(now) + '"');
+            }
             // Most-affected roles appear only when the sources behind at least
             // 20% of this scope's jobs name the teams cut — below that the
             // sample is too thin to headline.
@@ -3837,8 +3885,9 @@
             var post = lead + tail;
             if (wJ > 0) {
                 var wkBare = ' This week: ' + fmt(wJ) + ' workers across ' + fmt(wE) + ' layoff' + (wE === 1 ? '' : 's') + '.';
+                var wkLoc = largestLoc(wLead);
                 var wkLead = (wLead && wLead.job_count)
-                    ? wkBare.slice(0, -1) + ', largest at ' + wLead.company_name + ' (' + fmt(wLead.job_count) + ').'
+                    ? wkBare.slice(0, -1) + ', largest at ' + wLead.company_name + ' (' + fmt(wLead.job_count) + (wkLoc ? ' · ' + wkLoc : '') + ').'
                     : '';
                 var wkFull = '';
                 if (wkLead && wpJ > 0) {

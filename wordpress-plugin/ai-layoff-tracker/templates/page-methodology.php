@@ -73,6 +73,9 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <p>Both numbers below are correct; they answer different questions. We publish the stricter one and disclose the other, so anyone comparing us with an external estimate can compare like with like.</p>
     <?php if (function_exists('alt_basis_table_html')) echo alt_basis_table_html('United States'); ?>
     <p><b>What we exclude.</b> Rumored or unsourced layoffs; layoffs with no stated job count; forward-looking projections (e.g. "could cost X jobs by 2050") rather than announced or executed cuts; and retrospective summary articles that would double-count events already tracked.</p>
+    <h3>Source links are preserved</h3>
+    <p>Sources rot: states roll WARN notices into annual archives and outlets move or delete articles. So every cited source URL is submitted to the Internet Archive (Wayback Machine) on an automatic schedule, and each entry shows its archived copy next to the original link. An entry whose source has no snapshot yet says so on the page, together with the date of its next automatic check, so what is there and what is still missing is always visible.</p>
+    <?php if (function_exists('alt_archive_coverage_line_html')) echo alt_archive_coverage_line_html(); ?>
   </section>
 
   <section class="alt-method-sec" id="m-differ">

@@ -6,6 +6,55 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — the archive promise, printed with a real date and pinned by an invariant (2.19.248)
+
+**WHAT.** Every listing surface now shows, per row with a source URL: the
+permanent Wayback link when archived, otherwise "No archive snapshot yet. We
+re-check weekly; next check by <date>." — the date DERIVED from the real
+schedule (daily archive-backfill at 05:25 UTC, 72h pending retry, 7d
+unavailable re-check), never typed. One sentence, two renderers: db.php
+`alt_archive_note_html()` (company pages, facet pages, entry permalinks) and
+layoffs.js `archiveCell`/`archivePendingTitle` (tracker cards).
+`railway/tests/test_archive_promise.py` pins the PHP constants, the JS mirror,
+the workflow cron and the sentence to each other.
+
+**THE PROMISE CAN FAIL, WHICH IS THE POINT.** `/archive-coverage` now reports
+`queued` and `oldest_unarchived_checked_at`, and a new
+`data_integrity.ArchiveRecheckInvariant` (key `archive_recheck_cadence`) FAILS
+when the oldest un-archived attempt exceeds 10 days = 7 (promise) + 1
+(daily-run granularity) + 2 (slack). Wired into the existing INVARIANTS
+registry — test, ops_status and digest all pick it up; UNKNOWN (build predates
+the fields) is pending, never a pass.
+
+**TWO DEFECTS FOUND WHILE MAKING THE DATE TRUE.** (1) The candidate query
+ordered newest-layoff-date-first, so when more than one 500-batch was due, the
+freshly restamped top slice cycled every 72h and everything below starved
+forever — ordering is now never-checked first, then oldest-attempt first.
+(2) One 500-URL batch per run cannot re-check a ~4,000-URL pending pool inside
+a week (needs ~1,300/day); archive_backfill.py now pages through batches up to
+ARCHIVE_BACKFILL_LIMIT (1,500) per run, deadline 1800s -> 2400s. The
+archive-backfill.yml note claiming "pending never re-enter the candidate list"
+was an hourly-sprint measurement artifact and is corrected in place.
+
+**ALSO: the methodology's typed "24 of 57 / 42%" is now rendered.** The tracker
+page's measured-completeness paragraph reads
+`data/recall-measurement.json` (a render copy recall_precision.py writes beside
+the canonical railway/recall_measurement.json, only when a figure moves), with
+the Wilson interval computed in PHP (`alt_wilson_interval`). File missing ->
+paragraph omitted, never a stale number. The caveats stay attached; per
+docs/RECALL_BENCHMARK_PROTOCOL.md this figure remains labeled a one-family
+floor, not "our recall". Coverage line (archived / queued / pending /
+unavailable, live counts) added to the methodology and health pages via
+`alt_archive_coverage_line_html()`.
+
+**DAILY STRIP (same deploy).** Label/value gap is now a real space (copied text
+read "Today1,366 workers"); "Today" and "This month" collapse to one
+"Today and this month" line when their figures are identical (1st of the
+month); "largest:" entries carry location from the row's own fields (state for
+US, country otherwise), including in the Copy-as-post text.
+
+---
+
 ## 2026-08-02 — an invariant that went quiet on its own: it HEALED, and that is the bug
 
 **WHAT HAPPENED.** `data_integrity.headline_movement` reddened the Tests run for

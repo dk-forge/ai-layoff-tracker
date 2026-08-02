@@ -73,6 +73,12 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add railway/recall_measurement.json
+          # Added SEPARATELY (git add a b stages NEITHER if one is missing —
+          # the 2026-07-31 watchdog lesson). The render copy inside the plugin
+          # tree is rewritten only when a figure moves, so this does not force
+          # a weekly no-op deploy; when it does change, the push deploys it and
+          # the tracker page's measured-completeness paragraph follows.
+          git add wordpress-plugin/ai-layoff-tracker/data/recall-measurement.json || true
           git diff --cached --quiet && { echo "no change to commit"; exit 0; }
           git commit -m "recall: SEC Item 2.05 gold-set measurement $(date -u +%Y-%m-%dT%H:%MZ)"
           for i in 1 2 3; do

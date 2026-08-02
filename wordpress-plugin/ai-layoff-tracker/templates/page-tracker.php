@@ -489,17 +489,29 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
             <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo (int) $alt_warn_states; ?> US states and DC, Eurofound ERM for the EU), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News, allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
+            <?php
+            // Rendered from the committed weekly measurement (data/recall-measurement.json,
+            // written by recall_precision.py), never typed: when capture improves the page
+            // follows. If the file is missing or malformed the paragraph is OMITTED —
+            // an absent measurement is honest, a stale typed number is not.
+            $alt_rm = function_exists('alt_recall_measurement') ? alt_recall_measurement() : null;
+            if ($alt_rm) : ?>
             <p class="alt-muted"><b>How complete is that, measured?</b> We
             enumerated every SEC 8-K filed between 1 July 2025 and 30 June 2026
             whose structured filing header carries Item 2.05 and that states an
             absolute number of affected employees, then checked how many appear
-            here. <b>24 of 57</b>, or 42% (95% confidence interval 30% to 55%).
+            here. <b><?php echo (int) $alt_rm['matched']; ?> of <?php echo (int) $alt_rm['reference']; ?></b>,
+            or <?php echo (int) $alt_rm['pct']; ?>% (95% confidence interval
+            <?php echo (int) $alt_rm['lo_pct']; ?>% to <?php echo (int) $alt_rm['hi_pct']; ?>%).
             So this is a floor and not a census, and it is why the page does not
-            claim to hold every filing. Where a count is published, it is
-            accurate: 38 of 39 checked figures appear verbatim in the cited
-            source. That measurement covers one source family over one year and
+            claim to hold every filing.<?php if (isset($alt_rm['precision_ok'])) : ?> Where a count is published, it is
+            accurate: <?php echo (int) $alt_rm['precision_ok']; ?> of <?php echo (int) $alt_rm['precision_checked']; ?> checked figures appear verbatim in the cited
+            source.<?php endif; ?> That measurement covers one source family over one year and
             says nothing about private employers, non-US events, or the WARN and
-            news routes, which are counted separately.</p>
+            news routes, which are counted separately. It is re-measured weekly
+            against the same frozen filing list, so this paragraph updates as
+            capture improves.</p>
+            <?php endif; ?>
             <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
         </div>
     </details>

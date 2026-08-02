@@ -1,0 +1,12 @@
+{
+  "matched": 24,
+  "measured_at": "2026-08-01T20:45:25Z",
+  "note": "Render copy of railway/recall_measurement.json for the tracker page's measured-completeness paragraph. Written by railway/recall_precision.py (recall-precision.yml, Mondays); railway/tests/test_archive_promise.py pins it against the canonical file. Do not hand-edit.",
+  "precision_verbatim": {
+    "checked": 39,
+    "measured_at": "2026-08-01",
+    "ok": 38
+  },
+  "reference_events": 57,
+  "reference_set_id": "sec-item-205-us-2025-07_2026-06"
+}

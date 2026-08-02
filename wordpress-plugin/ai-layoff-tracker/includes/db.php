@@ -2428,6 +2428,20 @@ function alt_api_seen_urls(WP_REST_Request $r) {
 // bot-walled) instead of retried forever. The daily backfill retries 'pending'
 // rows on a spacing window, so this is roughly a week of attempts.
 if (!defined('ALT_ARCHIVE_MAX_ATTEMPTS')) define('ALT_ARCHIVE_MAX_ATTEMPTS', 5);
+// The re-check cadence, defined ONCE and read by BOTH sides of the promise:
+// the candidate query below (what the daily cron actually hands out) and
+// alt_archive_next_check_date() (the "next check by <date>" the listing pages
+// print beside a row with no Wayback snapshot yet). One definition, so the
+// sentence a reader sees and the schedule the cron keeps cannot drift apart.
+// RETRY_HOURS spaces 'pending' retries; RECHECK_DAYS is the weekly re-check of
+// 'unavailable' URLs (never given up). DAILY_RUN_UTC is when archive-backfill
+// actually runs and MUST match the cron in .github/workflows/archive-backfill.yml
+// ('25 5 * * *'); railway/tests/test_archive_promise.py pins that equality, and
+// data_integrity's archive_recheck_cadence invariant fails CI when the live
+// data shows the cadence is not being kept.
+if (!defined('ALT_ARCHIVE_RETRY_HOURS')) define('ALT_ARCHIVE_RETRY_HOURS', 72);
+if (!defined('ALT_ARCHIVE_RECHECK_DAYS')) define('ALT_ARCHIVE_RECHECK_DAYS', 7);
+if (!defined('ALT_ARCHIVE_DAILY_RUN_UTC')) define('ALT_ARCHIVE_DAILY_RUN_UTC', '05:25');
 
 /**
  * Key-protected: return the next batch of DISTINCT source URLs that still need
@@ -2447,12 +2461,12 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
         return new WP_Error('alt_db_error', 'Archive index unavailable after migration retry.', array('status' => 500));
     }
     $limit = min(500, max(1, (int) ($r->get_param('limit') ?: 200)));
-    $retry_hours = min(720, max(1, (int) ($r->get_param('retry_hours') ?: 72)));
+    $retry_hours = min(720, max(1, (int) ($r->get_param('retry_hours') ?: ALT_ARCHIVE_RETRY_HOURS)));
     $retry_before = gmdate('Y-m-d H:i:s', time() - $retry_hours * HOUR_IN_SECONDS);
     // NEVER give up: an 'unavailable' URL is re-checked WEEKLY forever, because a
     // source not yet in Wayback today may be crawled next month — so every row
     // eventually gets its archive or an honest, freshly-timestamped disclaimer.
-    $weekly_before = gmdate('Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS);
+    $weekly_before = gmdate('Y-m-d H:i:s', time() - ALT_ARCHIVE_RECHECK_DAYS * DAY_IN_SECONDS);
     $layoffs = alt_db_table();
     $archive = alt_archive_table();
     // DISTINCT source URLs missing an archive, 'pending' and due for retry, or
@@ -2460,12 +2474,16 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
     // PHP/Python url_hash (md5 of the trimmed URL). NB: the literal percent in
     // LIKE 'http%' is doubled to '%%' because this string is run through
     // $wpdb->prepare (a bare % is read as a placeholder).
-    // NEWEST FIRST. Archiving matters most for the years the tracker actively
-    // makes claims about (current + prior year): those links are the ones a
-    // journalist clicks today and the ones most likely to rot while still being
-    // cited. Older years still get archived, just after the recent backlog is
-    // clear — ordering rather than filtering, so nothing is permanently
-    // excluded and Wayback (which costs nothing but time) keeps working back.
+    // NEVER-CHECKED FIRST (newest layoff date among them), then OLDEST LAST
+    // ATTEMPT first. This ordering is what makes the pages' "next check by
+    // <date>" promise keepable: the old "newest layoff date first" ordering
+    // starved older-dated pending rows whenever more than one batch was due —
+    // the same freshly-restamped top slice cycled every 72h while everything
+    // ranked below the batch size was never retried again. Oldest-attempt-first
+    // is round-robin fairness: every due URL is retried within
+    // (due pool / daily throughput) days of becoming eligible, which is the
+    // arithmetic the archive_recheck_cadence data-integrity invariant holds
+    // the live data to.
     $sql = "SELECT l.source_url
             FROM $layoffs l
             LEFT JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
@@ -2474,7 +2492,7 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
                    OR (a.status = 'pending' AND (a.checked_at IS NULL OR a.checked_at < %s))
                    OR (a.status = 'unavailable' AND (a.checked_at IS NULL OR a.checked_at < %s)))
             GROUP BY l.source_url
-            ORDER BY MAX(l.layoff_date) DESC
+            ORDER BY (MIN(a.checked_at) IS NULL) DESC, MIN(a.checked_at) ASC, MAX(l.layoff_date) DESC
             LIMIT %d";
     $urls = $wpdb->get_col($wpdb->prepare($sql, $retry_before, $weekly_before, $limit)) ?: array();
     return rest_ensure_response(array(
@@ -2553,6 +2571,59 @@ function alt_basis_table_html($country = 'United States', $year = null) {
     return ob_get_clean();
 }
 
+/**
+ * Wilson 95% score interval for k successes in n trials, as [lo, hi] fractions.
+ * Deterministic arithmetic on committed inputs — the interval the measurement
+ * pages print is computed, never typed.
+ */
+function alt_wilson_interval($k, $n, $z = 1.959964) {
+    $k = (int) $k; $n = (int) $n;
+    if ($n <= 0) return array(0.0, 0.0);
+    $p = $k / $n;
+    $z2 = $z * $z;
+    $den = 1 + $z2 / $n;
+    $centre = ($p + $z2 / (2 * $n)) / $den;
+    $half = ($z * sqrt(($p * (1 - $p) + $z2 / (4 * $n)) / $n)) / $den;
+    return array(max(0.0, $centre - $half), min(1.0, $centre + $half));
+}
+
+/**
+ * The committed SEC Item 2.05 gold-set measurement, for the tracker page's
+ * "how complete is that, measured?" paragraph. Read from
+ * data/recall-measurement.json — a render copy of railway/recall_measurement.json
+ * written by recall_precision.py (weekly recall-precision.yml) so the page
+ * follows the measurement instead of hardcoding "24 of 57". Returns null when
+ * the file is missing or malformed, and the caller renders NOTHING rather than
+ * a stale typed number. The figure is a frozen-set regression measurement, not
+ * "our recall" — the caller must keep the caveats beside it (see
+ * docs/RECALL_BENCHMARK_PROTOCOL.md).
+ */
+function alt_recall_measurement() {
+    $path = ALT_PLUGIN_DIR . 'data/recall-measurement.json';
+    if (!is_readable($path)) return null;
+    $j = json_decode((string) file_get_contents($path), true);
+    if (!is_array($j)) return null;
+    $matched = (int) ($j['matched'] ?? -1);
+    $ref = (int) ($j['reference_events'] ?? 0);
+    if ($ref <= 0 || $matched < 0 || $matched > $ref) return null;
+    list($lo, $hi) = alt_wilson_interval($matched, $ref);
+    $out = array(
+        'matched'   => $matched,
+        'reference' => $ref,
+        'pct'       => (int) round(100 * $matched / $ref),
+        'lo_pct'    => (int) round(100 * $lo),
+        'hi_pct'    => (int) round(100 * $hi),
+    );
+    $p = isset($j['precision_verbatim']) && is_array($j['precision_verbatim'])
+        ? $j['precision_verbatim'] : null;
+    if ($p && (int) ($p['checked'] ?? 0) > 0 && (int) ($p['ok'] ?? -1) >= 0
+        && (int) $p['ok'] <= (int) $p['checked']) {
+        $out['precision_ok'] = (int) $p['ok'];
+        $out['precision_checked'] = (int) $p['checked'];
+    }
+    return $out;
+}
+
 /** Shared coverage tally for the candidate response and the public endpoint. */
 function alt_archive_coverage_counts() {
     global $wpdb;
@@ -2567,13 +2638,119 @@ function alt_archive_coverage_counts() {
         if (isset($by[$s])) $by[$s] = (int) $row['n'];
     }
     $archived = $by['archived'];
+    // 'queued' is a source URL the layoffs table cites that has no archive row
+    // yet: it enters the next daily backfill run automatically. Derived, never
+    // stored, so it can briefly read low if the archive index still holds rows
+    // for URLs whose layoff rows were purged — hence the max(0,...).
+    $queued = max(0, $distinct_total - ($archived + $by['pending'] + $by['unavailable']));
+    // The oldest last-attempt among URLs still awaiting a snapshot. This is the
+    // number that makes the pages' "we re-check weekly" sentence falsifiable:
+    // data_integrity's archive_recheck_cadence invariant reads it from the
+    // public /archive-coverage endpoint and FAILS when it exceeds the cadence.
+    $oldest = $wpdb->get_var(
+        "SELECT MIN(checked_at) FROM $archive WHERE status IN ('pending','unavailable')");
     return array(
         'distinct_source_urls' => $distinct_total,
         'archived' => $archived,
         'pending' => $by['pending'],
         'unavailable' => $by['unavailable'],
+        'queued' => $queued,
         'coverage_pct' => $distinct_total > 0 ? round(100 * $archived / $distinct_total, 1) : 0.0,
+        'oldest_unarchived_checked_at' => $oldest ? (string) $oldest : null,
+        'recheck_days' => (int) ALT_ARCHIVE_RECHECK_DAYS,
     );
+}
+
+/**
+ * The next date (UTC, Y-m-d) the archive backfill will actually re-attempt a
+ * source URL in the given state. DERIVED from the real schedule — the daily
+ * archive-backfill run at ALT_ARCHIVE_DAILY_RUN_UTC, the 'pending' retry
+ * spacing and the weekly 'unavailable' re-check — never typed, so the date a
+ * reader sees is a promise the crons keep. A URL with no archive row yet
+ * ('queued') is picked up by the next daily run.
+ */
+function alt_archive_next_check_date($status, $checked_at = '') {
+    $now = time();
+    $eligible = $now;
+    $checked = $checked_at !== '' ? strtotime($checked_at . ' UTC') : false;
+    if ($checked !== false && $checked > 0) {
+        if ($status === 'pending') {
+            $eligible = $checked + ALT_ARCHIVE_RETRY_HOURS * HOUR_IN_SECONDS;
+        } elseif ($status === 'unavailable') {
+            $eligible = $checked + ALT_ARCHIVE_RECHECK_DAYS * DAY_IN_SECONDS;
+        }
+    }
+    if ($eligible < $now) $eligible = $now;
+    list($run_h, $run_m) = array_map('intval', explode(':', ALT_ARCHIVE_DAILY_RUN_UTC));
+    $run = gmmktime($run_h, $run_m, 0,
+        (int) gmdate('n', $eligible), (int) gmdate('j', $eligible), (int) gmdate('Y', $eligible));
+    if ($run < $eligible) $run += DAY_IN_SECONDS;
+    return gmdate('Y-m-d', $run);
+}
+
+/** One archive-index row for a single source URL (the entry permalink page). */
+function alt_archive_lookup($source_url) {
+    global $wpdb;
+    $source_url = trim((string) $source_url);
+    if ($source_url === '' || strpos($source_url, 'http') !== 0) return null;
+    $table = alt_archive_table();
+    if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) !== $table) {
+        return null;
+    }
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT archived_url, status, checked_at FROM $table WHERE url_hash = %s",
+        alt_archive_url_key($source_url)), ARRAY_A);
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Reader-facing archive state for one row, shared by every server-rendered
+ * listing surface (company pages, facet pages, entry permalinks) so they all
+ * say the same thing the tracker's own cards do: the permanent Wayback link
+ * when one exists, otherwise an honest note with the REAL next-check date.
+ * Returns '' when the row has no archivable URL (e.g. a WARN row whose only
+ * source is the state register link itself is still archived by URL, so it
+ * gets the note too — '' is only for rows with no http source at all).
+ */
+function alt_archive_note_html(array $row) {
+    $url = trim((string) ($row['source_url'] ?? ''));
+    if ($url === '' || strpos($url, 'http') !== 0) return '';
+    $archived = trim((string) ($row['archived_url'] ?? ''));
+    if ($archived !== '') {
+        return '<a href="' . esc_url($archived) . '" target="_blank" rel="noopener nofollow" '
+            . 'title="A copy saved by the Internet Archive, for when the original page has moved or gone">'
+            . 'Archived copy (Wayback Machine)</a>';
+    }
+    $next = alt_archive_next_check_date(
+        (string) ($row['archive_status'] ?? 'queued'),
+        (string) ($row['archive_checked_at'] ?? ''));
+    return '<span class="alt-muted alt-archive-note">'
+        . 'No archive snapshot yet. We re-check weekly; next check by ' . esc_html($next) . '.</span>';
+}
+
+/**
+ * One-line, live archive-coverage summary for the methodology and health
+ * pages. Every count is computed from the archive index at render time (held
+ * in a 15-minute transient); nothing here is typed.
+ */
+function alt_archive_coverage_line_html() {
+    $c = get_transient('alt_archive_cov_line');
+    if (!is_array($c)) {
+        if (!function_exists('alt_archive_coverage_counts')) return '';
+        $c = alt_archive_coverage_counts();
+        set_transient('alt_archive_cov_line', $c, 15 * MINUTE_IN_SECONDS);
+    }
+    if ((int) $c['distinct_source_urls'] <= 0) return '';
+    $f = function ($n) { return number_format((int) $n); };
+    return '<p class="alt-muted alt-archive-coverage"><b>Source-link preservation, measured live:</b> '
+        . $f($c['archived']) . ' of ' . $f($c['distinct_source_urls'])
+        . ' distinct source links (' . esc_html(number_format((float) $c['coverage_pct'], 1))
+        . '%) have a permanent Internet Archive (Wayback Machine) snapshot. Of the rest, '
+        . $f($c['queued']) . ' are queued for the next daily archiving run, '
+        . $f($c['pending']) . ' have a capture requested and are retried every '
+        . (int) (ALT_ARCHIVE_RETRY_HOURS / 24) . ' days, and '
+        . $f($c['unavailable']) . ' are not in the Internet Archive yet and are re-checked weekly, '
+        . 'forever. Rows without a snapshot say so on the page, with the date of their next check.</p>';
 }
 
 /**
@@ -2654,7 +2831,9 @@ function alt_api_archive_coverage() {
     if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) !== $table) {
         return rest_ensure_response(array(
             'distinct_source_urls' => 0, 'archived' => 0, 'pending' => 0,
-            'unavailable' => 0, 'coverage_pct' => 0.0,
+            'unavailable' => 0, 'queued' => 0, 'coverage_pct' => 0.0,
+            'oldest_unarchived_checked_at' => null,
+            'recheck_days' => (int) ALT_ARCHIVE_RECHECK_DAYS,
         ));
     }
     return rest_ensure_response(alt_archive_coverage_counts());

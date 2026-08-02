@@ -183,6 +183,12 @@ $alt_bd_titles = array(
                 <li><a href="<?php echo esc_url($alt_source['url']); ?>" target="_blank" rel="noopener nofollow"><?php
                     echo esc_html($alt_source['name'] ?: 'Cited source') . $alt_warn_kind; ?></a></li>
             <?php endforeach; ?>
+            <?php // Wayback copy or honest next-check note, same as the company pages
+                  // and the tracker cards (one helper, alt_archive_note_html()).
+                  $alt_arch = function_exists('alt_archive_note_html') ? alt_archive_note_html($alt_event) : '';
+                  if ($alt_arch !== '') : ?>
+                <li><?php echo $alt_arch; // built from esc_url/esc_html above ?></li>
+            <?php endif; ?>
             <?php if (!empty($alt_event['permalink'])) : ?>
                 <li><a href="<?php echo esc_url($alt_event['permalink']); ?>">Full entry on this site</a></li>
             <?php endif; ?>

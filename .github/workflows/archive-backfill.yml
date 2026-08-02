@@ -21,12 +21,23 @@ on:
     # the daily run picks up anyway; the difference hourly buys is that a new
     # row's Wayback copy lands within an hour instead of within a day, which is
     # not worth ~20 min/day of Actions minutes on a 9-second no-op.
-    # NOTE for whoever wants coverage above 84%: raising the CADENCE will not do
-    # it. The 3,965 URLs recorded `pending` never re-enter the candidate list
-    # (distinct URLs grew 25,020 -> 25,029 while `archived` moved 21,108 ->
-    # 21,110 and `pending` grew 3,963 -> 3,965), so a Save-Page-Now request that
-    # never confirms is stuck forever. That needs a re-check of pending rows,
-    # which does not exist yet — not a smaller cron interval.
+    # NOTE (corrected 2026-08-02): the old claim here that pending URLs "never
+    # re-enter the candidate list" was an artifact of measuring three HOURLY
+    # sprint runs — at hourly cadence almost nothing had aged past the 72h
+    # retry window, hence 0/2/7 candidates. At daily cadence the server hands
+    # out full batches (500 on 2026-08-02). Two real defects WERE found and
+    # fixed instead: (1) candidates were ordered newest-layoff-date-first, so
+    # when more than one batch was due, the freshly restamped top slice cycled
+    # every 72h and everything below it starved forever — ordering is now
+    # never-checked first, then oldest-attempt first; (2) one 500-URL batch per
+    # run cannot re-check a ~4,000-URL pending pool inside the promised week,
+    # so archive_backfill.py now pages through batches up to
+    # ARCHIVE_BACKFILL_LIMIT per run. The pages print "next check by <date>"
+    # beside every un-archived source, and data_integrity's
+    # archive_recheck_cadence invariant FAILS when the oldest un-archived
+    # attempt exceeds 10 days (7d promise + 1d run granularity + 2d slack).
+    # This cron time (05:25 UTC) is pinned to db.php ALT_ARCHIVE_DAILY_RUN_UTC
+    # by railway/tests/test_archive_promise.py — change them together.
     - cron: '25 5 * * *'
   workflow_dispatch:
     inputs:
@@ -71,9 +82,13 @@ jobs:
           ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '80' }}
           ARCHIVE_FLUSH_EVERY: '25'
           ARCHIVE_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
-          # Stops safely between URLs well below the job timeout; the daily run
-          # resumes with whatever the server still reports as un-archived.
-          ARCHIVE_BACKFILL_DEADLINE_SECONDS: '1800'
+          # Stops safely between URLs well below the job timeout (45 min); the
+          # daily run resumes with whatever the server still reports as
+          # un-archived. 2400s because a full 1,500-URL day (three server
+          # batches) of availability checks plus the SPN budget can exceed the
+          # old 1800s, and a deadline that clips the tail every day is a
+          # cadence the pages promise but the cron cannot keep.
+          ARCHIVE_BACKFILL_DEADLINE_SECONDS: '2400'
         # Data-changing job fails loudly: an unreachable candidate feed or a
         # failed /archive-record batch exits non-zero above.
         run: |
