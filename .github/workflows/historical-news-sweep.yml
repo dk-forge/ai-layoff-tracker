@@ -34,7 +34,25 @@ on:
     # THEN revert to '40 5 * * *'. Check with:
     #   curl -s .../wp-json/layoffs/v1/historical-gdelt-cursor  (keyed)
     # or just read `Success-anchored historical GDELT window:` in the newest run.
-    - cron: '40 * * * *'
+    # REVERTED TO DAILY 2026-08-02, on yield the sprint header never had.
+    # Twelve consecutive hourly runs were read: 120 model extractions produced
+    # ONE stored row (0.83%). The remaining ~285 windows are therefore ~2,850
+    # extractions for an expected ~24 rows, and on 2026-08-02 the OpenRouter
+    # ACCOUNT was at $22.92 falling ~$7/day, i.e. about three days of runway for
+    # BOTH trackers. Buying a year of thin history with the credit that keeps
+    # live collection alive is the wrong trade at that balance.
+    #
+    # Nothing about the design was wrong: the cursor really is server-side and
+    # success-anchored, cadence really does map 1:1 to progress, and the header's
+    # ~$0.18/day estimate is about right. It is the VALUE per call that is poor,
+    # which only shows up once you count stored rows per extraction.
+    #
+    # Re-arm the hourly sprint when the account is funded and the yield justifies
+    # it. Check yield first, not just cost:
+    #   gh run list --workflow=historical-news-sweep.yml -L 12 --json databaseId \
+    #     -q '.[].databaseId' | xargs -I{} gh run view {} --log \
+    #     | grep -oE 'GDELT backfill complete: [0-9]+ posted'
+    - cron: '40 5 * * *'
   workflow_dispatch:
     inputs:
       start:

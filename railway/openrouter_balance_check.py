@@ -23,6 +23,22 @@ OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 THRESHOLD = float(os.environ.get("ALERT_THRESHOLD") or "10")
 
+# A LEVEL alone cannot tell you that you are three days from zero. On
+# 2026-08-02 this job printed "balance healthy" at $22.92 while the account was
+# falling ~$7/day across both trackers -- comfortably above the $10 floor and
+# about to hit it inside a long weekend. The floor answers "is it low"; nobody
+# was asking "how fast".
+#
+# So the balance is now recorded daily and the alert fires on RUNWAY, whichever
+# comes first. Runway is the honest question because the answer scales with
+# whatever the pipelines actually do: a quiet week stretches it, a backfill
+# sprint shortens it, and neither needs this number retuned.
+RUNWAY_DAYS = float(os.environ.get("ALERT_RUNWAY_DAYS") or "10")
+HISTORY = os.path.join(os.path.dirname(__file__), "openrouter_balance_history.json")
+# Enough readings to see through one noisy day, few enough to react inside a
+# week. Averaging the whole file would hide a sprint that started yesterday.
+BURN_WINDOW_DAYS = 5
+
 
 def _get(path):
     req = urllib.request.Request(f"{BASE}{path}",
@@ -57,6 +73,57 @@ def _email(subject, body):
         print(f"alert send failed: {exc}")
 
 
+def _history():
+    try:
+        with open(HISTORY) as fh:
+            rows = json.load(fh)
+        return rows if isinstance(rows, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def _record(balance):
+    """Append today's reading and return the trimmed history.
+
+    One row per day: a workflow that runs twice would otherwise halve the
+    apparent burn. A read-only checkout just skips the write and reports on
+    whatever history it already has.
+    """
+    import datetime
+    today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    rows = [r for r in _history() if r.get("date") != today]
+    rows.append({"date": today, "balance": balance})
+    rows = sorted(rows, key=lambda r: r["date"])[-30:]
+    try:
+        with open(HISTORY, "w") as fh:
+            json.dump(rows, fh, indent=1)
+    except OSError:
+        pass
+    return rows
+
+
+def _runway(rows):
+    """(days_left, burn_per_day) or (None, None) when it cannot be known.
+
+    UNKNOWN is a real answer here: with one reading there is no slope, and a
+    balance that went UP (a top-up) is not a negative burn, it is a reset. Both
+    return None rather than a reassuring number.
+    """
+    if len(rows) < 2:
+        return None, None
+    import datetime
+    window = rows[-(BURN_WINDOW_DAYS + 1):]
+    first, last = window[0], window[-1]
+    d0 = datetime.date.fromisoformat(first["date"])
+    d1 = datetime.date.fromisoformat(last["date"])
+    days = (d1 - d0).days
+    spent = first["balance"] - last["balance"]
+    if days <= 0 or spent <= 0:
+        return None, None
+    burn = spent / days
+    return (last["balance"] / burn), burn
+
+
 def main():
     if not OR_KEY:
         print("OPENROUTER_API_KEY not set; skipping (nothing to check)")
@@ -86,12 +153,27 @@ def main():
     which = "account balance" if binding == balance else "this key's spend cap"
     print(f"account balance={balance} key_remaining={key_left} binding={binding} ({which})")
 
-    if binding < THRESHOLD:
-        body = (
-            f"OpenRouter is running low: {which} is ${binding:,.2f} "
-            f"(alert threshold ${THRESHOLD:,.0f}).\n\n"
-            f"  account balance : ${balance:,.2f}\n" if balance is not None else ""
-        )
+    days_left, burn = (None, None)
+    if balance is not None:
+        days_left, burn = _runway(_record(balance))
+    if days_left is None:
+        print("runway: UNKNOWN (need two readings and a falling balance)")
+    else:
+        print(f"runway: {days_left:.1f} days at ${burn:,.2f}/day "
+              f"(warn under {RUNWAY_DAYS:.0f})")
+
+    low = binding < THRESHOLD
+    short = days_left is not None and days_left < RUNWAY_DAYS
+    if low or short:
+        headline = (f"{which} is ${binding:,.2f} (floor ${THRESHOLD:,.0f})" if low
+                    else f"{days_left:.1f} days of credit left at ${burn:,.2f}/day")
+        body = f"OpenRouter needs attention: {headline}.\n\n"
+        if balance is not None:
+            body += f"  account balance : ${balance:,.2f}\n"
+        if days_left is not None:
+            body += (f"  burn rate       : ${burn:,.2f}/day over the last "
+                     f"{BURN_WINDOW_DAYS} readings\n"
+                     f"  runway          : {days_left:.1f} days\n")
         if key_left is not None:
             body += f"  key cap left    : ${key_left:,.2f}\n"
         body += ("\nWhen this hits zero, all AI enrichment (extraction, industry/role/"
@@ -99,9 +181,11 @@ def main():
                  "ERM row ingestion keep running (they use no LLM).\n\n"
                  "Top up: https://openrouter.ai/settings/credits\n"
                  "If it is the key cap, raise the key's limit instead.")
-        _email(f"OpenRouter low: ${binding:,.2f} left ({which})", body)
+        subject = (f"OpenRouter low: ${binding:,.2f} left ({which})" if low
+                   else f"OpenRouter runway: {days_left:.0f} days at ${burn:,.2f}/day")
+        _email(subject, body)
     else:
-        print(f"balance healthy (>= ${THRESHOLD:,.0f}); no alert")
+        print(f"balance healthy (>= ${THRESHOLD:,.0f}) and runway is not short")
     return 0
 
 
