@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.249
+ * Version: 2.19.250
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.249');
+define('ALT_VERSION', '2.19.250');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -940,6 +940,11 @@ function alt_enqueue_assets() {
         'noRegister' => alt_no_register_states(),
         'stateLabor' => alt_state_unemployment(),
         'blsUrl'     => 'https://www.bls.gov/lau/',
+        // The REAL ingest cron (data/ingest-schedule.json, generated from
+        // railway/railway.toml). nextPullET() derives the "next update" time
+        // from this; when it is null the page promises nothing rather than
+        // guessing.
+        'ingest'     => function_exists('alt_ingest_schedule') ? alt_ingest_schedule() : null,
     ));
 }
 add_action('wp_enqueue_scripts', 'alt_enqueue_assets');

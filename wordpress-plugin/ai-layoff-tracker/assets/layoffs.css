@@ -2064,3 +2064,54 @@ figure.alt-soundbite figcaption.alt-sb-actions,
   border-color: var(--alt-ink-2); background: var(--alt-bg-2, rgba(0,0,0,.03));
 }
 .alt-browse-n { color: var(--alt-ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* First-screen cite line (Eurostat pattern: headline + dateline + next
+   release together). Sits directly under the floor banner; the long-form
+   cite block it links to stays at the bottom of the page. */
+.alt-citeline {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  margin: -6px 0 14px; font-size: 12.5px; line-height: 1.45;
+  color: var(--alt-ink-2);
+}
+.alt-citeline-stat b { color: var(--alt-ink); font-variant-numeric: tabular-nums; }
+.alt-citeline-links a { color: var(--alt-blue-dark); text-decoration: none; }
+.alt-citeline-links a:hover, .alt-citeline-links a:focus-visible { text-decoration: underline; }
+.alt-citeline-next { font-variant-numeric: tabular-nums; }
+
+/* Bookmarkable-URL note: same line as the filter prompt, quieter voice. */
+.alt-filter-context-note { font-weight: 400; color: var(--alt-ink-2); }
+
+/* The broad AI measure's own strip, out of the addable-tile grid so nobody
+   sums across a row that mixes measures. Same card component, laid flat. */
+.alt-broad-strip { margin: 10px 0 0; }
+.alt-broad-strip .alt-stat-card { width: 100%; max-width: 560px; }
+
+/* Per-tile (i) disclosure: the caveat is one tap away instead of a paragraph
+   on the tile face. Expands in place (no overlay), so it can never bleed
+   outside the card on a phone. */
+.alt-stat-i { display: inline; }
+.alt-stat-i > summary {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border: 1px solid var(--alt-border);
+  border-radius: 50%; cursor: pointer; list-style: none;
+  color: var(--alt-ink-2); background: var(--alt-surface);
+  font: italic 700 10px/1 var(--alt-serif); vertical-align: text-bottom;
+}
+.alt-stat-i > summary::-webkit-details-marker { display: none; }
+.alt-stat-i > summary:hover, .alt-stat-i > summary:focus-visible { border-color: var(--alt-ink-2); }
+.alt-stat-i[open] > .alt-stat-i-body {
+  display: block; margin-top: 4px; padding: 6px 8px;
+  border-left: 2px solid var(--alt-border); background: var(--alt-surface-2);
+  font-size: 11.5px; line-height: 1.45; color: var(--alt-ink-2);
+}
+
+/* Per-entry anchors on the corrections log (linkable citations). */
+.alt-log-anchor { color: var(--alt-muted); text-decoration: none; font-weight: 600; }
+.alt-log-anchor:hover, .alt-log-anchor:focus-visible { color: var(--alt-blue-dark); }
+.alt-corrections-scroll li:target {
+  background: var(--alt-blue-tint); border-radius: 6px;
+  padding: 4px 6px; margin-left: -6px;
+}
+
+/* Cross-link to the hiring-signals product, after the stats. */
+.alt-crosslink { margin: 10px 0 0; font-size: 13px; color: var(--alt-ink-2); }

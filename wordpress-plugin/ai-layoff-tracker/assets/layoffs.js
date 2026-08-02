@@ -767,8 +767,13 @@
         var ep = currentParams();
         if (ep.country) ep.country_basis = 'any';
         var qsStr = qs(ep);
+        // The -top pair is the first-screen cite line's copy of the same
+        // affordance; both must honor the live filters or a journalist's
+        // download would not match the number beside it.
         [['alt-export-csv', window.altData.exportCsv, 'CSV'],
-         ['alt-export-json', window.altData.exportJson, 'JSON']].forEach(function (p) {
+         ['alt-export-json', window.altData.exportJson, 'JSON'],
+         ['alt-export-csv-top', window.altData.exportCsv, 'CSV'],
+         ['alt-export-json-top', window.altData.exportJson, 'JSON']].forEach(function (p) {
             var a = document.getElementById(p[0]);
             if (!a) return;
             a.href = p[1] + (qsStr ? '&' + qsStr : '');
@@ -880,14 +885,20 @@
         });
     }
 
-    // Next scheduled data pull. Ingest runs at fixed UTC times (13:00 and
-    // 22:00 = 9 AM & 6 PM ET); show the next one so "updated" always has a
-    // forward-looking companion.
+    // Next scheduled data pull, so "updated" always has a forward-looking
+    // companion. The hours come from altData.ingest, which the server reads
+    // from data/ingest-schedule.json — generated from the REAL Railway cron
+    // (railway/railway.toml) and drift-guarded by test_ingest_schedule.py.
+    // Never typed here: without a schedule we show nothing rather than guess.
     function nextPullET() {
+        var ing = window.altData && window.altData.ingest;
+        var hours = ing && ing.utc_hours;
+        if (!hours || !hours.length) return '';
+        var minute = ing.utc_minute || 0;
         var now = new Date(), cands = [];
         for (var d = 0; d <= 1; d++) {
-            [13, 22].forEach(function (h) {
-                var t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, h, 0, 0));
+            hours.forEach(function (h) {
+                var t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, h, minute, 0));
                 if (t > now) cands.push(t);
             });
         }
@@ -905,6 +916,10 @@
         }
         var nextEl = document.getElementById('alt-next-pull');
         var np = nextPullET();
+        // The first-screen cite line's dateline: server-rendered in UTC for
+        // no-JS readers, refreshed here to a live Eastern-time reading.
+        var topNext = document.getElementById('alt-next-top');
+        if (topNext && np) topNext.textContent = 'Next update ' + np;
         if (!liveEl || !workEl) return;
         var phase = stats && stats.pipeline_phase;
         var roo = document.getElementById('alt-roo');

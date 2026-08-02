@@ -2624,6 +2624,69 @@ function alt_recall_measurement() {
     return $out;
 }
 
+/**
+ * The ingest schedule, read from data/ingest-schedule.json — generated from
+ * railway/railway.toml (the cron that actually runs) by
+ * railway/generate_ingest_schedule.py, and drift-guarded by
+ * tests/test_ingest_schedule.py. Same contract as alt_recall_measurement():
+ * missing or malformed file returns null and every caller renders NOTHING,
+ * because an absent schedule is honest and a stale typed one is not.
+ */
+function alt_ingest_schedule() {
+    $path = ALT_PLUGIN_DIR . 'data/ingest-schedule.json';
+    if (!is_readable($path)) return null;
+    $j = json_decode((string) file_get_contents($path), true);
+    if (!is_array($j) || empty($j['utc_hours']) || !is_array($j['utc_hours'])) return null;
+    $hours = array();
+    foreach ($j['utc_hours'] as $h) {
+        $h = (int) $h;
+        if ($h >= 0 && $h <= 23) $hours[] = $h;
+    }
+    if (!$hours) return null;
+    sort($hours);
+    $minute = (int) ($j['utc_minute'] ?? 0);
+    if ($minute < 0 || $minute > 59) $minute = 0;
+    return array('utc_hours' => array_values(array_unique($hours)), 'utc_minute' => $minute);
+}
+
+/** Next scheduled ingest as a UTC unix timestamp, or null without a schedule. */
+function alt_next_ingest_utc() {
+    $s = alt_ingest_schedule();
+    if (!$s) return null;
+    $now = time();
+    for ($d = 0; $d <= 1; $d++) {
+        foreach ($s['utc_hours'] as $h) {
+            $t = gmmktime($h, $s['utc_minute'], 0,
+                (int) gmdate('n', $now), (int) gmdate('j', $now) + $d, (int) gmdate('Y', $now));
+            if ($t > $now) return $t;
+        }
+    }
+    return null;
+}
+
+/**
+ * "9 AM & 6 PM EDT" style label computed from the UTC schedule for today —
+ * DST-correct by construction (the cron is UTC-fixed, so the Eastern clock
+ * time shifts with daylight saving; the old typed label did not).
+ */
+function alt_ingest_times_label() {
+    $s = alt_ingest_schedule();
+    if (!$s) return '';
+    try {
+        $parts = array();
+        $abbr = '';
+        foreach ($s['utc_hours'] as $h) {
+            $dt = new DateTime(gmdate('Y-m-d') . sprintf(' %02d:%02d', $h, $s['utc_minute']), new DateTimeZone('UTC'));
+            $dt->setTimezone(new DateTimeZone('America/New_York'));
+            $parts[] = $dt->format($s['utc_minute'] ? 'g:i A' : 'g A');
+            $abbr = $dt->format('T');
+        }
+        return implode(' & ', $parts) . ' ' . $abbr;
+    } catch (Exception $e) {
+        return '';
+    }
+}
+
 /** Shared coverage tally for the candidate response and the public endpoint. */
 function alt_archive_coverage_counts() {
     global $wpdb;

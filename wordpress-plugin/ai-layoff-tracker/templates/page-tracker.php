@@ -33,6 +33,7 @@ $alt_dl   = '<svg class="alt-dl-ico" width="15" height="15" viewBox="0 0 24 24" 
 // killed the only emit that mattered. A duplicate emit, if the template ever
 // renders twice into visible output, is harmless: layoffs.js reads the global
 // once and the payloads are identical.
+$alt_boot = null;
 if (function_exists('alt_tracker_bootstrap_payload')) {
     $alt_boot_url_filters = array('years', 'quarters', 'months', 'industry', 'country', 'state',
         'sources', 'reasons', 'roles', 'from', 'to', 'q', 'company', 'keyword', 'min_jobs',
@@ -45,16 +46,76 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             . ';</script>' . "\n";
     }
 }
+
+// Server-rendered headline numbers, from the SAME cached bootstrap aggregate
+// the front-end paints from (alt_api_cached path, zero additional queries).
+// The whole pitch of this page is citability, and until 2.19.250 the stat
+// tiles shipped as "…" until JS ran — crawlers and copy-pasting journalists
+// got dots where the money quote should be. The arithmetic below mirrors
+// renderStats() in layoffs.js exactly (verified = jobs - announced, strict AI
+// total = verified AI + announced AI), and layoffs.js re-renders the same
+// numbers on load, so the two can never disagree on a default view. A
+// deep-linked filtered view has no bootstrap by design; it keeps the
+// placeholder and JS fills it from the live, filtered aggregate.
+$alt_sv = null;
+$alt_t = ($alt_boot && isset($alt_boot['aggregate']['totals']) && is_array($alt_boot['aggregate']['totals']))
+    ? $alt_boot['aggregate']['totals'] : null;
+if ($alt_t) {
+    $alt_jobs = (int) ($alt_t['jobs'] ?? 0);
+    $alt_annj = (int) ($alt_t['announced_jobs'] ?? 0);
+    $alt_aiv  = isset($alt_t['ai_verified_jobs']) ? (int) $alt_t['ai_verified_jobs'] : (int) ($alt_t['ai_jobs'] ?? 0);
+    $alt_aia  = isset($alt_t['ai_announced_jobs']) ? (int) $alt_t['ai_announced_jobs']
+        : max(0, (int) ($alt_t['ai_jobs'] ?? 0) - $alt_aiv);
+    $alt_sv = array(
+        'total'        => max(0, $alt_jobs - $alt_annj),
+        'announced'    => $alt_annj,
+        'all'          => $alt_jobs,
+        'ai'           => $alt_aiv,
+        'ai-announced' => $alt_aia,
+        'ai-total'     => $alt_aiv + $alt_aia,
+        'ai-broad'     => (int) ($alt_t['ai_broad_jobs'] ?? 0),
+        'companies'    => (int) ($alt_t['companies'] ?? 0),
+        'industries'   => (int) ($alt_t['industries'] ?? 0),
+        'countries'    => (int) ($alt_t['countries'] ?? 0),
+        'states'       => (int) ($alt_t['states'] ?? 0),
+    );
+}
+$alt_stat = function ($k) use ($alt_sv) {
+    return $alt_sv === null ? '…' : number_format($alt_sv[$k]);
+};
+// The bootstrap scope is always the current year (see
+// alt_tracker_bootstrap_payload), so the period stamps are knowable here too.
+$alt_period     = $alt_sv === null ? '' : current_time('Y') . ' YTD';
+$alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes future-dated plans';
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
     <p class="alt-floor-banner">We do not estimate. Every number here links to an official filing, a state WARN notice, or a named news report. It is a verified floor, not a survey. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count &rarr;</a></p>
+    <?php
+    // First-screen cite affordance (Eurostat pattern: headline + dateline +
+    // next release on one screen). The long-form cite block stays at the
+    // bottom; this is the compact route to it, plus the same filter-honoring
+    // CSV/JSON exports (layoffs.js keeps these hrefs in step with the page)
+    // and the next collection time derived from the real cron
+    // (alt_next_ingest_utc reads data/ingest-schedule.json, generated from
+    // railway/railway.toml — never typed).
+    $alt_next_ts = function_exists('alt_next_ingest_utc') ? alt_next_ingest_utc() : null;
+    ?>
+    <p class="alt-citeline">
+        <?php if ($alt_sv !== null) : ?>
+        <span class="alt-citeline-stat"><b><?php echo esc_html($alt_stat('total')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
+        <?php endif; ?>
+        <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
+        <?php if ($alt_next_ts) : ?>
+        <span class="alt-citeline-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
+        <?php endif; ?>
+    </p>
     <?php $alt_cov = alt_coverage_counts(); ?>
     <div class="alt-narrative" id="alt-narrative"></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     <?php $alt_warn_states = function_exists('alt_state_warn_urls') ? count(alt_state_warn_urls()) : 42; ?>
     <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>SEC 8-K filings, all 50 US states (direct WARN feeds from <?php echo (int) $alt_warn_states; ?>), and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
-    <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match.</p>
+    <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match. <span class="alt-filter-context-note">Bookmark this view: the address bar always matches the filters.</span></p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
         <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
@@ -242,56 +303,71 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
 
     <section class="alt-results-summary" aria-labelledby="alt-results-summary-title">
         <div class="screen-reader-text" id="alt-results-summary-title" role="heading" aria-level="2">Results summary</div>
+        <?php
+        // The tiles left in this row can all be added or compared safely; the
+        // broad AI measure (deliberately NOT addable) renders in its own strip
+        // below, so a reader can no longer sum across a row that mixes
+        // measures. Captions state the fact; the arithmetic caveat lives in a
+        // per-tile (i) disclosure instead of a paragraph on the tile face.
+        ?>
         <div class="alt-stats-bar" id="alt-stats-bar">
             <div class="alt-stat-card alt-fam-verified">
-                <span class="alt-stat-value" id="alt-stat-total">…</span>
+                <span class="alt-stat-value" id="alt-stat-total"><?php echo esc_html($alt_stat('total')); ?></span>
                 <span class="alt-stat-label">Verified job cuts</span>
                 <span class="alt-stat-desc">Filed or reported, counted on the day each cut takes effect. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>" target="_blank" rel="noopener">Why this is verified &rarr;</a></span>
-                <span class="alt-stat-sub" id="alt-stat-total-entries"></span>
+                <span class="alt-stat-sub" id="alt-stat-total-entries"><?php echo esc_html($alt_period); ?></span>
             </div>
             <div class="alt-stat-card alt-fam-announced">
-                <span class="alt-stat-value" id="alt-stat-announced">…</span>
+                <span class="alt-stat-value" id="alt-stat-announced"><?php echo esc_html($alt_stat('announced')); ?></span>
                 <span class="alt-stat-label">Announced job cuts (planned)</span>
                 <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
-                <span class="alt-stat-sub" id="alt-stat-announced-sub"></span>
+                <span class="alt-stat-sub" id="alt-stat-announced-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
             <div class="alt-stat-card alt-fam-all">
-                <span class="alt-stat-value" id="alt-stat-all">…</span>
+                <span class="alt-stat-value" id="alt-stat-all"><?php echo esc_html($alt_stat('all')); ?></span>
                 <span class="alt-stat-label">Verified + announced job cuts</span>
-                <span class="alt-stat-desc">Both tiers together: everything filed, reported, or planned in the period. An announced plan often becomes a verified filing later, so this can count one cut in both stages; it is not a tally of distinct people.</span>
-                <span class="alt-stat-sub" id="alt-stat-all-sub"></span>
+                <div class="alt-stat-desc">Both tiers together. <details class="alt-stat-i"><summary aria-label="More about this number">i</summary><span class="alt-stat-i-body">One cut can appear in both stages (an announced plan often becomes a verified filing later), so this is not a count of distinct people.</span></details></div>
+                <span class="alt-stat-sub" id="alt-stat-all-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
             <div class="alt-stat-card">
-                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies">…</span><span class="alt-stat-label">Companies</span></span>
+                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies"><?php echo esc_html($alt_stat('companies')); ?></span><span class="alt-stat-label">Companies</span></span>
                 <span class="alt-stat-desc">Coverage in this view.</span>
-                <span class="alt-stat-line"><b id="alt-stat-industries">…</b> <span id="alt-stat-industries-label">industries</span></span>
-                <span class="alt-stat-line"><b id="alt-stat-countries">…</b> <span id="alt-stat-countries-label">countries</span></span>
-                <span class="alt-stat-line"><b id="alt-stat-states">…</b> <span id="alt-stat-states-label">US states</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-industries"><?php echo esc_html($alt_stat('industries')); ?></b> <span id="alt-stat-industries-label">industries</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-countries"><?php echo esc_html($alt_stat('countries')); ?></b> <span id="alt-stat-countries-label">countries with reported layoffs</span></span>
+                <span class="alt-stat-line"><b id="alt-stat-states"><?php echo esc_html($alt_stat('states')); ?></b> <span id="alt-stat-states-label">US states</span></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-verified">
-                <span class="alt-stat-value" id="alt-stat-ai">…</span>
+                <span class="alt-stat-value" id="alt-stat-ai"><?php echo esc_html($alt_stat('ai')); ?></span>
                 <span class="alt-stat-label">🤖 AI cuts, verified (specific)</span>
                 <span class="alt-stat-desc">Verified-tier cuts in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-sub"></span>
+                <span class="alt-stat-sub" id="alt-stat-ai-sub"><?php echo esc_html($alt_period); ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-share-line"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-announced">
-                <span class="alt-stat-value" id="alt-stat-ai-announced">…</span>
+                <span class="alt-stat-value" id="alt-stat-ai-announced"><?php echo esc_html($alt_stat('ai-announced')); ?></span>
                 <span class="alt-stat-label">🤖 AI cuts, announced (planned)</span>
                 <span class="alt-stat-desc">Announced-tier plans that cite AI, like "cutting roles as we adopt AI."</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"></span>
+                <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-total">
-                <span class="alt-stat-value" id="alt-stat-ai-total">…</span>
+                <span class="alt-stat-value" id="alt-stat-ai-total"><?php echo esc_html($alt_stat('ai-total')); ?></span>
                 <span class="alt-stat-label">🤖 AI cuts, total (specific)</span>
                 <span class="alt-stat-desc">Verified + announced added together: cuts the employer or plan explicitly named AI for. This is the two boxes to the left, summed.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-total-sub"></span>
+                <span class="alt-stat-sub" id="alt-stat-ai-total-sub"><?php echo $alt_sv === null ? '' : esc_html($alt_stat('ai') . ' verified + ' . $alt_stat('ai-announced') . ' announced'); ?></span>
             </div>
+        </div>
+        <?php
+        // The broad AI measure, OUT of the addable-tile row on purpose: two of
+        // the old row's eight tiles existed mainly to explain why they must
+        // not be added to their neighbours, which is a layout problem wearing
+        // a caption. Same element IDs, so layoffs.js renders it unchanged.
+        ?>
+        <div class="alt-broad-strip" aria-label="A separate, wider AI measure">
             <div class="alt-stat-card alt-stat-card-ai alt-stat-card-broad">
-                <span class="alt-stat-value" id="alt-stat-ai-broad">…</span>
+                <span class="alt-stat-value" id="alt-stat-ai-broad"><?php echo esc_html($alt_stat('ai-broad')); ?></span>
                 <span class="alt-stat-label">🤖 AI-linked, broad (wider lens)</span>
-                <span class="alt-stat-desc"><b>A different, looser measure</b>, a wider lens that also counts press AI-framing ("amid AI push," "AI pivot"), not just the employer's own words. It is intentionally larger than the total on the left, so it does <b>not</b> add up with the boxes above.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"></span>
+                <div class="alt-stat-desc">A separate, looser measure; do not add it to the tiles above. <details class="alt-stat-i"><summary aria-label="More about this number">i</summary><span class="alt-stat-i-body">Counts press framing like "amid AI push" as well as employer statements. Wider than the strict AI figure by design, so it never sums with the strict tiles.</span></details></div>
+                <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"><?php echo esc_html($alt_period); ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
             </div>
         </div>
@@ -301,6 +377,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <a class="alt-method-link" href="#alt-data-sources">Where do we get this data?</a>
             <a class="alt-method-link" href="#alt-corrections">How we catch &amp; fix errors</a>
         </nav>
+        <p class="alt-crosslink">Looking for who is hiring instead? Hiring signals are tracked on the <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Talent Intelligence Tracker</a>.</p>
     </section>
 
     <details class="alt-why-lower">
@@ -313,7 +390,10 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             <div class="alt-why-item"><b>We don&rsquo;t pad to match a bigger headline.</b> A number a journalist can verify is worth more than a bigger one they can&rsquo;t. Nothing here is estimated into existence.</div>
             <div class="alt-why-item"><b>On AI, the thing this tracker exists for,</b> every flagged cut carries the employer&rsquo;s own words naming AI: quotable, clickable, and held to a standard the estimates don&rsquo;t apply to themselves.</div>
         </div>
-        <p class="alt-why-quality">Every figure links to a primary source. Machine-extracted numbers are double-checked by a second independent pass. Changing or removing a claimed figure requires a human; the one automated exception is duplicate control, where the same event reported by two sources is consolidated by a double-checked pass so nothing is ever counted twice, with every source link retained. <b>Every correction and every merge is disclosed in the <a href="#alt-corrections">open log</a></b>. Nothing is quietly edited.</p>
+        <?php /* The double-pass and dedup detail lives on the methodology page,
+                 where the fact-checker who needs it will look; 70 words about
+                 the pipeline were standing between the reader and the data. */ ?>
+        <p class="alt-why-quality">Every figure links to a primary source, and every correction and merge is disclosed in the <a href="#alt-corrections">open log</a>. Nothing is quietly edited. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we check ourselves &rarr;</a></p>
         <p class="alt-why-foot"><a href="#alt-metric-definitions">See the full methodology &rarr;</a> &middot; Every number, every source, one click away.</p>
         </div>
     </details>
@@ -323,7 +403,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
         <div class="alt-grid-h"><h2>Where the cuts are</h2><p>Geography first: the map plots every cut with a named place, then the state and country rankings below it.</p></div>
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-attributed cuts, the employer's own words (sits inside; small red dots are kept visible even when the share is tiny) &middot; circle size = number of jobs &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
+                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-attributed cuts, the employer's own words (sits inside; small red dots are kept visible even when the share is tiny) &middot; circle size = number of jobs &middot; tap a bubble to filter, tap the map to zoom &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
                 <span class="alt-chart-btns">
                     <span class="alt-map-toggle">
                         <button type="button" class="alt-map-scope alt-map-scope-on" data-scope="world">World</button>
@@ -362,7 +442,7 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
                      caveat on the page (it matters - this is a different universe from
                      our counts) without paying for it in layout. */ ?>
             <details class="alt-chart-more"><summary>What this measures</summary>
-            <p>Initial unemployment claims: everyone who filed for benefits that month, from the US Department of Labor. A different, much larger universe than our documented layoffs; shown for context and never added to any tracker total. Every state, all filers, not just layoffs, and unaffected by the filters above. Updates automatically each week.</p></details>
+            <p>Official DOL jobless claims, for scale. A much larger universe than our documented cuts; never added to our totals. Counts everyone who filed for unemployment benefits that month, all states, all causes. Not affected by the filters above. Refreshes weekly.</p></details>
         </div>
         <div class="alt-grid-h"><h2>How it is trending</h2><p>The same filtered data over time: monthly totals with jobless-claims context, this year against last, and how often employers name AI.</p></div>
         <div class="alt-mini alt-chart-card alt-trend-card">
@@ -512,7 +592,12 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
             against the same frozen filing list, so this paragraph updates as
             capture improves.</p>
             <?php endif; ?>
-            <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
+            <?php /* The full 700-outlet directory used to render here, between
+                     the charts and the FAQ/cite block — ballast for every
+                     audience on this page (the one reader in a hundred who
+                     wants the list gets it, still generated from the
+                     collector's own allowlist, on the Sources page). */ ?>
+            <p><b>The full outlet directory</b>, every country and every reviewed outlet we scan with each country's official register, lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>, generated straight from the collector's own allowlist.</p>
         </div>
     </details>
     <details class="alt-methodology alt-conversion-card" id="alt-conversion-card" open>
@@ -582,29 +667,44 @@ if (function_exists('alt_tracker_bootstrap_payload')) {
     <details class="alt-methodology" id="alt-corrections" open>
         <summary>Data notes &amp; corrections log</summary>
         <div class="alt-method-body">
-            <p class="alt-corrections-framing"><b>Why this log is a feature, not a warning.</b> Many early entries are the pipeline catching and fixing its own extraction bugs during pre-launch QA, which is the point: a system that finds and discloses its own errors is more trustworthy than one that hides them.</p>
-            <p>Errors are corrected openly, not silently. Every correction to published figures is dated and described here, newest first, and corrected rows are also flagged <code>edited: true</code> in the API. The list scrolls, because it grows a little every day as the data self-corrects.</p>
+            <p class="alt-corrections-framing">Corrections are dated and described here, newest first, and corrected rows carry <code>edited: true</code> in the API. Nothing is quietly edited. Each entry has its own anchor link, so a correction can be cited by URL.</p>
             <p>For reproducible monitoring, the machine-readable <a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality status endpoint</a> reports dataset revision, recent corrections, collector health, retained-source integrity and the status of each coverage workstream. Pending work is shown as pending, not silently treated as coverage.</p>
             <ul class="alt-corrections-scroll">
                 <?php
                 // The log renders from the actual audit trail: every /edit and
                 // /trash appends to alt_corrections_log, so nothing can be
                 // corrected without being disclosed. Newest first.
+                //
+                // Per-entry anchors (Keep a Changelog: entries should be
+                // linkable; a journalist citing a correction needs a URL to
+                // the entry, not to the page). Numbered on the APPEND-ordered
+                // array, so an entry's anchor never shifts when later
+                // corrections land on the same date.
                 $alt_corr = get_option('alt_corrections_log');
-                foreach (is_array($alt_corr) ? array_reverse($alt_corr) : array() as $c) : ?>
-                <li><b><?php echo esc_html($c['date']); ?>: <?php echo (int) $c['count']; ?> entr<?php echo ((int) $c['count'] === 1) ? 'y' : 'ies'; ?> <?php echo esc_html($c['action']); ?><?php echo $c['detail'] ? ' (' . esc_html($c['detail']) . ')' : ''; ?>.</b> <?php echo esc_html($c['reason']); ?></li>
+                $alt_corr = is_array($alt_corr) ? $alt_corr : array();
+                $alt_log_seq = array();
+                $alt_log_items = array();
+                foreach ($alt_corr as $c) {
+                    $alt_ld = preg_replace('/[^0-9-]/', '', (string) ($c['date'] ?? ''));
+                    if ($alt_ld === '') $alt_ld = 'undated';
+                    $alt_log_seq[$alt_ld] = isset($alt_log_seq[$alt_ld]) ? $alt_log_seq[$alt_ld] + 1 : 1;
+                    $c['anchor'] = 'log-' . $alt_ld . '-' . $alt_log_seq[$alt_ld];
+                    $alt_log_items[] = $c;
+                }
+                foreach (array_reverse($alt_log_items) as $c) : ?>
+                <li id="<?php echo esc_attr($c['anchor']); ?>"><b><?php echo esc_html($c['date']); ?>: <?php echo (int) $c['count']; ?> entr<?php echo ((int) $c['count'] === 1) ? 'y' : 'ies'; ?> <?php echo esc_html($c['action']); ?><?php echo $c['detail'] ? ' (' . esc_html($c['detail']) . ')' : ''; ?>.</b> <?php echo esc_html($c['reason']); ?> <a class="alt-log-anchor" href="#<?php echo esc_attr($c['anchor']); ?>" aria-label="Link to this correction">#</a></li>
                 <?php endforeach; ?>
-                <li><b>2026-07-15: Florida test rows removed, 87,600 jobs.</b> Florida's official WARN export contains internal test entries, which are fictitious notices sharing one WARN number and using non-existent zip codes. Eight such rows were removed, the largest a fake 78,788-worker "AT&amp;T" notice that briefly ranked as our biggest entry. Our importer now skips test-named rows, and each removed row is permanently blocked from re-import.</li>
-                <li><b>2026-07-15: Country assigned to 88 news and SEC entries.</b> These rows had no country recorded, which hid them from the regional views and country charts, though they were always in the worldwide totals. Each was resolved from its own source article. The largest were Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay, so "Multiple countries") and BBC (2,000, United Kingdom).</li>
-                <li><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure with only 2 RI employees affected, and the per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the event.</li>
-                <li><b>2026-07-15: Ten non-events removed.</b> These were SEC-filing extraction mistakes: severance dollar figures and workforce-reduction percentages misread as headcounts, WARN Act boilerplate clauses from acquisition agreements, and three duplicate rows of one Meta story carrying wrong dates.</li>
+                <li id="log-2026-07-15-s1"><b>2026-07-15: Florida test rows removed, 87,600 jobs.</b> Florida's official WARN export contains internal test entries, which are fictitious notices sharing one WARN number and using non-existent zip codes. Eight such rows were removed, the largest a fake 78,788-worker "AT&amp;T" notice that briefly ranked as our biggest entry. Our importer now skips test-named rows, and each removed row is permanently blocked from re-import. <a class="alt-log-anchor" href="#log-2026-07-15-s1" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s2"><b>2026-07-15: Country assigned to 88 news and SEC entries.</b> These rows had no country recorded, which hid them from the regional views and country charts, though they were always in the worldwide totals. Each was resolved from its own source article. The largest were Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay, so "Multiple countries") and BBC (2,000, United Kingdom). <a class="alt-log-anchor" href="#log-2026-07-15-s2" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s3"><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure with only 2 RI employees affected, and the per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the event. <a class="alt-log-anchor" href="#log-2026-07-15-s3" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s4"><b>2026-07-15: Ten non-events removed.</b> These were SEC-filing extraction mistakes: severance dollar figures and workforce-reduction percentages misread as headcounts, WARN Act boilerplate clauses from acquisition agreements, and three duplicate rows of one Meta story carrying wrong dates. <a class="alt-log-anchor" href="#log-2026-07-15-s4" aria-label="Link to this correction">#</a></li>
             </ul>
             <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and they get priority.</p>
         </div>
     </details>
     </section>
 
-    <div class="alt-cite-box">
+    <div class="alt-cite-box" id="alt-cite-box">
         <span class="alt-detail-h">Cite this tracker</span>
         <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"></span>. Data from SEC EDGAR 8-K filings, US state WARN notices, and credible news outlets.</code>
         <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>

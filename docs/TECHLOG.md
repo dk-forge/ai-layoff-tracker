@@ -6,6 +6,51 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — audience UX: server-rendered headline tiles, first-screen cite line, cron-derived next-update, linkable corrections (2.19.250)
+
+**WHAT (per the audience display spec, layoff half).**
+- **Stat tiles server-render real numbers.** The flagship page's whole pitch is
+  citability, and the tiles shipped as "…" until JS ran — crawlers and
+  copy-pasting journalists got dots. page-tracker.php now fills every tile
+  value + period stamp from the SAME cached bootstrap aggregate
+  (`alt_tracker_bootstrap_payload`, zero extra queries); the arithmetic mirrors
+  `renderStats()` exactly and JS re-renders on load, so the two cannot
+  disagree. Deep-linked filtered views keep the placeholder (no bootstrap by
+  design) and JS fills from the live filtered aggregate.
+- **First-screen cite line** (Eurostat pattern: headline + dateline + next
+  release on one screen): verified total, as-of date, Cite/CSV/JSON/API links
+  (the CSV/JSON `-top` pair is kept filter-honoring by `updateExportLinks`),
+  and the next collection time.
+- **Next-update is DERIVED from the real cron, never typed.** New
+  `railway/generate_ingest_schedule.py` parses `railway/railway.toml`
+  `cronSchedule` into `data/ingest-schedule.json`; `alt_ingest_schedule()` /
+  `alt_next_ingest_utc()` / `alt_ingest_times_label()` (db.php) read it, the
+  header's "Live · updated" label renders from it (the old typed
+  "9 AM & 6 PM ET" was DST-wrong half the year — the cron is UTC-fixed), and
+  layoffs.js `nextPullET()` now reads `altData.ingest` instead of a hardcoded
+  `[13, 22]`. `tests/test_ingest_schedule.py` fails the build if the JSON
+  drifts from railway.toml or a typed hour list reappears in JS. Missing file
+  = render nothing (same contract as recall-measurement.json).
+- **Corrections log entries are linkable**: per-entry `id="log-<date>-<n>"`
+  anchors (numbered on the append-ordered array so anchors never shift) plus a
+  visible `#` link, and the framing paragraph compressed per the spec.
+- **The 700-outlet source table left the tracker page** (it sat between the
+  charts and the FAQ/cite block); one line + link to the Sources page, which
+  keeps the full generated directory.
+- **Tile-row hygiene**: the broad AI measure moved OUT of the addable-tile row
+  into its own strip (same element IDs, JS unchanged), and the two
+  caveat-paragraph captions compressed to tile face + `(i)` disclosure
+  (`details.alt-stat-i`, expands in place, no overlay to bleed on mobile).
+- **Wording per spec**: self-audit paragraph cut to one line + methodology
+  link (the double-pass/dedup detail already lives there), jobless-claims
+  explainer shortened, map legend now says "tap a bubble to filter, tap the
+  map to zoom", bookmark-this-view note on the filter prompt, and a
+  hiring-signals cross-link to the talent tracker after the stats.
+- NOT changed: Roles Most Impacted bars were already wired to `alt-f-roles`
+  (2.19.221, b01daed) — the spec's audit predated that fix; verified live.
+
+---
+
 ## 2026-08-02 — the archive promise, printed with a real date and pinned by an invariant (2.19.248)
 
 **WHAT.** Every listing surface now shows, per row with a source URL: the

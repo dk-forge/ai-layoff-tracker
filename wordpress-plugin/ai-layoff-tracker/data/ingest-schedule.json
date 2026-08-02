@@ -1,0 +1,10 @@
+{
+  "cadence": "daily",
+  "cron": "0 13,22 * * *",
+  "source": "railway/railway.toml [deploy] cronSchedule",
+  "utc_hours": [
+    13,
+    22
+  ],
+  "utc_minute": 0
+}
