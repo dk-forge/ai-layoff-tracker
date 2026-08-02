@@ -20,10 +20,12 @@ on:
     # `now.toordinal() % len(months)`, i.e. keyed on the calendar DATE, so its
     # 22 runs/day all swept the identical window.
     #
-    # Remaining work at 2026-07-30: cursor 2019-08-04, so 2,552 days = 365
-    # windows left. At ~22 runs/day that closes in ~17 days; at one/day it is
-    # ~365 days. Cost is bounded by BACKFILL_MAX_ARTICLES=10, so <=230 extraction
-    # calls/day, ~$0.18/day — buying a year of history closure for pennies.
+    # Remaining work at 2026-08-02: cursor 2021-02-14, so ~1,996 days = ~285
+    # windows left. At the daily cadence below that is ~285 days; the hourly
+    # sprint would have closed it in ~12. Cost is bounded by
+    # BACKFILL_MAX_ARTICLES=10, so <=10 extraction calls/day now, well under a
+    # cent — but see the cadence note: the reason to slow it down was never the
+    # cost per call, it was the rows per call.
     #
     # The 2026-07-28 industry-drain postmortem's warning that "self-limiting when
     # empty" is FALSE does NOT apply here. That warning is about rows whose two

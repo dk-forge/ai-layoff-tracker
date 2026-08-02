@@ -175,16 +175,36 @@ class DateKeyedCronCadenceTests(unittest.TestCase):
 class ServerCursorSweepStaysHourlyTests(unittest.TestCase):
     """Guards the deliberate exception, so a later cleanup does not "fix" it."""
 
-    def test_historical_news_sweep_documents_why_it_is_hourly(self):
+    def test_historical_news_sweep_is_daily_and_says_what_bought_the_slowdown(self):
+        """Reverted to daily on 2026-08-02, on YIELD rather than on cost.
+
+        The hourly sprint was correctly designed and correctly cheap: the
+        cursor is server-side, cadence maps 1:1 to progress, and the header's
+        ~$0.18/day was about right. What nobody had counted was rows per call.
+        Twelve consecutive runs spent 120 model extractions to store ONE row,
+        so the remaining ~285 windows were ~2,850 calls for ~24 rows, proposed
+        against an account with about three days of credit left.
+
+        This pins the cadence AND the reasoning, because a bare cron line
+        invites someone to "restore" the sprint from the old header without
+        the measurement that retired it.
+        """
         text = (ROOT / ".github/workflows/historical-news-sweep.yml").read_text()
-        self.assertIn("40 * * * *", text,
-                      "historical-news-sweep was reverted to a slower cadence; "
-                      "that is a real decision, but update this test and the "
-                      "header's remaining-work numbers together.")
+        self.assertIn("40 5 * * *", text,
+                      "historical-news-sweep is daily. Re-arming the hourly "
+                      "sprint is a real decision, but measure stored rows per "
+                      "extraction first and update this test, the cadence note "
+                      "and the remaining-work numbers together.")
+        self.assertNotIn("- cron: '40 * * * *'", text,
+                         "the hourly schedule is retired, not commented beside "
+                         "the daily one where a paste can revive it")
         self.assertIn("historical-gdelt-cursor", text,
-                      "the justification for hourly is that this job's cursor "
-                      "is server-side and advances per RUN; the header must "
-                      "keep naming the endpoint that makes that checkable.")
+                      "cadence maps 1:1 to progress only because the cursor is "
+                      "server-side; the header must keep naming the endpoint "
+                      "that makes that checkable, at any cadence.")
+        self.assertIn("120 model extractions", text,
+                      "the measurement that bought the slowdown has to stay "
+                      "next to the schedule it changed")
 
     def test_dispatch_window_description_matches_the_scripts_limit(self):
         # historical_news_sweep raises unless (end - start) < WINDOW_DAYS, so the
