@@ -57,7 +57,7 @@ session, frozen, and re-measured weekly by `recall-precision.yml`. It exists so
 that a coverage regression can redden CI, which nothing could do before
 2026-08-01. It has **one author, not three reviewers**, so it is not eligible
 for `/benchmarks/recall` and its `publication_status` records that. Its measured
-figure (24 of 57, Wilson 95% [30%, 55%]) must not be published, quoted as "the
+figure (24 of 57, Wilson 95% [30%, 55%]) is published ONLY on the methodology page, with its Wilson interval and single-editor caveat attached (owner-sanctioned 2026-08-01, 2.19.245; made self-updating from the committed measurement in 2.19.248). It must NOT appear on /benchmarks/recall or be quoted as "the tracker's recall" until a second editor has reviewed the 57 match decisions, quoted as "the
 tracker's recall", or compared with a figure from this protocol: different
 source family, different denominator, different review standard.
 
