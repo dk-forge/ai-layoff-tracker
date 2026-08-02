@@ -79,7 +79,6 @@ alert. Guards in `railway/tests/test_ci_noise_report.py` (18 tests), incl.
 "first red of a cause is never noise" so this can never become pressure to
 silence a real alarm.
 
-## 2026-08-02 — an invariant that went quiet on its own: it HEALED, and that is the bug
 ## 2026-08-02 — per-job spend attribution: the ledger, the named ceilings, and the job that ignored the guard
 
 **WHY.** The only cost signal was a daily account balance plus a whole-process
@@ -125,6 +124,8 @@ is fixed by following the redirect without the Authorization header, same as
 including the arithmetic guard: the named ceilings' worst-case monthly sum
 must leave the measured ingest room inside the allowance, so widening a
 ceiling without redoing the ladder is a red test.
+
+## 2026-08-02 — an invariant that went quiet on its own: it HEALED, and that is the bug
 
 **WHAT HAPPENED.** `data_integrity.headline_movement` reddened the Tests run for
 the 2.19.246 deploy (SHA `73b2606`, 2026-08-02T03:33:07Z):
