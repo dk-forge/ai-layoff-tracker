@@ -2647,8 +2647,17 @@ function alt_archive_coverage_counts() {
     // number that makes the pages' "we re-check weekly" sentence falsifiable:
     // data_integrity's archive_recheck_cadence invariant reads it from the
     // public /archive-coverage endpoint and FAILS when it exceeds the cadence.
+    // JOINED to the layoffs table on purpose: the archive index keeps rows for
+    // URLs whose layoff rows were later purged or re-sourced, the backfill
+    // correctly never retries those orphans (they are not candidates), and an
+    // orphan's frozen timestamp must not redden a promise no page is making.
+    // Same join shape the candidate query runs daily.
     $oldest = $wpdb->get_var(
-        "SELECT MIN(checked_at) FROM $archive WHERE status IN ('pending','unavailable')");
+        "SELECT MIN(a.checked_at)
+           FROM $layoffs l
+           JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
+          WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
+            AND a.status IN ('pending','unavailable')");
     return array(
         'distinct_source_urls' => $distinct_total,
         'archived' => $archived,
