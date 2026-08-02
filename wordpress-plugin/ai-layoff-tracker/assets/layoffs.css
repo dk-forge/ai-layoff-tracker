@@ -344,19 +344,28 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 6px 12px; margin: 0 0 8px; font-size: 15px;
 }
-/* Two columns: label gutter + value column. Flex (not inline flow) so a
+/* Label gutter + value column, WIDTH-AWARE. At >=700px the row is flex so a
    wrapping value continues INSIDE its own column instead of dropping an
-   orphaned fragment at the far left under the label gutter ("(31,000 · US)"
-   bug, 2026-08-02). The literal space between the two children stays in the
-   DOM for copy/screen readers; flex simply doesn't render it. */
-.alt-nrow { margin: 5px 0; display: flex; align-items: baseline; }
-.alt-nrow > :first-child { flex: 0 0 auto; }
-.alt-nrow > span:last-child { flex: 1 1 0; min-width: 0; }
+   orphaned fragment at far left under the label gutter ("(31,000 · US)" bug,
+   2026-08-02). Below 700px that column would be ~130px (word-per-line soup,
+   and the nowrap parenthetical bled past the card edge — seen live at 375px),
+   so the label stacks ABOVE a full-width value instead. The literal space
+   between the two children stays in the DOM for copy/screen readers; flex
+   simply doesn't render it. */
+.alt-nrow { margin: 5px 0; }
+@media (min-width: 700px) {
+    .alt-nrow { display: flex; align-items: baseline; }
+    .alt-nrow > :first-child { flex: 0 0 auto; }
+    .alt-nrow > span:last-child { flex: 1 1 0; min-width: 0; }
+}
 .alt-nowrap { white-space: nowrap; }
 .alt-nlabel {
     display: inline-block; min-width: 102px; margin-right: 4px;
     font-weight: 800; font-size: 11.5px; letter-spacing: .05em;
     text-transform: uppercase; color: #8a6a08;
+}
+@media (max-width: 699px) {
+    .alt-nlabel { display: block; min-width: 0; margin: 0 0 2px; }
 }
 
 /* ---------------- Redesign: header, toolbar, quick views ---------------- */
