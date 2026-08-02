@@ -16,12 +16,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
+      - uses: actions/checkout@v5
+
+      # Spend guard (railway/spend.py). This is the single most expensive job
+      # in the repo — a full-dataset sweep — so it is guarded even though it is
+      # dispatch-only. Sets ALT_PAID_READS=off below when the month is spent.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python3 railway/spend.py --degrade
+
       - name: Audit all classified entries
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           python3 - <<'PY'
           import json, os, time, urllib.request, urllib.parse
+
+          # The inline script cannot import railway/spend.py cleanly, but the
+          # guard step above publishes its decision through the environment.
+          # Skipping is exit 0: a budget decision must not redden CI, and a
+          # dispatch-only audit simply gets re-dispatched next month.
+          if (os.environ.get("ALT_PAID_READS") or "").strip().lower() == "off":
+              print("paid reads are OFF (spend ceiling) — audit skipped")
+              raise SystemExit(0)
 
           API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
           UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}

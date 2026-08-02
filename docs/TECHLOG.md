@@ -6,6 +6,88 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — the spend guard, and what the Railway cron actually costs
+
+**THE ACCOUNT HAD NO BRAKE AND NO METER.** Between 2026-07-26 and 2026-08-02 the
+shared OpenRouter balance fell $71.86 -> $22.92, ~$6.45/day, about three days of
+runway for both trackers. This repo had no monthly allowance, no month-to-date
+measurement and no degrade mode — only `openrouter_balance_check.py`, which
+reports a BALANCE. A balance answers "how much is left" and can never answer
+"what did that run cost" or "did that money buy anything".
+
+**THE SUSPECT WAS WRONG, AND THE MEASUREMENT SAYS SO.** The working hypothesis
+was that ~$4.8/day was `railway/cron.py`, invisible because it runs on Railway
+under its own key. It is not. Measured from live `/source-runs` telemetry (4 cron
+runs), one run pulls google_news 150 + gdelt 78.5 + edgar 21 + press 0 = ~250 raw
+entries, and `seen_urls.filter_already_seen` removes ~60% of them before any
+model call. Each surviving entry is exactly ONE `extract_layoff_data` call whose
+prompt is bounded at 5,962 chars of system prompt + ~130 header + a 3,000-char
+`RAW_TEXT_LIMIT`, i.e. ~2,400 input tokens, ~250 output, ~$0.00082 at DeepSeek-V3's
+published $0.2574/$1.0287 per M. So:
+
+    ~100 calls/run -> ~$0.09/run -> ~$0.17/day -> ~$5/month
+    250 calls/run  -> ~$0.22/run -> ~$0.44/day  (upper bound, dedup fully failed)
+
+The cron cannot reach $4.8/day; its own caps forbid it. The dominant consumer was
+`backfill.py` behind `edgar-history-sweep.yml`, which has NO seen-URL pre-check
+(only `gdelt_backfill.py` does) and whose `BACKFILL_LIMIT` caps POSTS, not calls.
+Telemetry: 5,044 filings on 07-28 and 4,190 on 07-29 across 13 and 22 runs, i.e.
+~$4.4/day and ~$3.7/day, against balance drops of $11.11 and $10.50 those days.
+That workflow's own header had already priced it at "~$3.80/day burned for zero
+additional rows" and it was reverted to a daily cron in 126adca. **A per-key split
+of the remainder is still UNKNOWN**: the keys live in GitHub/Railway secrets, so
+no session can attribute the account balance between them. The guard below fixes
+that going forward by metering at the point of spend.
+
+**WHAT SHIPPED: `railway/spend.py`**, ported from the sibling tracker, plus the
+wiring that makes it cover everything.
+
+- **Month-to-date is a DELTA from a committed month-start snapshot** of the key's
+  lifetime usage (`railway/spend_month.json`, committed by the daily balance
+  job). OpenRouter's `usage` never resets; enforcing a monthly allowance directly
+  against it trips the guard permanently once lifetime spend passes one month's
+  budget. That bug shipped in the sibling and killed collection silently. The
+  snapshot is keyed by a one-way 12-hex fingerprint, never the key, so the
+  Actions key and the Railway key each carry their own month-start in one file
+  that is safe to commit.
+- **It degrades, it does not halt.** `--degrade` sets `ALT_PAID_READS=off` and
+  always exits 0. WARN, SEC/EDGAR structured fields, ERM and every state scraper
+  derive their fields from a column and call no model; halting them to protect a
+  budget none of them spends is a self-inflicted outage, which is exactly what
+  `--enforce` caused in the sibling on 2026-07-30. No collecting workflow uses
+  `--enforce`, and a test pins that.
+- **Deferred candidates come back.** Every gated function returns `None`, which
+  is already each caller's "retry later, row stays queued" value, and
+  `seen_urls` drops a URL only when the SITE already holds it. A deferred
+  candidate writes no row, so it is re-pulled. Deferral is never an exception:
+  an exception would land in a caller's failure counter and could trip cron.py's
+  loud "posted 0 with N failures" exit, turning a budget decision into a red
+  data job.
+- **A per-run ceiling that needs no stored state** ($0.20, 2% of the allowance).
+  Railway has no persistent volume, so the month-start snapshot cannot be
+  refreshed there and month-to-date is UNKNOWN — which is reported as UNKNOWN,
+  not as a pass. The brake that still works meters the CURRENT PROCESS exactly,
+  from the `usage` object OpenRouter returns on every completion, and that same
+  meter is what makes cost-per-stored-row answerable.
+- **The allowance is $10/month, INTERIM**, a policy constant in the diff with the
+  reasoning beside it, not a secret. It matches the owner's current interim
+  number for the sibling.
+
+**COVERAGE.** 26 paid workflows now run the guard; four scripts that build their
+own OpenAI client (`ai_evidence_sweep`, `process_tips`,
+`source_verification_audit`, `daily_classification_spotcheck`) gate themselves
+because `extractor.py`'s gate cannot reach them; `classification-audit.yml`'s
+inline script reads the flag from the environment. `cron.py` runs a spend
+preflight before collecting and prints what the run cost and what it bought.
+
+**ops_status.py [2a] RUN COST** reads the two committed ledgers — no key, no
+network — and reports $/day, runway and $ per stored row. The balance job now
+records the live row count next to each balance reading so that division is
+possible at all. On the first run it correctly said: burn $6.45/day, ~$194/month
+against a $10 allowance, ~3.6 days of runway.
+
+---
+
 ## 2026-08-01 — the trend card shows a trajectory again (2.19.246, 2.19.247)
 
 **THE DEFECT WAS THE DEFAULT SCOPE, not the chart.** The tracker opens filtered

@@ -35,6 +35,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http_retry import get_with_retry
+import spend
 
 try:
     from openai import OpenAI
@@ -53,7 +54,6 @@ LIVE = os.environ.get("AI_SWEEP_LIVE", "").lower() in {"1", "true", "yes"}
 MIN_JOBS = max(500, int(os.environ.get("AI_SWEEP_MIN_JOBS") or "2000"))
 MAX_EVENTS = max(1, int(os.environ.get("AI_SWEEP_MAX") or "20"))
 TIMEOUT = 40
-
 
 def _fetch_text(url):
     if not url:
@@ -153,6 +153,14 @@ def _upgrade(row_id, quote):
 
 
 def main():
+    # Spend guard: this script builds its own OpenRouter client, so
+    # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
+    # failing — a deferred AI-evidence sweep is re-run on its next
+    # schedule, and reddening CI over a budget decision is noise.
+    if not spend.paid_reads_enabled():
+        print("paid reads are OFF (spend ceiling) — skipping the AI-evidence sweep "
+              "this run; it resumes on the next schedule")
+        return 0
     if not SITE:
         print("WP_SITE_URL required")
         return 1

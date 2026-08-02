@@ -29,6 +29,7 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http_retry import get_with_retry
 from source_health import report_source_health
+import spend
 
 try:
     from openai import OpenAI
@@ -40,7 +41,6 @@ SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
 SAMPLE = max(5, min(120, int(os.environ.get("AUDIT_SAMPLE") or "40")))
 TIMEOUT = 40
-
 
 def _fetch_text(url):
     if not url:
@@ -136,6 +136,14 @@ def _email(subject, body):
 
 
 def main():
+    # Spend guard: this script builds its own OpenRouter client, so
+    # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
+    # failing — a deferred source-verification audit is re-run on its next
+    # schedule, and reddening CI over a budget decision is noise.
+    if not spend.paid_reads_enabled():
+        print("paid reads are OFF (spend ceiling) — skipping the source-verification audit "
+              "this run; it resumes on the next schedule")
+        return 0
     if not SITE:
         print("WP_SITE_URL required")
         return 1

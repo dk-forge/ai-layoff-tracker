@@ -14,6 +14,8 @@ import re
 
 import openai
 
+import spend
+
 # Swap models without a code change: set OPENROUTER_MODEL in the environment
 # (e.g. "google/gemini-2.0-flash-001" for an even cheaper option). DeepSeek-V3
 # is the default — near the price floor while staying strong at extraction.
@@ -213,6 +215,38 @@ def _guard_credits(exc):
             "https://openrouter.ai/settings/credits") from exc
 
 
+_spend_deferrals = 0
+
+
+def _defer_for_spend(what):
+    """Return None because paid reads are off, and say so once per run.
+
+    None is the "not decided, retry later" value for EVERY paid function in this
+    module (see each docstring): the caller leaves the row queued and the
+    seen-URL pre-check never marks a URL the site does not hold. So a deferred
+    candidate is read on a later run rather than lost, which is what makes a
+    spend ceiling safe to enforce here at all.
+
+    Deliberately NOT an exception: an exception would land in each caller's
+    transient-failure counter and could trip a "posted 0 with N failures" loud
+    failure, turning a budget decision into a red data job.
+    """
+    global _spend_deferrals
+    _spend_deferrals += 1
+    if _spend_deferrals == 1:
+        print(f"::notice::paid reads are OFF (spend ceiling) — deferring {what} "
+              f"and every later paid call this run. Free ingest continues; "
+              f"deferred candidates are UNMARKED and return on a later run.")
+    return None
+
+
+def spend_deferral_count():
+    """How many paid calls this run declined to make. Reported by callers so a
+    degraded run is visible in the logs and the health ledger rather than
+    looking like a quiet, cheap, successful run."""
+    return _spend_deferrals
+
+
 def _precheck_credits():
     """Short-circuit at the top of a classify call once the breaker has tripped,
     so a big batch stops in seconds instead of firing hundreds of doomed calls."""
@@ -222,7 +256,28 @@ def _precheck_credits():
             "https://openrouter.ai/settings/credits")
 
 
+class PaidReadsDisabled(RuntimeError):
+    """Raised by _get_client() when the spend ceiling has switched paid reads
+    off. Distinct from CreditsExhaustedError: there is money, policy says not to
+    spend it right now."""
+
+
 def _get_client():
+    """Build (once) the shared OpenRouter client.
+
+    The spend gate is repeated HERE, not only in the public functions, because
+    three modules reach past them and call this directly:
+    `sources/warn_llm.py`, `sources/warn_hi_ocr.py` and `edgar_recall_probe.py`.
+    All three already wrap the call and degrade correctly on any exception —
+    warn_llm returns 0 so the WARN row still imports with its deterministic
+    count, and the recall probe returns "unknown" rather than a false pass — so
+    raising here is both safe and the right shape. It also means a future direct
+    caller is covered by default instead of silently spending.
+    """
+    if not spend.paid_reads_enabled():
+        raise PaidReadsDisabled(
+            "paid reads are OFF (spend ceiling); this call was not made and the "
+            "candidate is left unmarked for a later run")
     global _client
     if _client is None:
         api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -391,6 +446,8 @@ def classify_ai_evidence(raw_text):
     raw_text = (raw_text or "")[:6000]
     if not raw_text.strip():
         return None
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("AI-causation reassessment")
     prompt = """Classify AI causation in this layoff source. Return STRICT JSON only:
 {"ai_causation":"primary_cause|contributing_cause|selection_or_operations|context_only|explicitly_denied|unknown","ai_language":"exact source phrase or null","confidence":0-100}
 
@@ -405,6 +462,7 @@ TEXT:\n""" + raw_text
             model=MODEL, max_tokens=250,
             messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
         )
+        spend.record_usage(MODEL, getattr(response, "usage", None))
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -434,6 +492,8 @@ def extract_context_evidence(raw_text):
     raw_text = (raw_text or "")[:6000]
     if not raw_text.strip():
         return None
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("context/domicile evidence extraction")
     prompt = """Read this layoff source and return STRICT JSON only:
 {"employer_country":"canonical country or null","employer_country_evidence":"exact source phrase or null","announcement_date":"YYYY-MM-DD or null","announcement_evidence":"exact source phrase containing the announcement date or null"}
 
@@ -449,6 +509,7 @@ TEXT:\n""" + raw_text
             model=CLASSIFY_MODEL, max_tokens=350,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
+        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -482,6 +543,8 @@ def classify_reason_tags(raw_text):
     raw_text = (raw_text or "")[:6000]
     if not raw_text.strip():
         return None
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("reason-tag classification")
     prompt = """Assign layoff reason tags for the text below. Return STRICT JSON only:
 {"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic, closure, bankruptcy, federal_workforce"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
 
@@ -515,6 +578,7 @@ TEXT:\n""" + raw_text
             model=CLASSIFY_MODEL, max_tokens=200,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
+        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -568,6 +632,8 @@ def classify_industry(company, raw_text):
     raw_text = (raw_text or "")[:6000]
     if not company and not raw_text.strip():
         return {"industry": ""}
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("industry classification")
     vocab = "\n".join("- " + label for label in INDUSTRY_VOCABULARY)
     prompt = (
         "Classify the employer's PRIMARY industry from the company name and the "
@@ -588,6 +654,7 @@ def classify_industry(company, raw_text):
             model=CLASSIFY_MODEL, max_tokens=40,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
+        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -622,6 +689,8 @@ def extract_role_categories(raw_text):
     raw_text = (raw_text or "")[:6000]
     if not raw_text.strip():
         return {"categories": [], "evidence": ""}
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("affected-role extraction")
     prompt = """Read this layoff source text and return STRICT JSON only:
 {"categories":["zero or more of: engineering|product_design|customer_support|sales_marketing|hr_recruiting|operations_warehouse|content_trust_safety|finance_admin|manufacturing|retail_staff"],"evidence":"exact source phrase naming the affected roles/teams/departments, or null"}
 
@@ -647,6 +716,7 @@ TEXT:\n""" + raw_text
             model=CLASSIFY_MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
+        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -712,6 +782,8 @@ def extract_layoff_data(raw_entry):
     if not raw_text.strip():
         return None
 
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("layoff extraction")
     prompt = f"""Extract layoff data from this source:
 
 SOURCE TYPE: {raw_entry.get('source_type')}
@@ -732,6 +804,7 @@ TEXT:
                 {"role": "user", "content": prompt},
             ],
         )
+        spend.record_usage(MODEL, getattr(response, "usage", None))
     except Exception as e:
         # Per error-handling requirements: log the raw text that failed, skip entry
         print(f"OpenRouter/DeepSeek API error: {e} — source: {raw_entry.get('source_url')} "

@@ -30,6 +30,16 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      # Spend guard (railway/spend.py). When this month's measured spend is
+      # past the allowance it sets ALT_PAID_READS=off for every step below, and
+      # extractor.py then refuses each paid call and returns the caller's
+      # "retry later" value. It NEVER fails the job: the free collectors in
+      # this workflow keep running and every deferred candidate is left
+      # UNMARKED, so a later run reads it. Stdlib only, so it needs no install.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
       - name: Install deps
         working-directory: railway
         run: pip install -r requirements.txt

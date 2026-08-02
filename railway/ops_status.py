@@ -254,6 +254,116 @@ def _report_held_alerts():
     return lines
 
 
+def _report_run_cost():
+    """[2a] What the models are costing, and what that money bought.
+
+    Reads only committed files, so it works from any session with no key and no
+    network. Returns a list of issue strings for the exit-code verdict.
+
+    Returns (problems, unverified). The split matters: a burn ABOVE the
+    allowance is a fact that needs a human (exit 2), while a figure that could
+    not be measured at all is UNKNOWN (exit 3). Absence of a signal is not a
+    pass, and it is also not evidence of a fault.
+
+    Deliberately reports UNKNOWN rather than a pass in three cases: no history,
+    a history with no row counts yet, and a rising balance (a top-up, which
+    makes that day's delta meaningless as a spend figure).
+    """
+    import os
+    import re
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    problems, unverified = [], []
+
+    # --- is the guard armed at all? ---
+    snap_path = os.path.join(here, "spend_month.json")
+    try:
+        with open(snap_path) as fh:
+            snap = json.load(fh) or {}
+    except (OSError, ValueError):
+        snap = {}
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    armed = [fp for fp, e in snap.items()
+             if isinstance(e, dict) and e.get("month") == month]
+    allowance = "10.00"
+    try:
+        with open(os.path.join(here, "spend.py")) as fh:
+            m = re.search(r"MONTHLY_ALLOWANCE_USD = ([\d.]+)", fh.read())
+            if m:
+                allowance = f"{float(m.group(1)):.2f}"
+    except OSError:
+        pass
+    print(f"    allowance   ${allowance}/month (policy, railway/spend.py)")
+    if armed:
+        print(f"    guard       armed for {month}: {len(armed)} key(s) have a "
+              f"month-start snapshot")
+    else:
+        print(f"    guard       NO month-start snapshot for {month} yet — "
+              f"month-to-date is UNKNOWN")
+        print("                (the daily OpenRouter balance job takes and "
+              "commits it; UNKNOWN is not a pass)")
+        unverified.append(f"month-to-date spend for {month}")
+
+    # --- $/day and $/stored row, from the committed daily readings ---
+    hist_path = os.path.join(here, "openrouter_balance_history.json")
+    try:
+        with open(hist_path) as fh:
+            hist = json.load(fh)
+        hist = [r for r in hist if isinstance(r, dict) and r.get("date")]
+        hist.sort(key=lambda r: r["date"])
+    except (OSError, ValueError):
+        hist = []
+
+    if len(hist) < 2:
+        print("    UNKNOWN: fewer than two committed balance readings, so no "
+              "burn rate can be computed.")
+        unverified.append("LLM burn rate")
+        return problems, unverified
+
+    window = hist[-6:]
+    first, last = window[0], window[-1]
+    spent = float(first.get("balance") or 0) - float(last.get("balance") or 0)
+    days = max(1, (datetime.strptime(last["date"], "%Y-%m-%d")
+                   - datetime.strptime(first["date"], "%Y-%m-%d")).days)
+    print(f"    balance     ${float(last.get('balance') or 0):,.2f} "
+          f"as of {last['date']}")
+    if spent <= 0:
+        print(f"    burn        UNKNOWN over {days}d — the balance did not fall "
+              f"(a top-up lands here), so no rate is derivable.")
+        unverified.append("LLM burn rate")
+        return problems, unverified
+
+    per_day = spent / days
+    print(f"    burn        ${per_day:,.2f}/day over the last {days}d "
+          f"(${spent:,.2f} total)")
+    runway = float(last.get("balance") or 0) / per_day
+    print(f"    runway      ~{runway:,.1f} days at that rate")
+    if runway < 7:
+        problems.append(f"under a week of OpenRouter runway (~{runway:.1f} days)")
+
+    projected = per_day * 30
+    if projected > float(allowance):
+        problems.append(
+            f"the measured burn (${per_day:.2f}/day, ~${projected:.0f}/month) is "
+            f"above the ${allowance}/month allowance")
+
+    r0, r1 = first.get("rows"), last.get("rows")
+    if not isinstance(r0, int) or not isinstance(r1, int):
+        print("    $/row       UNKNOWN — the readings predate row-count "
+              "recording. The next daily balance job starts recording it.")
+        unverified.append("cost per stored row")
+        return problems, unverified
+    gained = r1 - r0
+    if gained <= 0:
+        print(f"    $/row       {gained} rows stored over {days}d, so every "
+              f"cent of ${spent:,.2f} bought nothing storable.")
+        problems.append("spend produced no new rows over the measured window")
+        return problems, unverified
+    print(f"    $/row       ${spent / gained:.4f} per stored row "
+          f"({gained:,} rows for ${spent:,.2f} over {days}d)")
+    return problems, unverified
+
+
 def _print_wrapped(text, width=86, indent="        "):
     """One slice per line, wrapped, so a multi-slice verdict stays readable."""
     import textwrap
@@ -338,6 +448,27 @@ def main():
     except Exception as exc:
         print(f"    HEALTH UNREACHABLE: {exc}")
         (egress_blocked if _is_egress_block(exc) else issues).append("health endpoint unreachable")
+
+    # 2a. RUN COST — "is this run expensive" was unanswerable until 2026-08-02.
+    #
+    # The only cost signal in this repo was a daily account balance, which
+    # cannot attribute a cent to a run and could not see the Railway cron's key
+    # at all. Between 2026-07-26 and 2026-08-02 the account fell $71.86 ->
+    # $22.92 with nothing in the repo able to say what had bought that.
+    #
+    # This reads the two committed ledgers (no key needed, so it works from any
+    # session) and divides spend by rows stored. Cost per stored row is the
+    # number that makes a run judgeable: 100 calls that store 40 rows and 100
+    # calls that store 0 rows cost the same and are not the same event.
+    print("\n[2a] RUN COST  (committed ledgers; $/day and $/stored row)")
+    try:
+        _cost_problems, _cost_unknown = _report_run_cost()
+        issues += _cost_problems
+        unverified += _cost_unknown
+    except Exception as exc:
+        print(f"    UNKNOWN: could not read the spend ledgers ({exc}).")
+        print("    Not a pass — this run did not measure cost.")
+        unverified.append("LLM run cost")
 
     # 3. LIVE DATA INTEGRITY — is the data those collectors produced CORRECT?
     #
