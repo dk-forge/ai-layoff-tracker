@@ -6,7 +6,7 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
-## 2026-08-01 — the trend card shows a trajectory again (2.19.246)
+## 2026-08-01 — the trend card shows a trajectory again (2.19.246, 2.19.247)
 
 **THE DEFECT WAS THE DEFAULT SCOPE, not the chart.** The tracker opens filtered
 to the current calendar year, so "Jobs cut per month" opened with the months of
@@ -76,10 +76,49 @@ nothing for; and the sparse-history case is what showed the lone-month dots
 working. 19 new offline tests, two of which were made to fail by hand (a zero
 substituted for a gap, and a dropped `include`).
 
+**THREE MORE DEFECTS IN THE SAME CARD, FOUND BY OPENING IT AT 375px AFTER THE
+DEPLOY, NONE OF THEM THIS FEATURE (2.19.247).** The card is ~177px of canvas at
+that width, and Chart.js does two things there that no test and no curl can
+see. (1) It caps how much of a small canvas an axis may claim and then draws a
+label wider than the cap PAST the canvas edge rather than shrinking it: the left
+axis rendered as **"0,000" and "0,000"** with the leading digits gone. Numeric
+axes now use a compact form below 420px of box, and only where the chart is
+still on the DEFAULT formatter, so the percent axes are untouched. (2) The
+right-hand claims axis TITLE was drawn rotated on top of its own tick labels
+with its first words clipped off the edge; it is dropped at that width, where
+the legend and the note under the chart both already name the series. (3) The
+legend neither wraps nor truncates, so **"Announced plans (not yet in the
+verified floor)" rendered as "ounced plans (not yet in the verifie"**; the two
+long labels shorten below 420px and keep their full wording everywhere else,
+because the distinction the long one draws is the reason that line exists.
+`narrowChartBox()` is the single definition of "narrow", and a clientWidth of 0
+means NOT LAID OUT rather than narrow, falling back to the viewport: the first
+version read 0 as narrow and shipped abbreviated labels to a 718px desktop card,
+which is what checking the wide case caught. Also fixed: the strip's two caption
+`<p>` elements rendered at **16.8px against the 12.5px heading above them**,
+because the theme sets `.entry-content p` with `!important`; same high
+specificity plus `!important` override the stylesheet already uses for
+`.alt-sb-actions`.
+
 **UNVERIFIED:** the private benchmark (`scratchpad/bm-live.html`) was not
-refreshed. `data_integrity.headline_movement` was already FAILING live when this
-session started (+63,899 jobs on rows carrying at most 61,211) and is untouched
-by this change, which adds no rows and alters no aggregate arithmetic.
+refreshed. `data_integrity.headline_movement` was FAILING live when this
+session started (+63,899 jobs over a day on rows carrying at most 61,211) and it
+reddened the `Tests` run for the 2.19.246 push, which is a live-data assertion
+and not this change: the strip adds no rows and alters no aggregate arithmetic.
+It was passing again (8/8 verified) about an hour later without intervention,
+which is worth someone's attention rather than a shrug, because an invariant
+that clears itself either healed or moved.
+
+**ALSO NOT VERIFIED THE WAY IT SHOULD BE:** the browser pane here reports
+`document.visibilityState = "hidden"`, so **IntersectionObserver never
+delivers** and every lazy-gated card on this page (the map, the conversion
+chart, and now this strip) stays unbuilt in it. The strip was therefore rendered
+against the DEPLOYED minified bundle, the deployed stylesheet, the live page's
+own markup and live series JSON, served from localhost with
+`IntersectionObserver` removed so the documented no-IO fallback runs. That
+exercises the drawing, the CSS and the data end to end; what it does NOT
+exercise is the observer wiring itself, which is copied from the map and
+conversion cards already in production.
 
 ---
 

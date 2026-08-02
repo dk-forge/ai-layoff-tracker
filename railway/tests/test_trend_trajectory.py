@@ -161,6 +161,43 @@ class ScalableDrawingTests(unittest.TestCase):
         self.assertIn("<span>0</span>", body)
 
 
+class NarrowCardTests(unittest.TestCase):
+    """Found by opening the card at 375px, where it is ~177px of canvas.
+
+    Chart.js caps how much of a small canvas an axis may claim and then draws a
+    label wider than the cap PAST the canvas edge instead of shrinking it, and
+    its legend neither wraps nor truncates. Nothing errors, nothing overflows a
+    DOM box, and a scrollWidth check is meaningless on this site because the
+    theme sets html,body{overflow-x:hidden}. Only looking at it finds it, so
+    these pin the fix.
+    """
+
+    def test_one_definition_of_narrow(self):
+        self.assertIn("function narrowChartBox(canvas)", JS)
+        self.assertEqual(JS.count("narrowChartBox("), 3)   # the definition + two callers
+
+    def test_an_unlaid_out_box_is_not_treated_as_narrow(self):
+        # clientWidth 0 means "not laid out yet", not "narrow"; reading it as
+        # narrow would ship abbreviated axis labels to a desktop.
+        body = JS[JS.index("function narrowChartBox(canvas)"):]
+        body = body[: body.index("\n    }")]
+        self.assertIn("if (w > 0) return w < 420;", body)
+        self.assertIn("window.innerWidth <= 560", body)
+
+    def test_only_the_default_numeric_axis_formatter_is_swapped(self):
+        # The percent axes set their own callback and must keep it.
+        self.assertIn("ax.ticks.callback === fmtAxis) ax.ticks.callback = fmtCompact;", JS)
+        self.assertIn("function fmtAxis(v) { return fmt(v); }", JS)
+        self.assertIn("o.scales.y.ticks.callback = fmtAxis;", JS)
+
+    def test_the_long_legend_labels_are_shortened_only_on_a_narrow_card(self):
+        self.assertIn("narrow ? 'Announced plans' : 'Announced plans (not yet in the verified floor)'", JS)
+        self.assertIn("narrow ? cl.label : cl.label + ' (context)'", JS)
+
+    def test_the_claims_axis_title_is_dropped_on_a_narrow_card(self):
+        self.assertIn("title: { display: !narrow, text: 'jobless claims per month'", JS)
+
+
 class CopyTests(unittest.TestCase):
     def test_no_em_dashes_in_the_strip_copy(self):
         strings = re.findall(r"'([^'\\\n]{6,})'", _draw_trajectory_body())

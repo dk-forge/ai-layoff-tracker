@@ -534,9 +534,16 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
    and half of its dot falls outside the box. */
 .alt-tj-dots { position: absolute; inset: 0; width: 100%; height: 100%;
     overflow: visible; pointer-events: none; }
-.alt-tj-xs { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0 0;
-    font-size: 10.5px; color: var(--alt-muted); }
-.alt-tj-note { margin: 6px 0 0; font-size: 11px; line-height: 1.45; color: var(--alt-muted); }
+/* The two captions are <p>, and the theme sets `.entry-content p` to 1.05rem
+   with !important, which wins over a plain class. Rendered at 375px they came
+   out at 16.8px against the 12.5px heading above them, so the caption read as
+   the loudest text in the card. Same override shape as .alt-sb-actions below:
+   raise specificity AND match the !important, rather than swapping <p> for a
+   <div> to dodge a stylesheet. */
+.alt-tj p.alt-tj-xs { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0 0;
+    font-size: 10.5px !important; line-height: 1.3 !important; color: var(--alt-muted); }
+.alt-tj p.alt-tj-note { margin: 6px 0 0; font-size: 11px !important; line-height: 1.45 !important;
+    color: var(--alt-muted); }
 @media (max-width: 560px) { .alt-tj-box { height: 74px; } }
 .alt-map-toggle { display: inline-flex; border: 1px solid var(--alt-border); border-radius: 7px; overflow: hidden; margin-right: 4px; }
 .alt-map-scope { background: #fff; border: 0; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--alt-ink-2); cursor: pointer; }

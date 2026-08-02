@@ -125,6 +125,31 @@
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
     function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+    // Axis-label form. "2,000,000" is seven characters and on a card ~190px
+    // wide two of those columns leave almost nothing for the plot. Used only
+    // where a value is a scale marker, never where it is a figure being quoted:
+    // tooltips, stats and captions keep the exact number.
+    // The default numeric y-axis formatter, named so mountChart() can
+    // recognise it and swap it for the compact form in a narrow card. A
+    // chart that set its own callback (the percent axes) is left alone.
+    function fmtAxis(v) { return fmt(v); }
+    // Is this canvas in a card too narrow for full-length axis labels?
+    // A clientWidth of 0 means the element is not laid out yet (a card inside a
+    // closed <details>, a first paint before layout) and is NOT a narrow card;
+    // reading it as one would ship abbreviated labels to a desktop. It falls
+    // back to the viewport, which is what the stylesheet's own one-column
+    // breakpoint keys on.
+    function narrowChartBox(canvas) {
+        var w = (canvas && canvas.parentNode) ? canvas.parentNode.clientWidth : 0;
+        if (w > 0) return w < 420;
+        return window.innerWidth > 0 && window.innerWidth <= 560;
+    }
+    function fmtCompact(n) {
+        var v = Number(n || 0);
+        if (v >= 1000000) return (Math.round(v / 100000) / 10) + 'M';
+        if (v >= 1000) return (Math.round(v / 100) / 10) + 'k';
+        return fmt(Math.round(v));
+    }
     function safeUrl(url) {
         url = String(url == null ? '' : url).trim();
         return /^https?:\/\//i.test(url) ? url : '';
@@ -370,6 +395,24 @@
                 o.plugins.tooltip.bodyFont = { size: 14 };
             }
         }
+        // NUMERIC Y LABELS GO COMPACT IN A NARROW CARD, and this is a
+        // correctness fix rather than a taste one. Chart.js caps how much of a
+        // small canvas an axis may claim, and a label wider than the cap is
+        // simply DRAWN PAST THE CANVAS EDGE rather than shrunk or wrapped. At
+        // 375px this page's cards are ~177px wide, the cap works out at ~44px,
+        // and "200,000" needs ~47px, so the trend card's left axis rendered as
+        // "0,000" and "0,000" with the leading digits gone. Nothing errors and
+        // nothing overflows a DOM box, so only looking at it finds it.
+        // Only the default formatter is swapped; a chart that set its own
+        // callback (the percent axes) keeps it, and the expanded card is wide
+        // enough that the swap never applies there.
+        var narrowBox = narrowChartBox(canvas);
+        if (narrowBox && config.options && config.options.scales) {
+            ['y', 'y1'].forEach(function (id) {
+                var ax = config.options.scales[id];
+                if (ax && ax.ticks && ax.ticks.callback === fmtAxis) ax.ticks.callback = fmtCompact;
+            });
+        }
         // Time-axis labels: compact cards show exactly three anchors —
         // earliest, middle, latest — so the span reads at a glance and the
         // latest month is always present; the expanded view shows every
@@ -417,7 +460,7 @@
     };
     function cloneOptions() {
         var o = JSON.parse(JSON.stringify(baseChartOptions));
-        o.scales.y.ticks.callback = function (v) { return fmt(v); };
+        o.scales.y.ticks.callback = fmtAxis;
         return o;
     }
 
@@ -1611,6 +1654,14 @@
             ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '')
             + (futureJobs > 0 ? ' · ' + fmt(futureJobs) + ' future-dated jobs in the table, not charted' : '');
         if (!series || !series.length) { clearChart('alt-chart-weekly'); return; }
+        // A Chart.js legend does not wrap or truncate: it draws its labels
+        // centred and lets them run off the canvas. At 375px this card's plot
+        // is ~177px, and "Announced plans (not yet in the verified floor)"
+        // rendered as "ounced plans (not yet in the verifie". Shorter labels
+        // only where that happens; the full wording stays everywhere else,
+        // because the distinction it draws is the point of the second line.
+        // The note under the chart carries the long form at every width.
+        var narrow = narrowChartBox(document.getElementById('alt-chart-weekly'));
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Jobs cut') + ': ' + fmt(ctx.parsed.y); } };
         // Tap a month to scope the whole page to it (same Years/Months controls
@@ -1638,7 +1689,7 @@
             // piled on top — they are forward-looking signal that hasn't landed
             // in the floor yet. Keeping them apart avoids reading the amber edge
             // as part of the verified count.
-            datasets.push({ label: 'Announced plans (not yet in the verified floor)', data: announced, borderColor: ALT_AMBER, backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.3 });
+            datasets.push({ label: narrow ? 'Announced plans' : 'Announced plans (not yet in the verified floor)', data: announced, borderColor: ALT_AMBER, backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: dots, pointHitRadius: 12, fill: false, tension: 0.3 });
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
         }
         // Optional macro-context overlay: jobless claims as muted bars on a
@@ -1649,14 +1700,23 @@
             var cl = claimsAligned(series.map(function (s) { return s.month; }));
             if (cl) {
                 datasets.push({
-                    type: 'bar', label: cl.label + ' (context)', data: cl.data, yAxisID: 'y1',
+                    type: 'bar', label: narrow ? cl.label : cl.label + ' (context)', data: cl.data, yAxisID: 'y1',
                     backgroundColor: 'rgba(130,130,130,0.13)', borderColor: 'rgba(130,130,130,0.20)',
                     borderWidth: 0, order: 99, barPercentage: 0.9, categoryPercentage: 0.96
                 });
+                // NARROW CARDS DROP THE AXIS TITLE AND SHORTEN THE CLAIMS
+                // TICKS. At 375px this card is about 190px wide, and there the
+                // rotated title landed ON TOP of its own tick labels with its
+                // first words clipped off the edge, while "2,000,000" is the
+                // widest string on the card at seven characters. Between them
+                // they were taking more of the card than the plot. The legend
+                // under the chart already names the series and the note under
+                // it explains the right axis, so nothing is lost by dropping a
+                // label that was unreadable anyway.
                 options.scales.y1 = {
                     position: 'right', beginAtZero: true, grid: { display: false },
-                    ticks: { color: INK.muted, callback: function (v) { return fmt(v); } },
-                    title: { display: true, text: 'jobless claims per month', color: INK.muted, font: { size: 10 } }
+                    ticks: { color: INK.muted, callback: fmtAxis },
+                    title: { display: !narrow, text: 'jobless claims per month', color: INK.muted, font: { size: 10 } }
                 };
                 options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             }
@@ -1720,14 +1780,6 @@
             if (TJ_PERIOD_PARAMS.indexOf(k) === -1) out[k] = params[k];
         });
         return out;
-    }
-    // Short axis values. fmt() gives "200,000", which is most of the width of
-    // the label column in a card this narrow; the strip is a shape, not a
-    // readout, and the exact figures are in the chart's own tooltips.
-    function tjShort(v) {
-        if (v >= 1000000) return (Math.round(v / 100000) / 10) + 'M';
-        if (v >= 1000) return (Math.round(v / 100) / 10) + 'k';
-        return fmt(Math.round(v));
     }
     function tjMonthSeq(startKey, endKey) {
         var out = [];
@@ -1904,8 +1956,8 @@
             '<div class="alt-tj-h">The whole record <span>every month we hold under these filters'
             + (bands.length ? '. The shaded band is the period charted above.' : '.') + '</span></div>'
             + '<div class="alt-tj-plot">'
-            + '<div class="alt-tj-ys" aria-hidden="true"><span>' + escapeHtml(tjShort(max))
-            + '</span><span>' + escapeHtml(tjShort(max / 2)) + '</span><span>0</span></div>'
+            + '<div class="alt-tj-ys" aria-hidden="true"><span>' + escapeHtml(fmtCompact(max))
+            + '</span><span>' + escapeHtml(fmtCompact(max / 2)) + '</span><span>0</span></div>'
             + '<div class="alt-tj-box">'
             + '<svg class="alt-tj-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"'
             + ' role="img" aria-label="' + escapeHtml(describe) + '">'
