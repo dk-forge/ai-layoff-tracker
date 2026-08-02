@@ -411,3 +411,49 @@ class TheCronIsGuarded(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BackfillBoundsWhatItCanSpend(unittest.TestCase):
+    """backfill.py could make unbounded model calls and never trip its cap.
+
+    Measured 2026-08-02: 5,044 filings read on 07-28 and 4,190 on 07-29, the
+    two days the OpenRouter account fell $11.11 and $10.50. Two causes, both
+    absent from the file and both present in its gdelt sibling:
+
+      * no seen-URL pre-check, so the rotating sweep re-read filings the site
+        already held -- and since only 8.5% of runs land on a month from the
+        last twelve, it re-read the SAME deep history pass after pass
+      * BACKFILL_LIMIT counts POSTS, so a window where nothing qualifies makes
+        calls forever without the limit ever being reached
+    """
+
+    def test_the_seen_url_precheck_runs_before_the_extractor(self):
+        src = (ROOT / "railway" / "backfill.py").read_text()
+        self.assertIn("filter_already_seen", src,
+                      "backfill.py must skip URLs the site already holds "
+                      "before paying to read them, as gdelt_backfill.py does")
+        pre = src.index("filter_already_seen")
+        call = src.index("extract_layoff_data(raw)")
+        self.assertLess(pre, call,
+                        "the pre-check has to happen BEFORE the model call, "
+                        "or it saves nothing")
+
+    def test_the_precheck_fails_open(self):
+        """An optimisation that cannot run must not skip unseen filings.
+
+        Failing closed here would silently drop coverage to save money, which
+        is the trade this project never makes.
+        """
+        src = (ROOT / "railway" / "backfill.py").read_text()
+        seg = src[src.index("filter_already_seen") - 400:
+                  src.index("extract_layoff_data(raw)")]
+        self.assertIn("except", seg,
+                      "a failing pre-check must fall back to reading all")
+
+    def test_there_is_a_ceiling_on_calls_not_only_on_posts(self):
+        src = (ROOT / "railway" / "backfill.py").read_text()
+        self.assertIn("BACKFILL_MAX_CALLS", src,
+                      "BACKFILL_LIMIT bounds a run's OUTPUT; only a call "
+                      "ceiling bounds what it can spend")
+        self.assertIn("calls >= call_limit", src)
+        self.assertIn("calls += 1", src)

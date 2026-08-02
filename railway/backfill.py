@@ -22,7 +22,10 @@ Env:
   BACKFILL_ANCHOR_YEAR   int (default 2015) — oldest year the sweep walks
   BACKFILL_START   YYYY-MM-DD  (default 2024-01-01; used when not rotating)
   BACKFILL_END     YYYY-MM-DD  (default today, UTC; used when not rotating)
-  BACKFILL_LIMIT   int         (optional cap on posts — use for a test run)
+  BACKFILL_LIMIT   int         (optional cap on POSTS — use for a test run)
+  BACKFILL_MAX_CALLS int       (cap on MODEL CALLS, default 400; 0 disables.
+                                posts and calls are different ceilings and only
+                                the second bounds spend)
 """
 import os
 from datetime import datetime, timedelta, timezone
@@ -132,11 +135,16 @@ def run():
                             datetime(2024, 1, 1, tzinfo=timezone.utc))
         end = _parse_date(os.environ.get("BACKFILL_END"), datetime.now(timezone.utc))
     limit = int(os.environ.get("BACKFILL_LIMIT") or 0) or None
+    # Default 400: a month window rarely holds more than a few hundred filings
+    # after the seen-URL pre-check, so this does not bind on a healthy run and
+    # does bind on a runaway one. Set 0 to disable deliberately.
+    raw_calls = os.environ.get("BACKFILL_MAX_CALLS")
+    call_limit = 400 if raw_calls is None else (int(raw_calls) or None)
 
     print(f"Backfill {start.date()} → {end.date()}"
           + (f" (limit {limit})" if limit else ""))
 
-    posted = dupes = skipped = failed = 0
+    posted = dupes = skipped = failed = calls = 0
     for w_start, w_end in month_windows(start, end):
         label = w_start.strftime("%Y-%m")
         try:
@@ -146,14 +154,45 @@ def run():
             report_source_health("edgar_historical", "degraded", 0, f"window {label}: {e}")
             print(f"[{label}] EDGAR pull failed: {e}")
             continue
-        print(f"[{label}] {len(entries)} candidate filings")
+        # SKIP WHAT THE SITE ALREADY HOLDS, BEFORE PAYING TO READ IT.
+        # gdelt_backfill.py has done this since it was written; this file never
+        # did, and the difference is most of a $4/day bill. The rotating sweep
+        # walks deep history over and over -- measured 2026-08-01, only 8.5% of
+        # runs land on a month from the last twelve -- so the SAME old filings
+        # were re-extracted every pass and the model was asked to re-read
+        # documents already stored. A re-read of a URL the site holds cannot
+        # add a row, so this costs nothing in coverage.
+        before = len(entries)
+        try:
+            from seen_urls import filter_already_seen
+            entries = filter_already_seen(entries)
+        except Exception as exc:
+            # Fail OPEN: the pre-check is an optimisation, not a guard. If it
+            # cannot run we pay to re-read, which is the old behaviour, rather
+            # than silently skipping filings we have never seen.
+            print(f"[{label}] seen-URL pre-check unavailable ({exc}); reading all")
+        already = before - len(entries)
+        skipped += already
+        print(f"[{label}] {before} candidate filings, {already} already held, "
+              f"{len(entries)} to read")
 
         for raw in entries:
             if limit and posted >= limit:
                 print(f"Reached BACKFILL_LIMIT={limit}; stopping early.")
                 _summary(posted, dupes, skipped, failed)
                 return
+            # A CEILING ON CALLS, NOT ONLY ON POSTS. BACKFILL_LIMIT counts rows
+            # that made it through, so a window where nothing qualifies could
+            # make unbounded model calls and never trip it: 5,044 filings read
+            # on 2026-07-28 and 4,190 on 07-29, against balance drops of $11.11
+            # and $10.50. Bounding posts bounds the OUTPUT of a run; only this
+            # bounds what it can spend.
+            if call_limit and calls >= call_limit:
+                print(f"Reached BACKFILL_MAX_CALLS={call_limit}; stopping early.")
+                _summary(posted, dupes, skipped, failed)
+                return
             try:
+                calls += 1
                 extracted = extract_layoff_data(raw)
                 if not extracted:
                     skipped += 1

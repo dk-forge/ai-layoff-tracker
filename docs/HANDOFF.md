@@ -7,9 +7,21 @@ holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
 - **STATUS:** HELD
-- **HOLDER:** local
-- **SINCE:** 2026-08-01
-- **WORKING ON:** finding where the 33 missed SEC Item 2.05 gold-set filings are lost (EDGAR pull cap vs extractor rejection vs cron window)
+- **HOLDER:** local (spend-guard session; TAKEN OVER from the SEC-recall session)
+- **SINCE:** 2026-08-02
+- **WORKING ON:** the OpenRouter burn — meter, brake, and the backfill re-read behind it
+
+**Takeover noted, per the stale-baton clause.** The SEC-recall session claimed
+this on 2026-08-01 and landed its answer the same day (`e8b8541`: the misses are
+lost to a rotating sweep that never returns, not to the pull cap and not to the
+LLM). No commit from that holder since, >24h, and the owner asked for the
+remaining work to be finished. Its subject is DONE and its fix is on main; what
+is left of that area is the cost half, which is what this session took.
+
+The two pieces of work turned out to share one cause and neither session could
+see it alone: the sweep re-reads deep history it has already stored, which is
+both why recent months are never reached (recall) and why the account was
+losing ~$4/day (cost).
 
 ## Protocol (every session follows this)
 1. **Read this file first** (ops_status.py shows it). If **STATUS = HELD** by
