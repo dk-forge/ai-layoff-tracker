@@ -239,6 +239,23 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                     <option value="federal_workforce">Government / public sector</option>
                 </select>
             </div>
+            <div class="alt-filter" data-dd="Sources" data-empty="All sources">
+                <label id="alt-lbl-verification" for="alt-f-verification">Sources</label>
+                <select id="alt-f-verification" multiple>
+                    <option value="gold">SEC filing (8-K/6-K)</option>
+                    <option value="warn">WARN notice</option>
+                    <option value="silver">Press release</option>
+                    <option value="bronze">News</option>
+                </select>
+            </div>
+            <div class="alt-filter" data-dd="Roles" data-empty="All roles">
+                <label id="alt-lbl-roles" for="alt-f-roles">Roles Most Impacted</label>
+                <select id="alt-f-roles" multiple>
+                    <?php foreach (alt_role_categories() as $alt_rk => $alt_rlabel) : ?>
+                    <option value="<?php echo esc_attr($alt_rk); ?>"><?php echo esc_html($alt_rlabel); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="alt-filter">
                 <label for="alt-f-company">Company</label>
                 <input type="text" id="alt-f-company" placeholder="Type to search, e.g. Amazon" list="alt-company-suggest" autocomplete="off">
@@ -253,40 +270,12 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <input type="number" id="alt-f-minjobs" min="0" step="1" placeholder="0">
             </div>
         </div>
-        <!-- Two facets that belong in the open, as pill strips rather than
-             behind a dropdown chevron.
-             Evidence tier is the distinction this whole tracker rests on ("a
-             verified floor, not a survey"), and it was a 160px dropdown whose
-             summary truncated so you could not read what you had picked. Roles
-             is the newest facet and the one the roles chart writes when you tap
-             a bar, so a visible strip is where that chart-applied filter now
-             lands, is legible, and can be undone with one tap.
-             Both are short, fixed vocabularies where every option fits at once.
-             The long and dynamic facets above (51 countries, 50 states, every
-             year we hold) keep the checkbox dropdown, which scales; pills do
-             not, and swapping them would have been a downgrade dressed as
-             consistency. Out of the grid rather than spanning it, so a
-             variable-height strip can never shunt the twelve fixed controls
-             about. -->
-        <div class="alt-filterbar-pills">
-            <div class="alt-filter" data-dd="Sources" data-pills data-empty="All sources">
-                <label id="alt-lbl-verification" for="alt-f-verification">Sources</label>
-                <select id="alt-f-verification" multiple>
-                    <option value="gold">SEC filing (8-K/6-K)</option>
-                    <option value="warn">WARN notice</option>
-                    <option value="silver">Press release</option>
-                    <option value="bronze">News</option>
-                </select>
-            </div>
-            <div class="alt-filter" data-dd="Roles" data-pills data-empty="All roles">
-                <label id="alt-lbl-roles" for="alt-f-roles">Roles Most Impacted</label>
-                <select id="alt-f-roles" multiple>
-                    <?php foreach (alt_role_categories() as $alt_rk => $alt_rlabel) : ?>
-                    <option value="<?php echo esc_attr($alt_rk); ?>"><?php echo esc_html($alt_rlabel); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
+        <?php /* Sources and Roles were pill strips for a while (visibility of
+                 the evidence-tier facet); the owner reversed that on 2026-08-02
+                 because the strips ate half the filter bar. They are compact
+                 checkbox multi-select dropdowns again, inside the grid with
+                 the other eleven controls, same element IDs so URL state,
+                 chips, chart taps and Reset all behave unchanged. */ ?>
         <div class="alt-filterbar-reset">
             <button type="button" id="alt-f-reset" class="alt-btn alt-btn-reset">Reset All Filters</button>
         </div>
@@ -447,7 +436,10 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         <div class="alt-grid-h"><h2>How it is trending</h2><p>The same filtered data over time: monthly totals with jobless-claims context, this year against last, and how often employers name AI.</p></div>
         <div class="alt-mini alt-chart-card alt-trend-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub">tap a month to scope the page, tap it again to go back to the whole year · <span id="alt-trend-range"></span></span></div>
+                <?php /* Two plain sentences visible (what a bar IS, what a tap
+                         does); every mechanic (future-dated rows, overlay
+                         axis, the whole-record strip) lives behind the (i). */ ?>
+                <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub">Verified job cuts we can document, dated to the month each cut takes effect. Tap a month to filter the whole page to it; tap again to clear. · <span id="alt-trend-range"></span> <details class="alt-stat-i"><summary aria-label="How this chart is built">i</summary><span class="alt-stat-i-body">The solid line is verified cuts; the dashed line is announced plans, never mixed into the verified line. <span id="alt-trend-future"></span> The small strip under the chart shows the whole record and where the charted window sits. The optional grey overlay is official US jobless claims on its own right-hand axis, for scale only.</span></details></span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-weekly" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <label class="alt-claims-toggle" id="alt-claims-toggle-wrap" hidden><input type="checkbox" id="alt-claims-toggle" checked> <span>Overlay US jobless claims (BLS/DOL), background context</span></label>
@@ -459,7 +451,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                      "where does the charted window sit on the record", which is a
                      question about the chart above it. */ ?>
             <div class="alt-tj" id="alt-trend-full" hidden></div>
-            <p class="alt-chart-note" id="alt-claims-note" hidden>Grey bars = US initial unemployment claims (everyone who filed for benefits that month, ~hundreds of thousands, right axis). The blue/amber areas are the layoffs we can document (left axis). Claims are the whole labor market's churn; our tracked layoffs are the verifiable slice inside it. Context, never added to our counts.</p>
+            <p class="alt-chart-note" id="alt-claims-note" hidden>Grey bars show everyone who filed for US unemployment benefits that month, for scale. They are context and are never added to our counts.</p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts · select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
@@ -515,6 +507,39 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
             <div class="alt-chart-head"><div class="alt-chart-h">Roles most impacted <span class="alt-chart-sub" id="alt-roles-sub">Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part and 🤖 number are the AI-attributed share. From only the reports that named which teams were cut.</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-roles" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-roles"></div>
         </div>
+        <?php
+        // In-grid entry point to the record permalink pages, filling the empty
+        // slot beside Roles. Server-rendered from alt_facet_index() — the same
+        // memoised 6-hour transient the Browse section reads, ZERO extra
+        // queries — and covering the whole record, so it is labeled as
+        // filter-exempt exactly like the jobless-claims card (the only honest
+        // label: making it filter-scoped would put three grouped COUNTs on
+        // every filter tap, the cost the opt-in facet_counts block exists to
+        // avoid). Rows are links (a permanent per-place page is the better
+        // destination than a filter here, same call as the talent strip's
+        // company links); the live filterable versions of these dimensions are
+        // the two geography cards above.
+        $alt_places = array();
+        if (function_exists('alt_facet_index')) {
+            foreach (alt_facet_index() as $alt_pf) {
+                if ($alt_pf['dim'] === 'country' || $alt_pf['dim'] === 'state') $alt_places[] = $alt_pf;
+            }
+            usort($alt_places, function ($x, $y) { return (int) $y['events'] - (int) $x['events']; });
+            $alt_places = array_slice($alt_places, 0, 12);
+        }
+        if ($alt_places) : $alt_pmax = max(1, (int) $alt_places[0]['events']); ?>
+        <div class="alt-mini alt-chart-card" id="alt-places-card">
+            <div class="alt-chart-head"><div class="alt-chart-h">Browse the record: top places <span class="alt-chart-sub">source-linked events over the whole record · each row opens that place's permanent record page · whole record, not affected by the filters above</span></div></div>
+            <div class="alt-barlist alt-barlist-static">
+                <?php foreach ($alt_places as $alt_pf) : $alt_pw = max(2, (int) round(100 * (int) $alt_pf['events'] / $alt_pmax)); ?>
+                <a class="alt-barrow alt-barrow-link" href="<?php echo esc_url($alt_pf['url']); ?>">
+                    <span class="alt-barrow-top"><span class="alt-barrow-name"><?php echo esc_html($alt_pf['display']); ?><?php echo $alt_pf['dim'] === 'state' ? ' (US state)' : ''; ?></span><span class="alt-barrow-val"><?php echo esc_html(number_format((int) $alt_pf['events'])); ?> events</span></span>
+                    <span class="alt-bartrack"><span class="alt-barfill" style="width:<?php echo (int) $alt_pw; ?>%"></span></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="alt-count-row" id="alt-count-row">

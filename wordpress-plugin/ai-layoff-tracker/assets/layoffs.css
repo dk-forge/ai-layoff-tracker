@@ -344,7 +344,15 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 6px 12px; margin: 0 0 8px; font-size: 15px;
 }
-.alt-nrow { margin: 5px 0; }
+/* Two columns: label gutter + value column. Flex (not inline flow) so a
+   wrapping value continues INSIDE its own column instead of dropping an
+   orphaned fragment at the far left under the label gutter ("(31,000 · US)"
+   bug, 2026-08-02). The literal space between the two children stays in the
+   DOM for copy/screen readers; flex simply doesn't render it. */
+.alt-nrow { margin: 5px 0; display: flex; align-items: baseline; }
+.alt-nrow > :first-child { flex: 0 0 auto; }
+.alt-nrow > span:last-child { flex: 1 1 0; min-width: 0; }
+.alt-nowrap { white-space: nowrap; }
 .alt-nlabel {
     display: inline-block; min-width: 102px; margin-right: 4px;
     font-weight: 800; font-size: 11.5px; letter-spacing: .05em;
@@ -2115,3 +2123,8 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 
 /* Cross-link to the hiring-signals product, after the stats. */
 .alt-crosslink { margin: 10px 0 0; font-size: 13px; color: var(--alt-ink-2); }
+
+/* Static (server-rendered) bar rows that navigate instead of filtering:
+   same component, link semantics. */
+.alt-barrow-link { text-decoration: none; }
+.alt-barrow-link:hover { background: var(--alt-surface-2); }

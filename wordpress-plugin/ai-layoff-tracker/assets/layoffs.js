@@ -1145,12 +1145,12 @@
         }
     }
 
-    /* Toggle pills over a hidden native multi-select, for the two SHORT fixed
-       vocabularies (Sources, Roles) marked `data-pills` in the template. Pills
-       show every option at once, which is the point: evidence tier is the
-       distinction this tracker rests on and it was hiding behind a chevron in a
-       160px box whose summary truncated. The long facets keep the dropdown —
-       fifty-one countries as pills would be a wall.
+    /* Toggle pills over a hidden native multi-select, for any facet marked
+       `data-pills` in the template. As of 2.19.251 the template marks NONE:
+       the owner reversed the Sources/Roles pill strips on 2026-08-02 (they ate
+       half the filter bar), so both are compact checkbox dropdowns again. The
+       renderer stays because it is small, generic and template-driven — adding
+       `data-pills` to a cell re-enables it with no JS change.
 
        This deliberately hangs off the SAME two hooks the checkbox dropdown uses,
        and adds none of its own: `cell._altDdRender` (which
@@ -1692,8 +1692,14 @@
         series = fillMonths(series);
         var range = document.getElementById('alt-trend-range');
         if (range) range.textContent = (series.length
-            ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '')
-            + (futureJobs > 0 ? ' · ' + fmt(futureJobs) + ' future-dated jobs in the table, not charted' : '');
+            ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '');
+        // The future-dated caveat lives inside the card's (i) disclosure when
+        // the template provides one, so the visible caption stays two plain
+        // sentences; without that span it stays on the range line as before.
+        var futureEl = document.getElementById('alt-trend-future');
+        var futureTxt = futureJobs > 0 ? fmt(futureJobs) + ' future-dated jobs (announced plans and filed notices whose effective date has not arrived) are in the table and totals, but not charted.' : '';
+        if (futureEl) futureEl.textContent = futureTxt;
+        else if (range && futureJobs > 0) range.textContent += ' · ' + fmt(futureJobs) + ' future-dated jobs in the table, not charted';
         if (!series || !series.length) { clearChart('alt-chart-weekly'); return; }
         // A Chart.js legend does not wrap or truncate: it draws its labels
         // centred and lets them run off the canvas. At 375px this card's plot
@@ -3830,7 +3836,10 @@
             var largest = function (ld) {
                 if (!(ld && ld.job_count)) return '';
                 var l = largestLoc(ld);
-                return ' · largest: <a href="#" class="alt-nfilter" data-company="' + esc(ld.company_name) + '" title="Filter the page to this company">' + b(esc(ld.company_name)) + '</a> (' + fmt(ld.job_count) + (l ? ' · ' + esc(l) : '') + ')';
+                // The "(n · loc)" parenthetical is one unbreakable unit: split
+                // across lines it read as an orphaned fragment. The company
+                // name itself may wrap (it can be long at 375px).
+                return ' · largest: <a href="#" class="alt-nfilter" data-company="' + esc(ld.company_name) + '" title="Filter the page to this company">' + b(esc(ld.company_name)) + '</a> <span class="alt-nowrap">(' + fmt(ld.job_count) + (l ? ' · ' + esc(l) : '') + ')</span>';
             };
             var row = function (label, body, filterAttrs) {
                 var open = filterAttrs ? '<a href="#" class="alt-nfilter" ' + filterAttrs + ' title="Filter the page to this period">' : '<span>';

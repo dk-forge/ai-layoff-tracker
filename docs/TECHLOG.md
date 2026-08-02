@@ -6,6 +6,37 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — owner follow-ups: strip wrap fix, pills back to dropdowns, trend explainer in plain language, places card (2.19.251)
+
+- **Daily-strip wrap bug**: "largest: Internal Revenue Service (31,000 · US)"
+  wrapped so the parenthetical landed orphaned at far-left under the label
+  gutter. `.alt-nrow` is now a two-column flex row (label gutter + value
+  column, value wraps INSIDE its column), and the "(n · loc)" parenthetical is
+  one unbreakable `.alt-nowrap` unit; company names may still wrap at 375px.
+- **Sources + Roles pills reversed to compact checkbox dropdowns** in the
+  filter grid (owner: the strips ate half the bar). Same element IDs, so URL
+  state, chips, chart taps and Reset all unchanged; the pill renderer stays,
+  template-driven, for any future `data-pills` cell. Multi-select audit: every
+  categorical filter (years, quarters, months, industries, countries, states,
+  reasons, roles, sources) already accepts comma lists end to end. Single by
+  API design and NOT faked client-side: company (LIKE substring), keyword,
+  search, min jobs, from/to.
+- **"Jobs cut per month" caption rewritten**: two visible sentences (what a
+  bar is, what a tap does); future-dated caveat, announced-line note,
+  whole-record strip mechanics and overlay axis all moved behind a per-card
+  (i). The jobless-claims overlay paragraph is now one plain sentence.
+- **New "Browse the record: top places" card** fills the grid slot beside
+  Roles: server-rendered from the memoised `alt_facet_index()` (zero extra
+  queries), rows link to the permanent /country-layoffs/ and /state-layoffs/
+  pages, labeled "whole record, not affected by the filters above" (the same
+  filter-exempt labeling as the jobless-claims card — making it filter-scoped
+  would put three grouped COUNTs on every filter tap, which the opt-in
+  facet_counts block exists to avoid). The requested second chart ("AI share,
+  month by month") already exists as "AI share of verified cuts, monthly"
+  (alt-chart-ai-share-trend) and was not duplicated.
+
+---
+
 ## 2026-08-02 — audience UX: server-rendered headline tiles, first-screen cite line, cron-derived next-update, linkable corrections (2.19.250)
 
 **WHAT (per the audience display spec, layoff half).**
