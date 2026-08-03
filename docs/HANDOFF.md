@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local (Claude, credibility-review batch)
 - **SINCE:** 2026-08-03
-- **WORKING ON:** —
+- **WORKING ON:** owner-approved external-credibility batch: jurisdiction comparability table, WARN notice-gap descriptive metric, docs/AUDIT.md auditor pack, disclosure section + corrections provenance line
 
 **Takeover noted, per the stale-baton clause.** The SEC-recall session claimed
 this on 2026-08-01 and landed its answer the same day (`e8b8541`: the misses are
