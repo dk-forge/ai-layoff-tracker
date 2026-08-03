@@ -6,6 +6,46 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-03 - the spend-ledger harvest never landed: read-only GITHUB_TOKEN, and a warning nobody read
+
+`railway/spend_jobs.json` stayed `{"entries": []}` on main for a day after
+the per-job ledger shipped (12305ef), so every question the ledger exists to
+answer (which job burns what, per stored row) had no data. Diagnosis, from
+the 2026-08-03 04:46 UTC dispatch run of "OpenRouter low-balance alert":
+
+- The unproven half was fine: `spend.py --harvest` DID read the day's run
+  logs with `github.token` ("1 job log(s) read, 1 ledger line(s) seen");
+  `actions: read` is in the default token grant.
+- The push was the failure: `remote: Permission to ... denied to
+  github-actions[bot]`, HTTP 403, three times. The workflow had NO
+  `permissions:` block and the repo default token is read-only; the other
+  self-committing workflows (alert-drain, ci-alert, data-integrity,
+  recall-precision) all declare `contents: write`, this one never did.
+- Nobody saw it because the commit step deliberately swallows push failures
+  (a monitoring job must not redden CI over its own bookkeeping), so seven
+  consecutive green runs each dropped their reading on the floor. The
+  swallow stays (it is correct); the permission is fixed instead. Note the
+  daily balance history was ALSO never landing, for the same reason.
+
+Fix: `permissions: {contents: write, actions: read}` on the workflow;
+`actions: read` listed explicitly because an explicit block replaces the
+defaults the harvest was silently relying on. Proven by dispatching the job
+once and watching `spend_jobs.json` gain entries on origin/main.
+
+**Deferred to the next session, on purpose (2026-08-03):** the cadence
+decisions task #65 conditioned on harvest data were left unmade because one
+day of entries is not a trend: (a) confirm ai-evidence-sweep is cheap
+post-NewsAPI-fix; (b) if company-watchlist's measured cost per stored row is
+effectively infinite (repeated 0 posted), move its cron to weekly with the
+reasoning in the workflow header and the ops_status ceiling table updated;
+(c) funnel-port TODO: when the cost-funnel template (dedup-before-LLM,
+headline-only gate, per-language prefilter, earned cadence) ports to this
+tracker, **supplemental-news** must be in the ported set; do not build its
+gate piecemeal before the port. Judge (a)/(b) on several days of
+`spend_jobs.json`, not the first harvest.
+
+---
+
 ## 2026-08-02 — the owner's shared design, layoff half: signal board, editorial hero, coverage ribbon, freshness panel, palette (2.19.253)
 
 Adopts the owner's shared design artifact (audience-spec ADDENDUM 2026-08-02):

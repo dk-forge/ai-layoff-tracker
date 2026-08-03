@@ -6,6 +6,18 @@ name: OpenRouter low-balance alert
 # again. Read-only, no LLM calls, ~0 cost. Never fails the run: a monitoring
 # job must not page about its own hiccup.
 
+# The default GITHUB_TOKEN here is READ-ONLY: without this block the final
+# "commit today's reading" step 403s on push, the step swallows the failure
+# by design (a monitoring job must not redden CI over its own bookkeeping),
+# and the spend ledger silently never lands on main. That is exactly what
+# happened 2026-08-02/03: harvest read the logs fine, found the ledger line,
+# and every push was denied. contents:write fixes the push; actions:read must
+# be listed explicitly because an explicit permissions block REPLACES the
+# defaults, and --harvest reads the day's run logs with github.token.
+permissions:
+  contents: write   # push the daily reading + harvested spend_jobs.json
+  actions: read     # spend.py --harvest lists runs and reads their logs
+
 on:
   schedule:
     - cron: '0 13 * * *'   # daily, 9 AM ET
