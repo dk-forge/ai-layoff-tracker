@@ -1,5 +1,282 @@
 {
-  "candidates_needing_adjudication": [],
+  "candidates_needing_adjudication": [
+    {
+      "filer": "EnerSys",
+      "filing_date": "2025-07-22",
+      "id": "sec-205-0001289308-25-000025",
+      "new_tracker_event_ids": [
+        149625
+      ],
+      "stated_job_count": 575,
+      "tracker_event_ids": [
+        149625
+      ]
+    },
+    {
+      "filer": "KALA BIO, Inc.",
+      "filing_date": "2025-09-29",
+      "id": "sec-205-0001104659-25-094125",
+      "new_tracker_event_ids": [
+        149633
+      ],
+      "stated_job_count": 19,
+      "tracker_event_ids": [
+        149633
+      ]
+    },
+    {
+      "filer": "Bolt Biotherapeutics, Inc.",
+      "filing_date": "2025-10-02",
+      "id": "sec-205-0001193125-25-228293",
+      "new_tracker_event_ids": [
+        149632
+      ],
+      "stated_job_count": 20,
+      "tracker_event_ids": [
+        149632
+      ]
+    },
+    {
+      "filer": "Cardlytics, Inc.",
+      "filing_date": "2025-10-02",
+      "id": "sec-205-0001666071-25-000135",
+      "new_tracker_event_ids": [
+        149634
+      ],
+      "stated_job_count": 90,
+      "tracker_event_ids": [
+        149634
+      ]
+    },
+    {
+      "filer": "MOLSON COORS BEVERAGE CO  (TAP, TAP-A)",
+      "filing_date": "2025-10-20",
+      "id": "sec-205-0001104659-25-100648",
+      "new_tracker_event_ids": [
+        149635
+      ],
+      "stated_job_count": 400,
+      "tracker_event_ids": [
+        149635
+      ]
+    },
+    {
+      "filer": "TScan Therapeutics, Inc.",
+      "filing_date": "2025-11-03",
+      "id": "sec-205-0001193125-25-261612",
+      "new_tracker_event_ids": [
+        149600
+      ],
+      "stated_job_count": 66,
+      "tracker_event_ids": [
+        149600
+      ]
+    },
+    {
+      "filer": "HORMEL FOODS CORP /DE/",
+      "filing_date": "2025-11-04",
+      "id": "sec-205-0000048465-25-000053",
+      "new_tracker_event_ids": [
+        149597
+      ],
+      "stated_job_count": 250,
+      "tracker_event_ids": [
+        29581,
+        149597
+      ]
+    },
+    {
+      "filer": "Xperi Inc.",
+      "filing_date": "2025-11-05",
+      "id": "sec-205-0001193125-25-266980",
+      "new_tracker_event_ids": [
+        149598
+      ],
+      "stated_job_count": 250,
+      "tracker_event_ids": [
+        149598
+      ]
+    },
+    {
+      "filer": "Kezar Life Sciences, Inc.",
+      "filing_date": "2025-11-07",
+      "id": "sec-205-0001628280-25-050671",
+      "new_tracker_event_ids": [
+        149595
+      ],
+      "stated_job_count": 31,
+      "tracker_event_ids": [
+        149595
+      ]
+    },
+    {
+      "filer": "HYSTER-YALE, INC.",
+      "filing_date": "2025-11-19",
+      "id": "sec-205-0001173514-25-000133",
+      "new_tracker_event_ids": [
+        149596
+      ],
+      "stated_job_count": 575,
+      "tracker_event_ids": [
+        108571,
+        149251,
+        149596
+      ]
+    },
+    {
+      "filer": "NEWELL BRANDS INC.",
+      "filing_date": "2025-12-01",
+      "id": "sec-205-0001193125-25-303185",
+      "new_tracker_event_ids": [
+        149613
+      ],
+      "stated_job_count": 900,
+      "tracker_event_ids": [
+        149613
+      ]
+    },
+    {
+      "filer": "Domtar CORP",
+      "filing_date": "2025-12-08",
+      "id": "sec-205-0001193125-25-311445",
+      "new_tracker_event_ids": [
+        149611
+      ],
+      "stated_job_count": 350,
+      "tracker_event_ids": [
+        149611
+      ]
+    },
+    {
+      "filer": "Elanco Animal Health Inc",
+      "filing_date": "2025-12-09",
+      "id": "sec-205-0001104659-25-119486",
+      "new_tracker_event_ids": [
+        149612
+      ],
+      "stated_job_count": 300,
+      "tracker_event_ids": [
+        149612
+      ]
+    },
+    {
+      "filer": "DOW INC.",
+      "filing_date": "2026-01-29",
+      "id": "sec-205-0001751788-26-000009",
+      "new_tracker_event_ids": [
+        149592,
+        149616
+      ],
+      "stated_job_count": 4500,
+      "tracker_event_ids": [
+        34668,
+        34670,
+        34673,
+        109191,
+        149592,
+        149616
+      ]
+    },
+    {
+      "filer": "GOODYEAR TIRE & RUBBER CO /OH/",
+      "filing_date": "2026-03-20",
+      "id": "sec-205-0001628280-26-020222",
+      "new_tracker_event_ids": [
+        149624
+      ],
+      "stated_job_count": 600,
+      "tracker_event_ids": [
+        105846,
+        108601,
+        149624
+      ]
+    },
+    {
+      "filer": "EnerSys",
+      "filing_date": "2026-03-25",
+      "id": "sec-205-0001289308-26-000009",
+      "new_tracker_event_ids": [
+        149625
+      ],
+      "stated_job_count": 474,
+      "tracker_event_ids": [
+        149625
+      ]
+    },
+    {
+      "filer": "GoPro, Inc.",
+      "filing_date": "2026-04-07",
+      "id": "sec-205-0001628280-26-024066",
+      "new_tracker_event_ids": [
+        149629
+      ],
+      "stated_job_count": 145,
+      "tracker_event_ids": [
+        149629
+      ]
+    },
+    {
+      "filer": "Vertex, Inc.",
+      "filing_date": "2026-04-28",
+      "id": "sec-205-0001104659-26-050407",
+      "new_tracker_event_ids": [
+        149630
+      ],
+      "stated_job_count": 170,
+      "tracker_event_ids": [
+        149630
+      ]
+    },
+    {
+      "filer": "reAlpha Tech Corp.",
+      "filing_date": "2026-05-06",
+      "id": "sec-205-0001213900-26-052921",
+      "new_tracker_event_ids": [
+        149640
+      ],
+      "stated_job_count": 21,
+      "tracker_event_ids": [
+        149640
+      ]
+    },
+    {
+      "filer": "Koppers Holdings Inc.",
+      "filing_date": "2026-05-08",
+      "id": "sec-205-0001315257-26-000036",
+      "new_tracker_event_ids": [
+        149641
+      ],
+      "stated_job_count": 85,
+      "tracker_event_ids": [
+        108304,
+        149641
+      ]
+    },
+    {
+      "filer": "AUTOLIV INC",
+      "filing_date": "2026-05-11",
+      "id": "sec-205-0001193125-26-216107",
+      "new_tracker_event_ids": [
+        149638
+      ],
+      "stated_job_count": 2200,
+      "tracker_event_ids": [
+        149638
+      ]
+    },
+    {
+      "filer": "SOBR Safe, Inc.",
+      "filing_date": "2026-05-13",
+      "id": "sec-205-0001477932-26-003057",
+      "new_tracker_event_ids": [
+        149637
+      ],
+      "stated_job_count": 11,
+      "tracker_event_ids": [
+        149637
+      ]
+    }
+  ],
   "lost_since_adjudication": [],
   "matched": 24,
   "matched_floor": 20,
@@ -29,7 +306,7 @@
     "sec-205-0001628280-26-039805",
     "sec-205-0001193125-26-278582"
   ],
-  "measured_at": "2026-08-01T20:45:25Z",
+  "measured_at": "2026-08-03T17:01:10Z",
   "missed": 33,
   "missed_events": [
     {
@@ -37,7 +314,9 @@
       "filing_date": "2025-07-22",
       "id": "sec-205-0001289308-25-000025",
       "stated_job_count": 575,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149625
+      ]
     },
     {
       "filer": "Cibus, Inc.",
@@ -86,35 +365,45 @@
       "filing_date": "2025-09-29",
       "id": "sec-205-0001104659-25-094125",
       "stated_job_count": 19,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149633
+      ]
     },
     {
       "filer": "Bolt Biotherapeutics, Inc.",
       "filing_date": "2025-10-02",
       "id": "sec-205-0001193125-25-228293",
       "stated_job_count": 20,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149632
+      ]
     },
     {
       "filer": "Cardlytics, Inc.",
       "filing_date": "2025-10-02",
       "id": "sec-205-0001666071-25-000135",
       "stated_job_count": 90,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149634
+      ]
     },
     {
       "filer": "MOLSON COORS BEVERAGE CO  (TAP, TAP-A)",
       "filing_date": "2025-10-20",
       "id": "sec-205-0001104659-25-100648",
       "stated_job_count": 400,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149635
+      ]
     },
     {
       "filer": "TScan Therapeutics, Inc.",
       "filing_date": "2025-11-03",
       "id": "sec-205-0001193125-25-261612",
       "stated_job_count": 66,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149600
+      ]
     },
     {
       "filer": "HORMEL FOODS CORP /DE/",
@@ -122,7 +411,8 @@
       "id": "sec-205-0000048465-25-000053",
       "stated_job_count": 250,
       "tracker_event_ids": [
-        29581
+        29581,
+        149597
       ]
     },
     {
@@ -130,7 +420,9 @@
       "filing_date": "2025-11-05",
       "id": "sec-205-0001193125-25-266980",
       "stated_job_count": 250,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149598
+      ]
     },
     {
       "filer": "CODEXIS, INC.",
@@ -144,7 +436,9 @@
       "filing_date": "2025-11-07",
       "id": "sec-205-0001628280-25-050671",
       "stated_job_count": 31,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149595
+      ]
     },
     {
       "filer": "HYSTER-YALE, INC.",
@@ -153,7 +447,8 @@
       "stated_job_count": 575,
       "tracker_event_ids": [
         108571,
-        149251
+        149251,
+        149596
       ]
     },
     {
@@ -170,21 +465,27 @@
       "filing_date": "2025-12-01",
       "id": "sec-205-0001193125-25-303185",
       "stated_job_count": 900,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149613
+      ]
     },
     {
       "filer": "Domtar CORP",
       "filing_date": "2025-12-08",
       "id": "sec-205-0001193125-25-311445",
       "stated_job_count": 350,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149611
+      ]
     },
     {
       "filer": "Elanco Animal Health Inc",
       "filing_date": "2025-12-09",
       "id": "sec-205-0001104659-25-119486",
       "stated_job_count": 300,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149612
+      ]
     },
     {
       "filer": "WABASH NATIONAL Corp",
@@ -205,7 +506,9 @@
         34668,
         34670,
         34673,
-        109191
+        109191,
+        149592,
+        149616
       ]
     },
     {
@@ -229,7 +532,8 @@
       "stated_job_count": 600,
       "tracker_event_ids": [
         105846,
-        108601
+        108601,
+        149624
       ]
     },
     {
@@ -237,28 +541,36 @@
       "filing_date": "2026-03-25",
       "id": "sec-205-0001289308-26-000009",
       "stated_job_count": 474,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149625
+      ]
     },
     {
       "filer": "GoPro, Inc.",
       "filing_date": "2026-04-07",
       "id": "sec-205-0001628280-26-024066",
       "stated_job_count": 145,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149629
+      ]
     },
     {
       "filer": "Vertex, Inc.",
       "filing_date": "2026-04-28",
       "id": "sec-205-0001104659-26-050407",
       "stated_job_count": 170,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149630
+      ]
     },
     {
       "filer": "reAlpha Tech Corp.",
       "filing_date": "2026-05-06",
       "id": "sec-205-0001213900-26-052921",
       "stated_job_count": 21,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149640
+      ]
     },
     {
       "filer": "Koppers Holdings Inc.",
@@ -266,7 +578,8 @@
       "id": "sec-205-0001315257-26-000036",
       "stated_job_count": 85,
       "tracker_event_ids": [
-        108304
+        108304,
+        149641
       ]
     },
     {
@@ -274,14 +587,18 @@
       "filing_date": "2026-05-11",
       "id": "sec-205-0001193125-26-216107",
       "stated_job_count": 2200,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149638
+      ]
     },
     {
       "filer": "SOBR Safe, Inc.",
       "filing_date": "2026-05-13",
       "id": "sec-205-0001477932-26-003057",
       "stated_job_count": 11,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149637
+      ]
     }
   ],
   "note": "Recall of the frozen SEC Item 2.05 gold set against the live API. Written by recall-precision.yml. Committed on purpose: the data being measured changes without a commit. Do not hand-edit this file to clear a failing floor.",
