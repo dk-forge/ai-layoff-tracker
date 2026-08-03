@@ -1,4 +1,57 @@
 {
- "entries": [],
+ "entries": [
+  {
+   "attempt": "1",
+   "calls": 40,
+   "changed": 6,
+   "completion_tokens": 799,
+   "cost_usd": 0.004793,
+   "date": "2026-08-03",
+   "items": 40,
+   "job": "enrich-roles",
+   "prompt_tokens": 15427,
+   "run_id": "30787725785",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 218,
+   "changed": 17,
+   "completion_tokens": 1971,
+   "cost_usd": 0.017051,
+   "date": "2026-08-03",
+   "items": 200,
+   "job": "industry-backfill",
+   "prompt_tokens": 58366,
+   "run_id": "30788705224",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 35,
+   "changed": 400,
+   "completion_tokens": 547,
+   "cost_usd": 0.005042,
+   "date": "2026-08-03",
+   "items": 40,
+   "job": "reason-backfill",
+   "prompt_tokens": 17402,
+   "run_id": "30788447785",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "changed": 0,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-08-03",
+   "items": 3,
+   "job": "reclassify-legacy-ai",
+   "prompt_tokens": 0,
+   "run_id": "30784878989",
+   "stored": null
+  }
+ ],
  "v": 1
 }
