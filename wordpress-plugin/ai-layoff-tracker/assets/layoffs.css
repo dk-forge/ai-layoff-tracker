@@ -1998,6 +1998,13 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 
 /* Counting-basis comparison (methodology + press): live, self-updating. */
 .alt-basis-table{width:100%;border-collapse:collapse;font-size:.93rem;margin:14px 0}.alt-basis-table th,.alt-basis-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #e6e0cf;vertical-align:top;line-height:1.5}.alt-basis-table thead th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}.alt-basis-table tbody td:nth-child(2){font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Jurisdiction comparability table: fixed layout so its long prose cells wrap
+   inside a bounded width instead of inflating the natural table width to
+   1500px+ (it still scrolls inside .alt-health-table-wrap on narrow screens,
+   the numeric-column nowrap above must not apply to its prose). */
+.alt-jurisdiction-table{min-width:860px;table-layout:fixed}
+.alt-jurisdiction-table thead th:first-child{width:19%}
+.alt-jurisdiction-table tbody td:nth-child(2){font-variant-numeric:normal;white-space:normal}
 
 /* ===========================================================================
    Sources and Roles as pill strips, not dropdowns.
