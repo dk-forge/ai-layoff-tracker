@@ -6,6 +6,22 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-03 - caught live, post-deploy, by reading the page: single-date states scored as zero notice (2.19.257)
+
+The notice-gap section's first live render showed nine states at "median 0
+days, 100% shorter than 60" (IN, AZ, KS, UT, DE, VT, ME, SD, MT). That is not
+nine states of employers giving no notice: sources/warn.py falls back to the
+notice/received column for layoff_date when a state publishes only one date,
+and stores the same value in announcement_date, so for single-date states the
+gap is structurally 0 and measures nothing. Fix: rows whose two stored dates
+are identical are now a counted exclusion (same_date_ambiguous) with the
+reason stated on the page, the histogram takes announcement_date <
+layoff_date only, and the copy notes the resulting shorter-than-60 share is
+conservative (a real same-day notice is excluded, not counted against the
+employer). The transient key now includes ALT_VERSION so a deploy can never
+serve a cached stats array of the previous shape. Guard test pins the
+exclusion.
+
 ## 2026-08-03 - external-credibility batch: jurisdiction comparability, measured WARN notice gaps, an auditor's pack, and disclosure (2.19.256)
 
 Owner-approved batch from an external credibility review. Four pieces, all

@@ -2619,13 +2619,21 @@ function alt_basis_table_html($country = 'United States', $year = null) {
  * the separate editorial WARN transparency register.
  *
  * Rows missing either date, or whose effective date precedes the notice date,
- * are EXCLUDED AND COUNTED, never imputed. Aggregated as a (state, gap)
- * histogram so exact medians compute without loading every row; cached for 6
- * hours keyed on the dataset version.
+ * are EXCLUDED AND COUNTED, never imputed. So are rows whose two dates are
+ * IDENTICAL: when a state publishes only one date column, the importer stores
+ * that date in both fields (sources/warn.py falls back to the notice/received
+ * column for layoff_date), so a zero gap cannot be distinguished from a
+ * genuine same-day notice. Nine states rendered as "median 0 days, 100%
+ * shorter than 60" on this metric's first live render for exactly that
+ * reason; treating them as measured zero notice would have published a wrong
+ * number. Aggregated as a (state, gap) histogram so exact medians compute
+ * without loading every row; cached for 6 hours keyed on the dataset version.
  */
 function alt_warn_notice_gap_stats() {
     global $wpdb;
-    $key = 'alt_notice_gap_' . md5((string) (int) get_option('alt_data_ver', 1));
+    // Keyed on plugin version too, so a deploy that changes this function's
+    // output shape can never be served a stale cached array of the old shape.
+    $key = 'alt_notice_gap_' . md5(ALT_VERSION . '|' . (int) get_option('alt_data_ver', 1));
     $hit = get_transient($key);
     if (is_array($hit)) return $hit;
 
@@ -2635,7 +2643,7 @@ function alt_warn_notice_gap_stats() {
         "SELECT state, DATEDIFF(layoff_date, announcement_date) AS gap, COUNT(*) AS n
          FROM $t
          WHERE $scope AND announcement_date IS NOT NULL AND layoff_date IS NOT NULL
-           AND announcement_date <= layoff_date
+           AND announcement_date < layoff_date
          GROUP BY state, gap", ARRAY_A) ?: array();
     $missing = (int) $wpdb->get_var(
         "SELECT COUNT(*) FROM $t
@@ -2644,6 +2652,10 @@ function alt_warn_notice_gap_stats() {
         "SELECT COUNT(*) FROM $t
          WHERE $scope AND announcement_date IS NOT NULL AND layoff_date IS NOT NULL
            AND announcement_date > layoff_date");
+    $same_date = (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM $t
+         WHERE $scope AND announcement_date IS NOT NULL AND layoff_date IS NOT NULL
+           AND announcement_date = layoff_date");
 
     $per_state = array();
     $overall = array();
@@ -2690,7 +2702,9 @@ function alt_warn_notice_gap_stats() {
     $out = array(
         'overall'  => $summarise($overall),
         'states'   => $states,
-        'excluded' => array('missing_dates' => $missing, 'effective_precedes_notice' => $reversed),
+        'excluded' => array('missing_dates' => $missing,
+                            'effective_precedes_notice' => $reversed,
+                            'same_date_ambiguous' => $same_date),
         'as_of'    => gmdate('c'),
     );
     set_transient($key, $out, 6 * HOUR_IN_SECONDS);
@@ -2711,15 +2725,20 @@ function alt_notice_gap_table_html() {
     $pct = function ($x) { return number_format($x * 100, 1) . '%'; };
     $days = function ($d) { return rtrim(rtrim(number_format((float) $d, 1), '0'), '.'); };
     ob_start(); ?>
-    <p>Across <b><?php echo number_format((int) $o['n']); ?></b> US WARN notices that record both
-    an official notice date and an effective date, the median recorded notice period is
+    <p>Across <b><?php echo number_format((int) $o['n']); ?></b> US WARN notices that record an
+    official notice date and a later, distinct effective date, the median recorded notice period is
     <b><?php echo esc_html($days($o['median_days'])); ?> days</b>, and
     <b><?php echo esc_html($pct($o['under_60_pct'])); ?></b>
     (<?php echo number_format((int) $o['under_60']); ?> notices) record a gap shorter than the
-    federal 60-day period. <?php echo number_format((int) $s['excluded']['missing_dates']); ?> notices
-    missing one of the two dates<?php if ((int) $s['excluded']['effective_precedes_notice'] > 0) : ?>,
-    and <?php echo number_format((int) $s['excluded']['effective_precedes_notice']); ?> whose recorded
-    effective date precedes the notice date,<?php endif; ?> are excluded and counted here, never guessed.</p>
+    federal 60-day period.</p>
+    <p>Excluded and counted, never guessed: <?php echo number_format((int) $s['excluded']['missing_dates']); ?> notices
+    missing one of the two dates; <?php echo number_format((int) $s['excluded']['same_date_ambiguous']); ?> whose
+    stored notice and effective dates are identical (several states publish a single date, which the
+    importer stores in both fields, so a zero gap cannot be told apart from a genuine same-day
+    notice)<?php if ((int) $s['excluded']['effective_precedes_notice'] > 0) : ?>; and
+    <?php echo number_format((int) $s['excluded']['effective_precedes_notice']); ?> whose recorded
+    effective date precedes the notice date<?php endif; ?>. This makes the shorter-than-60 share
+    conservative: real same-day notices, if any, are excluded rather than counted against employers.</p>
     <div class="alt-health-table-wrap">
     <table class="alt-basis-table alt-notice-gap-table">
       <thead><tr><th>State</th><th>Notices with both dates</th><th>Median days of notice</th><th>Share shorter than 60 days</th></tr></thead>

@@ -91,6 +91,15 @@ class NoticeGapCopyGuards(unittest.TestCase):
         self.assertIn("effective_precedes_notice", text)
         self.assertIn("never guessed", text)
 
+    def test_same_date_rows_are_excluded_not_scored_as_zero_notice(self):
+        # Single-date states store the notice date in both fields, so gap 0 is
+        # ambiguous. First live render scored nine such states "median 0 days,
+        # 100% shorter than 60"; this pins the exclusion that fixed it.
+        text = self._new_copy()
+        self.assertIn("same_date_ambiguous", text)
+        self.assertIn("announcement_date < layoff_date", text)
+        self.assertIn("announcement_date = layoff_date", text)
+
     def test_facet_pages_carry_the_jurisdiction_caveat(self):
         facet = _read("templates", "page-facet.php")
         self.assertIn("#m-jurisdictions", facet)
