@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** HELD
-- **HOLDER:** local
+- **STATUS:** FREE
+- **HOLDER:** —
 - **SINCE:** 2026-08-03
-- **WORKING ON:** task #65: spend-ledger harvest never lands on main (push 403), fix workflow permissions + prove one harvest
+- **WORKING ON:** —
 
 **Takeover noted, per the stale-baton clause.** The SEC-recall session claimed
 this on 2026-08-01 and landed its answer the same day (`e8b8541`: the misses are
@@ -116,7 +116,7 @@ entry in the log below has an UNVERIFIED line. That is not hedging; it is the
 only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
-- 2026-08-03 local (Claude, same session as #20) #21: **THE AUDIENCE UX PASS AND THE OWNER'S DESIGN, BOTH TRACKERS. 2.19.250 -> 2.19.255 here, 1.64.0 -> 1.66.1 in the sibling, all deployed and live-verified.**
+- 2026-08-03 local (Claude, task #65) #22: **THE HARVEST WAS WRITING TO A DOOR IT COULD NOT OPEN.** spend_jobs.json sat empty on main since the per-job ledger shipped; diagnosis from the 04:46 UTC dispatch run: `spend.py --harvest` read the run logs FINE with github.token (the unproven permission was fine), but the commit step's push got 403 "denied to github-actions[bot]" because the workflow declared no `permissions:` and the default token is read-only; the step swallows push failures by design, so seven green runs recorded nothing (daily balance history was silently lost the same way). Fix `ed38307`: `contents: write` + explicit `actions: read` on openrouter-balance-check.yml (an explicit block replaces defaults). PROVEN: dispatched once, "Pushed on attempt 1", origin/main now holds 4 entries for 2026-08-03 (enrich-roles $0.0048/40 items, industry-backfill $0.0171/200, reason-backfill $0.0050/40, reclassify-legacy-ai $0.00/3). **NEXT SESSION (dated note in TECHLOG 2026-08-03):** judge on several days of ledger, then (a) confirm ai-evidence-sweep cheap post-NewsAPI-fix, (b) company-watchlist to weekly if $/stored-row stays effectively infinite (workflow header reasoning + ops_status ceiling table together), (c) supplemental-news rides the funnel-port, no piecemeal gate. Tests 713 OK before each push; no plugin files touched, no deploy. **THE AUDIENCE UX PASS AND THE OWNER'S DESIGN, BOTH TRACKERS. 2.19.250 -> 2.19.255 here, 1.64.0 -> 1.66.1 in the sibling, all deployed and live-verified.**
   **THIS PAGE:** headline tiles are SERVER-RENDERED (no-JS curl byte-matched against /aggregate - the citability page no longer hands crawlers "..."); first-screen cite line with CSV/JSON links that honor the active filters; next-update time DERIVED from railway.toml by generate_ingest_schedule.py with a drift test (the typed "9 AM & 6 PM ET" was DST-wrong half the year); Sources + Roles are multi-select dropdowns (audit: every list filter already accepts comma lists end to end; company/keyword/dates are single by API design and reported, not faked); corrections log has per-entry anchors; the 700-outlet table collapsed to a link; trend explainer cut to two sentences + (i).
   **THE DESIGN (owner-shared artifact, extract in the session scratchpad's audience-spec.md ADDENDUM):** signal board (Workers / Verified / Explicitly AI-attributed / Largest event x Today / Week / Month / YTD) evolving #alt-narrative - per-row heat, every cell a REAL href (?from=&to= / ?years=) so it filters with no JS, Largest cells link to entry permalinks with a company-filter fallback; serif hero thesis ("Every layoff here is verified. That is the whole point."); derived coverage ribbon ("Covering Jan 2002 to <today> . 57 countries . 47 US states"); freshness panel with the "No figure appears unless its source states it" line; warm-paper/ink-navy/ochre palette shared with the sibling. Above-the-fold words DOWN (289 -> 270, and the no-JS reader gains the whole board).
   **CAUGHT LIVE, POST-DEPLOY, BY READING THE PAGE (three, all fixed same hour):** week 10,591 > month 2,720 is calendar-correct and read as a bug until the footnote said so (2.19.254); Roo's status line bled 120px past its card at 1280 (2.19.255); on the sibling, a future-dated filing put "Covering ... to 2 Sep 2026" on the ribbon - "Covering" claims collection, so the sentence clamps to today while the row keeps its honest date (1.66.1).
