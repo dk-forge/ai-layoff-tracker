@@ -3889,7 +3889,7 @@
                         : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + '" role="cell" href="#" data-company="' + escapeHtml(ld.company_name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
                 }).join('') + '</div>';
             var foot = '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span>'
-                + '<span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer’s own words. Tap any number to filter.</span></div>';
+                + '<span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer’s own words; columns overlap (a week can span two months), so they do not add up. Tap any number to filter.</span></div>';
             // Post-sized rewrite for the copy button: X counts any URL as 23
             // characters, and the weekly detail degrades in steps (with
             // largest event → bare) to stay under 280.

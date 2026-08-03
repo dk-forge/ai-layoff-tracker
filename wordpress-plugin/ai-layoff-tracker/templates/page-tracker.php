@@ -233,7 +233,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
             }
         }
         $alt_board_html .= '</div></div>';
-        $alt_board_html .= '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span><span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer&#39;s own words. Tap any number to filter.</span></div>';
+        $alt_board_html .= '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span><span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer&#39;s own words; columns overlap (a week can span two months), so they do not add up. Tap any number to filter.</span></div>';
         $alt_board_html = '<div class="alt-narrative-head"><span>At a glance · verified layoffs worldwide · <b>' . esc_html(date_i18n('M j')) . '</b></span>'
             . '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>'
             . $alt_board_html;
