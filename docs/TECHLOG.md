@@ -6,6 +6,17 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — strip columns are width-aware (2.19.252)
+
+The 2.19.251 two-column strip row left a ~130px value column at 375px:
+word-per-line wrap and the nowrap "(n · loc)" unit bleeding past the card edge
+(verified broken live before fixing). Flex columns now apply only at >=700px;
+below that the label stacks above a full-width value. Verified live at 375px
+(stacked, no overflow, document scrollWidth == clientWidth) and 1280px (flex
+columns, "(31,000 · US)" wraps indented inside the value column).
+
+---
+
 ## 2026-08-02 — owner follow-ups: strip wrap fix, pills back to dropdowns, trend explainer in plain language, places card (2.19.251)
 
 - **Daily-strip wrap bug**: "largest: Internal Revenue Service (31,000 · US)"
