@@ -2192,6 +2192,10 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 /* The Roo header keeps its own layout inside the panel, just tighter. */
 .alt-fresh .alt-header { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .alt-fresh .alt-header .alt-brand { flex-basis: 100%; }
+/* The Roo "resting until…" line is nowrap in the wide strip; inside the
+   330px panel it must wrap or it bleeds past the card edge (seen live at
+   1280px on 2.19.254). */
+.alt-fresh .alt-header .alt-next { white-space: normal; flex: 1 1 100%; min-width: 0; margin-right: 0; }
 .alt-fresh-next { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--alt-ink); }
 .alt-fresh-stats {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
