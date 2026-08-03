@@ -90,32 +90,160 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
-    <p class="alt-floor-banner">We do not estimate. Every number here links to an official filing, a state WARN notice, or a named news report. It is a verified floor, not a survey. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count &rarr;</a></p>
     <?php
-    // First-screen cite affordance (Eurostat pattern: headline + dateline +
-    // next release on one screen). The long-form cite block stays at the
-    // bottom; this is the compact route to it, plus the same filter-honoring
-    // CSV/JSON exports (layoffs.js keeps these hrefs in step with the page)
-    // and the next collection time derived from the real cron
-    // (alt_next_ingest_utc reads data/ingest-schedule.json, generated from
-    // railway/railway.toml — never typed).
+    // Next collection time, derived from the real cron (alt_next_ingest_utc
+    // reads data/ingest-schedule.json, generated from railway/railway.toml —
+    // never typed). Shown in the freshness panel; layoffs.js refreshes it to
+    // a live Eastern-time reading via #alt-next-top.
     $alt_next_ts = function_exists('alt_next_ingest_utc') ? alt_next_ingest_utc() : null;
+    ?>
+    <?php
+    // EDITORIAL HERO. The old floor banner's promise is the hero now: one
+    // serif thesis, one trust sentence, two routes (adopted from the owner's
+    // shared design, 2026-08-02). The freshness panel on the right hosts the
+    // Roo status header ([alt_stats_bar] yields to this page, see
+    // alt_shortcode_stats_bar), the next-update time and four headline
+    // figures from the same bootstrap totals the tiles render.
+    ?>
+    <header class="alt-hero">
+        <div class="alt-hero-main">
+            <p class="alt-hero-thesis" role="heading" aria-level="2">Every layoff here is verified. That is the whole point.</p>
+            <p class="alt-hero-trust">We do not estimate. Every number links to an official filing, a state WARN notice, or a named news report. A verified floor, not a survey.</p>
+            <p class="alt-hero-actions">
+                <a class="alt-btn alt-btn-primary" id="alt-hero-search" href="#alt-search">Search the record</a>
+                <a class="alt-btn" href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count</a>
+            </p>
+        </div>
+        <aside class="alt-fresh" aria-label="Freshness and headline figures">
+            <?php echo function_exists('alt_render_status_header') ? alt_render_status_header() : ''; ?>
+            <?php if ($alt_next_ts) : ?>
+            <span class="alt-fresh-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
+            <?php endif; ?>
+            <?php if ($alt_sv !== null) : ?>
+            <div class="alt-fresh-stats">
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('total')); ?></b><i>verified job cuts, <?php echo esc_html($alt_period); ?></i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('ai')); ?></b><i>explicitly AI-attributed</i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies</i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries</i></span>
+            </div>
+            <?php endif; ?>
+            <span class="alt-fresh-check">&#10003; No figure appears unless its source states it.</span>
+        </aside>
+    </header>
+    <?php
+    // COVERAGE RIBBON: one derived line in place of scattered trust prose.
+    // Counts come from alt_coverage_counts() (hour-cached, computed from the
+    // data, never typed); the sibling link mirrors the talent tracker's.
+    $alt_cov = alt_coverage_counts();
+    $alt_cov_first = !empty($alt_cov['first']) ? date_i18n('M Y', strtotime($alt_cov['first'])) : '';
+    ?>
+    <p class="alt-ribbon">
+        <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['states']; ?></b> US states</span>
+        <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
+    </p>
+    <?php
+    // First-screen cite affordance (Eurostat pattern: headline + dateline on
+    // one screen). The long-form cite block stays at the bottom; this is the
+    // compact route to it, plus the same filter-honoring CSV/JSON exports
+    // (layoffs.js keeps these hrefs in step with the page).
     ?>
     <p class="alt-citeline">
         <?php if ($alt_sv !== null) : ?>
         <span class="alt-citeline-stat"><b><?php echo esc_html($alt_stat('total')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
         <?php endif; ?>
         <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
-        <?php if ($alt_next_ts) : ?>
-        <span class="alt-citeline-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
-        <?php endif; ?>
     </p>
-    <?php $alt_cov = alt_coverage_counts(); ?>
-    <div class="alt-narrative" id="alt-narrative"></div>
+    <?php
+    // THE SIGNAL BOARD, server-rendered (the "colored narratives"). Same
+    // container and same data plumbing as the strip it evolves: numbers come
+    // from window.ALT_BOOTSTRAP's board block (the cached aggregate handler,
+    // stage=verified per period), layoffs.js repaints the identical board on
+    // load and on every tab switch, and every numeric cell click-filters the
+    // page through the existing .alt-nfilter machinery. The hrefs are real
+    // filter URLs so the cells also work before (or without) JS, like the
+    // tiles.
+    $alt_board = ($alt_boot && !empty($alt_boot['board']) && is_array($alt_boot['board'])) ? $alt_boot['board'] : null;
+    $alt_board_html = '';
+    if ($alt_board && count($alt_board) === 4) {
+        $alt_cols = array('today' => 'Today', 'week' => 'This week', 'month' => 'This month', 'ytd' => current_time('Y') . ' YTD');
+        // "Today and this month identical" survives as equal-column styling,
+        // never as duplicate columns: both cells carry one linking class.
+        $alt_tt = $alt_board['today']['totals']; $alt_mt = $alt_board['month']['totals'];
+        $alt_tl = $alt_board['today']['leader']; $alt_ml = $alt_board['month']['leader'];
+        $alt_sb_eq = ((int) ($alt_tt['jobs'] ?? 0)) > 0
+            && (int) ($alt_tt['jobs'] ?? 0) === (int) ($alt_mt['jobs'] ?? -1)
+            && (int) ($alt_tt['entries'] ?? 0) === (int) ($alt_mt['entries'] ?? -1)
+            && (string) ($alt_tl['company_name'] ?? '') === (string) ($alt_ml['company_name'] ?? '');
+        $alt_sb_meta = array();
+        foreach ($alt_cols as $alt_ck => $alt_cl) {
+            $alt_bp = $alt_board[$alt_ck]['params'];
+            $alt_sb_meta[$alt_ck] = isset($alt_bp['years'])
+                ? array('href' => '?years=' . rawurlencode($alt_bp['years']), 'data' => ' data-years="' . esc_attr($alt_bp['years']) . '"')
+                : array('href' => '?from=' . rawurlencode($alt_bp['from']) . '&amp;to=' . rawurlencode($alt_bp['to']),
+                        'data' => ' data-from="' . esc_attr($alt_bp['from']) . '" data-to="' . esc_attr($alt_bp['to']) . '"');
+        }
+        $alt_sb_head = '<div class="alt-sb-row alt-sb-headrow" role="row"><span class="alt-sb-label" role="columnheader"><span class="screen-reader-text">Measure</span></span>';
+        foreach ($alt_cols as $alt_ck => $alt_cl) {
+            $alt_sb_head .= '<span class="alt-sb-col" role="columnheader">' . esc_html($alt_cl) . '</span>';
+        }
+        $alt_sb_head .= '</div>';
+        $alt_sb_numrow = function ($cls, $label, $key) use ($alt_board, $alt_cols, $alt_sb_meta, $alt_sb_eq) {
+            $vals = array(); $max = 0;
+            foreach ($alt_cols as $ck => $cl) {
+                $v = (int) ($alt_board[$ck]['totals'][$key] ?? 0);
+                $vals[$ck] = $v; if ($v > $max) $max = $v;
+            }
+            $h = '<div class="alt-sb-row ' . $cls . '" role="row"><span class="alt-sb-label" role="rowheader">' . $label . '</span>';
+            foreach ($alt_cols as $ck => $cl) {
+                $v = $vals[$ck];
+                $eq = $alt_sb_eq && ($ck === 'today' || $ck === 'month') ? ' alt-sb-eq' : '';
+                $eqt = $eq ? ' title="Today and this month are identical so far"' : '';
+                $heat = ($v > 0 && $max > 0) ? ' style="background:rgba(42,120,214,' . number_format(0.08 + 0.26 * $v / $max, 3, '.', '') . ')"' : '';
+                $h .= $v > 0
+                    ? '<a class="alt-sb-cell alt-nfilter' . $eq . '" role="cell" href="' . $alt_sb_meta[$ck]['href'] . '"' . $alt_sb_meta[$ck]['data'] . $eqt . $heat . '><b>' . esc_html(number_format($v)) . '</b></a>'
+                    : '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell"' . $eqt . '>0</span>';
+            }
+            return $h . '</div>';
+        };
+        $alt_board_html .= '<div class="alt-sb" role="table" aria-label="Verified layoffs by period">' . $alt_sb_head;
+        $alt_board_html .= $alt_sb_numrow('alt-sb-r-workers', 'Workers', 'jobs');
+        $alt_board_html .= $alt_sb_numrow('alt-sb-r-events', 'Verified layoffs', 'entries');
+        $alt_board_html .= $alt_sb_numrow('alt-sb-r-ai', 'Explicitly AI-attributed', 'ai_jobs');
+        // Largest event: links to the entry's permalink (the citable unit),
+        // falling back to the company click-filter when no permalink exists.
+        $alt_lmax = 0; $alt_lvals = array();
+        foreach ($alt_cols as $alt_ck => $alt_cl) {
+            $alt_ld = $alt_board[$alt_ck]['leader'];
+            $alt_lvals[$alt_ck] = $alt_ld && !empty($alt_ld['job_count']) ? (int) $alt_ld['job_count'] : 0;
+            if ($alt_lvals[$alt_ck] > $alt_lmax) $alt_lmax = $alt_lvals[$alt_ck];
+        }
+        $alt_board_html .= '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest event</span>';
+        foreach ($alt_cols as $alt_ck => $alt_cl) {
+            $alt_ld = $alt_board[$alt_ck]['leader'];
+            $alt_lv = $alt_lvals[$alt_ck];
+            $eq = $alt_sb_eq && ($alt_ck === 'today' || $alt_ck === 'month') ? ' alt-sb-eq' : '';
+            $heat = ($alt_lv > 0 && $alt_lmax > 0) ? ' style="background:rgba(42,120,214,' . number_format(0.08 + 0.26 * $alt_lv / $alt_lmax, 3, '.', '') . ')"' : '';
+            if ($alt_lv > 0) {
+                $alt_lbody = '<b>' . esc_html($alt_ld['company_name']) . '</b><span>' . esc_html(number_format($alt_lv)) . '</span>';
+                $alt_board_html .= !empty($alt_ld['permalink'])
+                    ? '<a class="alt-sb-cell alt-sb-ev' . $eq . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this event&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
+                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . '" role="cell" href="#" data-company="' . esc_attr($alt_ld['company_name']) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
+            } else {
+                $alt_board_html .= '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell">none</span>';
+            }
+        }
+        $alt_board_html .= '</div></div>';
+        $alt_board_html .= '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span><span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer&#39;s own words. Tap any number to filter.</span></div>';
+        $alt_board_html = '<div class="alt-narrative-head"><span>At a glance · verified layoffs worldwide · <b>' . esc_html(date_i18n('M j')) . '</b></span>'
+            . '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>'
+            . $alt_board_html;
+    }
+    ?>
+    <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     <?php $alt_warn_states = function_exists('alt_state_warn_urls') ? count(alt_state_warn_urls()) : 42; ?>
-    <p class="alt-lead"><span class="alt-lead-text">Track source-linked layoffs worldwide. We monitor <b><?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries</b> in 65+ languages, plus <b>SEC 8-K filings, all 50 US states (direct WARN feeds from <?php echo (int) $alt_warn_states; ?>), and EU restructuring records</b>, twice daily. Filter by country, industry, source or reason; AI labels appear only where the evidence supports them.</span><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
-    <p class="alt-filter-context">Choose filters to scope the results. Every number, chart and row below updates to match. <span class="alt-filter-context-note">Bookmark this view: the address bar always matches the filters.</span></p>
+    <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+    <p class="alt-filter-context">Filter below; every number, chart and row updates to match. <span class="alt-filter-context-note">Bookmark any view: the address bar always matches the filters.</span></p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
         <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
@@ -601,7 +729,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
             // an absent measurement is honest, a stale typed number is not.
             $alt_rm = function_exists('alt_recall_measurement') ? alt_recall_measurement() : null;
             if ($alt_rm) : ?>
-            <p class="alt-muted"><b>How complete is that, measured?</b> We
+            <p class="alt-muted" id="alt-recall-measured"><b>How complete is that, measured?</b> We
             enumerated every SEC 8-K filed between 1 July 2025 and 30 June 2026
             whose structured filing header carries Item 2.05 and that states an
             absolute number of affected employees, then checked how many appear

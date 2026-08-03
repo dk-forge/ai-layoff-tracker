@@ -4485,7 +4485,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // cities/states) read as the distinct events they are, not as duplicates.
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 10", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
@@ -4494,6 +4494,11 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,
             'location' => alt_short_location($row->state, $row->country),
+            // The signal board's Largest-event cells link to the entry's own
+            // permalink page (the citable unit) when one exists; rows without
+            // a CPT post fall back to the company click-filter. Additive key:
+            // every consumer reads leaders by name, never by position.
+            'permalink' => $row->post_id ? (string) get_permalink((int) $row->post_id) : '',
         );
     }
 
@@ -4742,6 +4747,25 @@ function alt_tracker_bootstrap_payload() {
     // would render some surfaces instantly and fetch the rest, out of step).
     if (!is_array($facets) || !is_array($aggregate) || !is_array($query)) return null;
 
+    // The signal board's four period columns, through the SAME cached
+    // aggregate handler (alt_api_cached, 30-min transient) the strip's
+    // client-side fetches hit — the server render and the JS repaint share
+    // one compute and one cache key set. `include=leaders` keeps each call
+    // to the totals block plus one leaders query instead of the full ~31
+    // statements. Board failure never voids the main bootstrap: the front
+    // end falls back to fetching, exactly like a deep-linked view.
+    $board = array();
+    foreach (alt_signal_board_periods() as $bk => $bp) {
+        $bp['include'] = 'leaders';
+        $bd = $call('alt_api_aggregate', 'aggregate', $bp);
+        if (!is_array($bd) || !isset($bd['totals'])) { $board = null; break; }
+        $board[$bk] = array(
+            'params' => $bp,
+            'totals' => $bd['totals'],
+            'leader' => (isset($bd['leaders'][0]) && is_array($bd['leaders'][0])) ? $bd['leaders'][0] : null,
+        );
+    }
+
     return array(
         'ver'              => defined('ALT_VERSION') ? ALT_VERSION : '',
         'facets'           => $facets,
@@ -4750,5 +4774,25 @@ function alt_tracker_bootstrap_payload() {
         'aggregate_params' => $aggregate_params,
         'query'            => $query,
         'query_params'     => $query_params,
+        'board'            => $board ?: null,
+    );
+}
+
+/**
+ * The signal board's period scopes (Today / This week / This month / YTD),
+ * all stage=verified so the four columns AND their largest-event picks share
+ * one basis — the same rule the narrative strip has always applied (an
+ * announced 50K plan must not headline a 9K verified week). Site timezone,
+ * like every dateline on the page.
+ */
+function alt_signal_board_periods() {
+    $now  = (int) current_time('timestamp');
+    $iso  = function ($ts) { return date('Y-m-d', $ts); };
+    $year = (string) current_time('Y');
+    return array(
+        'today' => array('from' => $iso($now), 'to' => $iso($now), 'stage' => 'verified'),
+        'week'  => array('from' => $iso($now - 6 * 86400), 'to' => $iso($now), 'stage' => 'verified'),
+        'month' => array('from' => date('Y-m-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
+        'ytd'   => array('years' => $year, 'stage' => 'verified'),
     );
 }

@@ -192,6 +192,17 @@ function alt_shortcode_company_history($atts) {
 add_shortcode('alt_company_history', 'alt_shortcode_company_history');
 
 function alt_shortcode_stats_bar() {
+    // On the page that also renders [alt_tracker], the tracker template hosts
+    // this exact header inside its freshness panel (top-right of the hero),
+    // so the shortcode emits nothing there: the ids inside must stay unique
+    // for layoffs.js renderStatus(). Other pages keep the standalone strip.
+    global $post;
+    if ($post && has_shortcode((string) $post->post_content, 'alt_tracker')) return '';
+    return alt_render_status_header();
+}
+
+/** The Roo status header, shared by [alt_stats_bar] and the tracker hero. */
+function alt_render_status_header() {
     ob_start();
     ?>
     <div class="alt-header">

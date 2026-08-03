@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.252
+ * Version: 2.19.253
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.252');
+define('ALT_VERSION', '2.19.253');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1263,14 +1263,20 @@ function alt_faq_items() {
  */
 function alt_coverage_counts() {
     $c = get_transient('alt_coverage_counts');
-    if (is_array($c)) return $c;
+    // isset() guard: a transient written before 'first' existed must recompute
+    // rather than hand the coverage ribbon an empty date for up to an hour.
+    if (is_array($c) && isset($c['first'])) return $c;
     global $wpdb;
     $t = alt_db_table();
     $countries = (int) $wpdb->get_var(
         "SELECT COUNT(DISTINCT country) FROM $t WHERE country <> '' AND country <> 'Multiple countries'");
     $states = (int) $wpdb->get_var(
         "SELECT COUNT(DISTINCT state) FROM $t WHERE source_type = 'warn' AND state <> ''");
-    $c = array('countries' => $countries, 'states' => $states);
+    // First record date for the coverage ribbon. Derived, never typed; the
+    // same date bound alt_db_valid_date enforces on the way in.
+    $first = (string) $wpdb->get_var(
+        "SELECT MIN(layoff_date) FROM $t WHERE layoff_date IS NOT NULL");
+    $c = array('countries' => $countries, 'states' => $states, 'first' => $first);
     set_transient('alt_coverage_counts', $c, HOUR_IN_SECONDS);
     return $c;
 }

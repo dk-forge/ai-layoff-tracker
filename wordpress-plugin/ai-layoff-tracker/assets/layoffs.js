@@ -3792,7 +3792,14 @@
         updateNarrative();
     }
 
-    // "Today July 15: so far in 2026, N layoffs with J people impacted..."
+    // THE SIGNAL BOARD (evolves the narrative strip; same container, same
+    // aggregate plumbing, same click-to-filter machinery, Copy as post kept).
+    // Rows: Workers / Verified layoffs / Explicitly AI-attributed / Largest
+    // event. Columns: Today / This week / This month / YTD. Heat is scaled
+    // WITHIN each row; every numeric cell filters the page through the
+    // existing filter+URL machinery, and Largest-event cells open the entry
+    // permalink instead (falling back to the company filter when the row has
+    // no permalink page).
     function updateNarrative() {
         var el = document.getElementById('alt-narrative');
         if (!el) return;
@@ -3801,106 +3808,99 @@
         var y = now.getFullYear();
         var base = tab.countries.length ? { country: tab.countries.join(',') } : {};
         var iso = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
-        var d7 = new Date(now.getTime() - 6 * 86400000), d14 = new Date(now.getTime() - 13 * 86400000), d8 = new Date(now.getTime() - 7 * 86400000);
+        var d7 = new Date(now.getTime() - 6 * 86400000);
         // Everything is stage=verified so the period totals AND each period's
         // largest-event pick share one basis (an announced 50K plan must not
-        // headline a 9K verified week).
-        var pYear = Object.assign({ years: String(y), stage: 'verified' }, base);
-        var pMonth = Object.assign({ from: y + '-' + pad2(now.getMonth() + 1) + '-01', to: iso(now), stage: 'verified' }, base);
-        var pWeek = Object.assign({ from: iso(d7), to: iso(now), stage: 'verified' }, base);
-        var pWeekPrev = Object.assign({ from: iso(d14), to: iso(d8), stage: 'verified' }, base);
-        var pToday = Object.assign({ from: iso(now), to: iso(now), stage: 'verified' }, base);
-        Promise.all([apiGet('aggregate', pYear), apiGet('aggregate', pMonth), apiGet('aggregate', pWeek), apiGet('aggregate', pWeekPrev), apiGet('aggregate', pToday)]).then(function (r) {
-            var t = r[0].totals, m = r[1].totals, w = r[2].totals, wp = r[3].totals, td = (r[4] || {}).totals || {};
-            var yLead = (r[0].leaders || [])[0], mLead = (r[1].leaders || [])[0], wLead = (r[2].leaders || [])[0];
+        // headline a 9K verified week). include=leaders keeps each call to the
+        // totals block plus one leaders query — the same cache keys the
+        // server-rendered board warmed (alt_signal_board_periods in db.php).
+        var P = {
+            today: Object.assign({ from: iso(now), to: iso(now), stage: 'verified', include: 'leaders' }, base),
+            week:  Object.assign({ from: iso(d7), to: iso(now), stage: 'verified', include: 'leaders' }, base),
+            month: Object.assign({ from: y + '-' + pad2(now.getMonth() + 1) + '-01', to: iso(now), stage: 'verified', include: 'leaders' }, base),
+            ytd:   Object.assign({ years: String(y), stage: 'verified', include: 'leaders' }, base)
+        };
+        var KEYS = ['today', 'week', 'month', 'ytd'];
+        // Server-inlined board: consumed at most once, and only when every
+        // period's params match what this repaint was about to request (the
+        // takeBoot rule — a site-timezone date rolling past the browser's
+        // simply mismatches and falls back to a live fetch).
+        var boot = null;
+        if (BOOT && BOOT.board && KEYS.every(function (k) {
+            return BOOT.board[k] && bootParamsMatch(P[k], BOOT.board[k].params || {});
+        })) {
+            boot = BOOT.board;
+            BOOT.board = null;
+        }
+        var ready = boot
+            ? Promise.resolve(KEYS.map(function (k) {
+                return { totals: boot[k].totals || {}, leaders: boot[k].leader ? [boot[k].leader] : [] };
+            }))
+            : Promise.all(KEYS.map(function (k) { return apiGet('aggregate', P[k]); }));
+        ready.then(function (r) {
+            var D = {};
+            KEYS.forEach(function (k, i) {
+                D[k] = { t: (r[i] || {}).totals || {}, l: ((r[i] || {}).leaders || [])[0] || null };
+            });
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
-            var tV = t.entries || 0, tJ = t.jobs || 0;
-            var tAI = t.ai_jobs || 0; // stage=verified scope, so ai_jobs is verified AI
-            // Current-year averages are per day ELAPSED (year-to-date), not /365.
-            var startOfYear = new Date(y, 0, 1);
-            var daysElapsed = Math.max(1, Math.round((now - startOfYear) / 86400000) + 1);
-            var b = function (v) { return '<b>' + v + '</b>'; }; // every value is our own fmt() output
-            // Companies and period figures are click-to-filter: the company
-            // name sets the Company filter; a period's numbers set the date
-            // range (or year), so the whole page re-scopes to what was clicked.
-            var esc = function (v) { return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); };
-            // Location for the "largest:" entries only, from the row's OWN
-            // fields (state for US rows, the stored country otherwise) — never
-            // inferred, and never added to the rest of the strip.
+            var b = function (v) { return '<b>' + v + '</b>'; };
+            var cols = { today: 'Today', week: 'This week', month: 'This month', ytd: y + ' YTD' };
+            var meta = {};
+            KEYS.forEach(function (k) {
+                var p = P[k];
+                meta[k] = p.years
+                    ? { href: '?years=' + p.years, data: ' data-years="' + p.years + '"' }
+                    : { href: '?from=' + p.from + '&amp;to=' + p.to, data: ' data-from="' + p.from + '" data-to="' + p.to + '"' };
+            });
+            // "Today and this month identical" (the 1st of the month) survives
+            // as equal-column styling, never as duplicate columns.
+            var eq = (D.today.t.jobs || 0) > 0
+                && (D.today.t.jobs || 0) === (D.month.t.jobs || -1)
+                && (D.today.t.entries || 0) === (D.month.t.entries || -1)
+                && ((D.today.l || {}).company_name || '') === ((D.month.l || {}).company_name || '');
+            var eqCls = function (k) { return eq && (k === 'today' || k === 'month') ? ' alt-sb-eq' : ''; };
+            var eqTitle = ' title="Today and this month are identical so far"';
+            var heat = function (v, max) {
+                return (v > 0 && max > 0) ? ' style="background:rgba(42,120,214,' + (0.08 + 0.26 * v / max).toFixed(3) + ')"' : '';
+            };
+            var head = '<div class="alt-sb-row alt-sb-headrow" role="row"><span class="alt-sb-label" role="columnheader"><span class="screen-reader-text">Measure</span></span>'
+                + KEYS.map(function (k) { return '<span class="alt-sb-col" role="columnheader">' + cols[k] + '</span>'; }).join('') + '</div>';
+            var numRow = function (cls, label, key) {
+                var max = 0;
+                KEYS.forEach(function (k) { var v = D[k].t[key] || 0; if (v > max) max = v; });
+                return '<div class="alt-sb-row ' + cls + '" role="row"><span class="alt-sb-label" role="rowheader">' + label + '</span>'
+                    + KEYS.map(function (k) {
+                        var v = D[k].t[key] || 0;
+                        var e = eqCls(k), et = e ? eqTitle : '';
+                        return v > 0
+                            ? '<a class="alt-sb-cell alt-nfilter' + e + '" role="cell" href="' + meta[k].href + '"' + meta[k].data + et + heat(v, max) + '><b>' + fmt(v) + '</b></a>'
+                            : '<span class="alt-sb-cell alt-sb-zero' + e + '" role="cell"' + et + '>0</span>';
+                    }).join('') + '</div>';
+            };
+            var lmax = 0;
+            KEYS.forEach(function (k) { var v = (D[k].l || {}).job_count || 0; if (v > lmax) lmax = v; });
+            var lRow = '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest event</span>'
+                + KEYS.map(function (k) {
+                    var ld = D[k].l, v = (ld || {}).job_count || 0, e = eqCls(k);
+                    if (!(v > 0)) return '<span class="alt-sb-cell alt-sb-zero' + e + '" role="cell">none</span>';
+                    var body = '<b>' + escapeHtml(ld.company_name) + '</b><span>' + fmt(v) + '</span>';
+                    return ld.permalink
+                        ? '<a class="alt-sb-cell alt-sb-ev' + e + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this event&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
+                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + '" role="cell" href="#" data-company="' + escapeHtml(ld.company_name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
+                }).join('') + '</div>';
+            var foot = '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span>'
+                + '<span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer’s own words. Tap any number to filter.</span></div>';
+            // Post-sized rewrite for the copy button: X counts any URL as 23
+            // characters, and the weekly detail degrades in steps (with
+            // largest event → bare) to stay under 280.
+            var tJ = D.ytd.t.jobs || 0, tV = D.ytd.t.entries || 0, tAI = D.ytd.t.ai_jobs || 0;
+            var wJ = D.week.t.jobs || 0, wE = D.week.t.entries || 0, wLead = D.week.l;
             var largestLoc = function (ld) {
                 var c = ld && ld.country ? String(ld.country) : '';
                 var s = ld && ld.state ? String(ld.state).toUpperCase() : '';
                 if (c === 'United States') return s ? s + ', US' : 'US';
                 return c;
             };
-            var largest = function (ld) {
-                if (!(ld && ld.job_count)) return '';
-                var l = largestLoc(ld);
-                // The "(n · loc)" parenthetical is one unbreakable unit: split
-                // across lines it read as an orphaned fragment. The company
-                // name itself may wrap (it can be long at 375px).
-                return ' · largest: <a href="#" class="alt-nfilter" data-company="' + esc(ld.company_name) + '" title="Filter the page to this company">' + b(esc(ld.company_name)) + '</a> <span class="alt-nowrap">(' + fmt(ld.job_count) + (l ? ' · ' + esc(l) : '') + ')</span>';
-            };
-            var row = function (label, body, filterAttrs) {
-                var open = filterAttrs ? '<a href="#" class="alt-nfilter" ' + filterAttrs + ' title="Filter the page to this period">' : '<span>';
-                var close = filterAttrs ? '</a>' : '</span>';
-                // The single space after the label wrapper is REAL text, not
-                // CSS margin: without it, copied text and screen readers read
-                // "Today1,366 workers" as one fused token.
-                return '<div class="alt-nrow">' + open + '<span class="alt-nlabel">' + label + '</span>' + close + ' <span>' + body + '</span></div>';
-            };
-            // "events affecting N workers", never "layoffs with N people"
-            // (readers mistook event counts for people counts). Every number
-            // is scoped to the active tab's countries.
-            var wJ = w.jobs || 0, wE = w.entries || 0, wpJ = wp.jobs || 0;
-            var weekDelta = '';
-            if (wJ > 0 && wpJ > 0) {
-                var delta = Math.round(100 * (wJ - wpJ) / wpJ);
-                weekDelta = delta >= 0 ? ' · up ' + b(delta + '%') + ' vs the week before' : ' · down ' + b(Math.abs(delta) + '%') + ' vs the week before';
-            }
-            var rows = '';
-            var tdJ = td.jobs || 0, tdE = td.entries || 0;
-            var mJ = m.jobs || 0, mE = m.entries || 0;
-            var tdLead = ((r[4] || {}).leaders || [])[0];
-            // On the 1st of the month (or any day the month's figures are all
-            // today's), "This month" repeats "Today" verbatim, and repeated
-            // identical figures read as a bug. Collapse the two identical
-            // periods into ONE line rather than printing the same numbers twice.
-            var sameAsMonth = tdJ > 0 && tdJ === mJ && tdE === mE
-                && ((tdLead && tdLead.company_name) || '') === ((mLead && mLead.company_name) || '');
-            if (tdJ > 0) {
-                rows += row(sameAsMonth ? 'Today and this month' : 'Today',
-                    b(fmt(tdJ)) + ' workers · ' + b(fmt(tdE)) + ' verified layoff' + (tdE === 1 ? '' : 's') + largest(tdLead),
-                    'data-from="' + iso(now) + '" data-to="' + iso(now) + '"');
-            }
-            rows += row('This week', wJ > 0
-                ? b(fmt(wJ)) + ' workers · ' + b(fmt(wE)) + ' verified layoff' + (wE === 1 ? '' : 's') + largest(wLead) + weekDelta
-                : 'no verified job cuts reported yet',
-                'data-from="' + iso(d7) + '" data-to="' + iso(now) + '"');
-            if (!sameAsMonth) {
-                rows += row('This month', mJ > 0
-                    ? b(fmt(mJ)) + ' workers · ' + b(fmt(mE)) + ' verified layoff' + (mE === 1 ? '' : 's') + largest(mLead)
-                    : 'no verified job cuts reported yet',
-                    'data-from="' + y + '-' + pad2(now.getMonth() + 1) + '-01" data-to="' + iso(now) + '"');
-            }
-            // Most-affected roles appear only when the sources behind at least
-            // 20% of this scope's jobs name the teams cut — below that the
-            // sample is too thin to headline.
-            var rolesFrag = '';
-            var yRoles = r[0].top_roles || [];
-            if (tJ > 0 && ((t.roles_known_jobs || 0) / tJ) >= 0.2 && yRoles.length >= 2) {
-                rolesFrag = ' · roles hit hardest (where stated): ' + b(esc(yRoles[0][0])) + ' and ' + b(esc(yRoles[1][0]));
-            }
-            rows += row(y + ' so far', tJ > 0
-                ? b(fmt(tJ)) + ' workers · ' + b(fmt(tV)) + ' verified layoff' + (tV === 1 ? '' : 's') +
-                  ' (about ' + fmt(Math.round(tJ / daysElapsed)) + ' workers a day)' +
-                  (tAI ? ' · explicitly blamed on AI: ' + b(fmt(tAI)) : '') + rolesFrag + largest(yLead)
-                : 'no verified job cuts yet' + (ACTIVE_TAB !== 'world'
-                    ? ' · coverage for this region is still filling in; pick "All time" in the Years filter for earlier layoffs' : ''),
-                'data-years="' + y + '"');
-            // Post-sized rewrite for the copy button: X counts any URL as 23
-            // characters, and the weekly detail degrades in steps (full → no
-            // delta → no largest event) to stay under 280.
             var LINK = 'asktherecruiter.com/blog/ai-layoff-tracker/';
             var xLen = function (s2) { return s2.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
             var lead = 'AI layoffs, ' + today + ': ' + fmt(tJ) + ' workers across ' + fmt(tV) + ' verified layoff' + (tV === 1 ? '' : 's') +
@@ -3913,18 +3913,18 @@
                 var wkLead = (wLead && wLead.job_count)
                     ? wkBare.slice(0, -1) + ', largest at ' + wLead.company_name + ' (' + fmt(wLead.job_count) + (wkLoc ? ' · ' + wkLoc : '') + ').'
                     : '';
-                var wkFull = '';
-                if (wkLead && wpJ > 0) {
-                    var wd = Math.round(100 * (wJ - wpJ) / wpJ);
-                    wkFull = wkLead.slice(0, -1) + (wd >= 0 ? ', up ' + wd : ', down ' + Math.abs(wd)) + '% on last week.';
-                }
-                [wkFull, wkLead, wkBare].some(function (wk) {
+                [wkLead, wkBare].some(function (wk) {
                     if (wk && xLen(lead + wk + tail) <= 278) { post = lead + wk + tail; return true; }
                     return false;
                 });
             }
-            el.innerHTML = '<div class="alt-narrative-head"><span>Today, ' + b(today) + ' · verified layoffs ' + tab.label + '</span>' +
-                '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>' + rows;
+            el.innerHTML = '<div class="alt-narrative-head"><span>At a glance · verified layoffs ' + tab.label + ' · ' + b(today) + '</span>' +
+                '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>' +
+                '<div class="alt-sb" role="table" aria-label="Verified layoffs by period">' + head +
+                numRow('alt-sb-r-workers', 'Workers', 'jobs') +
+                numRow('alt-sb-r-events', 'Verified layoffs', 'entries') +
+                numRow('alt-sb-r-ai', 'Explicitly AI-attributed', 'ai_jobs') +
+                lRow + '</div>' + foot;
             var copyBtn = el.querySelector('.alt-narrative-copy');
             if (copyBtn) copyBtn.addEventListener('click', function () {
                 if (navigator.clipboard) navigator.clipboard.writeText(post).then(function () { copyBtn.textContent = 'Copied!'; setTimeout(function () { copyBtn.textContent = 'Copy as post'; }, 1500); });
@@ -3951,6 +3951,32 @@
                 refreshAll();
             };
         }).catch(function () { el.textContent = ''; });
+    }
+
+    // Hero plumbing: "Search the record" scrolls to and focuses the search
+    // box (the button still works as a plain #alt-search anchor without JS),
+    // and any in-page anchor whose target sits inside a closed <details>
+    // (e.g. the coverage ribbon's "How complete, measured") opens the chain
+    // of ancestors so the landing is visible, not swallowed.
+    function initHeroActions() {
+        var heroSearch = document.getElementById('alt-hero-search');
+        if (heroSearch) heroSearch.addEventListener('click', function (e) {
+            var s = document.getElementById('alt-search');
+            if (!s) return;
+            e.preventDefault();
+            s.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            s.focus({ preventScroll: true });
+        });
+        var openDetailsForHash = function () {
+            var id = (location.hash || '').slice(1);
+            var t = id ? document.getElementById(id) : null;
+            if (!t || !t.closest) return;
+            for (var d = t.closest('details'); d; d = d.parentElement ? d.parentElement.closest('details') : null) {
+                d.open = true;
+            }
+        };
+        window.addEventListener('hashchange', openDetailsForHash);
+        openDetailsForHash();
     }
 
     // "Which countries are in which tab?" — rendered from REGION_TABS itself
@@ -4493,7 +4519,8 @@
             initRangeControl();
             initTracker();            // builds the server-side table (reads restored filters)
             initChrome();             // search / sort / quick views / expanders
-            initTabs();               // region tabs + narrative (respects saved filters)
+            initTabs();               // region tabs + signal board (respects saved filters)
+            initHeroActions();        // hero "Search the record" focus + anchors inside <details>
             renderRegionDefs();       // on-page region → country documentation
             updateWorkedExample();    // live H1 figure in the methodology example
             updateActiveFilterBar();

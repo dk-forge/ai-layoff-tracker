@@ -6,6 +6,54 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-02 — the owner's shared design, layoff half: signal board, editorial hero, coverage ribbon, freshness panel, palette (2.19.253)
+
+Adopts the owner's shared design artifact (audience-spec ADDENDUM 2026-08-02):
+the complaint driving it was "too much text"; the answer is colored,
+tappable numbers where paragraphs stood.
+
+- **THE SIGNAL BOARD** evolves the daily strip in place (same `#alt-narrative`
+  container, same stage=verified aggregate plumbing, Copy-as-post kept): rows
+  Workers / Verified layoffs / Explicitly AI-attributed / Largest event x
+  columns Today / This week / This month / YTD. Heat is scaled WITHIN each
+  row; every numeric cell click-filters the page through the existing
+  `.alt-nfilter` + URL machinery (the hrefs are real `?from/to/years` URLs so
+  the cells work without JS); Largest-event cells link to the entry permalink
+  (new additive `permalink` key on the aggregate `leaders` block), falling
+  back to the company filter. One legend ("less/more"), ONE footnote. The
+  "Today and this month identical" collapse survives as equal-column styling
+  (`.alt-sb-eq`), not duplicate columns. Server-rendered numbers ride the
+  bootstrap payload's new `board` block, computed through the SAME cached
+  aggregate handler with `include=leaders` (totals + one leaders query per
+  period, 30-min transient shared with the JS repaint's own fetches); the JS
+  board consumes the boot block only when every period's params match
+  (takeBoot rule), so a timezone rollover falls back to a live fetch.
+- **EDITORIAL HERO**: serif thesis ("Every layoff here is verified. That is
+  the whole point."), the floor banner's trust sentence folded in, two
+  buttons (Search the record -> scrolls/focuses the search box, plain anchor
+  without JS; How we count -> methodology). The old floor banner and the
+  lead paragraph's scan-scope sentence are gone from the fold.
+- **FRESHNESS PANEL** top-right of the hero: hosts the existing Roo status
+  header ([alt_stats_bar] now yields on the page that renders [alt_tracker]
+  — shared markup via alt_render_status_header()), the cron-derived
+  next-update line (#alt-next-top moved here, still JS-refreshed to ET),
+  four big stats from the same bootstrap totals as the tiles, and the "No
+  figure appears unless its source states it" line.
+- **COVERAGE RIBBON**: "Covering <first record> to <today> · N countries ·
+  N US states" fully derived (alt_coverage_counts grew a `first` MIN-date,
+  isset-guarded against the pre-`first` transient) + Sources / How complete,
+  measured (anchors to the recall paragraph, now id=alt-recall-measured;
+  in-page anchors inside closed <details> now open the ancestor chain) /
+  Corrections / sibling-tracker links.
+- **PALETTE**: warm paper ground on the dashboard wrap, ink-navy headings and
+  board ticks, ochre reserved for emphasis figures (non-AI tile values,
+  freshness stats, citeline stat), muted blue heat cells. Semantic direction
+  colors and the interactive blue accent unchanged.
+- Above-the-fold words: 289 rendered before (162 server + ~105 JS strip +
+  header) -> 257 after, all server-rendered now (the no-JS reader gains the
+  board numbers the strip never gave them). Verified at 375px and 1280px
+  with zero horizontal overflow before push.
+
 ## 2026-08-02 — strip columns are width-aware (2.19.252)
 
 The 2.19.251 two-column strip row left a ~130px value column at 375px:

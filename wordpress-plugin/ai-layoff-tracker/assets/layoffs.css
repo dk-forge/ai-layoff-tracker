@@ -2137,3 +2137,139 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    same component, link semantics. */
 .alt-barrow-link { text-decoration: none; }
 .alt-barrow-link:hover { background: var(--alt-surface-2); }
+
+/* ===========================================================================
+   Owner's shared design, adopted 2026-08-02 (layoff half): editorial hero,
+   freshness panel, coverage ribbon, THE SIGNAL BOARD, and the shared palette
+   (warm paper ground, ink navy, one ochre for emphasis figures, muted blue
+   heat cells). Semantic direction colors and the interactive blue accent are
+   unchanged; the two trackers should read as siblings, not clones.
+   =========================================================================== */
+.alt-wrap, .alt-stats-bar {
+    --alt-navy: #1f2b3d;
+    --alt-ochre: #96660a;
+    --alt-paper: #faf9f6;
+}
+.alt-wrap.alt-dashboard {
+    background: var(--alt-paper);
+    border-radius: 14px;
+    padding: 14px;
+    box-sizing: border-box;
+}
+@media (max-width: 560px) { .alt-wrap.alt-dashboard { padding: 10px; border-radius: 10px; } }
+.alt-dashboard .alt-grid-h h2, .alt-narrative-head { color: var(--alt-navy); }
+/* Ochre carries the emphasis figures; the AI family tiles keep their own
+   semantic colors (blue verified / amber announced / red family). */
+.alt-stat-card:not(.alt-stat-card-ai) .alt-stat-value { color: var(--alt-ochre); }
+.alt-citeline-stat b { color: var(--alt-ochre); }
+
+/* Editorial hero + freshness panel */
+.alt-hero {
+    display: grid; gap: 14px 22px; align-items: start;
+    margin: 0 0 14px;
+}
+@media (min-width: 860px) { .alt-hero { grid-template-columns: minmax(0, 1fr) 330px; } }
+/* The theme centers paragraphs in this region; the hero is editorial and
+   reads left, like the board and tiles below it. */
+.alt-hero-main { min-width: 0; align-self: center; }
+.alt-hero-main p { text-align: left; }
+.alt-hero-thesis {
+    font-family: var(--alt-serif);
+    font-size: 31px; line-height: 1.16; letter-spacing: -0.01em;
+    font-weight: 700; color: var(--alt-navy);
+    margin: 2px 0 10px;
+}
+@media (max-width: 560px) { .alt-hero-thesis { font-size: 25px; } }
+.alt-hero-trust { margin: 0 0 14px; font-size: 14.5px; line-height: 1.55; color: var(--alt-ink-2); max-width: 56ch; }
+.alt-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.alt-hero-actions .alt-btn { text-decoration: none; }
+.alt-fresh {
+    background: var(--alt-surface); border: 1px solid var(--alt-border);
+    border-radius: 12px; padding: 12px 14px; box-shadow: var(--alt-shadow);
+    display: flex; flex-direction: column; gap: 8px; min-width: 0;
+    font-size: 12.5px; color: var(--alt-ink-2);
+}
+/* The Roo header keeps its own layout inside the panel, just tighter. */
+.alt-fresh .alt-header { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.alt-fresh .alt-header .alt-brand { flex-basis: 100%; }
+.alt-fresh-next { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--alt-ink); }
+.alt-fresh-stats {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px; padding: 8px 0 2px; border-top: 1px solid var(--alt-grid);
+}
+.alt-fresh-stat { display: flex; flex-direction: column; min-width: 0; }
+.alt-fresh-stat b {
+    font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--alt-ochre); font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.alt-fresh-stat i { font-style: normal; font-size: 11.5px; line-height: 1.35; color: var(--alt-ink-2); }
+.alt-fresh-check { font-size: 12px; color: #3c5a41; }
+
+/* Coverage ribbon: one derived line under the hero. */
+.alt-ribbon {
+    display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline;
+    margin: 0 0 10px; padding: 8px 12px;
+    border: 1px solid var(--alt-border); border-radius: 9px;
+    background: var(--alt-surface);
+    font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2);
+}
+.alt-ribbon b { color: var(--alt-ink); font-variant-numeric: tabular-nums; }
+.alt-ribbon-links a { color: var(--alt-blue-dark); text-decoration: none; }
+.alt-ribbon-links a:hover, .alt-ribbon-links a:focus-visible { text-decoration: underline; }
+
+/* THE SIGNAL BOARD. Lives inside .alt-narrative (the warm cream card the
+   strip already owned). Heat is an inline rgba computed per cell, scaled
+   within each row; color is never the only channel — every cell states its
+   number. Row identity is a colored left-edge tick on the label. */
+.alt-sb { display: grid; grid-template-columns: minmax(96px, 150px) repeat(4, minmax(0, 1fr)); gap: 4px; margin: 2px 0 6px; }
+.alt-sb-row { display: contents; }
+.alt-sb-label {
+    font-size: 12px; font-weight: 700; color: var(--alt-ink-2);
+    padding: 6px 6px 6px 8px; border-left: 3px solid transparent;
+    display: flex; align-items: center; line-height: 1.25; min-width: 0;
+}
+.alt-sb-headrow .alt-sb-col {
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--alt-ink-2); padding: 0 6px 2px; text-align: right; align-self: end;
+}
+.alt-sb-r-workers > .alt-sb-label { border-left-color: var(--alt-navy); }
+.alt-sb-r-events  > .alt-sb-label { border-left-color: var(--alt-blue); }
+.alt-sb-r-ai      > .alt-sb-label { border-left-color: var(--alt-red); }
+.alt-sb-r-largest > .alt-sb-label { border-left-color: var(--alt-ochre); }
+.alt-sb-cell {
+    display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+    gap: 1px; padding: 6px 8px; border-radius: 7px; min-width: 0;
+    font-variant-numeric: tabular-nums; text-align: right;
+    color: var(--alt-ink); text-decoration: none; border: 1px solid rgba(31, 43, 61, 0.08);
+}
+.alt-sb-cell b { font-weight: 800; font-size: 14.5px; color: var(--alt-ink); }
+a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: -1px; }
+.alt-sb-zero { color: var(--alt-muted); font-size: 12.5px; border-style: dashed; }
+.alt-sb-ev b { font-size: 12.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alt-sb-ev span { font-size: 11.5px; color: var(--alt-ink-2); }
+/* "Today and this month identical so far": equal-column styling, one shared
+   dotted underline instead of a duplicate column. */
+.alt-sb-eq { border-bottom: 2px dotted var(--alt-ochre); border-radius: 7px 7px 3px 3px; }
+.alt-sb-foot {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+    font-size: 11.5px; line-height: 1.45; color: var(--alt-ink-2);
+}
+.alt-sb-legend { white-space: nowrap; font-weight: 600; }
+.alt-sb-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin: 0 1px; vertical-align: -1px; border: 1px solid rgba(31,43,61,.08); }
+.alt-sb-legend .l1 { background: rgba(42,120,214,.08); }
+.alt-sb-legend .l2 { background: rgba(42,120,214,.20); }
+.alt-sb-legend .l3 { background: rgba(42,120,214,.34); }
+.alt-sb-note { flex: 1 1 240px; min-width: 0; }
+/* 375px: the label column becomes a full-width row above its four period
+   cells (periods stay side by side; numbers this size fit four across a
+   355px card). Nothing may bleed: cells shrink, never the page. */
+@media (max-width: 620px) {
+    .alt-sb { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .alt-sb-label { grid-column: 1 / -1; padding: 4px 2px 2px 8px; }
+    .alt-sb-headrow .alt-sb-label { display: none; }
+    .alt-sb-cell { padding: 5px 5px; }
+    .alt-sb-cell b { font-size: 12.5px; }
+    .alt-sb-ev b { font-size: 11px; }
+    .alt-sb-ev span { font-size: 10.5px; }
+    .alt-sb-headrow .alt-sb-col { padding: 0 5px 1px; }
+}
