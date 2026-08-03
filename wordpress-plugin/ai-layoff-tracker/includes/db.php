@@ -368,6 +368,38 @@ function alt_log_correction($action, $ids, $reason, $detail = '') {
 }
 
 /**
+ * Provenance of the corrections in the log, computed from the entries' own
+ * recorded text and nothing else. An entry counts as internally originated
+ * only when its stored action/reason/detail explicitly names an internal
+ * audit or automated check, and as externally originated only when it
+ * explicitly names an outside report. An entry matching neither (or,
+ * ambiguously, both) is counted UNRECORDED, never assigned a guessed origin.
+ * The log does not carry a structured origin field, so this is the computable
+ * share; the remainder is disclosed as unrecorded rather than split.
+ */
+function alt_corrections_provenance() {
+    $log = get_option('alt_corrections_log');
+    if (!is_array($log)) $log = array();
+    $internal_markers = array('automated', 'audit', 'dedup', 'backfill',
+        'reconciliation', 'legacy repair', 'duplicate cleanup', 'parser',
+        'self-audit', 'importer');
+    $external_markers = array('reader', 'contact page', 'reported to us',
+        'external report', 'user report', 'tip');
+    $out = array('entries' => count($log), 'internal' => 0, 'external' => 0, 'unrecorded' => 0);
+    foreach ($log as $e) {
+        if (!is_array($e)) { $out['unrecorded']++; continue; }
+        $text = strtolower(($e['action'] ?? '') . ' ' . ($e['reason'] ?? '') . ' ' . ($e['detail'] ?? ''));
+        $int = $ext = false;
+        foreach ($internal_markers as $m) { if (strpos($text, $m) !== false) { $int = true; break; } }
+        foreach ($external_markers as $m) { if (strpos($text, $m) !== false) { $ext = true; break; } }
+        if ($int && !$ext)      $out['internal']++;
+        elseif ($ext && !$int)  $out['external']++;
+        else                    $out['unrecorded']++;
+    }
+    return $out;
+}
+
+/**
  * One-time compaction of the EXISTING corrections log: merge already-stored
  * rows that share date+action+reason+detail (the historical wall of identical
  * "200 entries enriched" lines) into single accumulating entries, preserving
@@ -2567,6 +2599,143 @@ function alt_basis_table_html($country = 'United States', $year = null) {
     </table>
     </div>
     <p class="alt-muted">Figures update automatically as records are verified. Compare like with like: quoting our job-location headline against a survey that counts by employer will understate us by the difference above, and the reverse will overstate us.</p>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * Descriptive WARN notice-gap distribution, computed from the main table's own
+ * recorded dates and nothing else. For US WARN rows, announcement_date holds
+ * the state-recorded notice/received date and layoff_date the effective date
+ * (sources/warn.py sets announcement_date only when the notice date exists and
+ * does not postdate the effective date). The gap between them is how much
+ * advance notice the record shows.
+ *
+ * DESCRIPTIVE, NEVER A VERDICT. The federal WARN Act's 60-day period
+ * (29 U.S.C. 2102(a)) has lawful exceptions (29 U.S.C. 2102(b); 20 C.F.R.
+ * 639.9) that only a court may adjudicate (29 U.S.C. 2104), so a gap shorter
+ * than 60 days is reported as exactly that: shorter than 60 days. No figure
+ * here labels any employer non-compliant, and this function is unrelated to
+ * the separate editorial WARN transparency register.
+ *
+ * Rows missing either date, or whose effective date precedes the notice date,
+ * are EXCLUDED AND COUNTED, never imputed. Aggregated as a (state, gap)
+ * histogram so exact medians compute without loading every row; cached for 6
+ * hours keyed on the dataset version.
+ */
+function alt_warn_notice_gap_stats() {
+    global $wpdb;
+    $key = 'alt_notice_gap_' . md5((string) (int) get_option('alt_data_ver', 1));
+    $hit = get_transient($key);
+    if (is_array($hit)) return $hit;
+
+    $t = alt_db_table();
+    $scope = "source_type = 'warn' AND country = 'United States' AND state <> ''";
+    $hist = $wpdb->get_results(
+        "SELECT state, DATEDIFF(layoff_date, announcement_date) AS gap, COUNT(*) AS n
+         FROM $t
+         WHERE $scope AND announcement_date IS NOT NULL AND layoff_date IS NOT NULL
+           AND announcement_date <= layoff_date
+         GROUP BY state, gap", ARRAY_A) ?: array();
+    $missing = (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM $t
+         WHERE $scope AND (announcement_date IS NULL OR layoff_date IS NULL)");
+    $reversed = (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM $t
+         WHERE $scope AND announcement_date IS NOT NULL AND layoff_date IS NOT NULL
+           AND announcement_date > layoff_date");
+
+    $per_state = array();
+    $overall = array();
+    foreach ($hist as $h) {
+        $st = strtoupper((string) $h['state']);
+        $gap = (int) $h['gap'];
+        $n = (int) $h['n'];
+        if (!isset($per_state[$st])) $per_state[$st] = array();
+        $per_state[$st][$gap] = ($per_state[$st][$gap] ?? 0) + $n;
+        $overall[$gap] = ($overall[$gap] ?? 0) + $n;
+    }
+
+    // Exact median and share-under-60 from a gap=>count histogram.
+    $summarise = function ($h) {
+        ksort($h);
+        $n = array_sum($h);
+        if ($n < 1) return null;
+        $under = 0;
+        foreach ($h as $gap => $c) { if ($gap < 60) $under += $c; }
+        $lo_rank = (int) floor(($n + 1) / 2);   // 1-based middle (lower on even n)
+        $hi_rank = (int) ceil(($n + 1) / 2);
+        $lo = $hi = null;
+        $seen = 0;
+        foreach ($h as $gap => $c) {
+            $seen += $c;
+            if ($lo === null && $seen >= $lo_rank) $lo = $gap;
+            if ($hi === null && $seen >= $hi_rank) { $hi = $gap; break; }
+        }
+        return array(
+            'n'           => $n,
+            'median_days' => ($lo + $hi) / 2,
+            'under_60'    => $under,
+            'under_60_pct'=> $under / $n,
+        );
+    };
+
+    $states = array();
+    foreach ($per_state as $st => $h) {
+        $s = $summarise($h);
+        if ($s) $states[$st] = $s;
+    }
+    uasort($states, function ($a, $b) { return $b['n'] <=> $a['n']; });
+
+    $out = array(
+        'overall'  => $summarise($overall),
+        'states'   => $states,
+        'excluded' => array('missing_dates' => $missing, 'effective_precedes_notice' => $reversed),
+        'as_of'    => gmdate('c'),
+    );
+    set_transient($key, $out, 6 * HOUR_IN_SECONDS);
+    return $out;
+}
+
+/**
+ * Renders the notice-gap distribution for the methodology page. Every figure
+ * is computed by alt_warn_notice_gap_stats(); nothing is typed. States with
+ * fewer than 25 datable notices fold into the overall figures only, so no
+ * thin-sample median is presented as if it described a state.
+ */
+function alt_notice_gap_table_html() {
+    $s = alt_warn_notice_gap_stats();
+    if (!is_array($s) || empty($s['overall'])) return '';
+    $o = $s['overall'];
+    $floor = 25;
+    $pct = function ($x) { return number_format($x * 100, 1) . '%'; };
+    $days = function ($d) { return rtrim(rtrim(number_format((float) $d, 1), '0'), '.'); };
+    ob_start(); ?>
+    <p>Across <b><?php echo number_format((int) $o['n']); ?></b> US WARN notices that record both
+    an official notice date and an effective date, the median recorded notice period is
+    <b><?php echo esc_html($days($o['median_days'])); ?> days</b>, and
+    <b><?php echo esc_html($pct($o['under_60_pct'])); ?></b>
+    (<?php echo number_format((int) $o['under_60']); ?> notices) record a gap shorter than the
+    federal 60-day period. <?php echo number_format((int) $s['excluded']['missing_dates']); ?> notices
+    missing one of the two dates<?php if ((int) $s['excluded']['effective_precedes_notice'] > 0) : ?>,
+    and <?php echo number_format((int) $s['excluded']['effective_precedes_notice']); ?> whose recorded
+    effective date precedes the notice date,<?php endif; ?> are excluded and counted here, never guessed.</p>
+    <div class="alt-health-table-wrap">
+    <table class="alt-basis-table alt-notice-gap-table">
+      <thead><tr><th>State</th><th>Notices with both dates</th><th>Median days of notice</th><th>Share shorter than 60 days</th></tr></thead>
+      <tbody>
+      <?php foreach ($s['states'] as $st => $row) :
+          if ((int) $row['n'] < $floor) continue; ?>
+        <tr><th><?php echo esc_html($st); ?></th>
+            <td><?php echo number_format((int) $row['n']); ?></td>
+            <td><?php echo esc_html($days($row['median_days'])); ?></td>
+            <td><?php echo esc_html($pct($row['under_60_pct'])); ?></td></tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+    </div>
+    <p class="alt-muted">States with fewer than <?php echo (int) $floor; ?> datable notices are included
+    in the overall figures but not listed separately. Figures recompute automatically as notices arrive.</p>
     <?php
     return ob_get_clean();
 }

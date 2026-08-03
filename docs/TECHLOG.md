@@ -6,6 +6,54 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-03 - external-credibility batch: jurisdiction comparability, measured WARN notice gaps, an auditor's pack, and disclosure (2.19.256)
+
+Owner-approved batch from an external credibility review. Four pieces, all
+derived-not-typed:
+
+1. **Cross-jurisdiction comparability table** (`#m-jurisdictions` on the
+   methodology page). A reader comparing a Texas total with a France total is
+   comparing two legal definitions of "a record", and nothing said so.
+   `railway/generate_jurisdiction_table.py` derives a per-jurisdiction "what
+   qualifies here" table from the collectors' own configs: the covered WARN
+   jurisdictions parse from the three real state lists **via the AST, not a
+   regex** (a lazy regex died on `table[0]` inside a list comment and silently
+   dropped an entire state list, under-reporting coverage 48 -> 20 on the
+   first run); ERM's inclusion floor and 2002 history floor parse out of
+   erm_import.py's own docstring; the federal 60-day figure imports from
+   warn_transparency_evidence.STATUTORY_NOTICE_DAYS. Thresholds not encoded
+   in the repo (per-state mini-WARN, Quebec, Mazowieckie) print UNKNOWN,
+   never a guessed number. Drift-guarded by
+   `tests/test_jurisdiction_table.py` (committed partial must equal
+   regeneration, same pattern as the ingest schedule). Every country and
+   state facet page now carries a one-line "definitions differ by
+   jurisdiction" caveat linking to the section.
+2. **WARN notice periods, measured** (`#m-notice-gap`).
+   `alt_warn_notice_gap_stats()` computes the recorded notice gap
+   (announcement_date -> layoff_date on US WARN rows, the fields
+   sources/warn.py already stores) as a (state, gap) histogram: exact
+   medians and share-shorter-than-60-days per state and overall, missing or
+   reversed dates excluded AND counted, 6h transient keyed on alt_data_ver.
+   Copy is descriptive by construction: the statutory exceptions
+   (29 U.S.C. 2102(b); 20 C.F.R. 639.9) and court-only enforcement
+   (29 U.S.C. 2104) are stated beside the numbers, and a static guard test
+   bans verdict words ("violation", "non-compliant", ...) from the section.
+   Distinct from, and unrelated to, the editorial WARN transparency
+   register; states under 25 datable notices fold into overall only.
+3. **Auditor's pack**: `docs/AUDIT.md` indexes what already exists (gold set
+   + protocol, data_integrity invariants, monthly source-audit sampling,
+   corrections log, synthetic-snapshot SQL replay, drift-proof generated
+   claims) with exact offline commands, plus a stated "not independently
+   verifiable today" list. Linked from the methodology self-audit section.
+4. **Disclosure + corrections provenance**: a "Who runs this" methodology
+   section (prose flagged DRAFT FOR OWNER REVIEW in a PHP comment; the
+   business-practice sentences came from the owner's brief, nothing about
+   funding is claimed because nothing is derivable); and the corrections log
+   now opens with a computed origin line (`alt_corrections_provenance()`):
+   entries classify as internal-audit/automated or external-report ONLY on
+   explicit markers in their own stored text, ambiguous or markerless
+   entries count as unrecorded, never assigned.
+
 ## 2026-08-03 - the spend-ledger harvest never landed: read-only GITHUB_TOKEN, and a warning nobody read
 
 `railway/spend_jobs.json` stayed `{"entries": []}` on main for a day after

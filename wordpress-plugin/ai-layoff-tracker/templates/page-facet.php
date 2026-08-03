@@ -92,6 +92,13 @@ $alt_bd_titles = array(
         <a href="<?php echo esc_url($alt_f['tracker_url']); ?>">Open this filter in the full tracker</a>.
     </p>
 
+    <?php if ($alt_f['dim'] === 'country' || $alt_f['dim'] === 'state') : ?>
+        <p class="alt-facet-jurisdiction-note">Definitions differ by jurisdiction:
+        see <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/#m-jurisdictions')); ?>">what
+        qualifies as a record for <?php echo esc_html($alt_f['display']); ?></a> before comparing
+        this page&rsquo;s totals with another <?php echo esc_html($alt_meta['noun']); ?>&rsquo;s.</p>
+    <?php endif; ?>
+
     <?php foreach ($alt_f['breakdowns'] as $alt_bd => $alt_rows) : ?>
         <h2><?php echo esc_html($alt_bd_titles[$alt_bd]); ?></h2>
         <ul class="alt-facet-links">

@@ -22,8 +22,11 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <a href="#m-reasons">Reason tags</a> ·
     <a href="#m-roles">Roles most impacted</a> ·
     <a href="#m-coverage">Coverage &amp; limits</a> ·
+    <a href="#m-jurisdictions">What qualifies, by jurisdiction</a> ·
+    <a href="#m-notice-gap">WARN notice periods, measured</a> ·
     <a href="#m-differ">Why our totals differ</a> ·
     <a href="#m-audit">Self-audit</a> ·
+    <a href="#m-who">Who runs this</a> ·
     <a href="#m-use">Using the data</a>
   </nav>
 
@@ -78,6 +81,24 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <?php if (function_exists('alt_archive_coverage_line_html')) echo alt_archive_coverage_line_html(); ?>
   </section>
 
+  <section class="alt-method-sec" id="m-jurisdictions">
+    <h2>What qualifies as a record, by jurisdiction</h2>
+    <p>Filing regimes differ: a US state WARN notice, an SEC filing, a Eurofound ERM announcement and a press report are triggered by different laws and different thresholds, so what enters this tracker for one place is not the same thing as what enters it for another. The table below states, per jurisdiction, exactly which register we read and what its own rules admit. It is generated from the collectors&rsquo; own configuration, so it cannot drift from what actually runs; a threshold the source does not document is marked UNKNOWN rather than filled in.</p>
+    <?php
+    // GENERATED partial (railway/generate_jurisdiction_table.py): derived from
+    // the collectors' own state lists and documented thresholds, never typed.
+    $alt_jt = ALT_PLUGIN_DIR . 'templates/partials/jurisdiction-table.php';
+    if (is_readable($alt_jt)) include $alt_jt;
+    ?>
+  </section>
+
+  <section class="alt-method-sec" id="m-notice-gap">
+    <h2>WARN notice periods, measured</h2>
+    <p>The federal WARN Act (29 U.S.C. 2102(a)) requires covered employers to give 60 days&rsquo; written notice before a qualifying mass layoff or plant closing. Many state WARN records carry both the official notice date and the effective date, so the recorded notice period can be measured directly. The figures below are pure date arithmetic on those two recorded fields.</p>
+    <?php if (function_exists('alt_notice_gap_table_html')) echo alt_notice_gap_table_html(); ?>
+    <p><b>What a short gap does and does not mean.</b> The statute itself allows reduced notice under the faltering-company, unforeseeable-business-circumstances and natural-disaster exceptions (29 U.S.C. 2102(b); 20 C.F.R. 639.9), an employer may pay wages in place of part of the period, and only a court may decide whether an exception applies (29 U.S.C. 2104). A gap shorter than 60 days is therefore reported here as exactly that, a recorded gap shorter than 60 days: it is a timing observation, not a statement that any employer failed to comply with anything. Some states also run their own notice laws with longer periods; the comparison here is against the federal 60-day period only.</p>
+  </section>
+
   <section class="alt-method-sec" id="m-differ">
     <h2>Why our totals differ from other headline numbers</h2>
     <p>Three kinds of trackers measure three different things. Government statistics (BLS) count <em>every</em> separation in the economy, millions per month, with no event-level detail. Announcement surveys count corporate <em>intentions</em>: when a CEO announces "20,000 cuts over the next two years," the full 20,000 lands in their total that day, even though much of it may come through attrition, get scaled back, or never produce a single filing. This tracker counts only what has a <em>verifiable document or quoted primary source behind it</em>: the WARN notices and SEC filings that appear as those 20,000 cuts actually execute, plus reported cuts with a named-outlet source.</p>
@@ -96,6 +117,21 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <p class="alt-method-audit"><b>Latest audit result:</b> <?php echo esc_html($alt_audit['detail']); ?><?php if (!empty($alt_audit['checked_at'])) : ?> <span class="alt-muted">(checked <?php echo esc_html(gmdate('M j, Y', strtotime($alt_audit['checked_at']))); ?>)</span><?php endif; ?></p>
     <?php endif; ?>
     <p>Independent verification needs no permission: every row links to its source, and the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a> shows each collector's live status.</p>
+    <p><b>Audit this tracker.</b> An <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/docs/AUDIT.md" target="_blank" rel="noopener">auditor&rsquo;s pack</a> indexes everything an outside reviewer needs: the recall gold set and its protocol, the live data-integrity invariants, the monthly source-audit sampling, the corrections log, and the exact commands to re-run each measurement offline.</p>
+  </section>
+
+  <?php /* DRAFT FOR OWNER REVIEW (2026-08-03): the prose in this "Who runs
+       this" section is a draft written from facts already published on this
+       site and in the public repo (operator identity, CC BY 4.0 licensing,
+       corrections route). The business-practice statements (no paid
+       placement, no severance or outplacement services) were supplied in the
+       owner's brief for this section; the owner should confirm or reword
+       them before treating this section as final. Nothing here states
+       anything about funding, because nothing about funding is derivable
+       from the repo. */ ?>
+  <section class="alt-method-sec" id="m-who">
+    <h2>Who runs this</h2>
+    <p>This tracker is built and operated by <a href="https://asktherecruiter.com">AskTheRecruiter.com</a>. The data is free to use with attribution (CC BY 4.0); there is no paid tier for the dataset, no paid placement in it, and no way for an employer to pay to be added, removed or reworded. The operator does not sell severance or outplacement services to the companies that appear here. Corrections reach us through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and every accepted fix is disclosed in the public corrections log; the collection and checking code is public in the <a href="https://github.com/dk-forge/ai-layoff-tracker" target="_blank" rel="noopener">tracker&rsquo;s repository</a>.</p>
   </section>
 
   <section class="alt-method-sec" id="m-use">

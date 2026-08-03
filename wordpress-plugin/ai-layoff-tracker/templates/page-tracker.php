@@ -821,6 +821,19 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         <summary>Data notes &amp; corrections log</summary>
         <div class="alt-method-body">
             <p class="alt-corrections-framing">Corrections are dated and described here, newest first, and corrected rows carry <code>edited: true</code> in the API. Nothing is quietly edited. Each entry has its own anchor link, so a correction can be cited by URL.</p>
+            <?php
+            // Provenance is computed from the entries' own recorded text
+            // (alt_corrections_provenance): an entry with no explicit origin
+            // marker is reported as unrecorded, never assigned one.
+            $alt_prov = function_exists('alt_corrections_provenance') ? alt_corrections_provenance() : null;
+            if (is_array($alt_prov) && (int) $alt_prov['entries'] > 0) : ?>
+            <p class="alt-corrections-provenance">Origin, computed from the log entries themselves:
+            of the <?php echo number_format((int) $alt_prov['entries']); ?> machine-written entries below,
+            <?php echo number_format((int) $alt_prov['internal']); ?> name an internal audit or automated
+            check as the trigger, <?php echo number_format((int) $alt_prov['external']); ?> name an external
+            report, and <?php echo number_format((int) $alt_prov['unrecorded']); ?> do not record an origin
+            (counted as unrecorded, not assigned one).</p>
+            <?php endif; ?>
             <p>For reproducible monitoring, the machine-readable <a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality status endpoint</a> reports dataset revision, recent corrections, collector health, retained-source integrity and the status of each coverage workstream. Pending work is shown as pending, not silently treated as coverage.</p>
             <ul class="alt-corrections-scroll">
                 <?php
