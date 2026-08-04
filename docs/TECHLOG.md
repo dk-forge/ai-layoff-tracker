@@ -6,6 +6,76 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - the cost funnel reaches the Railway cron: per-source metering + a shadow gate (2.19.271, branch)
+
+The Railway cron is the one paid path the cost funnel was never ported to, and
+the one consumer nobody can attribute: it holds its own OpenRouter key, cannot
+commit, and its logs are unreadable from anywhere, so its burn is only ever
+computed by SUBTRACTING every other consumer from the account balance
+(latest subtraction: ~$0.556/day; the 2026-08-02 in-process measurement said
+~$0.17-0.44/day - the spread between those two numbers is exactly the
+instrumentation gap this change closes). Four changes, instrument-first:
+
+**1. Every cron run now writes an attributable, per-source record.**
+`spend.set_meter_context()` books each model call under the collector that
+produced the candidate (edgar / google_news / gdelt / press_releases);
+`cron.py` posts the run's ledger entry - exact charged cost, calls, items,
+stored, gate outcomes, per-source split - to the keyed `/tracker-meta`
+endpoint (`add_spend_run`, bounded to the last 240 runs); the daily balance
+job's `spend.py --harvest` reads those records back into the committed
+`railway/spend_jobs.json` (job id `railway-cron`, run_id
+`railway-YYYYMMDDTHHMM` so the two daily runs stay distinct); `ops_status
+[2a]` prints the per-source table ($, calls, items, stored, $/stored,
+gate kept/dropped). The "UNATTRIBUTED REMAINDER" line now names only the
+sibling tracker plus unharvested runs.
+
+**2. The meter is now the bill.** Every LLM call sends OpenRouter
+`usage: {include: true}` and `spend.record_usage()` prefers the returned
+`usage.cost` (the credits actually debited) over its price-table estimate,
+falling back to token pricing (over-pricing, the safe direction) when absent.
+Cached prompt tokens are counted and recorded. On prompt caching, no saving
+is claimed: the sibling verified (2026-07-29/30) that no OpenRouter endpoint
+serving `deepseek/deepseek-chat` publishes a cache-read price, so the static
+SYSTEM_PROMPT bills at the full input rate and "cache the preamble" is worth
+exactly $0 here until the model slug changes.
+
+**3. A cheap pre-extraction gate, shipped in SHADOW mode.** Most candidates
+are not layoff events and each reject paid a full extraction (~1,400-token
+system prompt + 3,000-char body + 1,000 max output, ~$0.0008-0.0011/call).
+`extractor.gate_verdict()` asks a one-word YES/NO on
+`google/gemini-2.5-flash-lite` (the sibling's production gate; ~$0.00003/call
+measured there, ~1/25 of an extraction) over the first 1,000 chars, any
+language, uncertain=YES. Three verdicts: NO is a judgement, ERROR (outage,
+empty reply, spend ceiling) is NOT and always falls through to extraction -
+fail open, a gate fault can only cost money, never coverage. Gate rejects are
+never marked seen, so a wrong NO is re-judged next run. **Default
+ALT_GATE_MODE=shadow**: verdicts are recorded (and a NO that extraction turns
+into a stored row prints a loud GATE FALSE DROP warning and lands in the run
+record) but nothing is dropped - because a FREE vocabulary gate measured here
+rejected 44% of live candidates including "Zillow lays off 7% of its
+workforce", this gate earns `live` with its own recorded false-drop evidence,
+not by analogy. Flip: set `ALT_GATE_MODE=live` on the Railway service once
+the shadow record shows an acceptable false-drop rate (the owner's call;
+shadow costs ~+2%/run, live is ESTIMATED to cut the cron 55-70% at a 30-40%
+keep rate - an estimate labelled as such until the shadow data prices it).
+
+**4. Dead prompt context, found and fixed where it actually was.** The
+extraction call's SYSTEM_PROMPT is live context (it defines the output
+contract) and was left alone. The dead instance was `classify_ai_evidence()`
+sending that same ~1,400-token extraction preamble to a narrow task carrying
+its full spec in its own prompt - ~80% wasted input on every call of the
+daily ai-evidence-sweep. It now uses MINI_SYSTEM (model unchanged: MODEL,
+because AI-causation is correctness-critical).
+
+Earned cadence was NOT extended to the cron's collectors: every one of them
+is a discovery source, and e47083d's rule stands - slowing discovery is a
+coverage decision that belongs to the owner, not to a module. The per-source
+$/stored-row table is what would make such a proposal a measured one.
+Cross-outlet corroboration is untouched: a second outlet on the same event
+still pays a full extraction by design; the gate keeps real layoff stories.
+Tests: `railway/tests/test_cost_funnel.py`, 25 tests, 24 verified failing on
+the pre-fix tree (the 25th pins fallback pricing, a must-not-change).
+
 ## 2026-08-04 - four of five red invariants were the CHECKER, not the page (2.19.270)
 
 `Live data-integrity check` went red on main with five failures. Measured

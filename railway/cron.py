@@ -13,10 +13,27 @@ from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
 from sources.press_releases import pull_press_releases, reviewed_feed_count
+import extractor
 from extractor import extract_layoff_data, spend_deferral_count
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 import spend
+
+# Pre-extraction gate mode (cost-funnel port; see extractor.gate_verdict):
+#   off    - no gate calls at all (pre-funnel behaviour)
+#   shadow - the gate runs and its verdicts are RECORDED, but EVERYTHING is
+#            still extracted, so a would-be false drop shows up as a stored
+#            row beside a NO verdict (printed loudly + counted in the run
+#            record). Costs slightly MORE than off (~+2%/run) and saves
+#            nothing yet: it exists to MEASURE the gate's false-drop rate on
+#            this tracker's own candidates before any coverage is at stake.
+#   live   - a NO verdict skips extraction. ERROR always extracts (fail open).
+# Default is shadow, deliberately: a prior session measured a free vocabulary
+# gate at 44% false rejects and refused to ship it, so this gate earns "live"
+# with its own recorded evidence. Flipping is one Railway env var, no deploy.
+GATE_MODE = (os.environ.get("ALT_GATE_MODE", "shadow") or "").strip().lower()
+if GATE_MODE not in ("off", "shadow", "live"):
+    GATE_MODE = "shadow"
 
 
 def _mark_phase(phase):
@@ -33,6 +50,38 @@ def _mark_phase(phase):
                       timeout=20)
     except Exception as e:
         print(f"phase ping failed: {e}")
+
+
+def _post_spend_record(entry):
+    """Persist this run's spend record to the keyed /tracker-meta endpoint.
+
+    Railway can neither commit nor be log-harvested, so without this POST the
+    run's exact metered cost exists only in a log nobody collects and the
+    account-level 'UNATTRIBUTED REMAINDER' stays permanently fat. Best-effort
+    and loud: a failed POST costs one run of attribution (it stays inside the
+    remainder, which is itself reported), never the ingest.
+    """
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        print("spend: run record NOT persisted (WP_SITE_URL/WP_API_KEY unset) - "
+              "this run stays in the unattributed remainder")
+        return
+    try:
+        resp = requests.post(
+            f"{site}/wp-json/layoffs/v1/tracker-meta",
+            json={"add_spend_run": entry},
+            headers={"X-Layoff-API-Key": key,
+                     "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"},
+            timeout=30)
+        if resp.status_code == 200:
+            print(f"spend: run record persisted to /tracker-meta ({entry.get('run_id')})")
+        else:
+            print(f"spend: run record POST got HTTP {resp.status_code} - this run "
+                  f"stays in the unattributed remainder")
+    except Exception as e:
+        print(f"spend: run record POST failed ({e}) - this run stays in the "
+              f"unattributed remainder")
 
 
 def _cvm_probe_newest(year):
@@ -169,6 +218,10 @@ def run():
         try:
             report_source_health(source, "running", 0, "collection in progress")
             pulled = collector()
+            for e in pulled:
+                # Attribution tag for the spend meter: which collector this
+                # candidate came from, so the run record can price each source.
+                e.setdefault("_collector", source)
             entries += pulled
             if source == "press_releases":
                 configured = reviewed_feed_count()
@@ -216,6 +269,8 @@ def run():
         now = datetime.now(timezone.utc)
         report_source_health("gdelt", "running", 0, "collection in progress")
         pulled = pull_gdelt_between(now - timedelta(hours=36), now)
+        for e in pulled:
+            e.setdefault("_collector", "gdelt")
         entries += pulled
         report_source_health("gdelt", "ok", len(pulled))
     except Exception as e:
@@ -247,14 +302,40 @@ def run():
 
     results = []
     posted = skipped_dupes = skipped_not_layoff = failed = 0
+    gate_dropped = gate_false_drops = 0
+    per_source = {}
 
     for raw in entries:
+        tag = raw.get("_collector") or raw.get("source_type") or "unknown"
+        stats = per_source.setdefault(tag, {"items": 0, "stored": 0})
+        stats["items"] += 1
+        spend.set_meter_context(tag)
         try:
+            # Cheap pre-extraction gate (see GATE_MODE above). ERROR is a
+            # non-judgement and always falls through to extraction.
+            verdict = None
+            if GATE_MODE in ("shadow", "live"):
+                verdict = extractor.gate_verdict(raw)
+                if verdict != extractor.GATE_ERROR:
+                    spend.record_gate_outcome(verdict != extractor.GATE_NO)
+                if verdict == extractor.GATE_NO and GATE_MODE == "live":
+                    gate_dropped += 1
+                    continue
+
             # DeepSeek extracts structured data
             extracted = extract_layoff_data(raw)
             if not extracted:
                 skipped_not_layoff += 1
                 continue
+            if verdict == extractor.GATE_NO:
+                # Shadow mode's whole purpose: the gate would have dropped a
+                # candidate the extractor turned into a real record. Loud,
+                # counted, and in the committed run record - this is the
+                # false-drop evidence the live/shadow decision rests on.
+                gate_false_drops += 1
+                print(f"::warning::GATE FALSE DROP (shadow, not enforced): gate said NO "
+                      f"but extraction produced {extracted['company_name']} "
+                      f"({extracted['job_count']}) - {raw.get('source_url')}")
 
             # Always let WordPress perform authoritative deduplication. A 409
             # now retains this article as a corroborating source report on the
@@ -262,6 +343,7 @@ def run():
             status = post_to_wordpress(extracted)
             if status == "posted":
                 posted += 1
+                stats["stored"] += 1
             elif status == "duplicate":
                 skipped_dupes += 1
             else:
@@ -270,19 +352,37 @@ def run():
         except Exception as e:
             failed += 1
             print(f"Unexpected error processing entry {raw.get('source_url')}: {e}")
+    spend.set_meter_context(None)
+    for tag, s in per_source.items():
+        spend.annotate_tag(tag, items=s["items"], stored=s["stored"])
 
     print(
         f"Run complete: {len(entries)} pulled, {posted} posted, "
         f"{skipped_dupes} duplicates skipped, {skipped_not_layoff} non-events skipped, "
         f"{failed} failed"
+        + (f", {gate_dropped} gate-dropped" if GATE_MODE == "live" else "")
+        + (f", gate would drop {gate_false_drops} stored row(s) - DO NOT go live"
+           if gate_false_drops else "")
     )
     # What did that cost, and did it buy anything? Before this line the question
     # was unanswerable from a run's own output — the only cost signal in the repo
     # was a daily account balance that could not attribute a cent to a run.
     print(spend.run_summary(rows_stored=posted))
-    # Railway has no GITHUB_WORKFLOW_REF and cannot commit, so this entry is
-    # print-only there; it still names the run in the log with exact cost.
-    spend.record_job_run(items=len(entries), stored=posted, job="railway-cron")
+    # The run's spend record, WITH a per-collector breakdown (spend books each
+    # call under the _collector tag set above). Railway has no
+    # GITHUB_WORKFLOW_REF and cannot commit, so the printed ledger line is
+    # unreadable from anywhere - which is why the record is ALSO posted to the
+    # keyed /tracker-meta endpoint below, where the daily balance job's
+    # `spend.py --harvest` collects it into the committed railway/spend_jobs.json
+    # and ops_status [2a] prices this cron per source per run. The run_id makes
+    # the twice-daily runs distinct and the POST idempotent.
+    run_id = "railway-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M")
+    ledger_entry = spend.record_job_run(items=len(entries), stored=posted,
+                                        job="railway-cron", run_id=run_id)
+    ledger_entry["gate_mode"] = GATE_MODE
+    if gate_false_drops:
+        ledger_entry["gate_false_drops"] = gate_false_drops
+    _post_spend_record(ledger_entry)
     deferred = spend_deferral_count()
     if deferred:
         # Loud in the log, deliberately NOT a row on the health ledger: the

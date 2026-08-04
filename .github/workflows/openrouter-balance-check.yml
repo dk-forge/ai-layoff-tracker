@@ -74,6 +74,13 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
+          # The Railway cron cannot commit or be log-harvested, so it posts
+          # each run's metered spend to the keyed /tracker-meta endpoint;
+          # --harvest reads those records back into the same committed ledger
+          # (job id railway-cron). Without these two, the railway rows are
+          # reported UNKNOWN for the day, never silently skipped.
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
         run: python railway/spend.py --harvest
 
       # The runway alert is only as good as its history, and a workflow that

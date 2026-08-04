@@ -174,6 +174,108 @@ Response format:
 MINI_SYSTEM = ("You are a precise data-classification assistant. Follow the "
                "instructions exactly and return only strict JSON, no preamble.")
 
+# Ask OpenRouter to return the CHARGED cost on every response (`usage.cost`,
+# plus cached-token detail). spend.record_usage() prefers that figure over its
+# own price-table estimate, so the meter IS the bill instead of arithmetic
+# beside it. NOTE on prompt caching, so nobody claims a saving that does not
+# exist: the sibling tracker verified (2026-07-29/30, against OpenRouter's
+# endpoints API) that NO endpoint serving deepseek/deepseek-chat publishes a
+# cache-read price, so the static SYSTEM_PROMPT (~62% of a typical extraction
+# prompt) is billed at the full input rate every call and a "cached system
+# prompt" saving here is exactly $0. The SYSTEM_PROMPT is live context for the
+# extraction call (it defines the output contract); the dead-context instance
+# in this module was classify_ai_evidence sending it to a task with its own
+# spec, fixed below. If MODEL is ever pointed at a slug that does price cache
+# reads, the charged figure makes the saving visible without another change.
+USAGE_ACCOUNTING = {"usage": {"include": True}}
+
+# ---------------------------------------------------------------------------
+# The pre-extraction gate (cost-funnel port from the sibling tracker).
+#
+# Most candidates the cron pulls are NOT layoff events (typically well over
+# half are discarded by the extractor), and every one of those rejects used to
+# pay a FULL extraction: ~1,400-token system prompt + up to 3,000 chars of
+# body + up to 1,000 output tokens (~$0.0008/call at DeepSeek list). The gate
+# asks a far smaller question - "could this be a workforce-reduction event?" -
+# with a ~150-token prompt and a ONE-WORD answer on a cheaper model, so a
+# reject costs ~$0.00003 (sibling's measured figure for the same model and
+# shape), about 1/25 of an extraction.
+#
+# WHY A MODEL AND NOT A VOCABULARY: a free keyword gate was measured here on
+# 150 live Google News candidates (2026-08) and rejected 44% of them,
+# including "Zillow lays off 7% of its workforce" (the list had "layoffs" but
+# not "lays off") and non-English headlines. A vocabulary can only match the
+# phrasings someone remembered to list; the gate must read any language and
+# any euphemism, which is exactly what the collectors are built to surface.
+#
+# THE RULES, all load-bearing:
+#   * Three verdicts, not two. NO is a judgement; ERROR is an outage or a
+#     parse failure and is NEVER treated as a judgement - it fails OPEN to
+#     extraction, so a provider blip can only cost money, never coverage.
+#   * Uncertain -> YES, by prompt. The gate exists to drop the obvious
+#     non-events, not to adjudicate the close calls.
+#   * Gate rejects are NOT marked seen. The seen-URL store only ever holds
+#     URLs the site itself retains, so a wrong NO today is re-pulled and
+#     re-judged tomorrow; a systematic gate fault self-surfaces instead of
+#     permanently burying its own mistakes.
+#   * The default model mirrors the sibling's production gate. Override with
+#     OPENROUTER_GATE_MODEL; set it to MODEL's value to gate on the extractor
+#     model (still ~1/10 the cost, from prompt size alone).
+# ---------------------------------------------------------------------------
+GATE_MODEL = os.environ.get("OPENROUTER_GATE_MODEL", "google/gemini-2.5-flash-lite")
+GATE_CHARS = int(os.environ.get("ALT_GATE_CHARS", "1000"))
+
+GATE_YES, GATE_NO, GATE_ERROR = "YES", "NO", "ERROR"
+
+GATE_SYSTEM = (
+    "You decide whether a text could be reporting an actual workforce "
+    "reduction by ONE NAMED employer: layoffs, job cuts, redundancies, a "
+    "reduction in force, mass dismissal, buyouts or early-retirement "
+    "programs, a plant, store, office or site closure with job losses, or a "
+    "company filing that discusses exit or disposal costs, severance, or "
+    "restructuring affecting employees - in ANY language. Answer YES when it "
+    "plausibly is, and YES whenever you are unsure. Answer NO only when the "
+    "text is clearly not about an actual workforce reduction event: hiring "
+    "or expansion news, opinion or advice pieces, market roundups or "
+    "statistics with no named employer, product, earnings or stock coverage "
+    "with no job cuts, or AI-strategy stories with no job cuts. Reply with "
+    "exactly one word: YES or NO."
+)
+
+
+def gate_verdict(raw_entry):
+    """One cheap call: could this candidate be a layoff event? YES/NO/ERROR.
+
+    ERROR means "the gate could not judge" (outage, empty reply, spend
+    ceiling) and callers MUST treat it as a keep - folding it into NO would
+    let a provider outage read as a quiet news day, the exact failure the
+    sibling measured at 4,849 of 5,656 calls once. Never raises.
+    """
+    text = (raw_entry.get("raw_text") or "").strip()
+    if not text:
+        return GATE_NO  # extract_layoff_data returns None for these anyway
+    if not spend.paid_reads_enabled():
+        return GATE_ERROR  # not judged; extraction will defer and say so
+    outlet = raw_entry.get("source_name") or raw_entry.get("source_type") or ""
+    try:
+        response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
+            model=GATE_MODEL, max_tokens=4, temperature=0,
+            messages=[{"role": "system", "content": GATE_SYSTEM},
+                      {"role": "user",
+                       "content": f"Published by: {outlet}\n\n{text[:GATE_CHARS]}"}],
+        )
+        spend.record_usage(GATE_MODEL, getattr(response, "usage", None))
+        content = ""
+        if response.choices and response.choices[0].message:
+            content = response.choices[0].message.content or ""
+    except Exception as exc:
+        print(f"gate error (fails open to extraction): {exc}")
+        return GATE_ERROR
+    if not content.strip():
+        return GATE_ERROR
+    return GATE_NO if "NO" in content.upper() and "YES" not in content.upper() else GATE_YES
+
 _client = None
 
 
@@ -458,9 +560,16 @@ exact quote from the supplied text.
 
 TEXT:\n""" + raw_text
     try:
+        # MODEL (never CLASSIFY_MODEL): AI-causation is correctness-critical.
+        # But MINI_SYSTEM, not SYSTEM_PROMPT: this narrow call carries its
+        # full spec in its own prompt, and the ~1,400-token extraction
+        # preamble it used to send described a different task (full-record
+        # JSON with fields this call must not return) — dead context on every
+        # call of the daily ai-evidence-sweep.
         response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
             model=MODEL, max_tokens=250,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+            messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
         spend.record_usage(MODEL, getattr(response, "usage", None))
         content = response.choices[0].message.content if response.choices else ""
@@ -506,6 +615,7 @@ any unsupported field. Evidence phrases must be copied exactly from TEXT.
 TEXT:\n""" + raw_text
     try:
         response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=350,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
@@ -575,6 +685,7 @@ TEXT:\n""" + raw_text
     _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=200,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
@@ -651,6 +762,7 @@ def classify_industry(company, raw_text):
     _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=40,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
@@ -713,6 +825,7 @@ TEXT:\n""" + raw_text
     _precheck_credits()
     try:
         response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
         )
@@ -797,6 +910,7 @@ TEXT:
 
     try:
         response = _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
             model=MODEL,
             max_tokens=1000,
             messages=[
