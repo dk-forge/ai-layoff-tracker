@@ -4215,6 +4215,57 @@ function alt_api_tracker_meta(WP_REST_Request $r) {
         $meta['ind_history'][] = $pt;
         $meta['ind_history'] = array_slice($meta['ind_history'], -180);
     }
+    // Per-run spend records from the Railway cron. Railway can neither commit
+    // nor be log-harvested, so cron.py posts each run's metered cost (with a
+    // per-collector breakdown) here, and spend.py --harvest in the daily
+    // balance job reads them back into the committed railway/spend_jobs.json.
+    // Whitelisted scalar fields + a bounded numeric 'sources' map; keyed by
+    // run_id so a re-post replaces rather than duplicates. Last 240 runs
+    // (~4 months at 2/day) — a ledger, not an archive.
+    if (!isset($meta['spend_runs']) || !is_array($meta['spend_runs'])) {
+        $meta['spend_runs'] = array();
+    }
+    if (!empty($body['add_spend_run']) && is_array($body['add_spend_run'])) {
+        $in  = $body['add_spend_run'];
+        $rec = array(
+            'job'    => sanitize_text_field((string) ($in['job'] ?? 'railway-cron')),
+            'date'   => sanitize_text_field((string) ($in['date'] ?? gmdate('Y-m-d'))),
+            'run_id' => sanitize_text_field((string) ($in['run_id'] ?? '')),
+            'cost_usd' => round((float) ($in['cost_usd'] ?? 0), 6),
+            'calls'  => (int) ($in['calls'] ?? 0),
+            'prompt_tokens'     => (int) ($in['prompt_tokens'] ?? 0),
+            'completion_tokens' => (int) ($in['completion_tokens'] ?? 0),
+        );
+        foreach (array('cached_prompt_tokens', 'items', 'stored', 'changed',
+                       'gate_false_drops') as $k) {
+            if (isset($in[$k]) && is_numeric($in[$k])) $rec[$k] = (int) $in[$k];
+        }
+        if (!empty($in['gate_mode'])) {
+            $rec['gate_mode'] = sanitize_text_field((string) $in['gate_mode']);
+        }
+        if ($rec['run_id'] === '') $rec['run_id'] = $rec['date'] . 'T' . gmdate('Hi');
+        if (!empty($in['sources']) && is_array($in['sources'])) {
+            $sources = array();
+            foreach (array_slice($in['sources'], 0, 20, true) as $name => $s) {
+                if (!is_array($s)) continue;
+                $row = array(
+                    'cost_usd' => round((float) ($s['cost_usd'] ?? 0), 6),
+                    'calls'    => (int) ($s['calls'] ?? 0),
+                    'kept'     => (int) ($s['kept'] ?? 0),
+                    'dropped'  => (int) ($s['dropped'] ?? 0),
+                );
+                foreach (array('items', 'stored') as $sk) {
+                    if (isset($s[$sk]) && is_numeric($s[$sk])) $row[$sk] = (int) $s[$sk];
+                }
+                $sources[sanitize_text_field((string) $name)] = $row;
+            }
+            if ($sources) $rec['sources'] = $sources;
+        }
+        $meta['spend_runs'] = array_values(array_filter($meta['spend_runs'],
+            function ($p) use ($rec) { return ($p['run_id'] ?? '') !== $rec['run_id']; }));
+        $meta['spend_runs'][] = $rec;
+        $meta['spend_runs'] = array_slice($meta['spend_runs'], -240);
+    }
     update_option('alt_tracker_meta', $meta, false);
     return rest_ensure_response($meta);
 }

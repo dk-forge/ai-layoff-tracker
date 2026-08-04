@@ -334,6 +334,33 @@ def _report_run_cost():
                         f"{job} spent ${worst:.3f} in one run, past its "
                         f"${ceiling:.3f} named ceiling — the per-job brake is "
                         f"not holding")
+            # Per-collector split, for entries that carry one (the Railway
+            # cron posts its breakdown via /tracker-meta). This is the table
+            # that replaces attributing the cron's burn by subtraction.
+            src_totals = {}
+            for e in recent:
+                for name, s in (e.get("sources") or {}).items():
+                    if not isinstance(s, dict):
+                        continue
+                    agg = src_totals.setdefault(name, {
+                        "cost": 0.0, "calls": 0, "items": 0, "stored": 0,
+                        "kept": 0, "dropped": 0})
+                    agg["cost"] += float(s.get("cost_usd") or 0)
+                    for k in ("calls", "items", "stored", "kept", "dropped"):
+                        agg[k] += int(s.get(k) or 0)
+            if src_totals:
+                print(f"    per-source (entries carrying a breakdown, last "
+                      f"{window_days}d; gate kept/dropped incl. shadow verdicts):")
+                print(f"      {'source':22} {'$':>8} {'calls':>6} {'items':>6} "
+                      f"{'stored':>6} {'$/stored':>9} {'gate k/d':>9}")
+                for name in sorted(src_totals, key=lambda n: -src_totals[n]["cost"]):
+                    a = src_totals[name]
+                    per_stored = (f"${a['cost'] / a['stored']:.4f}"
+                                  if a["stored"] else
+                                  ("bought 0" if a["cost"] > 0 else "-"))
+                    print(f"      {name:22} {a['cost']:>8.4f} {a['calls']:>6} "
+                          f"{a['items']:>6} {a['stored']:>6} {per_stored:>9} "
+                          f"{a['kept']:>4}/{a['dropped']}")
 
     # --- is the guard armed at all? ---
     snap_path = os.path.join(here, "spend_month.json")

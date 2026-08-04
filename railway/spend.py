@@ -203,6 +203,10 @@ LEDGER_KEEP_DAYS = 60
 # early), so the fallback is deliberately not rounded down.
 FALLBACK_PRICES = {
     "deepseek/deepseek-chat": (0.0000002574, 0.0000010287),
+    # The pre-extraction gate's default model (extractor.GATE_MODEL). Price
+    # from the sibling tracker's committed OpenRouter snapshot ($0.10/M in,
+    # $0.40/M out); the live /models fetch overrides this whenever reachable.
+    "google/gemini-2.5-flash-lite": (0.0000001, 0.0000004),
 }
 _DEFAULT_PRICE = (0.0000010, 0.0000030)  # unknown model: assume dearer than DeepSeek
 
@@ -210,8 +214,52 @@ _price_cache: dict[str, tuple[float, float]] = {}
 _prices_fetched = False
 
 # The current process's exact meter.
-_run = {"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
+_run = {"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
+        "completion_tokens": 0, "cached_prompt_tokens": 0}
 _run_ceiling_tripped = False
+
+# Per-source attribution for the meter. cron.py (and any batch caller) names
+# the collector whose candidate is about to be extracted; record_usage() then
+# books each call under that name as well as into the run total. Before this
+# existed, the Railway cron's spend was ONE number per run, so "which source
+# is the money going to" was unanswerable — the 2026-08 measurement had to
+# attribute ~$0.5/day by subtracting every OTHER consumer from a balance.
+_meter_tag = None
+_by_tag: dict[str, dict] = {}
+
+
+def set_meter_context(tag: str | None) -> None:
+    """Attribute subsequent record_usage() calls to `tag` (a collector name,
+    e.g. 'gdelt'). None clears the context; untagged calls book under
+    'untagged' so the breakdown always sums to the run total."""
+    global _meter_tag
+    _meter_tag = (tag or "").strip() or None
+
+
+def run_breakdown() -> dict[str, dict]:
+    """{tag: {cost_usd, calls, kept, dropped}} for this process. The kept/
+    dropped counts are gate outcomes booked via record_gate_outcome()."""
+    return {t: dict(v) for t, v in _by_tag.items()}
+
+
+def _tag_bucket(tag: str) -> dict:
+    return _by_tag.setdefault(tag, {"cost_usd": 0.0, "calls": 0,
+                                    "kept": 0, "dropped": 0})
+
+
+def record_gate_outcome(kept: bool, tag: str | None = None) -> None:
+    """Count a gate keep/drop under the active (or given) source tag."""
+    bucket = _tag_bucket(tag or _meter_tag or "untagged")
+    bucket["kept" if kept else "dropped"] += 1
+
+
+def annotate_tag(tag: str, **counts) -> None:
+    """Attach integer counts (items=, stored=, ...) to a source tag so the
+    per-run record can say what each collector's spend bought."""
+    bucket = _tag_bucket(tag)
+    for k, v in counts.items():
+        if v is not None:
+            bucket[k] = int(v)
 
 
 def _get_json(url: str, api_key: str | None = None, timeout: int = 30):
@@ -274,17 +322,47 @@ def record_usage(model, usage) -> float:
             # the parsed JSON, not an SDK object. Same charged counts.
             prompt_tokens = int(usage.get("prompt_tokens") or 0)
             completion_tokens = int(usage.get("completion_tokens") or 0)
+            charged = usage.get("cost")
+            details = usage.get("prompt_tokens_details") or {}
+            cached = details.get("cached_tokens") if isinstance(details, dict) else 0
         else:
             prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
             completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+            charged = getattr(usage, "cost", None)
+            details = getattr(usage, "prompt_tokens_details", None)
+            cached = getattr(details, "cached_tokens", 0) if details is not None else 0
     except (TypeError, ValueError, AttributeError):
         return 0.0
-    p_rate, c_rate = price_for(model)
-    cost = prompt_tokens * p_rate + completion_tokens * c_rate
+    try:
+        cached = int(cached or 0)
+    except (TypeError, ValueError):
+        cached = 0
+    # Prefer the CHARGED figure when the response carries one. Callers that
+    # send OpenRouter `usage: {include: true}` get `usage.cost` back — the
+    # credits actually debited, provider discounts and prompt-cache hits
+    # included — which the local price table can only approximate (it prices
+    # every prompt token at the full input rate, so a provider-cached static
+    # preamble is over-billed by the meter while the account is billed less).
+    # A meter that can read the bill must not estimate it. The fallback stays
+    # the token-price product: over-pricing is the safe direction to be wrong,
+    # so a response without `cost` can trip the guard early, never late.
+    cost = None
+    try:
+        if charged is not None and float(charged) >= 0:
+            cost = float(charged)
+    except (TypeError, ValueError):
+        cost = None
+    if cost is None:
+        p_rate, c_rate = price_for(model)
+        cost = prompt_tokens * p_rate + completion_tokens * c_rate
     _run["cost_usd"] += cost
     _run["calls"] += 1
     _run["prompt_tokens"] += prompt_tokens
     _run["completion_tokens"] += completion_tokens
+    _run["cached_prompt_tokens"] += cached
+    bucket = _tag_bucket(_meter_tag or "untagged")
+    bucket["cost_usd"] += cost
+    bucket["calls"] += 1
     # So a retry of this same logical run starts from what it has already spent
     # instead of from zero. See _run_state_path().
     _persist_run_cost()
@@ -348,11 +426,13 @@ def paid_reads_enabled() -> bool:
 
 def reset_run_meter() -> None:
     """Test-only: clear the process meter."""
-    global _run_ceiling_tripped, _carried_usd
+    global _run_ceiling_tripped, _carried_usd, _meter_tag
     _run.update({"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
-                 "completion_tokens": 0})
+                 "completion_tokens": 0, "cached_prompt_tokens": 0})
     _run_ceiling_tripped = False
     _carried_usd = None
+    _meter_tag = None
+    _by_tag.clear()
 
 
 # --------------------------------------------------------------------------
@@ -494,7 +574,8 @@ def _write_ledger(ledger: dict) -> bool:
 
 
 def record_job_run(items: int | None = None, stored: int | None = None,
-                   changed: int | None = None, job: str | None = None) -> dict:
+                   changed: int | None = None, job: str | None = None,
+                   run_id: str | None = None) -> dict:
     """Close out this run's ledger entry: exact metered cost + what it bought.
 
     Called once at the end of each LLM job. Never raises — a ledger must not
@@ -516,7 +597,19 @@ def record_job_run(items: int | None = None, stored: int | None = None,
         "stored": stored,
         "changed": changed,
     }
-    run_id = os.environ.get("GITHUB_RUN_ID")
+    if _run["cached_prompt_tokens"]:
+        entry["cached_prompt_tokens"] = _run["cached_prompt_tokens"]
+    # Per-source attribution, when the caller tagged its calls (the Railway
+    # cron does). One tag means the breakdown adds nothing over the total.
+    breakdown = {}
+    for t, v in _by_tag.items():
+        row = {k: (round(val, 6) if k == "cost_usd" else int(val))
+               for k, val in v.items() if isinstance(val, (int, float))}
+        breakdown[t] = row
+    if len(breakdown) > 1 or any(v.get("kept") or v.get("dropped")
+                                 for v in breakdown.values()):
+        entry["sources"] = breakdown
+    run_id = run_id or os.environ.get("GITHUB_RUN_ID")
     if run_id:
         entry["run_id"] = run_id
         entry["attempt"] = os.environ.get("GITHUB_RUN_ATTEMPT") or "1"
@@ -673,15 +766,68 @@ def harvest(days: int = 2) -> int:
         except Exception as exc:
             # One unreadable run must not lose the rest of the day.
             print(f"harvest: skipped run {run.get('id')} ({job_id}): {exc}")
+    railway_rows = harvest_railway_runs()
+    found.extend(railway_rows)
     ledger = _load_ledger()
     added = _merge_ledger_entries(ledger, found)
     if added and not _write_ledger(ledger):
         print("harvest: found entries but could not write the ledger file")
         return 0
     print(f"harvest: {scanned} job log(s) read, {len(found)} ledger line(s) "
-          f"seen, {added} new entr{'y' if added == 1 else 'ies'} committed-ready "
+          f"seen ({len(railway_rows)} from the Railway cron via /tracker-meta), "
+          f"{added} new entr{'y' if added == 1 else 'ies'} committed-ready "
           f"in railway/spend_jobs.json")
     return added
+
+
+def harvest_railway_runs() -> list[dict]:
+    """Pull the Railway cron's per-run spend records out of the keyed
+    /tracker-meta endpoint, as ledger entries.
+
+    The Railway cron cannot commit and its logs are not readable from here,
+    so its SPEND_LEDGER_V1 print was a record nobody could collect — the
+    ledger's one structural blind spot, called out (as a blind spot, honestly)
+    in unattributed_report(). cron.py now ALSO posts each run's record to
+    /tracker-meta (`add_spend_run`), and this reads them back into the same
+    committed ledger the Actions jobs use, so `railway-cron` gets a $/day and
+    $/row row in ops_status [2a] instead of living inside a remainder.
+
+    Fail-soft and loud: missing env or an HTTP error returns [] and says the
+    railway rows are UNKNOWN this harvest — never an exception, and never
+    silence."""
+    site = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
+    wp_key = (os.environ.get("WP_API_KEY") or "").strip()
+    if not (site and wp_key):
+        print("harvest: WP_SITE_URL/WP_API_KEY not set — Railway cron rows NOT "
+              "harvested this run (UNKNOWN, not a pass)")
+        return []
+    try:
+        req = urllib.request.Request(
+            f"{site}/wp-json/layoffs/v1/tracker-meta",
+            data=json.dumps({}).encode("utf-8"),
+            headers={"User-Agent": USER_AGENT,
+                     "Content-Type": "application/json",
+                     "X-Layoff-API-Key": wp_key},
+            method="POST")
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            meta = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        print(f"harvest: could not read /tracker-meta ({exc}) — Railway cron "
+              f"rows NOT harvested this run (UNKNOWN, not a pass)")
+        return []
+    out = []
+    for rec in (meta.get("spend_runs") or []) if isinstance(meta, dict) else []:
+        if not isinstance(rec, dict) or not rec.get("date"):
+            continue
+        entry = {k: rec.get(k) for k in
+                 ("job", "date", "cost_usd", "calls", "prompt_tokens",
+                  "completion_tokens", "cached_prompt_tokens", "items",
+                  "stored", "changed", "run_id", "sources", "gate_mode",
+                  "gate_false_drops")
+                 if rec.get(k) is not None}
+        entry.setdefault("job", "railway-cron")
+        out.append(entry)
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -786,10 +932,11 @@ BALANCE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 def unattributed_report(days: int = 14, ledger: dict | None = None) -> list[str]:
     """What the ACCOUNT lost, minus what the ledger can name.
 
-    The ledger can only ever see jobs that run in GitHub Actions. The main
-    ingest runs on Railway, which has no git and cannot commit, so its
-    SPEND_LEDGER_V1 line goes into a Railway log and nothing collects it. That
-    is a permanent structural blind spot, and while it was unnamed the daily
+    The ledger sees the GitHub Actions jobs (log harvest) and, since the
+    funnel port, the Railway cron (harvest_railway_runs reads its per-run
+    records back out of the keyed /tracker-meta endpoint). Before that read
+    existed, the cron's SPEND_LEDGER_V1 line went into a Railway log nothing
+    collected — a structural blind spot, and while it was unnamed the daily
     balance and the ledger simply disagreed and the difference got called
     'unattributable'.
 
@@ -829,9 +976,9 @@ def unattributed_report(days: int = 14, ledger: dict | None = None) -> list[str]
     if drop <= 0:
         return out + ["  unattributed: UNKNOWN — the balance did not fall in this window"]
     out.append(f"  UNATTRIBUTED REMAINDER ${gap:.4f} ({100 * gap / drop:.0f}% of the fall). "
-               f"This is a remainder, not a measurement of any job. It contains the "
-               f"Railway cron (which cannot write to the ledger) and any sibling-tracker "
-               f"spend on the same account.")
+               f"This is a remainder, not a measurement of any job. It contains any "
+               f"sibling-tracker spend on the same account, plus any Railway cron runs "
+               f"not yet harvested from /tracker-meta (see harvest_railway_runs).")
     return out
 
 
