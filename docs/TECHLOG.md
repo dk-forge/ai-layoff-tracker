@@ -6,6 +6,74 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - the mobile column was 219px wide, and the rule that was supposed to fix it had never once fired (2.19.264)
+
+On a 375px phone the tracker rendered inside a 219px column. 47% of the screen
+was theme padding, stacked three deep and measured live: `main` 18px, an
+`.alignfull` block group 30px, `.entry-content.alignfull` 30px, per side.
+Normally the two inner `.alignfull` gutters cancel themselves out, because WP
+core gives an `.alignfull` child of a `.has-global-padding` parent a matching
+NEGATIVE margin. Site-level CSS zeroes those margins under 782px, so instead of
+cancelling, all three gutters add up.
+
+The plugin already carried a corrective rule whose comment names this exact bug.
+It had never fired, for two independent reasons:
+
+1. **The ceiling was 700px.** The breakage runs to 781px. At 768px the wrap
+   measured 563px sitting at left 95 and the media query simply did not match.
+2. **Even inside the query it lost the cascade twice over.** A site-level
+   stylesheet pins `.alt-wrap` (and `.alt-tracker-wrap`, `.alt-dashboard`,
+   `.alt-filterbar`, `.alt-metric-row`, `.alt-metric-card`, `.alt-card`) to
+   `max-width:100%!important;width:100%!important` under `max-width:781px`, and
+   WP core pins `.is-layout-constrained > :where(:not(.alignfull))` to
+   `margin-left/right:auto!important`. The plugin rule carried no `!important`
+   at all, so its `width:100vw` and its `calc(50% - 50vw)` margins were both
+   discarded.
+
+**Where the site-level rule lives, and why no grep found it.** It is not in
+either repo and it is not on the filesystem. It is a **WPCode snippet**,
+emitted as `<style class="wpcode-css-snippet">` in `<head>`, and WPCode stores
+snippets in the DATABASE as a `wpcode` custom post type. A read-only FTPS sweep
+of `wp-content/{themes,plugins,uploads}` was added
+(`.github/workflows/find-site-css.yml`, `workflow_dispatch` only) to prove that
+point rather than assume it. Identification itself came from the live CSSOM:
+walking `document.styleSheets` for any rule matching `alt-metric-row` returns
+one sheet with a null `href` whose `ownerNode` is that WPCode `<style>`.
+
+**The fix is entirely plugin-side, and needs nobody in wp-admin.** The rule now
+wins on its own merits: `!important` plus one extra specificity point (a leading
+`body`, taking `.alt-wrap` from 0,1,0 to 0,1,1) beats both the WPCode snippet
+and WP core. Ceiling raised 700px -> 1024px, and `.alt-method-page` added
+alongside `.alt-wrap` / `.alt-quarterly-report`.
+
+**Deliberately NOT `100vw`.** The obvious breakout is `width:100vw` +
+`margin-left:calc(50% - 50vw)`, and that is what the old rule tried. `100vw`
+includes the scrollbar, so at 782-1024px on a desktop with a classic scrollbar
+it overflows by ~15px and manufactures a horizontal scrollbar on exactly the
+widths the raised ceiling now covers. Instead the ancestor padding is
+neutralised directly, under `max-width:781px` only, scoped to `body:has(.alt-wrap)`
+so it touches plugin surfaces and nothing else.
+
+**`main` keeps its gutter, on purpose.** Zeroing padding on `main:has(.alt-wrap)`
+also strips the gutter from the page `h1`, which then renders flush against the
+screen edge. Only the TWO INNER `.alignfull` wrappers are neutralised. The `h1`
+lives inside the first of them, so it lands on main's 18px gutter, aligned with
+the content beneath it rather than indented 78px from it.
+
+Measured live, before and after, at three widths:
+
+| viewport | `.alt-narrative` before | after | `.alt-wrap` left before | after |
+|---|---|---|---|---|
+| 375px | 199px | **339px** | 78 | 18 |
+| 768px | 535px | **717px** | 95 | 18 |
+| 1024px | 881px | 881px (no-op) | 50 | 50 |
+
+`document.documentElement.scrollWidth` equals `clientWidth` at all three, so
+nothing gained a horizontal scrollbar. Acceptance bar for the task was >330px at
+375px; it measures 339.
+
+---
+
 ## 2026-08-04 - the unfinished month, the bars that were a different number, and the emphasis inversion (2.19.263)
 
 Three defects found by reading the live page. The first two were WRONG

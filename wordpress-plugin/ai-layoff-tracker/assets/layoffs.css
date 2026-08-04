@@ -1742,17 +1742,46 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .entry-content:has(.alt-wrap) #ez-toc-container,
 .entry-content:has(.alt-quarterly-report) #ez-toc-container{display:none}
 /* The theme stacks global padding three levels deep, squeezing our content
-   to ~220px on a 375px phone. On small screens the plugin surfaces break out
-   to the full viewport so cards and tables get real width back. */
-@media (max-width: 700px) {
-    .alt-wrap, .alt-quarterly-report {
-        width: 100vw;
-        max-width: 100vw;
-        margin-left: calc(50% - 50vw);
-        margin-right: calc(50% - 50vw);
-        padding-left: 14px;
-        padding-right: 14px;
-        box-sizing: border-box;
+   to 219px on a 375px phone (measured 2026-08-04: main 18 + an alignfull
+   group 30 + entry-content 30, per side).
+   This rule used to be inert for two reasons, both now fixed:
+   (a) the 700px ceiling never fired on a 768px tablet, where the wrap still
+       measured 563px at left 95, so the ceiling is 1024px;
+   (b) even when it fired, a site-level stylesheet outside this repo pins
+       .alt-wrap to width/max-width:100% !important, and WordPress core pins
+       .is-layout-constrained > :where(:not(.alignfull)) to
+       margin-left/right:auto !important. Both are beaten here by adding
+       !important AND one extra specificity point (the leading `body`), so
+       the plugin owns its own layout no matter what the site declares. */
+@media (max-width: 1024px) {
+    body .alt-wrap,
+    body .alt-quarterly-report,
+    body .alt-method-page {
+        width: auto !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+}
+/* Below 782px the site CSS also zeroes the negative margins that normally
+   pull an .alignfull block out of its parent's gutter, so those two gutters
+   stack on top of main's instead of cancelling. Drop the padding on the TWO
+   INNER alignfull wrappers only, and only on plugin surfaces.
+   `main` deliberately keeps its own gutter: zeroing it there is what puts the
+   page h1 flush against the screen edge. The h1 lives in the inner group, so
+   it lands on main's 18px gutter, aligned with the content below it. */
+@media (max-width: 781px) {
+    body:has(.alt-wrap) main .wp-block-group.alignfull.has-global-padding,
+    body:has(.alt-wrap) main .entry-content.alignfull {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    body .alt-wrap,
+    body .alt-quarterly-report,
+    body .alt-method-page {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
 }
 .alt-widget-builder-controls,.alt-widget-builder-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:12px 0}.alt-widget-builder label{display:grid;gap:5px;font-size:.9rem;font-weight:650}.alt-widget-builder select{min-width:170px;padding:7px;border:1px solid #cfc8b7;border-radius:6px;background:#fff}.alt-widget-builder textarea{display:block;width:100%;margin:6px 0 0;padding:9px;border:1px solid #cfc8b7;border-radius:6px;background:#faf9f5;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}.alt-widget-builder-actions a{font-size:.9rem}.alt-widget-builder #alt-widget-builder-note,.alt-widget-builder #alt-widget-copy-status{font-size:.85rem;color:#5f625d}.alt-widget-builder #alt-widget-copy-status{min-height:1.2em;margin:4px 0 0}
