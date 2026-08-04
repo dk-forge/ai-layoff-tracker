@@ -1,22 +1,6 @@
 {
   "entries": [
     {
-      "attempts": 1,
-      "key": "resolve:tests:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-04T01:11:36+00:00",
-      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
-      "payload": {
-        "body": "'Tests' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30867935649\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "tests:main",
-        "subject": "RECOVERED: Tests is green again"
-      },
-      "raised_at": "2026-08-04T01:11:36+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30867935649",
-      "scope": "tests:main",
-      "state": "pending"
-    },
-    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -80,8 +64,21 @@
       "settled_at": "2026-08-04T00:52:06+00:00",
       "settled_because": "delivered late: not emailed: nothing was open for this scope",
       "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:tests:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-04T01:11:36+00:00",
+      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "raised_at": "2026-08-04T01:11:36+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30867935649",
+      "scope": "tests:main",
+      "settled_at": "2026-08-04T01:45:12+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-04T01:11:36+00:00",
+  "updated_at": "2026-08-04T01:45:12+00:00",
   "version": 1
 }
