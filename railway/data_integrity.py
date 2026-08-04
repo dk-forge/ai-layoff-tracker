@@ -1066,6 +1066,30 @@ INVARIANTS = (
     ArchiveRecheckInvariant(),
 )
 
+# ---------------------------------------------------------------------------
+# THE PUBLISHED-FIGURE GUARDS (2026-08-04)
+# ---------------------------------------------------------------------------
+# Everything above watches the DATA. These watch what the reader is shown, which
+# turned out to be a different question: on 2026-08-04 four numbers were wrong on
+# the page while every check above passed, because each of them renders without
+# erroring. A doughnut slice returning fourteen times what it displays is not a
+# data defect at all — the rows are fine, the slice is fine, and the click lands
+# somewhere else.
+#
+# The rule they add is one sentence: a number is published only if it can be
+# INDEPENDENTLY RECOMPUTED and the two agree. They live in published_figures.py
+# because the registry of figures is long and would bury the data invariants, but
+# they are appended to INVARIANTS here, deliberately, so there is exactly ONE
+# registry, ONE definition of pass/fail/unknown, and one door through which
+# ops_status, the test suite and the weekly digest see all of it.
+#
+# Imported at the BOTTOM of the module, after Result/_out/_roll_up exist, because
+# published_figures reads those primitives back out of here rather than keeping a
+# second copy of them.
+from published_figures import FIGURE_INVARIANTS      # noqa: E402
+
+INVARIANTS = INVARIANTS + FIGURE_INVARIANTS
+
 
 class Result:
     def __init__(self, inv, state, observed=None, detail="", error=None, pending=False):
