@@ -2657,6 +2657,48 @@ function alt_basis_table_html($country = 'United States', $year = null) {
 }
 
 /**
+ * THE ONE SENTENCE THAT RECONCILES THE TWO TOTALS THIS SITE PUBLISHES.
+ *
+ * Rows are dated by the day a cut takes EFFECT, and WARN notices are filed
+ * weeks ahead by law, so a calendar-year window legitimately holds cuts dated
+ * later in the year. That gives two correct totals for one year:
+ *
+ *   to-date   what has taken effect as of today
+ *   calendar  the whole window, to-date plus the part still ahead
+ *
+ * Both were live on 2026-08-04 and they disagreed by 33,939: the tracker home
+ * page headlined 484,468 for 2026 while the press page, the FAQPage JSON-LD
+ * and the citeline all published 450,529 for the same year. Neither number was
+ * wrong. Publishing them on two surfaces with no stated relationship is what
+ * was wrong, and the press page is the surface built to be quoted.
+ *
+ * So the rule, and it is one rule for every surface: a sentence about "so far"
+ * or "as of today" quotes the to-date figure; a sentence naming the whole
+ * window quotes the calendar figure and prints THIS sentence beside it. Both
+ * page-tracker.php and page-press.php render this function's output verbatim,
+ * and renderStats() in layoffs.js rebuilds the identical string on the client,
+ * so the wording cannot drift between the two surfaces one edit at a time.
+ *
+ * @param int    $to_date   verified jobs whose effective date has arrived
+ * @param int    $calendar  verified jobs across the whole window
+ * @param string $as_of     rendered date the to-date figure is cut at
+ * @param string $period    label for the window, e.g. "2026"
+ * @return string plain text, no markup, safe to esc_html() at the call site
+ */
+function alt_period_split_sentence($to_date, $calendar, $as_of, $period) {
+    $to_date  = max(0, (int) $to_date);
+    $calendar = max(0, (int) $calendar);
+    $later    = max(0, $calendar - $to_date);
+    // Nothing ahead means nothing to reconcile, and a sentence explaining a
+    // zero remainder is noise. Callers hide the line on an empty string.
+    if ($later <= 0) return '';
+    return number_format($to_date) . ' have taken effect as of ' . $as_of
+        . '. The other ' . number_format($later)
+        . ' are on notices already filed for effective dates later in ' . $period
+        . '. Together they make the ' . number_format($calendar) . ' total for ' . $period . '.';
+}
+
+/**
  * Descriptive WARN notice-gap distribution, computed from the main table's own
  * recorded dates and nothing else. For US WARN rows, announcement_date holds
  * the state-recorded notice/received date and layoff_date the effective date

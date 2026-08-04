@@ -1061,6 +1061,27 @@
         return MONTHS[parseInt(m[2], 10) - 1] + ' ' + parseInt(m[3], 10) + ', ' + m[1];
     }
 
+    /*
+      THE SAME SENTENCE alt_period_split_sentence() BUILDS IN db.php, character
+      for character. Two totals are correct for one year (what has taken effect,
+      and the whole window including notices filed for effective dates still
+      ahead), and on 2026-08-04 the home page headlined one while the press page
+      quoted the other with nothing tying them together. The reconciliation is
+      now one sentence, printed on both surfaces, so it cannot drift on one of
+      them. test_headline_total_agreement.py runs BOTH implementations on the
+      same inputs and fails on any difference, including whitespace.
+    */
+    function periodSplitSentence(toDate, calendar, asOf, period) {
+        toDate = Math.max(0, toDate | 0);
+        calendar = Math.max(0, calendar | 0);
+        var later = Math.max(0, calendar - toDate);
+        if (later <= 0) return '';
+        return fmt(toDate) + ' have taken effect as of ' + asOf
+            + '. The other ' + fmt(later)
+            + ' are on notices already filed for effective dates later in ' + period
+            + '. Together they make the ' + fmt(calendar) + ' total for ' + period + '.';
+    }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
@@ -1090,18 +1111,12 @@
         */
         var haveToDate = (t.to_date_jobs != null && t.to_date_announced_jobs != null);
         var verifiedToDate = haveToDate ? (t.to_date_jobs - t.to_date_announced_jobs) : null;
-        var laterJ = haveToDate ? Math.max(0, verifiedJ - verifiedToDate) : 0;
         var asOfEl = document.getElementById('alt-hero-asof');
         if (asOfEl) {
-            if (laterJ > 0) {
-                asOfEl.textContent = fmt(verifiedToDate) + ' have taken effect as of ' + asOfLabel(t)
-                    + '. The other ' + fmt(laterJ)
-                    + ' are on notices already filed for effective dates later in the period.';
-                asOfEl.hidden = false;
-            } else {
-                asOfEl.textContent = '';
-                asOfEl.hidden = true;
-            }
+            var split = haveToDate
+                ? periodSplitSentence(verifiedToDate, verifiedJ, asOfLabel(t), period) : '';
+            asOfEl.textContent = split;
+            asOfEl.hidden = (split === '');
         }
         if (verifiedToDate != null) setText('alt-citeline-total', fmt(verifiedToDate));
         setText('alt-stat-announced', fmt(annJ));
