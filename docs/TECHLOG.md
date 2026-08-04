@@ -6,6 +6,80 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - four of five red invariants were the CHECKER, not the page (2.19.270)
+
+`Live data-integrity check` went red on main with five failures. Measured
+against the live API and the deployed assets before touching anything, four of
+the five were defects in the checks and one was real. That ratio is the finding.
+A check that reports a defect which is not on the page costs the same thing a
+missed defect costs, because the next real alert gets read as more of the same.
+
+**The doughnut (2 checks, CHECKER).** Both read column 1 of the `/aggregate`
+`reasons` rows and called it "what the slice displays". The rows are
+`[tag, all_jobs, all_ai, null, verified_jobs, verified_ai]`, and
+`renderReasons()` has been piping every row through `verifiedBasis()` (column 4,
+zeroes dropped, sorted) since the basis fix. Confirmed in the DEPLOYED bundle,
+not the source: `ge(t)` mapping `null!=t[4]?t[4]:t[1]` is present in
+`layoffs.js?ver=2.19.269`. So the eight reported mismatches of 1.2x to 14.9x
+were arithmetic on numbers no reader could see, and `offshoring` "returning
+nothing at all" is a tag with 0 verified jobs that the chart never draws. Live,
+after: all nine drawn slices equal their drill-down exactly, 100,774 / 73,356 /
+45,748 / 41,079 / 12,876 / 11,902 / 803 / 700 / 397.
+
+The slices do NOT sum to the headline and are not supposed to: 287,635 against
+483,707, because a cut can carry several reason tags and a cut whose source
+states no reason carries none. The card already says exactly that, in
+`reasonsBasisNote()`. The check could not see it because the sentence is written
+by the browser, so it scanned server HTML for a string that only ever exists
+after render. It now reads the shipped script too, and it distinguishes the two
+directions: overlap explains a sum that is too HIGH, untagged rows a sum that is
+too LOW, and the overlap sentence alone no longer excuses a shortfall.
+
+Both checks now take the column the deployed asset maps rather than a column
+this repo assumed, and an unreadable asset is UNKNOWN, never a pass.
+
+**Home vs press, 483,707 vs 449,768 (CHECKER, too strict).** Both figures are
+right on different periods and both pages already print the same reconciling
+sentence. The equality demand is replaced by four conditions that are checked,
+not read: the home figure equals the API's calendar-year verified total, the
+press figure equals its to-date verified total, both pages print the SAME
+sentence, and the residual that sentence names equals the gap exactly
+(449,768 + 33,939 = 483,707). Prose alone buys nothing. A wrong subtraction, a
+figure that is not one of the API's two periods, or a sentence on only one page
+all still fail, and there are tests for each.
+
+**The explainer (CHECKER, false positive).** The check reported the differences
+explainer sealed in a collapsed panel, citing a browser measurement of "0 and 4
+pixels wide". That measurement was wrong and the citation is deleted rather than
+softened: re-run at 1280px a CLOSED `<details>` keeps a full 1127x309 layout
+box, and the 0/4 readings came from a viewport whose own clientWidth was 0. A
+width probe cannot detect this defect at all. It now asserts the two signals
+that do discriminate, `details.open` and RENDERED TEXT LENGTH, and the live page
+answers 5,094 characters in an open panel. The actual cause of the red was a
+marker: "documented floor" also appears in a routine FAQ accordion, which is
+collapsed because that is what an accordion is, and any closed panel holding any
+marker was reported as the sealed explainer. Existence and visibility now use
+different marker sets.
+
+**The hero label (PAGE, real).** It read "verified job cuts, 2026": no
+geography, and a bare year that does not say whether the window is what has
+happened or what is on file, which are two numbers 33,939 apart. Now "verified
+job cuts worldwide, calendar year 2026", with geography and period in their own
+spans so `renderStats()` swaps in the active filter's place and window.
+Deliberately NOT "YTD" - rows are dated by effective date. A bare year is still
+not accepted as a period statement.
+
+Reading the label needed fixing too: a flat `(.*?)</span>` truncates at the
+first nested span, so the new label would have read as "verified job cuts
+worldwide" with the period silently dropped, and the check would have reported a
+missing period that is printed on the page. `_span_text()` counts nesting depth.
+
+Live before: 5/15 failing. Live after: 1/15, the hero, which is this branch and
+lands with the deploy. 18 of the tests in `test_published_figure_guards.py` were
+run against the pre-fix tree and fail there; all 902 tests pass on this one.
+
+---
+
 ## 2026-08-04 - one claim, two surfaces, two totals; and two caveats nobody could read (2.19.266)
 
 The 2.19.265 sweep fixed the hero's period stamp and gave it a reconciling

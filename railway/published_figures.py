@@ -296,12 +296,110 @@ def _rendered(html, dom_id):
     return int(digits) if digits else None
 
 
+def _span_text(html, cls):
+    """The full text of a <span class="..."> INCLUDING its nested spans.
+
+    A flat `(.*?)</span>` stops at the first inner closing tag, which is fine
+    until the label being read grows a nested span — and the hero label has two,
+    one for geography and one for the period. Read flatly, "verified job cuts
+    worldwide, calendar year 2026" truncates to "verified job cuts worldwide" and
+    the check reports a missing period that is right there on the page. So this
+    counts nesting depth instead of trusting what follows the element.
+    """
+    m = re.search(r'<span[^>]*class=["\'][^"\']*'
+                  + re.escape(cls) + r'[^"\']*["\'][^>]*>', html or "")
+    if not m:
+        return None
+    depth, i = 1, m.end()
+    for tok in re.finditer(r"<span\b|</span>", html[m.end():]):
+        depth += 1 if tok.group(0) != "</span>" else -1
+        if depth == 0:
+            i = m.end() + tok.start()
+            break
+    else:
+        return None
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html[m.end():i])).strip()
+
+
 class _Slice:
     """_roll_up() wants something with .label and .name. This is that."""
 
     def __init__(self, key, label):
         self.name = key
         self.label = label
+
+
+# ---------------------------------------------------------------------------
+# WHAT THE DOUGHNUT ACTUALLY DRAWS
+# ---------------------------------------------------------------------------
+# A /aggregate `reasons` row is [tag, all_jobs, all_ai_jobs, None, verified_jobs,
+# verified_ai_jobs]. The page does NOT draw column 1. renderReasons() in
+# layoffs.js pipes every row through verifiedBasis(), which takes column 4, drops
+# any slice left at zero, and sorts descending — so the chart is on the same
+# verified basis as the headline above it and as the filter a click applies.
+#
+# THIS IS THE MISTAKE THIS MODULE MADE, and it is worth naming precisely because
+# it is the module's own stated failure mode pointed the wrong way. The checker
+# read column 1, called it "what the slice displays", and reported eight slices
+# as 1.2x to 14.9x wrong. Every one of those numbers was real and none of them
+# was on the page. A checker that decides for itself what a page renders, instead
+# of following the code that renders it, does not catch a defect — it invents
+# one, and an invented defect is worse than no check, because the next real
+# alert gets read as more of the same.
+#
+# So the basis is not assumed here either. _reasons_basis() reads the DEPLOYED
+# asset and reports which column the shipped code maps. If that asset cannot be
+# read, the answer is UNKNOWN and the slice checks say so rather than guessing.
+_VERIFIED_BASIS_SIGNATURES = (
+    # minified: `null!=t[4]?t[4]:t[1]`   source: `(e[4] != null) ? e[4] : e[1]`
+    re.compile(r"null\s*!=\s*(\w+)\[4\]\s*\?\s*\1\[4\]\s*:\s*\1\[1\]"),
+    re.compile(r"\(\s*(\w+)\[4\]\s*!=\s*null\s*\)\s*\?\s*\1\[4\]\s*:\s*\1\[1\]"),
+)
+
+
+def _script_url(html, name="layoffs.js"):
+    m = re.search(r'src=["\']([^"\']*' + re.escape(name) + r'[^"\']*)["\']', html or "")
+    return m.group(1) if m else None
+
+
+def _reasons_basis(ctx, html):
+    """Which column the SHIPPED chart code draws: "verified", "all", or None.
+
+    Two derivations, same rule as everywhere else in this module: the numbers
+    come from the API and the basis comes from the asset the browser executes.
+    Neither is this module's opinion about what the chart ought to do.
+    """
+    url = _script_url(html)
+    if not url:
+        return None, "the served page names no layoffs.js asset"
+    try:
+        js = ctx.fetch(url, ctx.timeout).decode("utf-8", "replace")
+    except Exception as e:                                  # noqa: BLE001
+        return None, f"could not read the deployed chart code ({e})"
+    if any(p.search(js) for p in _VERIFIED_BASIS_SIGNATURES):
+        return "verified", js
+    return "all", js
+
+
+def _drawn_slices(rows, basis):
+    """The slices the chart puts on screen, in the order it puts them there.
+
+    Mirrors verifiedBasis() in layoffs.js exactly: column 4 when the deployed
+    code maps it, zero-value slices dropped (they are never drawn, so they can
+    never be tapped), largest first.
+    """
+    out = []
+    for r in rows or []:
+        if not r or len(r) < 2:
+            continue
+        if basis == "verified" and len(r) > 4 and r[4] is not None:
+            v = _i(r[4])
+        else:
+            v = _i(r[1])
+        out.append((str(r[0]), v))
+    drawn = [(t, v) for t, v in out if v > 0]
+    drawn.sort(key=lambda e: -e[1])
+    return drawn, [(t, v) for t, v in out if v <= 0]
 
 
 # ---------------------------------------------------------------------------
@@ -410,14 +508,32 @@ class FigureReconciliationInvariant:
     # Phrases that would constitute the card STATING why its parts do not sum to
     # the whole. A card carrying one of these has told the reader what they are
     # looking at; a card carrying none has not.
+    #
+    # A sum can miss the headline in two OPPOSITE directions and they need
+    # different sentences, so they are two lists. Overlap pushes a sum UP: one
+    # event carrying three tags is counted in three slices. Untagged rows pull it
+    # DOWN: an event whose source states no reason is on no slice at all. On the
+    # 2026 view both are true at once, and a card that discloses only overlap
+    # while sitting 196,072 BELOW its headline has not explained what the reader
+    # is looking at.
     OVERLAP_DISCLOSURES = (
         "can carry more than one",
         "more than one reason",
+        "carry several tags",
+        "reason tags overlap",
         "slices overlap",
         "overlap, so they do not sum",
         "do not sum to",
+        "not meant to sum",
         "adds up to more than",
         "counted under each",
+    )
+    UNTAGGED_DISCLOSURES = (
+        "states no reason carries none",
+        "no reason carries none",
+        "carries no tag",
+        "not a breakdown of the total",
+        "records with no reason",
     )
 
     def run(self, ctx):
@@ -461,29 +577,50 @@ class FigureReconciliationInvariant:
         # --- reasons doughnut: overlap allowed, unbounded overlap is not
         reasons = payload.get("reasons") or []
         sl = _Slice("reasons", "reasons doughnut vs its own basis")
+        basis, js = _reasons_basis(ctx, html)
         if not reasons:
             per.append((sl, di._out(di.UNKNOWN,
                         "the live response carried no reasons block — the doughnut "
                         "is NOT being reconciled")))
+        elif basis is None:
+            per.append((sl, di._out(di.UNKNOWN,
+                        f"{js} — which column the chart draws is therefore unknown, "
+                        f"and the doughnut is NOT being reconciled")))
         else:
-            s = sum(_i(r[1]) for r in reasons if len(r) > 1)
-            # RECONCILE AGAINST THE BASIS THE PAGE STATES, NOT THE ONE THE CHART
-            # HAPPENS TO USE. This distinction is the whole check. The doughnut is
-            # computed over ALL jobs while every tile around it, and the headline
-            # above it, publish the verified basis. Measuring the slices against
-            # the all-jobs figure would "reconcile" them against a number the page
-            # never shows, and the check would agree with the defect instead of
-            # catching it — the exact self-agreeing failure this module exists to
-            # prevent. The reader's arithmetic starts at the headline, so the
-            # check starts there too.
+            drawn, zeroed = _drawn_slices(reasons, basis)
+            s = sum(v for _t, v in drawn)
+            # RECONCILE THE SLICES THAT ARE ON SCREEN, AGAINST THE HEADLINE BESIDE
+            # THEM. Both halves of that sentence are load-bearing. The headline is
+            # the verified basis, so a sum measured against the all-jobs figure
+            # would reconcile the card against a number the page never prints. And
+            # the slices are the ones _drawn_slices() says the deployed chart code
+            # draws, not a column this check picked — reading column 1 while the
+            # shipped chart drew column 4 is exactly how this check came to report
+            # eight defects that were not on the page.
             ratio = (s / float(verified)) if verified else 0.0
-            disclosed = bool(html) and any(d in html.lower()
-                                           for d in self.OVERLAP_DISCLOSURES)
-            if s == verified:
+            hay = ((html or "") + (js if isinstance(js, str) else "")).lower()
+            # The card's sentence is written by renderReasons() at run time, so it
+            # is in the shipped SCRIPT, not in the server-rendered body. Looking
+            # only at the HTML would report "the card does not say why" about a
+            # card that says exactly why, every time it draws.
+            overlap_said = any(d in hay for d in self.OVERLAP_DISCLOSURES)
+            untagged_said = any(d in hay for d in self.UNTAGGED_DISCLOSURES)
+            biggest = max(drawn, key=lambda e: e[1]) if drawn else None
+
+            if biggest and biggest[1] > verified:
+                # A slice is a SUBSET of the population. One larger than the whole
+                # is a basis error no disclosure can excuse.
+                per.append((sl, di._out(di.FAIL,
+                            f"the '{biggest[0]}' slice alone displays {biggest[1]:,} "
+                            f"against a headline of {verified:,} — a slice cannot be "
+                            f"larger than the population it is drawn from, so the "
+                            f"chart and the headline are on different bases",
+                            observed=biggest[1])))
+            elif s == verified:
                 per.append((sl, di._out(di.PASS,
-                            f"{len(reasons)} slices sum exactly to the {verified:,} "
+                            f"{len(drawn)} slices sum exactly to the {verified:,} "
                             f"headline")))
-            elif not disclosed:
+            elif s > verified and not overlap_said:
                 per.append((sl, di._out(di.FAIL,
                             f"the doughnut slices sum to {s:,} but the headline they "
                             f"sit beside publishes {verified:,} ({ratio:.2f}x), and the "
@@ -493,17 +630,24 @@ class FigureReconciliationInvariant:
                             f"state on the card that a cut can carry more than one "
                             f"reason",
                             observed=s)))
-            elif s < verified:
+            elif s < verified and not untagged_said:
                 per.append((sl, di._out(di.FAIL,
-                            f"the doughnut slices sum to {s:,}, BELOW the verified "
-                            f"headline of {verified:,} — overlap can only push a sum "
-                            f"UP, so slices are dropping rows",
+                            f"the doughnut slices sum to {s:,}, {verified - s:,} BELOW "
+                            f"the verified headline of {verified:,}, and the card does "
+                            f"not say why. Overlap can only push a sum UP, so either "
+                            f"slices are dropping rows or the card must state that an "
+                            f"event whose source gives no reason carries no tag",
                             observed=s)))
             else:
-                per.append((sl, di._out(di.PASS,
-                            f"{len(reasons)} slices sum to {s:,} ({ratio:.2f}x of the "
-                            f"{verified:,} headline) and the card discloses the "
-                            f"overlap")))
+                said = "overlap" if s > verified else "untagged events"
+                detail = (f"{len(drawn)} drawn slices sum to {s:,} ({ratio:.2f}x of the "
+                          f"{verified:,} headline), no slice exceeds it, and the card "
+                          f"discloses {said} [basis: the deployed chart draws the "
+                          f"{basis} column]")
+                if zeroed:
+                    detail += (" [drawn as no slice at all, so untappable: "
+                               + ", ".join(t for t, _v in zeroed) + "]")
+                per.append((sl, di._out(di.PASS, detail)))
 
         # --- geography: disjoint per row, must not exceed the whole
         for block, human in (("top_countries", "countries"), ("top_states", "US states")):
@@ -559,6 +703,19 @@ class DrillDownInvariant:
     basis the reader lands on. Not the basis the slice was computed on — the one
     they end up looking at. That difference IS the bug.
 
+    "THE SLICE DISPLAYS" MEANS WHAT THE DEPLOYED CHART CODE PUTS ON SCREEN, and
+    getting that wrong is how this check spent a day reporting eight defects that
+    did not exist. It read the all-jobs column out of the API and called it the
+    displayed value, while renderReasons() had been drawing the verified column
+    for weeks. Every ratio it printed was arithmetic on a number no reader could
+    see. _drawn_slices() now takes the column the shipped asset maps, so the
+    comparison is page-against-API rather than assumption-against-API.
+
+    A SLICE THAT IS NOT DRAWN CANNOT BE TAPPED. A tag with zero verified jobs is
+    filtered out of the chart entirely, so there is no wedge and no click. It is
+    named in the detail as undrawn rather than reported as a slice that returns
+    nothing, which is a different and much louder claim.
+
     Bounded, and it says what it bounded. Ten reason tags is the whole doughnut,
     so nothing is skipped there; the geography bars are capped and the cap is
     named in the detail rather than left implicit.
@@ -588,12 +745,21 @@ class DrillDownInvariant:
                              detail="no reasons block in the live response — chart "
                                     "drill-downs are NOT being checked")
 
+        html, _herr = _get_html(ctx, HOME_URL)
+        basis, why = _reasons_basis(ctx, html)
+        if basis is None:
+            return di.Result(self, di.UNKNOWN,
+                             detail=f"{why} — the displayed value cannot be read from "
+                                    f"the shipped chart code, so drill-downs are NOT "
+                                    f"being checked")
+        drawn, zeroed = _drawn_slices(reasons, basis)
+
         per = []
         skipped = []
-        for row in reasons:
-            if len(row) < 2:
-                continue
-            tag, shown = row[0], _i(row[1])
+        if zeroed:
+            skipped.append("drawn as no slice at all and therefore untappable: "
+                           + ", ".join(t for t, _v in zeroed))
+        for tag, shown in drawn:
             sl = _Slice("reason:" + str(tag), f"doughnut slice {tag}")
             if shown < self.FLOOR:
                 skipped.append(f"{tag} ({shown:,} < floor {self.FLOOR})")
@@ -627,8 +793,11 @@ class DrillDownInvariant:
                              detail="every slice fell below the floor — nothing was "
                                     "actually checked")
         res = di._roll_up(self, ctx, per)
+        if res.state == di.PASS:
+            res.detail += (f" [displayed value read from the deployed chart code, "
+                           f"which draws the {basis} column]")
         if skipped:
-            res.detail += f" [not checked, below floor: {'; '.join(skipped)}]"
+            res.detail += f" [not checked: {'; '.join(skipped)}]"
         return res
 
 
@@ -658,8 +827,13 @@ class BasisDisclosureInvariant:
     label = "Published figures state their basis"
     reads_live_data = True
 
+    # "calendar year 2026" is a period; a bare "2026" is deliberately NOT, and
+    # that omission stays. Rows are dated by EFFECTIVE date, so the 2026 window
+    # holds notices filed for dates still ahead — a reader told only "2026"
+    # cannot tell whether they are looking at what has happened or at what is on
+    # file, and those are two different numbers 33,939 apart.
     PERIOD_WORDS = ("ytd", "year to date", "this year", "all time", "trailing",
-                    "last 12", "so far")
+                    "last 12", "so far", "calendar year")
     GEO_WORDS = ("worldwide", "global", "united states", "us ", "u.s.",
                  "world", "across")
     UNIT_WORDS = ("job cut", "jobs", "companies", "employers", "events",
@@ -677,18 +851,13 @@ class BasisDisclosureInvariant:
 
         # --- the hero label must name unit, period AND geography
         sl = _Slice("hero_label", "hero label states its basis")
-        m = re.search(r'class=["\']alt-hero-figure-label["\'][^>]*>(.*?)</span>\s*<span',
-                      html, re.S)
-        if not m:
-            m = re.search(r'class=["\']alt-hero-figure-label["\'][^>]*>(.*?)</span>',
-                          html, re.S)
-        if not m:
+        text = _span_text(html, "alt-hero-figure-label")
+        if text is None:
             per.append((sl, di._out(di.UNKNOWN,
                         "the hero label was not found in the served page — its basis "
                         "is NOT being checked")))
         else:
-            text = re.sub(r"<[^>]+>", " ", m.group(1))
-            text = re.sub(r"\s+", " ", text).strip().lower()
+            text = text.lower()
             missing = []
             if not any(w in text for w in self.UNIT_WORDS):
                 missing.append("unit")
@@ -748,8 +917,28 @@ class CrossSurfaceAgreementInvariant:
     no recovery from that in the reader's mind. It does not read as a rounding
     difference, it reads as a tracker that does not know its own numbers.
 
-    Both pages describe their figure as verified job cuts, worldwide, for the
-    year to date. That is one claim. It has one right answer.
+    ONE CLAIM HAS ONE ANSWER. TWO CLAIMS MAY HAVE TWO, AND MUST SHOW THE WORKING.
+    This check first demanded the two figures be equal, and that was too strict in
+    a way worth writing down, because "too strict" is how a guard gets switched
+    off. Rows are dated by EFFECTIVE date, and WARN notices are filed by law weeks
+    before the cut lands. So a calendar year legitimately has two correct totals:
+    what has taken effect (449,768 on 2026-08-04) and the whole window as filed
+    (483,707). The press page leads with the first because it is being quoted into
+    a "so far" sentence; the home page headlines the second.
+
+    Prose alone must not buy an exemption — "these measure different things" is
+    what a genuinely broken pair of numbers would also say. So the escape hatch
+    here is ARITHMETIC, and all four conditions have to hold:
+
+      1. the home figure equals the API's calendar-year verified total,
+      2. the press figure equals the API's to-date verified total,
+      3. both pages print the SAME reconciling sentence, and
+      4. the residual that sentence names equals home minus press, exactly.
+
+    Any drift in any of those four and this fails, which is the point: the pair is
+    allowed to differ only while it can still be added up. Two unexplained totals,
+    or an explanation whose subtraction does not check out, is the original defect
+    and still reads FAIL.
 
     It also holds the two ops surfaces to the same standard: /source-health and
     /quality-status answer the same question about the same collector, and a
@@ -801,16 +990,12 @@ class CrossSurfaceAgreementInvariant:
                             "checked")))
             else:
                 gap = abs(hero - press)
-                if gap > max(1, hero * self.TOLERANCE):
-                    per.append((sl, di._out(di.FAIL,
-                                f"the home page publishes {hero:,} verified job cuts "
-                                f"for the year and the press page publishes "
-                                f"{press:,} for the same claim — a gap of {gap:,}. "
-                                f"A journalist reading both gets two answers",
-                                observed=hero)))
-                else:
+                if gap <= max(1, hero * self.TOLERANCE):
                     per.append((sl, di._out(di.PASS,
                                 f"home {hero:,} and press {press:,} agree")))
+                else:
+                    per.append((sl, self._reconciled(ctx, di, hero, press,
+                                                     home_html, press_html)))
 
         # --- retired collectors: two endpoints, one truth
         sl = _Slice("retired_collectors", "retired collectors are not published as live")
@@ -843,6 +1028,81 @@ class CrossSurfaceAgreementInvariant:
                             f"consistently on both endpoints")))
 
         return di._roll_up(self, ctx, per)
+
+    # The reconciling sentence both pages print, from alt_period_split_sentence()
+    # in db.php and periodSplitSentence() in layoffs.js. Captured as three numbers
+    # because this check does the subtraction itself; matching the prose without
+    # checking the arithmetic would let any sentence excuse any pair of figures.
+    SPLIT = re.compile(
+        r"([\d,]+) have taken effect as of [^.]+\. The other ([\d,]+) are on notices "
+        r"already filed for effective dates later in (\d{4})\. Together they make the "
+        r"([\d,]+) total for \3\.", re.I)
+
+    def _reconciled(self, ctx, di, hero, press, home_html, press_html):
+        """FAIL, unless the two figures are two correct periods that ADD UP.
+
+        Every branch below that is not the last one is a FAIL, and they are
+        written out separately so the alert says which condition broke rather
+        than "the pages disagree".
+        """
+        gap = hero - press
+        unexplained = (
+            f"the home page publishes {hero:,} verified job cuts for the year and "
+            f"the press page publishes {press:,} for the same claim — a gap of "
+            f"{abs(gap):,}. A journalist reading both gets two answers")
+
+        # (1)+(2) both figures must be periods the API actually produces.
+        payload, err = _get_json(ctx, "aggregate", _home_params(ctx))
+        if payload is None:
+            ctx.errors["home_vs_press"] = err
+            return di._out(di.UNKNOWN, _why_unreachable(err)
+                           + " — whether the gap reconciles is NOT checked")
+        t = payload.get("totals") or {}
+        if "jobs" not in t or t.get("to_date_jobs") is None:
+            return di._out(di.UNKNOWN,
+                           "the API returned no to-date totals, so whether the gap "
+                           "reconciles is NOT checked")
+        calendar = _verified(t)
+        to_date = _i(t.get("to_date_jobs")) - _i(t.get("to_date_announced_jobs"))
+
+        if hero != calendar or press != to_date:
+            return di._out(di.FAIL, unexplained + (
+                f". Neither is a stated period of the other: the API's calendar-year "
+                f"verified total is {calendar:,} and its to-date verified total is "
+                f"{to_date:,}"), observed=hero)
+
+        # (3) the same sentence on both surfaces, or one page has an explanation
+        # the other reader never sees.
+        hm = self.SPLIT.search(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", home_html)))
+        pm = self.SPLIT.search(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", press_html)))
+        if not hm or not pm:
+            missing = "home page" if not hm else "press page"
+            return di._out(di.FAIL, unexplained + (
+                f". The {missing} does not print the sentence reconciling the two, so "
+                f"a reader on it has no way to reach the other figure"), observed=hero)
+        if hm.group(0) != pm.group(0):
+            return di._out(di.FAIL, unexplained + (
+                ". The two pages print DIFFERENT reconciling sentences, so at least "
+                "one of them is stating a relationship that does not hold"),
+                observed=hero)
+
+        # (4) and the subtraction on the page has to be the real one.
+        said_to_date = int(hm.group(1).replace(",", ""))
+        said_later = int(hm.group(2).replace(",", ""))
+        said_total = int(hm.group(4).replace(",", ""))
+        if (said_to_date != press or said_total != hero
+                or said_later != gap or said_to_date + said_later != said_total):
+            return di._out(di.FAIL, unexplained + (
+                f". The reconciling sentence does not add up: it says {said_to_date:,} "
+                f"+ {said_later:,} = {said_total:,}, against a press figure of "
+                f"{press:,}, a home figure of {hero:,} and a real gap of {gap:,}"),
+                observed=hero)
+
+        return di._out(di.PASS,
+                       f"home {hero:,} and press {press:,} are two correct periods and "
+                       f"both pages print the same reconciliation, verified against the "
+                       f"API: {press:,} taken effect + {said_later:,} filed for later "
+                       f"effective dates = {hero:,} for the calendar year")
 
     @staticmethod
     def _status_map(blob):
@@ -891,18 +1151,36 @@ class ComparisonBasisInvariant:
     sealed inside a collapsed disclosure is not an explanation, it is a defence
     the reader never encounters before they have already decided our number
     contradicts the one they arrived with. This codebase shipped a chart caveat
-    that computed to display:none at 0x0 and no reader ever saw it. A measurement
-    of THIS page, taken with a real browser on 2026-08-04, found the same shape:
-    the differences explainer sits inside <details> elements that are closed by
-    default and measure 0 and 4 pixels wide.
+    that computed to display:none at 0x0 and no reader ever saw it.
 
-    WHAT THIS CHECK CAN AND CANNOT DO UNATTENDED. It is stdlib-only in a runner
-    with no browser, so it cannot compute a style. What it CAN decide from the
-    served HTML, and what is sufficient to catch this defect, is whether the
-    explainer is sealed inside a <details> that has no `open` attribute. That is
-    a collapsed disclosure by definition. The stronger claim — that the visible
-    box has non-zero area — is reported UNKNOWN by this module rather than
-    quietly assumed, and is named as such in the report.
+    WHAT THIS CHECK MEASURES, AND WHY NOT PIXELS. An earlier version of this
+    docstring cited a browser measurement finding the explainer panels "0 and 4
+    pixels wide". That measurement was wrong and the citation is removed rather
+    than softened. Re-run in a real browser at 1280px, a CLOSED <details> keeps a
+    full 1127x309 layout box — the summary row and the panel's own padding are
+    laid out whether or not the panel is open — and the 0/4 readings came from a
+    viewport whose own clientWidth was 0, so the probe was measuring nothing at
+    all. A width probe cannot distinguish an open panel from a sealed one, which
+    means the geometry was never the signal.
+
+    The two signals that DO discriminate, and that this check asserts:
+
+      OPEN      a <details> without the `open` attribute is a collapsed
+                disclosure by definition, in every browser, with no styling
+                involved. This is decidable from the served HTML.
+      TEXT      how much explanation is actually reachable, in characters of
+                rendered text with the summary excluded. The pre-fix page put 0
+                chars in front of the reader; the fixed one puts thousands. A
+                panel that is open but empty is the same defect wearing the right
+                attribute, and the character count is what catches it.
+
+    A FALSE POSITIVE IS A DEFECT IN THE CHECK. This check also spent a day
+    failing a page whose explainer was open and 5,094 characters long, because a
+    loose marker ("documented floor") also occurs inside a routine FAQ accordion,
+    and ANY closed panel containing ANY marker was reported as the explainer being
+    sealed. A collapsed FAQ item is a working FAQ item. So existence is tested
+    with the broad markers and VISIBILITY is tested only against the panel that
+    carries the explainer itself.
     """
 
     key = "comparison_basis_is_visible"
@@ -916,6 +1194,17 @@ class ComparisonBasisInvariant:
         "why our numbers differ",
         "documented floor",
     )
+    # The subset that identifies the EXPLAINER ITSELF rather than any passage
+    # that happens to use the same vocabulary. "documented floor" is a phrase the
+    # FAQ uses in passing; the two below are the explainer's own title.
+    EXPLAINER_MARKERS = (
+        "why our number is lower",
+        "why our numbers differ",
+    )
+    # Characters of rendered text, summary excluded, below which an "open" panel
+    # is not actually explaining anything. The real explainer runs to about five
+    # thousand; the defect this replaces put zero in front of the reader.
+    MIN_TEXT = 500
 
     def run(self, ctx):
         di = _di()
@@ -947,7 +1236,12 @@ class ComparisonBasisInvariant:
 
         sl = _Slice("explainer_exists", "the explainer exists on the home page")
         found = [m for m in self.MARKERS if m in low]
-        if not found:
+        # Existence turns on the explainer's OWN title, not on the vocabulary it
+        # shares with the FAQ. A page whose only match is "documented floor" in a
+        # FAQ answer has not explained why our figure differs; it has used a
+        # phrase. The broader list is still reported, because what was found is
+        # useful in the detail line.
+        if not any(m in low for m in self.EXPLAINER_MARKERS):
             per.append((sl, di._out(di.FAIL,
                         "the home page carries no explanation of why our figure "
                         "differs from a national estimate. A reader comparing two "
@@ -957,37 +1251,78 @@ class ComparisonBasisInvariant:
                     f"found: {', '.join(found)}")))
 
         sl = _Slice("explainer_visible", "the explainer is not sealed in a collapsed panel")
-        sealed = []
-        for m in re.finditer(r"<details\b([^>]*)>(.*?)</details>", html, re.S | re.I):
-            attrs, body = m.group(1), m.group(2).lower()
-            if any(k in body for k in self.MARKERS):
-                if not re.search(r"\bopen\b", attrs, re.I):
-                    label = re.search(r"<summary[^>]*>(.*?)</summary>", m.group(2),
-                                      re.S | re.I)
-                    name = (re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", label.group(1))).strip()
-                            if label else "(unnamed panel)")
-                    sealed.append(name)
-        if sealed:
+        panels = self._explainer_panels(html)
+        open_panels = [p for p in panels if p["open"]]
+        readable = [p for p in open_panels if p["chars"] >= self.MIN_TEXT]
+
+        if not panels:
+            # Outside a <details> entirely: nothing to open, nothing to seal.
+            per.append((sl, di._out(di.PASS,
+                        "the explainer is not inside a disclosure panel at all, so "
+                        "there is nothing for a reader to open")))
+            per.append((_Slice("explainer_text", "the explainer has text to read"),
+                        di._out(di.UNKNOWN,
+                                "the explainer is not in a panel this check can bound, "
+                                "so its rendered length is NOT measured here")))
+            return di._roll_up(self, ctx, per)
+
+        if not open_panels:
+            names = "; ".join(f'"{p["summary"]}"' for p in panels)
             per.append((sl, di._out(di.FAIL,
-                        "the explanation of why our figure differs from a national "
-                        "estimate is sealed inside a collapsed disclosure the reader "
-                        "must click to open: "
-                        + "; ".join(f'"{s}"' for s in sealed)
-                        + ". A rendered measurement on 2026-08-04 confirmed these "
-                          "panels compute to 0 and 4 pixels wide")))
+                        f"the explanation of why our figure differs from a national "
+                        f"estimate is sealed inside a collapsed disclosure the reader "
+                        f"must click to open: {names}. A <details> with no `open` "
+                        f"attribute starts closed, so its {panels[0]['chars']:,} "
+                        f"characters of explanation reach nobody who does not click")))
         else:
             per.append((sl, di._out(di.PASS,
-                        "the explainer is not inside a closed disclosure")))
+                        f'"{open_panels[0]["summary"]}" carries the `open` attribute, '
+                        f"so the explanation is on screen without a click")))
 
-        # The area measurement itself is honestly out of reach from here.
-        per.append((_Slice("explainer_area", "the explainer has non-zero rendered area"),
-                    di._out(di.UNKNOWN,
-                            "computing rendered width and height needs a browser; this "
-                            "runner has none, so NON-ZERO AREA IS NOT VERIFIED HERE "
-                            "(the closed-disclosure check above is what runs unattended)",
-                            pending=False)))
+        # RENDERED TEXT LENGTH, which is the signal a width probe cannot give.
+        sl = _Slice("explainer_text", "the explainer has text to read without clicking")
+        if not open_panels:
+            per.append((sl, di._out(di.FAIL,
+                        "0 characters of the explanation are readable without opening "
+                        "a panel")))
+        elif not readable:
+            per.append((sl, di._out(di.FAIL,
+                        f"the open explainer holds only "
+                        f"{max(p['chars'] for p in open_panels):,} characters of text, "
+                        f"below the {self.MIN_TEXT:,} an actual explanation needs — an "
+                        f"open but empty panel is the same defect with the right "
+                        f"attribute")))
+        else:
+            per.append((sl, di._out(di.PASS,
+                        f"{max(p['chars'] for p in readable):,} characters of "
+                        f"explanation are readable without a click")))
 
         return di._roll_up(self, ctx, per)
+
+    def _explainer_panels(self, html):
+        """Every <details> carrying the explainer itself, with open state and size.
+
+        Matched on EXPLAINER_MARKERS, not MARKERS: a collapsed FAQ item that uses
+        the phrase "documented floor" in passing is a working FAQ item, and
+        failing the page for it is the false positive this method exists to end.
+        """
+        out = []
+        for m in re.finditer(r"<details\b([^>]*)>(.*?)</details>", html, re.S | re.I):
+            attrs, body = m.group(1), m.group(2)
+            if not any(k in body.lower() for k in self.EXPLAINER_MARKERS):
+                continue
+            label = re.search(r"<summary[^>]*>(.*?)</summary>", body, re.S | re.I)
+            inner = re.sub(r"<summary[^>]*>.*?</summary>", "", body,
+                           flags=re.S | re.I)
+            text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", inner)).strip()
+            out.append({
+                "open": bool(re.search(r"\bopen\b", attrs, re.I)),
+                "chars": len(text),
+                "summary": (re.sub(r"\s+", " ",
+                                   re.sub(r"<[^>]+>", "", label.group(1))).strip()
+                            if label else "(unnamed panel)"),
+            })
+        return out
 
 
 # ---------------------------------------------------------------------------

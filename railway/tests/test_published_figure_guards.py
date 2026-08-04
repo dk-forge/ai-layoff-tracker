@@ -61,6 +61,49 @@ FIXED_REASONS = [["restructuring", 200_000], ["cost_reduction", 150_000],
                  ["ai_automation", 60_000], ["closure", 40_000],
                  ["macroeconomic", 30_000], ["revenue_decline", 4_468]]
 
+# ---------------------------------------------------------------------------
+# THE SIX-COLUMN SHAPE, which is what the API has actually returned all along.
+# ---------------------------------------------------------------------------
+# [tag, all_jobs, all_ai, None, verified_jobs, verified_ai]. Column 1 is NOT what
+# the chart draws; renderReasons() pipes every row through verifiedBasis(), takes
+# column 4, and drops whatever is left at zero.
+#
+# These fixtures are the live 2026 rows, and they are the ones that matter most
+# in this file: reading column 1 out of them is precisely what made the checker
+# report eight slices as 1.2x to 14.9x wrong when the page was correct. Any
+# version of the check that reads column 1 fails the tests below.
+LIVE_REASONS = [
+    ["ai_automation", 108_373, 96_918, None, 45_748, 37_493],
+    ["possible_ai", 10_415, 0, None, 700, 0],
+    ["revenue_decline", 84_199, 0, None, 12_876, 0],
+    ["restructuring", 236_974, 55_035, None, 73_356, 13_460],
+    ["merger_acquisition", 803, 0, None, 803, 0],
+    ["offshoring", 1_500, 0, None, 0, 0],          # drawn as no slice at all
+    ["product_discontinuation", 704, 0, None, 397, 0],
+    ["cost_reduction", 123_712, 36_160, None, 100_774, 27_360],
+    ["macroeconomic", 70_777, 0, None, 11_902, 0],
+    ["closure", 42_863, 0, None, 41_079, 0],
+]
+LIVE_DRAWN_SUM = 287_635      # the nine drawn slices, verified basis
+LIVE_COL1_SUM = 680_320       # what a checker reading column 1 would report
+
+# The shipped chart code, in the two forms it can arrive in. The check reads the
+# deployed asset rather than assuming a column, so every fixture below has to
+# serve one of these or the check correctly answers UNKNOWN.
+JS_VERIFIED_BASIS = ("function ge(t){return(t||[]).map(function(t){"
+                     "var e=null!=t[4]?t[4]:t[1];return[t[0],e]})}")
+JS_ALL_JOBS_BASIS = "function ge(t){return(t||[]).map(function(t){return[t[0],t[1]]})}"
+
+# The sentence renderReasons() writes into the card. It lives in the SCRIPT, not
+# in the server-rendered body, which is why the disclosure scan reads both.
+JS_CARD_NOTE = (
+    '"Slices are verified job cuts, the same basis as the Verified job cuts tile.'
+    ' Reason tags overlap and are not a breakdown of the total: one event can carry'
+    ' several tags, an event whose source states no reason carries none, and the'
+    ' slices are not meant to sum to the headline."')
+
+SCRIPT_TAG = '<script src="https://example.test/assets/layoffs.js?ver=9"></script>'
+
 HOME_HTML = (
     '<span class="alt-hero-figure-value" id="alt-hero-total">{hero}</span> '
     '<span class="alt-hero-figure-label">{label}</span> '
@@ -81,19 +124,42 @@ HOME_HTML = (
     '{extra}'
 )
 
+# An explanation long enough to BE one. The signal is rendered text length, not
+# geometry: a width probe cannot tell these two apart, because a closed <details>
+# still lays out a full-width box for its summary row.
+EXPLAINER_BODY = ("<p>" + ("Every tracker measures a different thing, so the "
+                           "numbers should differ. We count verified events. " * 12)
+                  + "</p>")
 SEALED_EXPLAINER = ('<details class="alt-why-lower"><summary>Why our number is '
-                    'lower</summary><p>documented floor</p></details>')
+                    'lower</summary>' + EXPLAINER_BODY + '</details>')
 OPEN_EXPLAINER = ('<details class="alt-why-lower" open><summary>Why our number is '
-                  'lower</summary><p>documented floor</p></details>')
+                  'lower</summary>' + EXPLAINER_BODY + '</details>')
+# Open, correctly attributed, and empty. The same defect wearing the right
+# attribute, and the only thing that catches it is the character count.
+HOLLOW_EXPLAINER = ('<details class="alt-why-lower" open><summary>Why our number '
+                    'is lower</summary><p>See below.</p></details>')
+# A routine FAQ accordion that happens to use the explainer's vocabulary. This is
+# working as designed and must never fail the page on its own.
+FAQ_USING_THE_PHRASE = ('<details class="alt-faq-item"><summary>How is this '
+                        'different from other layoff trackers?</summary><p>We '
+                        'publish a documented floor.</p></details>')
 
 
 def home_html(hero="484,468", label="verified job cuts, 2026 YTD", extra=""):
-    return HOME_HTML.format(hero=hero, label=label, extra=extra or OPEN_EXPLAINER)
+    return HOME_HTML.format(hero=hero, label=label,
+                            extra=(extra or OPEN_EXPLAINER) + SCRIPT_TAG)
 
 
-def press_html(total="484,468"):
+def press_html(total="484,468", split=""):
     return (f"<p>The AI Layoff Tracker verified {total} job cuts worldwide in "
-            f"2026 so far.</p>")
+            f"2026 so far.</p>{split}")
+
+
+def split_sentence(to_date, later, total, year=2026):
+    """The reconciling sentence db.php and layoffs.js both print, verbatim."""
+    return (f"<p>{to_date:,} have taken effect as of Aug 4, 2026. The other "
+            f"{later:,} are on notices already filed for effective dates later in "
+            f"{year}. Together they make the {total:,} total for {year}.</p>")
 
 
 def _router(routes, default=None):
@@ -129,8 +195,9 @@ class ReconciliationTest(unittest.TestCase):
     COUNTRIES = [["United States", 0, 0, 0, 300_000], ["Germany", 0, 0, 0, 50_000]]
     STATES = [["CA", 0, 0, 0, 200_000], ["TX", 0, 0, 0, 100_000]]
 
-    def _run(self, reasons, html):
+    def _run(self, reasons, html, js=JS_VERIFIED_BASIS):
         fetch = _router({
+            "layoffs.js": js,
             "ai-layoff-tracker/": html,
             "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
             "aggregate": _agg(reasons=reasons,
@@ -138,6 +205,63 @@ class ReconciliationTest(unittest.TestCase):
                               countries=self.COUNTRIES, states=self.STATES),
         })
         return pf.FigureReconciliationInvariant().run(_ctx(fetch))
+
+    # -- the six-column shape: read the column the shipped chart draws ------
+    def test_the_sum_is_taken_over_the_column_the_chart_actually_draws(self):
+        # THE CHECKER'S OWN DEFECT, pinned. Served the live rows and the live
+        # chart code, a check that reads column 1 reports 680,320 and a 1.41x
+        # discrepancy that is not on the page. The drawn slices sum to 287,635.
+        r = self._run(LIVE_REASONS, home_html(extra=OPEN_EXPLAINER + JS_CARD_NOTE))
+        self.assertEqual(r.state, di.PASS, r.detail)
+        self.assertIn(f"{LIVE_DRAWN_SUM:,}", r.detail)
+        self.assertNotIn(f"{LIVE_COL1_SUM:,}", r.detail,
+                         "the check is still reporting a column the chart does "
+                         "not draw")
+
+    def test_it_follows_the_chart_code_rather_than_preferring_a_column(self):
+        # Same rows, but the deployed asset draws column 1. Then column 1 IS what
+        # the reader sees, it outruns the headline, and nothing on the card
+        # discloses overlap — so this must fail. A check hard-coded to the
+        # verified column would pass here and miss a real regression.
+        r = self._run(LIVE_REASONS, home_html(), js=JS_ALL_JOBS_BASIS)
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn(f"{LIVE_COL1_SUM:,}", r.detail)
+
+    def test_an_unreadable_chart_asset_is_unknown_not_pass(self):
+        fetch = _router({
+            "ai-layoff-tracker/": home_html(),
+            "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
+            "aggregate": _agg(reasons=LIVE_REASONS,
+                              series=[{"verified_jobs": VERIFIED}],
+                              countries=self.COUNTRIES, states=self.STATES),
+        }, default=None)
+
+        def no_js(url, timeout):
+            if "layoffs.js" in url:
+                raise urllib.error.URLError("asset 404")
+            return fetch(url, timeout)
+        r = pf.FigureReconciliationInvariant().run(_ctx(no_js))
+        self.assertEqual(r.state, di.UNKNOWN)
+        self.assertNotEqual(r.state, di.PASS)
+
+    def test_a_sum_below_the_headline_needs_the_untagged_sentence(self):
+        # The drawn slices land 196,833 short because rows with no reason tag are
+        # on no slice. That is honest ONLY if the card says so. The overlap
+        # sentence alone does not cover it: overlap explains a sum that is too
+        # HIGH, and pointing it at a sum that is too low explains nothing.
+        overlap_only = ('<p>Reason tags overlap: one event can carry more than '
+                        'one reason.</p>')
+        r = self._run(LIVE_REASONS, home_html(extra=OPEN_EXPLAINER + overlap_only))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("BELOW", r.detail)
+
+    def test_a_slice_larger_than_the_headline_fails_however_it_is_disclosed(self):
+        # A slice is a subset. One bigger than the population is a basis error
+        # and no sentence on the card can make it true.
+        huge = [["restructuring", 0, 0, None, VERIFIED + 1, 0]]
+        r = self._run(huge, home_html(extra=OPEN_EXPLAINER + JS_CARD_NOTE))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("cannot be larger than", r.detail)
 
     def test_fails_when_the_doughnut_outruns_its_own_headline(self):
         # THE LIVE DEFECT: slices summing to 680,320 beside a 484,468 headline.
@@ -197,8 +321,12 @@ class ReconciliationTest(unittest.TestCase):
 class DrillDownTest(unittest.TestCase):
     """Tapping a slice returns the count it displays."""
 
-    def _run(self, reasons, drill):
+    def _run(self, reasons, drill, js=JS_VERIFIED_BASIS):
         def fetch(url, timeout):
+            if "layoffs.js" in url:
+                return js.encode()
+            if "ai-layoff-tracker/" in url and "wp-json" not in url:
+                return home_html().encode()
             for tag, tot in drill.items():
                 if "reasons=" + tag in url:
                     return json.dumps(_agg(tot)).encode()
@@ -223,10 +351,65 @@ class DrillDownTest(unittest.TestCase):
                       {"closure": _totals(jobs=41_079, announced=0)})
         self.assertEqual(r.state, di.PASS)
 
+    # -- the six-column shape -------------------------------------------------
+    def test_the_displayed_value_comes_from_the_column_the_chart_draws(self):
+        # THE CHECKER'S OWN DEFECT, pinned. Every one of these nine slices agrees
+        # exactly with its drill-down on the page. Reading column 1 instead
+        # reports eight of them as 1.2x to 14.9x wrong, and every one of those
+        # ratios is arithmetic on a number no reader can see.
+        drill = {t: _totals(jobs=v, announced=0)
+                 for t, v in (("ai_automation", 45_748), ("possible_ai", 700),
+                              ("revenue_decline", 12_876), ("restructuring", 73_356),
+                              ("merger_acquisition", 803),
+                              ("product_discontinuation", 397),
+                              ("cost_reduction", 100_774), ("macroeconomic", 11_902),
+                              ("closure", 41_079))}
+        r = self._run(LIVE_REASONS, drill)
+        self.assertEqual(r.state, di.PASS, r.detail)
+        self.assertNotIn("14.9x", r.detail)
+
+    def test_a_slice_that_is_never_drawn_is_named_undrawn_not_broken(self):
+        # offshoring has 1,500 all-jobs and 0 verified, so verifiedBasis() drops
+        # it and there is no wedge to tap. Reporting "tapping it returns nothing
+        # at all" about a slice that does not exist is a false alarm, and a false
+        # alarm is how the next real one gets ignored.
+        r = self._run(LIVE_REASONS, {t: _totals(jobs=v, announced=0)
+                                     for t, v in (("ai_automation", 45_748),
+                                                  ("possible_ai", 700),
+                                                  ("revenue_decline", 12_876),
+                                                  ("restructuring", 73_356),
+                                                  ("merger_acquisition", 803),
+                                                  ("product_discontinuation", 397),
+                                                  ("cost_reduction", 100_774),
+                                                  ("macroeconomic", 11_902),
+                                                  ("closure", 41_079))})
+        self.assertEqual(r.state, di.PASS, r.detail)
+        self.assertIn("untappable", r.detail)
+        self.assertIn("offshoring", r.detail)
+
+    def test_it_still_catches_a_real_mismatch_on_the_drawn_column(self):
+        # Proof the fix did not just make the check agreeable: same six-column
+        # shape, but the click returns a third of the drawn slice.
+        rows = [["ai_automation", 108_373, 0, None, 45_748, 0]]
+        r = self._run(rows, {"ai_automation": _totals(jobs=15_000, announced=0)})
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("45,748", r.detail)
+
+    def test_an_unreadable_chart_asset_is_unknown_not_pass(self):
+        def fetch(url, timeout):
+            if "layoffs.js" in url:
+                raise urllib.error.URLError("asset 404")
+            if "ai-layoff-tracker/" in url and "wp-json" not in url:
+                return home_html().encode()
+            return json.dumps(_agg(reasons=LIVE_REASONS)).encode()
+        r = pf.DrillDownInvariant().run(_ctx(fetch))
+        self.assertEqual(r.state, di.UNKNOWN)
+        self.assertIn("NOT", r.detail)
+
     def test_what_it_skipped_is_named_never_silently_dropped(self):
         r = self._run([["closure", 41_079], ["tiny", 12]],
                       {"closure": _totals(jobs=41_079, announced=0)})
-        self.assertIn("below floor", r.detail)
+        self.assertIn("< floor 200", r.detail)
         self.assertIn("tiny", r.detail)
 
     def test_a_dead_network_is_unknown_not_pass(self):
@@ -289,6 +472,34 @@ class BasisTest(unittest.TestCase):
         self.assertEqual(self._run("verified job cuts worldwide, 2026 YTD").state,
                          di.PASS)
 
+    def test_the_shipped_hero_wording_states_all_three(self):
+        # THE LIVE DEFECT and its fix. The hero read "verified job cuts, 2026":
+        # no geography, and a bare year that does not say whether the window is
+        # what has happened or what is on file.
+        self.assertEqual(self._run("verified job cuts, 2026").state, di.FAIL)
+        self.assertEqual(
+            self._run("verified job cuts worldwide, calendar year 2026").state,
+            di.PASS)
+
+    def test_the_label_is_read_whole_when_it_contains_nested_spans(self):
+        # The shipped label wraps geography and period in their own spans so
+        # renderStats() can swap them per filter. Read with a flat regex the text
+        # truncates at the first inner </span> and the check reports a missing
+        # period that is printed on the page — a false FAIL manufactured by the
+        # reader, not by the page.
+        nested = ('verified job cuts <span id="alt-hero-total-geo">worldwide</span>'
+                  ', <span id="alt-hero-total-period">calendar year 2026</span>')
+        self.assertEqual(self._run(nested).state, di.PASS)
+
+    def test_a_bare_year_is_still_not_a_period(self):
+        # Deliberate and load-bearing: rows are dated by EFFECTIVE date, so the
+        # 2026 window holds notices filed for dates still ahead. "2026" alone
+        # leaves a reader unable to tell two figures 33,939 apart from each other,
+        # which is exactly the confusion the press page had to reconcile.
+        r = self._run("verified job cuts worldwide, 2026")
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("period", r.detail)
+
     def test_two_ai_figures_sharing_one_label_fail(self):
         clash = HOME_HTML.format(
             hero="484,468", label="verified job cuts worldwide, 2026 YTD",
@@ -307,24 +518,84 @@ class BasisTest(unittest.TestCase):
 class CrossSurfaceTest(unittest.TestCase):
     """One figure on two pages is one number."""
 
-    def _run(self, hero, press, health=None, quality=None):
+    # The API's two periods for the live 2026 window, which the reconciliation
+    # branch checks both figures against. Prose cannot substitute for these.
+    API = _totals(jobs=956_008, announced=472_301,
+                  to_date_jobs=921_959, to_date_announced_jobs=472_191)
+    CALENDAR, TO_DATE = 483_707, 449_768        # 956,008-472,301 / 921,959-472,191
+
+    def _run(self, hero, press, health=None, quality=None,
+             home_split="", press_split="", totals=None):
         health = health or {"newsapi": {"status": "retired"}}
         quality = quality or {"source_health": {"newsapi": {"status": "retired"}}}
         return pf.CrossSurfaceAgreementInvariant().run(_ctx(_router({
-            "press/": press_html(press),
-            "ai-layoff-tracker/": home_html(hero=hero),
+            "press/": press_html(press, press_split),
+            "layoffs.js": JS_VERIFIED_BASIS,
+            "ai-layoff-tracker/": home_html(hero=hero,
+                                            extra=OPEN_EXPLAINER + home_split),
             "source-health": health,
             "quality-status": quality,
+            "aggregate": _agg(totals if totals is not None else self.API),
         })))
 
     def test_fails_when_home_and_press_publish_different_headlines(self):
-        # THE LIVE DEFECT: home 484,468 vs press 450,529 for the same claim.
+        # THE LIVE DEFECT: two totals, nothing on either page tying them together.
         r = self._run("484,468", "450,529")
         self.assertEqual(r.state, di.FAIL)
         self.assertIn("33,939", r.detail)
 
     def test_passes_when_both_pages_publish_the_same_number(self):
         self.assertEqual(self._run("484,468", "484,468").state, di.PASS)
+
+    # -- a STATED and ARITHMETICALLY CORRECT reconciliation ------------------
+    def _reconciled(self, **kw):
+        split = split_sentence(self.TO_DATE, self.CALENDAR - self.TO_DATE,
+                               self.CALENDAR)
+        kw.setdefault("home_split", split)
+        kw.setdefault("press_split", split)
+        return self._run(f"{self.CALENDAR:,}", f"{self.TO_DATE:,}", **kw)
+
+    def test_two_correct_periods_that_add_up_are_allowed(self):
+        # Rows are dated by EFFECTIVE date and WARN notices are filed weeks ahead
+        # by law, so the calendar year genuinely has two right answers. Both are
+        # the API's own figures and both pages print the sentence that adds them.
+        r = self._reconciled()
+        self.assertEqual(r.state, di.PASS, r.detail)
+        self.assertIn("33,939", r.detail)
+        self.assertIn("verified against the API", r.detail)
+
+    def test_a_reconciling_sentence_whose_subtraction_is_wrong_still_fails(self):
+        # The escape hatch is arithmetic, not prose. Same two correct figures,
+        # same sentence shape, a residual that does not close the gap.
+        bad = split_sentence(self.TO_DATE, 12_000, self.CALENDAR)
+        r = self._run(f"{self.CALENDAR:,}", f"{self.TO_DATE:,}",
+                      home_split=bad, press_split=bad)
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("does not add up", r.detail)
+
+    def test_a_gap_neither_figure_explains_still_fails(self):
+        # Both pages carry a well-formed sentence, but the press figure is not
+        # the API's to-date total — so the pair is simply two different answers
+        # with an explanation draped over it.
+        split = split_sentence(450_529, 33_939, 484_468)
+        r = self._run("484,468", "450,529", home_split=split, press_split=split)
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("Neither is a stated period of the other", r.detail)
+
+    def test_an_explanation_on_only_one_page_still_fails(self):
+        # A reader on the press page who never sees the home page's sentence has
+        # no route to the other figure.
+        split = split_sentence(self.TO_DATE, self.CALENDAR - self.TO_DATE,
+                               self.CALENDAR)
+        r = self._run(f"{self.CALENDAR:,}", f"{self.TO_DATE:,}",
+                      home_split=split, press_split="")
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("press page does not print", r.detail)
+
+    def test_an_api_that_cannot_answer_is_unknown_not_pass(self):
+        r = self._reconciled(totals=_totals(jobs=956_008, announced=472_301))
+        self.assertEqual(r.state, di.UNKNOWN)
+        self.assertNotEqual(r.state, di.PASS)
 
     def test_fails_when_a_retired_collector_is_published_as_live(self):
         # THE LIVE DEFECT: /source-health masks four retired collectors and
@@ -348,8 +619,8 @@ class ComparisonBasisTest(unittest.TestCase):
             _ctx(_router({"ai-layoff-tracker/": html})))
 
     def test_fails_when_the_explainer_is_sealed_in_a_closed_disclosure(self):
-        # THE LIVE DEFECT: a rendered measurement found these panels at 0 and 4
-        # pixels wide because <details> has no `open`.
+        # THE DEFECT: a <details> with no `open` starts closed, so the reader
+        # meets a summary line and nothing else.
         r = self._run(home_html(extra=SEALED_EXPLAINER))
         self.assertEqual(r.state, di.FAIL)
         self.assertIn("collapsed disclosure", r.detail)
@@ -358,12 +629,35 @@ class ComparisonBasisTest(unittest.TestCase):
         r = self._run('<span id="alt-hero-total">484,468</span>')
         self.assertEqual(r.state, di.FAIL)
 
-    def test_an_open_explainer_still_reports_area_as_unknown_not_pass(self):
-        # Honest ceiling: this runner has no browser, so non-zero rendered area
-        # is UNVERIFIED. It must surface as UNKNOWN, never quietly as a pass.
+    def test_an_open_explainer_with_text_in_it_passes(self):
+        # The two signals that discriminate are `open` and RENDERED TEXT LENGTH.
+        # Reporting UNKNOWN here on the grounds that pixel geometry is out of
+        # reach was measuring the wrong thing: a closed <details> keeps a full
+        # layout box, so width never distinguished these cases anyway.
         r = self._run(home_html(extra=OPEN_EXPLAINER))
-        self.assertEqual(r.state, di.UNKNOWN)
-        self.assertIn("NOT VERIFIED HERE", r.detail)
+        self.assertEqual(r.state, di.PASS, r.detail)
+        self.assertIn("characters of explanation are readable", r.detail)
+
+    def test_an_open_but_empty_panel_is_the_same_defect_and_fails(self):
+        # This is why the character count is asserted and not just the attribute.
+        r = self._run(home_html(extra=HOLLOW_EXPLAINER))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("characters of text", r.detail)
+
+    def test_a_collapsed_faq_using_the_same_phrase_does_not_fail_the_page(self):
+        # THE FALSE POSITIVE, pinned. "documented floor" also appears inside a
+        # routine FAQ accordion, which is collapsed because that is what an
+        # accordion is. Failing the page for it reported a sealed explainer on a
+        # page whose explainer was open and five thousand characters long — and a
+        # guard that cries wolf is a guard that gets muted.
+        r = self._run(home_html(extra=OPEN_EXPLAINER + FAQ_USING_THE_PHRASE))
+        self.assertEqual(r.state, di.PASS, r.detail)
+
+    def test_the_faq_alone_is_not_mistaken_for_the_explainer(self):
+        # And the converse: the FAQ's passing phrase must not stand in for a
+        # missing explainer either.
+        r = self._run(home_html(extra=FAQ_USING_THE_PHRASE))
+        self.assertEqual(r.state, di.FAIL)
 
     def test_a_dead_network_is_unknown_not_pass(self):
         self.assertEqual(pf.ComparisonBasisInvariant().run(_ctx(_dead)).state,

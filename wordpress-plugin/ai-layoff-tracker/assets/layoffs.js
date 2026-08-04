@@ -1024,7 +1024,11 @@
         return named;
     }
 
-    function statScopeLabel() {
+    // The PLACE half of the scope, on its own, because the hero label needs a
+    // geography and "worldwide · announced only" is not one. Splitting it here
+    // keeps a single definition: statScopeLabel() below is these parts followed
+    // by the rest, in the order it has always emitted them.
+    function statPlaceParts() {
         var parts = [];
         // A region tab's country set reads as its region name ("Europe"),
         // not as "France +7" — the raw form confused readers.
@@ -1037,17 +1041,57 @@
             // "+N more" defeats the cross-referencing the picker exists for.
             parts.push(regionNameFor(countries) || countries.join(' · '));
         }
-        [['alt-f-state', 'US: '], ['alt-f-industry', null]].forEach(function (p) {
-            var v = selectedList(p[0]);
-            if (v.length) parts.push((p[1] || '') + (v.length <= 6 ? v.join(' · ')
-                : v.slice(0, 5).join(' · ') + ' +' + (v.length - 5) + ' more'));
-        });
+        var st = selectedList('alt-f-state');
+        if (st.length) parts.push('US: ' + (st.length <= 6 ? st.join(' · ')
+            : st.slice(0, 5).join(' · ') + ' +' + (st.length - 5) + ' more'));
+        return parts;
+    }
+
+    // Everything else the scope stamp carries: industry, and the narrowing
+    // toggles. Not geography, so the hero label never absorbs it.
+    function statNarrowParts() {
+        var parts = [];
+        var v = selectedList('alt-f-industry');
+        if (v.length) parts.push(v.length <= 6 ? v.join(' · ')
+            : v.slice(0, 5).join(' · ') + ' +' + (v.length - 5) + ' more');
         // Narrowing toggles change what every card MEANS — say so on the
         // cards themselves, or "Verified" silently becomes "verified AI".
         if (readControl('alt-f-ai')) parts.push('AI-attributed rows only');
         if (readControl('alt-f-ai-broad')) parts.push('AI-linked broad rows only');
         if (readControl('alt-f-announced')) parts.push('announced only');
+        return parts;
+    }
+
+    function statScopeLabel() {
+        var parts = statPlaceParts().concat(statNarrowParts());
         return parts.length ? ' · ' + parts.join(' · ') : '';
+    }
+
+    /*
+      THE HERO'S BASIS, IN THE LABEL ITSELF.
+
+      The hero is the figure a journalist compares against a national estimate
+      inside ten seconds, and it read "verified job cuts, 2026": no geography,
+      and a bare year that does not say whether the window is what has happened
+      or what is on file. Those are two numbers 33,939 apart on 2026-08-04.
+
+      Geography falls back to "worldwide" rather than to nothing, because an
+      unfiltered total IS a worldwide total and leaving it unsaid is what made
+      the figure look like a US claim next to a US survey.
+
+      Period says "calendar year" and deliberately not "YTD", because rows are
+      dated by effective date, so the window holds notices filed for dates ahead.
+      The as-of line under the hero splits the two and sums back to this figure.
+    */
+    function heroGeoLabel() {
+        var places = statPlaceParts();
+        return places.length ? places.join(' · ') : 'worldwide';
+    }
+
+    function heroPeriodLabel() {
+        var period = statPeriodLabel();
+        if (/^\d{4}$/.test(period)) period = 'calendar year ' + period;
+        return period + statNarrowParts().map(function (p) { return ' · ' + p; }).join('');
     }
 
     // The as-of date the server counted to, in the page's own date style.
@@ -1100,7 +1144,8 @@
         // the same variable in the same pass, so a filter change can never
         // leave the page publishing two different headline totals.
         setText('alt-hero-total', fmt(verifiedJ));
-        setText('alt-hero-total-period', period);
+        setText('alt-hero-total-geo', heroGeoLabel());
+        setText('alt-hero-total-period', heroPeriodLabel());
         /*
           THE HERO'S RECONCILING LINE, and the citeline that quotes it.
 
