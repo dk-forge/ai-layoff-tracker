@@ -777,7 +777,16 @@ class CrossSurfaceAgreementInvariant:
         press_html, perr = _get_html(ctx, PRESS_URL)
         if home_html is None or press_html is None:
             e = herr or perr
+            # Filed under the SLICE name as well as the invariant key, because
+            # _roll_up looks the error up by slice. Without this the exception is
+            # dropped, Result.transport comes back False, and a dead network is
+            # reported as "the site answered wrongly" — the one distinction
+            # ops_status uses to tell an environment block (exit 3) from a real
+            # defect (exit 2). This is the only check here that reaches a verdict
+            # through _roll_up after a transport failure; the other five return
+            # their Result directly with error= set, which is why they were fine.
             ctx.errors[self.key] = e
+            ctx.errors[sl.name] = e
             per.append((sl, di._out(di.UNKNOWN,
                         _why_unreachable(e) + " — cross-surface agreement NOT checked")))
         else:
@@ -808,6 +817,7 @@ class CrossSurfaceAgreementInvariant:
         health, herr2 = _get_json(ctx, "source-health", {})
         quality, qerr = _get_json(ctx, "quality-status", {})
         if health is None or quality is None:
+            ctx.errors[sl.name] = herr2 or qerr
             per.append((sl, di._out(di.UNKNOWN,
                         _why_unreachable(herr2 or qerr)
                         + " — retired-collector agreement NOT checked")))
@@ -917,6 +927,23 @@ class ComparisonBasisInvariant:
 
         per = []
         low = html.lower()
+
+        # DID WE ACTUALLY GET THE PAGE? Every other check in this module answers
+        # UNKNOWN when the served body is not readable as the tracker page — a
+        # figure "not found in the served page" is explicitly NOT a pass and
+        # explicitly not a FAIL either. This one alone had no such anchor, so any
+        # 200 that was not the page (a proxy interstitial, a cached error body, a
+        # bare `{}`) read as "the explainer is missing" and reported a defect in
+        # the page rather than a failure to read it. That is a FALSE FAIL, and a
+        # guard that cries wolf on a captive-portal response is a guard that gets
+        # muted. The anchor is the hero element the page cannot render without.
+        sl = _Slice("page_was_served", "the served body is the tracker home page")
+        if "alt-hero-total" not in low:
+            per.append((sl, di._out(di.UNKNOWN,
+                        "the body served for the home page does not contain the "
+                        "hero element, so this is not the tracker page and the "
+                        "explainer was NOT checked")))
+            return di._roll_up(self, ctx, per)
 
         sl = _Slice("explainer_exists", "the explainer exists on the home page")
         found = [m for m in self.MARKERS if m in low]
