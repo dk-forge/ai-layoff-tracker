@@ -1044,6 +1044,11 @@
         var whenAnnounced = period.replace(' YTD', '') + scope + ' · includes future-dated plans';
         setText('alt-stat-total', fmt(verifiedJ));
         setText('alt-stat-total-entries', when);
+        // The hero figure is the SAME number as the Verified tile, written from
+        // the same variable in the same pass, so a filter change can never
+        // leave the page publishing two different headline totals.
+        setText('alt-hero-total', fmt(verifiedJ));
+        setText('alt-hero-total-period', period);
         setText('alt-stat-announced', fmt(annJ));
         setText('alt-stat-announced-sub', whenAnnounced);
         setText('alt-stat-all', fmt(t.jobs || 0));
@@ -1052,6 +1057,7 @@
         // subset. Each card says which parent number it belongs to.
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
         setText('alt-stat-ai', fmt(aiJ));
+        setText('alt-hero-ai', fmt(aiJ));
         var pctTxt = function (num, den) {
             if (!(den > 0) || num == null) return null;
             var pv = 100 * num / den;
@@ -1327,11 +1333,24 @@
         renderTrendTrajectory();
         renderLeaderboard(agg.leaders);
         var wired = !!document.getElementById('alt-f-industry');
-        renderBarList('alt-bars-industries', agg.top_industries, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
-        renderBarList('alt-bars-states', agg.top_states, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
-        renderBarList('alt-bars-countries', (agg.top_countries || []).map(function (e) {
-            return [e[0], e[1], e[2], countryFlag(e[0]) + e[0]];
-        }), wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+        // Every bar list below is drawn on the VERIFIED basis so it is the same
+        // quantity as the headline tile, and every one carries the sentence
+        // saying so. See verifiedBasis() for the defect this closes.
+        var barTotals = agg.totals || null;
+        var industryRows = verifiedBasis(agg.top_industries);
+        var stateRows = verifiedBasis(agg.top_states);
+        var countryRows = verifiedBasis((agg.top_countries || []).map(function (e) {
+            return [e[0], e[1], e[2], countryFlag(e[0]) + e[0], e[4], e[5]];
+        }));
+        renderBarList('alt-bars-industries', industryRows, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
+        renderBarList('alt-bars-states', stateRows, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
+        renderBarList('alt-bars-countries', countryRows, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
+        setBarBasisNote('alt-bars-industries-basis',
+            barBasisNote(barTotals, industryRows, 'industry', selectedList('alt-f-industry').length > 0));
+        setBarBasisNote('alt-bars-states-basis',
+            barBasisNote(barTotals, stateRows, 'US state', selectedList('alt-f-state').length > 0));
+        setBarBasisNote('alt-bars-countries-basis',
+            barBasisNote(barTotals, countryRows, 'country', selectedList('alt-f-country').length > 0));
         AIMAP.data = agg;
         // Defer the map's heavy work (fetching the ~756KB world atlas + the d3
         // geo render) until the card nears the viewport. The data is stored
@@ -1352,7 +1371,10 @@
         renderYoY(agg.series);
         // AI intensity: which industries' cuts are MOST AI-attributed (share
         // of that industry's jobs, min 1,000 jobs so tiny bases don't rank).
-        var intensity = (agg.top_industries || [])
+        // Numerator AND denominator are the verified pair, so this share is
+        // the same one the AI tile states against the headline tile. Mixing an
+        // all-jobs denominator with a verified numerator would understate it.
+        var intensity = industryRows
             .filter(function (e) { return e[1] >= 1000 && e[2] > 0; })
             .map(function (e) { return [e[0], Math.round(100 * e[2] / e[1]), Math.round(100 * e[2] / e[1])]; })
             .sort(function (a, b) { return b[1] - a[1]; })
@@ -1371,9 +1393,9 @@
         // writes the Roles control exactly as picking it from the dropdown does.
         // A label with no slug (vocabulary drift) stays a plain, non-filtering row.
         var rolesWired = !!document.getElementById('alt-f-roles');
-        var roleRows = (agg.top_roles || []).map(function (e) {
-            return [ROLE_SLUG_BY_LABEL[e[0]] || e[0], e[1], e[2], e[0]];
-        });
+        var roleRows = verifiedBasis((agg.top_roles || []).map(function (e) {
+            return [ROLE_SLUG_BY_LABEL[e[0]] || e[0], e[1], e[2], e[0], e[4], e[5]];
+        }));
         renderBarList('alt-bars-roles', roleRows, rolesWired ? 'alt-f-roles' : null, selectedList('alt-f-roles'));
         var rolesSub = document.getElementById('alt-roles-sub');
         var rolesCard = document.getElementById('alt-roles-card');
@@ -1385,7 +1407,7 @@
             var small = rke < 100;
             if (rolesCard) rolesCard.classList.toggle('alt-small-sample', small);
             rolesSub.innerHTML = (small ? '<span class="alt-sample-warn">⚠ Small sample, illustrative only.</span> ' : '')
-                + 'Each bar is total job cuts for that team; the <span class="alt-ai-key"></span> orange part'
+                + 'Each bar is verified job cuts for that team, the same basis as the Verified job cuts tile; the <span class="alt-ai-key"></span> orange part'
                 + ' and 🤖 number are the AI-attributed share. Built from only the <b>' + fmt(rke)
                 + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> records whose source named which teams were cut'
                 + '; a non-representative sample of where cuts land, <b>not</b> a breakdown of the total. Tap a role to filter the page.';
@@ -1397,9 +1419,12 @@
         // the control stays short until someone uses it and then shows exactly
         // what they picked.
         var srcWired = !!document.getElementById('alt-f-verification');
-        renderBarList('alt-bars-sourcetypes', (agg.source_types || []).map(function (e) {
-            return [e[0], e[1], e[2], SOURCE_TYPE_LABELS[e[0]] || e[0]];
-        }), srcWired ? 'alt-f-verification' : null, selectedList('alt-f-verification'));
+        var sourceRows = verifiedBasis((agg.source_types || []).map(function (e) {
+            return [e[0], e[1], e[2], SOURCE_TYPE_LABELS[e[0]] || e[0], e[4], e[5]];
+        }));
+        renderBarList('alt-bars-sourcetypes', sourceRows, srcWired ? 'alt-f-verification' : null, selectedList('alt-f-verification'));
+        setBarBasisNote('alt-bars-sourcetypes-basis',
+            barBasisNote(barTotals, sourceRows, 'data source', selectedList('alt-f-verification').length > 0));
         renderBarList('alt-bars-leaders', leaderEntries, null,
             companyBox && companyBox.value ? [companyBox.value] : [],
             companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null);
@@ -1433,6 +1458,105 @@
         return String.fromCodePoint(A + iso.charCodeAt(0) - 65, A + iso.charCodeAt(1) - 65) + ' ';
     }
 
+    /* THE BARS AND THE HEADLINE MUST BE THE SAME QUANTITY -------------- */
+    /*
+      The bar cards used to draw entry[1], which is verified PLUS announced,
+      immediately beside a headline tile counting verified only. On 2026-08-04
+      the visible country bars summed to about 757,000 against a published
+      headline of 444,871: roughly 70% over, with nothing on the card saying
+      the two were different quantities. A reader adding up what they could see
+      could not land on the number the page publishes, and was not told why.
+
+      /aggregate now carries a verified pair at [4]/[5] (see the $topN note in
+      db.php for why they are there and not at [1]/[2]). This switches the
+      dashboard's bars onto it, drops rows that are entirely announced, and
+      re-sorts, because the server orders by the all-jobs total for the sake of
+      the facet pages and the appendix CSV that read the same block.
+
+      THE CARDS ALSO SAY SO. Matching the basis is necessary and not
+      sufficient: these lists are a top-N of a longer tail, so the bars still
+      will not sum to the headline exactly. barBasisNote() states the basis and
+      names the remainder, so the gap that is left is an explained one.
+    */
+    // How many rows a bar card draws. Shared with barBasisNote() below: the
+    // sentence says how many of the dimension are shown, so it has to be the
+    // same number the renderer stops at.
+    var BARLIST_LIMIT = 24;
+
+    function verifiedBasis(entries) {
+        return (entries || []).map(function (e) {
+            // Absent only during the seconds-long window where an FTP deploy
+            // has landed this file but not yet db.php. Falling back to [1] is
+            // the pre-fix rendering, which self-heals on the next response;
+            // drawing zeros would empty the card instead.
+            var v = (e[4] != null) ? e[4] : e[1];
+            var a = (e[5] != null) ? e[5] : e[2];
+            return [e[0], v, a, e[3]];
+        }).filter(function (e) {
+            return e[1] > 0;
+        }).sort(function (x, y) {
+            return y[1] - x[1];
+        });
+    }
+
+    /*
+      THE SENTENCE THAT MAKES THE CARD RECONCILABLE.
+
+      Matching the basis was necessary and not sufficient. Even on one basis
+      the bars do not sum to the headline, for reasons a reader cannot see:
+      records with no value in that dimension are not on the chart at all
+      (in the 2026 view, 27,964 verified cuts sit on records with no country
+      recorded), and the card draws at most BARLIST_LIMIT rows.
+
+      So rather than hand-waving at the gap, this states it: how much the bars
+      cover, of what, and where the rest is. Every figure is computed from the
+      same totals the tiles render, so the sentence cannot drift from them, and
+      the drawn total is summed from the drawn rows rather than fetched, so it
+      cannot disagree with the bars above it either.
+
+      THE ONE CASE WHERE THE ARITHMETIC DOES NOT HOLD, and is not claimed: each
+      bar list deliberately ignores its OWN dimension's filter, so you can pick
+      a different country while looking at the country card. With that filter
+      on, the bars are a wider population than the headline and no sum relates
+      them. The note says that instead of printing a subtraction that is false.
+    */
+    function barBasisNote(totals, rows, noun, dimensionFiltered) {
+        if (!totals || !rows) return '';
+        var txt = 'Bars are verified job cuts, the same basis as the Verified job cuts tile.';
+        var ann = totals.announced_jobs || 0;
+        if (ann > 0) {
+            txt += ' The ' + fmt(ann) + ' announced job cuts in this view are a separate tier and are not in these bars.';
+        }
+        if (dimensionFiltered) {
+            return txt + ' This list keeps showing every ' + noun + ' while a ' + noun
+                + ' filter is on, so you can switch; its bars cover a wider set than the total above and are not meant to sum to it.';
+        }
+        var shown = rows.slice(0, BARLIST_LIMIT);
+        var headline = (totals.jobs || 0) - ann;
+        if (headline <= 0 || !shown.length) return txt;
+        var drawn = shown.reduce(function (sum, e) { return sum + (e[1] || 0); }, 0);
+        txt += ' These ' + fmt(shown.length) + ' bars cover ' + fmt(drawn) + ' of the '
+            + fmt(headline) + ' verified cuts';
+        var rest = headline - drawn;
+        if (rest > 0) {
+            txt += '; the remaining ' + fmt(rest) + ' sit on records with no ' + noun + ' recorded';
+            if (rows.length > shown.length) {
+                txt += ', or outside the largest ' + fmt(shown.length) + ' shown';
+            }
+            txt += '.';
+        } else {
+            txt += '.';
+        }
+        return txt;
+    }
+
+    function setBarBasisNote(elId, txt) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        el.textContent = txt || '';
+        el.hidden = !txt;
+    }
+
     function renderBarList(containerId, entries, filterId, activeValues, onPick, suffix) {
         var box = document.getElementById(containerId);
         if (!box) return;
@@ -1444,7 +1568,7 @@
         // Compact cards render all rows too (up to 24) and scroll inside a
         // short box (CSS: .alt-mini .alt-barlist), so every item is reachable
         // without expanding — expanding just gives it more room.
-        var limit = 24;
+        var limit = BARLIST_LIMIT;
         entries = (entries || []).slice(0, limit);
         if (!entries.length) {
             box.innerHTML = '<p class="alt-muted alt-empty">No data for the current filters.</p>';
@@ -1542,6 +1666,102 @@
         return (series || []).reduce(function (sum, s) {
             return s.month > nowKey ? sum + (s.jobs || 0) : sum;
         }, 0);
+    }
+
+    /* THE MONTH THE CLOCK IS STILL INSIDE ------------------------------ */
+    /*
+      WHY THIS EXISTS. fillMonths() caps the charted window at the CURRENT
+      month, which stops future months rendering as fake zeros. It does not
+      stop the current month itself rendering as a FINISHED one, and that is
+      the more expensive mistake, because the reader cannot see it.
+
+      On 4 August 2026 the bucket for August held 16,546 verified cuts: four
+      days of a month whose completed neighbours averaged about 58,000. Drawn
+      as an ordinary point on an ordinary line, that is a plunge of roughly
+      70%, and three charts published it at once. The trend line dived. The
+      AI-share line, dividing an AI numerator that was still zero by those
+      four days, terminated at exactly 0.0%. The year-over-year line crossed
+      under last year in the final month. Every one of those said the reverse
+      of what the data says: four days at that rate is ABOVE the run rate,
+      not a collapse.
+
+      WHAT WE DO NOT DO. We do not extrapolate the partial month to a
+      full-month figure, and we do not annualise it. A projection is a number
+      no source states, and this tracker publishes only numbers its sources
+      state. The partial figure is shown as exactly what it is.
+
+      THE TREATMENT IS THE SAME ON ALL THREE CHARTS, on purpose: one rule a
+      reader learns once. The in-progress month is
+        (a) LABELLED as partial, on the axis where the labels are per-month
+            and in the legend where they are not (the year-over-year chart
+            shares one "Aug" label between two years, so suffixing the axis
+            there would libel last year's completed August), and
+        (b) DRAWN DASHED, the same dash this page already uses for "not the
+            verified floor", with a visible marker on the point, and
+        (c) NAMED under the chart in a sentence that gives the elapsed days.
+
+      Styling alone was not judged enough. A dashed final segment is legible
+      to someone studying the chart and invisible to someone screenshotting
+      it, so the words carry the meaning and the dash reinforces it.
+    */
+    function nowMonthKey() {
+        var now = new Date();
+        return now.getFullYear() + '-' + pad2(now.getMonth() + 1);
+    }
+
+    // Where the in-progress month sits in a list of month keys, or null if the
+    // charted window does not reach it (a filtered past year, say).
+    function partialMonthAt(monthKeys) {
+        var key = nowMonthKey();
+        var idx = (monthKeys || []).indexOf(key);
+        if (idx === -1) return null;
+        var now = new Date();
+        return {
+            key: key, index: idx,
+            days: now.getDate(),
+            of: daysInMonth(now.getFullYear(), now.getMonth() + 1)
+        };
+    }
+
+    function partialLabel(info) {
+        return monthLabel(info.key) + ' (partial)';
+    }
+
+    // The sentence under the chart. States the elapsed days and refuses the
+    // comparison, rather than making one.
+    function partialNoteText(info) {
+        return monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
+            + info.of + ' days so far. Its point is dashed and marked partial because it counts'
+            + ' only what has been recorded to date, so it is not comparable with the completed'
+            + ' months beside it and is not a projection of the full month.';
+    }
+
+    function setPartialNote(elId, info) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        el.textContent = info ? partialNoteText(info) : '';
+        el.hidden = !info;
+    }
+
+    // Dash the segment that ENDS on the partial point and put a marker on it.
+    // Chart.js 4 scriptable options; `undefined` from a segment callback falls
+    // back to the dataset's own borderDash, so a line that is already dashed
+    // (the announced-plans series) keeps its dash everywhere else.
+    function markPartialPoint(ds, idx) {
+        var basePoint = ds.pointRadius;
+        ds.segment = ds.segment || {};
+        ds.segment.borderDash = function (ctx) {
+            return ctx.p1DataIndex === idx ? [3, 3] : undefined;
+        };
+        ds.pointRadius = function (ctx) {
+            return ctx.dataIndex === idx ? 4 : (typeof basePoint === 'number' ? basePoint : 0);
+        };
+        ds.pointBackgroundColor = function (ctx) {
+            return ctx.dataIndex === idx ? '#fff' : ds.borderColor;
+        };
+        ds.pointBorderColor = ds.borderColor;
+        ds.pointBorderWidth = function (ctx) { return ctx.dataIndex === idx ? 2 : 0; };
+        return ds;
     }
 
     function fillMonths(series) {
@@ -1686,6 +1906,9 @@
 
     function renderTrend(series) {
         if (!document.getElementById('alt-chart-weekly')) return;
+        // Clear first so a note never survives a re-render into a view it is
+        // not true of (a past-year filter, or the compare mode below).
+        setPartialNote('alt-trend-partial', null);
         var cmp = compareSelections();
         if (cmp) { renderCompareTrend(cmp); return; }
         var futureJobs = futureDatedJobs(series);
@@ -1729,6 +1952,9 @@
         // A single-month filter yields one data point; with pointRadius 0 a
         // lone point renders as literally nothing and the chart looks stale.
         var dots = series.length <= 2 ? 4 : 0;
+        // The in-progress month, if the charted window reaches it.
+        var partial = partialMonthAt(series.map(function (s) { return s.month; }));
+        setPartialNote('alt-trend-partial', partial);
         var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 }];
         if (announced.some(function (v) { return v > 0; })) {
             // UN-stacked: the blue filled area is the verified floor (the number
@@ -1768,9 +1994,19 @@
                 options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             }
         }
+        // Mark the partial month on every LINE series (the claims overlay is a
+        // bar on its own axis and is left alone), and suffix its axis label.
+        if (partial) {
+            datasets.forEach(function (ds) { if (ds.type !== 'bar') markPartialPoint(ds, partial.index); });
+        }
         mountChart('alt-chart-weekly', {
             type: 'line',
-            data: { labels: series.map(function (s) { return monthLabel(s.month); }), datasets: datasets },
+            data: {
+                labels: series.map(function (s) {
+                    return (partial && s.month === partial.key) ? partialLabel(partial) : monthLabel(s.month);
+                }),
+                datasets: datasets
+            },
             options: options
         });
     }
@@ -2118,6 +2354,7 @@
     function renderYoY(series) {
         var box = document.getElementById('alt-chart-yoy');
         if (!box) return;
+        setPartialNote('alt-yoy-partial', null);
         var years = readControl('alt-f-years') || [];
         var seq = ++YOY_SEQ;
         var nowYearNum = new Date().getFullYear();
@@ -2131,12 +2368,21 @@
                 return apiGet('aggregate', p).then(function (a) { return (a && a.series) || []; });
             })).then(function (lists) {
                 if (seq !== YOY_SEQ) return;
+                // This chart's x-axis is bare month names shared by every year,
+                // so "(partial)" cannot go there: it would label last year's
+                // completed August as partial too. It goes on the legend entry
+                // for the current year, which is the only series it is true of.
+                var yoyPartial = partialMonthAt([nowYearNum + '-' + nowKey2]);
+                setPartialNote('alt-yoy-partial', picked.indexOf(String(nowYearNum)) === -1 ? null : yoyPartial);
                 var datasets = picked.map(function (yr, i) {
                     var by = {};
                     lists[i].forEach(function (s) { by[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
-                    return { label: String(yr),
-                        data: mm.map(function (m) { return (parseInt(yr, 10) === nowYearNum && m > nowKey2) ? null : (by[m] || 0); }),
+                    var isNow = parseInt(yr, 10) === nowYearNum;
+                    var ds = { label: String(yr) + (isNow && yoyPartial ? ' (' + MONTHS[parseInt(nowKey2, 10) - 1] + ' partial)' : ''),
+                        data: mm.map(function (m) { return (isNow && m > nowKey2) ? null : (by[m] || 0); }),
                         borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 };
+                    if (isNow && yoyPartial) markPartialPoint(ds, parseInt(nowKey2, 10) - 1);
+                    return ds;
                 });
                 if (!datasets.some(function (d) { return d.data.some(function (v) { return v > 0; }); })) { clearChart('alt-chart-yoy'); return; }
                 var options = cloneOptions();
@@ -2167,8 +2413,16 @@
             var options = cloneOptions();
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || '') + ': ' + fmt(ctx.parsed.y); } };
+            // Only the current year has an unfinished month, and only when the
+            // chart is actually showing the current year. Without this the
+            // final point dropped the line under last year's completed one.
+            var yoyPartial1 = (year === new Date().getFullYear())
+                ? partialMonthAt([year + '-' + nowKey]) : null;
+            setPartialNote('alt-yoy-partial', yoyPartial1);
+            var curDs = { label: String(year) + (yoyPartial1 ? ' (' + MONTHS[parseInt(nowKey, 10) - 1] + ' partial)' : ''), data: curData, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 };
+            if (yoyPartial1) markPartialPoint(curDs, parseInt(nowKey, 10) - 1);
             mountChart('alt-chart-yoy', { type: 'line', data: { labels: labels, datasets: [
-                { label: String(year), data: curData, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 },
+                curDs,
                 { label: String(year - 1), data: oldData, borderColor: '#9aa0ab', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 }
             ] }, options: options });
         }).catch(function () { clearChart('alt-chart-yoy'); });
@@ -2224,6 +2478,7 @@
 
     function renderAiShare(series) {
         if (!document.getElementById('alt-chart-ai-share-trend')) return;
+        setPartialNote('alt-ai-share-partial', null);
         var cmpShare = compareSelections();
         if (cmpShare) { renderCompareAiShare(cmpShare); return; }
         series = fillMonths(series);
@@ -2233,6 +2488,13 @@
             return { month: s.month, v: v > 0 ? Math.round(1000 * ai / v) / 10 : null };
         });
         if (!pts.some(function (p) { return p.v > 0; })) { clearChart('alt-chart-ai-share-trend'); return; }
+        // Same partial-month rule as the trend chart. This card is where the
+        // artefact was worst: a month a few days old has a full denominator of
+        // days-so-far and an AI numerator that usually has not landed yet, so
+        // the line terminated at exactly 0.0% and read as attribution
+        // collapsing rather than as a month that has barely started.
+        var sharePartial = partialMonthAt(pts.map(function (p) { return p.month; }));
+        setPartialNote('alt-ai-share-partial', sharePartial);
         var options = cloneOptions();
         options.scales.y.ticks.callback = function (v) { return v + '%'; };
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
@@ -2242,9 +2504,13 @@
         options.onHover = function (evt, els) {
             if (evt.native) evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
         };
+        var shareDs = { data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(213,94,0,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true };
+        if (sharePartial) markPartialPoint(shareDs, sharePartial.index);
         mountChart('alt-chart-ai-share-trend', { type: 'line', data: {
-            labels: pts.map(function (p) { return monthLabel(p.month); }),
-            datasets: [{ data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(213,94,0,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true }]
+            labels: pts.map(function (p) {
+                return (sharePartial && p.month === sharePartial.key) ? partialLabel(sharePartial) : monthLabel(p.month);
+            }),
+            datasets: [shareDs]
         }, options: options });
     }
 
@@ -3174,7 +3440,10 @@
     }
 
     function aiMapPoints(scope, agg) {
-        var rows = scope === 'us' ? (agg.map_states || agg.top_states || []) : (agg.map_countries || agg.top_countries || []);
+        // Same verified basis as the bar cards and the headline tile: a bubble
+        // sized on verified-plus-announced next to a page publishing verified
+        // is the same defect in a rounder shape.
+        var rows = verifiedBasis(scope === 'us' ? (agg.map_states || agg.top_states || []) : (agg.map_countries || agg.top_countries || []));
         var lut = scope === 'us' ? US_STATE_CENTROIDS : COUNTRY_CENTROIDS;
         var out = [];
         rows.forEach(function (e) {
@@ -4164,11 +4433,20 @@
                 });
             },
             'alt-bars-ai-intensity': function () {
-                return ((LAST_AGG && LAST_AGG.top_industries) || [])
+                // Verified numerator over verified denominator, matching the
+                // card (see renderCharts).
+                return verifiedBasis((LAST_AGG && LAST_AGG.top_industries) || [])
                     .filter(function (e) { return e[1] >= 1000 && e[2] > 0; })
                     .map(function (e) { return [e[0], Math.round(100 * e[2] / e[1]), Math.round(100 * e[2] / e[1])]; })
                     .sort(function (a, b) { return b[1] - a[1]; });
             }
+        };
+        // The three computed cards above are not job counts, so they must not
+        // inherit the job-count header.
+        var BAR_CSV_HEADER = {
+            'alt-bars-leaders': 'label,jobs,ai_attributed_jobs',
+            'alt-bars-repeat': 'label,rounds,ai_attributed_rounds',
+            'alt-bars-ai-intensity': 'label,ai_share_pct_of_verified,ai_share_pct_of_verified'
         };
         Array.prototype.forEach.call(document.querySelectorAll('.alt-chart-dl'), function (btn) {
             btn.addEventListener('click', function (e) {
@@ -4234,9 +4512,14 @@
                     URL.revokeObjectURL(ca.href);
                 } else {
                     var meta = BAR_AGG_KEY[t];
-                    var rows = BAR_ROWS_FN[t] ? BAR_ROWS_FN[t]() : ((meta && LAST_AGG && LAST_AGG[meta[0]]) || []);
+                    // Through verifiedBasis() so the file holds the numbers the
+                    // card drew. Downloading a CSV whose column disagreed with
+                    // the bar above the button is how a wrong figure escapes
+                    // the page and turns up in someone else's chart.
+                    var rows = BAR_ROWS_FN[t] ? BAR_ROWS_FN[t]()
+                        : verifiedBasis((meta && LAST_AGG && LAST_AGG[meta[0]]) || []);
                     if (!rows.length) return;
-                    var csv = 'label,jobs,ai_attributed_jobs\n' + rows.map(function (r) {
+                    var csv = (BAR_CSV_HEADER[t] || 'label,verified_jobs,ai_attributed_verified_jobs') + '\n' + rows.map(function (r) {
                         return '"' + String(r[0]).replace(/"/g, '""') + '",' + r[1] + ',' + (r[2] || 0);
                     }).join('\n');
                     var blob = new Blob([csv], { type: 'text/csv' });

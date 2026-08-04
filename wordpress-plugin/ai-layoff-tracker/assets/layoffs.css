@@ -135,7 +135,15 @@ body:has(.alt-tracker-wrap) .entry-title {
     max-width: 1180px;
     margin: 0 auto 6px;
     padding-top: 0;
-    font-size: clamp(34px, 4.5vw, 46px);
+    /* WAS clamp(34px, 4.5vw, 46px). The page's own NAME was the largest thing
+       on the first screen, larger than the figure the page exists to publish
+       (20px, in the right-hand panel). A title is a label for the thing; it
+       should not outrank the thing. It stays a real h1 for search and for
+       screen readers, sized as a kicker above the figure. */
+    font-size: clamp(22px, 2.4vw, 28px);
+    letter-spacing: 0.01em;
+    color: var(--alt-ink-2);
+    font-weight: 700;
 }
 body:has(.alt-tracker-wrap) .entry-content { margin-top: 12px; }
 /* The theme stacks ~60px of padding above the title on this page; tighten it */
@@ -1397,6 +1405,31 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-chart-box { position: relative; height: 260px; }
 .alt-chart-box-tall { height: 320px; }
 
+/* Notes under a chart. Until 2.19.263 .alt-chart-note carried no rules at all
+   and rode on the theme's default <p>, which is a 16px body paragraph: the
+   jobless-claims note read as prose belonging to the page rather than as a
+   footnote belonging to its chart. These are footnotes, so they are sized and
+   coloured as footnotes, and they wrap rather than bleed (they are the longest
+   strings in a ~190px mini card). */
+.alt-chart-note {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--alt-ink-2);
+    overflow-wrap: break-word;
+}
+/* The partial-period note is the one thing on the card that stops a reader
+   misreading an unfinished month as a finished one, so it is not grey-on-grey:
+   it gets the same amber the page already uses for "not the verified floor",
+   and a rule tying it to the chart above it. */
+.alt-chart-note-partial {
+    border-left: 3px solid #E69F00;   /* ALT_AMBER in layoffs.js, the "announced / not the floor" hue */
+    padding: 4px 0 4px 9px;
+    color: var(--alt-ink);
+}
+.alt-chart-note-basis { font-size: 11.5px; color: var(--alt-muted); }
+.alt-mini .alt-chart-note { font-size: 11px; }
+
 @media (max-width: 720px) {
     .alt-chart-grid { grid-template-columns: 1fr; }
     .alt-chart-box, .alt-chart-box-tall { height: 240px; }
@@ -2107,8 +2140,39 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 
 /* The broad AI measure's own strip, out of the addable-tile grid so nobody
    sums across a row that mixes measures. Same card component, laid flat. */
-.alt-broad-strip { margin: 10px 0 0; }
-.alt-broad-strip .alt-stat-card { width: 100%; max-width: 560px; }
+/* The derived-totals strip now holds all three non-addable figures, so it is a
+   grid rather than one full-width card. */
+.alt-broad-strip {
+    margin: 10px 0 0;
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.alt-broad-strip .alt-stat-card { width: 100%; }
+
+/* DERIVED TOTALS DISCLOSURE. Closed by default: everything inside is built
+   from the tiles above and cannot be added to them, which is a caveat, and a
+   caveat is a poor use of the first screen. */
+.alt-stats-derived { margin: 12px 0 0; }
+.alt-stats-derived-summary {
+    cursor: pointer; list-style: none;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 600; color: var(--alt-ink-2);
+    padding: 7px 12px; border: 1px solid var(--alt-border); border-radius: 999px;
+    background: var(--alt-surface);
+}
+.alt-stats-derived-summary::-webkit-details-marker { display: none; }
+.alt-stats-derived-summary::before { content: "+"; font-weight: 700; line-height: 1; }
+.alt-stats-derived[open] .alt-stats-derived-summary::before { content: "\2212"; }
+.alt-stats-derived-summary:hover { color: var(--alt-ink); }
+.alt-stats-derived-note { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2); max-width: 72ch; }
+
+/* THE LEAD TILE. Among the totals that remain in the grid, the verified figure
+   is the one the page publishes, so it is not the same size as its neighbours.
+   The hero figure is still the dominant number on the page; this is the second
+   step of the same ladder, not a competitor to it. */
+.alt-stat-card-lead .alt-stat-value { font-size: 40px; }
+@media (max-width: 720px) { .alt-stat-card-lead .alt-stat-value { font-size: 34px; } }
+.alt-stat-card-lead .alt-stat-label { font-weight: 700; }
 
 /* Per-tile (i) disclosure: the caveat is one tap away instead of a paragraph
    on the tile face. Expands in place (no overlay), so it can never bleed
@@ -2180,13 +2244,43 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    reads left, like the board and tiles below it. */
 .alt-hero-main { min-width: 0; align-self: center; }
 .alt-hero-main p { text-align: left; }
+/* THE ONE DOMINANT FIGURE. Sized so that nothing else on the first screen
+   competes: the h1 above it is now 28px at most and the thesis under it 24px,
+   so the ordering a reader's eye takes is figure, then claim, then title. */
+.alt-hero-figure { margin: 0 0 14px; }
+.alt-hero-figure-value {
+    display: block;
+    font-size: clamp(48px, 8vw, 82px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    color: var(--alt-ochre, var(--alt-ink));
+    font-variant-numeric: tabular-nums;
+}
+.alt-hero-figure-label {
+    display: block;
+    margin-top: 6px;
+    font-size: clamp(15px, 1.7vw, 18px);
+    font-weight: 700;
+    color: var(--alt-ink);
+}
+.alt-hero-figure-sub {
+    display: block;
+    margin-top: 5px;
+    font-size: 13.5px;
+    color: var(--alt-ink-2);
+}
+.alt-hero-figure-sub b { font-variant-numeric: tabular-nums; color: var(--alt-ink); }
+
 .alt-hero-thesis {
     font-family: var(--alt-serif);
-    font-size: 31px; line-height: 1.16; letter-spacing: -0.01em;
+    /* WAS 31px. Demoted a step so the figure above it leads without the two
+       fighting; it is still the second-largest thing in the hero. */
+    font-size: 24px; line-height: 1.2; letter-spacing: -0.01em;
     font-weight: 700; color: var(--alt-navy);
     margin: 2px 0 10px;
 }
-@media (max-width: 560px) { .alt-hero-thesis { font-size: 25px; } }
+@media (max-width: 560px) { .alt-hero-thesis { font-size: 20px; } }
 .alt-hero-trust { margin: 0 0 14px; font-size: 14.5px; line-height: 1.55; color: var(--alt-ink-2); max-width: 56ch; }
 .alt-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .alt-hero-actions .alt-btn { text-decoration: none; }

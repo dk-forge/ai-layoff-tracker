@@ -6,6 +6,94 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - the unfinished month, the bars that were a different number, and the emphasis inversion (2.19.263)
+
+Three defects found by reading the live page. The first two were WRONG
+PUBLISHED NUMBERS.
+
+**1. The current partial month was drawn as a completed one, and three charts
+said the reverse of the data.** `fillMonths()` caps the charted window at the
+CURRENT month, which stops future months rendering as fake zeros. It never
+stopped the current month itself rendering as FINISHED. On 4 August the August
+bucket held 16,546 verified cuts, four days of a month whose completed 2026
+neighbours averaged about 58,000, and three cards published that as fact at
+once: the trend line fell 55,304 -> 16,546 and read as a ~70% collapse; the
+AI-share line divided an AI numerator that had not landed yet by four days of
+denominator and terminated at exactly 0.0%; the year-over-year line crossed
+under 2025 in the final month. Four days at that rate is ABOVE the run rate.
+
+One rule now, on all three, so a reader learns it once: the in-progress month
+is LABELLED partial (on the axis where labels are per-month; on the legend for
+year-over-year, whose axis is one "Aug" shared by both years, where an axis
+suffix would have libelled last year's completed August), DRAWN dashed with a
+marker via a Chart.js segment callback, and NAMED in a visible sentence under
+the chart giving the elapsed days. It is deliberately NOT extrapolated or
+annualised: a projection is a number no source states. The note is a visible
+paragraph and not a line inside the card's (i) disclosure, because a caveat
+nobody opens does not undo a chart drawn wrong. Guard:
+`test_partial_period_and_chart_basis.py`, which also asserts no renderer does
+the elapsed-days arithmetic that a run-rate scale-up would need.
+
+**2. The bars were a different quantity from the headline, about 70% over.**
+The bar cards drew `$topN`'s index [1], which is `SUM(job_count)` over verified
+AND announced, immediately beside a headline tile counting verified only. In
+the default 2026 view the visible country bars summed to about 757,000 against
+a published 444,871, with nothing on the card saying they were different
+measures.
+
+`$topN` now carries a VERIFIED pair at [4]/[5] and the dashboard draws it. The
+pair went to [4]/[5] rather than replacing [1]/[2] because the same block is
+published, under a `stage=announced` query, as the announced section of the
+quarterly appendix CSV (`export.php`): redefining [1] would have zeroed every
+announced row in a published artifact. Index [3] stays null because
+`renderBarList` reads it as a display label. The map, the AI-intensity share
+(numerator AND denominator, which were mixed bases), the roles card and the
+per-card CSV download all moved onto the same basis, because a downloaded file
+whose column disagrees with the bar above the button is how a wrong figure
+escapes the page.
+
+The SQL limit went 24 -> 60 in the same change: ordering by one basis and
+drawing another lets the cut-off drop a row that qualifies on the basis being
+drawn, and it did (Taiwan, 701 verified cuts, sat outside the all-jobs top 24).
+
+Matching the basis was necessary and not sufficient, so each card now states
+it and RECONCILES: "These 21 bars cover 416,907 of the 444,871 verified cuts;
+the remaining 27,964 sit on records with no country recorded." Every figure is
+computed from the totals the tiles render and the drawn rows themselves, so it
+cannot drift from either. The one case where the subtraction would be false is
+named instead of printed: each bar list deliberately ignores its OWN
+dimension's filter so a reader can switch, and with that filter on the bars
+cover a wider population than the headline.
+
+**3. Emphasis inversion on the first screen.** The page's own NAME rendered at
+46px while the figure the page exists to publish rendered at 20px in the
+right-hand panel, tied for smallest with "countries". Eight totals then
+rendered at an identical 28px with nothing leading, and three of the eight
+carried captions whose only job was to warn the reader off them ("do not add
+it to the tiles above", "this is not a count of distinct people", "This is the
+two boxes to the left, summed").
+
+The verified total is now the hero figure at up to 82px, written by
+`renderStats()` from the SAME variable as the Verified tile so the two can
+never disagree; the h1 drops to at most 28px as a kicker (still a real h1 for
+search and screen readers); the thesis drops to 24px. The duplicate total left
+the freshness panel, because the same number twice on one screen at two sizes
+invites the reader to wonder which is real. The three warned-about totals are
+DEMOTED, not deleted: same element IDs, one closed disclosure, so renderStats
+keeps writing them and anyone who wants them is one click away. The verified
+tile leads the remaining grid at 40px.
+
+**A guard was rewritten rather than deleted.** `test_facet_pages` pinned "the
+$topN tuple is exactly three wide", which is a proxy for the real property
+(index [3] is renderBarList's display label and must never hold a number) and
+blocked a legitimate change for the wrong reason. It now asserts the property
+itself: slot [3] is null, and every slot after the key is an int cast or the
+null. A width check would pass a row with a count at [3] and a label at [5];
+this one would not. `top_roles` gained the same assertion, since it is drawn by
+the same renderer.
+
+---
+
 ## 2026-08-04 - public-accuracy batch of four: one owner per coverage count, an honest country-scan figure, the last doubled /blog/, and a real social card (2.19.261)
 
 Four audit-confirmed defects, all of them numbers or links a reader could

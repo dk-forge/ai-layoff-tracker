@@ -11,6 +11,12 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **SINCE:** 2026-08-04
 - **WORKING ON:** —
 
+**Left FREE on purpose by the session behind PR #3.** That session was told not
+to push to main, and the baton only gates anything when it is ON main: a claim
+that lives on a branch gates nothing, and would have landed as a stale HELD the
+moment the PR merged. It worked on a branch, opened a PR and stopped. If you
+pick that PR up, claim the baton here first, in the normal way.
+
 **Takeover noted, per the stale-baton clause.** The SEC-recall session claimed
 this on 2026-08-01 and landed its answer the same day (`e8b8541`: the misses are
 lost to a rotating sweep that never returns, not to the pull cap and not to the
@@ -116,6 +122,34 @@ entry in the log below has an UNVERIFIED line. That is not hedging; it is the
 only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
+
+## #26 - three UX-audit defects fixed on a branch; PR #3 open, NOT merged
+
+Two of the three were wrong published numbers. See TECHLOG 2026-08-04
+(2.19.263) for the full write-up; the short version:
+
+1. The in-progress month was drawn as a completed one, so on 4 August three
+   charts published the reverse of the data (August's 16,546 verified cuts in
+   four days read as a ~70% collapse against a ~58,000 monthly run rate; the
+   AI-share line terminated at exactly 0.0%; the year-over-year line crossed
+   under last year). All three now label it partial, dash it, and name the
+   elapsed days. Nothing is extrapolated.
+2. Bar cards drew verified + announced beside a verified-only headline
+   (~757,000 visible against 444,871). They now draw a verified pair added at
+   `$topN[4]/[5]`, and each card reconciles its bars against the headline out
+   loud.
+3. The page title was 46px and the figure the page publishes was 20px in a
+   side panel. The verified total is now the hero figure; three totals whose
+   captions existed only to warn readers off them are demoted behind a
+   disclosure with their IDs intact.
+
+**What is next.** The PR is green (816 tests) but deliberately unmerged, because
+merging is deploying. It needs a human to merge, then the usual live pass: the
+four surfaces at 2.19.263, and specifically eyeball the trend / AI-share /
+year-over-year cards on a phone, since the partial-month note is the longest
+string on a ~190px mini card. Nothing about this change touches ingest, so no
+source health or Sources-page update is owed.
+
 - 2026-08-04 local (Claude Fable 5, public-accuracy fix agent) #25: **THE FOUR PUBLIC-ACCURACY DEFECTS FROM AUDIT #24, ALL FIXED IN ONE VERSION (2.19.261), ALL VERIFIED ON THE LIVE PAGE.**
   (1) **Coverage counts now have exactly one owner.** `alt_coverage_counts()` owns "N countries" and "N US states"; `alt_live_numbers()` delegates to it instead of running its own `COUNT(DISTINCT state)` over EVERY row (that was the 50 the FAQ attributed to WARN, and it shipped inside FAQPage JSON-LD); `alt_warn_states_phrase()` renders the sentence so the register map's DC key is never counted twice again (that was the 48). The country count drops the "Multiple countries" placeholder bucket. A **fourth** stale figure went with them, the health table's typed "WARN notices, 44 jurisdictions", now a count-free phrase because that file is generated offline and cannot read live data. LIVE: 46 US states and DC everywhere (prose + JSON-LD + ribbon), 57 countries; "50 US states", "48 US states", "58 countries", "44 jurisdictions" all return 0 hits on the page.
   (2) **"203 countries" is now 180.** 21 of those rows were US metro outlets or US states, 2 were grouping rows. The count is whitelisted against real country and territory names; US metros fold into the United States row (1 outlet -> 25, where they belonged); grouping rows are listed but not counted. **Direction of failure is deliberate:** an unfamiliar name UNDERstates reach and the generator prints it, so an omission is visible rather than silent. `railway/tests/test_country_scope.py` (9 tests) fails if a US state or metro is ever counted as a country again, if a counted row is not a real country, or if the committed partials drift from the generator. **It also caught drift nobody would have noticed:** the generator still emitted the dead "NewsAPI" name while the committed partial had been hand-corrected to "Google News", so the next routine re-run would have quietly restored a retired collector to a public page. Pinned by the test.

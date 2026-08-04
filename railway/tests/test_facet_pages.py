@@ -26,6 +26,31 @@ COMPANY_TEMPLATE = (PLUGIN / "templates/page-company-directory.php").read_text()
 LAYOFFS_JS = (PLUGIN / "assets/layoffs.js").read_text()
 
 
+def _php_array_slots(line: str) -> list:
+    """Positional slots of a single-line PHP `array(...)` literal, trimmed.
+
+    Splits on top-level commas only, so `(int) $row->v` survives intact and a
+    nested call would not be torn in half.
+    """
+    inner = line[line.index("array(") + len("array("):]
+    depth, buf, out = 0, "", []
+    for ch in inner:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(buf.strip())
+            buf = ""
+        else:
+            buf += ch
+    if buf.strip():
+        out.append(buf.strip())
+    return out
+
+
 class WiringTests(unittest.TestCase):
     def test_module_is_loaded_by_the_plugin(self):
         self.assertIn("require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';", BOOTSTRAP)
@@ -203,25 +228,60 @@ class AggregateIncludeTests(unittest.TestCase):
 
 
 class FacetCountsBlockTests(unittest.TestCase):
-    """facet_counts is a NAMED block, not a fourth element on the $topN triple.
+    """facet_counts is a NAMED block, not a fourth element on the $topN row.
 
-    renderBarList() in layoffs.js already reads index [3] of those rows as a
-    display label, and top_industries / top_states are handed to it unmapped, so
-    appending a count there would silently print the event count as the name of
-    a bar.
+    renderBarList() in layoffs.js reads index [3] of those rows as a DISPLAY
+    LABEL, and top_industries / top_states are handed to it unmapped, so a
+    number appended there would silently print as the name of a bar.
+
+    THIS USED TO BE PINNED AS "the tuple is exactly three wide", which is a
+    proxy for the real property and blocked a legitimate change for the wrong
+    reason. 2.19.263 had to carry a second, VERIFIED-basis pair alongside the
+    all-jobs pair (the dashboard's bars were drawn on verified + announced
+    beside a verified-only headline, about 70% over). Those went to [4] and
+    [5] and index [3] was left as an explicit null, which is exactly what the
+    guard existed to protect.
+
+    So the assertion below pins the property itself: slot [3] is null, never a
+    value. A width check would pass a row that put a count at [3] and a label
+    at [5]; this one would not.
     """
 
     def test_counts_live_in_their_own_block(self):
         self.assertIn("'facet_counts'   => $facet_counts,", DB_PHP)
         self.assertIn("$want('facet_counts')", DB_PHP)
 
-    def test_the_topn_triple_is_still_three_wide(self):
+    def test_topn_leaves_index_three_empty_for_the_display_label(self):
         topn = DB_PHP.split("$topN = function (")[1].split("};")[0]
-        self.assertIn("$out[] = array($row->k, (int) $row->v, (int) $row->a);", topn)
+        # Matched as a construct, not as a whole line: it has lived both inline
+        # inside its foreach and on a line of its own, and the guard is about
+        # what is in slot [3], not about where the statement is wrapped.
+        emitted = re.findall(r"\$out\[\] = array\(.*?\);", topn, re.S)
+        self.assertEqual(len(emitted), 1, "expected exactly one $topN row constructor")
+        slots = _php_array_slots(emitted[0])
+        self.assertGreaterEqual(len(slots), 4)
+        self.assertEqual(slots[3], "null",
+                         "index [3] is renderBarList's display label and must stay empty; "
+                         "found %r" % (slots[3],))
+        # And nothing else in the row may be a bare string/label either: every
+        # slot after the key is an integer cast or the null.
+        for i, slot in enumerate(slots[1:], start=1):
+            self.assertTrue(slot == "null" or slot.startswith("(int)"),
+                            "slot [%d] is neither an int cast nor null: %r" % (i, slot))
+
+    def test_top_roles_rows_keep_the_same_shape(self):
+        # The roles card is drawn by the SAME renderBarList, so a label at [3]
+        # there is the identical bug in a different block.
+        block = DB_PHP.split("$top_roles = array();")[1].split("// Monthly series")[0]
+        emitted = re.findall(r"\$top_roles\[\] = array\(.*?\);", block, re.S)
+        self.assertEqual(len(emitted), 1)
+        slots = _php_array_slots(emitted[0])
+        self.assertGreaterEqual(len(slots), 4)
+        self.assertEqual(slots[3], "null")
 
     def test_layoffs_js_still_owns_index_three(self):
         # If this ever stops being true the guard above can be revisited; while
-        # it holds, the tuple must not grow.
+        # it holds, index [3] belongs to the display label.
         self.assertIn("countryFlag(e[0]) + e[0]", LAYOFFS_JS)
 
     def test_counts_are_events_not_jobs(self):
