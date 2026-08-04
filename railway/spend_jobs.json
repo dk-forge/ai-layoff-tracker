@@ -51,6 +51,58 @@
    "prompt_tokens": 0,
    "run_id": "30784878989",
    "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 40,
+   "changed": 10,
+   "completion_tokens": 828,
+   "cost_usd": 0.004676,
+   "date": "2026-08-04",
+   "items": 40,
+   "job": "enrich-roles",
+   "prompt_tokens": 14856,
+   "run_id": "30880712984",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 217,
+   "changed": 13,
+   "completion_tokens": 1891,
+   "cost_usd": 0.017015,
+   "date": "2026-08-04",
+   "items": 200,
+   "job": "industry-backfill",
+   "prompt_tokens": 58547,
+   "run_id": "30881999628",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 34,
+   "changed": 403,
+   "completion_tokens": 604,
+   "cost_usd": 0.005115,
+   "date": "2026-08-04",
+   "items": 40,
+   "job": "reason-backfill",
+   "prompt_tokens": 17458,
+   "run_id": "30881199621",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "changed": 0,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-08-04",
+   "items": 3,
+   "job": "reclassify-legacy-ai",
+   "prompt_tokens": 0,
+   "run_id": "30877852215",
+   "stored": null
   }
  ],
  "v": 1
