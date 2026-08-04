@@ -74,6 +74,13 @@ if ($alt_t) {
         'ai-announced' => $alt_aia,
         'ai-total'     => $alt_aiv + $alt_aia,
         'ai-broad'     => (int) ($alt_t['ai_broad_jobs'] ?? 0),
+        // The same window, cut at today (see the to_date_* note in db.php).
+        // 'total' counts the whole filtered window, which for a calendar-year
+        // filter includes notices already filed for effective dates later in
+        // the year; 'to-date' is the one a "so far" sentence may quote.
+        'to-date'      => max(0, (int) ($alt_t['to_date_jobs'] ?? 0) - (int) ($alt_t['to_date_announced_jobs'] ?? 0)),
+        'later'        => max(0, (int) ($alt_t['jobs'] ?? 0) - (int) ($alt_t['announced_jobs'] ?? 0)
+                                 - ((int) ($alt_t['to_date_jobs'] ?? 0) - (int) ($alt_t['to_date_announced_jobs'] ?? 0))),
         'companies'    => (int) ($alt_t['companies'] ?? 0),
         'industries'   => (int) ($alt_t['industries'] ?? 0),
         'countries'    => (int) ($alt_t['countries'] ?? 0),
@@ -85,7 +92,18 @@ $alt_stat = function ($k) use ($alt_sv) {
 };
 // The bootstrap scope is always the current year (see
 // alt_tracker_bootstrap_payload), so the period stamps are knowable here too.
-$alt_period     = $alt_sv === null ? '' : current_time('Y') . ' YTD';
+/*
+  THE PERIOD STAMP SAYS WHAT THE WINDOW IS, not what we wish it were.
+
+  This stamp read "<year> YTD" over a figure scoped to the whole calendar
+  year. Rows are dated by EFFECTIVE date and WARN notices are filed with
+  effective dates weeks ahead by law, so on 2026-08-04 that figure was
+  33,939 ahead of "to date" while the FAQPage JSON-LD on the same page
+  published the to-date number. One document, two totals, one wording.
+  The stamp now names the calendar year, and the reconciling line below the
+  hero prints the to-date figure and the remainder, which sum to it.
+*/
+$alt_period     = $alt_sv === null ? '' : current_time('Y');
 $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes future-dated plans';
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
@@ -124,6 +142,18 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-hero-figure-value" id="alt-hero-total"><?php echo esc_html($alt_stat('total')); ?></span>
                 <span class="alt-hero-figure-label">verified job cuts, <span id="alt-hero-total-period"><?php echo esc_html($alt_period); ?></span></span>
                 <span class="alt-hero-figure-sub"><b id="alt-hero-ai"><?php echo esc_html($alt_stat('ai')); ?></b> of them were blamed on AI by the employer.</span>
+                <?php /* THE RECONCILING LINE. to-date + later = the hero figure, so a
+                         reader can add up what is on screen. Kept in step live by
+                         renderStats() (alt-hero-asof). Printed only when some of the
+                         window is still ahead; in a past-year view there is nothing
+                         to split and the sentence would be noise. */ ?>
+                <span class="alt-hero-figure-asof" id="alt-hero-asof"<?php echo ($alt_sv !== null && $alt_sv['later'] > 0) ? '' : ' hidden'; ?>><?php
+                    if ($alt_sv !== null && $alt_sv['later'] > 0) {
+                        echo esc_html(number_format($alt_sv['to-date']) . ' have taken effect as of ' . date_i18n('M j, Y')
+                            . '. The other ' . number_format($alt_sv['later'])
+                            . ' are on notices already filed for effective dates later in the period.');
+                    }
+                ?></span>
             </p>
             <?php endif; ?>
             <p class="alt-hero-thesis" role="heading" aria-level="2">Every layoff here is verified. That is the whole point.</p>
@@ -171,7 +201,11 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
     ?>
     <p class="alt-citeline">
         <?php if ($alt_sv !== null) : ?>
-        <span class="alt-citeline-stat"><b><?php echo esc_html($alt_stat('total')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
+        <?php /* "so far, as of <today>" is a TO-DATE claim, so it quotes the
+                 to-date figure. It used to quote the whole-window total, which
+                 disagreed with the FAQPage JSON-LD this same page emits from
+                 alt_live_numbers() (that query has always clamped at today). */ ?>
+        <span class="alt-citeline-stat"><b id="alt-citeline-total"><?php echo esc_html($alt_stat('to-date')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
         <?php endif; ?>
         <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
     </p>
@@ -381,8 +415,12 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
             <div class="alt-filter" data-dd="Reasons" data-empty="All reasons">
                 <label for="alt-f-reasons">Reasons</label>
                 <select id="alt-f-reasons" multiple>
-                    <option value="ai_automation">AI: company-stated (specific)</option>
-                    <option value="possible_ai">AI-linked (broad)</option>
+                    <?php /* REASON TAGS, not the AI tiles. These are read from the
+                             stored source text (reason_tags); the AI tiles are counted
+                             from the AI attribution flags. They used to share a name and
+                             publish different numbers on one page. */ ?>
+                    <option value="ai_automation">Reason tag: AI or automation</option>
+                    <option value="possible_ai">Reason tag: AI press-linked</option>
                     <option value="revenue_decline">Revenue decline</option>
                     <option value="restructuring">Restructuring</option>
                     <option value="merger_acquisition">Merger / acquisition</option>
@@ -437,6 +475,11 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         </div>
         <!-- Hidden state holders: quick-view pills are the visible controls -->
         <input type="checkbox" id="alt-f-ai" hidden>
+        <?php /* The broad AI measure used to ride in the Reasons multi-select as
+                 `possible_ai`, so tapping that doughnut slice returned a set about
+                 twelve times the size it drew. It is its own filter now, with its
+                 own removable chip. */ ?>
+        <input type="checkbox" id="alt-f-ai-broad" hidden>
         <input type="checkbox" id="alt-f-announced" hidden>
     </div>
 
@@ -676,6 +719,10 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-reasons" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
+            <?php /* BASIS LINE. This was the one chart in the grid without one, and
+                     it was also the one drawing a different basis from the headline.
+                     Written by layoffs.js (reasonsBasisNote). */ ?>
+            <p class="alt-chart-note alt-chart-note-basis" id="alt-chart-reasons-basis" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">Largest single job cuts <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-leaders" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>

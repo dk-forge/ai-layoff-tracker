@@ -43,7 +43,18 @@
     var INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9' };
 
     var REASON_LABELS = {
-        ai_automation: 'AI: company-stated (specific)', possible_ai: 'AI-linked (broad)',
+        /*
+          THESE ARE REASON TAGS, AND THEY USED TO WEAR THE TILES' NAMES.
+
+          "AI: company-stated (specific)" and "AI-linked (broad)" are the
+          labels on the two AI stat tiles, which are counted from the
+          ai_explicit / ai_causation flag columns. These two are reason TAGS,
+          counted from reason_tags, and they are different quantities: on
+          2026-08-04 the tag read 10,415 where the tile read 124,793. One name
+          over two numbers on one page is not a labelling nicety, it is a
+          reader adding up figures that were never the same measure.
+        */
+        ai_automation: 'Reason tag: AI or automation', possible_ai: 'Reason tag: AI press-linked',
         revenue_decline: 'Revenue decline', restructuring: 'Restructuring',
         merger_acquisition: 'Merger / acquisition', offshoring: 'Offshoring',
         product_discontinuation: 'Product discontinued', cost_reduction: 'Cost reduction',
@@ -497,7 +508,7 @@
     var FILTER_STORAGE_KEY = 'altTrackerFilters:v2';
     var FILTER_IDS = ['alt-search', 'alt-f-from', 'alt-f-to', 'alt-f-years', 'alt-f-quarters',
         'alt-f-months', 'alt-f-industry', 'alt-f-country', 'alt-f-state', 'alt-f-reasons', 'alt-f-roles',
-        'alt-f-verification', 'alt-f-company', 'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai', 'alt-f-announced'];
+        'alt-f-verification', 'alt-f-company', 'alt-f-keyword', 'alt-f-minjobs', 'alt-f-ai', 'alt-f-ai-broad', 'alt-f-announced'];
 
     function readControl(id) {
         var el = document.getElementById(id);
@@ -558,14 +569,12 @@
             if (query.has(pair[0])) writeControl(pair[1], query.get(pair[0]));
         });
         if (query.get('ai') === '1') writeControl('alt-f-ai', true);
-        if (query.get('ai_broad') === '1') {
-            // APPEND, never overwrite: a shared link can carry ai_broad=1 AND
-            // reasons=restructuring; clobbering the multi-select silently
-            // dropped the co-selected reasons for the recipient (audit 2026-07-25).
-            var rs = readControl('alt-f-reasons') || [];
-            if (rs.indexOf('possible_ai') === -1) rs = rs.concat(['possible_ai']);
-            writeControl('alt-f-reasons', rs);
-        }
+        // ai_broad has its OWN control now. It used to be written into the
+        // Reasons multi-select as `possible_ai`, which made an inbound broad
+        // link look like a reason-tag selection and, worse, made every
+        // reason-tag selection of that slice silently become a broad-AI
+        // filter. The two are different columns and different totals.
+        if (query.get('ai_broad') === '1') writeControl('alt-f-ai-broad', true);
         if (query.get('stage') === 'announced') writeControl('alt-f-announced', true);
         // date_basis was WRITE-only: every share URL carried it, nothing read it
         // back, so a "notice date" link silently reverted the recipient to the
@@ -614,21 +623,21 @@
         if ((v = multiParam('alt-f-industry'))) p.industry = v;
         if ((v = multiParam('alt-f-country'))) p.country = v;
         if ((v = multiParam('alt-f-state'))) p.state = v;
-        // The two AI reason options must agree with the AI stat cards, which are
-        // driven by the ai_explicit / ai_causation flag columns — NOT by
-        // reason_tags. Translate them to the ai / ai_broad params so checking
-        // "AI-linked (broad)" reproduces the broad card total exactly, instead of
-        // the smaller reason-tagged subset. Broad supersedes specific (it
-        // already includes every ai_explicit row). Non-AI reasons filter as before.
-        var reasonsSel = (multiParam('alt-f-reasons') || '').split(',').filter(Boolean);
-        if (reasonsSel.length) {
-            var hasBroadAI = reasonsSel.indexOf('possible_ai') !== -1;
-            var hasSpecificAI = reasonsSel.indexOf('ai_automation') !== -1;
-            var restReasons = reasonsSel.filter(function (r) { return r !== 'possible_ai' && r !== 'ai_automation'; });
-            if (hasBroadAI) p.ai_broad = '1';
-            else if (hasSpecificAI) p.ai = '1';
-            if (restReasons.length) p.reasons = restReasons.join(',');
-        }
+        /*
+          A REASON FILTER FILTERS BY REASON TAG. All of them, including the two
+          AI ones.
+
+          This used to translate `possible_ai` to ai_broad=1 and `ai_automation`
+          to ai=1, so that picking a reason reproduced the AI stat cards
+          exactly. It made the destination match the card and left the thing
+          you clicked lying about where it went: the doughnut drew the
+          possible_ai slice at 10,415 and tapping it returned 124,793, a
+          twelvefold jump with nothing on screen explaining it. The broad
+          measure now has its own control (alt-f-ai-broad), which is a
+          removable chip like every other filter, so both quantities stay
+          reachable and neither borrows the other's number.
+        */
+        if ((v = multiParam('alt-f-reasons'))) p.reasons = v;
         if ((v = multiParam('alt-f-roles'))) p.roles = v;
         if ((v = multiParam('alt-f-verification'))) p.sources = v;
         if ((v = (readControl('alt-search') || '').trim())) p.q = v;
@@ -637,6 +646,7 @@
         var mj = parseInt(readControl('alt-f-minjobs'), 10);
         if (!isNaN(mj) && mj > 0) p.min_jobs = mj;
         if (readControl('alt-f-ai')) p.ai = '1';
+        if (readControl('alt-f-ai-broad')) p.ai_broad = '1';
         if (readControl('alt-f-announced')) p.stage = 'announced';
         if (DATE_BASIS === 'notice') p.date_basis = 'notice';
         return p;
@@ -823,6 +833,9 @@
         // filter — otherwise a tap narrowed the page with no visible ✕ to undo.
         { id: 'alt-f-company', label: 'Company', kind: 'single', color: 'blue' },
         { id: 'alt-f-ai', label: '', kind: 'bool', on: 'AI-attributed only', color: 'red' },
+        // The broad AI measure is a filter of its own now, not a reason tag
+        // wearing the tile's name. Chip so it is visible and removable.
+        { id: 'alt-f-ai-broad', label: '', kind: 'bool', on: 'AI-linked, broad only', color: 'gold' },
         { id: 'alt-f-announced', label: '', kind: 'bool', on: 'Announced only', color: 'gold' }
     ];
 
@@ -975,7 +988,13 @@
             && !(readControl('alt-f-quarters') || []).length
             && !(readControl('alt-f-months') || []).length
             && !readControl('alt-f-from') && !readControl('alt-f-to');
-        if (bare && years[0] === String(new Date().getFullYear())) return years[0] + ' YTD';
+        // NOT "<year> YTD". A year filter is the whole calendar year, and
+        // because rows are dated by EFFECTIVE date it legitimately holds
+        // notices filed for dates still ahead. The hero's as-of line splits
+        // the window into what has taken effect and what has not; the stamp
+        // just names the window. (Defect: the stamp said YTD over the whole
+        // year while the page's own FAQ schema published the to-date figure.)
+        if (bare && years[0] === String(new Date().getFullYear())) return years[0];
         var period = currentPeriodLabel();
         return period === 'all time' ? 'all time' : period.replace(/^in /, '');
     }
@@ -1026,8 +1045,20 @@
         // Narrowing toggles change what every card MEANS — say so on the
         // cards themselves, or "Verified" silently becomes "verified AI".
         if (readControl('alt-f-ai')) parts.push('AI-attributed rows only');
+        if (readControl('alt-f-ai-broad')) parts.push('AI-linked broad rows only');
         if (readControl('alt-f-announced')) parts.push('announced only');
         return parts.length ? ' · ' + parts.join(' · ') : '';
+    }
+
+    // The as-of date the server counted to, in the page's own date style.
+    // Read from the response rather than from the browser clock: the two can
+    // differ by a day across timezones, and the sentence names a figure the
+    // server produced.
+    function asOfLabel(t) {
+        var iso = (t && t.as_of) || '';
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+        if (!m) return 'today';
+        return MONTHS[parseInt(m[2], 10) - 1] + ' ' + parseInt(m[3], 10) + ', ' + m[1];
     }
 
     function renderStats(t) {
@@ -1041,7 +1072,7 @@
         // "YTD" would wrongly imply they already happened. Plans can also
         // change or be cancelled before execution — dates are the company's
         // stated schedule, not a promise.
-        var whenAnnounced = period.replace(' YTD', '') + scope + ' · includes future-dated plans';
+        var whenAnnounced = period + scope + ' · includes future-dated plans';
         setText('alt-stat-total', fmt(verifiedJ));
         setText('alt-stat-total-entries', when);
         // The hero figure is the SAME number as the Verified tile, written from
@@ -1049,6 +1080,30 @@
         // leave the page publishing two different headline totals.
         setText('alt-hero-total', fmt(verifiedJ));
         setText('alt-hero-total-period', period);
+        /*
+          THE HERO'S RECONCILING LINE, and the citeline that quotes it.
+
+          verifiedToDate + later = verifiedJ, so a reader can add up what is on
+          screen and land on the headline. `to_date_jobs` is absent only in the
+          seconds between an FTP deploy landing this file and db.php; the line
+          hides rather than printing a subtraction it cannot make.
+        */
+        var haveToDate = (t.to_date_jobs != null && t.to_date_announced_jobs != null);
+        var verifiedToDate = haveToDate ? (t.to_date_jobs - t.to_date_announced_jobs) : null;
+        var laterJ = haveToDate ? Math.max(0, verifiedJ - verifiedToDate) : 0;
+        var asOfEl = document.getElementById('alt-hero-asof');
+        if (asOfEl) {
+            if (laterJ > 0) {
+                asOfEl.textContent = fmt(verifiedToDate) + ' have taken effect as of ' + asOfLabel(t)
+                    + '. The other ' + fmt(laterJ)
+                    + ' are on notices already filed for effective dates later in the period.';
+                asOfEl.hidden = false;
+            } else {
+                asOfEl.textContent = '';
+                asOfEl.hidden = true;
+            }
+        }
+        if (verifiedToDate != null) setText('alt-citeline-total', fmt(verifiedToDate));
         setText('alt-stat-announced', fmt(annJ));
         setText('alt-stat-announced-sub', whenAnnounced);
         setText('alt-stat-all', fmt(t.jobs || 0));
@@ -1347,8 +1402,23 @@
         renderBarList('alt-bars-countries', countryRows, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
         setBarBasisNote('alt-bars-industries-basis',
             barBasisNote(barTotals, industryRows, 'industry', selectedList('alt-f-industry').length > 0));
+        // The state card is scoped to the United States (see barBasisNote):
+        // its bars can only ever cover US cuts, so it reconciles against the
+        // US verified total, not the worldwide one.
+        var usVerified = countryVerifiedTotal(agg, 'United States');
+        var worldVerified = ((barTotals && barTotals.jobs) || 0) - ((barTotals && barTotals.announced_jobs) || 0);
+        var stateScope = {
+            // 0 makes barBasisNote stop after the basis sentence: with no
+            // United States row in this view there is no honest denominator,
+            // and the worldwide one is the defect this scope exists to close.
+            headline: (usVerified == null) ? 0 : usVerified,
+            of: 'verified US cuts',
+            outside: (usVerified != null && worldVerified > usVerified)
+                ? 'The ' + fmt(worldVerified - usVerified) + ' verified cuts outside the United States are not in these bars and are not counted below.'
+                : ''
+        };
         setBarBasisNote('alt-bars-states-basis',
-            barBasisNote(barTotals, stateRows, 'US state', selectedList('alt-f-state').length > 0));
+            barBasisNote(barTotals, stateRows, 'US state', selectedList('alt-f-state').length > 0, stateScope));
         setBarBasisNote('alt-bars-countries-basis',
             barBasisNote(barTotals, countryRows, 'country', selectedList('alt-f-country').length > 0));
         AIMAP.data = agg;
@@ -1519,8 +1589,19 @@
       a different country while looking at the country card. With that filter
       on, the bars are a wider population than the headline and no sum relates
       them. The note says that instead of printing a subtraction that is false.
+
+      AND THE ONE CASE WHERE THE DENOMINATOR IS NOT THE HEADLINE. Industry,
+      country and data source are global dimensions: every counted row can
+      carry one, so the worldwide verified total is the right denominator and
+      the remainder really is "records with no value here". US STATE is not
+      like that. Its universe is the United States, so measuring the state
+      bars against the worldwide total charged every non-US cut to a US
+      data-quality gap: on 2026-08-04 the card printed 193,896 missing when
+      the honest figure was about 89,848, and on the default all-time view it
+      printed 2,383,032 against roughly 1,285,383. The caller passes a scope
+      for that card, and the sentence names it.
     */
-    function barBasisNote(totals, rows, noun, dimensionFiltered) {
+    function barBasisNote(totals, rows, noun, dimensionFiltered, scope) {
         if (!totals || !rows) return '';
         var txt = 'Bars are verified job cuts, the same basis as the Verified job cuts tile.';
         var ann = totals.announced_jobs || 0;
@@ -1532,11 +1613,18 @@
                 + ' filter is on, so you can switch; its bars cover a wider set than the total above and are not meant to sum to it.';
         }
         var shown = rows.slice(0, BARLIST_LIMIT);
-        var headline = (totals.jobs || 0) - ann;
+        // A scoped card reconciles against ITS OWN universe, and says which.
+        // Scope shape: { headline: n, of: 'verified US cuts', outside: '...' }.
+        // A scope whose headline could not be established (no United States row
+        // in this view) drops the coverage sentence rather than reconciling
+        // against a denominator that is not the card's population.
+        var headline = scope ? (scope.headline || 0) : ((totals.jobs || 0) - ann);
+        var ofPhrase = scope ? scope.of : 'verified cuts';
+        if (scope && scope.outside) txt += ' ' + scope.outside;
         if (headline <= 0 || !shown.length) return txt;
         var drawn = shown.reduce(function (sum, e) { return sum + (e[1] || 0); }, 0);
         txt += ' These ' + fmt(shown.length) + ' bars cover ' + fmt(drawn) + ' of the '
-            + fmt(headline) + ' verified cuts';
+            + fmt(headline) + ' ' + ofPhrase;
         var rest = headline - drawn;
         if (rest > 0) {
             txt += '; the remaining ' + fmt(rest) + ' sit on records with no ' + noun + ' recorded';
@@ -1548,6 +1636,32 @@
             txt += '.';
         }
         return txt;
+    }
+
+    // The reasons card's own sentence. It cannot use barBasisNote(): that one
+    // reconciles a top-N against a total, and these slices are overlapping tags
+    // that no total contains. It says exactly that instead of printing a
+    // subtraction that would be false.
+    function reasonsBasisNote() {
+        var txt = 'Slices are verified job cuts, the same basis as the Verified job cuts tile.';
+        txt += ' Reason tags overlap and are not a breakdown of the total: one event can carry several tags,'
+            + ' an event whose source states no reason carries none, and the slices are not meant to sum to the headline.';
+        txt += ' These tags are read from the stored source text and are a different measure from the AI tiles,'
+            + ' which are counted from the AI attribution flags. Tapping a slice filters the page to that tag.';
+        return txt;
+    }
+
+    // The verified total for one country in this view, from the same
+    // top_countries block the country card draws. Null when the view has no
+    // row for it, which is the signal to print no coverage sentence at all.
+    function countryVerifiedTotal(agg, name) {
+        var rows = (agg && agg.top_countries) || [];
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i][0] === name) {
+                return (rows[i][4] != null) ? rows[i][4] : rows[i][1];
+            }
+        }
+        return null;
     }
 
     function setBarBasisNote(elId, txt) {
@@ -1658,13 +1772,52 @@
         return true;
     }
 
-    // Jobs dated after the current month (announced plans, future WARN
-    // effective dates). Charted months exclude them; callers surface a note.
+    /*
+      THE IN-PROGRESS MONTH, CUT AT TODAY.
+
+      /aggregate attaches a `to_date` block to a month bucket whenever some of
+      its rows are dated later than today, which in practice is the current
+      month and nothing else. This swaps those values in, so every chart plots
+      what has actually taken effect.
+
+      WHY THIS IS NOT COSMETIC. A month bucket is a bucket of EFFECTIVE dates,
+      and WARN notices are filed with effective dates weeks ahead by law. On
+      2026-08-04 the August bucket held 35,362 verified cuts of which 21,776
+      had taken effect. The chart drew 35,362 under a caption reading "4 of 31
+      days so far", while the This-month card on the same screen published
+      21,776. Labelling the point partial and dashing it, which is what
+      2.19.263 did, described the smaller number and drew the larger one, so
+      the caption made the mismatch harder to spot rather than easier.
+
+      The remainder is not discarded: futureDatedJobs() counts it and the
+      chart note names it.
+    */
+    function toDateMonths(series) {
+        return (series || []).map(function (s) {
+            if (!s || !s.to_date) return s;
+            var out = {};
+            Object.keys(s).forEach(function (k) { out[k] = s[k]; });
+            Object.keys(s.to_date).forEach(function (k) {
+                if (k !== 'as_of') out[k] = s.to_date[k];
+            });
+            // Kept so a caller can still name the part that has not happened.
+            out.full = s;
+            return out;
+        });
+    }
+
+    // Jobs in the charted data that have not taken effect yet: whole months
+    // after this one (announced plans, future WARN effective dates), PLUS the
+    // rest of the month the clock is inside. That second part used to be
+    // missing, so the card printed "N future-dated jobs are not charted" while
+    // 13,586 future-dated jobs sat inside the final plotted point.
     function futureDatedJobs(series) {
         var now = new Date();
         var nowKey = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
         return (series || []).reduce(function (sum, s) {
-            return s.month > nowKey ? sum + (s.jobs || 0) : sum;
+            if (s.month > nowKey) return sum + (s.jobs || 0);
+            if (s.to_date) return sum + Math.max(0, (s.jobs || 0) - (s.to_date.jobs || 0));
+            return sum;
         }, 0);
     }
 
@@ -1711,16 +1864,31 @@
 
     // Where the in-progress month sits in a list of month keys, or null if the
     // charted window does not reach it (a filtered past year, say).
-    function partialMonthAt(monthKeys) {
+    // `rows` are the CLAMPED series rows (post toDateMonths), so the note can
+    // state the number actually plotted and the number held back, instead of
+    // describing elapsed days over a value that is not elapsed days.
+    function partialMonthAt(monthKeys, rows) {
         var key = nowMonthKey();
         var idx = (monthKeys || []).indexOf(key);
         if (idx === -1) return null;
         var now = new Date();
-        return {
+        var info = {
             key: key, index: idx,
             days: now.getDate(),
-            of: daysInMonth(now.getFullYear(), now.getMonth() + 1)
+            of: daysInMonth(now.getFullYear(), now.getMonth() + 1),
+            charted: null, later: null
         };
+        (rows || []).forEach(function (s) {
+            if (!s || s.month !== key) return;
+            info.charted = (s.verified_jobs != null) ? s.verified_jobs : (s.jobs || 0);
+            if (s.full) {
+                var fullV = (s.full.verified_jobs != null) ? s.full.verified_jobs : (s.full.jobs || 0);
+                info.later = Math.max(0, fullV - info.charted);
+            } else {
+                info.later = 0;
+            }
+        });
+        return info;
     }
 
     function partialLabel(info) {
@@ -1730,10 +1898,19 @@
     // The sentence under the chart. States the elapsed days and refuses the
     // comparison, rather than making one.
     function partialNoteText(info) {
-        return monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
-            + info.of + ' days so far. Its point is dashed and marked partial because it counts'
-            + ' only what has been recorded to date, so it is not comparable with the completed'
-            + ' months beside it and is not a projection of the full month.';
+        var txt = monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
+            + info.of + ' days so far.';
+        if (info.charted != null) {
+            txt += ' This point counts the ' + fmt(info.charted)
+                + ' verified job cuts whose effective date has arrived.';
+        }
+        if (info.later) {
+            txt += ' A further ' + fmt(info.later) + ' are on notices already filed for effective dates later in '
+                + monthLabel(info.key).split(' ')[0]
+                + '; those are in the table and the totals, and join this point as their dates pass.';
+        }
+        return txt + ' The point is dashed because a part month is not comparable with the completed'
+            + ' months beside it, and it is not a projection of the full month.';
     }
 
     function setPartialNote(elId, info) {
@@ -1766,6 +1943,9 @@
 
     function fillMonths(series) {
         if (!series || !series.length) return [];
+        // Cut the in-progress month at today before anything plots it. Every
+        // chart that reaches the current month goes through here.
+        series = toDateMonths(series);
         var map = {};
         series.forEach(function (s) { map[s.month] = s; });
 
@@ -1866,7 +2046,7 @@
         Promise.all(cmp.values.map(function (v) {
             var params = currentParams();
             params[cmp.dim === 'years' ? 'years' : 'country'] = v;
-            return apiGet('aggregate', params).then(function (a) { return (a && a.series) || []; });
+            return apiGet('aggregate', params).then(function (a) { return toDateMonths((a && a.series) || []); });
         })).then(function (lists) {
             if (seq !== CMP_SEQ) return;
             var labels, datasets;
@@ -1953,7 +2133,7 @@
         // lone point renders as literally nothing and the chart looks stale.
         var dots = series.length <= 2 ? 4 : 0;
         // The in-progress month, if the charted window reaches it.
-        var partial = partialMonthAt(series.map(function (s) { return s.month; }));
+        var partial = partialMonthAt(series.map(function (s) { return s.month; }), series);
         setPartialNote('alt-trend-partial', partial);
         var datasets = [{ label: 'Verified job cuts', data: verified, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.3 }];
         if (announced.some(function (v) { return v > 0; })) {
@@ -2131,7 +2311,7 @@
         apiGet('aggregate', rest).then(function (a) {
             if (seq !== TJ.seq) return;
             TJ.key = key;
-            TJ.series = (a && a.series) || [];
+            TJ.series = toDateMonths((a && a.series) || []);
             drawTrajectory(box, TJ.series);
         }).catch(function () { box.hidden = true; });
     }
@@ -2365,14 +2545,15 @@
             Promise.all(picked.map(function (yr) {
                 var p = currentParams();
                 p.years = String(yr);
-                return apiGet('aggregate', p).then(function (a) { return (a && a.series) || []; });
+                return apiGet('aggregate', p).then(function (a) { return toDateMonths((a && a.series) || []); });
             })).then(function (lists) {
                 if (seq !== YOY_SEQ) return;
                 // This chart's x-axis is bare month names shared by every year,
                 // so "(partial)" cannot go there: it would label last year's
                 // completed August as partial too. It goes on the legend entry
                 // for the current year, which is the only series it is true of.
-                var yoyPartial = partialMonthAt([nowYearNum + '-' + nowKey2]);
+                var yoyPartial = partialMonthAt([nowYearNum + '-' + nowKey2],
+                    lists[picked.indexOf(String(nowYearNum))] || []);
                 setPartialNote('alt-yoy-partial', picked.indexOf(String(nowYearNum)) === -1 ? null : yoyPartial);
                 var datasets = picked.map(function (yr, i) {
                     var by = {};
@@ -2402,8 +2583,8 @@
         apiGet('aggregate', params).then(function (prev) {
             if (seq !== YOY_SEQ) return;
             var cur = {}, old = {};
-            (series || []).forEach(function (s) { cur[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
-            ((prev && prev.series) || []).forEach(function (s) { old[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+            toDateMonths(series || []).forEach(function (s) { cur[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
+            toDateMonths((prev && prev.series) || []).forEach(function (s) { old[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
             var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
             var nowKey = pad2(new Date().getMonth() + 1);
             var labels = months.map(function (m) { return monthLabel(year + '-' + m).split(' ')[0]; });
@@ -2417,7 +2598,7 @@
             // chart is actually showing the current year. Without this the
             // final point dropped the line under last year's completed one.
             var yoyPartial1 = (year === new Date().getFullYear())
-                ? partialMonthAt([year + '-' + nowKey]) : null;
+                ? partialMonthAt([year + '-' + nowKey], toDateMonths(series || [])) : null;
             setPartialNote('alt-yoy-partial', yoyPartial1);
             var curDs = { label: String(year) + (yoyPartial1 ? ' (' + MONTHS[parseInt(nowKey, 10) - 1] + ' partial)' : ''), data: curData, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 };
             if (yoyPartial1) markPartialPoint(curDs, parseInt(nowKey, 10) - 1);
@@ -2434,7 +2615,7 @@
         Promise.all(cmp.values.map(function (v) {
             var params = currentParams();
             params[cmp.dim === 'years' ? 'years' : 'country'] = v;
-            return apiGet('aggregate', params).then(function (a) { return (a && a.series) || []; });
+            return apiGet('aggregate', params).then(function (a) { return toDateMonths((a && a.series) || []); });
         })).then(function (lists) {
             if (seq !== CMP_SHARE_SEQ) return;
             var share = function (srow) {
@@ -2493,7 +2674,7 @@
         // days-so-far and an AI numerator that usually has not landed yet, so
         // the line terminated at exactly 0.0% and read as attribution
         // collapsing rather than as a month that has barely started.
-        var sharePartial = partialMonthAt(pts.map(function (p) { return p.month; }));
+        var sharePartial = partialMonthAt(pts.map(function (p) { return p.month; }), series);
         setPartialNote('alt-ai-share-partial', sharePartial);
         var options = cloneOptions();
         options.scales.y.ticks.callback = function (v) { return v + '%'; };
@@ -2520,7 +2701,7 @@
         Promise.all(cmp.values.map(function (v) {
             var params = currentParams();
             params[cmp.dim === 'years' ? 'years' : 'country'] = v;
-            return apiGet('aggregate', params).then(function (a) { return (a && a.series) || []; });
+            return apiGet('aggregate', params).then(function (a) { return toDateMonths((a && a.series) || []); });
         })).then(function (lists) {
             if (seq !== CMP_AI_SEQ) return;
             var aiVal = function (s) { return (s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0); };
@@ -2746,10 +2927,24 @@
         });
     }
 
+    /*
+      THE DOUGHNUT THAT WAS NOT A WHOLE, on a basis that was not the headline's.
+
+      Two defects, both live until 2.19.265. It drew index [1] (verified PLUS
+      announced) beside a headline counting verified only, and it was the one
+      chart in the grid with no basis note. And a doughnut asserts a partition:
+      these tags do not partition anything, because one event can carry several
+      and most events carry none. On 2026-08-04 the slices summed to 660,320
+      against a published 444,871.
+
+      So it draws the verified pair now, like every other card, and the note
+      says in plain words that the slices are not parts of a total.
+    */
     function renderReasons(entries, filterId, activeValues) {
         if (!document.getElementById('alt-chart-reasons')) return;
-        entries = entries || [];
-        if (!entries.length) { clearChart('alt-chart-reasons'); return; }
+        entries = verifiedBasis(entries || []);
+        if (!entries.length) { clearChart('alt-chart-reasons'); setBarBasisNote('alt-chart-reasons-basis', ''); return; }
+        setBarBasisNote('alt-chart-reasons-basis', reasonsBasisNote());
         var active = activeValues || [];
         // AI slices wear the AI accent hues used site-wide (vermillion for
         // company-stated, orange for broad/possible); other reasons draw from
@@ -4087,7 +4282,9 @@
             today: Object.assign({ from: iso(now), to: iso(now), stage: 'verified', include: 'leaders' }, base),
             week:  Object.assign({ from: iso(d7), to: iso(now), stage: 'verified', include: 'leaders' }, base),
             month: Object.assign({ from: y + '-' + pad2(now.getMonth() + 1) + '-01', to: iso(now), stage: 'verified', include: 'leaders' }, base),
-            ytd:   Object.assign({ years: String(y), stage: 'verified', include: 'leaders' }, base)
+            // Byte-identical to alt_signal_board_periods()['ytd'] in db.php.
+            // A real to-date window, not the whole calendar year: see there.
+            ytd:   Object.assign({ from: y + '-01-01', to: iso(now), stage: 'verified', include: 'leaders' }, base)
         };
         var KEYS = ['today', 'week', 'month', 'ytd'];
         // Server-inlined board: consumed at most once, and only when every

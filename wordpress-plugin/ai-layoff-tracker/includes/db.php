@@ -1929,7 +1929,23 @@ function alt_retired_sources() {
     );
 }
 
-function alt_api_source_health_get() {
+/*
+  THE ONE MASKED READ, and the reason it is a function of its own.
+
+  Retiring a collector is THREE steps, and the third is "stop every remaining
+  path that posts health under the id". There is a fourth failure the rule did
+  not name: a SECOND reader of the same option that does not apply the mask.
+  /source-health went through the masking loop below; /quality-status read
+  get_option('alt_source_health') raw, and the public Health page fetches
+  /quality-status. So on 2026-08-04 the two endpoints described the same four
+  collectors differently at the same instant, and the retired ones were the
+  ones the page showed as "ok". alt_api_quarterly_report_post() freezes this
+  map into an immutable artifact, so the next quarterly report would have
+  recorded them as live coverage permanently.
+
+  Every reader of alt_source_health now goes through here.
+*/
+function alt_source_health_masked() {
     $health = get_option('alt_source_health');
     if (!is_array($health)) $health = array();
     // Coerce any retired collector to a permanent, benign 'retired' state with a
@@ -1951,7 +1967,11 @@ function alt_api_source_health_get() {
         $health[$src]['status'] = 'retired';
         $health[$src]['detail'] = $why;
     }
-    return rest_ensure_response($health);
+    return $health;
+}
+
+function alt_api_source_health_get() {
+    return rest_ensure_response(alt_source_health_masked());
 }
 
 function alt_api_source_health_post(WP_REST_Request $r) {
@@ -2174,9 +2194,11 @@ function alt_api_historical_gdelt_cursor_post(WP_REST_Request $r) {
 
 /** Public quality and change-reporting status for researchers and operations. */
 function alt_api_quality_status() {
-    $health = get_option('alt_source_health');
+    // Masked, not raw: this is what the public Health page renders, and a
+    // retired collector must not appear here as "ok". See
+    // alt_source_health_masked().
+    $health = alt_source_health_masked();
     $log = get_option('alt_corrections_log');
-    $health = is_array($health) ? $health : array();
     $log = is_array($log) ? $log : array();
     $since = gmdate('Y-m-d', strtotime('-30 days'));
     // This is the disclosed correction trail, not an invented ingest count:
@@ -4558,9 +4580,30 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // row-level and would lose real site-level detail if members were hidden.
     $where_dd = $where . ' AND superset_of = 0';
 
+    /*
+      TODAY, AS THE PAGE MEANS IT.
+
+      This tracker dates a row by the date the cuts TAKE EFFECT, and WARN
+      notices are filed with effective dates weeks ahead by law. So a window
+      that ends on 31 December legitimately contains rows that have not
+      happened yet, and a caption saying "so far" over that window is a
+      different quantity from the one it names.
+
+      Site timezone, matching every other dateline on the page
+      (alt_signal_board_periods, the citeline). Format-checked before it is
+      inlined because it goes into SQL as a literal: the SELECT list sits
+      ahead of the WHERE clause, so a placeholder here would have to be
+      threaded in front of every existing $params entry.
+    */
+    $today_sql = current_time('Y-m-d');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $today_sql)) $today_sql = gmdate('Y-m-d');
+
     // Headline totals
     $totals = $wpdb->get_row(alt_db_prep(
         "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' THEN job_count END),0) to_date_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND announced=1 THEN job_count END),0) to_date_announced_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND ai_explicit=1 AND announced=0 THEN job_count END),0) to_date_ai_verified_jobs,
                 SUM(ai_explicit) ai_entries,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
                 SUM(CASE WHEN ai_causation='primary_cause' THEN 1 ELSE 0 END) ai_primary_entries,
@@ -4690,11 +4733,25 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         'merger_acquisition','offshoring','product_discontinuation','cost_reduction','macroeconomic','closure');
     list($rw, $rp) = alt_db_where($r, 'reasons');
     $reasons = array();
+    /*
+      SAME SHAPE AS THE topN BLOCKS, and for the same reason: the doughnut
+      drew index [1], which is verified PLUS announced, beside a headline
+      counting verified only. On 2026-08-04 the slices summed to 660,320
+      against a published 444,871. The verified pair goes at [4]/[5] here too
+      so the front end can call verifiedBasis() on it unchanged, and index
+      [2] is AI-attributed jobs, which is what the appendix CSV and the
+      quarterly report table have always read that column as.
+    */
     foreach ($want('reasons') ? $reason_tags : array() as $tag) {
-        $val = (int) $wpdb->get_var(alt_db_prep(
-            "SELECT COALESCE(SUM(job_count),0) FROM $table WHERE $rw AND superset_of = 0 AND reason_tags LIKE %s",
+        $row = $wpdb->get_row(alt_db_prep(
+            "SELECT COALESCE(SUM(job_count),0) jobs,
+                    COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
+                    COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
+                    COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) av
+             FROM $table WHERE $rw AND superset_of = 0 AND reason_tags LIKE %s",
             array_merge($rp, array('%,' . $tag . ',%'))));
-        if ($val > 0) $reasons[] = array($tag, $val);
+        $val = $row ? (int) $row->jobs : 0;
+        if ($val > 0) $reasons[] = array($tag, $val, (int) $row->ai_jobs, null, (int) $row->v, (int) $row->av);
     }
 
     // Role categories most impacted, one bounded SUM per fixed-vocabulary tag
@@ -4731,17 +4788,49 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) announced_jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) ai_verified_jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=1 THEN job_count END),0) ai_announced_jobs,
-                COALESCE(SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN job_count END),0) ai_broad_jobs
+                COALESCE(SUM(CASE WHEN ai_explicit=1 OR ai_causation='ai_linked' THEN job_count END),0) ai_broad_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' THEN job_count END),0) td_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND ai_explicit=1 THEN job_count END),0) td_ai_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND announced=0 THEN job_count END),0) td_verified_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND announced=1 THEN job_count END),0) td_announced_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND ai_explicit=1 AND announced=0 THEN job_count END),0) td_ai_verified_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND ai_explicit=1 AND announced=1 THEN job_count END),0) td_ai_announced_jobs,
+                COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND (ai_explicit=1 OR ai_causation='ai_linked') THEN job_count END),0) td_ai_broad_jobs
          FROM $table WHERE $where_dd AND layoff_date > '2000-01-01'
          GROUP BY m ORDER BY m ASC", $params));
     $series = array();
     foreach ($months ?: array() as $row) {
-        $series[] = array(
+        $s = array(
             'month' => $row->m, 'jobs' => (int) $row->jobs, 'ai_jobs' => (int) $row->ai_jobs,
             'verified_jobs' => (int) $row->verified_jobs, 'announced_jobs' => (int) $row->announced_jobs,
             'ai_verified_jobs' => (int) $row->ai_verified_jobs, 'ai_announced_jobs' => (int) $row->ai_announced_jobs,
             'ai_broad_jobs' => (int) $row->ai_broad_jobs,
         );
+        /*
+          THE MONTH THE CLOCK IS STILL INSIDE, cut at today.
+
+          A month bucket is a bucket of EFFECTIVE dates, so the current month
+          holds notices already filed for dates later this month. On
+          2026-08-04 the August bucket held 35,362 verified cuts of which
+          21,776 had taken effect: the chart drew the first number under a
+          caption reading "4 of 31 days so far", and the This-month card a
+          few pixels away published the second.
+
+          `to_date` is emitted ONLY when the two differ, which in practice is
+          the in-progress month and nothing else. Every completed month keeps
+          the payload it always had, and a consumer that ignores the key gets
+          exactly the previous behaviour.
+        */
+        if ((int) $row->td_jobs !== (int) $row->jobs) {
+            $s['to_date'] = array(
+                'as_of' => $today_sql,
+                'jobs' => (int) $row->td_jobs, 'ai_jobs' => (int) $row->td_ai_jobs,
+                'verified_jobs' => (int) $row->td_verified_jobs, 'announced_jobs' => (int) $row->td_announced_jobs,
+                'ai_verified_jobs' => (int) $row->td_ai_verified_jobs, 'ai_announced_jobs' => (int) $row->td_ai_announced_jobs,
+                'ai_broad_jobs' => (int) $row->td_ai_broad_jobs,
+            );
+        }
+        $series[] = $s;
     }
 
     // Largest single events. Location is surfaced so several rows for the same
@@ -4827,6 +4916,20 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'ai_broad_entries'     => (int) $totals->ai_broad_entries,
             'announced_entries' => (int) $totals->announced_entries,
             'announced_jobs'    => (int) $totals->announced_jobs,
+            /*
+              THE SAME WINDOW, CUT AT TODAY. Every caption that says "YTD" or
+              "so far" is about this pair, not about `jobs`/`announced_jobs`.
+              A 2026 window ran 33,939 verified cuts ahead of itself on
+              2026-08-04, all of them real filed notices with effective dates
+              later in the year, and the hero published the larger figure under
+              a to-date wording while the FAQ JSON-LD on the same page
+              published the smaller one. Both numbers are shipped so a caption
+              can name the one it actually means and show the remainder.
+            */
+            'to_date_jobs'             => (int) $totals->to_date_jobs,
+            'to_date_announced_jobs'   => (int) $totals->to_date_announced_jobs,
+            'to_date_ai_verified_jobs' => (int) $totals->to_date_ai_verified_jobs,
+            'as_of'                    => $today_sql,
             // Coverage denominator for the roles chart: only events whose
             // sources actually name the affected teams carry categories.
             'roles_known_entries' => (int) $totals->roles_known_entries,
@@ -5057,6 +5160,15 @@ function alt_signal_board_periods() {
         'today' => array('from' => $iso($now), 'to' => $iso($now), 'stage' => 'verified'),
         'week'  => array('from' => $iso($now - 6 * 86400), 'to' => $iso($now), 'stage' => 'verified'),
         'month' => array('from' => date('Y-m-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
-        'ytd'   => array('years' => $year, 'stage' => 'verified'),
+        /*
+          A REAL YEAR-TO-DATE. This column is labelled "<year> YTD" and used to
+          be scoped `years=<year>`, the whole calendar year. Because rows are
+          dated by EFFECTIVE date and WARN notices are filed weeks ahead, that
+          window carried cuts that have not happened: 33,939 of them on
+          2026-08-04. Ending it at today makes the label true. The front end's
+          P.ytd in layoffs.js must stay byte-identical to this or the
+          bootstrap is rejected and the board silently refetches.
+        */
+        'ytd'   => array('from' => date('Y-01-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
     );
 }

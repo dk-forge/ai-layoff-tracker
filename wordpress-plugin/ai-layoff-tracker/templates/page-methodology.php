@@ -59,7 +59,7 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
 
   <section class="alt-method-sec" id="m-reasons">
     <h2>Reason tags</h2>
-    <p>Each event can carry one or more reason tags, assigned only when the stored source text explicitly supports them; an event whose source states no reason stays untagged rather than guessed. The fixed vocabulary: <b>AI: company-stated</b> (employer names AI/automation, quote on file), <b>AI-linked (broad)</b> (press ties the cuts to AI without the employer saying it), <b>Revenue decline</b>, <b>Restructuring</b>, <b>Merger / acquisition</b>, <b>Offshoring</b>, <b>Product discontinued</b>, <b>Cost reduction</b>, <b>Macroeconomic</b>, <b>Plant / site closure</b>, <b>Bankruptcy / insolvency</b>, and <b>Government / public sector</b> (public-sector workforce actions such as federal reductions in force; a private contractor losing government work does not qualify). Tags are filterable on the tracker and returned in the API as <code>reason_tags</code>.</p>
+    <p>Each event can carry one or more reason tags, assigned only when the stored source text explicitly supports them; an event whose source states no reason stays untagged rather than guessed. The fixed vocabulary: <b>AI or automation</b> (employer names AI/automation, quote on file), <b>AI press-linked</b> (press ties the cuts to AI without the employer saying it), <b>Revenue decline</b>, <b>Restructuring</b>, <b>Merger / acquisition</b>, <b>Offshoring</b>, <b>Product discontinued</b>, <b>Cost reduction</b>, <b>Macroeconomic</b>, <b>Plant / site closure</b>, <b>Bankruptcy / insolvency</b>, and <b>Government / public sector</b> (public-sector workforce actions such as federal reductions in force; a private contractor losing government work does not qualify). Tags are filterable on the tracker and returned in the API as <code>reason_tags</code>. The two AI tags are read from the source text and are a different measure from the AI headline tiles, which are counted from the AI attribution flags (<code>ai_explicit</code> and <code>ai_causation</code>); the two are labelled apart on the tracker so neither is read as the other.</p>
   </section>
 
   <section class="alt-method-sec" id="m-ai">
@@ -114,7 +114,11 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
     <h2>The tracker audits itself</h2>
     <p>Once a month, an automated audit draws a random sample of already published rows, re-opens each row's own cited source, and checks that the source still supports that company, that count, and that date. The result is written to the public health ledger whether it is flattering or not. A mismatch is flagged for human review through the corrections process; it is never silently edited.</p>
     <?php
-    $alt_sh = get_option('alt_source_health');
+    // Masked read, like every other reader of this option (see
+    // alt_source_health_masked in db.php). This page only quotes the audit
+    // row's detail, but reading the option raw is the habit that let
+    // /quality-status publish retired collectors as live.
+    $alt_sh = alt_source_health_masked();
     $alt_audit = is_array($alt_sh) && isset($alt_sh['source_audit']) ? $alt_sh['source_audit'] : null;
     if (is_array($alt_audit) && !empty($alt_audit['detail'])) : ?>
     <p class="alt-method-audit"><b>Latest audit result:</b> <?php echo esc_html($alt_audit['detail']); ?><?php if (!empty($alt_audit['checked_at'])) : ?> <span class="alt-muted">(checked <?php echo esc_html(gmdate('M j, Y', strtotime($alt_audit['checked_at']))); ?>)</span><?php endif; ?></p>
