@@ -4606,16 +4606,56 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
          FROM $table WHERE $where_dd ORDER BY job_count DESC, id ASC LIMIT 1", $params)) : null;
 
     // Top-N helpers (each slicer ignores its own dimension). Each entry is
-    // [label, total jobs, AI-attributed jobs] so bars can show the AI share.
-    $topN = function ($col, $except, $limit = 24) use ($wpdb, $table, $r) {
+    // [label, total jobs, AI-attributed jobs, RESERVED, verified jobs,
+    // verified AI jobs].
+    //
+    // WHY THE SHAPE IS THAT AWKWARD, and why the verified pair is not simply
+    // put at [1]/[2]:
+    //
+    //   * INDEX 3 IS SPOKEN FOR. renderBarList() in layoffs.js reads entry[3]
+    //     as a DISPLAY LABEL (the country flag, the friendly source-type
+    //     name), and top_industries / top_states are handed to it unmapped.
+    //     A number appended there prints as the name of the bar. It stays
+    //     null so `e[3] || e[0]` keeps falling back to the label.
+    //
+    //   * [1] AND [2] CANNOT MOVE. This same block is published, under a
+    //     `stage=announced` query, as the announced section of the quarterly
+    //     appendix CSV (export.php). Redefining [1] as "announced = 0" would
+    //     zero every announced row in a published artifact. Two bases have to
+    //     coexist, so both are carried and each reader picks the one that
+    //     matches the number beside it.
+    //
+    // THE DEFECT THIS FIXES. The dashboard's bar cards drew [1], which is
+    // verified PLUS announced, directly beside a headline tile counting
+    // verified only. On 2026-08-04 the visible country bars summed to about
+    // 757,000 against a published headline of 444,871, roughly 70% over, with
+    // nothing on the card saying the two were different quantities. The bars
+    // now draw [4] and the card states the basis.
+    //
+    // ORDER BY stays on the all-jobs total: the facet pages and the appendix
+    // CSV read this block in that order and would be silently resorted
+    // otherwise. layoffs.js re-sorts its copy by the verified value.
+    //
+    // WHICH IS WHY THE LIMIT WENT FROM 24 TO 60. Ordering by one basis and
+    // drawing another means the cut-off can drop a row that qualifies on the
+    // basis being drawn. It did: in the 2026 view Taiwan had 701 verified cuts
+    // and sat outside the all-jobs top 24, so it would have vanished from a
+    // list it belonged in. At 60 the dimensions this feeds are effectively
+    // whole (19 industries, 50 states, 58 countries), so the cut-off cannot
+    // choose on the wrong basis. renderBarList still shows at most 24.
+    $topN = function ($col, $except, $limit = 60) use ($wpdb, $table, $r) {
         list($w, $p) = alt_db_where($r, $except);
         $sql = "SELECT $col k, SUM(job_count) v,
-                       COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
+                       COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a,
+                       COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) vv,
+                       COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) av
                 FROM $table
                 WHERE $w AND superset_of = 0 AND $col <> '' GROUP BY $col ORDER BY v DESC LIMIT " . max(1, (int) $limit);
         $rows = $wpdb->get_results(alt_db_prep($sql, $p));
         $out = array();
-        foreach ($rows ?: array() as $row) { $out[] = array($row->k, (int) $row->v, (int) $row->a); }
+        foreach ($rows ?: array() as $row) {
+            $out[] = array($row->k, (int) $row->v, (int) $row->a, null, (int) $row->vv, (int) $row->av);
+        }
         return $out;
     };
 
@@ -4665,12 +4705,17 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     $top_roles = array();
     if ($want('top_roles') && function_exists('alt_role_categories')) {
         foreach (alt_role_categories() as $slug => $label) {
+            // Carries the same six-slot shape as $topN (see its note): the
+            // roles card is drawn by the same renderBarList and must be able
+            // to draw the same verified basis as its neighbours.
             $row = $wpdb->get_row(alt_db_prep(
                 "SELECT COALESCE(SUM(job_count),0) v,
-                        COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a
+                        COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) a,
+                        COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) vv,
+                        COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) av
                  FROM $table WHERE $where_dd AND role_categories LIKE %s",
                 array_merge($params, array('%,' . $slug . ',%'))));
-            if ($row && (int) $row->v > 0) $top_roles[] = array($label, (int) $row->v, (int) $row->a);
+            if ($row && (int) $row->v > 0) $top_roles[] = array($label, (int) $row->v, (int) $row->a, null, (int) $row->vv, (int) $row->av);
         }
         usort($top_roles, function ($x, $y) { return $y[1] - $x[1]; });
     }

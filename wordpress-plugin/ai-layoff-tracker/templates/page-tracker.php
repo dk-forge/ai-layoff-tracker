@@ -107,6 +107,25 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
     ?>
     <header class="alt-hero">
         <div class="alt-hero-main">
+            <?php /* THE FIGURE THE PAGE EXISTS TO PUBLISH, at the top of the first
+                     screen and larger than anything else on it.
+                     Before 2.19.263 the page's own NAME was the biggest thing on
+                     it at 46px, the thesis was 31px, and the number itself was
+                     20px in the right-hand panel below an illustration, tied for
+                     smallest with "countries". Eight tiles then followed at an
+                     identical 28px, so nothing among them led either. A reader
+                     arriving from a search result met the title of the page
+                     before the finding of the page.
+                     Kept in step live by renderStats() (alt-hero-total), from the
+                     same totals the Verified tile uses, so the two can never
+                     disagree. */ ?>
+            <?php if ($alt_sv !== null) : ?>
+            <p class="alt-hero-figure">
+                <span class="alt-hero-figure-value" id="alt-hero-total"><?php echo esc_html($alt_stat('total')); ?></span>
+                <span class="alt-hero-figure-label">verified job cuts, <span id="alt-hero-total-period"><?php echo esc_html($alt_period); ?></span></span>
+                <span class="alt-hero-figure-sub"><b id="alt-hero-ai"><?php echo esc_html($alt_stat('ai')); ?></b> of them were blamed on AI by the employer.</span>
+            </p>
+            <?php endif; ?>
             <p class="alt-hero-thesis" role="heading" aria-level="2">Every layoff here is verified. That is the whole point.</p>
             <p class="alt-hero-trust">We do not estimate. Every number links to an official filing, a state WARN notice, or a named news report. A verified floor, not a survey.</p>
             <p class="alt-hero-actions">
@@ -120,9 +139,12 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
             <span class="alt-fresh-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
             <?php endif; ?>
             <?php if ($alt_sv !== null) : ?>
+            <?php /* The headline total and the AI figure moved to the hero above and
+                     are deliberately NOT repeated here: the same number twice on one
+                     screen, once at 72px and once at 20px, invites the reader to
+                     wonder which of the two is the real one. The panel keeps the
+                     coverage figures, which are its own subject. */ ?>
             <div class="alt-fresh-stats">
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('total')); ?></b><i>verified job cuts, <?php echo esc_html($alt_period); ?></i></span>
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('ai')); ?></b><i>explicitly AI-attributed</i></span>
                 <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies</i></span>
                 <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries</i></span>
             </div>
@@ -434,7 +456,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         // per-tile (i) disclosure instead of a paragraph on the tile face.
         ?>
         <div class="alt-stats-bar" id="alt-stats-bar">
-            <div class="alt-stat-card alt-fam-verified">
+            <div class="alt-stat-card alt-stat-card-lead alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-total"><?php echo esc_html($alt_stat('total')); ?></span>
                 <span class="alt-stat-label">Verified job cuts</span>
                 <span class="alt-stat-desc">Filed or reported, counted on the day each cut takes effect. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>" target="_blank" rel="noopener">Why this is verified &rarr;</a></span>
@@ -445,12 +467,6 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-stat-label">Announced job cuts (planned)</span>
                 <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"><?php echo esc_html($alt_period_ann); ?></span>
-            </div>
-            <div class="alt-stat-card alt-fam-all">
-                <span class="alt-stat-value" id="alt-stat-all"><?php echo esc_html($alt_stat('all')); ?></span>
-                <span class="alt-stat-label">Verified + announced job cuts</span>
-                <div class="alt-stat-desc">Both tiers together. <details class="alt-stat-i"><summary aria-label="More about this number">i</summary><span class="alt-stat-i-body">One cut can appear in both stages (an announced plan often becomes a verified filing later), so this is not a count of distinct people.</span></details></div>
-                <span class="alt-stat-sub" id="alt-stat-all-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
             <div class="alt-stat-card">
                 <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies"><?php echo esc_html($alt_stat('companies')); ?></span><span class="alt-stat-label">Companies</span></span>
@@ -472,28 +488,49 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-stat-desc">Announced-tier plans that cite AI, like "cutting roles as we adopt AI."</span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
-            <div class="alt-stat-card alt-stat-card-ai alt-fam-total">
-                <span class="alt-stat-value" id="alt-stat-ai-total"><?php echo esc_html($alt_stat('ai-total')); ?></span>
-                <span class="alt-stat-label">🤖 AI cuts, total (specific)</span>
-                <span class="alt-stat-desc">Verified + announced added together: cuts the employer or plan explicitly named AI for. This is the two boxes to the left, summed.</span>
-                <span class="alt-stat-sub" id="alt-stat-ai-total-sub"><?php echo $alt_sv === null ? '' : esc_html($alt_stat('ai') . ' verified + ' . $alt_stat('ai-announced') . ' announced'); ?></span>
-            </div>
         </div>
         <?php
-        // The broad AI measure, OUT of the addable-tile row on purpose: two of
-        // the old row's eight tiles existed mainly to explain why they must
-        // not be added to their neighbours, which is a layout problem wearing
-        // a caption. Same element IDs, so layoffs.js renders it unchanged.
+        // DERIVED TOTALS, BEHIND A DISCLOSURE.
+        //
+        // These three used to sit in the tile grid at the same 28px as every
+        // other total, and each carried a caption whose only job was to warn
+        // the reader off the tile it was printed on: "do not add it to the
+        // tiles above", "this is not a count of distinct people", "This is the
+        // two boxes to the left, summed". A number that needs a warning label
+        // to be read safely is not a first-screen number. None is deleted, and
+        // none moves: the element IDs are unchanged, so renderStats() keeps
+        // writing all three and anyone who wants them is one click away.
+        //
+        // What is left in the grid above is the five totals that can be read
+        // without a caveat, led by the verified figure.
         ?>
-        <div class="alt-broad-strip" aria-label="A separate, wider AI measure">
-            <div class="alt-stat-card alt-stat-card-ai alt-stat-card-broad">
-                <span class="alt-stat-value" id="alt-stat-ai-broad"><?php echo esc_html($alt_stat('ai-broad')); ?></span>
-                <span class="alt-stat-label">🤖 AI-linked, broad (wider lens)</span>
-                <div class="alt-stat-desc">A separate, looser measure; do not add it to the tiles above. <details class="alt-stat-i"><summary aria-label="More about this number">i</summary><span class="alt-stat-i-body">Counts press framing like "amid AI push" as well as employer statements. Wider than the strict AI figure by design, so it never sums with the strict tiles.</span></details></div>
-                <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"><?php echo esc_html($alt_period); ?></span>
-                <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
+        <details class="alt-stats-derived">
+            <summary class="alt-stats-derived-summary">Derived totals, and why they do not add up with the tiles above</summary>
+            <div class="alt-stats-derived-body">
+                <p class="alt-stats-derived-note">Each of these is built from the tiles above rather than counted separately, so adding one of them to those tiles would count the same cuts twice.</p>
+                <div class="alt-broad-strip">
+                    <div class="alt-stat-card alt-fam-all">
+                        <span class="alt-stat-value" id="alt-stat-all"><?php echo esc_html($alt_stat('all')); ?></span>
+                        <span class="alt-stat-label">Verified + announced job cuts</span>
+                        <div class="alt-stat-desc">Both tiers together. One cut can appear in both stages (an announced plan often becomes a verified filing later), so this is not a count of distinct people.</div>
+                        <span class="alt-stat-sub" id="alt-stat-all-sub"><?php echo esc_html($alt_period_ann); ?></span>
+                    </div>
+                    <div class="alt-stat-card alt-stat-card-ai alt-fam-total">
+                        <span class="alt-stat-value" id="alt-stat-ai-total"><?php echo esc_html($alt_stat('ai-total')); ?></span>
+                        <span class="alt-stat-label">🤖 AI cuts, total (specific)</span>
+                        <span class="alt-stat-desc">The two AI tiles above, summed: cuts the employer or plan explicitly named AI for.</span>
+                        <span class="alt-stat-sub" id="alt-stat-ai-total-sub"><?php echo $alt_sv === null ? '' : esc_html($alt_stat('ai') . ' verified + ' . $alt_stat('ai-announced') . ' announced'); ?></span>
+                    </div>
+                    <div class="alt-stat-card alt-stat-card-ai alt-stat-card-broad">
+                        <span class="alt-stat-value" id="alt-stat-ai-broad"><?php echo esc_html($alt_stat('ai-broad')); ?></span>
+                        <span class="alt-stat-label">🤖 AI-linked, broad (wider lens)</span>
+                        <div class="alt-stat-desc">A separate, looser measure. Counts press framing like "amid AI push" as well as employer statements, so it is wider than the strict AI figure by design and never sums with it.</div>
+                        <span class="alt-stat-sub" id="alt-stat-ai-broad-sub"><?php echo esc_html($alt_period); ?></span>
+                        <span class="alt-stat-sub" id="alt-stat-ai-broad-share-line"></span>
+                    </div>
+                </div>
             </div>
-        </div>
+        </details>
         <nav class="alt-stats-links alt-stats-links-box" aria-label="About these results">
             <span class="alt-stats-links-label">New here? Start with:</span>
             <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
@@ -545,6 +582,11 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-states" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-states"></div>
+            <?php /* BASIS LINE. Written by layoffs.js (setBarBasisNote) from the same
+                     totals the tiles render, so it cannot drift from them. The bars are
+                     verified job cuts; before 2.19.263 they were verified PLUS announced
+                     beside a verified-only headline, about 70% over, unexplained. */ ?>
+            <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-states-basis" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
@@ -552,6 +594,11 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-countries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-countries"></div>
+            <?php /* BASIS LINE. Written by layoffs.js (setBarBasisNote) from the same
+                     totals the tiles render, so it cannot drift from them. The bars are
+                     verified job cuts; before 2.19.263 they were verified PLUS announced
+                     beside a verified-only headline, about 70% over, unexplained. */ ?>
+            <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-countries-basis" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card" id="alt-claims-states-card" hidden>
             <div class="alt-chart-head">
@@ -585,15 +632,23 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                      "where does the charted window sit on the record", which is a
                      question about the chart above it. */ ?>
             <div class="alt-tj" id="alt-trend-full" hidden></div>
+            <?php /* PARTIAL-PERIOD NOTE. Filled by layoffs.js (setPartialNote) whenever
+                     the charted window reaches the month the clock is still inside.
+                     It is a visible paragraph, not a line inside the (i) disclosure:
+                     a partial point drawn like a finished one publishes the reverse
+                     of the trend, and a caveat nobody opens does not undo that. */ ?>
+            <p class="alt-chart-note alt-chart-note-partial" id="alt-trend-partial" hidden></p>
             <p class="alt-chart-note" id="alt-claims-note" hidden>Grey bars show everyone who filed for US unemployment benefits that month, for scale. They are context and are never added to our counts.</p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts · select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
+            <p class="alt-chart-note alt-chart-note-partial" id="alt-yoy-partial" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">AI share of verified cuts, monthly <span class="alt-chart-sub">how attribution is trending · tap a month to scope the page, again to clear</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-share-trend" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-chart-box"><canvas id="alt-chart-ai-share-trend"></canvas></div>
+            <p class="alt-chart-note alt-chart-note-partial" id="alt-ai-share-partial" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
@@ -609,6 +664,11 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-industries" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <div class="alt-barlist" id="alt-bars-industries"></div>
+            <?php /* BASIS LINE. Written by layoffs.js (setBarBasisNote) from the same
+                     totals the tiles render, so it cannot drift from them. The bars are
+                     verified job cuts; before 2.19.263 they were verified PLUS announced
+                     beside a verified-only headline, about 70% over, unexplained. */ ?>
+            <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-industries-basis" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
@@ -631,6 +691,11 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">By data source <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-sourcetypes" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-sourcetypes"></div>
+            <?php /* BASIS LINE. Written by layoffs.js (setBarBasisNote) from the same
+                     totals the tiles render, so it cannot drift from them. The bars are
+                     verified job cuts; before 2.19.263 they were verified PLUS announced
+                     beside a verified-only headline, about 70% over, unexplained. */ ?>
+            <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-sourcetypes-basis" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts the employer attributed to AI · tap to filter · industries under 1,000 cuts excluded</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>

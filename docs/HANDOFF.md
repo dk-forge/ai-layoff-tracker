@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local
 - **SINCE:** 2026-08-04
-- **WORKING ON:** —
+- **WORKING ON:** UX-audit fixes on branch `fix/partial-period-and-chart-basis` (partial-month charts, bar/headline basis, first-screen emphasis). PR open, NOT merged.
 
 **Takeover noted, per the stale-baton clause.** The SEC-recall session claimed
 this on 2026-08-01 and landed its answer the same day (`e8b8541`: the misses are
