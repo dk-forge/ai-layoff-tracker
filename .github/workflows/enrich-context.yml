@@ -31,7 +31,7 @@ jobs:
         run: python railway/spend.py --degrade
       # google-cloud-bigquery powers the alternate-source finder; the worker
       # fails soft to snapshot/primary-only behavior if it is ever missing.
-      - run: pip install openai requests google-cloud-bigquery
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
       - name: Enrich only exact source-supported context
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog

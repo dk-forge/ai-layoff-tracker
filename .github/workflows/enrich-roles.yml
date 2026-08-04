@@ -39,7 +39,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python railway/spend.py --degrade
-      - run: pip install openai requests
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
       - name: Extract role categories from stored evidence only
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog

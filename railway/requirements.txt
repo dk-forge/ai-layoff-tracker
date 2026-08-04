@@ -8,3 +8,10 @@ pdfplumber>=0.11.0
 openpyxl>=3.1.0
 httpx[http2]>=0.27.0
 google-cloud-bigquery>=3.25
+
+# Declared here because workflows were installing them ad hoc with a bare
+# `pip install`, which is the same as not declaring them: no floor, no pin, no
+# lockfile, resolved fresh inside a runner that holds both API keys.
+pytesseract>=0.3.10
+pandas>=2.2.0
+pyarrow>=16.0.0

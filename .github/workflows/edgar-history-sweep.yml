@@ -88,7 +88,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: railway
-        run: pip install -r requirements.txt
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
 
       - name: Run EDGAR rotating history sweep
         working-directory: railway

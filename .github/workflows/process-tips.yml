@@ -38,7 +38,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python railway/spend.py --degrade
-      - run: pip install -r railway/requirements.txt
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
       - name: Process tips
         working-directory: railway
         env:

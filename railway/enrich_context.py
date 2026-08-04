@@ -5,7 +5,7 @@ employer domicile or public announcement date when exact source text supports
 the value. It never changes count, layoff date, stage, source, or AI label.
 
 Unreadable-source fallbacks (both fail-soft, both inside the same evidence
-gates — exact quotes only, blank fields only, never inferred):
+gates, exact quotes only, blank fields only, never inferred):
 
 1. Wayback snapshot: when the cited article itself is blocked or paywalled,
    the SAME article text is read from its newest Internet Archive snapshot,
@@ -30,6 +30,7 @@ import requests
 from extractor import extract_context_evidence
 import spend
 from reclassify_legacy_ai import UA, clean_html
+from safe_fetch import BlockedURL, safe_get
 from source_registry import discovery_terms
 from sources import gdelt_bq
 from sources.gdelt import _domain, _is_trusted
@@ -86,11 +87,27 @@ def report_health(status, entries=0, detail=""):
 
 
 def fetch_text(url):
-    if not url.startswith(("http://", "https://")):
-        return ""
-    response = requests.get(url, headers={"User-Agent": UA}, timeout=30)
-    response.raise_for_status()
-    return clean_html(response.content[:2_000_000].decode(response.encoding or "utf-8", errors="replace"))
+    """Re-read a stored row's cited source, through the SSRF gate.
+
+    `source_url` is not ours: it arrives from a collector, a WARN bulk upsert
+    or a public tip, and this worker fetches whatever it says. The old
+    `requests.get` here followed redirects with no look at where it landed, so
+    one row carrying a link to a host that 302s to `169.254.169.254` turned
+    this job into a metadata-service reader, and this job runs with
+    WP_API_KEY and OPENROUTER_API_KEY in its environment. The scheme test on
+    the first line was the whole defence and it only ever saw hop zero.
+    """
+    try:
+        status, body, _final = safe_get(url, headers={"User-Agent": UA},
+                                        timeout=30, max_bytes=2_000_000)
+    except BlockedURL as exc:
+        # Refused, not unreachable. Raised so the caller's Wayback fallback
+        # and its "unreadable" counter behave exactly as they do for any other
+        # unusable source, rather than this looking like an empty page.
+        raise requests.RequestException(f"refused source url: {exc}") from exc
+    if status != 200:
+        raise requests.HTTPError(f"HTTP {status} for {url}")
+    return clean_html(body.decode("utf-8", errors="replace"))
 
 
 def usable_article_text(text):
@@ -173,8 +190,8 @@ def alternate_source_evidence(row):
     Runs only when the cited article and its snapshot are both unreadable.
     The GDELT BigQuery mirror is queried narrowly; only trusted-domain
     candidates from OTHER outlets are fetched (a bot-blocking publisher will
-    block its sibling pages too), and the quote is extracted from — and
-    validated against — the alternate article alone. On success the alternate
+    block its sibling pages too), and the quote is extracted from, and
+    validated against, the alternate article alone. On success the alternate
     article's own URL is recorded inside the evidence string. Any failure
     leaves the row unsupported_or_unreadable for a later rotation.
     """

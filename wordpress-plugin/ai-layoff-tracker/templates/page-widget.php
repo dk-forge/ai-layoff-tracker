@@ -34,6 +34,8 @@ $alt_widget_config = array(
     <p class="alt-widget-note">Source-linked events only; coverage varies by source and location.</p>
     <a class="alt-widget-link" id="alt-widget-link" href="<?php echo esc_url($alt_widget_tracker_url); ?>" target="_blank" rel="noopener">View sources &amp; filters <span aria-hidden="true">↗</span></a>
 </main>
-<script>window.altWidgetData=<?php echo wp_json_encode($alt_widget_config); ?>;</script>
+<?php // Hex flags, for the same reason page-chart-embed.php now has them: this is
+      // the other bootstrap that ships to a third-party page. ?>
+<script>window.altWidgetData=<?php echo wp_json_encode($alt_widget_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
 <script src="<?php echo esc_url(ALT_PLUGIN_URL . 'assets/widget.js?ver=' . ALT_VERSION); ?>" defer></script>
 </body></html>

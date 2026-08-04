@@ -34,8 +34,7 @@ jobs:
       - name: Install deps
         working-directory: railway
         run: |
-          pip install -r requirements.txt
-          pip install pdfplumber
+          pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
           BASE=https://raw.githubusercontent.com/biglocalnews/warn-scraper/f7b3dd26af1f3ad700762504bd7c5c0d23979507
           SCRAPERS_DIR=$(python -c "import warn.scrapers, os; print(os.path.dirname(warn.scrapers.__file__))")
           curl -sSf "$BASE/warn/scrapers/nd.py" -o "$SCRAPERS_DIR/nd.py" || true

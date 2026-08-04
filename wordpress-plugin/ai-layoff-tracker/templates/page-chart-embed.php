@@ -84,7 +84,13 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
   </div>
 </div>
 <p class="alt-embed-foot"><a href="<?php echo esc_url($alt_tracker_url); ?>" target="_top">AI Layoff Tracker · AskTheRecruiter.com &#8599;</a></p>
-<script>window.altData=<?php echo wp_json_encode($alt_cfg); ?>;</script>
+<?php // Same hex flags page-tracker.php uses on its own bootstrap. Without them a
+      // value containing "</script>" ends the block early and the rest of the
+      // JSON is parsed as HTML; wp_json_encode's defaults escape neither the
+      // tag characters nor the quotes. The embed is the surface most likely to
+      // be iframed on somebody else's page, so it is the last one that should
+      // have been left on the weaker encoding. ?>
+<script>window.altData=<?php echo wp_json_encode($alt_cfg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
 <script src="<?php echo esc_url(includes_url('js/jquery/jquery.min.js')); ?>"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <?php if ($alt_need_geo) : ?>
