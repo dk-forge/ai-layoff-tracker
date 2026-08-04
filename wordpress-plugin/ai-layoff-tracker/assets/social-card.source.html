@@ -1,0 +1,76 @@
+<!--
+  SOURCE for social-card.png (1200x630), the Open Graph / Twitter card for the
+  AI Layoff Tracker pages. It is deliberately static and carries no figures, so
+  it can never go stale the way a rendered number would.
+
+  Regenerate after editing:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+      --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1200,630 --screenshot=social-card.png \
+      "file://$PWD/social-card.source.html"
+
+  The deploy workflow minifies only .js and .css in this folder, so the PNG
+  ships byte-for-byte.
+-->
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  @page { size: 1200px 630px; margin: 0 }
+  * { margin:0; padding:0; box-sizing:border-box }
+  html,body { width:1200px; height:630px }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: #0b1220;
+    color: #f5f7fb;
+    position: relative;
+    overflow: hidden;
+  }
+  .glow {
+    position:absolute; inset:auto -180px -320px auto;
+    width:820px; height:820px; border-radius:50%;
+    background: radial-gradient(circle at 50% 50%, rgba(56,132,255,.30) 0%, rgba(56,132,255,0) 62%);
+  }
+  .grid {
+    position:absolute; inset:0;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .bars { position:absolute; left:0; right:0; bottom:0; height:230px; display:flex; align-items:flex-end; gap:14px; padding:0 74px; opacity:.34 }
+  .bars i { flex:1; background: linear-gradient(180deg,#4f9bff 0%, rgba(79,155,255,.15) 100%); border-radius:4px 4px 0 0 }
+  .scrim { position:absolute; left:0; right:0; bottom:0; height:150px; background:linear-gradient(180deg, rgba(11,18,32,0) 0%, rgba(11,18,32,.92) 62%, #0b1220 100%) }
+  .wrap { position:relative; padding:74px 74px 0; height:100% }
+  .eyebrow {
+    display:inline-flex; align-items:center; gap:12px;
+    font-size:22px; letter-spacing:.16em; text-transform:uppercase;
+    color:#8fb6f5; font-weight:600;
+  }
+  .dot { width:12px; height:12px; border-radius:50%; background:#3ddc84; box-shadow:0 0 0 6px rgba(61,220,132,.16) }
+  h1 { font-size:88px; line-height:1.02; letter-spacing:-.026em; font-weight:800; margin-top:30px }
+  h1 .hl { color:#68a6ff }
+  p.promise { font-size:35px; line-height:1.34; color:#c3cfe2; margin-top:28px; max-width:940px; font-weight:400 }
+  .rule { position:absolute; left:74px; right:74px; bottom:112px; height:2px;
+          background:linear-gradient(90deg, rgba(104,166,255,.65), rgba(104,166,255,0)) }
+  .foot { position:absolute; left:74px; right:74px; bottom:52px;
+          display:flex; justify-content:space-between; align-items:center;
+          font-size:26px; color:#93a3bd; letter-spacing:.01em }
+  .foot b { color:#f5f7fb; font-weight:700 }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="grid"></div>
+  <div class="bars">
+    <i style="height:22%"></i><i style="height:38%"></i><i style="height:29%"></i>
+    <i style="height:54%"></i><i style="height:41%"></i><i style="height:67%"></i>
+    <i style="height:49%"></i><i style="height:78%"></i><i style="height:61%"></i>
+    <i style="height:88%"></i><i style="height:70%"></i><i style="height:96%"></i>
+  </div>
+  <div class="scrim"></div>
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Updated daily</span>
+    <h1>AI Layoff <span class="hl">Tracker</span></h1>
+    <p class="promise">Verified layoffs worldwide. Every number links to its primary source: an SEC filing, a state WARN notice, or a named report.</p>
+  </div>
+  <div class="rule"></div>
+  <div class="foot"><span><b>asktherecruiter.com</b></span><span>Free to use and cite &middot; CC BY 4.0</span></div>
+</body></html>

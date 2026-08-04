@@ -6,6 +6,73 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - public-accuracy batch of four: one owner per coverage count, an honest country-scan figure, the last doubled /blog/, and a real social card (2.19.261)
+
+Four audit-confirmed defects, all of them numbers or links a reader could
+check, fixed in one version.
+
+**1. Every coverage count now has ONE owner.** The same two claims were being
+computed in three places and all three disagreed on the live page.
+`alt_live_numbers()` ran its own `COUNT(DISTINCT state)` over EVERY row and
+got 50, which the FAQ then attributed to WARN notices, a source that had
+produced nothing in three of those states; that 50 shipped inside the FAQPage
+JSON-LD, so a wrong number was in structured data, not just prose. The
+methodology block said "48 US states and DC" from `count(alt_state_warn_urls())`,
+whose 48 keys already include DC, so DC was counted twice and a 48th state was
+invented. The coverage ribbon said 47, from `alt_coverage_counts()`, the only
+one of the three that measured what the sentence claimed. Now
+`alt_coverage_counts()` owns both figures, `alt_live_numbers()` delegates to it,
+and `alt_warn_states_phrase()` renders the claim ("46 US states and DC") so no
+surface reassembles the DC arithmetic again. Same pass: the country count now
+excludes the "Multiple countries" bucket, which is a placeholder for events we
+could not localise and not a place (58 -> 57). A fourth stale figure went with
+them: the health table's United States row said "WARN notices, 44
+jurisdictions", typed into an offline generator that cannot read live data, so
+it now names the registers without a count.
+
+**2. "203 countries" was an 11 percent overcount.** `generate_country_table.py`
+reads gdelt.py's own allowlist comments, and the US metro block labels its
+lines with the outlet or the state ("# Tampa Bay Times", "# Oklahoma - Tulsa
+World"). Twenty-one of those became country ROWS, plus 2 grouping rows, so a
+figure journalists quote read 203 when the honest answer is 180 countries and
+territories. The count is now whitelisted against real country and territory
+names; US states and US metro outlets fold into the United States row (which
+went from 1 outlet to 25, where they always belonged), and the two grouping
+rows are listed but never counted. An unrecognised name UNDERstates reach
+rather than inflating it and the generator prints it, so an omission is
+visible instead of silent. `railway/tests/test_country_scope.py` fails if a US
+state or metro outlet is ever counted as a country again, if any counted row is
+not a real country, or if the committed partials drift from the generator. The
+same regeneration also fixed drift nobody would have caught: the generator
+still emitted "NewsAPI" while the committed partial had been hand-corrected to
+"Google News", so the next routine re-run would have quietly restored a dead
+collector's name to a public page. The test pins that too.
+
+**3. The last doubled /blog/.** `single-layoff.php` built
+`home_url('/blog/ai-layoff-tracker/')`, but `home_url()` already ends in
+`/blog`, so roughly 1,800 entry pages sent their main internal link through a
+301 to `/blog/blog/...`. Verified live before the fix. It was the only such
+call left in either repo.
+
+**4. og:image and frozen Article metadata.** Every page served the 512x512
+site-icon crop as og:image while declaring `twitter:card=summary_large_image`,
+so every share asked for a wide card and got a favicon tile. There is now a
+real 1200x630 card (`assets/social-card.png`, source HTML beside it, rendered
+with headless Chrome) carrying the tracker's name and its promise, and no
+figures, so it can never go stale. It is applied through Rank Math's per-page
+filters and gated on `alt_is_tracker_surface()`: ONE WordPress install serves
+both trackers and the whole blog, the bad image is the SITE-WIDE Rank Math
+fallback, and changing that default would have restyled the sibling tracker and
+every article. The Article node was likewise frozen at 2026-07-14 with author
+Person "admin" while the Dataset node beside it was live-dated and the copy
+says "updated daily" four times; `dateModified` (and og:updated_time) now
+derive from `alt_last_write`, the timestamp of the last actual write to the
+table, and the page is attributed to the site's Organization node rather than a
+WordPress login name. With no recorded write it changes nothing rather than
+inventing a date.
+
+---
+
 ## 2026-08-03 - caught live, post-deploy, by reading the page: single-date states scored as zero notice (2.19.257)
 
 The notice-gap section's first live render showed nine states at "median 0

@@ -5,7 +5,10 @@
  * short overview that links here; this is the full, formatted reference for
  * journalists and researchers.
  */
-$alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : array('states' => 48);
+// Coverage counts have exactly one owner, alt_coverage_counts(); the old
+// literal 48 fallback here was itself one of the disagreeing numbers, so
+// there is no hardcoded figure to fall back to any more.
+$alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_phrase() : 'covered US states';
 ?>
 <main class="alt-wrap alt-method-page">
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
@@ -42,7 +45,7 @@ $alt_cov = function_exists('alt_coverage_counts') ? alt_coverage_counts() : arra
     <p>Sources are always labeled on the entry:</p>
     <ul class="alt-method-list">
       <li><span class="alt-badge alt-badge-gold">SEC filing</span> Legal 8-K and 6-K filings pulled from SEC EDGAR full-text search. Strongest evidence; US public companies and foreign private issuers that file with the SEC.</li>
-      <li><span class="alt-badge alt-badge-warn">WARN notice</span> State government mass-layoff filings from <?php echo (int) $alt_cov['states']; ?> covered US states.</li>
+      <li><span class="alt-badge alt-badge-warn">WARN notice</span> State government mass-layoff filings from <?php echo esc_html($alt_warn_phrase); ?>.</li>
       <li><span class="alt-badge alt-badge-silver">Press release</span> Reviewed investor-relations and newsroom feeds (the "Press release" source in the tracker's filter).</li>
       <li><span class="alt-badge alt-badge-bronze">News</span> Named reports discovered through GDELT and Google News, retained only when the record has usable evidence. Eurofound ERM is a separately labeled, thresholded European announcement source.</li>
     </ul>

@@ -138,7 +138,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
     $alt_cov_first = !empty($alt_cov['first']) ? date_i18n('M Y', strtotime($alt_cov['first'])) : '';
     ?>
     <p class="alt-ribbon">
-        <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['states']; ?></b> US states</span>
+        <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['us_states']; ?></b> US states<?php echo !empty($alt_cov['dc']) ? ' + DC' : ''; ?></span>
         <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
     </p>
     <?php
@@ -241,7 +241,13 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
     ?>
     <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
     <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
-    <?php $alt_warn_states = function_exists('alt_state_warn_urls') ? count(alt_state_warn_urls()) : 42; ?>
+    <?php
+    // The WARN coverage claim comes from alt_warn_states_phrase(), the one
+    // helper that owns it. It used to be count(alt_state_warn_urls()) rendered
+    // as "48 US states and DC" — but that map's 48 keys ALREADY include DC, so
+    // the sentence counted DC twice and invented a 48th state.
+    $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_phrase() : 'covered US states';
+    ?>
     <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
     <p class="alt-filter-context">Filter below; every number, chart and row updates to match. <span class="alt-filter-context-note">Bookmark any view: the address bar always matches the filters.</span></p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
@@ -721,7 +727,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
     <details class="alt-methodology" id="alt-data-sources">
         <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
-            <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo (int) $alt_warn_states; ?> US states and DC, Eurofound ERM for the EU), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News, allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
+            <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo esc_html($alt_warn_phrase); ?>, Eurofound ERM for the EU), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News, allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
             <?php
             // Rendered from the committed weekly measurement (data/recall-measurement.json,
             // written by recall_precision.py), never typed: when capture improves the page

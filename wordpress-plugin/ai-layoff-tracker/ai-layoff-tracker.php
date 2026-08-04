@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.260
+ * Version: 2.19.261
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.260');
+define('ALT_VERSION', '2.19.261');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1136,6 +1136,127 @@ add_filter('rank_math/opengraph/facebook/og_description', 'alt_tracker_meta_desc
 add_filter('rank_math/opengraph/twitter/twitter_description', 'alt_tracker_meta_description', 20);
 
 /**
+ * Is this request one of THIS tracker's pages?
+ *
+ * Everything below narrows on this deliberately. ONE WordPress install serves
+ * both trackers and the whole blog, and the wrong og:image is a site-wide
+ * default (Rank Math falls back to the site icon, a 512x512 crop, for every
+ * page on the site). Fixing the default would silently restyle the sibling
+ * tracker and every article. So we override per page, for our own URLs only,
+ * and leave the shared default exactly as the owner set it.
+ */
+function alt_is_tracker_surface() {
+    if (is_singular('layoffs')) return true;
+    if (!is_page()) return false;
+    $id = get_queried_object_id();
+    if (!$id) return false;
+    $path = wp_parse_url(get_permalink($id), PHP_URL_PATH);
+    if (!$path) return false;
+    $base = wp_parse_url(home_url('/ai-layoff-tracker/'), PHP_URL_PATH);
+    return $base && 0 === strpos(trailingslashit($path), $base);
+}
+
+/**
+ * The 1200x630 social card. Static by design: a rendered figure inside an image
+ * is a number no cache ever refreshes, so the card carries the tracker's name
+ * and its promise and lets the og:description carry the live numbers.
+ */
+function alt_social_card_url() {
+    return ALT_PLUGIN_URL . 'assets/social-card.png?v=' . ALT_VERSION;
+}
+
+/**
+ * Serve the real card instead of the shared 512x512 site-icon crop.
+ *
+ * The page already declared twitter:card=summary_large_image, so every share of
+ * this tracker asked for a wide card and handed back a square icon: X and
+ * LinkedIn then fall back to the small-summary layout, and the link renders as
+ * a generic favicon tile.
+ */
+function alt_og_image($image) {
+    return alt_is_tracker_surface() ? alt_social_card_url() : $image;
+}
+add_filter('rank_math/opengraph/facebook/og_image', 'alt_og_image', 20);
+add_filter('rank_math/opengraph/facebook/og_image_secure_url', 'alt_og_image', 20);
+add_filter('rank_math/opengraph/twitter/twitter_image', 'alt_og_image', 20);
+add_filter('rank_math/opengraph/facebook/og_image_width', function ($w) {
+    return alt_is_tracker_surface() ? 1200 : $w;
+}, 20);
+add_filter('rank_math/opengraph/facebook/og_image_height', function ($h) {
+    return alt_is_tracker_surface() ? 630 : $h;
+}, 20);
+add_filter('rank_math/opengraph/facebook/og_image_type', function ($t) {
+    return alt_is_tracker_surface() ? 'image/png' : $t;
+}, 20);
+
+/**
+ * "Updated daily" has to be true in the metadata too.
+ *
+ * The page said "updated daily" four times in its own copy, and its Dataset
+ * node carried a live dateModified, while the Article and WebPage nodes beside
+ * it were frozen at the day the WordPress page was last hand-edited (2026-07-14)
+ * and credited to a Person named "admin". The data changes twice a day; the
+ * post row does not. So derive the date from the last actual write to the
+ * table (alt_last_write, the same timestamp the on-page freshness label uses),
+ * and attribute the page to the organisation that publishes it rather than to
+ * a WordPress login name.
+ *
+ * Never invents a date: with no recorded write, every node is left untouched.
+ */
+function alt_json_ld_freshness($data, $jsonld = null) {
+    if (!alt_is_tracker_surface() || !is_array($data)) return $data;
+    $ts = (int) get_option('alt_last_write', 0);
+    if ($ts <= 0) return $data;
+    $iso = gmdate('c', $ts);
+
+    // Prefer the site's existing Organization node so we point at one entity
+    // rather than minting a competing publisher.
+    $org = null;
+    foreach ($data as $node) {
+        if (!is_array($node) || empty($node['@type'])) continue;
+        $types = (array) $node['@type'];
+        if (in_array('Organization', $types, true) && !empty($node['@id'])) {
+            $org = array('@id' => $node['@id']);
+            break;
+        }
+    }
+    if (null === $org) {
+        $org = array('@type' => 'Organization', 'name' => get_bloginfo('name'), 'url' => home_url('/'));
+    }
+
+    foreach ($data as $key => $node) {
+        if (!is_array($node) || empty($node['@type'])) continue;
+        $types = (array) $node['@type'];
+        if (!array_intersect($types, array('Article', 'NewsArticle', 'BlogPosting', 'WebPage', 'CollectionPage', 'ItemPage'))) {
+            continue;
+        }
+        $data[$key]['dateModified'] = $iso;
+        if (array_intersect($types, array('Article', 'NewsArticle', 'BlogPosting'))) {
+            $data[$key]['author']    = $org;
+            $data[$key]['publisher'] = $org;
+            $data[$key]['image']     = array(
+                '@type'  => 'ImageObject',
+                'url'    => alt_social_card_url(),
+                'width'  => 1200,
+                'height' => 630,
+            );
+        }
+    }
+    return $data;
+}
+add_filter('rank_math/json_ld', 'alt_json_ld_freshness', 20, 2);
+
+// og:updated_time is emitted from the post's modified date and was showing the
+// same frozen 2026-07-14 stamp. Same source of truth as the JSON-LD above.
+function alt_og_modified_time($t) {
+    if (!alt_is_tracker_surface()) return $t;
+    $ts = (int) get_option('alt_last_write', 0);
+    return $ts > 0 ? gmdate('c', $ts) : $t;
+}
+add_filter('rank_math/opengraph/facebook/og_updated_time', 'alt_og_modified_time', 20);
+add_filter('rank_math/opengraph/facebook/article_modified_time', 'alt_og_modified_time', 20);
+
+/**
  * FAQ content shared by the FAQPage JSON-LD (wp_head) and the on-page FAQ
  * section (template) — one source so Google's "must match visible text" rule
  * holds. Numbers come from the live table, cached an hour.
@@ -1202,18 +1323,24 @@ function alt_live_numbers() {
         // MIN(layoff_date) is guarded against the sentinel/zero dates that a bad
         // parse can leave behind, so the published coverage start is a real event.
         $all = $wpdb->get_row(
-            "SELECT COUNT(*) entries, COUNT(DISTINCT NULLIF(country,'')) countries,
-                    COUNT(DISTINCT NULLIF(state,'')) states,
+            "SELECT COUNT(*) entries,
                     MIN(CASE WHEN layoff_date > '2000-01-01' THEN layoff_date END) min_date
              FROM $t WHERE superset_of = 0");
+        // Coverage counts are NOT recomputed here. This function used to run
+        // its own COUNT(DISTINCT country) and COUNT(DISTINCT state) over every
+        // row, which produced 58 countries (the "Multiple countries" bucket is
+        // not a country) and 50 states (that is every state appearing in ANY
+        // row, while the sentence quoting it is about WARN notices). Both went
+        // out inside FAQPage JSON-LD. One helper owns these two numbers now.
+        $cov = alt_coverage_counts();
         $n = array(
             'y'         => $y,
             'entries'   => $row ? (int) $row->entries : 0,
             'jobs'      => $row ? (int) $row->jobs : 0,
             'ai_jobs'   => $row ? (int) $row->ai_jobs : 0,
             'all'       => $all ? (int) $all->entries : 0,
-            'countries' => $all ? (int) $all->countries : 0,
-            'states'    => $all ? (int) $all->states : 0,
+            'countries' => (int) $cov['countries'],
+            'states'    => (int) $cov['states'],
             // The dataset actually reaches back to 2002; every surface used to
             // hardcode 2015, understating our own coverage by 13 years and
             // ~18,000 events. Derive it instead of asserting it.
@@ -1233,9 +1360,9 @@ function alt_faq_items() {
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . $f($n['states']) . ' US states, imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
         array('What sources do you use?',
-            'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . $f($n['states']) . ' US states (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
+            'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . alt_warn_states_phrase() . ' (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
         array('How is this different from other layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
@@ -1258,27 +1385,72 @@ function alt_faq_items() {
 }
 
 /**
- * Live coverage counts for the intro line: real countries (excluding the
- * "Multiple countries" bucket) and US states with WARN data. Cached an hour.
+ * THE coverage counts. Every surface that publishes "N countries" or "N US
+ * states" reads this function and nothing else.
+ *
+ * Why it is written down: the same two claims used to be computed in three
+ * places and all three disagreed on the live page. The FAQ (and the FAQPage
+ * JSON-LD built from it, so this shipped as structured data) said WARN notices
+ * came from 50 US states, because it counted DISTINCT state over EVERY row
+ * including news and SEC entries, which is not a WARN claim at all. The
+ * methodology block said "48 US states and DC" by counting the configured
+ * register map, whose 48 keys ALREADY include DC, so DC was counted twice and
+ * no such 48th state exists. The coverage ribbon said 47, from this function,
+ * which is the only one of the three that measures what the sentence claims:
+ * jurisdictions that have actually produced WARN rows.
+ *
+ * Countries excludes the "Multiple countries" bucket, which is a placeholder
+ * for events we could not localise, not a place.
+ *
+ * Fields:
+ *   countries  real countries present in the data
+ *   states     WARN jurisdictions with data, DC included (the ribbon figure)
+ *   us_states  the same, minus DC, so copy can say "N states and DC" honestly
+ *   dc         whether DC is among them
+ *   first      earliest event date, for the coverage ribbon
+ * Cached an hour; the write path drops the transient on ingest.
  */
 function alt_coverage_counts() {
     $c = get_transient('alt_coverage_counts');
-    // isset() guard: a transient written before 'first' existed must recompute
-    // rather than hand the coverage ribbon an empty date for up to an hour.
-    if (is_array($c) && isset($c['first'])) return $c;
+    // isset() guard: a transient written before a field existed must recompute
+    // rather than hand a surface an empty value for up to an hour.
+    if (is_array($c) && isset($c['first']) && isset($c['us_states'])) return $c;
     global $wpdb;
     $t = alt_db_table();
     $countries = (int) $wpdb->get_var(
         "SELECT COUNT(DISTINCT country) FROM $t WHERE country <> '' AND country <> 'Multiple countries'");
     $states = (int) $wpdb->get_var(
         "SELECT COUNT(DISTINCT state) FROM $t WHERE source_type = 'warn' AND state <> ''");
+    // DC is a WARN jurisdiction but not a state, and the difference is the
+    // whole reason the old "48 US states and DC" line was wrong. Derive it.
+    $dc = 'DC' === (string) $wpdb->get_var(
+        "SELECT state FROM $t WHERE source_type = 'warn' AND state = 'DC' LIMIT 1");
     // First record date for the coverage ribbon. Derived, never typed; the
     // same date bound alt_db_valid_date enforces on the way in.
     $first = (string) $wpdb->get_var(
         "SELECT MIN(layoff_date) FROM $t WHERE layoff_date IS NOT NULL");
-    $c = array('countries' => $countries, 'states' => $states, 'first' => $first);
+    $c = array(
+        'countries' => $countries,
+        'states'    => $states,
+        'us_states' => max(0, $states - ($dc ? 1 : 0)),
+        'dc'        => $dc,
+        'first'     => $first,
+    );
     set_transient('alt_coverage_counts', $c, HOUR_IN_SECONDS);
     return $c;
+}
+
+/**
+ * The WARN coverage claim as a sentence fragment, so no surface has to
+ * reassemble it and get the DC arithmetic wrong again. Returns e.g.
+ * "46 US states and DC" (or plain "N US states" if DC ever drops out).
+ */
+function alt_warn_states_phrase() {
+    $c = alt_coverage_counts();
+    if (!empty($c['dc'])) {
+        return number_format_i18n((int) $c['us_states']) . ' US states and DC';
+    }
+    return number_format_i18n((int) $c['states']) . ' US states';
 }
 
 /**

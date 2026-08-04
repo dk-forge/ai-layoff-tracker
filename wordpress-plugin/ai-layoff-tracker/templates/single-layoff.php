@@ -10,7 +10,11 @@ $e  = function_exists('alt_entry_to_array') ? alt_entry_to_array($id) : array();
 $verif_labels = array('gold' => 'SEC filing', 'silver' => 'Press release', 'bronze' => 'News');
 $verif = $verif_labels[$e['verification_level'] ?? ''] ?? 'News';
 $src_url = esc_url_raw($e['source_url'] ?? '');   // esc_url_raw drops javascript:/data:
-$tracker = home_url('/blog/ai-layoff-tracker/');
+// home_url() ALREADY ends in /blog (WP_SITE_URL is https://asktherecruiter.com/blog),
+// so passing '/blog/...' here built /blog/blog/... and sent the main internal
+// link on roughly 1,800 entry pages through a 301. Every other call in the
+// plugin passes the path without the /blog prefix; this was the only one left.
+$tracker = home_url('/ai-layoff-tracker/');
 $cite = sprintf(
     'AI Layoff Tracker, AskTheRecruiter.com. "%s, %s jobs (%s)." Retrieved %s. Primary source: %s.',
     $e['company_name'] ?? '',

@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
-- **SINCE:** 2026-08-03
-- **WORKING ON:** —
+- **STATUS:** HELD
+- **HOLDER:** local
+- **SINCE:** 2026-08-04
+- **WORKING ON:** public-accuracy batch of four: one coverage-count helper, honest country-scan count, entry-page back link, real social card + live dateModified
 
 **Takeover noted, per the stale-baton clause.** The SEC-recall session claimed
 this on 2026-08-01 and landed its answer the same day (`e8b8541`: the misses are
