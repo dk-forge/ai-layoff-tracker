@@ -146,14 +146,17 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
                          reader can add up what is on screen. Kept in step live by
                          renderStats() (alt-hero-asof). Printed only when some of the
                          window is still ahead; in a past-year view there is nothing
-                         to split and the sentence would be noise. */ ?>
-                <span class="alt-hero-figure-asof" id="alt-hero-asof"<?php echo ($alt_sv !== null && $alt_sv['later'] > 0) ? '' : ' hidden'; ?>><?php
-                    if ($alt_sv !== null && $alt_sv['later'] > 0) {
-                        echo esc_html(number_format($alt_sv['to-date']) . ' have taken effect as of ' . date_i18n('M j, Y')
-                            . '. The other ' . number_format($alt_sv['later'])
-                            . ' are on notices already filed for effective dates later in the period.');
-                    }
-                ?></span>
+                         to split and the sentence would be noise.
+                         The wording is alt_period_split_sentence()'s, not this
+                         template's: the press page prints the same string for the
+                         same year, which is the whole point of the helper. It said
+                         "later in the period" and never named the calendar total, so
+                         a reader who had seen the press page's 450,529 had nothing on
+                         this page tying it to the 484,468 above it. */ ?>
+                <?php $alt_split = ($alt_sv !== null && function_exists('alt_period_split_sentence'))
+                    ? alt_period_split_sentence($alt_sv['to-date'], $alt_sv['total'], date_i18n('M j, Y'), $alt_period)
+                    : ''; ?>
+                <span class="alt-hero-figure-asof" id="alt-hero-asof"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><?php echo esc_html($alt_split); ?></span>
             </p>
             <?php endif; ?>
             <p class="alt-hero-thesis" role="heading" aria-level="2">Every layoff here is verified. That is the whole point.</p>
@@ -583,8 +586,15 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         <p class="alt-crosslink">Looking for who is hiring instead? Hiring signals are tracked on the <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Talent Intelligence Tracker</a>.</p>
     </section>
 
-    <details class="alt-why-lower">
-        <summary class="alt-why-summary">Why our number is lower, and why it&rsquo;s the one to cite</summary>
+    <?php /* NOT A <details>. This is the paragraph that makes our figure
+             defensible when a reader compares it against an independent
+             national estimate, and for as long as it was a collapsed
+             disclosure it was measured at 0px wide on a rendered page: nobody
+             who did not click it had ever read it. A caveat nobody sees is not
+             a caveat. It is a <section> now, so there is no open state that can
+             default shut and no toggle for a later edit to leave closed. */ ?>
+    <section class="alt-why-lower" aria-labelledby="alt-why-lower-h">
+        <h2 class="alt-why-summary" id="alt-why-lower-h">Why our number is lower, and why it&rsquo;s the one to cite</h2>
         <div class="alt-why-body">
         <p class="alt-why-lead">Announcement surveys count what companies <em>say</em>. We count what you can <em>prove</em>. Every figure on this page clicks through to a legal filing or a named report. So our total is a <strong>documented floor</strong>: smaller than the headline estimates by design, and verifiable by design.</p>
         <div class="alt-why-grid">
@@ -599,7 +609,7 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         <p class="alt-why-quality">Every figure links to a primary source, and every correction and merge is disclosed in the <a href="#alt-corrections">open log</a>. Nothing is quietly edited. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we check ourselves &rarr;</a></p>
         <p class="alt-why-foot"><a href="#alt-metric-definitions">See the full methodology &rarr;</a> &middot; Every number, every source, one click away.</p>
         </div>
-    </details>
+    </section>
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
     <div class="alt-minigrid">
@@ -892,7 +902,12 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
         </div>
     </details>
 
-    <details class="alt-methodology">
+    <?php /* OPEN BY DEFAULT, and it stays a <details> only so a reader who has
+             read it once can fold it away. It is the long-form answer to the
+             question a reporter arrives with, and it was measured at 4px wide
+             on a rendered page because it defaulted shut. The short version
+             above it is not collapsible at all. */ ?>
+    <details class="alt-methodology" open>
         <summary>Why our numbers differ from other trackers</summary>
         <div class="alt-method-body">
             <p><b>Every tracker measures a different thing, so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below the headline announcement estimates, and the gap is fully explainable, here is exactly why, and why we treat it as a feature, not a shortfall.</p>

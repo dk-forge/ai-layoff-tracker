@@ -6,9 +6,16 @@ if (!is_array($alt_press_years)) {
     global $wpdb;
     $alt_t = alt_db_table();
     $alt_press_years = $wpdb->get_results(
+        // superset_of=0, for the reason every other query on this page carries
+        // it: a rollup row and its members are the same jobs twice. Without it
+        // the 2026 row read 935,408 against the API's 922,720 for the same
+        // window and the same measure, +12,688, on the page that exists to be
+        // reproducible. The event count is likewise events, not "verified"
+        // ones: it has always included the announced tier, so the column is
+        // named for what it counts.
         "SELECT YEAR(layoff_date) y, COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
-         FROM $alt_t WHERE layoff_date >= '2015-01-01' AND layoff_date <= CURDATE()
+         FROM $alt_t WHERE superset_of=0 AND layoff_date >= '2015-01-01' AND layoff_date <= CURDATE()
          GROUP BY YEAR(layoff_date) ORDER BY y DESC", ARRAY_A) ?: array();
     set_transient('alt_press_year_stats_' . ALT_VERSION, $alt_press_years, HOUR_IN_SECONDS);
 }
@@ -304,6 +311,25 @@ if (!is_array($alt_ps)) {
         );
     }
     $alt_ps['releases'] = $alt_rel;
+
+    // THE TWO TOTALS THIS SITE PUBLISHES FOR ONE YEAR, and the arithmetic
+    // between them, computed HERE from the same $alt_pstats used by every
+    // statement above so the block cannot quote a figure this page did not
+    // produce. Only the window differs: to-date ends today, calendar ends
+    // 31 December. Every "so far" sentence on this page quotes to-date; the
+    // tracker home page headlines the calendar figure. Until 2.19.266 the two
+    // surfaces published 450,529 and 484,468 with nothing on either page
+    // naming the other, which is a 33,939 gap for a reporter to discover on
+    // their own after quoting one of them.
+    $alt_cy = $alt_pstats(sprintf('%04d-01-01', $alt_y2), sprintf('%04d-12-31', $alt_y2));
+    $alt_td = $alt_pstats(sprintf('%04d-01-01', $alt_y2), gmdate('Y-m-d'));
+    $alt_ps['split'] = array(
+        'year'     => $alt_y2,
+        'as_of'    => gmdate('M j, Y'),
+        'to_date'  => (int) ($alt_td->v ?? 0),
+        'calendar' => (int) ($alt_cy->v ?? 0),
+        'later'    => max(0, (int) ($alt_cy->v ?? 0) - (int) ($alt_td->v ?? 0)),
+    );
     set_transient('alt_press_statements_' . ALT_VERSION, $alt_ps, HOUR_IN_SECONDS);
 }
 ?>
@@ -319,6 +345,8 @@ if (!is_array($alt_ps)) {
 
   <nav class="alt-press-toc" aria-label="On this page">
     <span class="alt-toc-label">On this page</span>
+    <a href="#alt-press-basis">Which basis</a>
+    <a href="#alt-press-period">Which period</a>
     <a href="#alt-press-statements">Numbers to use now</a>
     <a href="#alt-soundbites">Soundbites</a>
     <a href="#alt-evidence-ladder">What counts as AI</a>
@@ -333,6 +361,37 @@ if (!is_array($alt_ps)) {
   <p>Our published US headline counts <b>jobs physically located in the US</b>. Most announcement surveys count <b>US-company announcements wherever the jobs land</b>. Those are different questions, so the totals differ by design. Both of ours are below, live, so you can quote the one that matches your comparison.</p>
   <?php if (function_exists('alt_basis_table_html')) echo alt_basis_table_html('United States'); ?>
   <p>If you are comparing us against an announcement survey, use the <b>employer basis</b> row. If you want the most conservative documented figure, use <b>job location</b>. Say which one you used and the number is reproducible from our public API.</p>
+
+  <?php
+  /* WHICH PERIOD. The companion to the basis block above, and it exists for the
+     same reason: a reporter who reads two of our pages must be able to see why
+     two of our numbers differ, on the page, without asking. Every figure below
+     comes from $alt_pstats, the same helper behind every statement on this
+     page, so the block is reproducible from the API by construction. */
+  $alt_sp = isset($alt_ps['split']) && is_array($alt_ps['split']) ? $alt_ps['split'] : null;
+  ?>
+  <?php if ($alt_sp && $alt_sp['later'] > 0) : ?>
+  <h2 id="alt-press-period">Before you quote a number: which period</h2>
+  <p>We date every cut by the day it <b>takes effect</b>, and WARN notices are filed weeks ahead by law. So <?php echo (int) $alt_sp['year']; ?> has two correct totals, and they are not in conflict. Quote the one that matches your sentence, and say which.</p>
+  <div class="alt-health-table-wrap">
+  <table class="alt-basis-table">
+    <thead><tr><th>Counting period</th><th>Verified job cuts</th><th>What it counts, and where we publish it</th></tr></thead>
+    <tbody>
+      <tr><th>Taken effect, as of <?php echo esc_html($alt_sp['as_of']); ?> <span class="alt-muted">(the figure for a &ldquo;so far&rdquo; sentence)</span></th>
+          <td><b><?php echo number_format($alt_sp['to_date']); ?></b></td>
+          <td>Cuts whose effective date has arrived. Every statement on this page, the tracker's cite line and the FAQ quote this figure.</td></tr>
+      <tr><th>Filed for effective dates later in <?php echo (int) $alt_sp['year']; ?></th>
+          <td><b><?php echo number_format($alt_sp['later']); ?></b></td>
+          <td>Notices already on file, each with a stated effective date still ahead. Documented, but they have not happened yet.</td></tr>
+      <tr><th>Calendar year <?php echo (int) $alt_sp['year']; ?> <span class="alt-muted">(the two rows above, added)</span></th>
+          <td><b><?php echo number_format($alt_sp['calendar']); ?></b></td>
+          <td>The whole year as filed to date. This is the figure the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">tracker home page</a> headlines, above the same reconciling sentence printed below.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="alt-press-split"><?php echo esc_html(function_exists('alt_period_split_sentence') ? alt_period_split_sentence($alt_sp['to_date'], $alt_sp['calendar'], $alt_sp['as_of'], (string) $alt_sp['year']) : ''); ?></p>
+  <p class="alt-muted">Both figures come from the same query with only the end date changed, so either is reproducible from the public API: <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html(gmdate('Y-m-d')); ?></code> for the first, <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code> for the third. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>.</p>
+  <?php endif; ?>
 
   <h2 id="alt-press-statements">Numbers you can use right now</h2>
   <p>This week, the latest complete month, and the year to date. Each card is written to be pasted into a pitch or a story, and each ends with a link that opens the live tracker filtered to the exact rows behind the number, so an editor can check the claim in one click.</p>
@@ -446,11 +505,11 @@ if (!is_array($alt_ps)) {
   <p class="alt-muted">Every report link is permanent, so a story that cites the March figure still resolves to the March figure a year later.</p>
 
   <h2 id="alt-key-stats">Yearly totals</h2>
-  <p>Live figures from the same database the tracker serves. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A separate broader measure is available in the <code>ai_broad_jobs</code> API field.</p>
+  <p>Live figures from the same database the tracker serves, cut at today, so the current year is a part year. <b>These columns count the verified and announced tiers together</b>, which is why the current-year row runs above the verified headline at the top of this page. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A separate broader measure is available in the <code>ai_broad_jobs</code> API field.</p>
   <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
   <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?>, the moment the underlying database last changed (a new filing/notice/report was added), not the time you loaded this page.</p><?php endif; ?>
   <div class="alt-health-table-wrap"><table class="alt-press-table">
-    <thead><tr><th>Year</th><th class="num">Verified layoffs</th><th class="num">Job cuts recorded</th><th class="num">AI-attributed (strict)</th></tr></thead>
+    <thead><tr><th>Year</th><th class="num">Layoff events recorded</th><th class="num">Job cuts recorded<br><small>verified and announced</small></th><th class="num">AI-attributed (strict)</th></tr></thead>
     <tbody>
     <?php foreach ($alt_press_years as $alt_yr) : ?>
       <tr><td><b><?php echo (int) $alt_yr['y']; ?></b></td><td class="num"><?php echo number_format((int) $alt_yr['entries']); ?></td><td class="num"><?php echo number_format((int) $alt_yr['jobs']); ?></td><td class="num"><?php echo number_format((int) $alt_yr['ai_jobs']); ?></td></tr>

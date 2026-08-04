@@ -6,6 +6,57 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - one claim, two surfaces, two totals; and two caveats nobody could read (2.19.266)
+
+The 2.19.265 sweep fixed the hero's period stamp and gave it a reconciling
+line. It did not check the OTHER page a reporter quotes. On the same afternoon:
+
+    home hero    484,468 verified job cuts, 2026
+    press page   For 2026 so far, 450,529 job cuts are documented worldwide
+
+33,939 apart, on the two most-quotable surfaces on the site, each naming
+neither the other number nor the arithmetic between them. Both are right. Rows
+are dated by the day a cut takes effect and WARN notices are filed weeks ahead
+by law, so 450,529 had taken effect, 33,939 had not, and the two add to the
+calendar-year figure. Verified live against `/aggregate` before the change:
+`from=2026-01-01&to=2026-12-31` gives 956,769 - 472,301 = 484,468, and
+`to=2026-08-04` gives 922,720 - 472,191 = 450,529.
+
+The fix is not a new value. `alt_period_split_sentence()` in db.php owns the
+reconciliation as ONE string; page-tracker.php prints it under the hero,
+page-press.php prints it under a new "Before you quote a number: which period"
+table that names all three figures and says which page publishes which, and
+`periodSplitSentence()` in layoffs.js rebuilds it character for character on
+every filter change. `test_headline_total_agreement.py` runs the PHP body
+through `php` and the JS body through `node` on the same inputs and fails on
+any difference, whitespace included, because two hand-maintained copies of one
+wording is exactly how the two pages drifted apart.
+
+The same page's yearly-totals table carried `superset_of=0` on none of its
+columns while every other query on the page carried it, so the 2026 row read
+935,408 against the API's 922,720 for the same window and measure, +12,688 of
+rollup rows counted alongside their own members. Fixed, and the event column is
+named "Layoff events recorded" rather than "Verified layoffs", which it never
+was: it has always included the announced tier.
+
+**And the two explainers were sealed shut.** "Why our number is lower, and why
+it's the one to cite" and "Why our numbers differ from other trackers" were
+both collapsed `<details>` defaulting closed, which is to say the argument that
+makes our figure defensible against an independent national estimate had never
+been read by anyone who did not click. The short one is a `<section>` now, with
+no open state to default wrong; the long one keeps its toggle and defaults
+open.
+
+**Do not measure that with a width.** Rendered in Chrome at 1280px against the
+real stylesheet, the body inside a CLOSED `<details>` returns a full layout box:
+`rect 1127x309, display block, innerText 0 chars` before, the identical rect and
+1,240 characters after. A rect probe reads "visible" on the defect. The signals
+that separate the states are `details.open` and rendered text length. This is
+the third caveat in this codebase to compute to nothing, and the second time the
+instrument used to catch it would have missed it.
+
+---
+
 ## 2026-08-04 - four published numbers that contradicted numbers a few pixels away (2.19.265)
 
 An adversarial sweep read the live page rather than the code and found four
