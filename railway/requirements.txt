@@ -15,3 +15,11 @@ google-cloud-bigquery>=3.25
 pytesseract>=0.3.10
 pandas>=2.2.0
 pyarrow>=16.0.0
+
+# Test-only, and declared for exactly the reason above. tests/test_alert_outbox.py
+# reads .github/workflows/*.yml to assert that the drainer is scheduled, that the
+# alerter may commit what it could not send, and that the hold step is not gated
+# behind the alert step succeeding. Those three properties live ONLY in YAML and
+# nothing else checks them. Without pyyaml the tests skipped, and four skipped
+# guards over the alert-hold mechanism read as four passing ones.
+pyyaml>=6.0

@@ -21,7 +21,17 @@ a bound that drifted between this guard and the dashboard would be the same clas
 of bug this guard exists to catch. Add a new live invariant to
 data_integrity.INVARIANTS and `test_every_registered_invariant_is_asserted` will
 fail until it is asserted here too.
+
+Not every registered invariant is asserted in THIS file, and `InvariantCoverage`
+at the bottom is what makes that safe. Live bounds are claimed here, by a
+`self._assert("key")` call it reads back out of the source. Invariants whose
+subject is what the page RENDERS are claimed by name against the test case that
+exercises them, and that claim is verified by mutation: the invariant is blinded
+to an unconditional PASS and the named test case must go red. A claim that points
+at a test which does not really exercise its invariant fails there.
 """
+import os
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -159,15 +169,9 @@ class DedupLiveRegression(unittest.TestCase):
 
     def test_every_registered_invariant_is_asserted(self):
         # Adding an invariant to the shared registry must not silently skip CI.
-        asserted = {"coinbase_news_vs_news", "spirit_news_vs_warn",
-                    "tyson_warn_revision", "att_no_fake_outlier",
-                    "headline_concentration", "headline_movement",
-                    "dedup_denominator_scoped", "recall_floor",
-                    "archive_recheck_cadence"}
-        missing = {i.key for i in INVARIANTS} - asserted
-        self.assertFalse(missing, (
-            f"data_integrity.INVARIANTS gained {sorted(missing)} with no test method here. "
-            f"ops_status would report it but CI would not fail on it — add a test_ method."))
+        # Delegated to InvariantCoverage below, which does not take the answer
+        # on trust — see the note there.
+        InvariantCoverage.assert_every_key_is_claimed(self)
 
 
 LIVE_ONLY = tuple(i for i in INVARIANTS if getattr(i, "reads_live_data", True))
@@ -229,6 +233,127 @@ class DegradationContract(unittest.TestCase):
             raise OSError("down")
         status, _, _ = data_integrity.ledger_status(data_integrity.check_all(fetch=dead))
         self.assertNotEqual(status, "ok")
+
+
+# ---------------------------------------------------------------------------
+# THE COVERAGE GUARD
+# ---------------------------------------------------------------------------
+class InvariantCoverage(unittest.TestCase):
+    """Every registered invariant is asserted somewhere, and the assertion works.
+
+    WHAT WENT WRONG, AND WHY THE OLD GUARD COULD NOT HAVE CAUGHT IT
+    ---------------------------------------------------------------
+    This guard used to compare INVARIANTS against a hand-written set of key
+    strings. That set was the whole mechanism, and it has exactly the failure
+    mode it exists to prevent: it does not know anything, it is told. On
+    2026-08-04 six published-figure invariants were registered, the string set
+    was not updated, and the guard fired correctly. But the guard could equally
+    have been silenced by typing six strings into the set, which would have
+    restored precisely the blindness it was written to stop — a registry the
+    dashboard reports on and CI cannot fail on.
+
+    So the set is gone and there are two mechanisms, both of which check rather
+    than trust:
+
+      CLAIMED   every key in INVARIANTS is claimed by an entry below. This is the
+                drift guard the old set was, and it still fails on a new
+                invariant with nowhere to live.
+
+      ARMED     every claim is VERIFIED, by mutation. For each delegated
+                invariant, its run() is replaced with one that reports an
+                unconditional PASS and the named test case is executed. If that
+                test case does not go RED, it was not testing the invariant, and
+                this fails. Six tests that assert True would satisfy any
+                bookkeeping check ever written; they cannot survive this one.
+
+    Live-data invariants are claimed HERE, by a `self._assert("key")` call in
+    DedupLiveRegression, and the claim is verified by reading that class's own
+    source rather than by taking a list's word for it. They are not
+    mutation-tested because the check they drive needs the live site, and a unit
+    suite that reaches the network on every push is a unit suite people delete.
+    Their live reading is data-integrity.yml, daily, exit 2 on FAIL and 3 on
+    UNKNOWN.
+    """
+
+    # key -> (test module, TestCase class) that proves the invariant arms.
+    # Verified by mutation in test_every_delegated_claim_is_real.
+    DELEGATED = {
+        "figures_agree_with_api": ("test_published_figure_guards", "AgreementTest"),
+        "figure_parts_reconcile": ("test_published_figure_guards", "ReconciliationTest"),
+        "figure_drilldown_matches": ("test_published_figure_guards", "DrillDownTest"),
+        "figure_basis_is_stated": ("test_published_figure_guards", "BasisTest"),
+        "figures_agree_across_surfaces": ("test_published_figure_guards", "CrossSurfaceTest"),
+        "comparison_basis_is_visible": ("test_published_figure_guards", "ComparisonBasisTest"),
+    }
+
+    @staticmethod
+    def _claimed_by_a_live_assertion():
+        """Keys this file asserts against the live site, read out of the source.
+
+        Introspection, not a list. A test method that stops calling _assert stops
+        counting as coverage the moment it does, with no second place to update.
+        """
+        import inspect
+        src = inspect.getsource(DedupLiveRegression)
+        return set(re.findall(r'self\._assert\(\s*["\']([a-z0-9_]+)["\']\s*\)', src))
+
+    @classmethod
+    def assert_every_key_is_claimed(cls, case):
+        claimed = cls._claimed_by_a_live_assertion() | set(cls.DELEGATED)
+        missing = {i.key for i in INVARIANTS} - claimed
+        case.assertFalse(missing, (
+            f"data_integrity.INVARIANTS gained {sorted(missing)} with no test asserting it. "
+            f"ops_status would report it but CI would not fail on it — either add a "
+            f"self._assert(\"<key>\") to DedupLiveRegression for a live bound, or add the "
+            f"key to InvariantCoverage.DELEGATED naming the test case that proves it arms."))
+
+    def test_every_registered_invariant_is_claimed(self):
+        self.assert_every_key_is_claimed(self)
+
+    def test_no_claim_is_stale(self):
+        # A claim for a key that no longer exists is a claim nobody will notice
+        # is doing nothing.
+        keys = {i.key for i in INVARIANTS}
+        stale = sorted(set(self.DELEGATED) - keys)
+        self.assertFalse(stale, f"DELEGATED claims keys not in INVARIANTS: {stale}")
+        orphan = sorted(self._claimed_by_a_live_assertion() - keys)
+        self.assertFalse(orphan, f"DedupLiveRegression asserts keys not in INVARIANTS: {orphan}")
+
+    def test_every_delegated_claim_is_real(self):
+        """Mutation: blind each invariant in turn, demand its test case redden.
+
+        This is the assertion that makes the whole guard mean something. Nothing
+        here reads what a test is named or how long it is; it breaks the thing
+        the test claims to cover and insists the test notices.
+        """
+        import importlib
+        pkg = __name__.rsplit(".", 1)[0] + "." if "." in __name__ else ""
+        for key, (modname, clsname) in sorted(self.DELEGATED.items()):
+            inv = _inv(key)
+            try:
+                mod = importlib.import_module(pkg + modname)
+            except ImportError:
+                mod = importlib.import_module(modname)
+            case = getattr(mod, clsname, None)
+            self.assertIsNotNone(
+                case, f"{key} is delegated to {modname}.{clsname}, which does not exist")
+
+            owner, real = type(inv), type(inv).run
+            owner.run = lambda self, ctx: data_integrity.Result(
+                self, PASS, detail="stubbed green by the coverage guard")
+            try:
+                suite = unittest.TestLoader().loadTestsFromTestCase(case)
+                with open(os.devnull, "w") as quiet:
+                    outcome = unittest.TextTestRunner(verbosity=0, stream=quiet).run(suite)
+            finally:
+                owner.run = real
+
+            self.assertTrue(
+                outcome.failures or outcome.errors,
+                f"{key} is claimed by {modname}.{clsname}, but blinding that invariant "
+                f"to an unconditional PASS left all {outcome.testsRun} of its tests "
+                f"green. That test case does not actually exercise the invariant, so "
+                f"CI would stay green while the check reported nothing.")
 
 
 if __name__ == "__main__":
