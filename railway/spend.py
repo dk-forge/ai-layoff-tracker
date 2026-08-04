@@ -285,6 +285,9 @@ def record_usage(model, usage) -> float:
     _run["calls"] += 1
     _run["prompt_tokens"] += prompt_tokens
     _run["completion_tokens"] += completion_tokens
+    # So a retry of this same logical run starts from what it has already spent
+    # instead of from zero. See _run_state_path().
+    _persist_run_cost()
     return cost
 
 
@@ -328,10 +331,13 @@ def paid_reads_enabled() -> bool:
     global _run_ceiling_tripped
     if (os.environ.get(PAID_READS_ENV, "").strip().lower() == "off"):
         return False
-    if _run["cost_usd"] >= RUN_CEILING_USD:
+    # Measured against the LOGICAL run (this process + earlier attempts of the
+    # same run), so a shell retry loop cannot buy itself a fresh ceiling.
+    spent = logical_run_cost_usd()
+    if spent >= RUN_CEILING_USD:
         if not _run_ceiling_tripped:
             _run_ceiling_tripped = True
-            print(f"::warning::spend: this run has spent ${_run['cost_usd']:.4f}, "
+            print(f"::warning::spend: this run has spent ${spent:.4f}, "
                   f"at or past the ${RUN_CEILING_USD:.2f} per-run ceiling. Paid "
                   f"extraction is OFF for the rest of this run. Free ingest "
                   f"continues; deferred candidates are unmarked and return on a "
@@ -342,10 +348,84 @@ def paid_reads_enabled() -> bool:
 
 def reset_run_meter() -> None:
     """Test-only: clear the process meter."""
-    global _run_ceiling_tripped
+    global _run_ceiling_tripped, _carried_usd
     _run.update({"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
                  "completion_tokens": 0})
     _run_ceiling_tripped = False
+    _carried_usd = None
+
+
+# --------------------------------------------------------------------------
+# The per-run ceiling has to survive a retry
+# --------------------------------------------------------------------------
+#
+# Several data jobs wrap their script in a shell retry:
+#
+#     for attempt in 1 2 3; do python industry_backfill.py && exit 0; ...
+#
+# That is the right call for reliability -- a transient OpenRouter 5xx at row
+# 190 of 200 should not page anybody. But each attempt is a NEW PROCESS, and
+# the per-run meter lived only in that process's memory. So the ceiling reset
+# on every attempt, and a job that failed twice could spend 3x its named
+# ceiling with the brake reporting nothing wrong. The failure path was the
+# most expensive path in the repo and it was the one nothing was watching.
+#
+# The fix is a small file in the runner's temp dir, keyed by run and attempt,
+# holding what this logical run has already spent. It is best-effort in both
+# directions: if it cannot be read the job runs with a fresh meter (the old
+# behaviour, never worse), and if it cannot be written nothing raises. A meter
+# must never break the job it measures.
+_carried_usd: float | None = None
+
+
+def _run_state_path() -> str | None:
+    """Where this logical run's carried spend lives, or None if there is no
+    durable scratch space (a dev machine, or Railway, which has neither)."""
+    explicit = (os.environ.get("ALT_RUN_SPEND_FILE") or "").strip()
+    if explicit:
+        return explicit
+    run_id = (os.environ.get("GITHUB_RUN_ID") or "").strip()
+    tmp = (os.environ.get("RUNNER_TEMP") or "").strip()
+    if not (run_id and tmp):
+        return None
+    attempt = (os.environ.get("GITHUB_RUN_ATTEMPT") or "1").strip()
+    job = current_job()
+    return os.path.join(tmp, f"alt_run_spend_{run_id}_{attempt}_{job}.json")
+
+
+def carried_run_cost_usd() -> float:
+    """What earlier attempts of this same logical run already spent."""
+    global _carried_usd
+    if _carried_usd is not None:
+        return _carried_usd
+    _carried_usd = 0.0
+    path = _run_state_path()
+    if path:
+        try:
+            with open(path) as fh:
+                _carried_usd = float(json.load(fh).get("cost_usd") or 0.0)
+        except (OSError, ValueError, TypeError, AttributeError):
+            _carried_usd = 0.0  # unreadable: fall back to a fresh meter
+    return _carried_usd
+
+
+def _persist_run_cost() -> None:
+    path = _run_state_path()
+    if not path:
+        return
+    try:
+        with open(path, "w") as fh:
+            json.dump({"cost_usd": round(logical_run_cost_usd(), 8)}, fh)
+    except (OSError, TypeError, ValueError):
+        pass  # best effort; never break the job
+
+
+def logical_run_cost_usd() -> float:
+    """This process's spend PLUS what earlier attempts of the same run spent.
+
+    This, not run_cost_usd(), is what the per-run ceiling is measured against.
+    """
+    return carried_run_cost_usd() + _run["cost_usd"]
 
 
 # --------------------------------------------------------------------------
@@ -474,6 +554,47 @@ def parse_ledger_lines(text: str) -> list[dict]:
     return out
 
 
+# How many 100-run pages `list_runs_in_window` will read before giving up and
+# saying so. This repo produced 414 completed runs in a 2-day window on
+# 2026-08-04, so 2 pages (the old, unpaginated behaviour) covered under seven
+# hours of it. 10 pages = 1,000 runs is several times the observed volume and
+# still bounded, so a runaway cannot turn the daily balance job into a
+# thousand-request crawl.
+HARVEST_MAX_PAGES = max(1, int(os.environ.get("ALT_HARVEST_MAX_PAGES", "10")))
+
+
+def list_runs_in_window(api, repo: str, since: str) -> tuple[list[dict], bool]:
+    """Every completed workflow run created since `since`, following pagination.
+
+    Returns (runs, complete). `complete` is False when the page cap stopped us
+    before the window ran out, so the caller can report the gap instead of
+    quietly under-counting.
+
+    WHY THIS IS A FUNCTION. It used to be one unpaginated call asking for
+    `per_page=100`, and the GitHub API answers newest-first. Measured on
+    2026-08-04: the 2-day window held 414 completed runs, so the single page
+    reached back only to 13:14 that same day. The daily balance job harvests at
+    13:00 UTC, so the only jobs that ever landed in railway/spend_jobs.json were
+    the ones that ran in the few hours before it. Every afternoon job -- the
+    expensive half of the schedule -- emitted its SPEND_LEDGER_V1 line into a
+    log nobody read.
+
+    The damage was not a missing file. It was that $0.0269 of a measured
+    $0.1644 day appeared in the ledger (16%), so the tracker looked an order of
+    magnitude cheaper than it was, and every attempt to explain the balance
+    from the ledger came up short and got written off as unattributable.
+    """
+    runs: list[dict] = []
+    for page in range(1, HARVEST_MAX_PAGES + 1):
+        batch = (api(f"/repos/{repo}/actions/runs?created=>{since}"
+                     f"&status=completed&per_page=100&page={page}")
+                 or {}).get("workflow_runs") or []
+        runs.extend(batch)
+        if len(batch) < 100:
+            return runs, True
+    return runs, False
+
+
 def harvest(days: int = 2) -> int:
     """Collect the last `days` of SPEND_LEDGER_V1 lines from Actions run logs
     into the committed ledger. Run by the daily balance job — the ONE
@@ -526,11 +647,18 @@ def harvest(days: int = 2) -> int:
     found: list[dict] = []
     scanned = 0
     try:
-        runs = _api(f"/repos/{repo}/actions/runs?created=>{since}"
-                    f"&status=completed&per_page=100").get("workflow_runs") or []
+        runs, complete = list_runs_in_window(_api, repo, since)
     except Exception as exc:
         print(f"harvest: could not list runs ({exc}) — ledger NOT updated")
         return 0
+    if not complete:
+        # The window was NOT fully read. Say so: a ledger that silently covers
+        # part of the day reads exactly like a cheap day. That is the bug this
+        # function shipped with (see list_runs_in_window).
+        print("::warning::harvest: the run window was truncated at "
+              f"{HARVEST_MAX_PAGES} pages, so the ledger for this window is "
+              "INCOMPLETE (UNKNOWN, not a pass). Raise HARVEST_MAX_PAGES or "
+              "harvest more often.")
     for run in runs:
         path = str(run.get("path") or "")
         job_id = path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
@@ -554,6 +682,230 @@ def harvest(days: int = 2) -> int:
           f"seen, {added} new entr{'y' if added == 1 else 'ies'} committed-ready "
           f"in railway/spend_jobs.json")
     return added
+
+
+# --------------------------------------------------------------------------
+# Cost per stored row — the tracked metric
+# --------------------------------------------------------------------------
+#
+# run_summary() answers "was THIS run expensive". It cannot answer "is this job
+# getting worse", because a single run has nothing to be worse than. The ledger
+# can, and until now nothing read it back.
+#
+# Two questions, both answered from committed data so a regression is a number
+# in a diff rather than a surprise on the balance:
+#   * $/row per job over a window  -- the funnel metric.
+#   * BOUGHT NOTHING streaks       -- consecutive runs that spent and stored or
+#                                     changed nothing. Measured 2026-08-03/04:
+#                                     company-watchlist $0.0606 over 101 calls
+#                                     for 0 rows, two days running.
+#
+# `rows` is stored + changed. A job that edits rows in place (industry-backfill,
+# reason-backfill) buys something real; counting only `stored` would call it
+# waste. An entry that recorded NEITHER is UNKNOWN and is excluded from the
+# rate, never silently treated as zero.
+
+def job_row_costs(ledger: dict | None = None, days: int = 14) -> dict[str, dict]:
+    """Per-job {cost, rows, calls, runs, usd_per_row, barren_streak} over `days`.
+
+    `usd_per_row` is None when the window recorded no row counts at all, which
+    is UNKNOWN and must not be printed as a rate. `barren_streak` counts the most
+    recent consecutive runs that cost something and bought nothing.
+    """
+    if ledger is None:
+        ledger = _load_ledger()
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+    out: dict[str, dict] = {}
+    entries = [e for e in (ledger.get("entries") or [])
+               if isinstance(e, dict) and str(e.get("date") or "") >= cutoff]
+    for e in sorted(entries, key=lambda x: (str(x.get("date")), str(x.get("run_id") or ""))):
+        job = e.get("job")
+        if not job:
+            continue
+        agg = out.setdefault(job, {"cost": 0.0, "rows": 0, "calls": 0, "runs": 0,
+                                   "rows_known": False, "barren_streak": 0})
+        agg["cost"] += float(e.get("cost_usd") or 0.0)
+        agg["calls"] += int(e.get("calls") or 0)
+        agg["runs"] += 1
+        stored, changed = e.get("stored"), e.get("changed")
+        if stored is None and changed is None:
+            continue  # UNKNOWN: this run did not count rows
+        agg["rows_known"] = True
+        rows = int(stored or 0) + int(changed or 0)
+        agg["rows"] += rows
+        if rows == 0 and float(e.get("cost_usd") or 0.0) > 0:
+            agg["barren_streak"] += 1
+        else:
+            agg["barren_streak"] = 0
+    for agg in out.values():
+        agg["usd_per_row"] = (agg["cost"] / agg["rows"]
+                              if agg["rows_known"] and agg["rows"] > 0 else None)
+    return out
+
+
+def row_cost_report(days: int = 14, ledger: dict | None = None) -> str:
+    """Human-readable $/row table. Used by ops_status and the weekly digest."""
+    stats = job_row_costs(ledger=ledger, days=days)
+    if not stats:
+        return (f"cost per stored row: no ledger entries in the last {days} day(s) "
+                f"— UNKNOWN, not a pass")
+    lines = [f"cost per stored row (last {days} day(s), from railway/spend_jobs.json):",
+             f"  {'job':<28}{'runs':>5}{'calls':>8}{'cost':>10}{'rows':>7}  $/row"]
+    total_cost = total_rows = 0.0
+    for job in sorted(stats, key=lambda j: -stats[j]["cost"]):
+        s = stats[job]
+        total_cost += s["cost"]
+        total_rows += s["rows"]
+        if s["usd_per_row"] is None:
+            if not s["rows_known"]:
+                rate = "UNKNOWN (no row count)"
+            elif s["cost"] <= 0:
+                # Found nothing AND cost nothing. That is a job working as
+                # designed (process-tips on a day with no tips), not waste.
+                rate = "no spend"
+            else:
+                rate = "BOUGHT NOTHING"
+        else:
+            rate = f"${s['usd_per_row']:.4f}"
+        lines.append(f"  {job:<28}{s['runs']:>5}{s['calls']:>8}"
+                     f"{s['cost']:>10.4f}{s['rows']:>7}  {rate}")
+        if s["barren_streak"] >= BARREN_STREAK_ALERT:
+            lines.append(f"      ^ {s['barren_streak']} consecutive run(s) that spent "
+                         f"and bought nothing")
+    lines.append(f"  {'TOTAL':<28}{'':>5}{'':>8}{total_cost:>10.4f}{int(total_rows):>7}  "
+                 + (f"${total_cost / total_rows:.4f}" if total_rows else "n/a"))
+    lines.extend(unattributed_report(days=days, ledger=ledger))
+    return "\n".join(lines)
+
+
+BALANCE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "openrouter_balance_history.json")
+
+
+def unattributed_report(days: int = 14, ledger: dict | None = None) -> list[str]:
+    """What the ACCOUNT lost, minus what the ledger can name.
+
+    The ledger can only ever see jobs that run in GitHub Actions. The main
+    ingest runs on Railway, which has no git and cannot commit, so its
+    SPEND_LEDGER_V1 line goes into a Railway log and nothing collects it. That
+    is a permanent structural blind spot, and while it was unnamed the daily
+    balance and the ledger simply disagreed and the difference got called
+    'unattributable'.
+
+    Naming the remainder does not attribute it. It turns 'the numbers do not
+    add up' into a number that can be watched, and makes it obvious when the
+    gap grows. It is a REMAINDER, never a measurement of any one job, and it is
+    labelled that way wherever it prints.
+
+    The account is shared with the sibling tracker, so this figure is an upper
+    bound on what is unattributed HERE, not a statement about this repo alone.
+    """
+    try:
+        with open(BALANCE_PATH) as fh:
+            series = json.load(fh)
+        series = [p for p in series if isinstance(p, dict) and p.get("balance") is not None]
+        series.sort(key=lambda p: str(p.get("date")))
+    except (OSError, ValueError, TypeError):
+        return ["  unattributed: UNKNOWN — could not read the balance history"]
+    if len(series) < 2:
+        return ["  unattributed: UNKNOWN — fewer than two balance readings"]
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+    window = [p for p in series if str(p.get("date")) >= cutoff]
+    if len(window) < 2:
+        window = series[-2:]
+    # A balance can go UP when the account is topped up. A top-up is not a
+    # refund, so only count the days the balance fell.
+    drop = 0.0
+    for prev, cur in zip(window, window[1:]):
+        delta = float(prev["balance"]) - float(cur["balance"])
+        if delta > 0:
+            drop += delta
+    named = sum(s["cost"] for s in job_row_costs(ledger=ledger, days=days).values())
+    gap = drop - named
+    out = [f"  account balance fell ${drop:.4f} over {window[0]['date']}..{window[-1]['date']}; "
+           f"the ledger names ${named:.4f}"]
+    if drop <= 0:
+        return out + ["  unattributed: UNKNOWN — the balance did not fall in this window"]
+    out.append(f"  UNATTRIBUTED REMAINDER ${gap:.4f} ({100 * gap / drop:.0f}% of the fall). "
+               f"This is a remainder, not a measurement of any job. It contains the "
+               f"Railway cron (which cannot write to the ledger) and any sibling-tracker "
+               f"spend on the same account.")
+    return out
+
+
+# A job that spends and stores nothing this many runs running is reported. Not
+# a failure and not an automatic throttle: some jobs (process-tips) legitimately
+# find nothing most days and cost $0.00 doing it, which is why the streak only
+# counts runs that actually SPENT.
+BARREN_STREAK_ALERT = 3
+
+
+# --------------------------------------------------------------------------
+# Earned cadence
+# --------------------------------------------------------------------------
+#
+# The funnel rule is that a source which has produced nothing in N runs earns a
+# slower schedule and a productive one earns a faster one. The part that matters
+# for this repo is WHICH jobs may be slowed without costing coverage.
+#
+# A QUEUE-DRAINING job walks a backlog and resumes where it stopped
+# (industry-backfill, reason-backfill, enrich-roles, enrich-context). Running it
+# less often drains the queue slower. It cannot miss anything, because the queue
+# is still there next run. Slowing one is a throughput decision.
+#
+# A DISCOVERY job goes looking for events in the outside world
+# (supplemental-news, company-watchlist, distress-watchlist, ai-evidence-sweep,
+# news-catchup). Running it less often is a real chance of noticing an event
+# later, or of a short-lived page being gone by the time we look. That is a
+# coverage tradeoff and it is the owner's to make, not this module's.
+#
+# So the earned lane applies to queue-draining jobs ONLY. Discovery jobs are
+# listed here so the report can name what a decision about them would buy, and
+# `earned_skip` refuses to slow them whatever the ledger says.
+QUEUE_DRAINING_JOBS = frozenset({
+    "industry-backfill", "reason-backfill", "enrich-roles", "enrich-context",
+    "reclassify-legacy-ai",
+})
+
+# A queue-draining job that bought nothing for this many consecutive PAID runs
+# has an empty or nearly empty queue. It goes to the slow lane until it produces
+# again, at which point the streak resets and it is back to full cadence the
+# very next run.
+EARNED_SLOW_AFTER_BARREN_RUNS = 5
+
+# In the slow lane, run one day in N.
+EARNED_SLOW_EVERY_N_DAYS = 3
+
+
+def earned_skip(job: str | None = None, today: str | None = None,
+                ledger: dict | None = None) -> tuple[bool, str]:
+    """(skip, why) — should this queue-draining job sit today's run out?
+
+    Never returns True for a discovery job, and never for a job with no ledger
+    history: absence of evidence is not evidence of an empty queue.
+    """
+    job = job or current_job()
+    if job not in QUEUE_DRAINING_JOBS:
+        return False, (f"{job} is not a queue-draining job, so earned cadence "
+                       f"does not apply (slowing it would be a coverage decision)")
+    stats = job_row_costs(ledger=ledger).get(job)
+    if not stats or stats["runs"] == 0:
+        return False, f"{job} has no ledger history yet, so cadence stays as scheduled"
+    streak = stats["barren_streak"]
+    if streak < EARNED_SLOW_AFTER_BARREN_RUNS:
+        return False, (f"{job} bought rows within the last {EARNED_SLOW_AFTER_BARREN_RUNS} "
+                       f"paid run(s) (barren streak {streak}), so it keeps full cadence")
+    day = today or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    ordinal = datetime.date.fromisoformat(day).toordinal()
+    if ordinal % EARNED_SLOW_EVERY_N_DAYS == 0:
+        return False, (f"{job} is in the slow lane (barren streak {streak}) and today "
+                       f"is its 1-in-{EARNED_SLOW_EVERY_N_DAYS} run")
+    return True, (f"{job} has spent and bought nothing for {streak} consecutive run(s), "
+                  f"so it has earned a 1-in-{EARNED_SLOW_EVERY_N_DAYS} cadence until it "
+                  f"produces again. Its queue is not lost: the next run resumes where "
+                  f"this one would have started.")
 
 
 # --------------------------------------------------------------------------
@@ -691,11 +1043,38 @@ def main() -> int:
     parser.add_argument("--harvest", action="store_true",
                         help="collect SPEND_LEDGER_V1 lines from recent Actions "
                              "run logs into railway/spend_jobs.json; always exit 0")
+    parser.add_argument("--rows", action="store_true",
+                        help="print cost per stored row per job from the committed "
+                             "ledger; always exit 0")
+    parser.add_argument("--cadence", action="store_true",
+                        help="print whether this job has earned a slower cadence "
+                             "(queue-draining jobs only); always exit 0")
     args = parser.parse_args()
 
     if args.harvest:
         harvest()
+        print()
+        print(row_cost_report())
         return 0  # bookkeeping must never redden CI; failures printed above
+
+    if args.rows:
+        print(row_cost_report())
+        return 0
+
+    if args.cadence:
+        skip, why = earned_skip()
+        print(f"earned cadence: {why}")
+        # A cadence decision is data for the workflow step that follows, never
+        # an exit code: a job must not go red for being thrifty.
+        github_out = os.environ.get("GITHUB_OUTPUT")
+        if github_out:
+            try:
+                with open(github_out, "a") as fh:
+                    fh.write(f"skip={'true' if skip else 'false'}\n")
+            except OSError as exc:
+                print(f"  could not write the cadence output ({exc}); the job runs "
+                      f"as scheduled, which is the safe direction")
+        return 0
 
     key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
     print("=" * 60)

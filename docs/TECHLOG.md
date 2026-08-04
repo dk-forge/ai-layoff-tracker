@@ -79,6 +79,93 @@ lands with the deploy. 18 of the tests in `test_published_figure_guards.py` were
 run against the pre-fix tree and fail there; all 902 tests pass on this one.
 
 ---
+## 2026-08-04 - the ledger was reading 16% of the day and calling the rest unattributable
+
+`spend.py --harvest` asked GitHub for
+`/actions/runs?created=>SINCE&status=completed&per_page=100` and treated the
+answer as the whole window. The API answers newest-first and pages at 100.
+Measured on 2026-08-04: the 2-day window held **414** completed runs, so one
+page reached back about **seven hours**. The daily balance job harvests at
+13:00 UTC, so the only jobs that ever reached `railway/spend_jobs.json` were
+the ones that ran that same morning. Every afternoon job printed its
+`SPEND_LEDGER_V1` line into a log nothing opened.
+
+The file was never empty, which is why this survived. It was *plausible*. What
+it actually held, against a full paginated re-harvest of the same window:
+
+    ledger said            $0.0269   (4 jobs)
+    actually spent         $0.1644   (12 jobs)   = 16% attributed
+
+The missing eight were the expensive ones - distress-watchlist $0.0504,
+supplemental-news $0.0304, company-watchlist $0.0302, ai-evidence-sweep
+$0.0157, dedupe-llm, hi-warn-import, data-quality, process-tips. Two of them,
+company-watchlist ($0.0606 over 101 calls) and distress-watchlist ($0.0504 over
+83 calls), stored **zero** rows across the window and nothing said so.
+
+So every attempt to explain the balance from the ledger came up short by ~95%
+and the shortfall got written off as unattributable spend. It was not
+unattributable. It was unread.
+
+Fixed, with tests that all fail on the pre-fix tree
+(`railway/tests/test_spend_attribution.py`):
+
+* **`list_runs_in_window()`** follows pagination to the end of the window, and
+  when the page cap stops it first it says the window was TRUNCATED rather than
+  returning a short list that reads like a cheap day. UNKNOWN is not a pass.
+* **The per-run ceiling now survives a retry.** Several jobs wrap their script
+  in `for attempt in 1 2 3; do python x.py`. Each attempt is a new process and
+  the meter lived in process memory, so the ceiling reset every attempt and a
+  job that failed twice could spend 3x its named ceiling with the brake
+  reporting nothing wrong. The failure path was the most expensive path in the
+  repo and it was the one nothing watched. `logical_run_cost_usd()` carries the
+  spend forward in a runner-temp file. Best effort in both directions: an
+  unreadable file means a fresh meter (never worse than before), an unwritable
+  one raises nothing.
+* **`row_cost_report()` / `job_row_costs()`** read the ledger back: $/row per
+  job over a window, and a BOUGHT NOTHING streak for a job that keeps spending
+  and storing nothing. A run that cost $0.00 and found nothing is reported as
+  "no spend", not as waste - process-tips finding no tips is a working job.
+* **`unattributed_report()`** names the remainder: what the account balance
+  fell, minus what the ledger can name. The ledger structurally cannot see the
+  Railway cron (no git, cannot commit), so a gap is expected. Printing it turns
+  "the numbers do not add up" into a number that can be watched. It is labelled
+  a REMAINDER everywhere it prints, never a measurement of any one job, and the
+  account is shared with the sibling tracker so it is an upper bound.
+* **Earned cadence** (`earned_skip()`), wired into the five queue-draining
+  workflows. A job that walks a backlog and resumes where it stopped
+  (industry-backfill, reason-backfill, enrich-roles, enrich-context,
+  reclassify-legacy-ai) and that has spent and produced nothing for 5
+  consecutive runs drops to one run in three until it produces again. It cannot
+  miss anything - the queue is still there next run. Discovery collectors are
+  refused the slow lane by name whatever the ledger says: running one less
+  often is a real chance of noticing an event later, and that is the owner's
+  call, not a module's.
+
+**A gate that was measured and NOT shipped.** The cost-funnel playbook calls for
+a headline-and-teaser gate so most rejects cost nothing. On this tracker the
+news candidates are ALREADY headline-sized: `sources/google_news.py` sets
+`raw_text` to title + snippet and never fetches the body (mean **171 chars**
+over a live 150-item pull). So the gate would have to be a free vocabulary
+check. Tried against those 150 real candidates using the repo's own reviewed
+`source_registry.discovery_terms()`: it rejects **66 of 150 (44%)**, and the
+rejects include "Illinois Institute of Technology lays off 160 faculty",
+"Zillow lays off 7% of its workforce", "Texas airport parking operator cuts 313
+jobs" and "Cloudflare elimina 1.100 empleos por IA". The vocabulary carries
+"layoffs" but not the verb form "lays off", and no Spanish. A gate on it would
+have quietly deleted real coverage to save a fraction of a cent. Not shipped.
+The vocabulary needs verb forms and non-English terms before any gate can sit
+on it, and that is a recall change to be measured on its own, not a cost tweak.
+
+**What the measurement says about the money** (2026-08-03/04, full re-harvest):
+Actions LLM jobs cost **$0.1644/day MEASURED**. The account fell **$0.72** the
+same day. The sibling tracker was hard-stopped at its provider from 2026-08-03
+08:16Z (its key limit exhausted), so it contributed ~$0 that day, which makes
+the ~$0.556/day difference this repo's Railway cron - the main ingest, the one
+path the ledger cannot see, and the one place the cost funnel was never ported.
+That is an INFERENCE from two measured series, not a measurement: nothing in
+this repo meters the Railway process into a file anybody reads. Making the cron
+report its own cost is the next piece of work, and it has to come before any
+further tuning, because everything else is now attributed and it is not.
 
 ## 2026-08-04 - one claim, two surfaces, two totals; and two caveats nobody could read (2.19.266)
 
