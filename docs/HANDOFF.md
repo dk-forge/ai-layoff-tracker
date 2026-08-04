@@ -374,3 +374,58 @@ Taiwan, Indonesia, South Africa, Oman, Poland, Nepal and Spain/LatAm. The test i
 correct. **Do not weaken it to get green** - wire a feed or write a refusal with
 the URLs probed and the status codes seen. Its security batch (1.68.1) is on main
 and deliberately NOT deployed until that lands, so the deploy ships one clean state.
+
+## #26 - the sweep that ran out of road (2026-08-04)
+
+A six-finder adversarial sweep hit the account usage limit partway through: 21 of
+55 agents completed, 34 died on the limit, INCLUDING the completeness critic and
+the final synthesis. So this entry is a fragment, not a verdict. **Treat the
+unfinished areas as UNKNOWN, not clear.** Full journal, including every agent's
+raw return value:
+`~/.claude/projects/-Users-dakotta-Projects-atr-layoff-tracker/80b9494c-3cd9-4fe5-b975-f8d9350063d1/subagents/workflows/wf_2c7f3121-e7a/journal.jsonl`
+It can be resumed: `Workflow({scriptPath: .../final-lock-and-load-sweep-wf_2c7f3121-e7a.js, resumeFromRunId: 'wf_2c7f3121-e7a'})`. Completed agents replay from cache, so a resume costs only the 34 that failed.
+
+**Fully verified (finder + adversarial verifier) before the limit: 12 findings.**
+Two worth reading first, and note that in BOTH cases the verifier DOWNGRADED the
+finder's severity with sound reasoning. The adversarial layer earned its keep.
+
+**1. `running` is a source-health status that both monitors count as healthy,
+and its `checked_at` is stamped BEFORE the work starts.** `db.php:1967` accepts
+it; ~15 collectors post it pre-work (`cron.py:87,170,217`, `warn_import.py:274`,
+`erm_import.py:139`, and ten more). Neither `health_digest.py:150-161` nor
+`ops_status.py:491-503` has a branch for it, so it falls to `else: ok += 1`.
+Because the post refreshes freshness, a collector killed BETWEEN the `running`
+post and its terminal post leaves the ledger stuck at `running`, re-freshened on
+every attempt, counted healthy forever. The staleness branch can never fire while
+the job keeps STARTING; it would have to stop starting. This is the same species
+as the Wayback archiver that died at 20m every run, the alert key the endpoint
+could never accept, and the review queue nobody drained. Currently LATENT: no
+source sits in `running` right now, which is why it reads as medium and not high.
+Fix: treat `running` as a bounded transient. Flag one whose `checked_at` is older
+than ~2x that source's ceiling, or stop stamping `checked_at` on the running post
+and only stamp it on a terminal outcome.
+
+**2. The staleness-ceiling parity test only checks the harmless direction.**
+`test_source_registry_parity.py:150` filters ops-only keys with `if ops[k] >
+default`, so it fires only when the digest would be too TIGHT (false STALE,
+merely noisy) and never when it is too LOOSE (a real gap). `google_news` has a
+2-day ceiling in `ops_status.py:76` and is absent from `health_digest.py`'s
+`MAX_AGE_DAYS`, so it inherits DEFAULT 10. The test passes by construction. The
+verifier correctly downgraded this to LOW and explained why: `cron.py:188-211`
+posts a fresh degraded report on any google_news failure, so the ceiling is never
+reached, and the only path to real staleness also stales three sources that ARE
+in the digest. Fix is still worth doing (flag both directions; add
+`"google_news": 2`), but it is hygiene, not a monitoring hole.
+
+**The pattern is now four-for-four.** Every serious defect found in this session
+was a mechanism that reported health while doing nothing. When looking for the
+next one, that is the search: not "what is broken" but "what would never tell us
+if it broke".
+
+**Also unfinished, and NOT to be assumed clean:** the money-burn, published-
+numbers, autonomy-loop and regression-risk verifications all died on the limit,
+as did the four agents working on the star affordance, the IL/SG/CA registries,
+the FTP hunt for the mobile-blocking CSS, and the Jan-Jun press probe. One
+partial signal only, unverified: the registry agent's last words were "Israel
+shows real event volume, Canada CSV downloaded". Do not act on that without
+redoing the licence and signal checks.
