@@ -16,13 +16,22 @@ EXPORT = ROOT / "wordpress-plugin" / "ai-layoff-tracker" / "includes" / "export.
 
 
 class ExportParamShape(unittest.TestCase):
-    def test_params_are_flattened_before_the_filter_builder(self):
+    def test_an_array_param_is_refused_not_dropped(self):
+        """Dropping it is worse than crashing, which is why this test is here.
+
+        The first fix flattened the key away. An audit caught that as the
+        graver defect: dropping ?company[]=x widens the request to the whole
+        corpus and serves 63,000 rows under a filename that says "filtered".
+        A confident wrong answer beats a visible failure only in appearance.
+        """
         src = EXPORT.read_text()
         fn = src[src.index("function alt_export_filters"):]
         fn = fn[:fn.index("\n}")]
-        self.assertIn("is_scalar", fn,
-                      "alt_export_filters must drop array-shaped params before "
-                      "alt_db_where sees them")
+        self.assertIn("is_scalar", fn)
+        self.assertIn("status_header(400)", fn,
+                      "a non-scalar param must be REFUSED with 400, never "
+                      "silently removed from the filter set")
+        self.assertIn("exit", fn, "the refusal must stop before any CSV byte")
         flat = fn.index("is_scalar")
         # the RETURN's call, not the explanatory comment above it (which
         # names the function too - this test failed on its own fix once).

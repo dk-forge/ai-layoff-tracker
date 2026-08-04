@@ -36,27 +36,26 @@ function alt_export_filters() {
     $req = new WP_REST_Request('GET');
     $params = wp_unslash($_GET);
     unset($params['action']);
-    // FLATTEN ARRAY-SHAPED PARAMS BEFORE THEY REACH THE FILTER BUILDER.
-    // ?q[]=x makes $_GET['q'] an array; alt_db_where() then hands an array to
-    // a string function and PHP fatals. Audit 2026-08-03 measured where that
-    // lands in an EXPORT: after alt_export_throttle() has burned a rate slot,
-    // after the 200 and the Content-Disposition header, and after the BOM and
-    // the header row are already on the wire. The visitor gets a file that
-    // opens as a two-line CSV containing a PHP error, and their throttle
-    // budget is spent on it. The REST routes fatal too, but at least before
-    // any bytes are committed.
+    // REFUSE ARRAY-SHAPED PARAMS. DO NOT DROP THEM.
+    // ?q[]=x makes $_GET['q'] an array; alt_db_where() hands it to a string
+    // function and PHP fatals - in an export that lands AFTER the throttle
+    // slot is burned and after the 200, the Content-Disposition header, the
+    // BOM and the header row are on the wire.
     //
-    // Scalars only, keys included, one level: every filter this endpoint
-    // accepts is a scalar (comma lists are strings, not arrays). An array
-    // arrives only from a malformed or hostile query string, so dropping it
-    // is the honest read of the request rather than a guess at intent.
-    $flat = array();
+    // The first fix here dropped the offending key, and the audit caught that
+    // as the graver defect: dropping ?company[]=x silently widens the request
+    // to the WHOLE corpus and serves it under a filename saying "filtered".
+    // A confident wrong answer beats a visible failure only in appearance.
     foreach ($params as $k => $v) {
-        if (is_scalar($v) && is_scalar($k)) {
-            $flat[(string) $k] = (string) $v;
+        if (!is_scalar($v) || !is_scalar($k)) {
+            status_header(400);
+            nocache_headers();
+            header('Content-Type: text/plain; charset=utf-8');
+            echo "Bad request: filter parameters must be single values.\n";
+            exit;
         }
     }
-    $req->set_query_params($flat);
+    $req->set_query_params(array_map('strval', $params));
     return alt_db_where($req); // array($where_sql, $params)
 }
 
