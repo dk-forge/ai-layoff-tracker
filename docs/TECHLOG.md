@@ -6,6 +6,82 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-04 - four published numbers that contradicted numbers a few pixels away (2.19.265)
+
+An adversarial sweep read the live page rather than the code and found four
+figures that were wrong as published. All four were arithmetically correct
+counts of something; none of them counted what its own caption said. Nothing in
+the suite could see any of them, because every front-end check in this repo
+pinned SOURCE PROPERTIES and none ran the code.
+
+**1. The in-progress month was drawn whole and captioned partial.** The August
+trend point plotted 35,362 verified cuts under a caption reading "4 of 31 days
+so far", while the This-month card on the same screen published 21,776. A month
+bucket is a bucket of EFFECTIVE dates and WARN notices are filed weeks ahead by
+law, so 13,586 of the difference were notices for dates later in August. The
+2.19.263 fix labelled the point partial and dashed it, which described the
+smaller number while drawing the larger one, so the caption made the mismatch
+harder to spot rather than easier. `/aggregate` now attaches a `to_date` block
+to any month bucket holding rows dated ahead of today, `toDateMonths()` swaps it
+in before anything plots, and the note states both figures, which sum to the
+month. The same fix corrects the card's "N future-dated jobs are not charted"
+caveat, which was affirmatively false: it counted only whole future MONTHS.
+
+**2. The hero was stamped YTD over a whole calendar year.** 484,468 labelled
+"2026 YTD" and "so far, as of Aug 4, 2026", with 33,939 of it dated ahead. The
+same document's FAQPage JSON-LD published 450,529 for the same claim, because
+`alt_live_numbers()` has always clamped at today. The stamp now names the
+calendar year, a reconciling line under the hero splits it (to-date plus filed
+ahead, summing to the hero), and the "so far" citeline quotes the to-date
+figure, which is the FAQ's number. The signal board's YTD column was scoped
+`years=<year>` too; it is a real to-date window now.
+
+**3. The US-state card reconciled against the world.** `barBasisNote()` was
+written generically for four cards, which is right for industry, country and
+data source. US state is the one dimension whose universe is a subset of the
+headline, so every non-US cut was charged to a US data-quality gap: 232,594
+printed as missing where the honest figure was 110,020, and on the all-time view
+2,429,358 against 1,305,183. The card takes a scoped denominator now, from the
+United States row of `top_countries`, and names the cuts outside it separately.
+
+**4. The reasons doughnut published a different AI number, and lied about where
+a tap went.** It drew index [1], verified PLUS announced, beside a verified-only
+headline, and it was the one chart in the grid with no basis note. Worse, the
+`possible_ai` slice drew 10,415 and returned 124,793 when tapped, because
+`currentParams()` translated that reason tag into `ai_broad=1`. That translation
+existed to make the reason dropdown reproduce the AI tiles, which is the same
+mistake in the other direction: two different columns wearing one name. The
+reason filter filters by reason tag now, the broad measure has its own control
+and its own chip, the two AI reason tags are labelled as reason tags, and the
+doughnut draws the verified pair with a note saying overlapping tags are not a
+breakdown of a total.
+
+**Also fixed, same sweep: /quality-status published retired collectors as ok.**
+`alt_api_source_health_get()` applied `alt_retired_sources()`; `alt_api_quality_status()`
+read `get_option('alt_source_health')` raw, and the public Health page fetches
+`/quality-status`. So the two endpoints described newsapi, edinet_jp,
+opendart_kr and cvm_br differently at the same instant and the transparency page
+was the one showing them live. The "retiring a source takes THREE steps" rule
+covers writers; this was a second READER. One masked reader,
+`alt_source_health_masked()`, now serves every consumer, and a test walks every
+PHP file for a raw read. Note what was NOT wrong: no path still posts under a
+retired id. All four rows carry a `checked_at` predating their retirement date,
+so the masking loop was working; only the second reader skipped it.
+
+**The tests run the code.** `railway/tests/jsrun.py` lifts real function bodies
+out of layoffs.js and evaluates them in node; a PHP harness does the same for
+db.php through the `php` binary. This matters because the same sweep found five
+checks across the two trackers passing against defective code for the wrong
+reason, two of them string checks that matched a COMMENT describing a call
+instead of the call. Each of the 17 new checks was run against origin/main
+before the fix: 15 fail there, and they fail on the real wrong value ('ok' !=
+'retired'; 35362 != 21776; [108373, 10415, 200000] != [150000, 45748, 700];
+'2026 YTD' != '2026'), not on a missing symbol. The two that pass pre-fix are
+guards, not defect pins: a live collector must stay 'ok' and a real last-run
+timestamp must survive masking.
+
+---
+
 ## 2026-08-04 - the mobile column was 219px wide, and the rule that was supposed to fix it had never once fired (2.19.264)
 
 On a 375px phone the tracker rendered inside a 219px column. 47% of the screen

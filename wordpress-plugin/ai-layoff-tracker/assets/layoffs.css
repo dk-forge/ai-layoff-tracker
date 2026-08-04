@@ -2300,6 +2300,18 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     color: var(--alt-ink-2);
 }
 .alt-hero-figure-sub b { font-variant-numeric: tabular-nums; color: var(--alt-ink); }
+/* The reconciling line: what has taken effect, and what is filed ahead. Set a
+   step quieter than the AI sub so it reads as arithmetic about the figure
+   rather than as a second finding. */
+.alt-hero-figure-asof {
+    display: block;
+    margin-top: 4px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--alt-ink-2);
+    font-variant-numeric: tabular-nums;
+}
+.alt-hero-figure-asof[hidden] { display: none; }
 
 .alt-hero-thesis {
     font-family: var(--alt-serif);
