@@ -25,14 +25,27 @@ jobs:
       # "retry later" value. It NEVER fails the job: the free collectors in
       # this workflow keep running and every deferred candidate is left
       # UNMARKED, so a later run reads it. Stdlib only, so it needs no install.
+      # Earned cadence (railway/spend.py). A QUEUE-DRAINING job that has spent
+      # and produced nothing for several consecutive runs has an empty queue,
+      # so it drops to one run in three until it produces again. It cannot miss
+      # anything: the queue is still there next run and the job resumes where
+      # it stopped. Discovery collectors are deliberately NOT eligible - running
+      # one less often is a coverage decision, and spend.earned_skip refuses to
+      # make it. Always exits 0; a job must not go red for being thrifty.
+      - name: Earned cadence
+        id: cadence
+        run: python railway/spend.py --cadence
       - name: Spend guard (degrade, never halt)
+        if: steps.cadence.outputs.skip != 'true'
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python railway/spend.py --degrade
       # google-cloud-bigquery powers the alternate-source finder; the worker
       # fails soft to snapshot/primary-only behavior if it is ever missing.
       - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+        if: steps.cadence.outputs.skip != 'true'
       - name: Enrich only exact source-supported context
+        if: steps.cadence.outputs.skip != 'true'
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
