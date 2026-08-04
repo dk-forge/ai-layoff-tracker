@@ -310,3 +310,33 @@ only thing that tells the next session where to look first.
   `railway/gen_synthetic_snapshot.py`) + wired the baton into `ops_status.py`.
   **Next:** a cloud session with egress + the test DB can do the CA WARN
   backfill, self-host the chart libs, and the `/aggregate` query-fold perf work.
+
+## #25 - security hardening live; the talent red is a backlog item, not a bug
+
+**Live at 2.19.262.** Shipped via PR #2 rather than a direct push, because here a
+push IS a deploy and a security change should not ship unreviewed. Deploy green on
+the merged SHA `2f2a5af`, live page confirms `ver=2.19.262`. Closes audit ranks
+23, 24, 27:
+
+- **SSRF.** A public tip's URL was fetched twenty-six lines BEFORE the domain-trust
+  gate, and that gate is a publish gate, so nothing gated the fetch at all. The
+  context enricher fetched whatever `source_url` a stored row carried behind one
+  `startswith` check that only ever saw hop zero. Both ran in a runner holding the
+  WordPress and OpenRouter keys. `railway/safe_fetch.py` now owns it: http/https
+  only, every resolved address must be globally routable including the v4-mapped
+  and 6to4 spellings a naive `is_private` misses, redirects revalidated BEFORE
+  EVERY HOP, capped body, whole-chain deadline.
+- **Dependencies.** 20+ workflows ran a bare `pip install` into those runners. Now
+  hash-pinned with `--require-hashes`.
+- **Encoding.** The CSV formula guard tested byte zero only, so a leading TAB was a
+  formula to a spreadsheet and invisible to the guard; the quarterly appendix had
+  no guard at all.
+
+**Sibling repo (talent) note for whoever picks this up:** its `main` has been red
+for 6+ commits and the cause is NOT a broken test. `tests/test_audit_publishers.py`
+names 13 publishers that each cost a gold-set event and for which the catalogue
+holds neither a feed nor a written reason, across Argentina, Romania, Georgia,
+Taiwan, Indonesia, South Africa, Oman, Poland, Nepal and Spain/LatAm. The test is
+correct. **Do not weaken it to get green** - wire a feed or write a refusal with
+the URLs probed and the status codes seen. Its security batch (1.68.1) is on main
+and deliberately NOT deployed until that lands, so the deploy ships one clean state.
