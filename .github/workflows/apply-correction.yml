@@ -41,7 +41,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - run: pip install requests
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
       - name: Apply correction
         # Inputs go through env, never straight into the shell line: a reason is
         # free text (quotes, apostrophes, backticks) and interpolating it into

@@ -52,7 +52,7 @@ jobs:
       # ops_status, which is dependency-free). Only the --report ledger write
       # needs `requests`.
       - name: Install the minimum for the ledger write
-        run: pip install requests
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
 
       - name: Run the live data-integrity invariants
         working-directory: railway

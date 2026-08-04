@@ -19,10 +19,23 @@ add_action('admin_post_nopriv_alt_quarterly_appendix', 'alt_quarterly_appendix_d
 /**
  * Neutralize spreadsheet formula injection: a cell starting with = + - @
  * would execute as a formula when the CSV is opened in Excel/Sheets.
+ *
+ * TAB and CR are in that list because Excel and LibreOffice STRIP leading
+ * whitespace before deciding what a cell is, so "\t=cmd|..." is read as
+ * "=cmd|..." and the guard that only looked at $value[0] saw a tab, found it
+ * harmless and let the formula through intact. Same for a leading \r, which
+ * additionally lets a value forge a row break inside a quoted field. This is
+ * defence in depth, not a live hole: every value reaching here is normalised
+ * through a fixed vocabulary or is a number. Depth is the point.
  */
 function alt_csv_guard($value) {
     $value = (string) $value;
-    if ($value !== '' && in_array($value[0], array('=', '+', '-', '@'), true)) {
+    if ($value === '') return $value;
+    $lead = ltrim($value, " \t\r\n");
+    if ($lead !== '' && in_array($lead[0], array('=', '+', '-', '@'), true)) {
+        return "'" . $value;
+    }
+    if (in_array($value[0], array('=', '+', '-', '@', "\t", "\r"), true)) {
         return "'" . $value;
     }
     return $value;
@@ -234,8 +247,14 @@ function alt_quarterly_appendix_download() {
         (string) ($appendix['period']['from'] ?? ''), (string) ($appendix['period']['to'] ?? ''),
         (string) $appendix['appendix_scope'],
     );
+    // Same formula guard the row export uses. It was absent here entirely,
+    // which is the more interesting half of the defect: the appendix is the
+    // artifact a journalist opens in a spreadsheet and cites, and `label`
+    // carries an industry, a country, a state or a reason tag, all of which
+    // originate in extracted text before normalisation reduces them.
     $write = function ($section, $metric, $label, $jobs, $ai_jobs = '') use ($out, $meta) {
-        fputcsv($out, array_merge(array($section, $metric, $label, $jobs, $ai_jobs), $meta));
+        fputcsv($out, array_map('alt_csv_guard',
+            array_merge(array($section, $metric, $label, $jobs, $ai_jobs), $meta)));
     };
     foreach (array('verified', 'announced', 'ai_primary_verified_subset') as $section) {
         $data = $appendix['snapshot'][$section] ?? array();

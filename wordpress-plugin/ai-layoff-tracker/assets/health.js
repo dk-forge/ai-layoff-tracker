@@ -1,7 +1,15 @@
 (() => {
   const api = altHealthData.apiUrl;
   const $ = id => document.getElementById(id);
-  const esc = v => String(v ?? '—').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  // Escapes the QUOTES as well as the angle brackets. This function's output
+  // is interpolated into ATTRIBUTES, not only into text: `class="alt-health-
+  // ${esc(x.status)}"` and `title="${esc(...)}"` below. A value containing a
+  // double quote closed the attribute and everything after it was markup, so
+  // an angle-bracket-only escape was no escape at all in exactly the places
+  // this is used most. Defence in depth: status and detail come from our own
+  // collectors, but the ledger is written by a keyed endpoint and this file
+  // paints whatever it is handed.
+  const esc = v => String(v ?? '—').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = v => v ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(v)) + ' UTC' : 'Not yet reported';
   // A failed/running collection did not produce a count. Showing "0 found"
   // would incorrectly turn an unavailable query into evidence of zero news.

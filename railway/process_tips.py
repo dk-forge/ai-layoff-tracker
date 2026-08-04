@@ -42,6 +42,7 @@ from wp_poster import post_to_wordpress
 from sources.newsapi import TRUSTED_DOMAINS
 from sources.warn import STATE_WARN_URL
 from http_retry import get_with_retry
+from safe_fetch import BlockedURL, safe_get_with_retry
 import spend
 
 try:
@@ -55,6 +56,10 @@ KEY = os.environ.get("WP_API_KEY", "")
 LIVE = os.environ.get("TIPS_LIVE", "").lower() in {"1", "true", "yes"}
 MAX_TIPS = max(1, int(os.environ.get("TIPS_MAX") or "25"))
 TIMEOUT = 40
+# Only the first 6000 characters of an article are ever used, so a 2MB ceiling
+# is already generous; the point of the cap is that a hostile endpoint cannot
+# hand this runner an unbounded body.
+TIP_MAX_BYTES = 2_000_000
 
 _ALLOWED = set(d.strip().lower() for d in TRUSTED_DOMAINS.replace("\n", "").split(",") if d.strip())
 
@@ -79,8 +84,8 @@ def _host_of(url):
 # branch below, not just the human review queue.
 #
 # The non-.gov official WARN portals are DERIVED from sources.warn's
-# STATE_WARN_URL — the same map the importer stamps onto notices, already
-# guarded by tests/test_warn_url_parity.py — so there is no second
+# STATE_WARN_URL, the same map the importer stamps onto notices, already
+# guarded by tests/test_warn_url_parity.py, so there is no second
 # hand-maintained host list here to drift out of step with it.
 _OFFICIAL_WARN_HOSTS = frozenset(
     h for h in (_host_of(u) for u in STATE_WARN_URL.values()) if h
@@ -89,7 +94,7 @@ _OFFICIAL_WARN_HOSTS = frozenset(
 
 def _is_official_host(host):
     """A government filing host, or an official state WARN portal that does not
-    sit under .gov. Structural matching only — a label has to be a whole
+    sit under .gov. Structural matching only, a label has to be a whole
     dot-delimited label, so 'warnerbros.com' is not a WARN portal and
     'fake.gov.evil.com' is not a government host."""
     if not host:
@@ -112,10 +117,32 @@ def _domain_trusted(url):
 
 
 def _fetch_text(url):
-    r = get_with_retry(url, headers=UA, timeout=TIMEOUT)
-    if r is None or r.status_code != 200:
+    """Fetch a URL a STRANGER chose, through the SSRF gate.
+
+    `_domain_trusted` below is a PUBLISH gate, not a fetch gate, and it is
+    consulted after this runs on purpose: an untrusted link still gets read and
+    pre-extracted so the human reviewer sees a number instead of a bare URL.
+    That is the right product behaviour and the wrong security posture on its
+    own, because until now this fetch was a plain `requests.get` following
+    redirects anywhere. This runner holds WP_API_KEY and OPENROUTER_API_KEY, so
+    a tip reading `http://169.254.169.254/latest/meta-data/`, or a public host
+    that 302s there, was a request to read the runner's own network.
+    `safe_fetch` closes that: public http/https destinations only, revalidated
+    at EVERY hop, capped body, capped time.
+    """
+    try:
+        got = safe_get_with_retry(url, headers=UA, timeout=TIMEOUT,
+                                  max_bytes=TIP_MAX_BYTES)
+    except BlockedURL as exc:
+        print(f"refused tip link {url}: {exc}")
         return None
-    txt = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\1>", " ", r.text)
+    if got is None:
+        return None
+    status, body, _final = got
+    if status != 200:
+        return None
+    txt = body.decode("utf-8", errors="replace")
+    txt = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\1>", " ", txt)
     txt = re.sub(r"(?s)<[^>]+>", " ", txt)
     return re.sub(r"\s+", " ", txt).strip()[:6000]
 
@@ -188,10 +215,10 @@ def _email_digest(lines):
 def main():
     # Spend guard: this script builds its own OpenRouter client, so
     # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
-    # failing — a deferred public-tip processing is re-run on its next
+    # failing, a deferred public-tip processing is re-run on its next
     # schedule, and reddening CI over a budget decision is noise.
     if not spend.paid_reads_enabled():
-        print("paid reads are OFF (spend ceiling) — skipping the public-tip processing "
+        print("paid reads are OFF (spend ceiling), skipping the public-tip processing "
               "this run; it resumes on the next schedule")
         return 0
     if not SITE:

@@ -2390,7 +2390,38 @@ function alt_record_dataset_release($version) {
  * captcha-protected contact form, never from an unauthenticated REST route.
  * Bounded so a flood cannot grow the option unbounded.
  */
+/**
+ * Is this a tip link the ingest runner may be asked to fetch?
+ *
+ * The runner-side gate is railway/safe_fetch.py and it is the real one. This
+ * is the intake side of the same rule, and it is here because a queue entry is
+ * a standing instruction: whatever lands in alt_tips_queue is what
+ * process_tips.py will go and fetch, on a schedule, later, with WP_API_KEY and
+ * OPENROUTER_API_KEY in its environment. esc_url_raw is not that gate, it
+ * happily passes http://127.0.0.1:8080/ and http://169.254.169.254/ because
+ * those are perfectly well-formed URLs, and it permits ftp:, mailto: and the
+ * rest of the default protocol list besides.
+ *
+ * Literal-address only, deliberately: PHP cannot see what a hostname will
+ * resolve to at fetch time and pretending otherwise here would invite someone
+ * to trust it instead of the runner-side check.
+ */
+function alt_tip_url_allowed($url) {
+    $url = trim((string) $url);
+    if ($url === '') return true;                       // optional field
+    $parts = wp_parse_url($url);
+    $scheme = strtolower($parts['scheme'] ?? '');
+    if ($scheme !== 'http' && $scheme !== 'https') return false;
+    $host = strtolower(trim($parts['host'] ?? '', '[]'));
+    if ($host === '') return false;
+    if ($host === 'localhost' || substr($host, -6) === '.local') return false;
+    if (filter_var($host, FILTER_VALIDATE_IP) === false) return true;
+    return filter_var($host, FILTER_VALIDATE_IP,
+        FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+}
+
 function alt_tips_append($company, $source_url, $email, $note, $attachment = '') {
+    if (!alt_tip_url_allowed($source_url)) return false;
     $q = get_option('alt_tips_queue');
     if (!is_array($q)) $q = array();
     $q[] = array(

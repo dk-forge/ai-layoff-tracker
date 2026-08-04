@@ -1,0 +1,11 @@
+# The light install: the two packages a data-correction or health job actually
+# imports. Kept separate from requirements.txt so a job that needs `requests`
+# does not pay for pdfplumber and google-cloud-bigquery, which is why those
+# workflows were doing a bare `pip install requests` in the first place.
+#
+# Every requirement here also appears in requirements.txt, and
+# tests/test_dependency_pinning.py asserts the two locks agree on any package
+# they share, so the light install can never be a DIFFERENT version of a
+# package the full install pins.
+openai>=1.40.0
+requests>=2.32.0

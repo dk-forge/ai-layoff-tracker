@@ -28,8 +28,7 @@ jobs:
       - name: Install deps
         working-directory: railway
         run: |
-          pip install -r requirements.txt
-          pip install pandas pyarrow
+          pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
       - name: Run federal RIF import
         working-directory: railway
         env:

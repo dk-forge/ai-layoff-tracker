@@ -107,6 +107,44 @@ the end check.
 - **Retiring a source takes THREE steps**, and skipping the third silently voids the second: (1) drop it from `cron.py`, (2) add it to `alt_retired_sources()` in db.php, (3) **stop every remaining path that posts health under that id**. `alt_retired_sources()` deliberately refuses to mask a row whose last run postdates the retirement, so one forgotten weekly job keeps a retired collector looking live forever. Also: a staleness ceiling must match the job's REAL cadence — a 2-day ceiling on a weekly job is permanent noise that hides real breakage.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 
+## Dependencies are hash-pinned. Never `pip install` a name.
+
+`railway/requirements.txt` (and `requirements-min.txt`) are the human-edited
+INPUTS: floors, for a resolver to read. `railway/requirements.lock` and
+`requirements-min.lock` are the resolved outputs, exact versions, every package
+hash-pinned transitively, and they are what every workflow installs, with
+`--require-hashes` so pip refuses anything the lock did not vouch for.
+
+This is not hygiene. Twenty-odd workflows used to run a bare `pip install
+requests` in a runner holding `WP_API_KEY` and `OPENROUTER_API_KEY`, unattended,
+twice a day, with nobody reading what the resolver picked. One malicious release
+of any transitive dependency lands with both keys and nothing in any log looks
+wrong.
+
+Two locks, because a health job should not pay to install pdfplumber and
+google-cloud-bigquery. `requirements-min.lock` is openai + requests; everything
+else uses the full lock. `tests/test_dependency_pinning.py` fails on a bare
+install, on a lock with an unhashed pin, on a workflow naming a lock that does
+not exist, and on the two locks disagreeing about a shared package.
+
+**The ritual when a dependency changes:**
+
+```bash
+python3 -m venv /tmp/lock && /tmp/lock/bin/pip install pip-tools
+cd railway
+/tmp/lock/bin/pip-compile --generate-hashes --strip-extras \
+    --output-file=requirements.lock requirements.txt
+/tmp/lock/bin/pip-compile --generate-hashes --strip-extras \
+    --output-file=requirements-min.lock requirements-min.txt
+```
+
+Then **read the diff**. A lock refresh nobody read is the unpinned state with
+extra steps. `Tests` runs on every push and installs from the lock, so a lock
+that does not resolve on the runner goes red there rather than in a data job at
+2am. `pip install --upgrade pip` is banned for the same reason the lock exists:
+it is an unverified download into the same runner, immediately before the
+verified one.
+
 ## Verify a change is actually live
 ```bash
 curl -s "https://asktherecruiter.com/blog/wp-json/layoffs/v1/aggregate?cb=$RANDOM" | python3 -m json.tool | head
