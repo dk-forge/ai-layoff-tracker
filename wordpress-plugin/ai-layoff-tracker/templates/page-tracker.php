@@ -105,6 +105,12 @@ $alt_stat = function ($k) use ($alt_sv) {
 */
 $alt_period     = $alt_sv === null ? '' : current_time('Y');
 $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes future-dated plans';
+// The hero's own stamp spells the window out rather than printing a bare year,
+// and names the geography, because the hero is the figure that gets compared
+// against an outside estimate. The tile stamps above stay compact: they sit in a
+// grid where the hero has already established both.
+$alt_hero_period = $alt_sv === null ? '' : 'calendar year ' . current_time('Y');
+$alt_hero_geo    = 'worldwide';
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
@@ -140,7 +146,20 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
             <?php if ($alt_sv !== null) : ?>
             <p class="alt-hero-figure">
                 <span class="alt-hero-figure-value" id="alt-hero-total"><?php echo esc_html($alt_stat('total')); ?></span>
-                <span class="alt-hero-figure-label">verified job cuts, <span id="alt-hero-total-period"><?php echo esc_html($alt_period); ?></span></span>
+                <?php /* THE LABEL STATES UNIT, GEOGRAPHY AND PERIOD, in that order,
+                         because the first thing a reader does with this figure is
+                         compare it against a national estimate they arrived with.
+                         It read "verified job cuts, 2026" and named neither where
+                         nor over what window. A correct number whose basis is
+                         unstated is read as a contradiction of whatever it is being
+                         compared to, at the same cost as a wrong one.
+                         NOT "2026 YTD". The window is dated by EFFECTIVE date, so it
+                         legitimately holds notices already filed for dates still
+                         ahead; "calendar year" says that and "YTD" would deny it.
+                         The as-of line directly below splits the two.
+                         Both spans are kept in step live by renderStats(), which
+                         swaps in the active filter's geography and period. */ ?>
+                <span class="alt-hero-figure-label">verified job cuts <span id="alt-hero-total-geo"><?php echo esc_html($alt_hero_geo); ?></span>, <span id="alt-hero-total-period"><?php echo esc_html($alt_hero_period); ?></span></span>
                 <span class="alt-hero-figure-sub"><b id="alt-hero-ai"><?php echo esc_html($alt_stat('ai')); ?></b> of them were blamed on AI by the employer.</span>
                 <?php /* THE RECONCILING LINE. to-date + later = the hero figure, so a
                          reader can add up what is on screen. Kept in step live by
