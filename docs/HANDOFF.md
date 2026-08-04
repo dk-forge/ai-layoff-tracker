@@ -429,3 +429,66 @@ the FTP hunt for the mobile-blocking CSS, and the Jan-Jun press probe. One
 partial signal only, unverified: the registry agent's last words were "Israel
 shows real event volume, Canada CSV downloaded". Do not act on that without
 redoing the licence and signal checks.
+
+## #27 - final state 2026-08-04, live and verified
+
+**Live: 2.19.269.** CI green. Everything below was verified against the live site
+or the live API, not inferred from a green run.
+
+**Shipped since #26:** security hardening (SSRF closed, deps hash-pinned, four
+encoding gaps); the mobile column (219px to 339px at 375px); partial-month and
+chart-basis corrections; the hero relabelled with a reconciling line; the reasons
+doughnut moved to one basis with its 12x drill-down fixed; /quality-status no
+longer publishing retired collectors; the home page and press page now naming the
+same period; and the published-figure invariant.
+
+**The correction to #26:** Israel IS wired and verified. That entry said the
+registry agent's fragment was unverified. It has since been substantiated:
+data.gov.il `ica-changes`, CC-BY, four act codes that are the Israeli SH01
+analogue, 343 rows across 311 companies in a 14-day dry run. Singapore is wired
+(incorporations only). CANADA IS REFUSED with evidence: 642,984 rows, no industry
+column, no event stream, and the per-company API is lookup-by-id only, so
+harvesting means polling 642,984 ids. Do not re-open Canada without new evidence.
+
+**THE ONE RED THAT MUST STAY RED.** `data-integrity.yml` runs the six new
+published-figure invariants against the LIVE site. Several were failing when last
+measured and some of those fixes have since merged, so the next run tells you
+which are real. **Do not make it green by weakening a check, excluding a figure,
+or relaxing a threshold.** The invariant is armed by MUTATION: it replaces an
+invariant's `run()` with an unconditional PASS and asserts the named test goes
+red, so a stub cannot satisfy it. That mechanism replaced one that compared
+`INVARIANTS` against a hand-written list of strings and could have been silenced
+forever by typing six words into it.
+
+**Two slips of mine, both fixed, both worth knowing:** merging two PRs branched
+from different bases sent the version BACKWARDS (2.19.267 to 2.19.266). That is
+not cosmetic here, because the bump is what fires `alt_flush_caches_on_deploy`;
+a backwards version can leave new code live behind stale assets while the deploy
+reports success. And a `git add -A` swept `.worktrees/design-adopt` into main as
+an embedded git repo, a path that looks present and is empty in every clone.
+`.worktrees/` is gitignored now.
+
+**THE PATTERN, which is the most useful thing in this file.** Roughly ten defects
+today were one species: a mechanism that reports health while doing nothing. An
+archiver that had never once completed in its history. An alert key the endpoint
+could never accept. A review queue withholding 80 percent of the funding dollars.
+A benchmark badge certifying its own freshness with no JavaScript behind it. A
+test fixture answering 200 where the server answers 201. A CSS sweep that
+downloaded 0 of 213 files and reported "no match". A coverage guard satisfiable
+by typing strings. And several tests passing against defective code for the wrong
+reason: a comment matched instead of a call, a CSS width read as a font size,
+concatenated JS string literals, an indexed media-query block, and a
+reconciliation measured against the basis that excused the defect.
+
+Two of those were found INSIDE the audit hunting for them. So when you look for
+the next one, the question is not "what is broken" but **"what would never tell
+us if it broke."** Search for: a check whose success path never executes; a
+threshold derived from the data it polices; a state that is terminal because
+nothing drains it; an assertion testing a proxy rather than the property its
+docstring names; a status stamped BEFORE the work it describes.
+
+**Still open:** `running` as a health status both monitors count as healthy with
+`checked_at` stamped pre-work (latent, medium); the staleness-parity test that
+only checks the harmless direction (low); and the remaining sweep backlog, 5 high
+7 medium 21 low, in the workflow journal named in #26. Owner-only: the ChangXin
+IPO retract and the archive re-check margin.
