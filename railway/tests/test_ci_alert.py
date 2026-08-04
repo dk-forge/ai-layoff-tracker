@@ -9,6 +9,7 @@ import sys
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -142,13 +143,79 @@ class Behaviour(unittest.TestCase):
                     os.environ[k] = v
         return code, buf.getvalue()
 
-    def test_cancelled_is_not_alertable(self):
+    def test_cancelled_by_something_else_is_still_not_alertable(self):
         """Runs are cancelled routinely by superseded pushes and concurrency
-        groups. Mailing about those is the noise that gets a sender filtered."""
-        code, out = self._run(["--run-id", "1", "--workflow", "Tests",
-                               "--conclusion", "cancelled"])
+        groups. Mailing about those is the noise that gets a sender filtered,
+        and admitting the self-timeout class must not cost that quiet."""
+        with mock.patch.object(ci_alert, "fetch_annotations",
+                               return_value="The operation was canceled."):
+            code, out = self._run(["--run-id", "1", "--workflow", "Tests",
+                                   "--conclusion", "cancelled"])
         self.assertEqual(code, 0)
-        self.assertIn("not alertable", out)
+        self.assertIn("outside the job", out)
+
+    def test_a_self_timeout_is_alertable_even_though_it_reads_as_cancelled(self):
+        """THE HOLE THIS CLOSES.
+
+        A job killed by its own `timeout-minutes` concludes `cancelled`, not
+        `timed_out`, so the blanket "cancelled is noise" rule made a whole class
+        of permanent failure silent. Measured in this repo:
+
+          * "Archive WARN sources to Wayback" (weekly, timeout-minutes: 20)
+            died at 20m21s on 2026-07-27 and 20m19s on 2026-08-03 — every run
+            it has ever had. It has never once completed, and no email fired.
+          * "Data quality report" (daily, timeout-minutes: 10) died at 10m27s
+            twice against a normal runtime of ~45 seconds.
+
+        Meanwhile the archive re-check invariant sat at 8.6 days against a
+        10-day bound: the promise the pages make to readers was one missed run
+        from breaking, and the thing that would have broken it was reporting
+        nothing at all.
+        """
+        annotations = ("The job has exceeded the maximum execution time of 20m0s\n"
+                       "The operation was canceled.")
+        with mock.patch.object(ci_alert, "fetch_annotations",
+                               return_value=annotations):
+            code, out = self._run(["--run-id", "1", "--workflow",
+                                   "Archive WARN sources to Wayback",
+                                   "--conclusion", "cancelled", "--dry-run"])
+        self.assertEqual(code, 0)
+        self.assertIn("CI SELF-TIMEOUT", out)
+        self.assertIn("20m0s", out)
+        self.assertIn("cancelled ITSELF", out)
+
+    def test_the_self_timeout_marker_is_read_from_the_annotations(self):
+        """It is NOT in the log. A self-killed job's log ends on a bare
+        '##[error]The operation was canceled.', character-for-character what an
+        externally cancelled job prints, and `--log-failed` returns nothing at
+        all because a cancelled run has no failed STEP. Verified against run
+        30799948006, whose annotations carry the line and whose log does not."""
+        self.assertIsNone(ci_alert.self_timeout_cause(
+            "2026-08-03T09:26:01.3465610Z ##[error]The operation was canceled."))
+        self.assertIsNotNone(ci_alert.self_timeout_cause(
+            "The job has exceeded the maximum execution time of 20m0s"))
+
+    def test_a_self_timeout_clears_on_the_same_workflows_green_run(self):
+        """The scope must not fork by class, or a workflow that starts passing
+        again leaves its self-timeout alert open forever."""
+        _s, _b, key = ci_alert.build_alert(
+            repo="r", workflow="Archive WARN sources to Wayback", branch="main",
+            event="schedule", run_url="", run_id="1",
+            cause="the job cancelled ITSELF on timeout-minutes",
+            context=[], label="CI SELF-TIMEOUT")
+        scope = f"{ci_alert._slug('Archive WARN sources to Wayback')}:{ci_alert._slug('main', 32)}"
+        self.assertTrue(key.startswith(scope + ":"))
+
+    def test_the_listener_admits_cancelled_so_the_script_can_judge_it(self):
+        """The filter and the script have to agree. A `cancelled` run screened
+        out in YAML never reaches the annotation check at all, and the class
+        goes back to being invisible with the code to handle it still present."""
+        yml = (Path(__file__).resolve().parents[2] / ".github" / "workflows"
+               / "ci-alert.yml").read_text()
+        self.assertIn('"cancelled"', yml)
+        self.assertIn("checks: read", yml,
+                      "annotations need checks:read; without it the self-timeout "
+                      "marker cannot be read and every cancellation reads as routine")
 
     def test_a_failure_with_no_credentials_is_loud_not_silent(self):
         """A quiet 'no key so I did nothing' is the same class of lie as a green

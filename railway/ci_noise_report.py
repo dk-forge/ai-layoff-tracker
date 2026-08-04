@@ -148,7 +148,14 @@ def compose(result: dict, *, repo: str, days: int,
             now: datetime | None = None) -> tuple[str, str, str]:
     """-> (subject, body, dedupe_key). Only called when noise > 0."""
     moment = now or _now()
-    week = moment.strftime("%G-W%V")
+    # LOWERCASE `w`, and it is load-bearing. The ISO-week token goes into the
+    # dedupe key, and /alert accepts `^[a-z0-9][a-z0-9:._-]{0,159}$` — an
+    # uppercase W is a SETTLED 400, not a retryable one, so the report is held,
+    # retried to exhaustion, and finally `stuck`, which reddens the drainer
+    # forever and buries a real outage under a permanent red. The sibling paid
+    # for this on 2026-08-03. Asserted against ci_alert.KEY_SAFE in
+    # railway/tests/test_ci_noise_report.py.
+    week = moment.strftime("%G-w%V")
     subject = (f"CI noise, week {week}: {result['noise']} noisy run(s) "
                f"in {repo.split('/')[-1]}")
     lines = [

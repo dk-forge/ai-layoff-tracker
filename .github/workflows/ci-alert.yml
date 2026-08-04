@@ -36,19 +36,40 @@ on:
 permissions:
   contents: write        # commit an undeliverable alert into railway/alert_outbox.json
   actions: read          # needed to read the failed run's log
+  checks: read           # check-run annotations: the ONLY place the runner
+                         # records "exceeded the maximum execution time", which
+                         # is how a self-timeout is told from a superseded push.
+                         # Without this the self-timeout class silently returns
+                         # to being invisible, which is the bug it closes.
 
 jobs:
   alert:
-    # `cancelled` and `skipped` are deliberately not alertable: superseded
-    # pushes and concurrency groups cancel runs routinely, and mailing about
-    # those is precisely the noise that gets a sender filtered.
+    # `skipped` is not alertable, and `cancelled` is admitted here but ALMOST
+    # ALWAYS discarded by ci_alert.py a few seconds later. Superseded pushes and
+    # concurrency groups cancel runs routinely and mailing about those is
+    # precisely the noise that gets a sender filtered, so the quiet is kept —
+    # but it is now decided on EVIDENCE rather than on the conclusion string.
+    #
+    # A job killed by its own `timeout-minutes` also reports `cancelled`, and
+    # the blanket filter made that class permanently silent: "Archive WARN
+    # sources to Wayback" died at 20m2xs on every run it has ever had
+    # (2026-07-27 and 2026-08-03, never once completing), and "Data quality
+    # report" died at 10m27s twice against a normal runtime of 45 seconds. No
+    # email fired for any of them, by design, while the archive re-check
+    # invariant drifted to 8.6 days against its 10-day bound.
+    #
+    # ci_alert.py reads the job's check-run annotations and alerts only when it
+    # finds "has exceeded the maximum execution time of ...", which nothing but
+    # a self-timeout produces. Everything else returns 0 and says why. The cost
+    # of admitting `cancelled` is one cheap run per cancellation (2 in the last
+    # 300 runs), and Actions minutes are free on a public repo.
     #
     # The name check is a recursion guard. GitHub does not re-trigger
     # workflow_run for a run this token started, but a loop here would mail in
     # a loop, and that is not a failure mode worth discovering empirically.
     if: >-
       github.event.workflow_run.name != 'CI failure alert' &&
-      contains(fromJSON('["failure","timed_out","startup_failure","success"]'),
+      contains(fromJSON('["failure","timed_out","startup_failure","cancelled","success"]'),
                github.event.workflow_run.conclusion)
     runs-on: ubuntu-latest
     timeout-minutes: 10

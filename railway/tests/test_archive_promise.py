@@ -190,5 +190,90 @@ class RecallParagraphIsRendered(unittest.TestCase):
             self.assertLessEqual(p["ok"], p["checked"])
 
 
+class TheWeeklyArchiverFitsInsideItsOwnCeiling(unittest.TestCase):
+    """A job that never finishes cannot keep the promise above.
+
+    "Archive WARN sources to Wayback" had NEVER completed. Both runs it had
+    ever had were killed by its own `timeout-minutes: 20` - 20m21s on
+    2026-07-27 and 20m19s on 2026-08-03 - and both ended `cancelled`, which the
+    CI alerter discarded as routine, so a weekly job that never once ran to the
+    end also never said so. On the day this was found the re-check invariant
+    read 8.6 days against its 10-day bound: one missed run from breaking the
+    sentence the pages print to readers.
+
+    The measurement: 54 source documents, and /save/ is a live crawl, so the
+    per-URL ceiling was doing real work. 54 * (90 + 8) = 88 minutes against a
+    20-minute job. This pins the arithmetic that replaces it, so no later
+    change can quietly put the job back inside a box it cannot fit in.
+    """
+
+    def _archiver(self):
+        import types
+        sys.modules.setdefault("requests", types.ModuleType("requests"))
+        import archive_sources
+        return archive_sources
+
+    def test_a_full_sweep_fits_inside_the_scripts_own_deadline(self):
+        mod = self._archiver()
+        total = len(mod.source_urls())
+        self.assertGreater(total, 0)
+        worst = total * (mod.PER_URL_TIMEOUT + mod.GAP_SECONDS)
+        self.assertLessEqual(
+            worst, mod.DEADLINE_SECONDS,
+            f"{total} URLs at {mod.PER_URL_TIMEOUT}s + {mod.GAP_SECONDS}s gap "
+            f"is {worst / 60:.1f} min, past the {mod.DEADLINE_SECONDS / 60:.0f} "
+            "min deadline. Either the list grew or a ceiling moved; raise the "
+            "deadline AND the workflow timeout together, or the job goes back "
+            "to being killed halfway through every week.")
+
+    def test_the_workflow_ceiling_is_above_the_scripts_deadline(self):
+        """The script must stop itself FIRST. If the runner gets there first the
+        run is `cancelled` again, and a partial sweep becomes a self-timeout
+        email instead of a green partial success."""
+        mod = self._archiver()
+        yml = (REPO / ".github" / "workflows" / "archive-sources.yml").read_text()
+        found = re.search(r"timeout-minutes:\s*(\d+)", yml)
+        self.assertIsNotNone(found)
+        self.assertGreater(int(found.group(1)) * 60, mod.DEADLINE_SECONDS,
+                           "the runner would kill the script before its own "
+                           "deadline fires, which is the original bug")
+
+    def test_a_truncated_sweep_drops_a_different_tail_each_week(self):
+        """Without this, a run that always starts at index 0 and always stops
+        early archives the head of the list forever and the tail never - and
+        every one of those runs is green. The offset comes from the ISO week
+        rather than a cursor file because the runner is ephemeral: a cursor
+        would read 0 every single week, which is the starvation bug with extra
+        code."""
+        mod = self._archiver()
+        urls = mod.source_urls()
+        base = datetime(2026, 1, 5, tzinfo=timezone.utc)
+        offsets = {mod.week_offset(len(urls), base + timedelta(weeks=w))
+                   for w in range(8)}
+        self.assertGreater(len(offsets), 6, "the rotation barely moves")
+        rotated = mod.rotate(urls, mod.week_offset(len(urls), base))
+        self.assertEqual(sorted(rotated), sorted(urls),
+                         "rotation must not lose or duplicate a document")
+
+    def test_the_deadline_is_checked_before_the_request_not_after(self):
+        """Stopping once the clock has already run out is how you get killed
+        inside the last capture, which is the failure this replaces."""
+        import inspect
+        mod = self._archiver()
+        src = inspect.getsource(mod.main)
+        self.assertIn("spent + PER_URL_TIMEOUT > DEADLINE_SECONDS", src)
+        self.assertLess(src.index("DEADLINE_SECONDS"), src.index("archive(url)"))
+
+    def test_a_deadline_truncated_run_is_not_reported_as_wayback_being_down(self):
+        """`attempted`, not `total`. A run that archived nothing because it
+        attempted nothing is a scheduling problem, and calling it "Wayback
+        unreachable" sends a human hunting the wrong thing."""
+        import inspect
+        mod = self._archiver()
+        src = inspect.getsource(mod.main)
+        self.assertIn("if attempted and ok == 0:", src)
+        self.assertNotIn("if urls and ok == 0:", src)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,7 @@ what stays signal, and above all that a quiet week sends NOTHING and that
 "could not check" never reads as quiet. Offline, no network, no keys.
 """
 import io
+import re
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -17,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import ci_alert
 import ci_noise_report as cnr
 
 NOW = datetime(2026, 8, 3, 12, 20, tzinfo=timezone.utc)
@@ -230,6 +232,60 @@ class WorkflowFileTests(unittest.TestCase):
         self.assertIn("alert_outbox.py enqueue", text,
                       "an undeliverable report is HELD, not lost")
         self.assertNotIn("|| true", text)
+
+
+class KeyShapeTests(unittest.TestCase):
+    """The composed key must be a key /alert will ACCEPT.
+
+    Measured in the sibling tracker on 2026-08-03: `compose()` formatted the
+    ISO week with `%G-W%V`, minting `ci-noise:2026-W32`. The endpoint validates
+    both `dedupe_key` and `resolve_scope` against
+    `^[a-z0-9][a-z0-9:._-]{0,159}$`, so the uppercase W came back HTTP 400
+    `bad dedupe_key` — a SETTLED failure no amount of retrying can fix. The
+    report was held in the outbox, retried 16 times, went `stuck`, and the host
+    watchdog then failed every tick on "alerts are stuck with the host up". A
+    watchdog that is permanently red cannot report an outage, so one bad
+    character in a cache key disabled the outage alarm.
+
+    This repo shipped the identical `%G-W%V` and had simply not had a noisy
+    enough week to fire it yet.
+    """
+
+    def _endpoint_regex(self):
+        """The literal the PHP endpoint actually validates against, read from
+        source. Mirroring a regex in two languages is only safe if a test
+        fails when the two drift apart."""
+        php = (Path(__file__).resolve().parents[2] / "wordpress-plugin"
+               / "ai-layoff-tracker" / "includes" / "api.php").read_text()
+        found = re.search(r"\$safe\s*=\s*'/\^(.*?)\$/';", php)
+        self.assertIsNotNone(
+            found, "alt_api_alert() no longer declares $safe as a literal, so "
+                   "the Python mirror in ci_alert.KEY_SAFE is now unpinned")
+        return found.group(1)
+
+    def test_the_python_mirror_matches_the_endpoint_literal(self):
+        self.assertEqual(ci_alert.KEY_SAFE.pattern.strip("^$"),
+                         self._endpoint_regex())
+
+    def test_the_composed_key_is_accepted_by_the_endpoint_shape(self):
+        """Across a whole year, so no week number, month or year boundary can
+        mint a character the endpoint rejects."""
+        runs = [_run(i, "WARN import", "failure") for i in (1, 2)]
+        result = cnr.classify(runs, {}, SINCE)
+        endpoint = re.compile("^" + self._endpoint_regex() + "$")
+        for offset in range(0, 366, 7):
+            moment = NOW + timedelta(days=offset)
+            subject, _body, key = cnr.compose(
+                result, repo="dk-forge/ai-layoff-tracker", days=7, now=moment)
+            self.assertRegex(key, endpoint, f"rejected key on {moment.date()}")
+            self.assertRegex(key, ci_alert.KEY_SAFE)
+            # The subject quotes the same token, so the email in the inbox can
+            # be tied to the key in the endpoint's open-alert state.
+            self.assertIn(key.split(":", 1)[1], subject)
+
+    def test_an_uppercase_week_would_have_been_caught(self):
+        """The bug itself as a fixture: proof this test is able to fail."""
+        self.assertNotRegex("ci-noise:2026-W32", ci_alert.KEY_SAFE)
 
 
 class StdlibOnlyTests(unittest.TestCase):

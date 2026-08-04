@@ -92,6 +92,83 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 # them is exactly the noise that gets a sender filtered.
 ALERTABLE = {"failure", "timed_out", "startup_failure"}
 
+# ...BUT A JOB THAT KILLS ITSELF ON `timeout-minutes` ALSO REPORTS `cancelled`,
+# and that is a different animal entirely. GitHub reserves the `timed_out`
+# conclusion for a handful of cases; a step that simply runs past the job's own
+# `timeout-minutes` ends the run `cancelled`, indistinguishable at the
+# conclusion level from a superseded push. So the blanket "cancelled is noise"
+# rule silenced a whole class of permanent failure:
+#
+#   * "Archive WARN sources to Wayback" (weekly, timeout-minutes: 20) has been
+#     killed at 20m21s and 20m19s — EVERY run it has ever had, 2026-07-27 and
+#     2026-08-03. It has never once completed and no email has ever fired.
+#   * "Data quality report" (daily, timeout-minutes: 10) died at 10m27s on
+#     2026-07-29 and 10m27s on 2026-08-03, against a normal runtime of ~45s.
+#
+# A self-timeout is never routine: nothing outside the job cancelled it, it hit
+# a wall the repository itself set. Repeated on a schedule it is precisely the
+# silent-forever failure this alerter exists to abolish — the archive re-check
+# invariant was sitting at 8.6 days against a 10-day bound while the archiver
+# had not finished in two weeks and nothing said a word.
+#
+# So `cancelled` is still not alertable by conclusion. It is alertable by
+# EVIDENCE, and the evidence is NOT in the log: a self-killed job's log ends on
+# a bare "##[error]The operation was canceled.", which is character-for-character
+# what an externally cancelled job prints. The distinguishing line lives in the
+# job's CHECK-RUN ANNOTATIONS:
+#
+#   failure  The job has exceeded the maximum execution time of 20m0s
+#   failure  The operation was canceled.
+#
+# (verified against run 30799948006). Only a self-timeout produces the first
+# line, so that is what is matched, and `--log-failed` is useless here anyway:
+# a cancelled run has no failed STEP, so it returns empty.
+_SELF_TIMEOUT = re.compile(
+    r"has exceeded the maximum (?:execution|operation) time of\s*(.+?)\.?$",
+    re.IGNORECASE)
+
+
+def fetch_annotations(repo, run_id):
+    """The job annotations for a run, one message per line. "" on any problem.
+
+    Two `gh api` calls, and neither may raise: this runs on the failure path,
+    and a notifier that dies while handling a failure has told nobody anything.
+    """
+    def _api(path, jq):
+        try:
+            proc = subprocess.run(["gh", "api", path, "-q", jq],
+                                  capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"could not read {path} ({exc})")
+            return ""
+        if proc.returncode != 0:
+            print(f"gh api {path} exited {proc.returncode}: "
+                  f"{proc.stderr.strip()[:200]}")
+        return proc.stdout or ""
+
+    jobs = _api(f"repos/{repo}/actions/runs/{run_id}/jobs", ".jobs[].id")
+    out = []
+    for job_id in jobs.split():
+        out.append(_api(f"repos/{repo}/check-runs/{job_id}/annotations",
+                        ".[].message"))
+    return "\n".join(out)
+
+
+def self_timeout_cause(text):
+    """-> the runner's own timeout line, or None if this run was cancelled by
+    something OUTSIDE itself (a superseded push, a concurrency group, a human).
+
+    Returning None is the common case and it MUST stay silent. Mailing about
+    every cancelled run is the noise that gets a sender filtered, which is the
+    defect this whole module exists to abolish, not a bar it may trade away.
+    """
+    for raw in (text or "").splitlines():
+        found = _SELF_TIMEOUT.search(strip_prefix(raw))
+        if found:
+            return ("the job cancelled ITSELF on timeout-minutes: it exceeded "
+                    f"the maximum execution time of {found.group(1).strip()}")
+    return None
+
 # Actions log lines arrive as "<job>\t<step>\t<ISO timestamp> <content>".
 _TS = re.compile(r"^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?")
 
@@ -121,6 +198,20 @@ _NORMALISE = (
     (re.compile(r"\d+(?:[.,]\d+)*"), "<N>"),                   # every remaining number
     (re.compile(r"\s+"), " "),
 )
+
+
+#: The EXACT shape `/alert` accepts for `dedupe_key` and `resolve_scope`,
+#: mirrored from `alt_api_alert()` in wordpress-plugin/.../includes/api.php
+#: (`$safe = '/^[a-z0-9][a-z0-9:._-]{0,159}$/'`). Lowercase only, and the
+#: endpoint answers a settled 400 for anything else.
+#:
+#: This lives here because a key rejected by the endpoint is not a bad email,
+#: it is NO email: the sibling's weekly noise report minted `ci-noise:2026-W32`
+#: with `%G-W%V`, took a 400 sixteen times, went `stuck` in the outbox, and the
+#: host watchdog then failed every tick on "alerts are stuck with the host up".
+#: A permanently red watchdog cannot report an outage. Any caller that composes
+#: a key by hand rather than through `_slug` must assert against this.
+KEY_SAFE = re.compile(r"^[a-z0-9][a-z0-9:._-]{0,159}$")
 
 
 def _slug(text, limit=48):
@@ -227,15 +318,23 @@ def fetch_failed_log(repo, run_id):
     return proc.stdout or ""
 
 
-def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause, context):
-    """Compose the email and the cause key it is deduped on."""
+def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause,
+                context, label="CI RED"):
+    """Compose the email and the cause key it is deduped on.
+
+    `label` names the CLASS of red in the subject. The scope is unchanged
+    across classes on purpose: a self-timeout and an assertion failure in the
+    same workflow both clear on that workflow's next green run, so the resolve
+    path needs no new vocabulary. The cause fingerprint keeps them distinct
+    emails.
+    """
     scope = f"{_slug(workflow)}:{_slug(branch, 32)}"
     fingerprint = hashlib.md5(
         f"{scope}\n{normalise(cause)}".encode("utf-8")).hexdigest()[:16]
     dedupe_key = f"{scope}:{fingerprint}"
 
     headline = cause or "no error line could be extracted from the log"
-    subject = f"CI RED: {workflow} — {headline}"[:180]
+    subject = f"{label}: {workflow} — {headline}"[:180]
 
     lines = [
         f"The workflow '{workflow}' failed on GitHub Actions and nothing else would "
@@ -431,14 +530,37 @@ def main(argv=None):
                         note=note, transient=transient, run_url=args.run_url)
         return 0
 
-    if conclusion not in ALERTABLE:
+    label = "CI RED"
+    if conclusion == "cancelled":
+        # See _SELF_TIMEOUT. A cancelled run is silent UNLESS it killed itself,
+        # in which case nothing outside the job cancelled it: it ran past a
+        # wall this repository set, and on a schedule that is permanent and
+        # was, until now, completely silent.
+        timeout_cause = self_timeout_cause(
+            fetch_annotations(args.repo, args.run_id))
+        if not timeout_cause:
+            print("cancelled by something outside the job (superseded push, "
+                  "concurrency group, or a human) — deliberately not alertable")
+            return 0
+        label = "CI SELF-TIMEOUT"
+        cause, context = timeout_cause, [
+            "The job was not cancelled by a push or a concurrency group. It ran "
+            "past its own `timeout-minutes` and the runner killed it.",
+            "GitHub reports this as `cancelled`, not `timed_out`, which is why "
+            "it produced no email before now.",
+            "Raise the ceiling with the measured reason written down, or make "
+            "the job fit inside it. Do not simply retry.",
+        ]
+    elif conclusion not in ALERTABLE:
         print(f"conclusion '{conclusion}' is not alertable — nothing to do")
         return 0
+    else:
+        cause, context = extract_cause(fetch_failed_log(args.repo, args.run_id))
 
-    cause, context = extract_cause(fetch_failed_log(args.repo, args.run_id))
     subject, body, dedupe_key = build_alert(
         repo=args.repo, workflow=args.workflow, branch=args.branch, event=args.event,
-        run_url=args.run_url, run_id=args.run_id, cause=cause, context=context)
+        run_url=args.run_url, run_id=args.run_id, cause=cause, context=context,
+        label=label)
 
     print(f"cause:      {cause or '(none extracted)'}")
     print(f"normalised: {normalise(cause)}")

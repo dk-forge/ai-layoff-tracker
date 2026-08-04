@@ -11,7 +11,23 @@ on:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 60, RAISED FROM 20, AND HERE IS THE MEASUREMENT THAT SETS IT.
+    #
+    # This job had never completed. Both runs it has ever had were killed by
+    # this very line, at 20m21s (2026-07-27) and 20m19s (2026-08-03), and both
+    # ended `cancelled` — which the CI alerter discarded as routine, so a
+    # weekly job that has never finished also never said a word, while the
+    # archive re-check invariant drifted to 8.6 days against its 10-day bound.
+    #
+    # 54 distinct source documents. Wayback's /save/ is a LIVE crawl rather
+    # than a lookup, so a capture takes tens of seconds; the per-URL ceiling
+    # was 90s and is now 45. A full sweep is 54 * (45 + 8s gap) = 47.7 minutes,
+    # which 20 could never have covered. archive_sources.py now stops ITSELF at
+    # 50 minutes and records where to resume, so this ceiling is the belt and
+    # not the trousers: 50 plus checkout, pip and runner overhead. If it is hit
+    # again, something has genuinely changed, and the run now earns the
+    # self-timeout email that these two never got.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
