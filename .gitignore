@@ -24,3 +24,4 @@ ai-layoff-tracker.zip
 # enter the repo or GitHub logs (standalone brand). Ignoring the whole
 # scratchpad dir so a stray copy can never be committed by accident.
 scratchpad/
+.worktrees/
