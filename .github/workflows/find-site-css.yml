@@ -1,0 +1,156 @@
+name: Find offending site CSS (read only)
+
+# ONE-OFF DIAGNOSTIC, manual only. Task #70: the tracker renders in a ~219px
+# column on a 375px phone because a site-level stylesheet that is in NEITHER
+# repo declares, roughly:
+#
+#   @media (max-width:781px){.alt-wrap,.alt-tracker-wrap,.alt-dashboard,
+#     .alt-filterbar,.alt-filter,.alt-metric-row,.alt-metric-card,.alt-card{
+#     max-width:100%!important;width:100%!important}}
+#
+# ...which defeats the plugin's own 100vw breakout rule. Grepping the repo for
+# `alt-metric-row` or `781px` returns nothing, so it lives on the server.
+#
+# This job is READ ONLY. It downloads candidate stylesheets/templates over
+# FTPS into the runner workspace and greps them. It NEVER writes, deletes or
+# mirrors anything to the server. It prints only matching paths + lines.
+#
+# It cannot see WordPress Customizer "Additional CSS": that lives in the
+# database as a `custom_css` post, not on the filesystem. If this finds
+# nothing, the Customizer is the answer and a human has to open wp-admin.
+#
+# Credential handling: the three FTP secrets are only ever expanded into an
+# lftp argv by the shell. They are never written to a file, never echoed, and
+# `set -x` is never enabled in any step.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: find-site-css
+  cancel-in-progress: false
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Verify secrets are configured
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          missing=0
+          for var in FTP_HOST FTP_USER FTP_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Repo secret $var is not set."
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+      # Connection settings live in ~/.lftprc so the per-run command line stays
+      # short. This file contains NO credentials.
+      - name: Configure lftp defaults
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'set ssl:verify-certificate no' \
+            'set ftp:ssl-force true' \
+            'set ftp:ssl-protect-data true' \
+            'set net:max-retries 2' \
+            'set net:timeout 20' \
+            'set xfer:clobber true' \
+            'set cmd:interactive false' > "$HOME/.lftprc"
+
+      - name: List candidate files
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          : > work/all-paths.txt
+          # `find` prints paths relative to the FTP account home, which is the
+          # blog's WordPress root (same assumption the deploy workflow makes).
+          for tree in wp-content/themes wp-content/uploads wp-content/plugins; do
+            echo "listing $tree"
+            timeout 420 lftp -c "
+              open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+              find $tree;
+            " >> work/all-paths.txt || echo "::warning::listing $tree did not complete"
+          done
+          echo "total paths listed: $(wc -l < work/all-paths.txt)"
+
+      - name: Choose which files to fetch
+        run: |
+          set -euo pipefail
+          # Themes: every css/php/js. A theme tree is small, and the rule could
+          # be inlined from a php file via wp_add_inline_style.
+          # Plugins + uploads: stylesheets only. Plugin php trees are huge and
+          # the offending declaration is plain CSS.
+          : > work/want.txt
+          grep -E '^wp-content/themes/.*\.(css|php|js)$' work/all-paths.txt >> work/want.txt || true
+          grep -E '^wp-content/(plugins|uploads)/.*\.css$' work/all-paths.txt >> work/want.txt || true
+          sort -u work/want.txt -o work/want.txt
+          echo "candidate files: $(wc -l < work/want.txt)"
+
+      - name: Download candidates over FTPS (read only)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p dl
+          # Flatten each remote path into a single local filename so the full
+          # path survives the download and grep output stays traceable.
+          : > work/get.lftp
+          while IFS= read -r p; do
+            [ -n "$p" ] || continue
+            flat="$(printf '%s' "$p" | tr '/' '@')"
+            printf 'get "%s" -o "dl/%s"\n' "$p" "$flat" >> work/get.lftp
+          done < work/want.txt
+          # No credential appears in this script file: -u supplies them in argv.
+          # cmd:fail-exit stays off so one unreadable file cannot abort the sweep.
+          timeout 1200 lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" \
+            -f work/get.lftp > /dev/null 2> work/dl.err || true
+          echo "downloaded: $(ls dl | wc -l) of $(wc -l < work/want.txt)"
+          echo "--- last transfer errors (paths only) ---"
+          tail -n 20 work/dl.err || true
+
+      - name: Grep for the offending declaration
+        run: |
+          set -euo pipefail
+          hits=0
+          for needle in 'alt-metric-row' 'alt-tracker-wrap' '781px' 'alt-filterbar' 'alt-dashboard' 'alt-wrap'; do
+            echo "=============================================="
+            echo "MATCHES FOR: $needle"
+            echo "=============================================="
+            if grep -o -H ".\{0,160\}$needle.\{0,160\}" dl/* 2>/dev/null \
+                 | sed 's|^dl/||' | tr '@' '/'; then
+              hits=1
+            else
+              echo "(none)"
+            fi
+          done
+          echo
+          if [ "$hits" -eq 0 ]; then
+            echo "NO FILESYSTEM MATCH. The rule is almost certainly WordPress"
+            echo "Customizer 'Additional CSS', which lives in the database as a"
+            echo "custom_css post and is NOT reachable over FTP."
+          fi
+
+      - name: Upload the fetched stylesheets as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-css-snapshot
+          path: dl/
+          retention-days: 7
+          if-no-files-found: warn
