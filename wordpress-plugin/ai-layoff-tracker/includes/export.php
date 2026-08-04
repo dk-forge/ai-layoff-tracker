@@ -36,7 +36,27 @@ function alt_export_filters() {
     $req = new WP_REST_Request('GET');
     $params = wp_unslash($_GET);
     unset($params['action']);
-    $req->set_query_params($params);
+    // FLATTEN ARRAY-SHAPED PARAMS BEFORE THEY REACH THE FILTER BUILDER.
+    // ?q[]=x makes $_GET['q'] an array; alt_db_where() then hands an array to
+    // a string function and PHP fatals. Audit 2026-08-03 measured where that
+    // lands in an EXPORT: after alt_export_throttle() has burned a rate slot,
+    // after the 200 and the Content-Disposition header, and after the BOM and
+    // the header row are already on the wire. The visitor gets a file that
+    // opens as a two-line CSV containing a PHP error, and their throttle
+    // budget is spent on it. The REST routes fatal too, but at least before
+    // any bytes are committed.
+    //
+    // Scalars only, keys included, one level: every filter this endpoint
+    // accepts is a scalar (comma lists are strings, not arrays). An array
+    // arrives only from a malformed or hostile query string, so dropping it
+    // is the honest read of the request rather than a guess at intent.
+    $flat = array();
+    foreach ($params as $k => $v) {
+        if (is_scalar($v) && is_scalar($k)) {
+            $flat[(string) $k] = (string) $v;
+        }
+    }
+    $req->set_query_params($flat);
     return alt_db_where($req); // array($where_sql, $params)
 }
 
