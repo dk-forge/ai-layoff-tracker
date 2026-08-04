@@ -78,9 +78,11 @@ jobs:
           : > work/all-paths.txt
           # `find` prints paths relative to the FTP account home, which is the
           # blog's WordPress root (same assumption the deploy workflow makes).
+          # 420s was not enough for wp-content/plugins (it timed out at 15691
+          # paths and the sweep silently had an incomplete candidate list).
           for tree in wp-content/themes wp-content/uploads wp-content/plugins; do
             echo "listing $tree"
-            timeout 420 lftp -c "
+            timeout 900 lftp -c "
               open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
               find $tree;
             " >> work/all-paths.txt || echo "::warning::listing $tree did not complete"
@@ -117,10 +119,18 @@ jobs:
             printf 'get "%s" -o "dl/%s"\n' "$p" "$flat" >> work/get.lftp
           done < work/want.txt
           # No credential appears in this script file: -u supplies them in argv.
+          # `-f script` is NOT combinable with a host argument on this lftp
+          # ("open: invalid option -- 'f'", which is how the first run silently
+          # downloaded 0 of 213 files); `-e "source ..."` is.
           # cmd:fail-exit stays off so one unreadable file cannot abort the sweep.
-          timeout 1200 lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" \
-            -f work/get.lftp > /dev/null 2> work/dl.err || true
+          timeout 1500 lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" \
+            -e "source work/get.lftp; bye" > /dev/null 2> work/dl.err || true
           echo "downloaded: $(ls dl | wc -l) of $(wc -l < work/want.txt)"
+          if [ "$(ls dl | wc -l)" -eq 0 ]; then
+            echo "::error::Downloaded nothing. The grep below would report a"
+            echo "::error::false 'no match'. Treat this run as UNKNOWN."
+            exit 1
+          fi
           echo "--- last transfer errors (paths only) ---"
           tail -n 20 work/dl.err || true
 
