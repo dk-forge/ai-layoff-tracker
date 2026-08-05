@@ -1855,8 +1855,9 @@
     // subtraction that would be false.
     function reasonsBasisNote() {
         var txt = 'Slices are verified job cuts, the same basis as the Verified job cuts tile.';
-        txt += ' Reason tags overlap and are not a breakdown of the total: one event can carry several tags,'
-            + ' an event whose source states no reason carries none, and the slices are not meant to sum to the headline.';
+        txt += ' Reason tags overlap, so they are not a breakdown of the total.'
+            + ' One event can carry several tags, and an event whose source states no reason carries none.'
+            + ' The slices are not meant to sum to the headline.';
         txt += ' These tags are read from the stored source text and are a different measure from the AI tiles,'
             + ' which are counted from the AI attribution flags. Tapping a slice filters the page to that tag.';
         return txt;
@@ -3106,7 +3107,7 @@
         var note = document.getElementById('alt-conversion-note');
         if (note) {
             note.style.display = '';
-            note.textContent = 'Counts verified filings and sourced reports from the same company after each announcement, capped at the announced size. Orange months are still maturing: those announcements have not had the full ' + win + ' months to show follow-through, so low bars there are expected to rise. This is company-level corroboration, not proof a specific plan was completed or dropped; unmatched jobs can still have happened through attrition or outside filing systems.';
+            note.textContent = 'Counts verified filings and sourced reports from the same company after each announcement, capped at the announced size. Orange months are still maturing. Those announcements have not had the full ' + win + ' months to show follow-through, so expect low bars there to rise. This is company-level corroboration, not proof a specific plan was completed or dropped. Unmatched jobs can still have happened through attrition or outside filing systems.';
         }
     }
 
@@ -3340,7 +3341,7 @@
                     : '';
                 return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens this exact WARN notice">' + name + ' ↗</a>' + suffix + arch;
             }
-            return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive; the recorded details here were captured from the notice when it was filed.">' + name + ' ↗</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>' + arch;
+            return '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow" title="Opens the state’s official WARN list, where this notice was filed. Many states publish a rolling file, so an older notice may have moved to the state’s annual archive. We captured the details shown here from the notice when it was filed.">' + name + ' ↗</a> <span class="alt-muted" title="The state’s official WARN list this notice was filed in">(list)</span>' + arch;
         }
         var url = safeUrl(row.source_url);
         if (!url) return escapeHtml(row.source_name || 'Source not recorded');
@@ -3721,7 +3722,7 @@
             // Rolling-file honesty: many states publish one continuously updated
             // file, so an older notice may no longer appear in today's version.
             if (!wl.exact) {
-                rollingNote = '<div class="alt-muted alt-warn-rolling">State WARN lists are updated continuously; an older notice may have rolled into the state’s annual archive. Where a permanent report exists (linked above), this notice is listed in it; the size, date and location shown here are the details captured from the notice when it was filed.</div>';
+                rollingNote = '<div class="alt-muted alt-warn-rolling">States update their WARN lists continuously, so an older notice may have rolled into the state’s annual archive. Where a permanent report exists (linked above), this notice is listed in it. The size, date and location shown here are the details we captured from the notice when it was filed.</div>';
             }
         } else {
             var url = safeUrl(row.source_url);
@@ -4729,7 +4730,7 @@
         Object.keys(names).forEach(function (k) {
             html += '<p><b>' + names[k] + ':</b> ' + REGION_TABS[k].countries.join(', ') + '</p>';
         });
-        html += '<p><b>World</b> is the unfiltered total. It includes every entry, even ones whose country has no regional tab, plus the honest "Multiple countries" bucket for cuts that span several countries and which no single region can claim without double counting.</p>';
+        html += '<p><b>World</b> is the unfiltered total. It includes every entry, even ones whose country has no regional tab. It also includes the honest "Multiple countries" bucket, for cuts that span several countries. No single region can claim those without double counting.</p>';
         el.innerHTML = html;
     }
 

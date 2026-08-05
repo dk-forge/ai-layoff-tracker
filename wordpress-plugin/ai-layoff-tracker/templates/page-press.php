@@ -215,7 +215,7 @@ if (!is_array($alt_ps)) {
             $out[] = array(
                 'label' => alt_country_flag('United States') . ' Top US state',
                 'text'  => sprintf(
-                    '%s recorded more documented job cuts than any other US state for %s: %s jobs.%s Every row names the employer, the site and the effective date, straight from the state\'s WARN notice or the company\'s SEC filing.',
+                    '%s recorded more documented job cuts than any other US state for %s: %s jobs.%s Every row names the employer, the site and the effective date. The source is the state\'s own WARN notice or the company\'s SEC filing.',
                     $alt_stn[$st->k], $label, $alt_pn($st->j), $aitxt),
                 'link' => $alt_plk(array_merge($linkargs, array('country' => 'United States', 'state' => $st->k))),
                 'linklabel' => 'See the ' . $alt_stn[$st->k] . ' rows');
@@ -390,11 +390,11 @@ if (!is_array($alt_ps)) {
   </table>
   </div>
   <p class="alt-press-split"><?php echo esc_html(function_exists('alt_period_split_sentence') ? alt_period_split_sentence($alt_sp['to_date'], $alt_sp['calendar'], $alt_sp['as_of'], (string) $alt_sp['year']) : ''); ?></p>
-  <p class="alt-muted">Both figures come from the same query with only the end date changed, so either is reproducible from the public API: <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html(gmdate('Y-m-d')); ?></code> for the first, <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code> for the third. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>.</p>
+  <p class="alt-muted">Both figures come from the same query. Only the end date changes, so you can reproduce either one from the public API. For the first row, use <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html(gmdate('Y-m-d')); ?></code>. For the third row, use <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code>. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>.</p>
   <?php endif; ?>
 
   <h2 id="alt-press-statements">Numbers you can use right now</h2>
-  <p>This week, the latest complete month, and the year to date. Each card is written to be pasted into a pitch or a story, and each ends with a link that opens the live tracker filtered to the exact rows behind the number, so an editor can check the claim in one click.</p>
+  <p>This week, the latest complete month, and the year to date. Each card is ready to paste into a pitch or a story. Each one ends with a link that opens the live tracker, filtered to the exact rows behind the number. An editor can check the claim in one click.</p>
   <p class="alt-muted"><b>Generated <?php echo esc_html($alt_ps['generated']); ?>.</b> Figures refresh hourly; the wording stays stable. When a period rolls over, it moves to the archive below, so a number you already quoted stays reachable.</p>
 
   <?php foreach ($alt_ps['sets'] as $alt_set) : if (empty($alt_set['items'])) continue; ?>
@@ -438,7 +438,7 @@ if (!is_array($alt_ps)) {
   <?php if ($alt_sb_groups) : ?>
   <h2 id="alt-soundbites">Soundbite library</h2>
   <p>One-line versions of the same numbers, grouped by period and by region. Copy, cite, done. Attribute to "the AI Layoff Tracker by AskTheRecruiter.com." Each links to the chart or rows behind it.</p>
-  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> means the employer named AI in its own words, quote on file. The <b>broad measure</b> adds looser AI-linked cases (an AI pivot underway, press AI-framing) and is always larger. The two are never merged; pick the standard your story needs.</p>
+  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> means the employer named AI in its own words, quote on file. The <b>broad measure</b> adds looser AI-linked cases, such as an AI pivot underway or press AI-framing, and is always larger. The two are never merged. Pick the standard your story needs.</p>
     <?php foreach ($alt_sb_groups as $alt_g) : ?>
   <h3 id="<?php echo esc_attr($alt_g['id']); ?>" class="alt-sb-grouptitle"><?php echo esc_html($alt_g['title']); ?></h3>
   <div class="alt-soundbites">
@@ -458,7 +458,7 @@ if (!is_array($alt_ps)) {
   <?php endif; ?>
 
   <h2 id="alt-evidence-ladder">What counts as an AI layoff</h2>
-  <p>The hardest question about any AI layoff number is what counts as AI. We never publish one blended figure. Every entry records how directly the employer tied the cut to AI, so you can pick the standard your story needs and see exactly what falls in or out at each step.</p>
+  <p>The hardest question about any AI layoff number is what counts as AI. We never publish one blended figure. Every entry records how directly the employer tied the cut to AI. So you can pick the standard your story needs, and see exactly what falls in or out at each step.</p>
   <div class="alt-health-table-wrap"><table class="alt-sources-table">
     <thead><tr><th>Tier</th><th>What has to be true</th><th>Where it appears on the tracker</th><th><?php echo (int) $alt_ps['tiers']['year']; ?> jobs<br><small>verified tier</small></th><th>Preset view</th></tr></thead>
     <tbody>
@@ -483,8 +483,8 @@ if (!is_array($alt_ps)) {
       </tr>
     </tbody>
   </table></div>
-  <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI, while verified and announced sort the same rows by whether the cut has happened yet. The two axes reconcile exactly: Tier 1 plus Tier 2 equals the tracker's verified AI box to the job, and Tier 3 is precisely the gap between the specific figure and the broad one. Nothing is double counted and nothing is invented for this table.</p>
-  <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated causation is on record. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to select who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
+  <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI. Verified and announced sort those same rows a second way: by whether the cut has happened yet. The two axes reconcile exactly. Tier 1 plus Tier 2 equals the tracker's verified AI box, to the job. Tier 3 is precisely the gap between the specific figure and the broad one. Nothing is double counted and nothing is invented for this table.</p>
+  <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated reason is on record. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to pick who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
 
   <h2 id="alt-monthly-release">Monthly release schedule</h2>
   <p>Each month's figures are final once that month has closed, and the one-page report for it lives at a permanent link. The release date is the <b>1st of the following month</b>. Nothing is embargoed and nothing is held back: the link is live the moment the month closes.</p>
@@ -520,7 +520,7 @@ if (!is_array($alt_ps)) {
 
   <h2 id="alt-cite">How to cite us</h2>
   <p>The data is free for editorial, research, and educational use under <b>CC BY 4.0</b>. Attribute to asktherecruiter.com and link back where possible.</p>
-  <p><b>The accurate phrasing:</b> <em>"According to AskTheRecruiter's AI Layoff Tracker, N job cuts are documented for [period]."</em> Our totals are what can be traced to a filing or named report under a published methodology: a verifiable floor, not a census. Phrasing it as "there were exactly N layoffs" overstates what any tracker can know; phrasing it as documented counts is precise, defensible, and survives fact-checking. Every number on this page links to the rows behind it, and the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>#m-audit">tracker audits its own published rows monthly</a> against their sources.</p>
+  <p><b>The accurate phrasing:</b> <em>"According to AskTheRecruiter's AI Layoff Tracker, N job cuts are documented for [period]."</em> Our totals are a verifiable floor, not a census. They cover what we can trace to a filing or a named report under a published methodology. Saying "there were exactly N layoffs" overstates what any tracker can know. Saying "documented counts" is precise, defensible, and survives fact-checking. Every number on this page links to the rows behind it, and the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>#m-audit">tracker audits its own published rows monthly</a> against their sources.</p>
   <p><b>Suggested attribution:</b> "According to the AI Layoff Tracker by AskTheRecruiter.com..."</p>
   <p><b>One-line description:</b> "The AI Layoff Tracker by AskTheRecruiter.com, a source-linked database of layoffs worldwide, flagging the ones companies blame on AI."</p>
   <ul>
@@ -533,13 +533,13 @@ if (!is_array($alt_ps)) {
 
   <h2 id="alt-boilerplate">About the tracker</h2>
   <p><b>Boilerplate:</b> AskTheRecruiter is the open, evidence-based intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Its <b>AI Layoff Tracker</b> is a continuously updated, source-linked database of verified job cuts worldwide, purpose-built to flag which layoffs companies themselves attribute to AI or automation, every figure clickable back to a primary document.</p>
-  <p>Live editorial tracking began in January 2026. The database also carries historical records back to 2002 (Europe) and 2015 (US), built from official WARN filings, SEC disclosures and the EU's restructuring monitor, so year-over-year comparisons are possible.</p>
+  <p>Live editorial tracking began in January 2026. The database also carries historical records back to 2002 in Europe and 2015 in the US. Those older rows come from official WARN filings, SEC disclosures and the EU's restructuring monitor, so year-over-year comparisons are possible.</p>
 
   <h3 id="alt-why-cite">Why it's worth citing</h3>
   <div class="alt-health-table-wrap"><table class="alt-sources-table alt-angles-table">
     <thead><tr><th>The angle</th><th>Why it's a story</th></tr></thead>
     <tbody>
-      <tr><td><b>We break out the AI cuts</b></td><td>Most layoff trackers give you one lump-sum number and stop. We flag the cuts a company itself pinned on AI or automation, each with the employer's own quote on file, so "AI-attributed" becomes a figure a reporter can source instead of guess at.</td></tr>
+      <tr><td><b>We break out the AI cuts</b></td><td>Most layoff trackers give you one lump-sum number and stop. We flag the cuts a company itself pinned on AI or automation, each with the employer's own quote on file. That turns "AI-attributed" into a figure a reporter can source instead of guess at.</td></tr>
       <tr><td><b>Every number is a receipt</b></td><td>Estimate-based trackers hand you a figure. We hand you the document behind it: an SEC filing, a WARN notice, or a named report. It's a floor you can prove, not a projection.</td></tr>
       <tr><td><b>We count each cut once, on the day it happens</b></td><td>Every layoff is dated by when it takes effect, not when its notice was filed, and de-duplicated so one event is never summed twice. That is why we land within about 10 percent of independent WARN trackers. A tracker reporting several times higher is usually adding a company-wide headcount onto every state filing, which counts the same people over and over.</td></tr>
       <tr><td><b>We show where AI is cutting</b></td><td>A live world map, the teams hit hardest, and AI's rising share month over month: the geographic and functional detail a press release can't give a reporter.</td></tr>
@@ -549,7 +549,7 @@ if (!is_array($alt_ps)) {
   </table></div>
 
   <h3>Editorial independence</h3>
-  <p>The tracker is a data product of AskTheRecruiter.com. Its numbers are produced by fixed, published rules: counts come only from linked primary documents, AI labels require the employer's own words, and no figure is adjusted for any commercial purpose. The full methodology, the per-country source list, the public corrections log and the collection code are open for inspection, and the dataset can be reproduced from the public API by anyone.</p>
+  <p>The tracker is a data product of AskTheRecruiter.com. Fixed, published rules produce its numbers. Counts come only from linked primary documents, AI labels require the employer's own words, and we adjust no figure for any commercial purpose. The full methodology, the per-country source list, the public corrections log and the collection code are open for inspection. Anyone can reproduce the dataset from the public API.</p>
 
   <h3 id="alt-brand">Brand assets</h3>
   <div class="alt-brand-kit">
@@ -577,7 +577,7 @@ if (!is_array($alt_ps)) {
   ?>
   <section id="alt-press-signup" class="alt-press-signup">
     <h2>Get the monthly brief</h2>
-    <p>One email a month when the numbers close: the documented job-cut total, the AI figure in the employer's own words, the biggest cuts, and the preset links to check every claim. Built for reporters on deadline. No spam, unsubscribe any time.</p>
+    <p>One email a month, sent when the numbers close. It carries the documented job-cut total, the AI figure in the employer's own words, the biggest cuts, and the preset links to check every claim. Built for reporters on deadline. No spam, unsubscribe any time.</p>
     <?php if (isset($_GET['alt_sub'])) : ?>
       <p class="alt-sub-ok" role="status">You're on the list. The next brief lands the 1st of the month.</p>
     <?php else : ?>

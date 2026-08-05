@@ -134,7 +134,7 @@ function alt_export_throttle() {
         nocache_headers();
         header('Retry-After: 600');
         header('Content-Type: text/plain; charset=utf-8');
-        echo "Export rate limit reached. The full dataset is free to reuse — please wait a few minutes, filter your export, or use the public API.";
+        echo "Export rate limit reached. The full dataset is free to reuse. Please wait a few minutes, filter your export, or use the public API.";
         exit;
     }
     set_transient($key, $n + 1, 10 * MINUTE_IN_SECONDS);

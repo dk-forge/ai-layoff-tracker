@@ -44,9 +44,9 @@ $alt_bd_titles = array(
     </p>
 
     <?php if (!$alt_f['indexable']) : ?>
-        <p class="alt-directory-notice">This record is published for direct research and citation, and is
-        kept out of search results: with <?php echo number_format((int) $alt_f['entries']); ?> recorded
-        event<?php echo $alt_f['entries'] === 1 ? '' : 's'; ?> it repeats what the individual entries and
+        <p class="alt-directory-notice">We publish this record for direct research and citation, and it is
+        kept out of search results. With <?php echo number_format((int) $alt_f['entries']); ?> recorded
+        event<?php echo $alt_f['entries'] === 1 ? '' : 's'; ?>, it repeats what the individual entries and
         company pages already say. Pages reach search results at
         <?php echo (int) alt_facet_indexable_floor(); ?> or more source-linked events.</p>
     <?php endif; ?>

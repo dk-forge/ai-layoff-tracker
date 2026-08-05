@@ -311,7 +311,7 @@ def fetch_failed_log(repo, run_id):
             capture_output=True, text=True, timeout=180,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        print(f"could not read the failed log ({exc}) — alerting without the cause line")
+        print(f"could not read the failed log ({exc}): alerting without the cause line")
         return ""
     if proc.returncode != 0:
         print(f"gh run view exited {proc.returncode}: {proc.stderr.strip()[:300]}")
@@ -356,7 +356,7 @@ def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause,
         lines.append("")
         lines.append(
             "No assertion or error line could be read out of this run's log (the log may "
-            "have expired, or the job died before producing one). Open the run URL — this "
+            "have expired, or the job died before producing one). Open the run URL. This "
             "email is telling you the truth it has, not guessing at one.")
     lines.append(
         "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste "
@@ -366,9 +366,9 @@ def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause,
         'and fix it."\n')
     lines.append(
         "You will get ONE more email about this workflow: a RECOVERED notice on its next "
-        "green run. Repeats of this same failure are suppressed deliberately — an alarm "
-        "that mails eight times in an afternoon is one you learn to filter, and a filtered "
-        "alarm is how this defect stayed live for hours in the first place.")
+        "green run. We suppress repeats of this same failure on purpose. An alarm that "
+        "mails eight times in an afternoon is one you learn to filter. A filtered alarm "
+        "is how this defect stayed live for hours in the first place.")
     return subject, "\n".join(lines), dedupe_key
 
 
@@ -422,7 +422,7 @@ def post_alert(site, key, payload, sleep=time.sleep):
     for delay in _BACKOFF:
         if ok or not transient:
             break
-        print(f"  /alert did not answer ({note}) — retrying in {delay}s")
+        print(f"  /alert did not answer ({note}): retrying in {delay}s")
         sleep(delay)
         ok, note, transient = _post_once(site, key, payload)
     return ok, note, transient
@@ -477,7 +477,7 @@ def hold(*, envelope, key, kind, scope, payload, note, transient, run_url):
     else:
         print(f"::error::/alert refused this alert and it is not a transient "
               f"failure: {note}. It is HELD in railway/alert_outbox.json, but a "
-              "settled refusal will not fix itself — check WP_API_KEY and that "
+              "settled refusal will not fix itself: check WP_API_KEY and that "
               "the plugin carrying /alert is deployed. ops_status.py escalates "
               "a held alert that keeps failing.")
     return 0
@@ -540,7 +540,7 @@ def main(argv=None):
             fetch_annotations(args.repo, args.run_id))
         if not timeout_cause:
             print("cancelled by something outside the job (superseded push, "
-                  "concurrency group, or a human) — deliberately not alertable")
+                  "concurrency group, or a human): deliberately not alertable")
             return 0
         label = "CI SELF-TIMEOUT"
         cause, context = timeout_cause, [
@@ -552,7 +552,7 @@ def main(argv=None):
             "the job fit inside it. Do not simply retry.",
         ]
     elif conclusion not in ALERTABLE:
-        print(f"conclusion '{conclusion}' is not alertable — nothing to do")
+        print(f"conclusion '{conclusion}' is not alertable, nothing to do")
         return 0
     else:
         cause, context = extract_cause(fetch_failed_log(args.repo, args.run_id))
@@ -576,7 +576,7 @@ def main(argv=None):
     if not (site and key):
         # Loud, and non-zero. A silent "no credentials so I did nothing" is the
         # same class of lie as a green run over destroyed work.
-        print("::error::WP_SITE_URL / WP_API_KEY are not set — the CI alert was NOT sent.")
+        print("::error::WP_SITE_URL / WP_API_KEY are not set. The CI alert was NOT sent.")
         return 1
 
     payload = {"subject": subject, "body": body, "dedupe_key": dedupe_key}

@@ -39,7 +39,7 @@ function alt_render_rss_feed() {
 <channel>
     <title><?php echo alt_xml(get_bloginfo('name') . ': AI Layoff Tracker'); ?></title>
     <link><?php echo alt_xml(home_url('/ai-layoffs')); ?></link>
-    <description>Verified AI-related and general layoffs from SEC filings and credible news sources.</description>
+    <description>Layoffs we verified from SEC filings and trusted news outlets. Covers cuts the employer tied to AI, and all the others too.</description>
     <language><?php echo alt_xml(get_bloginfo('language')); ?></language>
     <lastBuildDate><?php echo alt_xml(gmdate('D, d M Y H:i:s +0000')); ?></lastBuildDate>
     <atom:link href="<?php echo alt_xml(home_url('/feed/layoffs')); ?>" rel="self" type="application/rss+xml" />
