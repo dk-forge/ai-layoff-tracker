@@ -51,6 +51,9 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import reader_freshness  # noqa: E402  - sibling module, stdlib only
+
 BASE = "https://asktherecruiter.com/blog"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -141,6 +144,31 @@ def _gh(args, timeout=30):
         err = " ".join(proc.stderr.split())[:160] or f"gh exited {proc.returncode}"
         return False, "", err
     return True, proc.stdout, ""
+
+
+def _last_deploy_finished_at():
+    """When the last SUCCESSFUL plugin deploy finished. Returns (datetime, why_not).
+
+    Needed to tell "shipped a minute ago and still propagating" apart from
+    "readers are stuck on an old build". Returns (None, reason) when it cannot
+    be determined, so the caller reports UNKNOWN rather than inventing a
+    deadline it can meet.
+    """
+    ok, out, why = _gh(["run", "list", "--workflow=Deploy WordPress plugin",
+                        "-L", "10", "--json", "conclusion,updatedAt"])
+    if not ok:
+        return None, why
+    try:
+        runs = json.loads(out or "[]")
+    except ValueError as exc:
+        return None, f"could not parse gh output: {exc}"
+    for run in runs:
+        if run.get("conclusion") == "success":
+            try:
+                return datetime.fromisoformat(str(run["updatedAt"]).replace("Z", "+00:00")), ""
+            except (KeyError, ValueError) as exc:
+                return None, f"unreadable deploy timestamp: {exc}"
+    return None, "no successful deploy run found in the last 10 runs"
 
 
 def _report_ci():
@@ -551,15 +579,37 @@ def main():
     except Exception:
         print("\n[0] HANDOFF BATON: (docs/HANDOFF.md not found)")
 
-    # 1. Live version
+    # 1. Live version, as the ORIGIN reports it. The cache buster is what makes
+    #    this the origin's answer and not a reader's. See [1b], which is the
+    #    one that speaks for readers.
     try:
         html = _get(f"{BASE}/ai-layoff-tracker/?cb={uuid.uuid4()}", browser=True).read().decode("utf-8", "replace")
         import re
         ver = (re.search(r"ver=(\d+\.\d+\.\d+)", html) or [None, "?"])[1]
-        print(f"\n[1] LIVE TRACKER  ver={ver}  (https://asktherecruiter.com/blog/ai-layoff-tracker/)")
+        print(f"\n[1] LIVE TRACKER  ver={ver}  (origin, cache-busted)")
     except Exception as exc:
         print(f"\n[1] LIVE TRACKER  UNREACHABLE: {exc}")
         (egress_blocked if _is_egress_block(exc) else issues).append("live tracker unreachable")
+
+    # 1b. What READERS are served. A deploy that only reached the origin has not
+    #     shipped. On 2026-08-05 the bare URL served a superseded build for 18
+    #     minutes while [1] above, and the deploy workflow, both read green:
+    #     every check carried a query string, so every check measured the origin.
+    print("\n[1b] READER VIEW   (bare URL, browser UA, NO cache buster)")
+    try:
+        deploy_at, why_not = _last_deploy_finished_at()
+        freshness = reader_freshness.check(deploy_finished_at=deploy_at)
+        print(f"    {freshness.verdict}: {freshness.detail}")
+        if freshness.verdict == reader_freshness.FAIL:
+            print("    -> docs/RUNBOOK.md 'a deploy is not reaching readers'.")
+            issues.append("deploys are not reaching readers")
+        elif freshness.verdict == reader_freshness.UNKNOWN:
+            if why_not:
+                print(f"    (last deploy time unavailable: {why_not})")
+            unverified.append("what readers are served")
+    except Exception as exc:                      # noqa: BLE001
+        print(f"    UNKNOWN: {exc}")
+        (egress_blocked if _is_egress_block(exc) else unverified).append("what readers are served")
 
     # 2. Health triage
     print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")

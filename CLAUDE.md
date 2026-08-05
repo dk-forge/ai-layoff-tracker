@@ -150,6 +150,18 @@ verified one.
 curl -s "https://asktherecruiter.com/blog/wp-json/layoffs/v1/aggregate?cb=$RANDOM" | python3 -m json.tool | head
 curl -s "https://asktherecruiter.com/blog/ai-layoff-tracker/?cb=$RANDOM" | grep -o 'ver=[0-9.]*' | head -3
 ```
+**Those two commands prove the ORIGIN is updated. They cannot prove a reader
+sees it, and for months nothing did.** `?cb=` is a cache key nothing holds an
+entry for, so the origin always answers it. A reader requests the BARE url, and
+that is the one key the shared caches in front of `/blog` (Cloudflare over a
+Railway proxy, neither purgeable from this repo) do hold. On 2026-08-05 that gap
+served a superseded build to every reader and crawler for 18 minutes while every
+check in the repo read green. So also run:
+```bash
+python3 railway/reader_freshness.py     # bare URL, browser UA, no cache buster
+```
+It is `ops_status.py` section `[1b]` and a required step of the deploy workflow.
+A mismatch it cannot date resolves to UNKNOWN, never to a pass.
 **Waiting on a deploy?** Match the **commit SHA**, never "the latest run". A
 `gh run list -L 1` right after a push returns the run for the PREVIOUS commit
 (yours is still queueing), so a wait loop exits instantly and you verify the old

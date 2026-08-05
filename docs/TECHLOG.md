@@ -1,5 +1,79 @@
 # Tech Log
 
+## 2026-08-05 - the deploys were landing on the origin and stopping there (2.19.275, branch)
+
+**Every deploy check in this repo measured the wrong surface, and had done for
+months.** `ops_status.py [1]` fetched the tracker page as
+`/ai-layoff-tracker/?cb=<uuid>`. `deploy-plugin.yml` fetched
+`/wp-json/.../integrity-status?deploy_check=<run id>`. A query string is a cache
+key nothing holds an entry for, so both were answered by the origin, both were
+correct, and neither could see what a reader gets. A reader asks for the bare
+URL, and that is the one key a shared cache does hold.
+
+Measured this morning with a browser User-Agent and no query string: the live
+page served HTML built by **2.19.272** while **2.19.274** was deployed. The same
+URL with `?cb=` served 2.19.274, and the deliberately no-store `/status`
+endpoint reported 2.19.274. The origin was right the whole time.
+
+**The leading hypothesis was wrong and worth recording as wrong.** It looked
+like `alt_flush_caches_on_deploy()` never firing, because a page served from
+cache never reaches PHP. It had fired: the option was set and the origin was
+current. The real shape is that there are **two shared caches above the origin,
+neither of them ours to purge**:
+
+    reader -> Cloudflare -> Railway proxy (x-cache-status) -> Bluehost -> PHP
+
+The Railway app that serves the root domain fronts `/blog`, and it caches. Proof
+it was TTL rather than a dead hook: polling the bare URL every 30s, the copy
+healed itself at 07:42:25Z, the exact moment Cloudflare's `age` reached 300,
+which is the page's `s-maxage`. Nothing was stuck. It was simply licensed to be
+that old. `curl --resolve` straight to Bluehost served 2.19.274 throughout,
+which is what separates "the origin is wrong" from "the origin is fine and
+cannot be seen".
+
+The header was `public, max-age=180, s-maxage=300, stale-while-revalidate=600`.
+Each hop keeps its own entry with its own timer, so those windows **add** rather
+than overlap: up to 900s per hop, and 2.19.274 finished deploying at 07:34:35Z
+while readers stayed on a build superseded at 07:24:41Z until 07:42:25Z. Roughly
+**18 minutes of serving a superseded build**, and 470s from deploy to reader.
+
+**Fix.** There is no Cloudflare API token in this repo's secrets and the Railway
+proxy is a different app, so a purge is not available and the lifetime is the
+only lever. The tracker page now sends `public, max-age=60, s-maxage=60,
+stale-if-error=600` from both places that set it (the PHP header and the Apache
+`<If>` block, which runs last and wins, so they must agree and a test now says
+so). `stale-while-revalidate` is gone: it buys latency we do not need and pays
+in staleness we cannot purge. `stale-if-error` keeps the outage protection swr
+was incidentally providing and only applies when the origin is failing, which is
+the case where a stale page beats the host's 504. **The public API keeps its
+300s lifetime** - that edge cache was measured working (same URL twice, MISS
+then HIT), it is a real speed win on a host that 504s under load, and a test
+fails if a future change weakens it while tightening the page.
+
+**The guard, wired where it will be seen.** `railway/reader_freshness.py`
+fetches the BARE url with a browser User-Agent and no cache buster, reads the
+`ver=` the body was built with, and compares it to the no-store `/status`. The
+deploy workflow now polls it after every upload and fails the run if readers are
+not served the version that was just deployed. `ops_status.py` gained `[1b]`,
+beside the old `[1]`, which is now labelled as the origin read it always was.
+A mismatch is only a fault once the propagation window has passed, and the
+module refuses to guess when that is: without a deploy timestamp it returns
+**UNKNOWN, never PASS**, because "shipped 30 seconds ago" and "stuck behind a
+cache" are indistinguishable without one.
+
+Also: the mobile hero. At 375px the content sat inside three concentric
+containers - an 18px page gutter (site CSS, held in the database), a rounded
+paper card, and a rounded bordered hero card at the identical 339px box - which
+left 297 of 375px usable. The middle ring drew a boundary around the same
+rectangle as the one inside it and had already had its padding zeroed, so only
+its decoration remained; it is dropped below 560px and the hero's desktop 20px
+padding comes down to 12px there. Separately, the site wordmark's tile was not
+clipped, it was **collapsed to 0 by 0**: the database CSS snippet applies
+`img, svg, ... { max-width: 100% !important }` below 781px, the header is a flex
+row of a 36px tile and a nowrap wordmark that cannot give width back, so the
+whole 36px deficit landed on the SVG. The complete fix belongs in that snippet
+(wp-admin, WPCode); the plugin stylesheet repairs it on the pages it loads on.
+
 ## 2026-08-05 - the digest's missing half: subscriber stats, click counting, no pixel (2.19.274, branch)
 
 The digest shipped at 2.19.272 without the piece that lets anyone see whether

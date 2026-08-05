@@ -2256,7 +2256,47 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     padding: 14px;
     box-sizing: border-box;
 }
-@media (max-width: 560px) { .alt-wrap.alt-dashboard { padding: 10px; border-radius: 10px; } }
+/* ONE container at phone width, not three concentric ones.
+   Measured at 375px (2026-08-05): main carries an 18px gutter per side (site
+   CSS, held in the database, not in this repo), then .alt-wrap.alt-dashboard
+   painted a rounded paper card, then .alt-hero painted a second rounded
+   bordered card at the IDENTICAL 339px box. Two rings around the same rectangle
+   read as wasted boundary, and the hero's own 20px padding pushed usable
+   content down to 297px of 375, so a fifth of the screen was gutter.
+   The side padding here is already forced to 0 below 781px by the rule near the
+   theme-gutter override further down, so the 10px it used to ask for never
+   applied; only the decoration did. Drop the decoration and let .alt-hero be
+   the single visible container. */
+@media (max-width: 560px) {
+    .alt-wrap.alt-dashboard {
+        padding: 10px 0;
+        background: none;
+        border-radius: 0;
+    }
+    /* The remaining container gets phone-sized padding. 20px per side was a
+       desktop figure applied unchanged to a 375px screen. */
+    .alt-wrap.alt-dashboard .alt-hero {
+        padding: 24px 12px 22px;
+        border-radius: 12px;
+    }
+}
+
+/* The site wordmark is theme markup, and this rule repairs it only on the pages
+   that load this stylesheet. The complete fix belongs in the site CSS snippet
+   held in the database, which is where the damage is: below 781px it applies
+   `img, svg, video, iframe, embed, object, canvas { max-width: 100% !important }`.
+   The header lockup is a flex row of a 36px SVG tile plus a nowrap wordmark.
+   At 375px the row is 36px short, the nowrap text has an automatic minimum
+   width and cannot give any of it back, so the whole deficit lands on the SVG,
+   whose forced max-width leaves it free to collapse to 0 by 0. The tile
+   disappears and the lockup reads as a cut-off left edge. The text was never
+   clipped. Restoring the tile takes the anchor to 254px at 375px, so it adds no
+   overflow. */
+.atr-header a svg,
+.wp-block-site-logo img {
+    flex: none !important;
+    max-width: none !important;
+}
 .alt-dashboard .alt-grid-h h2, .alt-narrative-head { color: var(--alt-navy); }
 /* Ochre carries the emphasis figures; the AI family tiles keep their own
    semantic colors (blue verified / amber announced / red family). */

@@ -75,6 +75,69 @@ read the diagnostics (they log the raw API status) before trusting live output.
 
 ## "X is broken" playbooks
 
+**A deploy is not reaching readers**
+`ops_status.py` section `[1b]` said `FAIL`, or the deploy workflow's "Verify the
+deploy has reached READERS" step went red. The symptom is that the site is
+correct to anyone who checks it and wrong to everyone who reads it.
+
+First, understand why every other check will disagree with this one. A reader
+requests the bare URL, `https://asktherecruiter.com/blog/ai-layoff-tracker/`,
+with no query string. That is the only key a shared cache holds an entry for.
+Every check that appends `?cb=`, `?deploy_check=` or anything else is asking for
+a key nothing has cached, so the **origin** answers it, every time, correctly.
+Those checks confirm the plugin is installed. They say nothing about what is
+being served.
+
+1. **Look at the reader's surface, on purpose.**
+   ```bash
+   python3 railway/reader_freshness.py
+   curl -s -D- -o /tmp/p.html \
+     -A 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36' \
+     'https://asktherecruiter.com/blog/ai-layoff-tracker/' \
+     | grep -iE 'x-cache-status|cf-cache-status|age|cache-control'
+   grep -o 'ver=[0-9.]*' /tmp/p.html | head -1
+   ```
+   Compare that `ver=` against `/wp-json/layoffs/v1/status`, which is
+   deliberately no-store and therefore the origin's own answer.
+
+2. **Establish which layer is stale.** There are three, and they fail
+   differently:
+
+   | Layer | Header it sets | Can a deploy purge it? |
+   |---|---|---|
+   | Cloudflare | `cf-cache-status` | No. There is no Cloudflare API token in this repo's secrets, on purpose. |
+   | Railway proxy (fronts `/blog`) | `x-cache-status` | No. Different app, not this repo. |
+   | Bluehost + WP Super Cache | none of the above | Yes, `alt_flush_caches_on_deploy()` |
+
+   To see the origin alone, bypass the two you cannot purge:
+   ```bash
+   curl -s -k --resolve 'asktherecruiter.com:443:50.87.170.37' \
+     -A 'Mozilla/5.0 ...' 'https://asktherecruiter.com/blog/ai-layoff-tracker/' \
+     | grep -o 'ver=[0-9.]*' | head -1
+   ```
+   If the origin is correct and the reader's view is not, the fault is above the
+   origin and **no PHP cache flush will reach it**. That was the whole of the
+   2026-08-05 incident.
+
+3. **The lifetime is the only lever we hold.** Because neither shared cache can
+   be purged from here, how long a reader can be behind is set entirely by the
+   page's own `Cache-Control`, in two places that must agree:
+   `alt_public_page_cache_headers()` in `includes/shortcodes.php` and the page
+   `<If>` block in `includes/htaccess.php` (Apache's block runs last and wins,
+   so if they disagree the PHP one is decorative). `railway/tests/
+   test_deploy_reaches_readers.py` pins them together.
+
+4. **Do not add `stale-while-revalidate` back to the page.** It is latency
+   optimisation paid for in staleness we cannot purge, and the windows of the
+   two chained caches **add** rather than overlap. `stale-if-error` gives the
+   outage protection people actually want from it and only applies when the
+   origin is failing.
+
+5. **Do not answer this by disabling caching.** The API edge cache was measured
+   working (same URL twice: MISS then HIT) and is a real speed win on a shared
+   host that 504s under load. The page and the API are tuned separately for that
+   reason.
+
 **A data-integrity check is failing (START HERE — this outranks a broken source)**
 `ops_status.py` section [3] said `FAILING`, or a red `Live data-integrity check`
 run, or an email subject beginning "WRONG NUMBER LIVE". **Do this before any

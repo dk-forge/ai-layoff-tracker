@@ -164,11 +164,37 @@ add_action('wp', 'alt_disable_toc_on_plugin_pages');
  * plugin surfaces are static shells whose numbers load client-side from the
  * (cached) API, so a short public cache is safe and cuts most of the wait.
  * Logged-in views and the admission-sensitive company pages stay uncached.
+ *
+ * The lifetime is short and carries NO stale-while-revalidate, because a deploy
+ * has no way to purge what sits in front of this. Measured 2026-08-05: readers
+ * requesting the bare URL were served HTML built by 2.19.272 for eighteen
+ * minutes after 2.19.274 shipped, while the same URL with a query string, and
+ * the no-store /status endpoint, both answered 2.19.274. The origin was right
+ * the whole time. TWO independent shared caches sit above it,
+ *
+ *     reader -> Cloudflare -> Railway proxy (x-cache-status) -> Bluehost -> PHP
+ *
+ * each keeps its own entry with its own timer, and their windows ADD rather
+ * than overlap. At s-maxage=300 + stale-while-revalidate=600 that was up to
+ * 900s per hop. The copy healed itself the second Cloudflare's age reached 300,
+ * which is what proves it was TTL and not a hook that failed to run: no PHP
+ * cache flush can reach a cache PHP is never consulted by.
+ *
+ * So the bound is set here, where it is the only lever we hold. s-maxage=60
+ * over two hops bounds a reader to roughly two minutes behind a deploy.
+ * stale-while-revalidate is gone: it buys latency we do not need and pays for
+ * it in staleness we cannot purge. stale-if-error KEEPS the outage protection
+ * that swr was incidentally providing, and only applies when the origin is
+ * failing, which is the one case where a stale page beats the host's 504.
+ *
+ * The public API keeps the longer lifetime on purpose (see htaccess.php): its
+ * responses are data, not build output, a few minutes behind is correct there,
+ * and the edge cache on those endpoints was measured working.
  */
 function alt_public_page_cache_headers() {
     if (is_user_logged_in() || !alt_page_is_plugin_surface()) return;
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return;
-    header('Cache-Control: public, max-age=180, s-maxage=300, stale-while-revalidate=600');
+    header('Cache-Control: public, max-age=60, s-maxage=60, stale-if-error=600');
 }
 add_action('template_redirect', 'alt_public_page_cache_headers', PHP_INT_MAX);
 
