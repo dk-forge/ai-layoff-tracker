@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.271
+ * Version: 2.19.272
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.271');
+define('ALT_VERSION', '2.19.272');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -24,6 +24,7 @@ require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
+require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
 // GUARDED: FTP deploys upload files one at a time, so this main plugin file can
 // land BEFORE the generated partial does (the mid-upload race the iron rules

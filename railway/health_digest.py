@@ -44,7 +44,7 @@ MAX_AGE_DAYS = {
     "edgar": 2, "news_catchup": 9, "gdelt": 2, "warn_us": 3, "eurofound_erm": 3,
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
     "press_releases": 3, "warn_hi_ocr": 3, "warn_mazowieckie": 3,
-    "data_integrity": 2, "warn_quebec": 3, "federal_rif": 35,
+    "data_integrity": 2, "warn_quebec": 3, "federal_rif": 35, "digest_mailer": 3,
 }
 DEFAULT_MAX_AGE = 10
 # Sources whose 0/degraded is expected-by-design or transient, so a DEGRADED

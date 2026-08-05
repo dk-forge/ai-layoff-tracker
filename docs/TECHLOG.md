@@ -1,5 +1,50 @@
 # Tech Log
 
+## 2026-08-05 - email digest subscriptions, one shared list for BOTH trackers (2.19.272, branch)
+
+The site's first feature storing personal data (subscriber emails), so consent
+hygiene is the design, not a bolt-on. New `includes/subscribe.php` + table
+`wp_alt_subscribers` (dbDelta in `alt_db_install`, migrates on version bump):
+email, three consent flags (layoff digest / talent digest / articles),
+per-flag daily|weekly frequency, status pending|confirmed|unsubscribed, a
+random confirm token and an unsubscribe token (64 hex from `random_bytes`,
+compared with `hash_equals`; the address never travels in a URL), created /
+confirmed / unsubscribed / last-sent timestamps.
+
+- **One list, not two.** Both plugins share one WordPress install; the store,
+  the flow and the sender live here, and the talent plugin prints the same
+  form through a `function_exists`-guarded call (never a require, honouring
+  its isolation banner).
+- **Double opt-in, no exceptions.** Signup stores `pending` and sends exactly
+  one confirmation; nothing else ever goes to an unconfirmed address. A
+  re-signup for an already-confirmed address parks the new choices in
+  `pending_prefs` and applies them only when the fresh link is clicked, so a
+  stranger typing your address cannot alter what you receive.
+- **One-click unsubscribe** on every email (token link, no login, stops
+  everything at once, idempotent) plus `List-Unsubscribe` /
+  `List-Unsubscribe-Post: One-Click` headers.
+- **Digest content** is composed through the trackers' own public APIs via
+  `rest_do_request` (`layoffs/v1/aggregate` + `talent/v1/aggregate|query`), so
+  the email can never disagree with the pages. Text-first HTML, no images, no
+  tracking pixels, deliberately. The articles flag records consent only:
+  nothing sends under it because no article mechanism exists.
+- **Retention is enforced**: the daily cron (WP-Cron, traffic-dependent, noted
+  in code) hard-deletes unsubscribed + never-confirmed rows after 30 days.
+  The privacy note on the form states what is stored, why, and how to erase.
+- **Health**: the cron stamps `digest_mailer` via the new single writer
+  `alt_source_health_record()` (also now used by the REST reporter) ON
+  COMPLETION of the send run, never before; ceiling 3 days in ops_status +
+  health_digest, label in health.js.
+- **Abuse guards**: nonce + honeypot + min-fill-time + 5/hour/IP on signup,
+  15-minute per-address confirm-resend throttle, server-side email
+  validation, everything output-encoded.
+
+Tests: `railway/tests/test_digest_subscription.py` drives the REAL handlers
+end to end (`tests/fixtures/digest_harness.php`: WP stubs + SQLite wpdb).
+Proven failing on the pre-fix tree. Zero-boxes refusal, nothing-sends-to-
+pending, idempotent unsubscribe, unguessable tokens, purge scope, counts-only
+health are each pinned.
+
 Chronological record of what was built, why, what broke, and how it was fixed.
 Newest first within each section. **Keep this updated:** every deploy gets a line;
 every incident gets an entry in the Incident Log with root cause + the guard added.

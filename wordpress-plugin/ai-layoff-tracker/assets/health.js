@@ -51,6 +51,7 @@
     courtlistener_bankruptcy: ['US bankruptcy petitions, lead to targeted news', 'Weekly', 'United States', 'Federal court dockets'],
     edgar_historical: ['Historical SEC 8-K/6-K backfill (live feed is "edgar")', 'Backfill, resumable', 'United States', 'Official filings API'],
     industry_backfill: ['Industry tags for existing rows, evidence-only', 'Daily evidence-only', 'Internal', 'Stored-evidence re-read'],
+    digest_mailer: ['Email digest sender (subscriber digests for both trackers; counts only, never addresses)', 'Daily (WP-Cron, traffic-dependent)', 'Internal', 'Composed from the trackers\u2019 own public APIs'],
     link_check: ['Broken-link tripwire: public pages + source-rot sample', 'Daily', 'Internal QA', 'HTTP reachability check'],
     warn_custom_legacy: ['Legacy custom-scraper WARN states (drift watchdog family)', 'Daily', 'United States', 'State labor-agency notices'],
   };

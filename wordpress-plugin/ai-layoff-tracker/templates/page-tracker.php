@@ -1077,6 +1077,9 @@ $alt_hero_geo    = 'worldwide';
         <code class="alt-journalist-api"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
     </div>
 
+    <?php // Shared digest signup (one subscriber list for both trackers; see includes/subscribe.php).
+    if (function_exists('alt_digest_subscribe_form')) echo alt_digest_subscribe_form('layoff'); ?>
+
     <footer class="alt-provenance" aria-label="Tracker provenance">
         <span>Tracker release <b>v<?php echo esc_html(ALT_VERSION); ?></b></span>
         <span id="alt-provenance-quality" aria-live="polite">Dataset status loading…</span>
