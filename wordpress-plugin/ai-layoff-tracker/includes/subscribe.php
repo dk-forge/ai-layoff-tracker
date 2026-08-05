@@ -19,10 +19,13 @@
  *     headers. One click unsubscribes from everything.
  *   - Tokens come from random_bytes() and are compared with hash_equals().
  *     The email address itself NEVER appears in a URL.
- *   - No tracking pixels, no click trackers, no images, deliberately: the
- *     trackers' whole culture is "no more data than the page needs", and the
- *     digest inherits it. We cannot tell whether you opened the email, on
- *     purpose.
+ *   - No tracking pixels and no images, deliberately. We cannot tell whether
+ *     you opened the email, on purpose: open tracking needs a per-person image
+ *     URL, which is the individual-level record we promised not to keep.
+ *   - Link clicks are counted in AGGREGATE only: one integer per (send, link),
+ *     with no subscriber id, no IP and no user agent stored. The counter
+ *     cannot say who clicked, only how many times a link was followed. See
+ *     the "Aggregate click counting" section for the full reasoning.
  *   - Retention is bounded: unsubscribed rows and never-confirmed pending
  *     rows are HARD-DELETED after 30 days by the same cron that sends.
  *   - Logs and health output carry COUNTS only, never an address.
@@ -56,6 +59,28 @@ function alt_subscribers_table_ready() {
     $exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
     if ($exists === $table) return true;
     if (function_exists('alt_db_install')) alt_db_install();
+    return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) === $table;
+}
+
+function alt_digest_sends_table() {
+    global $wpdb;
+    return $wpdb->prefix . 'alt_digest_sends';
+}
+
+function alt_digest_links_table() {
+    global $wpdb;
+    return $wpdb->prefix . 'alt_digest_links';
+}
+
+/**
+ * Does a table exist, WITHOUT trying to create it? The readiness helper above
+ * self-heals for WRITERS. Readers (the stats route) must not: a read that
+ * quietly installs a table would turn "we cannot see the numbers" into "the
+ * numbers are all zero", and those are different answers. Absent table ->
+ * UNKNOWN, all the way out to ops_status and the weekly email.
+ */
+function alt_digest_table_present($table) {
+    global $wpdb;
     return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) === $table;
 }
 
@@ -200,8 +225,12 @@ function alt_digest_subscribe_form($context = '') {
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>
             <p><strong>What we store:</strong> your email address, the choices above, and timestamps
-                (signed up, confirmed, last sent). Nothing else. No open or click tracking exists in
-                these emails, by design.</p>
+                (signed up, confirmed, last sent). Nothing else about you. There is no open tracking
+                and no tracking pixel, so we cannot tell whether you opened an email.</p>
+            <p><strong>About the links:</strong> links in the digest pass through a counter on this
+                site that adds 1 to a total for that link and sends you straight on. It records no
+                identifier, no IP address and no browser details, so it counts how many times a link
+                was followed and can never say who followed it.</p>
             <p><strong>What it is used for:</strong> sending you exactly the emails you ticked, nothing
                 else. The address is never shared, sold, or used for any other purpose.</p>
             <p><strong>How to erase it:</strong> click the unsubscribe link in any email. That stops all
@@ -439,6 +468,150 @@ function alt_digest_list_unsub_headers($unsub_token) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Aggregate click counting (counts only, and no open-rate pixel)      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * WHY THERE IS NO OPEN-RATE PIXEL, AND WHY THERE NEVER WILL BE.
+ *
+ * Open tracking needs a per-person image URL, which means the thing we told
+ * every subscriber we do not have: a record tying an individual address to an
+ * individual action. It is also not a measurement. Roughly half of inboxes
+ * (Apple Mail Privacy Protection, Gmail's image proxy, most corporate
+ * scanners) fetch remote images before a human sees the message, so an "open
+ * rate" is part readers and part machines with no way to separate them, and
+ * the number moves when a mail client updates rather than when interest does.
+ *
+ * So this file measures three things that are facts: how many messages we
+ * DELIVERED (the send log), how many times a link was FOLLOWED (the counter
+ * below), and how many people UNSUBSCRIBED after a send. A future session that
+ * wants engagement numbers should improve those three, not add a pixel.
+ *
+ * The counter itself is aggregate by construction: one integer per
+ * (send_id, link). No subscriber id, no IP, no user agent, no per-click row.
+ * Two identical clicks and two different people clicking are the same event
+ * to this store, which is the point.
+ */
+
+/**
+ * Hosts a digest link may point at. Our own site only. Everything the digest
+ * links to is built from home_url(), so this list is the whole world the
+ * redirect can reach; the filter exists for a future first-party subdomain,
+ * not for third parties.
+ */
+function alt_digest_link_hosts() {
+    $hosts = array();
+    $home = wp_parse_url(home_url('/'), PHP_URL_HOST);
+    if (is_string($home) && $home !== '') {
+        $hosts[] = strtolower($home);
+        // Accept the www/non-www sibling of our own host, nothing else.
+        $hosts[] = strpos($home, 'www.') === 0
+            ? strtolower(substr($home, 4)) : 'www.' . strtolower($home);
+    }
+    $hosts = apply_filters('alt_digest_link_hosts', $hosts);
+    return array_values(array_unique(array_filter(array_map('strtolower', (array) $hosts))));
+}
+
+/**
+ * The open-redirect guard, and the only place a destination is judged.
+ *
+ * A link counter that will forward a visitor anywhere is a phishing relay
+ * wearing our domain name, and that is strictly worse than having no counter:
+ * the abuse is served from a URL readers have been taught to trust. So the
+ * destination must be an absolute http(s) URL on one of OUR hosts, with no
+ * credentials in it (https://ourhost@evil.example is a classic bypass, and
+ * wp_parse_url reads the host correctly, but a stored URL carrying a user or
+ * pass has no legitimate reason to exist here). Checked when the link is
+ * STORED at compose time, and checked AGAIN when it is redeemed, so a row that
+ * somehow reached the table by another path still cannot be followed.
+ */
+function alt_digest_link_allowed($url) {
+    if (!is_string($url) || $url === '' || strlen($url) > 600) return false;
+    $parts = wp_parse_url($url);
+    if (!is_array($parts)) return false;
+    if (!isset($parts['scheme']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)) return false;
+    if (isset($parts['user']) || isset($parts['pass'])) return false;
+    if (empty($parts['host'])) return false;
+    return in_array(strtolower($parts['host']), alt_digest_link_hosts(), true);
+}
+
+function alt_digest_link_hash($url) {
+    return md5((string) $url);
+}
+
+function alt_digest_click_url($send_id, $url) {
+    return add_query_arg(
+        array('s' => (int) $send_id, 'l' => alt_digest_link_hash($url)),
+        rest_url('layoffs/v1/click')
+    );
+}
+
+/**
+ * Register a link for a send and return the first-party URL to put in the
+ * email. A destination that fails the guard is NOT wrapped and NOT stored: the
+ * reader gets the plain link, so a counting decision can never break or
+ * relocate a link. Returns the original URL when the tables are not there yet.
+ */
+function alt_digest_track_link($send_id, $url) {
+    global $wpdb;
+    $send_id = (int) $send_id;
+    if ($send_id <= 0 || !alt_digest_link_allowed($url)) return $url;
+    if (!alt_digest_table_present(alt_digest_links_table())) return $url;
+    $wpdb->query($wpdb->prepare(
+        'INSERT IGNORE INTO ' . alt_digest_links_table() .
+        ' (send_id, link_hash, url, clicks) VALUES (%d, %s, %s, 0)',
+        $send_id, alt_digest_link_hash($url), $url));
+    return alt_digest_click_url($send_id, $url);
+}
+
+/**
+ * Redirect handler. Takes an id and a hash, never a URL: there is no parameter
+ * a caller can put a destination into. The destination comes out of the row we
+ * wrote ourselves, is re-validated, and is emitted through wp_safe_redirect,
+ * which is a third independent gate on the host.
+ */
+function alt_api_digest_click($request) {
+    global $wpdb;
+    $home = home_url('/');
+    $send_id = (int) $request->get_param('s');
+    $hash = (string) $request->get_param('l');
+    if ($send_id <= 0 || !preg_match('/^[a-f0-9]{32}$/', $hash)) {
+        wp_safe_redirect($home, 302);
+        exit;
+    }
+    if (!alt_digest_table_present(alt_digest_links_table())) {
+        wp_safe_redirect($home, 302);
+        exit;
+    }
+    $row = $wpdb->get_row($wpdb->prepare(
+        'SELECT id, url FROM ' . alt_digest_links_table() .
+        ' WHERE send_id = %d AND link_hash = %s', $send_id, $hash), ARRAY_A);
+    // Unknown pair, or a stored destination that no longer passes the host
+    // guard: go home. Never echo the parameter back, never follow it.
+    $url = ($row && alt_digest_link_allowed($row['url'])) ? $row['url'] : $home;
+
+    // Rate limit the COUNTER, not the reader. The destination is always one of
+    // our own pages, so refusing to redirect would only break a real reader's
+    // link while doing nothing for abuse; what is worth protecting is the
+    // number. Above the ceiling the visit still lands, uncounted. The key is a
+    // hash of the address in a transient that expires, exactly as the signup
+    // limiter does; nothing about the visitor reaches the click store.
+    if ($row && $url !== $home) {
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $key = 'alt_digest_click_' . md5($ip);
+        $hits = (int) get_transient($key);
+        set_transient($key, $hits + 1, 5 * MINUTE_IN_SECONDS);
+        if ($hits < 60) {
+            $wpdb->query($wpdb->prepare(
+                'UPDATE ' . alt_digest_links_table() . ' SET clicks = clicks + 1 WHERE id = %d',
+                (int) $row['id']));
+        }
+    }
+    wp_safe_redirect($url, 302);
+    exit;
+}
+
+/* ------------------------------------------------------------------ */
 /* Digest composition (reads the trackers' own public APIs)            */
 /* ------------------------------------------------------------------ */
 
@@ -449,7 +622,7 @@ function alt_digest_list_unsub_headers($unsub_token) {
  * Returns array('html' => ..., 'text' => ...) or null when there is nothing
  * to say (or the endpoint failed; a broken digest is worse than none).
  */
-function alt_digest_compose_layoff($from, $to) {
+function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     if (!function_exists('rest_do_request')) return null;
     $req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
     $req->set_param('from', $from);
@@ -482,7 +655,11 @@ function alt_digest_compose_layoff($from, $to) {
         }
         $html .= '</ul>';
     }
-    $html .= '<p style="margin:0;"><a href="' . esc_url($url) . '">Open the AI Layoff Tracker</a></p>';
+    // Counted link. The plain URL stays in the text part: a text reader should
+    // not be handed a machine-shaped URL to squint at, and one counted copy per
+    // send is enough to know whether the section is read at all.
+    $click = alt_digest_track_link($send_id, $url);
+    $html .= '<p style="margin:0;"><a href="' . esc_url($click) . '">Open the AI Layoff Tracker</a></p>';
     $text .= "Open the tracker: {$url}\n";
     return array('html' => $html, 'text' => $text);
 }
@@ -492,7 +669,7 @@ function alt_digest_compose_layoff($from, $to) {
  * talent plugin is a SEPARATE plugin on the same install; if it is inactive
  * its namespace does not resolve and this quietly returns null.
  */
-function alt_digest_compose_talent($from, $to) {
+function alt_digest_compose_talent($from, $to, $send_id = 0) {
     if (!function_exists('rest_do_request')) return null;
     $agg = new WP_REST_Request('GET', '/talent/v1/aggregate');
     $agg->set_param('since', $from);
@@ -535,7 +712,8 @@ function alt_digest_compose_talent($from, $to) {
             $html .= '</ul>';
         }
     }
-    $html .= '<p style="margin:0;"><a href="' . esc_url($url) . '">Open the Talent Intelligence Tracker</a></p>';
+    $click = alt_digest_track_link($send_id, $url);
+    $html .= '<p style="margin:0;"><a href="' . esc_url($click) . '">Open the Talent Intelligence Tracker</a></p>';
     $text .= "Open the tracker: {$url}\n";
     return array('html' => $html, 'text' => $text);
 }
@@ -561,10 +739,23 @@ function alt_digest_send($freq) {
     $to_date = gmdate('Y-m-d');
     $from_date = gmdate('Y-m-d', time() - $days * DAY_IN_SECONDS);
 
+    // Open the send row BEFORE composing, because the counted links carry its
+    // id. recipients is written at the end, from what actually went out, so a
+    // run that dies mid-loop leaves a row that under-reports rather than one
+    // that claims a delivery that never happened.
+    $send_id = 0;
+    if (alt_digest_table_present(alt_digest_sends_table())) {
+        $wpdb->insert(alt_digest_sends_table(), array(
+            'freq' => $freq, 'sent_at' => gmdate('Y-m-d H:i:s'),
+            'recipients' => 0, 'eligible' => 0,
+        ));
+        $send_id = (int) $wpdb->insert_id;
+    }
+
     // Compose each tracker's section ONCE per run, not per recipient.
     $sections = array(
-        'layoff' => alt_digest_compose_layoff($from_date, $to_date),
-        'talent' => alt_digest_compose_talent($from_date, $to_date),
+        'layoff' => alt_digest_compose_layoff($from_date, $to_date, $send_id),
+        'talent' => alt_digest_compose_talent($from_date, $to_date, $send_id),
         // 'articles' deliberately absent: that consent flag records intent
         // only. No article-writing mechanism exists, so nothing sends. Do not
         // add a sender here without an actual editorial pipeline behind it.
@@ -607,6 +798,23 @@ function alt_digest_send($freq) {
         if (wp_mail($row['email'], '[AskTheRecruiter] ' . $label . ' tracker digest', $html, $headers)) {
             $sent++;
             $wpdb->update($table, array('last_sent_at' => gmdate('Y-m-d H:i:s')), array('id' => $row['id']));
+        }
+    }
+    if ($send_id > 0) {
+        // A run with no eligible recipient is not a send. Drop the row rather
+        // than log a zero: "last digest sent to 0" would read as a delivery
+        // failure when nothing was due to go out at all.
+        if ($sent === 0 && !$rows) {
+            $wpdb->query($wpdb->prepare(
+                'DELETE FROM ' . alt_digest_sends_table() . ' WHERE id = %d', $send_id));
+            if (alt_digest_table_present(alt_digest_links_table())) {
+                $wpdb->query($wpdb->prepare(
+                    'DELETE FROM ' . alt_digest_links_table() . ' WHERE send_id = %d', $send_id));
+            }
+        } else {
+            $wpdb->update(alt_digest_sends_table(),
+                array('recipients' => $sent, 'eligible' => count($rows)),
+                array('id' => $send_id));
         }
     }
     return array($sent, count($rows));
@@ -671,6 +879,160 @@ function alt_digest_cron_run() {
     }
 }
 add_action('alt_digest_cron', 'alt_digest_cron_run');
+
+/* ------------------------------------------------------------------ */
+/* Stats (keyed, read only, counts only)                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every number the owner's surfaces show about this list, as COUNTS.
+ *
+ * Two rules hold this function together:
+ *
+ *   1. No address, ever. There is no column selected here that holds one, no
+ *      branch that returns one, and no error path that echoes one. The test
+ *      asserts no '@' appears anywhere in the serialised payload.
+ *   2. Absent table is UNKNOWN, not zero. On an install where the digest has
+ *      not deployed yet, "0 subscribers" is a claim (nobody signed up) and it
+ *      is false; the truth is that we cannot see. So a missing table returns
+ *      available=false with every count null, and the readers downstream print
+ *      UNKNOWN. This is the single most repeated lesson in this codebase.
+ *
+ * Rates are over rows we still HOLD. Unsubscribed and never-confirmed rows are
+ * hard-deleted after ALT_DIGEST_RETENTION_DAYS (the erase promise), so the
+ * confirm rate is a rate over the retained window, not over all time, and it
+ * says so in the payload rather than pretending otherwise.
+ */
+function alt_digest_stats() {
+    global $wpdb;
+    $out = array(
+        'available'  => false,
+        'reason'     => 'the subscriber table does not exist on this install',
+        'as_of'      => gmdate('c'),
+        'confirmed'  => null,
+        'pending'    => null,
+        'unsubscribed' => null,
+        'signups_retained' => null,
+        'confirm_rate' => null,
+        'confirmed_last_7_days' => null,
+        'frequency'  => null,
+        'last_send'  => null,
+        'open_tracking' => 'none',
+        'basis'      => 'counts over retained rows; unsubscribed and never confirmed rows are '
+                      . 'hard deleted after ' . (int) ALT_DIGEST_RETENTION_DAYS . ' days',
+    );
+    if (!alt_digest_table_present(alt_subscribers_table())) return $out;
+    $subs = alt_subscribers_table();
+
+    $out['available'] = true;
+    $out['reason'] = '';
+    $count = function ($where) use ($wpdb, $subs) {
+        return (int) $wpdb->get_var("SELECT COUNT(*) FROM $subs WHERE $where");
+    };
+    $confirmed = $count("status = 'confirmed'");
+    $out['confirmed'] = array(
+        'total'    => $confirmed,
+        'layoff'   => $count("status = 'confirmed' AND consent_layoff = 1"),
+        'talent'   => $count("status = 'confirmed' AND consent_talent = 1"),
+        'articles' => $count("status = 'confirmed' AND consent_articles = 1"),
+    );
+    $out['pending'] = $count("status = 'pending'");
+    $out['unsubscribed'] = $count("status = 'unsubscribed'");
+    $retained = (int) $wpdb->get_var("SELECT COUNT(*) FROM $subs");
+    $out['signups_retained'] = $retained;
+    $out['confirm_rate'] = $retained > 0 ? round($confirmed / $retained, 4) : null;
+
+    $week_ago = gmdate('Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS);
+    $out['confirmed_last_7_days'] = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $subs WHERE status = 'confirmed' AND confirmed_at >= %s", $week_ago));
+
+    // Daily vs weekly over CONFIRMED rows. Frequency is stored per list, so a
+    // row counts as daily when any list it consented to is set to daily. One
+    // person is counted once either way, so the two add up to the confirmed
+    // total and cannot double count someone who picked both trackers.
+    $daily = $count("status = 'confirmed' AND ("
+        . "(consent_layoff = 1 AND freq_layoff = 'daily') OR "
+        . "(consent_talent = 1 AND freq_talent = 'daily') OR "
+        . "(consent_articles = 1 AND freq_articles = 'daily'))");
+    $out['frequency'] = array('daily' => $daily, 'weekly' => max(0, $confirmed - $daily));
+
+    $out['last_send'] = alt_digest_last_send_stats();
+    return $out;
+}
+
+/**
+ * The last digest run: when, how many messages went out, how many link clicks
+ * that send has drawn, and how many people unsubscribed in the 48 hours after
+ * it. Returns null when the log exists but holds no send yet, which is a
+ * different statement from "we cannot see" and is why the caller keeps
+ * available=true around it.
+ */
+function alt_digest_last_send_stats() {
+    global $wpdb;
+    if (!alt_digest_table_present(alt_digest_sends_table())) return null;
+    $row = $wpdb->get_row('SELECT id, freq, sent_at, recipients, eligible FROM '
+        . alt_digest_sends_table() . ' ORDER BY sent_at DESC, id DESC LIMIT 1', ARRAY_A);
+    if (!$row) return null;
+
+    $clicks = null;
+    if (alt_digest_table_present(alt_digest_links_table())) {
+        $clicks = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COALESCE(SUM(clicks), 0) FROM ' . alt_digest_links_table()
+            . ' WHERE send_id = %d', (int) $row['id']));
+    }
+
+    $unsubs = null;
+    if (alt_digest_table_present(alt_subscribers_table())) {
+        $until = gmdate('Y-m-d H:i:s', strtotime($row['sent_at'] . ' UTC') + 48 * 3600);
+        $unsubs = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . alt_subscribers_table()
+            . ' WHERE unsubscribed_at IS NOT NULL AND unsubscribed_at >= %s AND unsubscribed_at < %s',
+            $row['sent_at'], $until));
+    }
+
+    return array(
+        'send_id'          => (int) $row['id'],
+        'freq'             => (string) $row['freq'],
+        'sent_at'          => (string) $row['sent_at'],
+        'recipients'       => (int) $row['recipients'],
+        'eligible'         => (int) $row['eligible'],
+        'clicks'           => $clicks,
+        'unsubscribes_48h' => $unsubs,
+    );
+}
+
+/**
+ * Routes. /subscriber-stats is key gated exactly as /alert and
+ * /press-subscribers are (alt_api_permission, X-Layoff-API-Key header, fails
+ * closed when no key is configured). /click is public because a link in an
+ * email cannot carry a key; its safety comes from taking no destination.
+ */
+function alt_digest_register_routes() {
+    register_rest_route('layoffs/v1', '/subscriber-stats', array(
+        'methods'             => 'GET',
+        'callback'            => 'alt_api_subscriber_stats',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
+    register_rest_route('layoffs/v1', '/click', array(
+        'methods'             => 'GET',
+        'callback'            => 'alt_api_digest_click',
+        'permission_callback' => '__return_true',
+        'args'                => array(
+            's' => array('required' => true),
+            'l' => array('required' => true),
+        ),
+    ));
+}
+add_action('rest_api_init', 'alt_digest_register_routes');
+
+function alt_api_subscriber_stats($request) {
+    $res = new WP_REST_Response(alt_digest_stats(), 200);
+    // Never cached at the edge: these are operational numbers read by a
+    // session at the moment it asks, and a stale count read as current is the
+    // same class of error as a zero read as UNKNOWN.
+    $res->header('Cache-Control', 'no-store, max-age=0');
+    return $res;
+}
 
 function alt_digest_cron_schedule() {
     if (!wp_next_scheduled('alt_digest_cron')) {

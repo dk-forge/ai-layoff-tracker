@@ -43,6 +43,7 @@ Exit codes:
     python3 railway/ops_status.py
 """
 import json
+import os as _os
 import sys
 import uuid
 from pathlib import Path
@@ -451,6 +452,69 @@ def _report_run_cost():
     return problems, unverified
 
 
+def subscriber_lines():
+    """Digest subscriber counts, as the lines this section prints.
+
+    COUNTS ONLY. /subscriber-stats returns no address in any field or error
+    path, and nothing here would print one if it did.
+
+    Three outcomes, kept distinct on purpose:
+      * no WP_API_KEY in this environment  -> UNKNOWN (we did not ask)
+      * the route says available=false     -> UNKNOWN (the table is not there)
+      * numbers                            -> print them
+    A zero is only ever printed when the endpoint counted zero rows. "We could
+    not look" and "nobody has subscribed" are different facts and a 0 standing
+    in for the first one is a lie with a number attached.
+
+    Deliberately INFORMATIONAL: an unreadable panel does not push this tool to
+    exit 3. Most local sessions carry no key, and making the common case exit
+    non-zero is how a status tool stops being read. The health of the mailer
+    itself is already guarded, loudly, by the digest_mailer staleness ceiling
+    in section [2]. Do not "upgrade" this to an issue.
+    """
+    key = _os.environ.get("WP_API_KEY", "")
+    if not key:
+        return ["UNKNOWN - no WP_API_KEY in this environment, so the keyed stats route",
+                "          was not called. This is NOT 'zero subscribers'."]
+    try:
+        req = urllib.request.Request(
+            f"{BASE}/wp-json/layoffs/v1/subscriber-stats?cb={uuid.uuid4().hex[:8]}",
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Layoff-API-Key": key})
+        data = json.loads(urllib.request.urlopen(req, timeout=30).read().decode())
+    except Exception as exc:
+        return [f"UNKNOWN - could not read /subscriber-stats ({exc}).",
+                "          Not a pass and not a zero: this run did not look."]
+    if not isinstance(data, dict) or not data.get("available"):
+        reason = (data or {}).get("reason") or "the endpoint reported no data"
+        return [f"UNKNOWN - {reason}.",
+                "          A 0 here would claim nobody subscribed; the truth is we cannot see."]
+
+    c = data.get("confirmed") or {}
+    freq = data.get("frequency") or {}
+    rate = data.get("confirm_rate")
+    lines = [
+        f"subscribers {c.get('total')} confirmed "
+        f"(layoff {c.get('layoff')}, talent {c.get('talent')}, articles {c.get('articles')}); "
+        f"+{data.get('confirmed_last_7_days')} in the last 7 days",
+        f"pending {data.get('pending')}, unsubscribed {data.get('unsubscribed')}, "
+        f"confirm rate {'UNKNOWN' if rate is None else format(rate * 100, '.1f') + '%'}; "
+        f"daily {freq.get('daily')}, weekly {freq.get('weekly')}",
+    ]
+    last = data.get("last_send")
+    if not last:
+        lines.append("last send  none logged yet (the send log is empty, not unreadable)")
+    else:
+        clicks = "UNKNOWN" if last.get("clicks") is None else last.get("clicks")
+        unsub = "UNKNOWN" if last.get("unsubscribes_48h") is None else last.get("unsubscribes_48h")
+        lines.append(
+            f"last send  {last.get('sent_at')} ({last.get('freq')}): sent to "
+            f"{last.get('recipients')}, {clicks} click(s), {unsub} unsubscribed within 48h")
+    lines.append("no open-rate figure exists here on purpose: open tracking needs a")
+    lines.append("          per-person pixel and about half of inboxes preload it.")
+    return lines
+
+
 def _print_wrapped(text, width=86, indent="        "):
     """One slice per line, wrapped, so a multi-slice verdict stays readable."""
     import textwrap
@@ -672,6 +736,11 @@ def main():
         print(f"    {line}")
     if _held_alerts_need_a_human():
         issues.append("alerts are held and not being delivered")
+
+    # 4c. The audience. Counts only, never an address.
+    print("\n[4c] DIGEST SUBSCRIBERS  (keyed /subscriber-stats; counts only, no addresses)")
+    for line in subscriber_lines():
+        print(f"    {line}")
 
     # 5+6. Surfaces to keep current
     print("\n[5] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
