@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "attempts": 1,
+      "key": "resolve:tests:feature-email-digest",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-05T07:04:21+00:00",
+      "last_error": "HTTP 504 from /alert: error code: 504\n",
+      "payload": {
+        "body": "'Tests' on feature/email-digest passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30983485780\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "tests:feature-email-digest",
+        "subject": "RECOVERED: Tests is green again"
+      },
+      "raised_at": "2026-08-05T07:04:21+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30983485780",
+      "scope": "tests:feature-email-digest",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -79,6 +95,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-04T01:45:12+00:00",
+  "updated_at": "2026-08-05T07:04:21+00:00",
   "version": 1
 }
