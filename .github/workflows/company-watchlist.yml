@@ -26,7 +26,10 @@ on:
 jobs:
   watchlist:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    # Sized from measurement, 2026-08-05: median 18.5 min, max 47.0 over
+    # the last 15 runs. 47 was 85% of the old 55 ceiling - the next
+    # self-timeout waiting. ~2x the max and ~5x the median: 90.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

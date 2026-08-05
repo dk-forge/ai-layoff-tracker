@@ -234,6 +234,43 @@ class BodyIsBounded(unittest.TestCase):
                                          "connection on every row of a batch")
 
 
+class AMidBodyFailureIsARequestsException(unittest.TestCase):
+    """A host that returns 200 and then goes silent mid-body must surface as
+    `requests.RequestException`, the exception class `safe_get` documents and
+    every caller catches — NOT as urllib3's own `ReadTimeoutError`, which no
+    caller catches. The sibling tracker took exactly that bullet on
+    2026-08-05: one dead publisher's mid-body timeout escaped every per-host
+    guard and killed a 19-minute run. Both tests fail on the pre-fix tree.
+    """
+
+    class DyingRaw:
+        def read(self, n, decode_content=True):
+            import urllib3
+            raise urllib3.exceptions.ReadTimeoutError(
+                None, "host.example", "Read timed out.")
+
+    def test_a_read_timeout_mid_body_is_translated(self):
+        stub_dns(self, {"host.example": ["93.184.216.34"]})
+        response = FakeResponse(200, {}, b"")
+        response.raw = self.DyingRaw()
+        session = FakeSession({"https://host.example/x": response})
+        with self.assertRaises(requests.RequestException):
+            safe_get("https://host.example/x", session=session)
+        self.assertTrue(response.closed, "the dead response must still close")
+
+    def test_safe_get_with_retry_absorbs_it_per_its_contract(self):
+        """`safe_get_with_retry` promises None when every attempt failed
+        transiently; a mid-body timeout is exactly such a failure."""
+        stub_dns(self, {"host.example": ["93.184.216.34"]})
+        response = FakeResponse(200, {}, b"")
+        response.raw = self.DyingRaw()
+        session = FakeSession({"https://host.example/x": response})
+        out = safe_fetch.safe_get_with_retry(
+            "https://host.example/x", session=session, attempts=2,
+            sleep=lambda seconds: None)
+        self.assertIsNone(out, "a dead host is an outcome, not an exception")
+
+
 # --- The two call sites actually route through it ---------------------------
 
 class CallSitesUseTheGate(unittest.TestCase):

@@ -7,6 +7,7 @@ data-changing work must fail loudly.
 """
 import json
 import os
+import signal
 import sys
 import time
 import urllib.request
@@ -14,6 +15,38 @@ import spend
 
 API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+
+#: Wall-clock budget for this whole script, in seconds. The SCRIPT owns its
+#: deadline (the Wayback archiver's pattern): it finishes cleanly with what it
+#: has and says what it skipped, instead of running into the workflow's
+#: timeout-minutes and being cancelled mid-step.
+#:
+#: Why a wall clock and not the per-call `timeout=`: urlopen's timeout bounds
+#: each SOCKET operation, not the call. A server that sends headers and then
+#: trickles — an LLM endpoint grinding through a long completion is exactly
+#: this shape — never leaves any single read hanging 45 seconds, so the call
+#: runs unbounded. That is what cancelled the data-quality job at its
+#: 10-minute ceiling on 2026-07-29, 2026-08-03 and 2026-08-05 (run
+#: 31021670125): a healthy run of this script takes under 30 seconds, and the
+#: cancelled ones sat in this step for 9m40s and were still going.
+#:
+#: Sized from measurement: healthy runs of the WHOLE data-quality job take
+#: 0.6-0.9 min, of which this script is ~10-30 s. 360 s is more than ten
+#: times the healthy runtime — room for a slow provider, not for a hang —
+#: and together with the ~40 s of earlier steps it keeps the job's worst
+#: case near 7 minutes, comfortably inside the workflow's 10-minute ceiling.
+DEADLINE_SECONDS = int(os.environ.get("ALT_SPOTCHECK_DEADLINE", "360"))
+
+
+class Deadline(Exception):
+    """Raised by SIGALRM wherever execution happens to be."""
+
+
+def arm_deadline(seconds):
+    def ring(signum, frame):
+        raise Deadline(f"wall-clock deadline ({seconds}s) reached")
+    signal.signal(signal.SIGALRM, ring)
+    signal.alarm(max(1, int(seconds)))
 
 def summary(text):
     path = os.environ.get("GITHUB_STEP_SUMMARY")
@@ -67,6 +100,7 @@ def main():
     # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
     # failing — a deferred classification spot-check is re-run on its next
     # schedule, and reddening CI over a budget decision is noise.
+    arm_deadline(DEADLINE_SECONDS)
     if not spend.paid_reads_enabled():
         print("paid reads are OFF (spend ceiling) — skipping the classification spot-check "
               "this run; it resumes on the next schedule")
@@ -87,6 +121,16 @@ def main():
                   "— empty flags list if everything is reasonable. Only flag CLEAR mismatches, not debatable ones.\n\n"
                   + json.dumps(sample, ensure_ascii=False))
         flags = ask_model(prompt).get("flags", [])
+    except Deadline as exc:
+        # Finish cleanly with what we have and say what was skipped: the
+        # advisory audit is re-run on its next schedule, and an audit that was
+        # SKIPPED-and-said-so is a different thing from a job cancelled at the
+        # workflow ceiling with no summary at all.
+        summary("## Classification spot-check — skipped at its own deadline\n"
+                "The data-quality report completed; the advisory audit stopped itself (`"
+                + str(exc) + "`) rather than run into the workflow ceiling. "
+                "It resumes on the next schedule.")
+        return 0
     except Exception as exc:
         summary("## Classification spot-check — temporarily unavailable\n"
                 "The data-quality report completed, but the advisory model audit did not run after retries: `" + str(exc) + "`.")
@@ -126,5 +170,11 @@ if __name__ == "__main__":
     code = main()
     # The sample size varies by path here, so items is left UNKNOWN rather
     # than guessed; the metered cost and call count are exact either way.
-    spend.record_job_run()
+    try:
+        spend.record_job_run()
+    except Deadline:
+        # Bookkeeping caught by the tail end of the wall clock: the audit
+        # itself finished, and a metering row deferred to the next run is not
+        # an action item.
+        print("::notice::spend.record_job_run deferred: the script's wall-clock deadline rang during bookkeeping")
     sys.exit(code)

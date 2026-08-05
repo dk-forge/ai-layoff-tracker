@@ -63,7 +63,10 @@ concurrency:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Sized from measurement, 2026-08-05: runtime is bimodal - median 2.7
+    # min but a legitimate 41.1-min run sat at 91% of the old 45 ceiling.
+    # ~3x the slow mode: 120.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
