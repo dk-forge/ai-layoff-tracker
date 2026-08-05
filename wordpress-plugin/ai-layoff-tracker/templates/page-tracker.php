@@ -122,12 +122,25 @@ $alt_hero_geo    = 'worldwide';
     $alt_next_ts = function_exists('alt_next_ingest_utc') ? alt_next_ingest_utc() : null;
     ?>
     <?php
-    // EDITORIAL HERO. The old floor banner's promise is the hero now: one
-    // serif thesis, one trust sentence, two routes (adopted from the owner's
-    // shared design, 2026-08-02). The freshness panel on the right hosts the
-    // Roo status header ([alt_stats_bar] yields to this page, see
-    // alt_shortcode_stats_bar), the next-update time and four headline
-    // figures from the same bootstrap totals the tiles render.
+    /*
+      EDITORIAL HERO, and the ONE question the first screen answers.
+
+      2026-08-04, the owner reading the live page: "still very messy, lots of
+      text, lots of confusion on what to do first and how to start." Above the
+      first row of data the page carried three headline paragraphs, a status
+      panel, a coverage ribbon, an export row, a 4x4 board with a four-clause
+      footnote, four more link groups, ten region chips, fifteen dropdowns and
+      five tiles each with its own paragraph. It answered every question a
+      reader might have at once, so it answered none of them first.
+
+      The hero now holds exactly four things: the figure, what it counts, one
+      trust line stated as a benefit, and the two routes out. Everything the
+      hero used to carry is still on the page, further down, in the
+      alt-datastrip section (freshness, coverage ribbon, cite/export row, the
+      report and press links). Nothing was deleted except the duplicated trust
+      claims and the "New here? Start with:" block, whose existence was the
+      bug: a page that needs a start-here list has failed to be self-evident.
+    */
     ?>
     <header class="alt-hero">
         <div class="alt-hero-main">
@@ -160,77 +173,49 @@ $alt_hero_geo    = 'worldwide';
                          Both spans are kept in step live by renderStats(), which
                          swaps in the active filter's geography and period. */ ?>
                 <span class="alt-hero-figure-label">verified job cuts <span id="alt-hero-total-geo"><?php echo esc_html($alt_hero_geo); ?></span>, <span id="alt-hero-total-period"><?php echo esc_html($alt_hero_period); ?></span></span>
-                <span class="alt-hero-figure-sub"><b id="alt-hero-ai"><?php echo esc_html($alt_stat('ai')); ?></b> of them were blamed on AI by the employer.</span>
-                <?php /* THE RECONCILING LINE. to-date + later = the hero figure, so a
-                         reader can add up what is on screen. Kept in step live by
-                         renderStats() (alt-hero-asof). Printed only when some of the
-                         window is still ahead; in a past-year view there is nothing
-                         to split and the sentence would be noise.
-                         The wording is alt_period_split_sentence()'s, not this
-                         template's: the press page prints the same string for the
-                         same year, which is the whole point of the helper. It said
-                         "later in the period" and never named the calendar total, so
-                         a reader who had seen the press page's 450,529 had nothing on
-                         this page tying it to the 484,468 above it. */ ?>
-                <?php $alt_split = ($alt_sv !== null && function_exists('alt_period_split_sentence'))
-                    ? alt_period_split_sentence($alt_sv['to-date'], $alt_sv['total'], date_i18n('M j, Y'), $alt_period)
-                    : ''; ?>
-                <span class="alt-hero-figure-asof" id="alt-hero-asof"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><?php echo esc_html($alt_split); ?></span>
+                <?php /* THE AI LINE, written to the rubric it reports and no wider.
+                         It read "blamed on AI by the employer". "Blamed" is a verdict,
+                         and this tracker does not return one: the record is that the
+                         EMPLOYER named AI, in words we hold and can quote. The
+                         methodology page words it the same way ("employer names
+                         AI/automation, quote on file"), so the two surfaces now agree
+                         and neither asserts causation on the employer's behalf. */ ?>
+                <span class="alt-hero-figure-sub"><b id="alt-hero-ai"><?php echo esc_html($alt_stat('ai')); ?></b> of those are cuts where the employer named AI as a reason.</span>
             </p>
             <?php endif; ?>
-            <p class="alt-hero-thesis" role="heading" aria-level="2">Every layoff here is verified. That is the whole point.</p>
-            <p class="alt-hero-trust">We do not estimate. Every number links to an official filing, a state WARN notice, or a named news report. A verified floor, not a survey.</p>
+            <?php /* ONE trust line, and it is the benefit, not the refusal. It read
+                     "Every layoff here is verified. That is the whole point." followed
+                     by "We do not estimate...". The first argues with somebody the
+                     reader has never met; the second leads with what we refuse to do.
+                     Both state one fact, so the page states it once, as what the
+                     reader gets. The two duplicate claims that stood beside it (the
+                     hero trust paragraph and the freshness panel's "No figure appears
+                     unless its source states it") are gone, not moved. */ ?>
+            <p class="alt-hero-thesis" role="heading" aria-level="2">Every entry links to the filing, notice or report it came from.</p>
             <p class="alt-hero-actions">
                 <a class="alt-btn alt-btn-primary" id="alt-hero-search" href="#alt-search">Search the record</a>
                 <a class="alt-btn" href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count</a>
             </p>
+            <?php /* THE RECONCILING LINE, DEMOTED BUT NOT HIDDEN. to-date + later =
+                     the hero figure, so a reader can add up what is on screen, and
+                     the press page prints the identical sentence for the same year
+                     (alt_period_split_sentence owns the wording, and
+                     test_headline_total_agreement.py runs both implementations on
+                     the same inputs). It used to be the THIRD thing a human read:
+                     three numbers and an equation delivered before anyone had a
+                     reason to care. It is now a labelled note after the two routes.
+                     It is NOT behind a disclosure. This codebase has shipped three
+                     separate caveats that computed to display:none or 0x0 and were
+                     never read by anyone, and a reconciliation a journalist cannot
+                     see does not reconcile anything. Kept in step live by
+                     renderStats(), which hides the WRAPPER (label and all) in a
+                     past-year view where there is nothing left to split. */ ?>
+            <?php $alt_split = ($alt_sv !== null && function_exists('alt_period_split_sentence'))
+                ? alt_period_split_sentence($alt_sv['to-date'], $alt_sv['total'], date_i18n('M j, Y'), $alt_period)
+                : ''; ?>
+            <p class="alt-hero-figure-asof" id="alt-hero-asof-wrap"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><b class="alt-hero-asof-label">In this figure:</b> <span id="alt-hero-asof"><?php echo esc_html($alt_split); ?></span></p>
         </div>
-        <aside class="alt-fresh" aria-label="Freshness and headline figures">
-            <?php echo function_exists('alt_render_status_header') ? alt_render_status_header() : ''; ?>
-            <?php if ($alt_next_ts) : ?>
-            <span class="alt-fresh-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
-            <?php endif; ?>
-            <?php if ($alt_sv !== null) : ?>
-            <?php /* The headline total and the AI figure moved to the hero above and
-                     are deliberately NOT repeated here: the same number twice on one
-                     screen, once at 72px and once at 20px, invites the reader to
-                     wonder which of the two is the real one. The panel keeps the
-                     coverage figures, which are its own subject. */ ?>
-            <div class="alt-fresh-stats">
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies</i></span>
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries</i></span>
-            </div>
-            <?php endif; ?>
-            <span class="alt-fresh-check">&#10003; No figure appears unless its source states it.</span>
-        </aside>
     </header>
-    <?php
-    // COVERAGE RIBBON: one derived line in place of scattered trust prose.
-    // Counts come from alt_coverage_counts() (hour-cached, computed from the
-    // data, never typed); the sibling link mirrors the talent tracker's.
-    $alt_cov = alt_coverage_counts();
-    $alt_cov_first = !empty($alt_cov['first']) ? date_i18n('M Y', strtotime($alt_cov['first'])) : '';
-    ?>
-    <p class="alt-ribbon">
-        <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['us_states']; ?></b> US states<?php echo !empty($alt_cov['dc']) ? ' + DC' : ''; ?></span>
-        <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
-    </p>
-    <?php
-    // First-screen cite affordance (Eurostat pattern: headline + dateline on
-    // one screen). The long-form cite block stays at the bottom; this is the
-    // compact route to it, plus the same filter-honoring CSV/JSON exports
-    // (layoffs.js keeps these hrefs in step with the page).
-    ?>
-    <p class="alt-citeline">
-        <?php if ($alt_sv !== null) : ?>
-        <?php /* "so far, as of <today>" is a TO-DATE claim, so it quotes the
-                 to-date figure. It used to quote the whole-window total, which
-                 disagreed with the FAQPage JSON-LD this same page emits from
-                 alt_live_numbers() (that query has always clamped at today). */ ?>
-        <span class="alt-citeline-stat"><b id="alt-citeline-total"><?php echo esc_html($alt_stat('to-date')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
-        <?php endif; ?>
-        <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
-    </p>
     <?php
     // THE SIGNAL BOARD, server-rendered (the "colored narratives"). Same
     // container and same data plumbing as the strip it evolves: numbers come
@@ -295,6 +280,14 @@ $alt_hero_geo    = 'worldwide';
             $alt_lvals[$alt_ck] = $alt_ld && !empty($alt_ld['job_count']) ? (int) $alt_ld['job_count'] : 0;
             if ($alt_lvals[$alt_ck] > $alt_lmax) $alt_lmax = $alt_lvals[$alt_ck];
         }
+        // THE SAME EVENT CAN LEAD MORE THAN ONE COLUMN, and it usually does:
+        // this week sits inside this month, so one big cut leads both. That is
+        // arithmetically right and it reads as a bug ("why is Dird Group
+        // printed twice?"). The repeat is now MARKED rather than removed: the
+        // first column to carry a leader keeps it plain, and every later column
+        // showing the same employer says "same event" under the number. Nothing
+        // about the underlying values changes.
+        $alt_lseen = array();
         $alt_board_html .= '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest event</span>';
         foreach ($alt_cols as $alt_ck => $alt_cl) {
             $alt_ld = $alt_board[$alt_ck]['leader'];
@@ -302,32 +295,58 @@ $alt_hero_geo    = 'worldwide';
             $eq = $alt_sb_eq && ($alt_ck === 'today' || $alt_ck === 'month') ? ' alt-sb-eq' : '';
             $heat = ($alt_lv > 0 && $alt_lmax > 0) ? ' style="background:rgba(42,120,214,' . number_format(0.08 + 0.26 * $alt_lv / $alt_lmax, 3, '.', '') . ')"' : '';
             if ($alt_lv > 0) {
-                $alt_lbody = '<b>' . esc_html($alt_ld['company_name']) . '</b><span>' . esc_html(number_format($alt_lv)) . '</span>';
+                $alt_lname = (string) $alt_ld['company_name'];
+                $alt_lrep = isset($alt_lseen[$alt_lname]) ? ' alt-sb-ev-repeat' : '';
+                $alt_lseen[$alt_lname] = true;
+                $alt_lbody = '<b>' . esc_html($alt_lname) . '</b><span>' . esc_html(number_format($alt_lv)) . '</span>'
+                    . ($alt_lrep ? '<i class="alt-sb-again">same event</i>' : '');
                 $alt_board_html .= !empty($alt_ld['permalink'])
-                    ? '<a class="alt-sb-cell alt-sb-ev' . $eq . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this event&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
-                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . '" role="cell" href="#" data-company="' . esc_attr($alt_ld['company_name']) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
+                    ? '<a class="alt-sb-cell alt-sb-ev' . $eq . $alt_lrep . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this event&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
+                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . $alt_lrep . '" role="cell" href="#" data-company="' . esc_attr($alt_lname) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
             } else {
                 $alt_board_html .= '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell">none</span>';
             }
         }
         $alt_board_html .= '</div></div>';
-        $alt_board_html .= '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span><span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer&#39;s own words; columns overlap (a week can span two months), so they do not add up. Tap any number to filter.</span></div>';
-        $alt_board_html = '<div class="alt-narrative-head"><span>At a glance · verified layoffs worldwide · <b>' . esc_html(date_i18n('M j')) . '</b></span>'
+        // THE FOOTNOTE, SPLIT. It was one sentence doing four jobs (what a row
+        // counts, where the AI row's words come from, why the columns do not
+        // add up, what a tap does), so a reader looking for any one of them
+        // read all four. One clause per line now, each sitting with the thing
+        // it explains. The "less ▪▪▪ more" heat legend is gone: it rendered as
+        // stray words beside the columns and it was never a control.
+        $alt_board_html .= '<ul class="alt-sb-foot">'
+            . '<li>Every row counts verified events on the day each cut takes effect.</li>'
+            . '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
+            . '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
+            . '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
+            . '</ul>';
+        $alt_board_html = '<div class="alt-narrative-head"><span>Verified layoffs worldwide · <b>' . esc_html(date_i18n('M j')) . '</b></span>'
             . '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>'
             . $alt_board_html;
     }
     ?>
-    <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
-    <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     <?php
-    // The WARN coverage claim comes from alt_warn_states_phrase(), the one
-    // helper that owns it. It used to be count(alt_state_warn_urls()) rendered
-    // as "48 US states and DC" — but that map's 48 keys ALREADY include DC, so
-    // the sentence counted DC twice and invented a 48th state.
-    $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_phrase() : 'covered US states';
+    /*
+      REGION CHIPS FIRST, THEN THE BOARD, THEN EVERYTHING ELSE.
+
+      The filter-placement defect, stated exactly: the board is NOT narrowed by
+      the date range, the quick views or the fifteen dropdowns (its own footnote
+      says so), and all of them used to sit ABOVE it. Controls standing above
+      content they do not control teach a reader the page is broken.
+
+      The board IS narrowed by the region tabs — updateNarrative() scopes every
+      period query to REGION_TABS[ACTIVE_TAB].countries. So the honest order is
+      the one below: the tabs, which do control the board, sit above it; the
+      date basis, sort, quick views and dropdown stack, which do not, sit below
+      it. Nothing was made to "respond to the filters" that cannot: the four
+      columns ARE fixed periods, and a date range over a Today column is not a
+      narrower question, it is a different one.
+
+      The board is also collapsed by default. It is a summary of what the reader
+      is about to scroll through, not the thing they came for, and open it cost
+      roughly 300px of the first screen on a phone.
+    */
     ?>
-    <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
-    <p class="alt-filter-context">Filter below; every number, chart and row updates to match. <span class="alt-filter-context-note">Bookmark any view: the address bar always matches the filters.</span></p>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
         <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
         <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
@@ -341,6 +360,22 @@ $alt_hero_geo    = 'worldwide';
         <button type="button" class="alt-tab alt-tab-aus" data-tab="aus">🇦🇺 Australia</button>
     </div>
 
+    <details class="alt-narrative-wrap" id="alt-narrative-wrap">
+        <summary class="alt-narrative-summary">At a glance: today, this week, this month, this year</summary>
+        <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
+    </details>
+    <?php
+    // The WARN coverage claim comes from alt_warn_states_phrase(), the one
+    // helper that owns it. It used to be count(alt_state_warn_urls()) rendered
+    // as "48 US states and DC" — but that map's 48 keys ALREADY include DC, so
+    // the sentence counted DC twice and invented a 48th state.
+    $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_phrase() : 'covered US states';
+    ?>
+    <?php /* DELETED, not moved: "Filter below; every number, chart and row
+             updates to match. Bookmark any view: the address bar always matches
+             the filters." A caption explaining that filters filter is a patch
+             over a control that is not self-evident. The controls below say
+             what they do; the URL keeps matching them either way. */ ?>
 
     <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
 
@@ -396,7 +431,35 @@ $alt_hero_geo    = 'worldwide';
         <button type="button" class="alt-qv" data-qv="tech">Tech Industry</button>
     </div>
 
-    <div class="alt-filterbar">
+    <?php
+    /*
+      ELEVEN DROPDOWNS BEHIND ONE BUTTON.
+
+      This grid is `repeat(auto-fit, minmax(160px, 1fr))`, which on a 375px
+      phone is ONE column: eleven stacked controls, roughly 700px of chrome,
+      between the headline figure and the first row of data. The region chips,
+      search, date range, date basis and sort stay out here because they are the
+      controls a reader actually reaches for; everything else is now inside.
+
+      NO-JS FIRST. The panel ships OPEN and the toggle ships `hidden`. layoffs.js
+      unhides the toggle and collapses the panel on init, and it leaves the panel
+      OPEN when the URL arrived with one of these filters already set, so a
+      deep-linked view never hides the control that shaped it. A reader without
+      JS keeps every filter exactly as before.
+
+      The count on the button is written by updateFilterPanelCount() from the
+      same readControl() the chips use, so "Filters (2)" cannot disagree with the
+      two chips sitting under it.
+    */
+    ?>
+    <div class="alt-filterbar-toggle-row">
+        <button type="button" class="alt-btn alt-filterbar-toggle" id="alt-filters-toggle"
+                aria-expanded="true" aria-controls="alt-filterbar-body" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+            <span>Filters</span><span class="alt-filters-count" id="alt-filters-count"></span>
+        </button>
+    </div>
+    <div class="alt-filterbar" id="alt-filterbar-body">
         <div class="alt-filterbar-row">
             <div class="alt-filter" data-dd="Years" data-empty="All years">
                 <label for="alt-f-years">Years</label>
@@ -520,37 +583,55 @@ $alt_hero_geo    = 'worldwide';
         // measures. Captions state the fact; the arithmetic caveat lives in a
         // per-tile (i) disclosure instead of a paragraph on the tile face.
         ?>
+        <?php
+        /*
+          EACH TILE SHOWS A NUMBER AND A LABEL. Its explanation is an (i) the
+          reader opens, not a paragraph they have to read past.
+
+          Five tiles times two or three lines of standing prose was roughly 90
+          words of definition between the headline figure and the first row of
+          data, and a reader who already knows what "verified" means had no way
+          to skip it.
+
+          The mechanism is <details class="alt-stat-i">, ALREADY used by the
+          trend chart on this page, so there is one disclosure pattern here and
+          not two. It is a real <details>: keyboard reachable, focus-visible
+          styled, and the body is a plain child that is displayed when [open].
+          Three separate caveats in this codebase have computed to display:none
+          or 0x0 and were never read by anybody, so the guard test opens each
+          one and measures RENDERED TEXT LENGTH rather than reading markup.
+        */
+        $alt_tile_i = function ($label, $body) {
+            return '<details class="alt-stat-i alt-stat-i-tile"><summary aria-label="' . esc_attr($label) . '">i</summary>'
+                . '<span class="alt-stat-i-body">' . $body . '</span></details>';
+        };
+        ?>
         <div class="alt-stats-bar" id="alt-stats-bar">
             <div class="alt-stat-card alt-stat-card-lead alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-total"><?php echo esc_html($alt_stat('total')); ?></span>
-                <span class="alt-stat-label">Verified job cuts</span>
-                <span class="alt-stat-desc">Filed or reported, counted on the day each cut takes effect. The main number. <a class="alt-why-verified" href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>" target="_blank" rel="noopener">Why this is verified &rarr;</a></span>
+                <span class="alt-stat-label">Verified job cuts <?php echo $alt_tile_i('What counts as verified', 'Filed or reported, counted on the day each cut takes effect. This is the main number, and every row behind it links to its source.'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"><?php echo esc_html($alt_period); ?></span>
             </div>
             <div class="alt-stat-card alt-fam-announced">
                 <span class="alt-stat-value" id="alt-stat-announced"><?php echo esc_html($alt_stat('announced')); ?></span>
-                <span class="alt-stat-label">Announced job cuts (planned)</span>
-                <span class="alt-stat-desc">Company plans at announcement stage, not yet in Verified.</span>
+                <span class="alt-stat-label">Announced job cuts (planned) <?php echo $alt_tile_i('What announced means', 'Company plans at announcement stage, not yet in Verified.'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-announced-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
             <div class="alt-stat-card">
-                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies"><?php echo esc_html($alt_stat('companies')); ?></span><span class="alt-stat-label">Companies</span></span>
-                <span class="alt-stat-desc">Coverage in this view.</span>
+                <span class="alt-stat-value-row"><span class="alt-stat-value" id="alt-stat-companies"><?php echo esc_html($alt_stat('companies')); ?></span><span class="alt-stat-label">Companies <?php echo $alt_tile_i('What this tile covers', 'Coverage in this view: how many distinct employers, industries, countries and US states the current filters return.'); // phpcs:ignore ?></span></span>
                 <span class="alt-stat-line"><b id="alt-stat-industries"><?php echo esc_html($alt_stat('industries')); ?></b> <span id="alt-stat-industries-label">industries</span></span>
                 <span class="alt-stat-line"><b id="alt-stat-countries"><?php echo esc_html($alt_stat('countries')); ?></b> <span id="alt-stat-countries-label">countries with reported layoffs</span></span>
                 <span class="alt-stat-line"><b id="alt-stat-states"><?php echo esc_html($alt_stat('states')); ?></b> <span id="alt-stat-states-label">US states</span></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-ai"><?php echo esc_html($alt_stat('ai')); ?></span>
-                <span class="alt-stat-label">🤖 AI cuts, verified (specific)</span>
-                <span class="alt-stat-desc">Verified-tier cuts in the employer's own words: statements like "AI now handles this work" or "replaced by AI."</span>
+                <span class="alt-stat-label">🤖 AI cuts, verified (specific) <?php echo $alt_tile_i('How the AI tag is assigned', 'Verified-tier cuts where the employer named AI, in words we hold and can quote: statements like "AI now handles this work" or "replaced by AI." We report the stated reason; we do not decide the cause.'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"><?php echo esc_html($alt_period); ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-share-line"></span>
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-announced">
                 <span class="alt-stat-value" id="alt-stat-ai-announced"><?php echo esc_html($alt_stat('ai-announced')); ?></span>
-                <span class="alt-stat-label">🤖 AI cuts, announced (planned)</span>
-                <span class="alt-stat-desc">Announced-tier plans that cite AI, like "cutting roles as we adopt AI."</span>
+                <span class="alt-stat-label">🤖 AI cuts, announced (planned) <?php echo $alt_tile_i('How the AI tag is assigned here', 'Announced-tier plans that name AI, like "cutting roles as we adopt AI."'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-announced-sub"><?php echo esc_html($alt_period_ann); ?></span>
             </div>
         </div>
@@ -596,12 +677,15 @@ $alt_hero_geo    = 'worldwide';
                 </div>
             </div>
         </details>
-        <nav class="alt-stats-links alt-stats-links-box" aria-label="About these results">
-            <span class="alt-stats-links-label">New here? Start with:</span>
-            <a class="alt-method-link" href="#alt-metric-definitions">What these numbers mean</a>
-            <a class="alt-method-link" href="#alt-data-sources">Where do we get this data?</a>
-            <a class="alt-method-link" href="#alt-corrections">How we catch &amp; fix errors</a>
-        </nav>
+        <?php /* DELETED: the "New here? Start with:" box and its three links
+                 ("What these numbers mean", "Where do we get this data?", "How we
+                 catch & fix errors"). A page that needs a start-here list has
+                 failed to be self-evident, and those three joined "How we count",
+                 "Why this is verified" and "See the full methodology" as SIX
+                 entry points to one subject. There is one now: "How we count",
+                 in the hero, next to the number it explains. Every destination
+                 those links pointed at is still on this page, in the methodology
+                 section, and the full methodology page links on to each. */ ?>
         <p class="alt-crosslink">Looking for who is hiring instead? Hiring signals are tracked on the <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Talent Intelligence Tracker</a>.</p>
     </section>
 
@@ -625,8 +709,10 @@ $alt_hero_geo    = 'worldwide';
         <?php /* The double-pass and dedup detail lives on the methodology page,
                  where the fact-checker who needs it will look; 70 words about
                  the pipeline were standing between the reader and the data. */ ?>
-        <p class="alt-why-quality">Every figure links to a primary source, and every correction and merge is disclosed in the <a href="#alt-corrections">open log</a>. Nothing is quietly edited. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we check ourselves &rarr;</a></p>
-        <p class="alt-why-foot"><a href="#alt-metric-definitions">See the full methodology &rarr;</a> &middot; Every number, every source, one click away.</p>
+        <?php /* One methodology link out of this section, not two. It ended with
+                 "How we check ourselves →" and then "See the full methodology →"
+                 pointing at two different destinations for the same question. */ ?>
+        <p class="alt-why-quality">Every figure links to a primary source, and every correction and merge is disclosed in the <a href="#alt-corrections">open log</a>. Nothing is quietly edited. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count &rarr;</a></p>
         </div>
     </section>
 
@@ -845,6 +931,60 @@ $alt_hero_geo    = 'worldwide';
 
     <nav class="alt-pager" id="alt-pager" aria-label="Result pages" hidden></nav>
 
+    <?php
+    /*
+      THE DATA STRIP: everything that used to crowd the first screen, kept
+      whole, sitting after the data instead of in front of it.
+
+      Nothing here is new and nothing here was cut. The freshness panel (Roo's
+      status header and the next collection time), the coverage ribbon, the
+      cite-and-export row and the report/press/embed links all rendered above
+      the headline figure; a reader met four link groups and a status panel
+      before they met a layoff. They answer "how current is this and how do I
+      take it away", which is a question you ask AFTER you have looked at the
+      data, so they now sit where that question gets asked.
+
+      The element IDs are unchanged (#alt-next-top, #alt-citeline-total,
+      #alt-export-csv-top and the rest), so renderStatus(), renderStats() and
+      the export-href plumbing in layoffs.js keep writing all of them.
+    */
+    $alt_cov = alt_coverage_counts();
+    $alt_cov_first = !empty($alt_cov['first']) ? date_i18n('M Y', strtotime($alt_cov['first'])) : '';
+    ?>
+    <section class="alt-datastrip" aria-label="How current this is, and how to cite it">
+        <aside class="alt-fresh" aria-label="Freshness">
+            <?php echo function_exists('alt_render_status_header') ? alt_render_status_header() : ''; ?>
+            <?php if ($alt_next_ts) : ?>
+            <span class="alt-fresh-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
+            <?php endif; ?>
+            <?php if ($alt_sv !== null) : ?>
+            <?php /* The headline total and the AI figure live in the hero and are
+                     deliberately NOT repeated here: the same number twice, once at
+                     72px and once at 20px, invites the reader to wonder which of
+                     the two is the real one. */ ?>
+            <div class="alt-fresh-stats">
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies</i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries</i></span>
+            </div>
+            <?php endif; ?>
+        </aside>
+        <p class="alt-ribbon">
+            <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['us_states']; ?></b> US states<?php echo !empty($alt_cov['dc']) ? ' + DC' : ''; ?></span>
+            <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
+        </p>
+        <p class="alt-citeline">
+            <?php if ($alt_sv !== null) : ?>
+            <?php /* "so far, as of <today>" is a TO-DATE claim, so it quotes the
+                     to-date figure. It used to quote the whole-window total, which
+                     disagreed with the FAQPage JSON-LD this same page emits from
+                     alt_live_numbers() (that query has always clamped at today). */ ?>
+            <span class="alt-citeline-stat"><b id="alt-citeline-total"><?php echo esc_html($alt_stat('to-date')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
+            <?php endif; ?>
+            <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
+        </p>
+        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+        <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
+    </section>
 
     <section class="alt-methodology alt-faq" itemscope>
         <div class="alt-detail-h" role="heading" aria-level="2" style="font-size:19px;margin:0 0 10px">Frequently asked questions</div>
