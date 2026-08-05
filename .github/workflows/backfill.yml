@@ -26,7 +26,12 @@ on:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    # Sized from measurement, 2026-08-05: the one dispatch run measured
+    # 300.6 min - 86% of the old 350 ceiling. 360 is the hosted-runner
+    # job maximum, so this is the most headroom a single run can have;
+    # the real fix for anything longer is the sibling tracker's
+    # bounded-slice-requeue pattern, not a bigger ceiling.
+    timeout-minutes: 360
     steps:
       - name: Check out repo
         uses: actions/checkout@v5

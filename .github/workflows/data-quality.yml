@@ -17,6 +17,16 @@ on:
 jobs:
   report:
     runs-on: ubuntu-latest
+    # Sized from measurement, 2026-08-05: healthy runs of this whole job take
+    # 0.6-0.9 min (snapshot ~26s, report ~4s, spot-check ~10-30s). The three
+    # runs cancelled AT this ceiling (Jul 29, Aug 3, Aug 5 - run 31021670125)
+    # were not the corpus outgrowing 10 minutes; they were the spot-check's
+    # LLM call hanging past its per-socket timeout. The script now owns a
+    # 360s wall-clock deadline (DEADLINE_SECONDS in
+    # railway/daily_classification_spotcheck.py) and finishes cleanly, so the
+    # worst case is ~40s of earlier steps + 360s + teardown, about 7 minutes.
+    # 10 keeps >30% headroom over that worst case and stays the last-resort
+    # backstop, never the thing that ends a run.
     timeout-minutes: 10
     steps:
       # The classification spot-check is now a versioned repository script

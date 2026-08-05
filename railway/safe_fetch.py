@@ -50,6 +50,7 @@ import time
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
+import urllib3
 
 DEFAULT_UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 
@@ -162,15 +163,38 @@ def _read_capped(response, max_bytes):
 
     `decode_content=True` matters: gzip and brotli are where a small response
     becomes a large one, and a cap applied to the wire bytes is not a cap.
+
+    FAILURES DURING THE READ ARE RAISED AS `requests.RequestException`, which
+    keeps `safe_get`'s documented contract true for the body and not just the
+    request: `raw.read` talks to urllib3 directly, and urllib3's own
+    exceptions (`ReadTimeoutError`, `ProtocolError`, ...) are NOT
+    `requests.RequestException`. Without this translation a host that returns
+    200 and then goes silent mid-body sails past every `except
+    requests.RequestException` in the callers — including
+    `safe_get_with_retry` itself — and kills the whole run. The sibling
+    tracker took exactly that bullet on 2026-08-05 (one dead publisher ended
+    a 19-minute press slice); requests performs this same mapping inside
+    `iter_content`, and this mirrors it.
     """
     try:
         raw = getattr(response, "raw", None)
         if raw is not None and hasattr(raw, "read"):
             try:
-                return raw.read(max_bytes + 1, decode_content=True)[:max_bytes]
-            except TypeError:
-                # A stub or an older urllib3 without decode_content.
-                return raw.read(max_bytes + 1)[:max_bytes]
+                try:
+                    return raw.read(max_bytes + 1, decode_content=True)[:max_bytes]
+                except TypeError:
+                    # A stub or an older urllib3 without decode_content.
+                    return raw.read(max_bytes + 1)[:max_bytes]
+            except urllib3.exceptions.ReadTimeoutError as exc:
+                raise requests.exceptions.ConnectionError(exc) from exc
+            except urllib3.exceptions.DecodeError as exc:
+                raise requests.exceptions.ContentDecodingError(exc) from exc
+            except urllib3.exceptions.ProtocolError as exc:
+                raise requests.exceptions.ChunkedEncodingError(exc) from exc
+            except urllib3.exceptions.SSLError as exc:
+                raise requests.exceptions.SSLError(exc) from exc
+            except (urllib3.exceptions.HTTPError, OSError) as exc:
+                raise requests.exceptions.ConnectionError(exc) from exc
         return (response.content or b"")[:max_bytes]
     finally:
         try:
