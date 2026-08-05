@@ -207,8 +207,31 @@ jobs:
           set -euo pipefail
           # A cache-busting public endpoint confirms that WordPress loaded the
           # newly uploaded plugin rather than merely serving cached HTML.
+          # NOTE: this proves the ORIGIN is updated and nothing more. The query
+          # string is a key no cache holds, so the origin always answers it. The
+          # step below is the one that speaks for readers.
           curl --fail --show-error --silent --retry 4 --retry-all-errors \
             --retry-delay 5 --max-time 30 \
             -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
             "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
             | python3 -c 'import json, sys; payload = json.load(sys.stdin); assert "canonical_events" in payload; print("Live tracker API verified.")'
+
+      # The check that measures the surface a reader actually gets: the BARE
+      # url, a browser User-Agent, no cache buster. Every deploy check before
+      # this one carried a query string and therefore measured the origin, which
+      # is why a deploy could sit invisible to readers for 18 minutes (2026-08-05,
+      # 2.19.274) with every check green. A deploy that has not reached readers
+      # is not a finished deploy, so this fails the run rather than reporting it.
+      - name: Verify the deploy has reached READERS
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: |
+          set -euo pipefail
+          VERSION="$(grep -oE "define\('ALT_VERSION', '[0-9.]+'\)" \
+            wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+          echo "Deployed ALT_VERSION: $VERSION"
+          # Bounded by the page's own Cache-Control (s-maxage=60 over two chained
+          # shared caches), with generous headroom so an edge that is slow to
+          # expire is not reported as a stuck deploy.
+          python3 railway/reader_freshness.py --wait-for "$VERSION" --timeout 600 --interval 15
