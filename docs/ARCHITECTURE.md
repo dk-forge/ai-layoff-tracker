@@ -27,6 +27,9 @@
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup /source-health(POST) /alert(emails owner on breakage) │
   │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate /reconcile-supersets(dedup) /claims-ingest /trash │
   │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
+  │   KEYED   /subscriber-stats (digest audience, COUNTS ONLY, never an address)          │
+  │   PUBLIC /click?s=<send_id>&l=<md5> (digest link counter; takes NO destination,       │
+  │           302s only to a stored own-domain URL, else home; aggregate count only)      │
   │           (header: X-Layoff-API-Key; key: wp-admin → Tools → AI Layoff Tracker)      │
   │                                                                                      │
   │  Front-end (assets/layoffs.js): DataTables serverSide → /query; charts+stats →       │

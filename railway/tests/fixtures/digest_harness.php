@@ -62,6 +62,18 @@ function wp_mail($to, $subject, $body, $headers = array()) {
     return true;
 }
 
+function apply_filters($tag, $value, ...$rest) { return $value; }
+function wp_parse_url($url, $component = -1) { return $component === -1 ? parse_url($url) : parse_url($url, $component); }
+function rest_url($path = '') { return 'https://example.test/blog/wp-json/' . ltrim($path, '/'); }
+function register_rest_route(...$a) { $GLOBALS['__routes'][] = $a; }
+class WP_REST_Response {
+    public $data; public $status; public $headers = array();
+    public function __construct($data = null, $status = 200) { $this->data = $data; $this->status = $status; }
+    public function header($k, $v) { $this->headers[$k] = $v; }
+    public function get_data() { return $this->data; }
+}
+$GLOBALS['__routes'] = array();
+
 function alt_source_health_record($source, $status, $entries, $detail) {
     $health = get_option('alt_source_health');
     if (!is_array($health)) $health = array();
@@ -101,6 +113,7 @@ function rest_do_request($req) {
 class FakeWpdb {
     public $prefix = 'wp_';
     public $pdo;
+    public $insert_id = 0;
     public function __construct() {
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -121,6 +134,23 @@ class FakeWpdb {
             confirmed_at TEXT NULL,
             unsubscribed_at TEXT NULL,
             last_sent_at TEXT NULL)');
+        $this->install_digest_log_tables();
+    }
+    /** The send log + aggregate click counter, mirroring includes/db.php. */
+    public function install_digest_log_tables() {
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS wp_alt_digest_sends (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            freq TEXT NOT NULL DEFAULT "weekly",
+            sent_at TEXT NOT NULL,
+            recipients INTEGER NOT NULL DEFAULT 0,
+            eligible INTEGER NOT NULL DEFAULT 0)');
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS wp_alt_digest_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            send_id INTEGER NOT NULL,
+            link_hash TEXT NOT NULL,
+            url TEXT NOT NULL,
+            clicks INTEGER NOT NULL DEFAULT 0,
+            UNIQUE (send_id, link_hash))');
     }
     public function esc_like($s) { return $s; }
     public function prepare($sql, ...$args) {
@@ -150,11 +180,17 @@ class FakeWpdb {
         if ($output === ARRAY_A) return $rows;
         return array_map(function ($r) { return (object) $r; }, $rows);
     }
-    public function query($sql) { return $this->pdo->exec($sql); }
+    public function query($sql) {
+        // MySQL's INSERT IGNORE spells the same intent as SQLite's INSERT OR IGNORE.
+        $sql = preg_replace('/^\s*INSERT IGNORE\b/i', 'INSERT OR IGNORE', $sql);
+        return $this->pdo->exec($sql);
+    }
     public function insert($table, $data) {
         $cols = array_keys($data);
         $vals = array_map(function ($v) { return $v === null ? 'NULL' : $this->pdo->quote((string) $v); }, array_values($data));
-        return $this->pdo->exec("INSERT INTO $table (" . implode(',', $cols) . ') VALUES (' . implode(',', $vals) . ')');
+        $n = $this->pdo->exec("INSERT INTO $table (" . implode(',', $cols) . ') VALUES (' . implode(',', $vals) . ')');
+        $this->insert_id = (int) $this->pdo->lastInsertId();
+        return $n;
     }
     public function update($table, $data, $where) {
         $set = array(); $cond = array();
@@ -313,5 +349,126 @@ $_REQUEST = array('t' => $c2['confirm_token']);
 $out['change_confirm_redirect'] = drive('alt_digest_confirm');
 $c3 = row('careful@example.com');
 $out['prefs_after_reconfirm'] = array((int) $c3['consent_layoff'], (int) $c3['consent_talent'], $c3['freq_talent'], $c3['status']);
+
+/* ------------------------------------------------------------------ */
+/* 11. Send log, aggregate click counting, and the stats payload.       */
+/* ------------------------------------------------------------------ */
+
+$wpdb->pdo->exec('DELETE FROM wp_alt_subscribers');
+$wpdb->pdo->exec('DELETE FROM wp_alt_digest_sends');
+$wpdb->pdo->exec('DELETE FROM wp_alt_digest_links');
+$GLOBALS['__transients'] = array();
+
+// A run with nobody eligible must not log a send: "sent to 0" would read as a
+// delivery failure when nothing was due.
+alt_digest_send('weekly');
+$out['sends_logged_when_nobody_eligible'] = (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_alt_digest_sends');
+
+// Two confirmed weekly subscribers, one daily.
+$confirm_signup = function ($email, $lists, $freq = 'weekly') {
+    $GLOBALS['__transients'] = array();
+    post_signup($email, $lists, $freq);
+    $r = row($email);
+    $_REQUEST = array('t' => $r['confirm_token']);
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    drive('alt_digest_confirm');
+    return row($email);
+};
+$confirm_signup('a@example.com', array('layoff'));
+$confirm_signup('b@example.com', array('layoff', 'articles'));
+$confirm_signup('c@example.com', array('layoff'), 'daily');
+
+$mails_before = count($mails);
+list($sent_w, ) = alt_digest_send('weekly');
+$digest = end($mails);
+$send = $wpdb->get_row('SELECT * FROM wp_alt_digest_sends ORDER BY id DESC LIMIT 1', ARRAY_A);
+$out['send_row'] = array((int) $send['recipients'], (int) $send['eligible'], $send['freq']);
+$out['send_row_matches_mails'] = ((int) $send['recipients']) === (count($mails) - $mails_before);
+
+$links = $wpdb->get_results('SELECT * FROM wp_alt_digest_links ORDER BY id', ARRAY_A);
+$out['links_stored'] = count($links);
+$out['link_url'] = $links ? $links[0]['url'] : null;
+$out['link_starts_at_zero'] = $links && ((int) $links[0]['clicks']) === 0;
+// The email carries the first-party counter URL, not the bare destination.
+$out['digest_uses_click_url'] = strpos($digest['body'], '/wp-json/layoffs/v1/click') !== false;
+$out['digest_html_has_bare_tracker_link'] = (bool) preg_match(
+    '/href="https:\/\/example\.test\/blog\/ai-layoff-tracker\/"/', $digest['body']);
+
+// A click: counted once, lands on the stored destination.
+$click = function ($s, $l, $ip = '198.51.100.7') {
+    $_SERVER['REMOTE_ADDR'] = $ip;
+    $req = new WP_REST_Request('GET', '');
+    $req->set_param('s', $s);
+    $req->set_param('l', $l);
+    $GLOBALS['__redirect'] = null;
+    try { alt_api_digest_click($req); } catch (AltRedirect $e) {}
+    return (string) $GLOBALS['__redirect'];
+};
+$sid = (int) $links[0]['send_id'];
+$hash = $links[0]['link_hash'];
+$out['click_redirect'] = $click($sid, $hash);
+$out['clicks_after_one'] = (int) $wpdb->get_var(
+    'SELECT clicks FROM wp_alt_digest_links WHERE id = ' . (int) $links[0]['id']);
+
+// OPEN REDIRECT: every shape of attempt lands on our own home page and counts
+// nothing. There is no parameter that takes a destination, so the only way to
+// name one is to guess a hash, and a wrong guess goes home.
+$home = 'https://example.test/blog/';
+$out['click_unknown_hash'] = $click($sid, str_repeat('a', 32));
+$out['click_bad_hash_shape'] = $click($sid, 'https://evil.example/phish');
+$out['click_bad_send_id'] = $click(999999, $hash);
+$out['click_negative_send'] = $click(-1, $hash);
+// Even a hostile row planted directly in the table is refused at redemption:
+// the host guard runs again on the way out, not only on the way in.
+$evil = 'https://evil.example/phish';
+$wpdb->insert('wp_alt_digest_links', array(
+    'send_id' => $sid, 'link_hash' => md5($evil), 'url' => $evil, 'clicks' => 0));
+$out['click_planted_foreign_host'] = $click($sid, md5($evil));
+$out['planted_row_click_count'] = (int) $wpdb->get_var(
+    "SELECT clicks FROM wp_alt_digest_links WHERE link_hash = '" . md5($evil) . "'");
+$out['home_url'] = $home;
+
+// The guard itself, over the shapes that get used to slip past host checks.
+$out['link_allowed'] = array(
+    'own_host'      => alt_digest_link_allowed('https://example.test/blog/ai-layoff-tracker/'),
+    'www_sibling'   => alt_digest_link_allowed('https://www.example.test/blog/'),
+    'foreign'       => alt_digest_link_allowed('https://evil.example/phish'),
+    'userinfo'      => alt_digest_link_allowed('https://example.test@evil.example/phish'),
+    'prefix_trick'  => alt_digest_link_allowed('https://example.test.evil.example/phish'),
+    'protocol_rel'  => alt_digest_link_allowed('//evil.example/phish'),
+    'javascript'    => alt_digest_link_allowed('javascript:alert(1)'),
+    'data_uri'      => alt_digest_link_allowed('data:text/html,<script>1</script>'),
+    'relative'      => alt_digest_link_allowed('/blog/ai-layoff-tracker/'),
+    'empty'         => alt_digest_link_allowed(''),
+);
+// A destination that fails the guard is never wrapped and never stored.
+$before_rows = (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_alt_digest_links');
+$out['track_link_refuses_foreign'] = alt_digest_track_link($sid, $evil) === $evil;
+$out['track_link_stored_nothing'] = ((int) $wpdb->get_var('SELECT COUNT(*) FROM wp_alt_digest_links')) === $before_rows;
+
+// Rate limit: past the ceiling the visit still lands, uncounted.
+$GLOBALS['__transients'] = array();
+$flood_dest = array();
+for ($i = 0; $i < 70; $i++) $flood_dest[] = $click($sid, $hash, '198.51.100.99');
+$out['flood_all_landed'] = count(array_unique($flood_dest)) === 1 && $flood_dest[0] === $out['click_redirect'];
+$out['clicks_after_flood'] = (int) $wpdb->get_var(
+    'SELECT clicks FROM wp_alt_digest_links WHERE id = ' . (int) $links[0]['id']);
+
+// One unsubscribe inside the 48h window after that send.
+$_REQUEST = array('t' => row('b@example.com')['unsub_token']);
+$_SERVER['REQUEST_METHOD'] = 'GET';
+drive('alt_digest_unsubscribe');
+
+$stats = alt_digest_stats();
+$out['stats'] = $stats;
+$out['stats_json'] = json_encode($stats);
+
+// 12. No table, no numbers: UNKNOWN, never a zero.
+$wpdb->pdo->exec('DROP TABLE wp_alt_subscribers');
+$out['stats_without_table'] = alt_digest_stats();
+$wpdb->pdo->exec('DROP TABLE wp_alt_digest_sends');
+$wpdb->pdo->exec('DROP TABLE wp_alt_digest_links');
+// A send with no tables must not fatal, and must log nothing.
+$out['send_without_tables'] = alt_digest_send('weekly');
 
 echo json_encode($out), "\n";

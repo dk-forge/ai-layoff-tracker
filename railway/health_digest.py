@@ -65,7 +65,47 @@ def _benign_degraded(detail):
     return bool(codes) and all(c in _BENIGN_STATES for c in codes)
 
 
-def _email_alert(stale, degraded, integrity_failed=()):
+def subscriber_line():
+    """One line about the digest audience, for the owner's weekly email.
+
+    COUNTS ONLY. The keyed /subscriber-stats route returns no address in any
+    field or error path, and this formats numbers from it.
+
+    An install with no subscriber table, or a run that cannot reach the route,
+    says UNKNOWN. It must never say 0: "nobody subscribed" and "we could not
+    see" are different facts, and printing the first when the second is true is
+    a wrong number in the owner's inbox. That distinction is the most repeated
+    lesson in this codebase; do not simplify it away with `or 0`.
+    """
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return ("Subscribers UNKNOWN: no site URL or API key in this run, so the stats "
+                "route was not called. This is not a zero.")
+    try:
+        r = requests.get(f"{site}/wp-json/layoffs/v1/subscriber-stats",
+                         headers={"X-Layoff-API-Key": key, "User-Agent": UA["User-Agent"]},
+                         timeout=25)
+        data = r.json() if r.status_code == 200 else {}
+    except Exception as exc:
+        return f"Subscribers UNKNOWN: could not read the stats route ({exc}). This is not a zero."
+    if not isinstance(data, dict) or not data.get("available"):
+        reason = (data or {}).get("reason") or "the endpoint reported no data"
+        return f"Subscribers UNKNOWN: {reason}. This is not a zero."
+
+    total = (data.get("confirmed") or {}).get("total")
+    new = data.get("confirmed_last_7_days")
+    last = data.get("last_send")
+    if not last:
+        return (f"Subscribers {total} (+{new} this week), no digest sent yet, "
+                f"so no clicks or unsubscribes to report.")
+    clicks = "UNKNOWN" if last.get("clicks") is None else last.get("clicks")
+    unsub = "UNKNOWN" if last.get("unsubscribes_48h") is None else last.get("unsubscribes_48h")
+    return (f"Subscribers {total} (+{new} this week), last digest sent to "
+            f"{last.get('recipients')}, {clicks} clicks, {unsub} unsubscribed.")
+
+
+def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
     """POST an actionable breakage email to the owner via the site's /alert."""
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     key = os.environ.get("WP_API_KEY", "")
@@ -111,6 +151,10 @@ def _email_alert(stale, degraded, integrity_failed=()):
             'page layout changed. Then dry-run it to confirm."\n'
             "\nMost breakages are a government/state site changing its page layout — the fix is a "
             "quick re-recon of that one scraper.")
+    # The audience, in one line, counts only. It rides along with whatever else
+    # went wrong so the owner sees it without opening a dashboard.
+    if subscribers:
+        lines.append("\n" + subscribers)
     body = "\n".join(lines)
     try:
         requests.post(f"{site}/wp-json/layoffs/v1/alert",
@@ -191,6 +235,9 @@ def main():
     except Exception as exc:
         print(f"  ::warning:: DATA INTEGRITY could not be checked ({exc}) — state UNKNOWN, not ok")
 
+    subscribers = subscriber_line()
+    print(f"SUBSCRIBERS: {subscribers}")
+
     print(f"HEALTH DIGEST: {ok} ok · {len(degraded)} degraded · {len(stale)} stale")
     for s, d in degraded:
         print(f"  ::warning:: DEGRADED {s}: {str(d)[:120]}")
@@ -226,7 +273,7 @@ def main():
             print(f"(digest health post skipped: {exc})")
         # Email ONLY on real breakage, with a ready-to-paste fix instruction.
         if stale or real_degraded or integrity_failed:
-            _email_alert(stale, real_degraded, integrity_failed)
+            _email_alert(stale, real_degraded, integrity_failed, subscribers)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.

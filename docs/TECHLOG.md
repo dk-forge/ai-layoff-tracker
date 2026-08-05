@@ -1,5 +1,64 @@
 # Tech Log
 
+## 2026-08-05 - the digest's missing half: subscriber stats, click counting, no pixel (2.19.274, branch)
+
+The digest shipped at 2.19.272 without the piece that lets anyone see whether
+it works. Two new tables, two new routes, two new lines where the owner looks.
+
+- **`GET /wp-json/layoffs/v1/subscriber-stats`**, keyed with the SAME
+  `alt_api_permission` / `X-Layoff-API-Key` gate as `/alert` and
+  `/press-subscribers`, fails closed with no key configured. Returns confirmed
+  total and per flag, pending, unsubscribed, confirm rate, new confirmations
+  in the last 7 days, the daily/weekly split, and the last send (date,
+  recipients, clicks, unsubscribes in the 48h after). COUNTS ONLY: no field,
+  no branch and no error path returns an address, and a test asserts no `@`
+  appears in the serialised payload.
+- **A missing table is UNKNOWN, not 0.** `available:false` with every count
+  `null`, and both readers print UNKNOWN. On an install where the digest has
+  not deployed, "0 subscribers" is a false claim; "we cannot see" is the truth.
+  Readers deliberately do NOT self-heal the table, because a read that creates
+  what it is measuring turns the second answer into the first.
+- **Aggregate click counting.** New `wp_alt_digest_sends` (one row per send
+  RUN) and `wp_alt_digest_links` (one integer per send_id+link). Digest links
+  point at `/wp-json/layoffs/v1/click?s=..&l=..`, which increments and 302s.
+  The store has no subscriber id, no IP, no user agent and no per-click row,
+  so it cannot answer "who clicked" even in principle.
+- **The open-redirect guard, four layers.** The route takes an integer id and
+  a 32-hex hash and NO destination parameter at all, so there is nothing to
+  put a URL into. The destination comes out of a row this site wrote at
+  compose time. That row's host is re-validated on the way out (a hostile row
+  planted directly in the table is not followed and not counted). The emit is
+  `wp_safe_redirect`. Host matching is allowlist membership, not a substring
+  test, so `ourhost.evil.example` and `https://ourhost@evil.example` both
+  fail. Anything unrecognised goes to the home page. A link counter that
+  doubles as a phishing relay would be worse than no counter.
+- **Rate limit** on the COUNTER, not the reader: past 60 clicks / 5 minutes
+  per address the visit still lands (the destination is always our own page,
+  so refusing it would only break a real reader) and is not counted. The key
+  is a hashed transient, as the signup limiter already does.
+- **No open-rate pixel, and the reason is in the file** where the next session
+  will meet it: open tracking needs a per-person image URL, which is the
+  individual-level record the privacy note promises not to keep, and it is not
+  a measurement anyway since roughly half of inboxes preload remote images. So
+  this reports deliveries, clicks and unsubscribes, which are measured facts.
+- **The privacy note was updated in the same change.** It previously said "no
+  click tracking exists in these emails". Counting clicks while publishing that
+  sentence would have been the real defect; the note now states plainly what
+  the counter does and does not record.
+- **Where the owner looks**: `ops_status.py` gains section `[4c]` (counts, the
+  last send, and the no-open-rate note) and `health_digest.py`'s weekly email
+  gains one line, "Subscribers N (+x this week), last digest sent to N, X
+  clicks, Y unsubscribed." `[4c]` is informational and does not push the tool
+  to exit 3 when no key is present: most local sessions carry no key, and the
+  mailer's own liveness is already guarded by the `digest_mailer` staleness
+  ceiling in `[2]`.
+
+Tests: 28 added to `railway/tests/test_digest_subscription.py`, 22 of them
+proven failing against the pre-fix tree. Source facts are asserted against
+COMMENT-STRIPPED PHP (via `token_get_all`), because a docblock claiming a
+route is key gated matches a grep exactly as well as the route being key
+gated. Full suite: 1010 tests, green.
+
 ## 2026-08-05 - email digest subscriptions, one shared list for BOTH trackers (2.19.272, branch)
 
 The site's first feature storing personal data (subscriber emails), so consent

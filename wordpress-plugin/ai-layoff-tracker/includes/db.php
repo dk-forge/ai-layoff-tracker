@@ -228,6 +228,38 @@ function alt_db_install() {
         KEY unsub_token (unsub_token),
         KEY status_created (status, created_at)
     ) $charset;");
+
+    // Digest send log. One row per send RUN (not per recipient), so the stats
+    // route can answer "when did the last digest go out and to how many" from
+    // stored fact rather than from a guess. Counts only: this table has no
+    // column that could hold an address, deliberately.
+    $digest_sends = $wpdb->prefix . 'alt_digest_sends';
+    dbDelta("CREATE TABLE $digest_sends (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        freq VARCHAR(6) NOT NULL DEFAULT 'weekly',
+        sent_at DATETIME NOT NULL,
+        recipients INT UNSIGNED NOT NULL DEFAULT 0,
+        eligible INT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (id),
+        KEY sent_at (sent_at)
+    ) $charset;");
+
+    // Aggregate click counter for digest links. The row is created when the
+    // digest is COMPOSED, so the redirect can only ever resolve a link this
+    // site already put in that send. The counter is a single integer per
+    // (send_id, link): there is no subscriber id, no IP, no user agent and no
+    // per-click row here, so the store cannot answer "who clicked" even in
+    // principle. See includes/subscribe.php for why there is no open pixel.
+    $digest_links = $wpdb->prefix . 'alt_digest_links';
+    dbDelta("CREATE TABLE $digest_links (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        send_id BIGINT UNSIGNED NOT NULL,
+        link_hash CHAR(32) NOT NULL,
+        url VARCHAR(600) NOT NULL,
+        clicks INT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (id),
+        UNIQUE KEY send_link (send_id, link_hash)
+    ) $charset;");
 }
 
 function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events'; }
