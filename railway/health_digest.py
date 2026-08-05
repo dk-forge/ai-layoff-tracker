@@ -126,7 +126,7 @@ def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
         lines = ["The weekly health check found the live site publishing a number that "
                  "fails a data-integrity guard.\n"]
         for r in integrity_failed:
-            lines.append(f"DATA INTEGRITY — {r.inv.label}: {r.detail}")
+            lines.append(f"DATA INTEGRITY {r.inv.label}: {r.detail}")
         lines.append(
             "\nThis means a published figure is WRONG right now, not merely missing. "
             "Paste this into a Claude Code session in the ai-layoff-tracker repo:\n"
@@ -135,9 +135,9 @@ def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
             'railway/data_integrity.py, then follow docs/RUNBOOK.md \'a data-integrity '
             'check is failing\'."\n')
     for s, a, m in stale:
-        lines.append(f"STALE — {s}: last reported {a} days ago (expected within {m}). It likely stopped running.")
+        lines.append(f"STALE {s}: last reported {a} days ago (expected within {m}). It likely stopped running.")
     for s, d in degraded:
-        lines.append(f"DEGRADED — {s}: {str(d)[:160]}")
+        lines.append(f"DEGRADED {s}: {str(d)[:160]}")
     # The source-repair paste-line only makes sense when a SOURCE is implicated.
     # An integrity-only email already carries its own instruction above, and
     # appending "flagged these sources: " with an empty list is the kind of
@@ -149,7 +149,7 @@ def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
             'For each, find its collector in railway/ (or railway/sources/), check whether the '
             'third-party site changed, and fix the parser; a scraper returning 0 usually means the '
             'page layout changed. Then dry-run it to confirm."\n'
-            "\nMost breakages are a government/state site changing its page layout — the fix is a "
+            "\nMost breakages are a government/state site changing its page layout. The fix is a "
             "quick re-recon of that one scraper.")
     # The audience, in one line, counts only. It rides along with whatever else
     # went wrong so the owner sees it without opening a dashboard.
@@ -233,7 +233,7 @@ def main():
         for r in integrity.unknown:
             print(f"  ::warning:: DATA INTEGRITY {r.inv.key} NOT VERIFIED: {r.detail}")
     except Exception as exc:
-        print(f"  ::warning:: DATA INTEGRITY could not be checked ({exc}) — state UNKNOWN, not ok")
+        print(f"  ::warning:: DATA INTEGRITY could not be checked ({exc}): state UNKNOWN, not ok")
 
     subscribers = subscriber_line()
     print(f"SUBSCRIBERS: {subscribers}")
@@ -242,7 +242,7 @@ def main():
     for s, d in degraded:
         print(f"  ::warning:: DEGRADED {s}: {str(d)[:120]}")
     for s, a, m in stale:
-        print(f"  ::error:: STALE {s}: last reported {a}d ago (expected <= {m}d) — collector may have stopped")
+        print(f"  ::error:: STALE {s}: last reported {a}d ago (expected <= {m}d): collector may have stopped")
 
     integrity_failed = list(integrity.failed) if integrity is not None else []
     detail = f"{ok} ok, {len(degraded)} degraded, {len(stale)} stale"

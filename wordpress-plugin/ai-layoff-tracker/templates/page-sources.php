@@ -34,7 +34,7 @@ ksort($alt_state_urls);
 // attach the official BLS unemployment rate (a separate context metric) below.
 $alt_gap_states = array(
     // (A) Publishes, but not fully countable
-    array('Oklahoma', 'The Employment Security Commission publishes WARN notices through an interactive portal, but the public listing carries only employer, location, notice date and notice type, with no affected-employee count anywhere in the data. Because we will not invent a number, those notices cannot become countable rows. Oklahoma cuts still reach the tracker through SEC filings and named news, and the importer will pick up the portal automatically if OESC ever publishes headcounts.', 'Publishes notices, no public headcounts', 'https://www.employoklahoma.gov/Participants/s/warnnotices', 'OK'),
+    array('Oklahoma', 'The Employment Security Commission publishes WARN notices through an interactive portal. The public listing carries only employer, location, notice date and notice type. No affected-employee count appears anywhere in the data. Because we will not invent a number, those notices cannot become countable rows. Oklahoma cuts still reach the tracker through SEC filings and named news, and the importer will pick up the portal automatically if OESC ever publishes headcounts.', 'Publishes notices, no public headcounts', 'https://www.employoklahoma.gov/Participants/s/warnnotices', 'OK'),
     // (B) No usable public register
     array('Arkansas', 'Treats WARN filings as confidential employer records. The Division of Workforce Services receives them but is barred from releasing company-level data under the Arkansas FOIA exemption, so there is no public list to import. Arkansas cuts still reach the tracker when a company files with the SEC or a named outlet reports them.', 'Confidential by law', 'https://dws.arkansas.gov/', 'AR'),
     array('Wyoming', 'The Department of Workforce Services tracks filings internally but does not host a public, centralized WARN register. Wyoming cuts reach the tracker through SEC filings and named regional news instead.', 'No public register', 'https://dws.wyo.gov/', 'WY'),
@@ -45,10 +45,10 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
 <main class="alt-wrap alt-sources-page">
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>Data Sources</h1>
-  <p class="alt-lead"><span class="alt-lead-text">Every number in the tracker traces back to one of the sources below, an official government filing, a legally required layoff notice, an EU restructuring record, or a named news report. Nothing is estimated or modeled into existence. Each row links to the raw source so you can check it yourself.</span></p>
+  <p class="alt-lead"><span class="alt-lead-text">Every number in the tracker traces back to one of the sources below. That means an official government filing, a legally required layoff notice, an EU restructuring record, or a named news report. Nothing is estimated or modeled into existence. Each row links to the raw source so you can check it yourself.</span></p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-metric-definitions">Methodology</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code</a></p>
   <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
-  <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?> (the last time the database actually changed). Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a>. Note: <b>this source list is a reference that changes only when a collector is added or removed</b> (on a deploy), not every day, so it is honest for it to stay the same between updates.</p><?php endif; ?>
+  <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?> (the last time the database actually changed). Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a>. Note: <b>this source list is a reference.</b> It changes only when we add or remove a collector, which happens on a deploy, not every day. So it is honest for the list to stay the same between updates.</p><?php endif; ?>
 
   <nav class="alt-src-toc" aria-label="On this page">
     <b>On this page:</b>
@@ -79,7 +79,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Hawaii WARN notices (OCR)</b></td><td>Hawaii</td>
-        <td>Hawaii posts each notice as a scanned image PDF, so we OCR the notice to recover the affected-employee count the state states in the letter. Only a clearly stated count is used; notices without one (or with a redacted total) are omitted, never estimated. Every row links its source PDF.</td>
+        <td>Hawaii posts each notice as a scanned image PDF. So we read the scan with OCR, character recognition software, to recover the affected-employee count the state gives in the letter. We use only a clearly stated count. A notice without one, or with a redacted total, is left out, never estimated. Every row links its source PDF.</td>
         <td>Verified</td>
         <td><a href="https://labor.hawaii.gov/wdc/real-time-warn-updates/" target="_blank" rel="noopener">HI WDC WARN notices &#8599;</a></td>
       </tr>
@@ -91,7 +91,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Mazowieckie collective dismissals</b></td><td>Mazovia region, Poland</td>
-        <td>Official monthly notifications employers must file with the regional labour office (WUP Warszawa) before a collective redundancy, the only one of Poland's 16 voivodeship offices that publishes employers by name. Parsed from the office's monthly register posts, no AI processing.</td>
+        <td>Official monthly notifications employers must file with the regional labour office (WUP Warszawa) before a collective redundancy. It is the only one of Poland's 16 voivodeship offices that publishes employers by name. Parsed from the office's monthly register posts, no AI processing.</td>
         <td>Verified</td>
         <td><a href="https://wupwarszawa.praca.gov.pl/urzad/dla-mediow" target="_blank" rel="noopener">WUP Warszawa register &#8599;</a></td>
       </tr>
@@ -109,7 +109,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Google News</b></td><td>Worldwide</td>
-        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. Read across <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more), so each market is searched in its own language and its own outlets rather than through a US lens. Same trusted-outlet standard; editions rotate across the twice-daily runs so the full set is swept about every six days.</td>
+        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. We read <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more). That way we search each market in its own language and its own outlets, not through a US lens. Same trusted-outlet standard. Editions rotate across the twice-daily runs, so we sweep the full set about every six days.</td>
         <td>Verified (named report)</td>
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
@@ -121,7 +121,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>US federal RIFs (OPM)</b></td><td>US federal agencies</td>
-        <td>Official executed Reduction-in-Force separations from OPM's EHRI workforce dataset, grouped by agency and month. The documented floor for federal layoffs; announced or deferred-resignation federal cuts arrive via the news feed. No AI processing.</td>
+        <td>Official executed Reduction-in-Force separations from OPM's EHRI workforce dataset, grouped by agency and month. This is the documented floor for federal layoffs. Announced or deferred-resignation federal cuts arrive through the news feed instead. No AI processing.</td>
         <td>Verified</td>
         <td><a href="https://data.opm.gov/explore-data/analytics/workforce-changes" target="_blank" rel="noopener">OPM workforce data &#8599;</a></td>
       </tr>
@@ -133,7 +133,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Distress &amp; insolvency signals</b></td><td>US bankruptcy &middot; UK insolvency</td>
-        <td>CourtListener US bankruptcy petitions and Companies House UK insolvency filings flag distressed employers, which are then run through the news pipeline; a layoff only enters the tracker when a sourced, counted report confirms it (the filing itself is a lead, not a count).</td>
+        <td>CourtListener US bankruptcy petitions and Companies House UK insolvency filings flag employers in distress. We then run those employers through the news pipeline. A layoff only enters the tracker when a sourced, counted report confirms it. The filing itself is a lead, not a count.</td>
         <td>Signal (feeds verification)</td>
         <td><a href="https://www.courtlistener.com" target="_blank" rel="noopener">CourtListener &#8599;</a></td>
       </tr>
@@ -145,13 +145,13 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
-        <td>Official corporate-filing systems. <em>Retired</em> as discovery probes after months live yielded zero layoff rows (these filings essentially never announce layoffs). Japan, South Korea and Brazil are covered through worldwide news instead. Client kept, re-runnable on demand.</td>
+        <td>Official corporate-filing systems. We <em>retired</em> them as discovery probes after months live yielded zero layoff rows, because these filings essentially never announce layoffs. Worldwide news covers Japan, South Korea and Brazil instead. Client kept, re-runnable on demand.</td>
         <td>Retired probe</td>
         <td><a href="https://disclosure2.edinet-fsa.go.jp/" target="_blank" rel="noopener">EDINET &#8599;</a></td>
       </tr>
     </tbody>
   </table></div>
-  <p class="alt-muted"><b>Verified</b> = a filing or named report is behind it (the headline number). <b>Announced</b> = a company plan reported at announcement stage, kept in a separate tier and never mixed into the verified total.</p>
+  <p class="alt-muted"><b>Verified</b> means a filing or a named report is behind it. That is the headline number. <b>Announced</b> means a company plan reported at the announcement stage, before it takes effect. We keep it in a separate tier and never mix it into the verified total.</p>
 
   <h2 id="alt-state-warn">US state WARN registries (<?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> states + DC)</h2>
   <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page, the exact source our importer reads.</p>
@@ -169,7 +169,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     <?php endforeach; ?>
     </tbody>
   </table></div>
-  <p class="alt-muted">Each state publishes on its own schedule (some rolling daily, some weekly, some quarterly); we re-import every state <b>daily at 11am ET</b>, so a state's newest posted notices appear here within a day. Where a state offers a per-notice page, each entry links straight to it; otherwise the link goes to the state's official WARN list or data file.</p>
+  <p class="alt-muted">Each state publishes on its own schedule: some daily, some weekly, some quarterly. We re-import every state <b>daily at 11am ET</b>, so a state's newest posted notices appear here within a day. Where a state offers a page for each notice, the entry links straight to it. Otherwise the link goes to the state's official WARN list or data file.</p>
   <?php else : ?>
   <p class="alt-muted">The state WARN registry list is being generated and will appear on the next update.</p>
   <?php endif; ?>
@@ -194,16 +194,16 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     <?php endforeach; ?>
     </tbody>
   </table></div>
-  <p class="alt-muted"><b>"Publishes notices, no public headcounts"</b> states post WARN notices but without a per-employer employee count, so those notices cannot become countable rows (we never invent a number). <b>"No public register" / "Confidential by law"</b> states keep WARN filings internal. In both cases those cuts still reach the tracker through SEC filings and named news, never invented and never estimated. The <b>unemployment column is a separate official metric</b> (the state's monthly BLS rate, not a layoff count) shown so every state carries an authoritative, sourced number even where individual notices aren't public.</p>
+  <p class="alt-muted"><b>"Publishes notices, no public headcounts"</b> states post WARN notices without a per-employer employee count. Those notices cannot become countable rows, because we never invent a number. <b>"No public register"</b> and <b>"Confidential by law"</b> states keep WARN filings internal. In both cases those cuts still reach the tracker through SEC filings and named news, never invented and never estimated. The <b>unemployment column is a separate official metric</b>. It is the state's monthly BLS rate, not a layoff count. We show it so every state carries an authoritative, sourced number even where individual notices are not public.</p>
 
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php')) include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
 
   <h2 id="alt-src-global">Why most countries appear through news, not a registry</h2>
-  <p>Almost every country requires employers to notify a labour authority before a mass layoff, but treats those filings as <b>confidential</b>, publishing only aggregate statistics, never a public list of which companies are cutting. Only <b>US states</b>, <b>Quebec</b> and <b>Poland's Mazovia region</b> (WUP Warszawa, a 2026 survey of all 16 Polish voivodeship labour offices found it is the only one naming employers) publish a public, per-employer notice register we can read directly. Everywhere else, the honest options are the EU's <b>Eurofound ERM</b> (which compiles large restructuring events from national correspondents) and a <b>reviewed allowlist of that country's news outlets</b>. That is why a German or Japanese layoff reaches this tracker through a named news report rather than a government file: the government has the file, it just does not make it public. We link each country's official labour authority below so you can verify the filing requirement, and its confidentiality, yourself.</p>
+  <p>Almost every country requires employers to notify a labour authority before a mass layoff. But most treat those filings as <b>confidential</b>. They publish totals only, never a public list of which companies are cutting. Only <b>US states</b>, <b>Quebec</b> and <b>Poland's Mazovia region</b> publish a public, per-employer notice register we can read directly. The Mazovia register is WUP Warszawa, and a 2026 survey of all 16 Polish voivodeship labour offices found it is the only one that names employers. Everywhere else, the honest options are two. One is the EU's <b>Eurofound ERM</b>, which compiles large restructuring events from national correspondents. The other is a <b>reviewed allowlist of that country's news outlets</b>. That is why a German or Japanese layoff reaches this tracker through a named news report rather than a government file. The government has the file. It just does not make it public. We link each country's official labour authority below, so you can check the filing requirement, and its confidentiality, yourself.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php')) include ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php'; ?>
 
   <h2 id="alt-src-news">Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
-  <p>Beyond official filings, we monitor a curated allowlist of reputable news outlets in every country, in 65+ languages, twice daily via GDELT and Google News, never the open web. The full list is below, generated straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register (if any) we pull directly.</p>
+  <p>Beyond official filings, we watch a reviewed allowlist of reputable news outlets in every country, in 65+ languages. We check them twice daily through GDELT and Google News, never the open web. The full list is below, built straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register, if any, we pull directly.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php')) : ?>
   <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
   <?php else : ?>
@@ -214,25 +214,25 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
     <thead><tr><th>Source type</th><th>How it's handled</th></tr></thead>
     <tbody>
-      <tr><td>WARN &amp; ERM (structured)</td><td>Imported as-is with <b>no AI processing</b>, company, count and date come straight off the official record.</td></tr>
-      <tr><td>News &amp; SEC (text)</td><td>A model extracts the facts; a second independent model pass must agree, and a supporting quote must be present. Countries/industries normalize to fixed lists; counts and dates pass hard validation.</td></tr>
-      <tr><td>Corrections</td><td>Label fixes need two passes to agree; <b>numeric changes and removals always require a human</b>. Every correction is logged publicly.</td></tr>
+      <tr><td>WARN &amp; ERM (structured)</td><td>Imported as-is, with <b>no AI processing</b>. Company, count and date come straight off the official record.</td></tr>
+      <tr><td>News &amp; SEC (text)</td><td>A model extracts the facts. A second independent model pass must agree, and a supporting quote must be present. Countries and industries normalize to fixed lists. Counts and dates pass hard validation.</td></tr>
+      <tr><td>Corrections</td><td>Label fixes need two passes to agree. <b>Numeric changes and removals always require a human.</b> We log every correction publicly.</td></tr>
     </tbody>
   </table></div>
-  <p>Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">tracker health page</a>; the running corrections log is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-data-sources">tracker itself</a>.</p>
+  <p>Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">tracker health page</a>. The running corrections log is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-data-sources">tracker itself</a>.</p>
 
   <h2 id="alt-ai-rubric">How we classify an "AI-attributed" layoff (the rubric)</h2>
-  <p>Because this is the number most likely to be quoted, here is the exact, testable standard behind it. We report <b>what the employer said</b>, not our own judgment of cause, we never assert in our own voice that AI caused a layoff.</p>
+  <p>This is the number most likely to be quoted, so here is the exact, testable standard behind it. We report <b>what the employer said</b>, not our own judgment of cause. <b>We never assert in our own voice that AI caused a layoff.</b></p>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">
     <thead><tr><th>Tier</th><th>What qualifies</th><th>Example language</th><th>Counts as&hellip;</th></tr></thead>
     <tbody>
       <tr><td><b>Verified (strict)</b></td><td>The employer names AI/automation as a <b>primary or contributing cause</b> of the cut, and we hold the <b>exact quote</b> from a primary source.</td><td>&ldquo;these roles are being eliminated as AI now performs this work&rdquo;; &ldquo;automation has reduced our need for&hellip;&rdquo;</td><td>Verified AI &#10003;</td></tr>
       <tr><td><b>Broad (wider lens)</b></td><td>Looser AI framing tied to the cut: cutting <i>while</i> funding an AI pivot, or press describing it as AI-driven, without a clean causal quote.</td><td>&ldquo;restructuring to invest in AI&rdquo;; &ldquo;reallocating toward AI priorities&rdquo;; press: &ldquo;amid its AI push&rdquo;</td><td>Broad only (labeled separately, never merged)</td></tr>
-      <tr><td>Not counted</td><td>AI investment, future automation projections, or AI used to <i>select</i> who to cut, none of these is a stated cause of the reduction.</td><td>&ldquo;we&rsquo;re hiring for AI roles&rdquo;; &ldquo;used an algorithm to rank performance&rdquo;</td><td>Neither</td></tr>
+      <tr><td>Not counted</td><td>AI investment, future automation projections, or AI used to <i>select</i> who to cut. None of these is a stated cause of the cut.</td><td>&ldquo;we&rsquo;re hiring for AI roles&rdquo;; &ldquo;used an algorithm to rank performance&rdquo;</td><td>Neither</td></tr>
       <tr><td>Denied</td><td>The employer explicitly says the cuts were <b>not</b> due to AI.</td><td>&ldquo;this is unrelated to AI&rdquo;</td><td>Neither (recorded as denial)</td></tr>
     </tbody>
   </table></div>
-  <p class="alt-muted">Two honest caveats: (1) &ldquo;restructuring around AI&rdquo; is sometimes PR cover for ordinary cost-cutting, the <b>broad</b> tier records the framing, it does not verify the cause. (2) Companies rarely say &ldquo;replaced by AI&rdquo; outright, so the strict measure is deliberately conservative; the broad measure exists precisely to show the wider, looser universe alongside it. The two are always reported separately and never summed.</p>
+  <p class="alt-muted">Two honest caveats. (1) The phrase &ldquo;restructuring around AI&rdquo; is sometimes PR cover for ordinary cost-cutting. The <b>broad</b> tier records the framing. It does not verify the cause. (2) Companies rarely say &ldquo;replaced by AI&rdquo; outright, so the strict measure is deliberately conservative. The broad measure exists precisely to show the wider, looser universe alongside it. <b>We always report the two separately and never add them together.</b></p>
   <p class="alt-muted" style="margin-top:8px">Tip: click any column header to sort a table.</p>
 </main>
 <style>

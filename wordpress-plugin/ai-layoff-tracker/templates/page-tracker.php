@@ -625,7 +625,7 @@ $alt_hero_geo    = 'worldwide';
             </div>
             <div class="alt-stat-card alt-stat-card-ai alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-ai"><?php echo esc_html($alt_stat('ai')); ?></span>
-                <span class="alt-stat-label">🤖 AI cuts, verified (specific) <?php echo $alt_tile_i('How the AI tag is assigned', 'Verified-tier cuts where the employer named AI, in words we hold and can quote: statements like "AI now handles this work" or "replaced by AI." We report the stated reason; we do not decide the cause.'); // phpcs:ignore ?></span>
+                <span class="alt-stat-label">🤖 AI cuts, verified (specific) <?php echo $alt_tile_i('How the AI tag is assigned', 'Verified-tier cuts where the employer named AI, in words we hold and can quote. We report the stated reason. We do not decide the cause. Examples: "AI now handles this work" or "replaced by AI."'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-sub"><?php echo esc_html($alt_period); ?></span>
                 <span class="alt-stat-sub" id="alt-stat-ai-share-line"></span>
             </div>
@@ -704,7 +704,7 @@ $alt_hero_geo    = 'worldwide';
             <div class="alt-why-item"><b>They book multi-year plans on day one.</b> A &ldquo;20,000 over two years&rdquo; announcement lands in their total instantly. We add each cut as its WARN notice or SEC filing actually appears.</div>
             <div class="alt-why-item"><b>They fold in receiptless separations.</b> Buyouts, attrition, and federal-workforce reductions that name no company and file nothing. Hundreds of thousands of jobs with no document to link. We don&rsquo;t claim what we can&rsquo;t source.</div>
             <div class="alt-why-item"><b>We don&rsquo;t pad to match a bigger headline.</b> A number a journalist can verify is worth more than a bigger one they can&rsquo;t. Nothing here is estimated into existence.</div>
-            <div class="alt-why-item"><b>On AI, the thing this tracker exists for,</b> every flagged cut carries the employer&rsquo;s own words naming AI: quotable, clickable, and held to a standard the estimates don&rsquo;t apply to themselves.</div>
+            <div class="alt-why-item"><b>On AI, the thing this tracker exists for.</b> Every flagged cut carries the employer&rsquo;s own words naming AI. Those words are quotable and clickable, and we hold them to a standard the estimates don&rsquo;t apply to themselves.</div>
         </div>
         <?php /* The double-pass and dedup detail lives on the methodology page,
                  where the fact-checker who needs it will look; 70 words about
@@ -1001,14 +1001,14 @@ $alt_hero_geo    = 'worldwide';
         <summary>Methodology &amp; sources (for journalists &amp; researchers)</summary>
         <div class="alt-method-body">
             <p><b>The short version.</b> <b>Verified job cuts</b> are cuts with a filing or named source behind them, counted on the day they take effect; the main figure. <b>AI-attributed</b> is the subset where the employer named AI in words we can quote. <b>Announced</b> is a separate, labeled tier of announcement-stage plans, never mixed into the verified total. Nothing is estimated; every number links to a legal filing or named report, and country/US-state filters describe where the jobs were, not an employer's headquarters.</p>
-            <p><b>How the AI tag works, in one line:</b> only a primary or contributing cause counts, each with an exact supporting quote; investment in AI, future projections, or AI used to pick who goes do not qualify. A separate broader measure is labeled and never merged in.</p>
+            <p><b>How the AI tag works.</b> Only a primary or contributing cause counts, and each one needs an exact supporting quote. Investment in AI, future projections, or AI used to pick who goes do not qualify. A separate broader measure is labeled and never merged in.</p>
             <p class="alt-method-cta"><a class="alt-method-fulllink" href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">Read the full methodology and sources &rarr;</a> &middot; extraction, dedup, coverage limits, why our totals differ, and API access, all in detail.</p>
         </div>
     </details>
     <details class="alt-methodology" id="alt-data-sources">
         <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
-            <p>Official government filings and notices are collected directly (SEC EDGAR incl. Item 2.05 exit-cost filings, WARN notices from <?php echo esc_html($alt_warn_phrase); ?>, Eurofound ERM for the EU), press-release wires and reviewed company IR feeds are monitored, and <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News, allowlist-only, never crawled directly. Every published event links to its source. For the handful of US states that publish no usable WARN register (Arkansas, Wyoming, New Hampshire, Missouri, Hawaii, Oklahoma), we also show their official monthly BLS unemployment rate as a clearly separate context metric, sourced and dated, never mixed into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
+            <p>We collect official government filings and notices directly: SEC EDGAR, including Item 2.05 exit-cost filings, WARN notices from <?php echo esc_html($alt_warn_phrase); ?>, and Eurofound ERM for the EU. We also monitor press-release wires and reviewed company investor-relations feeds. And <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News. We work from an allowlist and never crawl those outlets directly. Every published event links to its source. A handful of US states publish no usable WARN register: Arkansas, Wyoming, New Hampshire, Missouri, Hawaii and Oklahoma. For those states we also show the official monthly unemployment rate from the US Bureau of Labor Statistics, sourced and dated. It is a clearly separate context metric, and we never mix it into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
             <?php
             // Rendered from the committed weekly measurement (data/recall-measurement.json,
             // written by recall_precision.py), never typed: when capture improves the page
@@ -1018,17 +1018,18 @@ $alt_hero_geo    = 'worldwide';
             if ($alt_rm) : ?>
             <p class="alt-muted" id="alt-recall-measured"><b>How complete is that, measured?</b> We
             enumerated every SEC 8-K filed between 1 July 2025 and 30 June 2026
-            whose structured filing header carries Item 2.05 and that states an
-            absolute number of affected employees, then checked how many appear
+            that qualified for this test. A filing qualified if its structured
+            filing header carries Item 2.05 and it states an absolute number of
+            affected employees. Then we checked how many appear
             here. <b><?php echo (int) $alt_rm['matched']; ?> of <?php echo (int) $alt_rm['reference']; ?></b>,
             or <?php echo (int) $alt_rm['pct']; ?>% (95% confidence interval
             <?php echo (int) $alt_rm['lo_pct']; ?>% to <?php echo (int) $alt_rm['hi_pct']; ?>%).
             So this is a floor and not a census, and it is why the page does not
             claim to hold every filing.<?php if (isset($alt_rm['precision_ok'])) : ?> Where a count is published, it is
             accurate: <?php echo (int) $alt_rm['precision_ok']; ?> of <?php echo (int) $alt_rm['precision_checked']; ?> checked figures appear verbatim in the cited
-            source.<?php endif; ?> That measurement covers one source family over one year and
+            source.<?php endif; ?> That measurement covers one source family over one year. It
             says nothing about private employers, non-US events, or the WARN and
-            news routes, which are counted separately. It is re-measured weekly
+            news routes, which we count separately. We re-measure it weekly
             against the same frozen filing list, so this paragraph updates as
             capture improves.</p>
             <?php endif; ?>
@@ -1073,17 +1074,17 @@ $alt_hero_geo    = 'worldwide';
 
             <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years," the announcement trackers record all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap, their figure is a forecast, ours is an execution ledger.</p>
 
-            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs, including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000–300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
+            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs, including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000 to 300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
-            <p><b>4 &middot; We date each cut by when it takes effect, not when it was filed.</b> Most trackers count a layoff on the day its WARN notice is filed or the cut is announced. We count it on the day the jobs actually end, because that is what a worker lives through and what a labor-market reader wants to measure. The two bases answer different questions: filing date asks "when did we hear about it," effective date asks "when did it happen." The gap is small and can fall either way; in 2026 the effective-date basis runs slightly higher, because more notices were filed in 2025 for cuts that land in 2026 than were filed in 2026 for cuts landing in 2027. We store both dates, so any figure here can be recounted on either basis.</p>
-            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>, smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate, because a number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year, because we surface AI attributions from primary sources they never itemize.</p>
+            <p><b>4 &middot; We date each cut by when it takes effect, not when it was filed.</b> Most trackers count a layoff on the day its WARN notice is filed or the cut is announced. We count it on the day the jobs actually end. That is what a worker lives through, and what a labor-market reader wants to measure. The two bases answer different questions. Filing date asks when we heard about it. Effective date asks when it happened. The gap is small, and it can fall either way. In 2026 the effective-date basis runs slightly higher. Companies filed more notices in 2025 for cuts landing in 2026 than they filed in 2026 for cuts landing in 2027. We store both dates. You can recount any figure here on either basis.</p>
+            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>. It is smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate. A number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year. We surface AI attributions from primary sources they never itemize.</p>
 
             <p><b>Where we lead, and where we don't, stated honestly.</b> Because our figure is built from receipts, it is not always smaller. Measured like-for-like against the public trackers by category:</p>
             <ul class="alt-method-list">
-                <li><b>Against WARN-only aggregators</b> (the legally-filed US floor), we come out <em>higher</em>: we import the same WARN notices and add SEC filings and named-news reports on top, so our US verified total clears the WARN floor rather than stopping at it.</li>
-                <li><b>Against tech-event trackers</b>, our worldwide technology job-cut total is <em>at or above</em> the largest of them by volume; we carry fewer tiny private-startup events, but more total tech job losses, because we catch the big filed cuts they sometimes miss.</li>
+                <li><b>Against WARN-only aggregators</b> (the legally-filed US floor), we come out <em>higher</em>. We import the same WARN notices, then add SEC filings and named-news reports on top. Our US verified total clears the WARN floor rather than stopping at it.</li>
+                <li><b>Against tech-event trackers</b>, our worldwide technology job-cut total is <em>at or above</em> the largest of them by volume. We carry fewer tiny private-startup events, but more total tech job losses. We catch the big filed cuts they sometimes miss.</li>
                 <li><b>On AI attribution</b>, our broad AI-linked measure is <em>at or above</em> the scale of the announcement surveys' AI figure, and every entry carries the employer's own words. Our strict measure is deliberately smaller than a survey, because a survey infers a reason and we require a quote.</li>
                 <li><b>Against announcement surveys' all-industry total</b>, we run <em>lower</em>, on purpose: the gap is receiptless cuts (federal-workforce reductions, buyouts, attrition, and small closings that file nothing). We do not claim what we cannot source.</li>
                 <li><b>On coverage no one else offers</b>, we are the only one of these measuring the <em>global, all-industry, source-linked</em> universe. Everyone else is US-only, tech-only, or a survey.</li>
@@ -1105,7 +1106,7 @@ $alt_hero_geo    = 'worldwide';
         <div class="alt-method-body">
             <p>The full directory of every pipeline, the SEC, all state WARN registries with live links, Eurofound ERM, and the news index, lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>. The disclosures below cover what is <em>not</em> yet included.</p>
             <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As events occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable events exist, not a padded list.</p>
-            <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE; they are maintained as official-source research candidates and will be named as live only after a stable public interface, tests and source-health monitoring exist. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Events too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
+            <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE. We maintain them as official-source research candidates. We will name one as live only after a stable public interface, tests and source-health monitoring exist for it. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Events too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
         </div>
     </details>
 
@@ -1119,12 +1120,12 @@ $alt_hero_geo    = 'worldwide';
             // marker is reported as unrecorded, never assigned one.
             $alt_prov = function_exists('alt_corrections_provenance') ? alt_corrections_provenance() : null;
             if (is_array($alt_prov) && (int) $alt_prov['entries'] > 0) : ?>
-            <p class="alt-corrections-provenance">Origin, computed from the log entries themselves:
-            of the <?php echo number_format((int) $alt_prov['entries']); ?> machine-written entries below,
+            <p class="alt-corrections-provenance">Origin, computed from the log entries themselves.
+            Of the <?php echo number_format((int) $alt_prov['entries']); ?> machine-written entries below,
             <?php echo number_format((int) $alt_prov['internal']); ?> name an internal audit or automated
-            check as the trigger, <?php echo number_format((int) $alt_prov['external']); ?> name an external
-            report, and <?php echo number_format((int) $alt_prov['unrecorded']); ?> do not record an origin
-            (counted as unrecorded, not assigned one).</p>
+            check as the trigger. Another <?php echo number_format((int) $alt_prov['external']); ?> name an external
+            report. The remaining <?php echo number_format((int) $alt_prov['unrecorded']); ?> do not record an origin,
+            so they are counted as unrecorded, not assigned one.</p>
             <?php endif; ?>
             <p>For reproducible monitoring, the machine-readable <a href="<?php echo esc_url(rest_url('layoffs/v1/quality-status')); ?>">quality status endpoint</a> reports dataset revision, recent corrections, collector health, retained-source integrity and the status of each coverage workstream. Pending work is shown as pending, not silently treated as coverage.</p>
             <ul class="alt-corrections-scroll">
@@ -1154,8 +1155,8 @@ $alt_hero_geo    = 'worldwide';
                 <?php endforeach; ?>
                 <li id="log-2026-07-15-s1"><b>2026-07-15: Florida test rows removed, 87,600 jobs.</b> Florida's official WARN export contains internal test entries, which are fictitious notices sharing one WARN number and using non-existent zip codes. Eight such rows were removed, the largest a fake 78,788-worker "AT&amp;T" notice that briefly ranked as our biggest entry. Our importer now skips test-named rows, and each removed row is permanently blocked from re-import. <a class="alt-log-anchor" href="#log-2026-07-15-s1" aria-label="Link to this correction">#</a></li>
                 <li id="log-2026-07-15-s2"><b>2026-07-15: Country assigned to 88 news and SEC entries.</b> These rows had no country recorded, which hid them from the regional views and country charts, though they were always in the worldwide totals. Each was resolved from its own source article. The largest were Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay, so "Multiple countries") and BBC (2,000, United Kingdom). <a class="alt-log-anchor" href="#log-2026-07-15-s2" aria-label="Link to this correction">#</a></li>
-                <li id="log-2026-07-15-s3"><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure with only 2 RI employees affected, and the per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the event. <a class="alt-log-anchor" href="#log-2026-07-15-s3" aria-label="Link to this correction">#</a></li>
-                <li id="log-2026-07-15-s4"><b>2026-07-15: Ten non-events removed.</b> These were SEC-filing extraction mistakes: severance dollar figures and workforce-reduction percentages misread as headcounts, WARN Act boilerplate clauses from acquisition agreements, and three duplicate rows of one Meta story carrying wrong dates. <a class="alt-log-anchor" href="#log-2026-07-15-s4" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s3"><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure, but only 2 RI employees are affected. The per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the event. <a class="alt-log-anchor" href="#log-2026-07-15-s3" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s4"><b>2026-07-15: Ten non-events removed.</b> These were SEC-filing extraction mistakes. Some were severance dollar figures and job-cut percentages misread as headcounts. Some were WARN Act boilerplate clauses from acquisition agreements. Three were duplicate rows of one Meta story carrying wrong dates. <a class="alt-log-anchor" href="#log-2026-07-15-s4" aria-label="Link to this correction">#</a></li>
             </ul>
             <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and they get priority.</p>
         </div>
