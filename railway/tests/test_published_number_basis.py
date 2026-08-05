@@ -438,7 +438,7 @@ class QualityStatusMasksRetiredCollectors(unittest.TestCase):
                 # legitimate raw read, and it is inside the masked function too.
                 window = src[max(0, m.start() - 900):m.start()]
                 fn = re.findall(r"function (\w+)\(", window)
-                if fn and fn[-1] in ("alt_source_health_masked", "alt_api_source_health_post"):
+                if fn and fn[-1] in ("alt_source_health_masked", "alt_source_health_record"):
                     continue
                 offenders.append("%s: %s" % (path.name, fn[-1] if fn else "?"))
         self.assertEqual(

@@ -195,6 +195,39 @@ function alt_db_install() {
         KEY status (status),
         KEY status_checked (status, checked_at)
     ) $charset;");
+
+    // Digest subscribers: ONE shared list for BOTH trackers (see
+    // includes/subscribe.php for the consent model). The first personal data
+    // this site stores, so the shape is deliberately minimal: an address, the
+    // consent flags, per-flag frequency, double-opt-in state, and two random
+    // tokens so no URL ever carries the address itself. Rows never linger:
+    // unsubscribed and never-confirmed rows are hard-deleted after
+    // ALT_DIGEST_RETENTION_DAYS by the digest cron.
+    $subscribers = $wpdb->prefix . 'alt_subscribers';
+    dbDelta("CREATE TABLE $subscribers (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        email VARCHAR(190) NOT NULL,
+        consent_layoff TINYINT(1) NOT NULL DEFAULT 0,
+        consent_talent TINYINT(1) NOT NULL DEFAULT 0,
+        consent_articles TINYINT(1) NOT NULL DEFAULT 0,
+        freq_layoff VARCHAR(6) NOT NULL DEFAULT 'weekly',
+        freq_talent VARCHAR(6) NOT NULL DEFAULT 'weekly',
+        freq_articles VARCHAR(6) NOT NULL DEFAULT 'weekly',
+        status VARCHAR(12) NOT NULL DEFAULT 'pending',
+        confirm_token CHAR(64) NULL,
+        unsub_token CHAR(64) NOT NULL,
+        pending_prefs TEXT NULL,
+        created_at DATETIME NOT NULL,
+        confirmed_at DATETIME NULL,
+        unsubscribed_at DATETIME NULL,
+        last_sent_at DATETIME NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY email (email),
+        KEY status (status),
+        KEY confirm_token (confirm_token),
+        KEY unsub_token (unsub_token),
+        KEY status_created (status, created_at)
+    ) $charset;");
 }
 
 function alt_events_table() { global $wpdb; return $wpdb->prefix . 'alt_events'; }
@@ -1974,6 +2007,26 @@ function alt_api_source_health_get() {
     return rest_ensure_response(alt_source_health_masked());
 }
 
+/**
+ * The ONE writer of a source's health row. Both the keyed REST reporter and
+ * any in-plugin reporter (the digest mailer's cron) go through here, so the
+ * "no raw reader outside the mask" guard keeps a single merge-one-row-back
+ * read to reason about. Everything else in the option is left untouched.
+ */
+function alt_source_health_record($source, $status, $entries, $detail) {
+    $health = get_option('alt_source_health');
+    if (!is_array($health)) $health = array();
+    $health[$source] = array(
+        'status' => in_array($status, array('ok', 'running', 'degraded', 'retired'), true)
+            ? $status : 'degraded',
+        'entries' => max(0, (int) $entries),
+        'checked_at' => gmdate('c'),
+        'detail' => substr(sanitize_text_field((string) $detail), 0, 240),
+    );
+    update_option('alt_source_health', $health, false);
+    return $health[$source];
+}
+
 function alt_api_source_health_post(WP_REST_Request $r) {
     global $wpdb;
     $source = sanitize_key((string) $r->get_param('source'));
@@ -1981,16 +2034,9 @@ function alt_api_source_health_post(WP_REST_Request $r) {
     if (!alt_source_runs_table_ready()) {
         return new WP_Error('alt_db_error', 'Collector-run telemetry table is unavailable after migration retry.', array('status' => 500));
     }
-    $health = get_option('alt_source_health');
-    if (!is_array($health)) $health = array();
-    $health[$source] = array(
-        'status' => in_array($r->get_param('status'), array('ok', 'running', 'degraded', 'retired'), true)
-            ? $r->get_param('status') : 'degraded',
-        'entries' => max(0, (int) $r->get_param('entries')),
-        'checked_at' => gmdate('c'),
-        'detail' => substr(sanitize_text_field((string) $r->get_param('detail')), 0, 240),
-    );
-    update_option('alt_source_health', $health, false);
+    $health = array();
+    $health[$source] = alt_source_health_record(
+        $source, $r->get_param('status'), (int) $r->get_param('entries'), (string) $r->get_param('detail'));
     // Each successful health write is also a retained operational attempt.
     // This has no path to alter layoff rows, events or source reports.
     $logged = $wpdb->insert(alt_source_runs_table(), array(
