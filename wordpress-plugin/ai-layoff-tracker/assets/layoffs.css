@@ -2268,7 +2268,9 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     display: grid; gap: 14px 22px; align-items: start;
     margin: 0 0 14px;
 }
-@media (min-width: 860px) { .alt-hero { grid-template-columns: minmax(0, 1fr) 330px; } }
+/* ONE COLUMN. The freshness panel used to sit beside the figure at 330px and
+   has moved to .alt-datastrip, below the data. A hero with one child and a
+   two-column rule reserved 330px of nothing on every wide screen. */
 /* The theme centers paragraphs in this region; the hero is editorial and
    reads left, like the board and tiles below it. */
 .alt-hero-main { min-width: 0; align-self: center; }
@@ -2312,6 +2314,7 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     font-variant-numeric: tabular-nums;
 }
 .alt-hero-figure-asof[hidden] { display: none; }
+.alt-hero-asof-label { color: var(--alt-ink); font-weight: 700; }
 
 .alt-hero-thesis {
     font-family: var(--alt-serif);
@@ -2322,9 +2325,24 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     margin: 2px 0 10px;
 }
 @media (max-width: 560px) { .alt-hero-thesis { font-size: 20px; } }
-.alt-hero-trust { margin: 0 0 14px; font-size: 14.5px; line-height: 1.55; color: var(--alt-ink-2); max-width: 56ch; }
-.alt-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.alt-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
 .alt-hero-actions .alt-btn { text-decoration: none; }
+
+/* THE DATA STRIP: freshness, coverage, cite/export and the report links, all
+   moved out of the first screen and kept whole. One column on a phone, the
+   freshness card beside the three lines once there is room. */
+.alt-datastrip {
+    display: grid; gap: 10px 18px; align-items: start;
+    margin: 22px 0 4px;
+}
+@media (min-width: 860px) {
+    .alt-datastrip { grid-template-columns: 320px minmax(0, 1fr); }
+    .alt-datastrip .alt-fresh { grid-row: 1 / span 4; }
+}
+.alt-datastrip > p { margin: 0; min-width: 0; }
+/* Every child clips its own overflow, so a long ribbon or a wide status row
+   shrinks instead of widening the page. */
+.alt-datastrip > * { min-width: 0; max-width: 100%; }
 .alt-fresh {
     background: var(--alt-surface); border: 1px solid var(--alt-border);
     border-radius: 12px; padding: 12px 14px; box-shadow: var(--alt-shadow);
@@ -2349,7 +2367,6 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     color: var(--alt-ochre); font-variant-numeric: tabular-nums; line-height: 1.15;
 }
 .alt-fresh-stat i { font-style: normal; font-size: 11.5px; line-height: 1.35; color: var(--alt-ink-2); }
-.alt-fresh-check { font-size: 12px; color: #3c5a41; }
 
 /* Coverage ribbon: one derived line under the hero. */
 .alt-ribbon {
@@ -2362,6 +2379,41 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 .alt-ribbon b { color: var(--alt-ink); font-variant-numeric: tabular-nums; }
 .alt-ribbon-links a { color: var(--alt-blue-dark); text-decoration: none; }
 .alt-ribbon-links a:hover, .alt-ribbon-links a:focus-visible { text-decoration: underline; }
+
+/* THE BOARD'S DISCLOSURE. Collapsed, it is one row between the region chips
+   (which DO scope it) and the date/sort/dropdown controls (which do not). Open,
+   it is the same board as before. Costing ~300px of a phone's first screen for
+   a summary of what the reader is about to scroll through was the trade that
+   pushed the data below the fold. */
+.alt-narrative-wrap { margin: 0 0 12px; }
+.alt-narrative-wrap > summary {
+    display: flex; align-items: center; gap: 7px; cursor: pointer;
+    list-style: none; padding: 9px 13px; border-radius: 9px;
+    border: 1px solid var(--alt-border); background: var(--alt-surface);
+    font-size: 13px; font-weight: 700; color: var(--alt-ink);
+}
+.alt-narrative-wrap > summary::-webkit-details-marker { display: none; }
+.alt-narrative-wrap > summary::before {
+    content: ""; width: 0; height: 0; flex: none;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    transition: transform .15s ease;
+}
+.alt-narrative-wrap[open] > summary::before { transform: rotate(90deg); }
+.alt-narrative-wrap > summary:hover, .alt-narrative-wrap > summary:focus-visible { border-color: var(--alt-blue); }
+.alt-narrative-wrap[open] > summary { border-radius: 9px 9px 0 0; border-bottom-color: transparent; }
+.alt-narrative-wrap[open] > .alt-narrative { margin-top: 0; border-radius: 0 0 9px 9px; }
+/* An empty board must not leave a summary promising one. */
+.alt-narrative-wrap:has(> .alt-narrative:empty) { display: none; }
+@media (prefers-reduced-motion: reduce) { .alt-narrative-wrap > summary::before { transition: none; } }
+
+/* ONE BUTTON IN FRONT OF ELEVEN DROPDOWNS. Ships hidden; layoffs.js unhides it
+   and collapses the panel, so a no-JS reader keeps every control. */
+.alt-filterbar-toggle-row { margin: 0 0 12px; }
+.alt-filterbar-toggle[hidden] { display: none; }
+.alt-filterbar-toggle { display: inline-flex; align-items: center; gap: 7px; }
+.alt-filterbar-toggle-on { border-color: var(--alt-blue); color: var(--alt-blue-dark); }
+.alt-filters-count { font-variant-numeric: tabular-nums; font-weight: 800; }
 
 /* THE SIGNAL BOARD. Lives inside .alt-narrative (the warm cream card the
    strip already owned). Heat is an inline rgba computed per cell, scaled
@@ -2396,16 +2448,22 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
 /* "Today and this month identical so far": equal-column styling, one shared
    dotted underline instead of a duplicate column. */
 .alt-sb-eq { border-bottom: 2px dotted var(--alt-ochre); border-radius: 7px 7px 3px 3px; }
+/* "same event": the marker on a leader that already led an earlier column.
+   this week sits inside this month, so one big cut leads both — correct, and
+   it reads like a bug without a word saying so. */
+.alt-sb-again {
+    display: block; font-style: normal; font-size: 10px; font-weight: 700;
+    letter-spacing: .03em; text-transform: uppercase; color: var(--alt-muted);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.alt-sb-ev-repeat b { font-weight: 600; color: var(--alt-ink-2); }
+/* The footnote was one sentence doing four jobs. One clause per line, so a
+   reader after any one of them reads one of them. */
 .alt-sb-foot {
-    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+    margin: 0; padding: 0 0 0 16px; list-style: disc;
     font-size: 11.5px; line-height: 1.45; color: var(--alt-ink-2);
 }
-.alt-sb-legend { white-space: nowrap; font-weight: 600; }
-.alt-sb-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin: 0 1px; vertical-align: -1px; border: 1px solid rgba(31,43,61,.08); }
-.alt-sb-legend .l1 { background: rgba(42,120,214,.08); }
-.alt-sb-legend .l2 { background: rgba(42,120,214,.20); }
-.alt-sb-legend .l3 { background: rgba(42,120,214,.34); }
-.alt-sb-note { flex: 1 1 240px; min-width: 0; }
+.alt-sb-foot li { margin: 2px 0; }
 /* 375px: the label column becomes a full-width row above its four period
    cells (periods stay side by side; numbers this size fit four across a
    355px card). Nothing may bleed: cells shrink, never the page. */

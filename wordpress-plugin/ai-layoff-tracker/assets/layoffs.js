@@ -839,7 +839,83 @@
         { id: 'alt-f-announced', label: '', kind: 'bool', on: 'Announced only', color: 'gold' }
     ];
 
+    /* ------------------------------------------------------------------ */
+    /* The Filters panel                                                   */
+    /* ------------------------------------------------------------------ */
+
+    /*
+      ELEVEN DROPDOWNS BEHIND ONE BUTTON, and the button says how many are on.
+
+      Only the controls that live INSIDE the panel are counted. Search, the
+      region tabs, the date range, the date basis and sort stay outside it, so
+      counting them would make "Filters (3)" point at a panel holding none of
+      them. The values are read with readControl(), the same reader the chips
+      use, so the count and the chips cannot disagree.
+    */
+    var PANEL_FILTER_IDS = ['alt-f-years', 'alt-f-quarters', 'alt-f-months',
+        'alt-f-industry', 'alt-f-country', 'alt-f-state', 'alt-f-reasons',
+        'alt-f-verification', 'alt-f-roles', 'alt-f-company', 'alt-f-keyword',
+        'alt-f-minjobs'];
+
+    function panelFilterCount() {
+        var n = 0;
+        PANEL_FILTER_IDS.forEach(function (id) {
+            if (!document.getElementById(id)) return;
+            var v = readControl(id);
+            if (Array.isArray(v)) n += v.length;
+            else if (v !== '' && v != null && v !== false) n += 1;
+        });
+        return n;
+    }
+
+    function updateFilterPanelCount() {
+        var out = document.getElementById('alt-filters-count');
+        if (!out) return;
+        var n = panelFilterCount();
+        out.textContent = n ? ' (' + n + ')' : '';
+        var btn = document.getElementById('alt-filters-toggle');
+        if (btn) btn.classList.toggle('alt-filterbar-toggle-on', n > 0);
+    }
+
+    function setFilterPanelOpen(open) {
+        var body = document.getElementById('alt-filterbar-body');
+        var btn = document.getElementById('alt-filters-toggle');
+        if (!body || !btn) return;
+        body.hidden = !open;
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    /*
+      PROGRESSIVE ENHANCEMENT, in this order and not the other one.
+
+      The panel ships OPEN and the toggle ships `hidden`, so a reader with no JS
+      keeps all eleven controls exactly as before. This runs after
+      restoreFilters()/restoreFiltersFromUrl(), so a deep-linked or remembered
+      view that already has one of these filters set leaves the panel OPEN: the
+      control that shaped the page is never the one we hide.
+    */
+    function initFilterPanel() {
+        var body = document.getElementById('alt-filterbar-body');
+        var btn = document.getElementById('alt-filters-toggle');
+        if (!body || !btn) return;
+        btn.hidden = false;
+        // A years pill is set for everyone on first load (the page opens scoped
+        // to this year), so it is not evidence the reader chose anything.
+        var chosen = PANEL_FILTER_IDS.some(function (id) {
+            if (id === 'alt-f-years') return false;
+            if (!document.getElementById(id)) return false;
+            var v = readControl(id);
+            return Array.isArray(v) ? v.length > 0 : (v !== '' && v != null && v !== false);
+        });
+        setFilterPanelOpen(chosen);
+        btn.addEventListener('click', function () {
+            setFilterPanelOpen(btn.getAttribute('aria-expanded') !== 'true');
+        });
+        updateFilterPanelCount();
+    }
+
     function updateActiveFilterBar() {
+        updateFilterPanelCount();
         var bar = document.getElementById('alt-active-filters');
         if (!bar) return;
         var chips = [];
@@ -1161,7 +1237,12 @@
             var split = haveToDate
                 ? periodSplitSentence(verifiedToDate, verifiedJ, asOfLabel(t), period) : '';
             asOfEl.textContent = split;
-            asOfEl.hidden = (split === '');
+            // The sentence now sits inside a labelled wrapper ("In this
+            // figure: ..."), so an empty split has to hide the LABEL too or
+            // the hero prints a colon with nothing after it.
+            var asOfWrap = document.getElementById('alt-hero-asof-wrap');
+            if (asOfWrap) asOfWrap.hidden = (split === '');
+            else asOfEl.hidden = (split === '');
         }
         if (verifiedToDate != null) setText('alt-citeline-total', fmt(verifiedToDate));
         setText('alt-stat-announced', fmt(annJ));
@@ -1190,7 +1271,10 @@
         var shareV = aiFiltered ? null : pctTxt(aiJ, verifiedJ);
         setText('alt-stat-ai-share-line', aiFiltered
             ? 'Share not shown: this view is filtered to AI-attributed rows, so it would compare the number with itself.'
-            : (shareV ? shareV + ' of verified cuts were blamed on AI by the employer' : ''));
+            // "blamed on AI by the employer" was a verdict. The rubric is that
+            // the EMPLOYER named AI, in words we hold; we report the stated
+            // reason and do not assert the cause on anyone's behalf.
+            : (shareV ? shareV + ' of verified cuts name AI as a reason, in the employer\'s words' : ''));
         // The broad card is the wider-lens AI measure. Location-basis fills
         // first so the card never sits empty.
         setText('alt-stat-ai-broad', fmt(t.ai_broad_jobs || 0));
@@ -4405,17 +4489,35 @@
             };
             var lmax = 0;
             KEYS.forEach(function (k) { var v = (D[k].l || {}).job_count || 0; if (v > lmax) lmax = v; });
+            // One event legitimately leads several columns (this week sits
+            // inside this month), which is correct and reads like a bug. The
+            // first column carrying a leader keeps it plain; every later column
+            // showing the same employer is marked "same event". Server parity:
+            // the identical rule runs in page-tracker.php.
+            var lseen = {};
             var lRow = '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest event</span>'
                 + KEYS.map(function (k) {
                     var ld = D[k].l, v = (ld || {}).job_count || 0, e = eqCls(k);
                     if (!(v > 0)) return '<span class="alt-sb-cell alt-sb-zero' + e + '" role="cell">none</span>';
-                    var body = '<b>' + escapeHtml(ld.company_name) + '</b><span>' + fmt(v) + '</span>';
+                    var name = String(ld.company_name);
+                    var rep = Object.prototype.hasOwnProperty.call(lseen, name) ? ' alt-sb-ev-repeat' : '';
+                    lseen[name] = true;
+                    var body = '<b>' + escapeHtml(name) + '</b><span>' + fmt(v) + '</span>'
+                        + (rep ? '<i class="alt-sb-again">same event</i>' : '');
                     return ld.permalink
-                        ? '<a class="alt-sb-cell alt-sb-ev' + e + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this event&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
-                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + '" role="cell" href="#" data-company="' + escapeHtml(ld.company_name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
+                        ? '<a class="alt-sb-cell alt-sb-ev' + e + rep + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this event&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
+                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + rep + '" role="cell" href="#" data-company="' + escapeHtml(name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
                 }).join('') + '</div>';
-            var foot = '<div class="alt-sb-foot"><span class="alt-sb-legend" aria-hidden="true">less <i class="l1"></i><i class="l2"></i><i class="l3"></i> more</span>'
-                + '<span class="alt-sb-note">Verified events, counted the day each cut takes effect; the AI row uses the employer’s own words; columns overlap (a week can span two months), so they do not add up. Tap any number to filter.</span></div>';
+            // The footnote was one sentence doing four jobs, so a reader after
+            // any one of them read all four. One clause per line, each with the
+            // thing it explains. The "less ... more" heat legend is gone: it
+            // rendered as stray words beside the columns and was never a control.
+            var foot = '<ul class="alt-sb-foot">'
+                + '<li>Every row counts verified events on the day each cut takes effect.</li>'
+                + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
+                + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
+                + '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
+                + '</ul>';
             // Post-sized rewrite for the copy button: X counts any URL as 23
             // characters, and the weekly detail degrades in steps (with
             // largest event → bare) to stay under 280.
@@ -4430,7 +4532,7 @@
             var LINK = 'asktherecruiter.com/blog/ai-layoff-tracker/';
             var xLen = function (s2) { return s2.replace(LINK, 'xxxxxxxxxxxxxxxxxxxxxxx').length; };
             var lead = 'AI layoffs, ' + today + ': ' + fmt(tJ) + ' workers across ' + fmt(tV) + ' verified layoff' + (tV === 1 ? '' : 's') +
-                ' ' + tab.label + ' in ' + y + (tAI ? ', ' + fmt(tAI) + ' explicitly blamed on AI' : '') + '.';
+                ' ' + tab.label + ' in ' + y + (tAI ? ', ' + fmt(tAI) + ' where the employer named AI' : '') + '.';
             var tail = ' Live tracker (AskTheRecruiter.com): ' + LINK + ' #Layoffs #AI';
             var post = lead + tail;
             if (wJ > 0) {
@@ -4444,7 +4546,9 @@
                     return false;
                 });
             }
-            el.innerHTML = '<div class="alt-narrative-head"><span>At a glance · verified layoffs ' + tab.label + ' · ' + b(today) + '</span>' +
+            // "At a glance" is the <summary> of the disclosure this board lives
+            // in now, so repeating it inside the panel said it twice.
+            el.innerHTML = '<div class="alt-narrative-head"><span>Verified layoffs ' + tab.label + ' · ' + b(today) + '</span>' +
                 '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>' +
                 '<div class="alt-sb" role="table" aria-label="Verified layoffs by period">' + head +
                 numRow('alt-sb-r-workers', 'Workers', 'jobs') +
@@ -5057,6 +5161,7 @@
 
             initMultiDropdowns();
             initRangeControl();
+            initFilterPanel();        // eleven dropdowns behind one "Filters (n)" button
             initTracker();            // builds the server-side table (reads restored filters)
             initChrome();             // search / sort / quick views / expanders
             initTabs();               // region tabs + signal board (respects saved filters)

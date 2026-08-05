@@ -51,6 +51,82 @@ every incident gets an entry in the Incident Log with root cause + the guard add
 
 ---
 
+## 2026-08-05 - the first screen answers ONE question (2.19.272, branch)
+
+The owner, reading the live page: "horrible wording for humans and behaviour
+psychology" and then "still very messy, lots of text, lots of confusion on what
+to do first and how to start." Measured on a real 375x812 render of the
+template (a PHP harness with WP stubbed, driven in a real browser) he was
+describing something exact:
+
+| above the first data row, 375px | before | after |
+|---|---|---|
+| visible interactive controls | 62 | 24 |
+| words | 589 | 299 |
+| first tile, from the top | 2686px | 996px |
+| search box, from the top | 1744px | 738px (inside the first screen) |
+| `scrollWidth` vs `clientWidth` | 375 = 375 | 375 = 375 |
+
+**The copy was written defensively.** "Every layoff here is verified. That is
+the whole point." argues with a competitor the reader has never met. "We do not
+estimate." leads with a refusal. Both state one fact, so the page states it
+once, as what the reader gets: **"Every entry links to the filing, notice or
+report it came from."** "blamed on AI by the employer" returned a verdict this
+tracker does not return; the rubric is that the EMPLOYER named AI, in words we
+hold, which is how the methodology page already worded it. It is now "of those
+are cuts where the employer named AI as a reason", in the hero, the AI tile and
+the Copy-as-post text.
+
+**The reconciliation was the third thing a human read** - three numbers and an
+equation before anyone had a reason to care. It is now a labelled note ("In this
+figure: ...") after the two routes out. It is NOT behind a disclosure: three
+separate caveats in this codebase have been demoted into a `<details>` and then
+read by nobody, and a reconciliation a journalist cannot see reconciles nothing.
+Measured at 333x73px and 188 characters of rendered text, with no interaction.
+
+**The filter-placement defect, and the evidence that settled it.** The board is
+not narrowed by the date range, the quick views or the eleven dropdowns, and all
+of them sat above it. But `updateNarrative()` DOES scope every period query to
+`REGION_TABS[ACTIVE_TAB].countries`, so the region tabs do control it. Order is
+now tabs, then board, then everything else, and the board's footnote says so.
+Nothing was made to "respond to the filters" that cannot: the four columns ARE
+fixed periods, and a date range over a Today column is a different question, not
+a narrower one.
+
+**Progressive disclosure, three mechanisms.** (1) The eleven dropdowns sit
+behind one "Filters (n)" button; search, region, date range, date basis and sort
+stay out. The panel ships OPEN with the toggle `hidden` and layoffs.js flips
+both, so a no-JS reader loses nothing, and a deep-linked filter leaves the panel
+open. (2) Each tile is number + label + an (i), reusing the `.alt-stat-i`
+`<details>` the trend chart already had. (3) One methodology link, in the hero,
+replacing six ("How we count", "Why this is verified", "What these numbers
+mean", "Where do we get this data?", "How we catch & fix errors", "See the full
+methodology").
+
+**Deleted, not moved:** the "New here? Start with:" box (a page needing a
+start-here list has failed to be self-evident), the duplicated trust claims, the
+"less ... more" heat legend (stray words beside the columns, never a control),
+and "Filter below; every number, chart and row updates to match" (a caption
+explaining that filters filter). **Moved, not deleted:** the freshness panel,
+coverage ribbon, cite/export row and report/press/embed links, all into
+`.alt-datastrip` below the results, with every element ID intact.
+
+**The board's other two reports.** The footnote was one sentence doing four
+jobs; it is four list items. Dird Group led both "This week" and "This month",
+which is right (a week sits inside a month) and reads like a bug; a repeated
+leader is now marked "same event", computed from the columns seen so far in both
+renderers rather than hardcoded to that one pair.
+
+**Guard:** `railway/tests/test_first_screen_simplification.py`, 34 tests, run
+against `origin/main@3324bb3` first: 28 failed there and the 6 that did not are
+named in its docstring as regression bars rather than left to look like proof.
+Comments are stripped from PHP, JS and CSS before any string assertion, with a
+PHP stripper that keeps code (deleting whole `<?php ?>` islands would have let
+the file assert that echoed markup is absent while it renders every day).
+Disclosure visibility is pinned by the three ways it has failed here before
+(`display:none`, `width:0`, `height:0`) and was verified in the browser by
+rendered text length: 57 to 200 characters per tile, 656 for the board.
+
 ## 2026-08-04 - the cost funnel reaches the Railway cron: per-source metering + a shadow gate (2.19.271, branch)
 
 The Railway cron is the one paid path the cost funnel was never ported to, and
