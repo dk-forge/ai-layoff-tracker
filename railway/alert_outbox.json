@@ -1,22 +1,6 @@
 {
   "entries": [
     {
-      "attempts": 1,
-      "key": "resolve:card-contract:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-05T07:23:26+00:00",
-      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
-      "payload": {
-        "body": "'Card contract' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30984787892\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "card-contract:main",
-        "subject": "RECOVERED: Card contract is green again"
-      },
-      "raised_at": "2026-08-05T07:23:26+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30984787892",
-      "scope": "card-contract:main",
-      "state": "pending"
-    },
-    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -106,8 +90,21 @@
       "settled_at": "2026-08-05T07:20:40+00:00",
       "settled_because": "delivered late: not emailed: nothing was open for this scope",
       "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:card-contract:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-05T07:23:26+00:00",
+      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "raised_at": "2026-08-05T07:23:26+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/30984787892",
+      "scope": "card-contract:main",
+      "settled_at": "2026-08-05T10:13:45+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-05T07:23:26+00:00",
+  "updated_at": "2026-08-05T10:13:45+00:00",
   "version": 1
 }
