@@ -163,7 +163,7 @@ function alt_digest_subscribe_form($context = '') {
              particular must be hidden everywhere). Mobile-safe: the email row
              wraps, nothing bleeds horizontally. */ ?>
     <style>
-    .alt-digest { margin: 40px 0; padding: 20px; border: 1px solid #d9d9d9; border-radius: 12px; }
+    .alt-digest { margin: 40px 0; padding: 20px; border: 1px solid var(--alt-border); border-radius: 12px; }
     .alt-digest h2 { margin: 0 0 8px; }
     .alt-digest-intro { margin: 0 0 14px; font-size: 14px; }
     .alt-digest-form fieldset { border: none; margin: 0 0 12px; padding: 0; }
@@ -173,8 +173,8 @@ function alt_digest_subscribe_form($context = '') {
     .alt-digest-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .alt-digest-row label { font-weight: 600; flex-basis: 100%; margin: 0; }
     .alt-digest-row input[type="email"] { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; }
-    .alt-digest-status { border: 1px solid #b7d3bd; background: #eef4ef; color: #3c5a44; border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 14px; }
-    .alt-digest-status-error { border-color: #d3b7b7; background: #f4eeee; color: #5a3c3c; }
+    .alt-digest-status { border: 1px solid var(--alt-tint-border); background: var(--alt-ok-bg); color: var(--alt-ok-ink); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 14px; }
+    .alt-digest-status-error { border-color: var(--alt-crit-border); background: var(--alt-red-tint); color: var(--alt-crit); }
     .alt-digest-privacy { margin-top: 14px; font-size: 13px; }
     .alt-digest-privacy p { margin: 8px 0; }
     </style>

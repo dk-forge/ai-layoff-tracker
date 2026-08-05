@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.19.275
+ * Version: 2.20.0
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.19.275');
+define('ALT_VERSION', '2.20.0');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -855,6 +855,106 @@ function alt_page_needs_assets() {
     }
     return false;
 }
+
+/**
+ * Theme boot: decide light or dark BEFORE the first paint, and own the toggle.
+ *
+ * This is printed inline in <head> rather than enqueued, and that is the whole
+ * point. An external file is fetched after the document starts rendering, so
+ * the visitor sees a flash of the wrong theme and then a correction. Stamping
+ * the attribute from an inline snippet in the head is the standard fix and the
+ * only one that actually removes the flash.
+ *
+ * It also lives here, rather than in layoffs.js, because the health page loads
+ * health.js INSTEAD of layoffs.js (see the early return below). Putting the
+ * toggle in this snippet gives every plugin surface the same control, and
+ * leaves layoffs.js responsible only for repainting the charts when it hears
+ * the event.
+ *
+ * Precedence: an explicit choice is stored in localStorage and stamped as
+ * data-theme. "auto" REMOVES the attribute, which hands the decision back to
+ * the prefers-color-scheme media query in layoffs.css.
+ */
+function alt_theme_boot() {
+    if (!apply_filters('alt_enqueue_assets', alt_page_needs_assets())) return;
+    ?>
+<script id="alt-theme-boot">
+(function () {
+    var KEY = 'alt-theme', d = document, de = d.documentElement;
+    function stored() {
+        try { var v = localStorage.getItem(KEY); return (v === 'light' || v === 'dark') ? v : 'auto'; }
+        catch (e) { return 'auto'; }
+    }
+    function apply(mode) {
+        if (mode === 'auto') de.removeAttribute('data-theme');
+        else de.setAttribute('data-theme', mode);
+    }
+    // Runs during head parsing, so the attribute is on <html> before the body
+    // is painted. No flash.
+    apply(stored());
+
+    function resolved() {
+        var m = stored();
+        if (m !== 'auto') return m;
+        try { return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+        catch (e) { return 'light'; }
+    }
+    function announce() {
+        d.dispatchEvent(new CustomEvent('alt:themechange', { detail: { mode: stored(), resolved: resolved() } }));
+    }
+    window.altTheme = {
+        get: stored,
+        resolved: resolved,
+        set: function (mode) {
+            try { mode === 'auto' ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, mode); } catch (e) { }
+            apply(mode);
+            sync();
+            announce();
+        }
+    };
+    // While on auto, follow the OS if it changes under us, and tell the charts.
+    try {
+        var mq = matchMedia('(prefers-color-scheme: dark)');
+        var onMq = function () { if (stored() === 'auto') announce(); };
+        mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
+    } catch (e) { }
+
+    var LABELS = { light: 'Light', dark: 'Dark', auto: 'Auto' };
+    var group = null;
+    function sync() {
+        if (!group) return;
+        var mode = stored();
+        group.setAttribute('aria-label', 'Colour theme: ' + LABELS[mode].toLowerCase()
+            + (mode === 'auto' ? ' (following your device, currently ' + resolved() + ')' : ''));
+        [].forEach.call(group.querySelectorAll('button'), function (b) {
+            b.setAttribute('aria-pressed', b.getAttribute('data-mode') === mode ? 'true' : 'false');
+        });
+    }
+    function build() {
+        var host = d.querySelector('.alt-wrap');
+        if (!host || d.getElementById('alt-theme-toggle')) return;
+        group = d.createElement('div');
+        group.className = 'alt-theme';
+        group.id = 'alt-theme-toggle';
+        group.setAttribute('role', 'group');
+        ['light', 'dark', 'auto'].forEach(function (m) {
+            var b = d.createElement('button');
+            b.type = 'button';
+            b.className = 'alt-theme-b';
+            b.setAttribute('data-mode', m);
+            b.textContent = LABELS[m];
+            b.addEventListener('click', function () { window.altTheme.set(m); });
+            group.appendChild(b);
+        });
+        host.insertBefore(group, host.firstChild);
+        sync();
+    }
+    d.readyState === 'loading' ? d.addEventListener('DOMContentLoaded', build) : build();
+})();
+</script>
+    <?php
+}
+add_action('wp_head', 'alt_theme_boot', 1);
 
 function alt_enqueue_assets() {
     if (!apply_filters('alt_enqueue_assets', alt_page_needs_assets())) return;

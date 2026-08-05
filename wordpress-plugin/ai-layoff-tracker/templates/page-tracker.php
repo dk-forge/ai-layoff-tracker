@@ -261,7 +261,7 @@ $alt_hero_geo    = 'worldwide';
                 $v = $vals[$ck];
                 $eq = $alt_sb_eq && ($ck === 'today' || $ck === 'month') ? ' alt-sb-eq' : '';
                 $eqt = $eq ? ' title="Today and this month are identical so far"' : '';
-                $heat = ($v > 0 && $max > 0) ? ' style="background:rgba(42,120,214,' . number_format(0.08 + 0.26 * $v / $max, 3, '.', '') . ')"' : '';
+                $heat = ($v > 0 && $max > 0) ? ' style="background:rgba(var(--alt-heat-rgb),' . number_format(0.08 + 0.26 * $v / $max, 3, '.', '') . ')"' : '';
                 $h .= $v > 0
                     ? '<a class="alt-sb-cell alt-nfilter' . $eq . '" role="cell" href="' . $alt_sb_meta[$ck]['href'] . '"' . $alt_sb_meta[$ck]['data'] . $eqt . $heat . '><b>' . esc_html(number_format($v)) . '</b></a>'
                     : '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell"' . $eqt . '>0</span>';
@@ -293,7 +293,7 @@ $alt_hero_geo    = 'worldwide';
             $alt_ld = $alt_board[$alt_ck]['leader'];
             $alt_lv = $alt_lvals[$alt_ck];
             $eq = $alt_sb_eq && ($alt_ck === 'today' || $alt_ck === 'month') ? ' alt-sb-eq' : '';
-            $heat = ($alt_lv > 0 && $alt_lmax > 0) ? ' style="background:rgba(42,120,214,' . number_format(0.08 + 0.26 * $alt_lv / $alt_lmax, 3, '.', '') . ')"' : '';
+            $heat = ($alt_lv > 0 && $alt_lmax > 0) ? ' style="background:rgba(var(--alt-heat-rgb),' . number_format(0.08 + 0.26 * $alt_lv / $alt_lmax, 3, '.', '') . ')"' : '';
             if ($alt_lv > 0) {
                 $alt_lname = (string) $alt_ld['company_name'];
                 $alt_lrep = isset($alt_lseen[$alt_lname]) ? ' alt-sb-ev-repeat' : '';
@@ -721,7 +721,7 @@ $alt_hero_geo    = 'worldwide';
         <div class="alt-grid-h"><h2>Where the cuts are</h2><p>Geography first: the map plots every cut with a named place, then the state and country rankings below it.</p></div>
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
             <div class="alt-chart-head">
-                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:#2f6fd0">blue</b> = all job cuts &middot; <b style="color:#d0431a">red</b> = AI-attributed cuts, the employer's own words (sits inside; small red dots are kept visible even when the share is tiny) &middot; circle size = number of jobs &middot; tap a bubble to filter, tap the map to zoom &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
+                <div class="alt-chart-h">The map of job cuts <span class="alt-chart-sub"><b style="color:var(--alt-blue)">blue</b> = all job cuts &middot; <b style="color:var(--alt-ai)">red</b> = AI-attributed cuts, the employer's own words (sits inside; small red dots are kept visible even when the share is tiny) &middot; circle size = number of jobs &middot; tap a bubble to filter, tap the map to zoom &middot; hover for exact numbers, expand &#10530; for a bigger view &middot; only cuts with a named country or state are plotted; the rest are counted in the totals but not on the map</span></div>
                 <span class="alt-chart-btns">
                     <span class="alt-map-toggle">
                         <button type="button" class="alt-map-scope alt-map-scope-on" data-scope="world">World</button>

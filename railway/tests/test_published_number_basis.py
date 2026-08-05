@@ -259,6 +259,13 @@ class TheReasonsDoughnutDrawsAndFiltersOneThing(unittest.TestCase):
     DOM = """
 var DRAWN = null, NOTE = null;
 var INK = { primary: '#000', secondary: '#000', muted: '#000', grid: '#000' };
+// Theme plumbing, in the same spirit as INK above. From 2.20.0 the doughnut
+// reads its colours from the stylesheet at draw time instead of carrying
+// literals, so a headless run has to supply them. Nothing here is under test:
+// the assertions in this class are about the slice VALUES and the basis note,
+// and they are unchanged.
+var ALT_RED = '#D55E00', ALT_AMBER = '#E69F00', CHART_DIM = '#d6d8de';
+function tok(name, fallback) { return fallback; }
 var REASON_LABELS = { ai_automation: 'Reason tag: AI or automation', possible_ai: 'Reason tag: AI press-linked', restructuring: 'Restructuring' };
 var document = { getElementById: function () { return {}; } };
 function clearChart() { DRAWN = 'cleared'; }

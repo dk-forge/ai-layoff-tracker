@@ -31,16 +31,83 @@
     /* Palette + labels                                                    */
     /* ------------------------------------------------------------------ */
 
+    // THE CHARTS READ THEIR COLOURS FROM THE STYLESHEET.
+    //
+    // A canvas does not inherit CSS, so every colour Chart.js and d3 paint
+    // with used to be a literal sitting right here. That is the exact thing
+    // that leaves a chart light-on-light when the page goes dark. These
+    // values are now read from the same custom properties layoffs.css
+    // defines, at draw time, through tok() below.
+    //
+    // The vars stay `var` and stay module-scoped because ~40 call sites read
+    // them; readTheme() reassigns them, and every renderer is called again
+    // afterwards. Nothing caches a colour past a repaint: mountChart()
+    // destroys and rebuilds the chart, and cloneOptions() deep-clones
+    // baseChartOptions at call time, so the fresh values are picked up.
+    var CSS_ROOT = null;
+    function tok(name, fallback) {
+        if (!CSS_ROOT) {
+            CSS_ROOT = window.getComputedStyle(document.documentElement);
+        }
+        var v = CSS_ROOT.getPropertyValue('--alt-' + name);
+        v = v ? v.trim() : '';
+        return v || fallback;
+    }
+
     // Okabe-Ito colorblind-safe palette, ordered so neighbors differ in
     // lightness as well as hue (yellow excluded: too weak on white for lines).
+    // The four that carry meaning on this page (verified, AI-attributed,
+    // announced, accent) are themed; the rest are hues that read on either
+    // ground and stay fixed so series identity survives a theme switch.
     var PALETTE = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#000000', '#999999'];
-    var ALT_RED = '#D55E00', ALT_AMBER = '#E69F00';
-    var SEQ_BLUE = '#2a78d6';
-    var SEQ_BLUE_FILL = 'rgba(42, 120, 214, 0.18)';
+    var ALT_RED, ALT_AMBER, SEQ_BLUE, SEQ_BLUE_FILL, INK, CHART_DIM, TIP;
+    var MAP_BLUE, MAP_BLUE_LINE, MAP_RED, MAP_RED_LINE, MAP_LAND, MAP_LAND_LINE;
+    var MAP_HATCH, MAP_HATCH_LINE, MAP_LABEL, MAP_LABEL_HALO, MAP_PLATE;
+
+    function readTheme() {
+        CSS_ROOT = null;                       // drop the stale computed style
+        ALT_RED = tok('ai', '#D55E00');
+        ALT_AMBER = tok('announced', '#E69F00');
+        SEQ_BLUE = tok('blue', '#2a78d6');
+        SEQ_BLUE_FILL = 'rgba(' + tok('heat-rgb', '42, 120, 214') + ', 0.18)';
+        CHART_DIM = tok('chart-dim', '#d6d8de');
+        INK = {
+            primary: tok('chart-ink', '#0b0b0b'),
+            secondary: tok('chart-ink-2', '#52514e'),
+            muted: tok('chart-muted', '#898781'),
+            grid: tok('chart-grid', '#e1e0d9')
+        };
+        TIP = {
+            bg: tok('chart-tip-bg', '#0b0b0b'),
+            title: tok('chart-tip-ink', '#fff'),
+            body: tok('chart-tip-body', '#e1e0d9')
+        };
+        PALETTE[0] = tok('verified', '#0072B2');
+        PALETTE[1] = tok('ai', '#D55E00');
+        PALETTE[4] = tok('announced', '#E69F00');
+        MAP_BLUE = tok('map-blue', 'rgba(47, 111, 208, 0.52)');
+        MAP_BLUE_LINE = tok('map-blue-line', 'rgba(28, 92, 171, 0.95)');
+        MAP_RED = tok('map-red', 'rgba(208, 67, 26, 0.85)');
+        MAP_RED_LINE = tok('map-red-line', 'rgba(150, 38, 10, 0.95)');
+        MAP_LAND = tok('map-land', '#eef1f5');
+        MAP_LAND_LINE = tok('map-land-line', '#d3d8e0');
+        MAP_HATCH = tok('map-hatch', '#eceef3');
+        MAP_HATCH_LINE = tok('map-hatch-line', '#b6bac6');
+        MAP_LABEL = tok('map-label', '#0b0b0b');
+        MAP_LABEL_HALO = tok('map-label-halo', '#fff');
+        MAP_PLATE = tok('chart-plate', '#fff');
+        if (window.Chart) {
+            // Global, and NOT part of the options clone, so it has to be
+            // re-applied on every repaint rather than only at boot.
+            window.Chart.defaults.color = INK.muted;
+            window.Chart.defaults.borderColor = INK.grid;
+        }
+    }
+    readTheme();
+
     // Unemployment-claims backdrop (BLS/DOL via /claims). Macro CONTEXT only —
     // rendered on its OWN right-side axis, never summed with layoff counts.
     var CLAIMS_DATA = null;
-    var INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9' };
 
     var REASON_LABELS = {
         /*
@@ -488,7 +555,7 @@
         responsive: true, maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
-            tooltip: { backgroundColor: '#0b0b0b', titleColor: '#fff', bodyColor: '#e1e0d9', padding: 10, displayColors: false }
+            tooltip: { backgroundColor: TIP.bg, titleColor: TIP.title, bodyColor: TIP.body, padding: 10, displayColors: false }
         },
         scales: {
             x: { grid: { display: false }, ticks: { color: INK.muted, maxRotation: 0, autoSkip: true } },
@@ -2078,7 +2145,7 @@
             return ctx.dataIndex === idx ? 4 : (typeof basePoint === 'number' ? basePoint : 0);
         };
         ds.pointBackgroundColor = function (ctx) {
-            return ctx.dataIndex === idx ? '#fff' : ds.borderColor;
+            return ctx.dataIndex === idx ? tok('surface', '#fff') : ds.borderColor;
         };
         ds.pointBorderColor = ds.borderColor;
         ds.pointBorderWidth = function (ctx) { return ctx.dataIndex === idx ? 2 : 0; };
@@ -2298,7 +2365,7 @@
             if (cl) {
                 datasets.push({
                     type: 'bar', label: narrow ? cl.label : cl.label + ' (context)', data: cl.data, yAxisID: 'y1',
-                    backgroundColor: 'rgba(130,130,130,0.13)', borderColor: 'rgba(130,130,130,0.20)',
+                    backgroundColor: 'rgba(' + tok('claims-rgb', '130,130,130') + ',0.13)', borderColor: 'rgba(' + tok('claims-rgb', '130,130,130') + ',0.20)',
                     borderWidth: 0, order: 99, barPercentage: 0.9, categoryPercentage: 0.96
                 });
                 // NARROW CARDS DROP THE AXIS TITLE AND SHORTEN THE CLAIMS
@@ -2748,7 +2815,7 @@
             if (yoyPartial1) markPartialPoint(curDs, parseInt(nowKey, 10) - 1);
             mountChart('alt-chart-yoy', { type: 'line', data: { labels: labels, datasets: [
                 curDs,
-                { label: String(year - 1), data: oldData, borderColor: '#9aa0ab', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 }
+                { label: String(year - 1), data: oldData, borderColor: CHART_DIM, borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: false, tension: 0.3 }
             ] }, options: options });
         }).catch(function () { clearChart('alt-chart-yoy'); });
     }
@@ -2829,7 +2896,7 @@
         options.onHover = function (evt, els) {
             if (evt.native) evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
         };
-        var shareDs = { data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(213,94,0,0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true };
+        var shareDs = { data: pts.map(function (p) { return p.v; }), borderColor: ALT_RED, backgroundColor: 'rgba(' + tok('ai-rgb', '213,94,0') + ',0.1)', borderWidth: 2, pointRadius: pts.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: true, tension: 0.25, spanGaps: true };
         if (sharePartial) markPartialPoint(shareDs, sharePartial.index);
         mountChart('alt-chart-ai-share-trend', { type: 'line', data: {
             labels: pts.map(function (p) {
@@ -2914,9 +2981,9 @@
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
         var dots = charted.length <= 2 ? 4 : 0;
-        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: ALT_RED, backgroundColor: 'rgba(213, 94, 0, 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
+        var datasets = [{ label: 'AI-attributed (verified)', data: cumV, borderColor: ALT_RED, backgroundColor: 'rgba(' + tok('ai-rgb', '213,94,0') + ', 0.15)', borderWidth: 2, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 }];
         if (cumA[cumA.length - 1] > 0) {
-            datasets.push({ label: 'Announced AI plans, stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(230, 159, 0, 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
+            datasets.push({ label: 'Announced AI plans, stacked on top', data: cumA, borderColor: ALT_AMBER, backgroundColor: 'rgba(' + tok('announced-rgb', '230,159,0') + ', 0.22)', borderWidth: 1.5, pointRadius: dots, pointHitRadius: 12, fill: true, tension: 0.25 });
             options.scales.y.stacked = true;
             options.plugins.legend = { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } };
             options.plugins.tooltip.callbacks.footer = function (items) {
@@ -3015,8 +3082,8 @@
         mountChart('alt-chart-conversion', {
             type: 'bar',
             data: { labels: labels, datasets: [
-                { label: 'Window complete (' + win + ' months elapsed)', data: pickStatus('complete'), backgroundColor: '#0072B2', stack: 'conv' },
-                { label: 'Still maturing (expected to rise)', data: pickStatus('maturing'), backgroundColor: '#E69F00', stack: 'conv' }
+                { label: 'Window complete (' + win + ' months elapsed)', data: pickStatus('complete'), backgroundColor: tok('verified', '#0072B2'), stack: 'conv' },
+                { label: 'Still maturing (expected to rise)', data: pickStatus('maturing'), backgroundColor: tok('announced', '#E69F00'), stack: 'conv' }
             ] },
             options: options
         });
@@ -3048,7 +3115,7 @@
         entries = entries || [];
         if (!entries.length) { clearChart(canvasId); return; }
         var colors = paletteFor(entries).map(function (base, i) {
-            return (activeValue && entries[i][0] !== activeValue) ? '#d6d8de' : base;
+            return (activeValue && entries[i][0] !== activeValue) ? CHART_DIM : base;
         });
         var options = cloneOptions();
         options.indexAxis = 'y';
@@ -3094,12 +3161,12 @@
         // company-stated, orange for broad/possible); other reasons draw from
         // the non-AI hues so the donut speaks the same color language as the
         // cards and bar fills.
-        var REASON_COLORS = { ai_automation: '#D55E00', possible_ai: '#E69F00' };
-        var NEUTRAL_SEQ = ['#0072B2', '#009E73', '#CC79A7', '#56B4E9', '#000000', '#999999', '#7A6A52', '#4A5E7A'];
+        var REASON_COLORS = { ai_automation: ALT_RED, possible_ai: ALT_AMBER };
+        var NEUTRAL_SEQ = [tok('verified', '#0072B2'), '#009E73', '#CC79A7', '#56B4E9', tok('chart-ink', '#000000'), '#999999', '#7A6A52', '#4A5E7A'];
         var neutralIdx = 0;
         var colors = entries.map(function (e) {
             var base = REASON_COLORS[e[0]] || NEUTRAL_SEQ[(neutralIdx++) % NEUTRAL_SEQ.length];
-            return (active.length && active.indexOf(e[0]) === -1) ? '#d6d8de' : base;
+            return (active.length && active.indexOf(e[0]) === -1) ? CHART_DIM : base;
         });
         var options = {
             responsive: true, maintainAspectRatio: false, cutout: '62%',
@@ -3121,7 +3188,7 @@
             type: 'doughnut',
             data: {
                 labels: entries.map(function (e) { return REASON_LABELS[e[0]] || e[0]; }),
-                datasets: [{ data: entries.map(function (e) { return e[1]; }), backgroundColor: colors, borderColor: '#fcfcfb', borderWidth: 2 }]
+                datasets: [{ data: entries.map(function (e) { return e[1]; }), backgroundColor: colors, borderColor: tok('surface', '#fcfcfb'), borderWidth: 2 }]
             },
             options: options
         });
@@ -3796,9 +3863,10 @@
     }
 
     // Two clear layers: BLUE = all job cuts, RED = AI-linked cuts sitting inside.
-    var MAP_BLUE = 'rgba(47,111,208,0.52)', MAP_BLUE_LINE = 'rgba(28,92,171,0.95)';
-    var MAP_RED = 'rgba(208,67,26,0.85)', MAP_RED_LINE = 'rgba(150,38,10,0.95)';
-    var MAP_LAND = '#eef1f5', MAP_LAND_LINE = '#d3d8e0';
+    // Both hues, the land plate and the label halo are declared and assigned
+    // up in readTheme(), from --alt-map-*. They used to be re-assigned here,
+    // which ran AFTER readTheme() at load and silently put the light values
+    // back, so the map was the one surface that stayed light in dark mode.
 
     function prefersReducedMotion() {
         try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
@@ -3903,7 +3971,7 @@
                 .attr('aria-label', 'Map of job cuts by ' + (scope === 'us' ? 'US state' : 'country'))
                 .style('display', 'block')
                 .style('touch-action', 'none')
-                .style('background', '#fff')
+                .style('background', MAP_PLATE)
                 .style('cursor', 'grab');
 
             var gMap = svg.append('g').attr('class', 'alt-map-geo');   // zoomed: base shapes
@@ -3969,9 +4037,9 @@
                 var pat = defs.append('pattern').attr('id', 'alt-hatch')
                     .attr('patternUnits', 'userSpaceOnUse').attr('width', 6).attr('height', 6)
                     .attr('patternTransform', 'rotate(45)');
-                pat.append('rect').attr('width', 6).attr('height', 6).attr('fill', '#eceef3');
+                pat.append('rect').attr('width', 6).attr('height', 6).attr('fill', MAP_HATCH);
                 pat.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 6)
-                    .attr('stroke', '#b6bac6').attr('stroke-width', 1.5);
+                    .attr('stroke', MAP_HATCH_LINE).attr('stroke-width', 1.5);
 
                 var hatchFeatures = outline.filter(function (f) {
                     var code = FIPS2CODE[String(f.id)];
@@ -3983,7 +4051,7 @@
                     .attr('class', 'alt-hatch-state')
                     .attr('d', path)
                     .attr('fill', 'url(#alt-hatch)')
-                    .attr('stroke', '#9aa0b0').attr('stroke-width', 0.7)
+                    .attr('stroke', MAP_HATCH_LINE).attr('stroke-width', 0.7)
                     .attr('vector-effect', 'non-scaling-stroke')
                     .style('cursor', 'pointer')
                     .on('mouseenter', function (event, f) {
@@ -4055,7 +4123,7 @@
                 .attr('text-anchor', 'middle')
                 .attr('font-size', 11).attr('font-weight', 700)
                 .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif')
-                .attr('fill', '#0b0b0b').attr('stroke', '#fff').attr('stroke-width', 3)
+                .attr('fill', MAP_LABEL).attr('stroke', MAP_LABEL_HALO).attr('stroke-width', 3)
                 .attr('paint-order', 'stroke').style('pointer-events', 'none')
                 .text(function (p) { return p.label; });
 
@@ -4087,7 +4155,7 @@
                 .attr('text-anchor', 'middle')
                 .attr('font-size', 10.5).attr('font-weight', 700)
                 .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif')
-                .attr('fill', '#5a5f6e').attr('stroke', '#fff').attr('stroke-width', 2.6)
+                .attr('fill', INK.secondary).attr('stroke', MAP_LABEL_HALO).attr('stroke-width', 2.6)
                 .attr('paint-order', 'stroke').style('pointer-events', 'none')
                 .text(function (p) { return p.text; });
 
@@ -4163,11 +4231,11 @@
         var boxH = hasHatch ? 86 : 66;
         var g = svg.append('g').attr('class', 'alt-map-legend').attr('transform', 'translate(14,' + (h - boxH + 4) + ')');
         g.append('rect').attr('x', -8).attr('y', -14).attr('width', hasHatch ? 236 : 176).attr('height', boxH).attr('rx', 7)
-            .attr('fill', 'rgba(255,255,255,0.9)').attr('stroke', MAP_LAND_LINE).attr('stroke-width', 1);
+            .attr('fill', tok('sticky-bg', 'rgba(255,255,255,0.9)')).attr('stroke', MAP_LAND_LINE).attr('stroke-width', 1);
         var row = function (y, color, line, txt) {
             g.append('circle').attr('cx', 4).attr('cy', y).attr('r', 6).attr('fill', color).attr('stroke', line).attr('stroke-width', 1);
             g.append('text').attr('x', 18).attr('y', y + 4).attr('font-size', 11.5)
-                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#4a4d55').text(txt);
+                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', INK.secondary).text(txt);
         };
         row(2, MAP_BLUE, MAP_BLUE_LINE, 'All job cuts');
         row(22, MAP_RED, MAP_RED_LINE, 'AI-attributed cuts');
@@ -4175,14 +4243,14 @@
         if (hasHatch) {
             // Small hatched swatch matching the state pattern.
             g.append('rect').attr('x', -2).attr('y', 36).attr('width', 12).attr('height', 12).attr('rx', 2)
-                .attr('fill', 'url(#alt-hatch)').attr('stroke', '#9aa0b0').attr('stroke-width', 0.8);
+                .attr('fill', 'url(#alt-hatch)').attr('stroke', MAP_HATCH_LINE).attr('stroke-width', 0.8);
             g.append('text').attr('x', 18).attr('y', 46).attr('font-size', 11)
-                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#4a4d55')
+                .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', INK.secondary)
                 .text('No layoff register (BLS unemployment shown)');
             sizeY = 68;
         }
         g.append('text').attr('x', -4).attr('y', sizeY).attr('font-size', 10.5)
-            .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', '#898781')
+            .attr('font-family', 'system-ui,-apple-system,"Segoe UI",sans-serif').attr('fill', INK.muted)
             .text('Circle size = number of jobs');
     }
 
@@ -4207,7 +4275,7 @@
             var c = document.createElement('canvas');
             c.width = Math.round(w * scale); c.height = Math.round(h * scale);
             var ctx = c.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+            ctx.fillStyle = MAP_PLATE; ctx.fillRect(0, 0, c.width, c.height);
             ctx.drawImage(img, 0, 0, c.width, c.height);
             var a = document.createElement('a');
             try { a.href = c.toDataURL('image/png'); } catch (e) { return; }
@@ -4244,6 +4312,37 @@
     }
 
     /* ------------------------------------------------------------------ */
+    /* Repaint on theme change                                             */
+    /* ------------------------------------------------------------------ */
+
+    // A stylesheet repaints itself. A canvas does not, and neither does an
+    // SVG built as a string with fill= attributes baked in. So when the theme
+    // changes we re-read the tokens and drive every draw path again.
+    //
+    // The event is dispatched by the inline head snippet (see alt_theme_boot
+    // in ai-layoff-tracker.php), which owns the toggle and the persistence.
+    // This file only listens, so the health page - which loads health.js and
+    // not this file - still gets a working toggle with no charts to repaint.
+    function repaintForTheme() {
+        readTheme();
+        // renderCharts covers trend, AI cumulative, the reasons doughnut, the
+        // trajectory strip, the bar lists, AI share, the leaderboard, and it
+        // re-seeds AIMAP.data and calls renderAiMap. mountChart destroys and
+        // rebuilds each canvas, and renderAiMap clears its box and rebuilds
+        // the SVG while preserving AIMAP.transform, so the visitor keeps
+        // their pan and zoom across a theme switch.
+        try { if (LAST_AGG) renderCharts(LAST_AGG); } catch (e) { }
+        // Separate state, not reached by renderCharts.
+        try { if (CONVERSION_DATA) renderConversionChart(); } catch (e) { }
+        // The two single-purpose pages mount their chart inline from a fetch
+        // callback; each stores its last rows so a repaint costs no request.
+        try { if (AI_TRACKER_CHART) AI_TRACKER_CHART(); } catch (e) { }
+        try { if (COMPANY_CHART) COMPANY_CHART(); } catch (e) { }
+    }
+    var AI_TRACKER_CHART = null, COMPANY_CHART = null;
+    document.addEventListener('alt:themechange', repaintForTheme);
+
+    /* ------------------------------------------------------------------ */
     /* AI displacement view + company history (bounded result sets)        */
     /* ------------------------------------------------------------------ */
 
@@ -4269,19 +4368,24 @@
                 var byMonth = {};
                 aiRows.forEach(function (r) { if (/^\d{4}-\d{2}-\d{2}$/.test(r.layoff_date)) { var m = r.layoff_date.slice(0, 7); byMonth[m] = (byMonth[m] || 0) + r.job_count; } });
                 var keys = Object.keys(byMonth).sort();
-                if (keys.length && document.getElementById('alt-chart-ai-monthly')) {
-                    var options = cloneOptions();
-                    options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI-attributed jobs: ' + fmt(ctx.parsed.y); } };
-                    mountChart('alt-chart-ai-monthly', {
-                        type: 'line',
-                        data: { labels: keys.map(monthLabel), datasets: [{ data: keys.map(function (k) { return byMonth[k]; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, pointBackgroundColor: SEQ_BLUE, fill: true, tension: 0.25 }] },
-                        options: options
-                    });
-                }
                 var byInd = {};
                 aiRows.forEach(function (r) { if (r.industry) byInd[r.industry] = (byInd[r.industry] || 0) + 1; });
                 var indEntries = Object.keys(byInd).map(function (k) { return [k, byInd[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10);
-                renderBar('alt-chart-ai-industries', indEntries, null, null, 'Layoffs: ');
+                // Named and stored, so a theme change repaints these two from
+                // the rows already in hand instead of re-issuing the query.
+                AI_TRACKER_CHART = function () {
+                    if (keys.length && document.getElementById('alt-chart-ai-monthly')) {
+                        var options = cloneOptions();
+                        options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI-attributed jobs: ' + fmt(ctx.parsed.y); } };
+                        mountChart('alt-chart-ai-monthly', {
+                            type: 'line',
+                            data: { labels: keys.map(monthLabel), datasets: [{ data: keys.map(function (k) { return byMonth[k]; }), borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 3, pointBackgroundColor: SEQ_BLUE, fill: true, tension: 0.25 }] },
+                            options: options
+                        });
+                    }
+                    renderBar('alt-chart-ai-industries', indEntries, null, null, 'Layoffs: ');
+                };
+                AI_TRACKER_CHART();
             }
             initQuoteWall(aiRows);
             var chips = document.getElementById('alt-ai-companies');
@@ -4323,13 +4427,18 @@
             var totalJobs = matches.reduce(function (s, r) { return s + r.job_count; }, 0);
             if (summary) summary.textContent = fmt(matches.length) + ' recorded rounds · ' + fmt(totalJobs) + ' total jobs cut';
             if (document.getElementById('alt-chart-company') && chartsAvailable()) {
-                var options = cloneOptions();
-                options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Jobs: ' + fmt(ctx.parsed.y); } };
-                mountChart('alt-chart-company', {
-                    type: 'bar',
-                    data: { labels: matches.map(function (r) { return r.layoff_date || 'unknown'; }), datasets: [{ data: matches.map(function (r) { return r.job_count; }), backgroundColor: matches.map(function (r) { return r.ai_explicit ? ALT_RED : SEQ_BLUE; }), borderRadius: 4, maxBarThickness: 40 }] },
-                    options: options
-                });
+                // Stored for the same reason as the AI tracker chart above: a
+                // theme repaint must not cost another /query.
+                COMPANY_CHART = function () {
+                    var options = cloneOptions();
+                    options.plugins.tooltip.callbacks = { label: function (ctx) { return 'Jobs: ' + fmt(ctx.parsed.y); } };
+                    mountChart('alt-chart-company', {
+                        type: 'bar',
+                        data: { labels: matches.map(function (r) { return r.layoff_date || 'unknown'; }), datasets: [{ data: matches.map(function (r) { return r.job_count; }), backgroundColor: matches.map(function (r) { return r.ai_explicit ? ALT_RED : SEQ_BLUE; }), borderRadius: 4, maxBarThickness: 40 }] },
+                        options: options
+                    });
+                };
+                COMPANY_CHART();
             }
             var tbody = document.querySelector('#alt-company-table tbody');
             if (tbody) tbody.innerHTML = matches.slice().reverse().map(function (row) {
@@ -4471,7 +4580,7 @@
             var eqCls = function (k) { return eq && (k === 'today' || k === 'month') ? ' alt-sb-eq' : ''; };
             var eqTitle = ' title="Today and this month are identical so far"';
             var heat = function (v, max) {
-                return (v > 0 && max > 0) ? ' style="background:rgba(42,120,214,' + (0.08 + 0.26 * v / max).toFixed(3) + ')"' : '';
+                return (v > 0 && max > 0) ? ' style="background:rgba(' + tok('heat-rgb', '42,120,214') + ',' + (0.08 + 0.26 * v / max).toFixed(3) + ')"' : '';
             };
             var head = '<div class="alt-sb-row alt-sb-headrow" role="row"><span class="alt-sb-label" role="columnheader"><span class="screen-reader-text">Measure</span></span>'
                 + KEYS.map(function (k) { return '<span class="alt-sb-col" role="columnheader">' + cols[k] + '</span>'; }).join('') + '</div>';
@@ -4832,19 +4941,19 @@
                     var strip = Math.max(22, Math.round(src.height * 0.07));
                     c.width = src.width; c.height = src.height + strip;
                     var ctx = c.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = tok('surface', '#ffffff');
                     ctx.fillRect(0, 0, c.width, c.height);
                     ctx.drawImage(src, 0, 0);
-                    ctx.fillStyle = '#eef3ee';
+                    ctx.fillStyle = tok('tint', '#eef3ee');
                     ctx.fillRect(0, src.height, c.width, strip);
                     var fs = Math.max(11, Math.round(strip * 0.5));
                     ctx.font = '600 ' + fs + 'px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
                     ctx.textBaseline = 'middle';
-                    ctx.fillStyle = '#4f7257';
+                    ctx.fillStyle = tok('accent', '#4f7257');
                     ctx.fillText('AI Layoff Tracker  ·  asktherecruiter.com',
                                  10, src.height + strip / 2);
                     ctx.font = Math.max(10, fs - 2) + 'px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-                    ctx.fillStyle = '#5e6675';
+                    ctx.fillStyle = tok('muted', '#5e6675');
                     var stamp = 'Source-linked data · ' + new Date().toISOString().slice(0, 10);
                     ctx.textAlign = 'right';
                     ctx.fillText(stamp, c.width - 10, src.height + strip / 2);
@@ -5045,7 +5154,7 @@
             if (pngBtn.disabled) return;
             pngBtn.disabled = true; var orig = pngBtn.textContent; pngBtn.textContent = 'Rendering…';
             loadHtml2Canvas().then(function (h2c) {
-                return h2c(card, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
+                return h2c(card, { backgroundColor: tok('surface', '#ffffff'), scale: 2, useCORS: true, logging: false });
             }).then(function (canvas) {
                 var a = document.createElement('a');
                 a.href = canvas.toDataURL('image/png');

@@ -46,13 +46,13 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
 <title><?php echo esc_html($alt_ctitle); ?> · AI Layoff Tracker</title>
 <link rel="stylesheet" href="<?php echo esc_url(ALT_PLUGIN_URL . 'assets/layoffs.css?ver=' . ALT_VERSION); ?>">
 <style>
-  html,body{margin:0;background:#fff}
+  html,body{margin:0;background:var(--alt-page)}
   .alt-embed-shell{padding:10px 12px 30px;box-sizing:border-box}
-  .alt-embed-shell .alt-chart-card{border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;box-shadow:none}
+  .alt-embed-shell .alt-chart-card{border:1px solid var(--alt-border);border-radius:12px;padding:12px 14px;box-shadow:none}
   .alt-embed-shell .alt-chart-box{height:300px}
   .alt-embed-foot{position:fixed;bottom:0;left:0;right:0;font:600 11px system-ui,-apple-system,sans-serif;
-    text-align:center;padding:5px;background:#fff;border-top:1px solid #e5e7eb}
-  .alt-embed-foot a{color:#4f7257;text-decoration:none}
+    text-align:center;padding:5px;background:var(--alt-surface);border-top:1px solid var(--alt-border)}
+  .alt-embed-foot a{color:var(--alt-accent);text-decoration:none}
   .alt-chart-head .alt-chart-h{min-width:0}
   @media (max-width:560px){
     .alt-chart-head{flex-wrap:wrap;align-items:flex-start}
