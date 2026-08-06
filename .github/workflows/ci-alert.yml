@@ -44,14 +44,6 @@ permissions:
 
 jobs:
   alert:
-    # NEVER listen to ourselves. workflows: ['*'] includes THIS workflow,
-    # so every alert run completing spawned another alert run. On 2026-08-06
-    # that loop, fed by runner starvation (jobs waiting 15 minutes with zero
-    # steps, then cancelled), produced 37 emails in 40 minutes across both
-    # repos. A cancelled run has no log, which is why they all read 'no error
-    # line could be extracted'. GitHub has no negation in workflows:, so the
-    # exclusion has to live here.
-    if: github.event.workflow_run.name != 'CI failure alert'
     # `skipped` is not alertable, and `cancelled` is admitted here but ALMOST
     # ALWAYS discarded by ci_alert.py a few seconds later. Superseded pushes and
     # concurrency groups cancel runs routinely and mailing about those is
