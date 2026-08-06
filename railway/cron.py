@@ -28,12 +28,34 @@ import spend
 #            nothing yet: it exists to MEASURE the gate's false-drop rate on
 #            this tracker's own candidates before any coverage is at stake.
 #   live   - a NO verdict skips extraction. ERROR always extracts (fail open).
-# Default is shadow, deliberately: a prior session measured a free vocabulary
-# gate at 44% false rejects and refused to ship it, so this gate earns "live"
-# with its own recorded evidence. Flipping is one Railway env var, no deploy.
-GATE_MODE = (os.environ.get("ALT_GATE_MODE", "shadow") or "").strip().lower()
+#
+# Default is now LIVE, and shadow is what earned it. The evidence, all from
+# this tracker's own candidates and all in railway/spend_jobs.json:
+#
+#   103 shadow NO verdicts, 0 gate_false_drops.
+#
+# cron.py only writes `gate_false_drops` when the gate said NO and the
+# extractor nonetheless produced a record, so the absence of that key on every
+# shadow run IS the measurement, not a gap in it. For contrast, the free
+# vocabulary alternative was re-measured on 2026-08-06 against 1,829 stored
+# events (the sibling's 23-language reduction vocabulary, the best one either
+# repo has): 29.6% false-drop, and 10.5% even after augmenting it with the
+# phrasings it missed. A vocabulary cannot reach this gate's accuracy, which is
+# why the gate is a model and why it is worth paying ~$0.00003 to run.
+#
+# Live is also a COVERAGE change, not only a cost one, and that is the point.
+# Every cron run bumps the $0.20 per-run ceiling (spend.RUN_CEILING_USD) and
+# then defers what is left unread, so cost-per-candidate is what decides how
+# many candidates get read at all. Dropping ~22% of extractions buys ~22% more
+# candidates inside the same ceiling.
+#
+# The safety property that makes this reversible: gate rejects are never marked
+# seen (see filter_already_seen), so a wrong NO is re-pulled and re-judged on
+# the next run rather than buried. Flipping back is one Railway env var, no
+# deploy: ALT_GATE_MODE=shadow.
+GATE_MODE = (os.environ.get("ALT_GATE_MODE", "live") or "").strip().lower()
 if GATE_MODE not in ("off", "shadow", "live"):
-    GATE_MODE = "shadow"
+    GATE_MODE = "live"
 
 
 def _mark_phase(phase):

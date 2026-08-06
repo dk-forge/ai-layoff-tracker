@@ -1,5 +1,48 @@
 # Tech Log
 
+## 2026-08-06 - the pre-extraction gate goes live on its own shadow evidence
+
+Shadow mode existed to answer one question: does this gate ever drop a
+candidate the extractor would have turned into a row? It has now answered.
+
+- **103 shadow NO verdicts, 0 false drops**, from the two metered Railway cron
+  runs in `railway/spend_jobs.json` (2026-08-05T2240, 2026-08-06T1410).
+  `cron.py` writes `gate_false_drops` ONLY when a NO was followed by a
+  successful extraction, so the absence of that key on every shadow run is the
+  measurement, not a hole in it. Per source: edgar 19 drops, google_news 35,
+  gdelt 49.
+- **The free alternative was re-measured and is still worse.** Against 1,829
+  stored events pulled from `/query` (source types `news` and `8K`), the
+  sibling's 23-language `_REDUCTION_TERMS` vocabulary - the best either repo
+  has, hardened by its own incidents - false-drops **29.6%**. Augmented with
+  every phrasing it missed ("lost their jobs", "furlough", "roles could be
+  cut", "shed 40 staffers", "let 3,200 workers go") it still false-drops
+  **10.5%** on the headline-like subset. The misses are not a list anyone
+  forgot to write; they are passive voice, Korean, and inference
+  ("3,000 staff get comeback call"). This is the same finding as the 44%
+  measurement that produced the model gate, reproduced on a bigger sample with
+  a much better vocabulary. A vocabulary is not the tool.
+- **This is a coverage change, and that is the reason to do it.** Both metered
+  runs cost $0.20011 and $0.200664 against a $0.20 `RUN_CEILING_USD`. The cron
+  is not spending a budget, it is hitting a wall and deferring the remainder
+  unread on every single run. While that is true, cost per candidate is what
+  decides how many candidates get read, so dropping ~22% of extractions buys
+  ~22% more candidates inside the same ceiling.
+- **Reversible by construction.** Gate rejects are never marked seen
+  (`filter_already_seen`), so a wrong NO is re-pulled and re-judged next run
+  rather than buried. Rollback is one Railway env var and no deploy:
+  `ALT_GATE_MODE=shadow`.
+- **The test asserts the behaviour, not the spelling.**
+  `test_default_mode_enforces_a_no_verdict` runs the cron on the module's own
+  default and requires that a NO costs an extraction;
+  `test_default_mode_still_fails_open_on_gate_error` keeps ERROR extracting, so
+  a provider outage can still only cost money and never coverage. The first
+  fails on the pre-fix tree with comments stripped ("default mode extracted a
+  gate NO").
+
+Not changed, deliberately: the spend guard, the degrade-exits-0 rule, and every
+ceiling. Nothing here collects less; it reads more inside the same money.
+
 ## 2026-08-05 - one language standard across both trackers (2.20.1)
 
 The owner's brief: the language on both dashboards should read like the Los
