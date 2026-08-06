@@ -256,15 +256,36 @@ class CronWiringTests(unittest.TestCase):
             cron.run()
         return gate, extract, posted, post_rec
 
-    def test_default_mode_is_shadow(self):
-        # Reading the module default, not the patched value: the gate may not
-        # ship enforcing before its false-drop rate is measured here.
+    def _default_gate_mode(self):
+        """The module's own default, with ALT_GATE_MODE out of the way."""
         import importlib
         with patch.dict("os.environ", {}, clear=False):
             import os as _os
             _os.environ.pop("ALT_GATE_MODE", None)
-            mod = importlib.reload(cron)
-        self.assertEqual(mod.GATE_MODE, "shadow")
+            return importlib.reload(cron).GATE_MODE
+
+    def test_default_mode_enforces_a_no_verdict(self):
+        """Behavioural, not a constant check: on the SHIPPED default a NO
+        verdict must cost an extraction.
+
+        Shadow measured the gate at 103 NO verdicts / 0 false drops, so the
+        default now enforces. This asserts the property that saves the money
+        (and, under the per-run ceiling, buys the extra candidates) rather than
+        the spelling of the mode, so it still holds if the mode is renamed.
+        """
+        gate, extract, posted, _ = self._run_cron(
+            self._default_gate_mode(), extractor.GATE_NO, None)
+        self.assertEqual(gate.call_count, 1)
+        self.assertEqual(extract.call_count, 0, "default mode extracted a gate NO")
+        self.assertEqual(posted, [])
+
+    def test_default_mode_still_fails_open_on_gate_error(self):
+        """The default must never let a provider outage read as a quiet day."""
+        extracted = {"company_name": "Acme", "job_count": 500}
+        _, extract, posted, _ = self._run_cron(
+            self._default_gate_mode(), extractor.GATE_ERROR, extracted)
+        self.assertEqual(extract.call_count, 1)
+        self.assertEqual(len(posted), 1)
 
     def test_shadow_gate_no_still_extracts_and_posts(self):
         extracted = {"company_name": "Acme", "job_count": 500}
