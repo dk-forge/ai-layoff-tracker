@@ -210,6 +210,45 @@
   },
   {
    "attempt": "1",
+   "calls": 308,
+   "changed": 3,
+   "completion_tokens": 1757,
+   "cost_usd": 0.016439,
+   "date": "2026-08-05",
+   "items": 14,
+   "job": "ai-evidence-sweep",
+   "prompt_tokens": 46026,
+   "run_id": "31027074647",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 45,
+   "changed": null,
+   "completion_tokens": 8972,
+   "cost_usd": 0.030001,
+   "date": "2026-08-05",
+   "items": 150,
+   "job": "company-watchlist",
+   "prompt_tokens": 69497,
+   "run_id": "31024251384",
+   "stored": 0
+  },
+  {
+   "attempt": "1",
+   "calls": 60,
+   "changed": 3,
+   "completion_tokens": 859,
+   "cost_usd": 0.005677,
+   "date": "2026-08-05",
+   "items": 60,
+   "job": "dedupe-llm",
+   "prompt_tokens": 16268,
+   "run_id": "31019340381",
+   "stored": null
+  },
+  {
+   "attempt": "1",
    "calls": 40,
    "changed": 4,
    "completion_tokens": 687,
@@ -223,6 +262,19 @@
   },
   {
    "attempt": "1",
+   "calls": 27,
+   "changed": null,
+   "completion_tokens": 345,
+   "cost_usd": 0.006792,
+   "date": "2026-08-05",
+   "items": 33,
+   "job": "hi-warn-import",
+   "prompt_tokens": 18389,
+   "run_id": "31027958527",
+   "stored": 33
+  },
+  {
+   "attempt": "1",
    "calls": 216,
    "changed": 8,
    "completion_tokens": 1878,
@@ -233,6 +285,57 @@
    "prompt_tokens": 57799,
    "run_id": "30979378486",
    "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "changed": null,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-08-05",
+   "items": 0,
+   "job": "process-tips",
+   "prompt_tokens": 0,
+   "run_id": "31020021926",
+   "stored": 0
+  },
+  {
+   "calls": 470,
+   "completion_tokens": 52015,
+   "cost_usd": 0.20011,
+   "date": "2026-08-05",
+   "gate_mode": "shadow",
+   "items": 298,
+   "job": "railway-cron",
+   "prompt_tokens": 494661,
+   "run_id": "railway-20260805T2240",
+   "sources": {
+    "edgar": {
+     "calls": 184,
+     "cost_usd": 0.094839,
+     "dropped": 13,
+     "items": 92,
+     "kept": 79,
+     "stored": 7
+    },
+    "gdelt": {
+     "calls": 52,
+     "cost_usd": 0.023665,
+     "dropped": 22,
+     "items": 89,
+     "kept": 4,
+     "stored": 0
+    },
+    "google_news": {
+     "calls": 234,
+     "cost_usd": 0.081606,
+     "dropped": 17,
+     "items": 117,
+     "kept": 100,
+     "stored": 1
+    }
+   },
+   "stored": 8
   },
   {
    "attempt": "1",
@@ -258,6 +361,109 @@
    "job": "reclassify-legacy-ai",
    "prompt_tokens": 0,
    "run_id": "30975280951",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 20,
+   "changed": null,
+   "completion_tokens": 4063,
+   "cost_usd": 0.012568,
+   "date": "2026-08-05",
+   "items": null,
+   "job": "supplemental-news",
+   "prompt_tokens": 29778,
+   "run_id": "31017513239",
+   "stored": 0
+  },
+  {
+   "attempt": "1",
+   "calls": 40,
+   "changed": 8,
+   "completion_tokens": 708,
+   "cost_usd": 0.005189,
+   "date": "2026-08-06",
+   "items": 40,
+   "job": "enrich-roles",
+   "prompt_tokens": 14515,
+   "run_id": "31079787739",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 54,
+   "changed": 1,
+   "completion_tokens": 470,
+   "cost_usd": 0.004912,
+   "date": "2026-08-06",
+   "items": 200,
+   "job": "industry-backfill",
+   "prompt_tokens": 14469,
+   "run_id": "31081019672",
+   "stored": null
+  },
+  {
+   "calls": 462,
+   "completion_tokens": 50716,
+   "cost_usd": 0.200664,
+   "date": "2026-08-06",
+   "gate_mode": "shadow",
+   "items": 288,
+   "job": "railway-cron",
+   "prompt_tokens": 477839,
+   "run_id": "railway-20260806T1410",
+   "sources": {
+    "edgar": {
+     "calls": 130,
+     "cost_usd": 0.063197,
+     "dropped": 6,
+     "items": 65,
+     "kept": 59,
+     "stored": 2
+    },
+    "gdelt": {
+     "calls": 64,
+     "cost_usd": 0.033715,
+     "dropped": 27,
+     "items": 89,
+     "kept": 5,
+     "stored": 0
+    },
+    "google_news": {
+     "calls": 268,
+     "cost_usd": 0.103752,
+     "dropped": 18,
+     "items": 134,
+     "kept": 116,
+     "stored": 7
+    }
+   },
+   "stored": 9
+  },
+  {
+   "attempt": "1",
+   "calls": 29,
+   "changed": 400,
+   "completion_tokens": 480,
+   "cost_usd": 0.005058,
+   "date": "2026-08-06",
+   "items": 40,
+   "job": "reason-backfill",
+   "prompt_tokens": 14973,
+   "run_id": "31080747639",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "changed": 0,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-08-06",
+   "items": 3,
+   "job": "reclassify-legacy-ai",
+   "prompt_tokens": 0,
+   "run_id": "31076262453",
    "stored": null
   }
  ],
