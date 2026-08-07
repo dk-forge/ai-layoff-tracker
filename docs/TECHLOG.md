@@ -78,6 +78,29 @@ ceiling, which is why no call resolved to `budget_stop`.
   already stored, so it is blind by construction to the events the pipeline
   missed, which is the quantity recall IS. It is not a recall number and its
   `publication_status` says so.
+
+**The live check, and the half of it that did not happen.** `supplemental-news`
+was dispatched three times on the same morning against the same candidate pool
+(10 newsdata + 3 marketaux + 18 finnhub, 24 processed), twice on the branch and
+once on `main` as a control:
+
+| run | model | calls | stored | billed |
+|---|---|---|---|---|
+| 31151425995 | gemini-2.5-flash-lite | 24 | 0 | $0.006032 |
+| 31151596266 | gemini-2.5-flash-lite | 24 | 0 | $0.006015 |
+| 31151740131 (control, main) | deepseek-chat | 24 | 0 | $0.015447 |
+
+Two things follow, and only one of them is the thing that was asked for. The
+live cost ratio is **0.390x**, which reproduces the gold set's 0.387x on real
+production traffic rather than on a frozen corpus, and the zero is the CANDIDATE
+POOL and not the model, because the incumbent stored zero from the identical
+batch. What is NOT shown is a news row landing with a correct count under the
+new model: none of the 24 candidates cleared the guards for any model today, and
+this job's own history is about one stored row per run. The nearest evidence is
+the gold-set run, where 30 items passed the entire production guard chain
+(`_coerce_job_count`, `_percent_only_mention`, `_count_in_text`, company name)
+with the corroborated count, which covers everything up to the `/add` call and
+nothing after it. `/add` does not read the model.
 ## 2026-08-07 - the archive limit was a capacity the run never delivered (2.20.2)
 
 Every listing surface prints, beside a source with no Wayback snapshot yet:
