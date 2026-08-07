@@ -70,7 +70,26 @@ LIMIT = max(1, min(4000, int(os.environ.get("ARCHIVE_BACKFILL_LIMIT", "1200"))))
 FLUSH_EVERY = max(5, int(os.environ.get("ARCHIVE_FLUSH_EVERY", "25")))
 SPN_MAX = max(0, int(os.environ.get("ARCHIVE_SPN_MAX", "60")))
 SPN_GAP_SECONDS = max(1, int(os.environ.get("ARCHIVE_SPN_GAP_SECONDS", "6")))
-DEADLINE_SECONDS = max(60, min(3000, int(os.environ.get("ARCHIVE_BACKFILL_DEADLINE_SECONDS", "1500"))))
+# CAP RAISED 3000 -> 6600 on 2026-08-06, because the old cap silently clamped
+# the workflow and made ARCHIVE_BACKFILL_LIMIT a number that never happened.
+# MEASURED (run 30883391601, 2026-08-04): 1,231 URLs in the 2400s deadline =
+# 0.513 URL/s, and the run stopped on the DEADLINE mid-batch-3, never on its
+# 1,500 limit. Runs on 08-05 and 08-06 managed a single 500-URL batch each for
+# the same reason. So raising the batch size alone would have changed nothing —
+# the knob that was binding was the clock. 6600s keeps a run inside the job's
+# 120-minute timeout with room for checkout, install and the final flush.
+DEADLINE_CAP_SECONDS = 6600
+DEADLINE_SECONDS = max(60, min(DEADLINE_CAP_SECONDS,
+                               int(os.environ.get("ARCHIVE_BACKFILL_DEADLINE_SECONDS", "1500"))))
+# Throughput floor observed across a full run INCLUDING the whole rate-limited
+# Save-Page-Now budget, which is the slow part. Two independent measurements:
+#   run 30883391601 (2026-08-04)  1,231 URLs / 2,400s = 0.513/s, deadline-cut
+#   run 31147628741 (2026-08-07)  1,657 URLs / 3,628s = 0.457/s, POOL-EXHAUSTED
+# The lower of the two is used, because a floor that flatters itself is not a
+# floor. tests/test_archive_promise.py uses it to assert the deadline is
+# actually long enough to reach LIMIT, so this number is load-bearing: raise it
+# only against a measured run, never to make an assertion fit.
+MEASURED_URLS_PER_SECOND = 1657 / 3628.0
 DRY_RUN = os.environ.get("ARCHIVE_BACKFILL_DRY_RUN", "").lower() in {"1", "true", "yes"}
 
 # Sentinel returned by save_page_now when Wayback throttled the request, so the

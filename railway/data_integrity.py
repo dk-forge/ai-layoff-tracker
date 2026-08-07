@@ -909,8 +909,38 @@ class ArchiveRecheckInvariant:
     because the same dead cron lets the pending/unavailable pool age past the
     bound (3,900+ such URLs exist, so the pool is never empty in practice).
 
+    TWO HALVES, AND THE SECOND IS THE ONE THAT IS ACTIONABLE.
+
+    The age reading alone fails only once the published promise is ALREADY
+    false. Measured here: on 2026-08-04 it read 8.6d and PASSED; on 2026-08-06
+    it read 11.7d, and by then the pages had been promising a weekly re-check
+    the cron was not delivering for days. Nothing in between could have been
+    acted on, because nothing said the margin was 1.4 days wide.
+
+    So the second half projects. The pool the cron must cycle is
+    `unarchived_live` (distinct CITED URLs still awaiting a snapshot, join-
+    filtered exactly like the candidate query, so orphans the cron correctly
+    never retries cannot inflate it). The throughput is `rechecked_recent`
+    over `recheck_window_hours` — MEASURED, not the batch size the workflow
+    hopes for; those two disagreed by 3x here, because the run was stopping on
+    its deadline long before its own limit. Divide:
+
+        projected_cycle_days = unarchived_live / (measured re-checks per day)
+        projected_worst_age  = projected_cycle_days + 1 (run granularity)
+
+    and FAIL when the projection exceeds PROMISE_DAYS + 1 = 8, i.e. while the
+    two days of slack are still intact. On the 2026-08-04 numbers (3,864 due,
+    ~500/day) that is 8.7d projected against a bound of 8 -- it fires two days
+    before the reading does, which is the entire point.
+
+    NEITHER HALF WEAKENS THE OTHER. Both must hold. The age FAIL is unchanged;
+    the projection can only add failures.
+
     MISSING DATA. No response, a non-JSON body, or a build that predates the
-    coverage fields (plugin < 2.19.248) -> UNKNOWN, never a pass.
+    coverage fields (plugin < 2.19.248) -> UNKNOWN, never a pass. A build that
+    predates the MARGIN fields (plugin < 2.20.2) leaves the projection
+    UNMEASURED, which is UNKNOWN too: a check that silently drops half of
+    itself when the server is old is the defect this class exists to catch.
     """
 
     key = "archive_recheck_cadence"
@@ -918,6 +948,34 @@ class ArchiveRecheckInvariant:
     reads_live_data = True
 
     MAX_AGE_DAYS = 10
+    # The published sentence: "We re-check weekly". Plus one day of daily-run
+    # granularity is the worst age the promise can honestly produce.
+    PROMISE_DAYS = 7
+    RUN_GRANULARITY_DAYS = 1
+    PROJECTED_MAX_AGE_DAYS = PROMISE_DAYS + RUN_GRANULARITY_DAYS   # 8
+
+    @staticmethod
+    def _projection(payload):
+        """(projected_worst_age_days, per_day, pool) or None if unmeasurable.
+
+        None means the deployed plugin does not publish the margin fields, or
+        publishes them as nonsense. It NEVER means "fine".
+        """
+        try:
+            pool = int(payload["unarchived_live"])
+            recent = int(payload["rechecked_recent"])
+            window_h = int(payload["recheck_window_hours"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if window_h <= 0 or pool < 0 or recent < 0:
+            return None
+        per_day = recent / (window_h / 24.0)
+        if per_day <= 0:
+            # Nothing was re-checked in the whole window. The cycle is not slow,
+            # it is stopped; report it as unbounded rather than dividing by zero.
+            return (float("inf"), 0.0, pool)
+        cycle = pool / per_day
+        return (cycle + ArchiveRecheckInvariant.RUN_GRANULARITY_DAYS, per_day, pool)
 
     def run(self, ctx):
         url = BASE + "archive-coverage?" + urllib.parse.urlencode({"cb": ctx.cachebust})
@@ -970,7 +1028,39 @@ class ArchiveRecheckInvariant:
                           detail=f"{shown} — bound is {self.MAX_AGE_DAYS}d (7d promise + 1d run "
                                  f"granularity + 2d slack). The pages are promising a re-check "
                                  f"the cron is not delivering; check archive-backfill.yml")
-        return Result(self, PASS, detail=f"{shown}, bound {self.MAX_AGE_DAYS}d")
+
+        # The reading is inside the bound. That is not the same as the promise
+        # being safe, so project the cycle before calling this a pass.
+        projected = self._projection(payload)
+        if projected is None:
+            return Result(self, UNKNOWN, pending=True,
+                          detail=f"{shown}, inside the {self.MAX_AGE_DAYS}d bound — but the "
+                                 f"deployed plugin does not publish unarchived_live / "
+                                 f"rechecked_recent, so the MARGIN is unmeasured. A reading "
+                                 f"inside the bound with an unknown cycle time is how this "
+                                 f"promise broke on 2026-08-06; deploy 2.20.2 or later")
+        worst, per_day, pool = projected
+        if worst == float("inf"):
+            return Result(self, FAIL, observed=0,
+                          detail=f"{shown}, but NOTHING was re-checked in the last "
+                                 f"{int(payload.get('recheck_window_hours') or 0)}h against a "
+                                 f"pool of {pool:,} — the reading is only inside the bound "
+                                 f"because the ageing has not caught up yet. The cron is "
+                                 f"stopped; check archive-backfill.yml")
+        rate = (f"{pool:,} due at a measured {per_day:,.0f}/day = "
+                f"{worst - self.RUN_GRANULARITY_DAYS:.1f}d cycle, "
+                f"{worst:.1f}d worst age")
+        if worst > self.PROJECTED_MAX_AGE_DAYS:
+            return Result(self, FAIL, observed=round(worst, 1),
+                          detail=f"{shown} — inside the {self.MAX_AGE_DAYS}d bound TODAY, but "
+                                 f"{rate}, past the {self.PROJECTED_MAX_AGE_DAYS}d projected "
+                                 f"bound ({self.PROMISE_DAYS}d promise + "
+                                 f"{self.RUN_GRANULARITY_DAYS}d run granularity). The re-check "
+                                 f"promise is about to become false and the slack is what is "
+                                 f"hiding it; raise throughput in archive-backfill.yml")
+        return Result(self, PASS,
+                      detail=f"{shown}, bound {self.MAX_AGE_DAYS}d; {rate}, inside the "
+                             f"{self.PROJECTED_MAX_AGE_DAYS}d projected bound")
 
 
 def _php_function_body(src, name):

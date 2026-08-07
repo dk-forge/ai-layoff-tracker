@@ -42,9 +42,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Candidate URLs to process this run (1-500; default 200)'
+        description: 'Candidate URLs to process this run (server hands out 500 per batch; default 2000)'
         required: false
-        default: '200'
+        default: '2000'
       spn_max:
         description: 'Max Save-Page-Now captures this run (respects Wayback limits; default 60)'
         required: false
@@ -77,21 +77,34 @@ jobs:
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
-          # The 1,500 limit is a leftover from the backlog sprint and is harmless
-          # to keep: the server hands out only what is actually un-archived, and
-          # that is now single digits per run. It stays high so a future bulk
-          # import of a new source drains in one daily run instead of many.
-          ARCHIVE_BACKFILL_LIMIT: ${{ github.event.inputs.limit || '1500' }}
+          # SIZED FROM THE CYCLE, 2026-08-06. The re-check promise is kept only
+          # if the whole due pool is re-attempted inside a week, so the limit is
+          # pool / promise, not a round number. Measured live that day: 3,782
+          # distinct cited URLs still awaiting a snapshot. At 2,000 a run that is
+          # ~1.9 days per full cycle, ~2.9 days worst age against the 10-day
+          # bound. The previous 1,500 was never actually reached (see below).
+          ARCHIVE_BACKFILL_LIMIT: ${{ github.event.inputs.limit || '2000' }}
+          # NOT raised. Save Page Now is rate-limited for anonymous callers and
+          # 16 of 80 captures were already being throttled on 2026-08-06.
+          # Throughput here comes from the free availability pass, which is what
+          # stamps checked_at and moves the cadence; cranking SPN buys nothing
+          # and risks the budget.
           ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '80' }}
           ARCHIVE_FLUSH_EVERY: '25'
           ARCHIVE_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
-          # Stops safely between URLs well below the job timeout (45 min); the
-          # daily run resumes with whatever the server still reports as
-          # un-archived. 2400s because a full 1,500-URL day (three server
-          # batches) of availability checks plus the SPN budget can exceed the
-          # old 1800s, and a deadline that clips the tail every day is a
-          # cadence the pages promise but the cron cannot keep.
-          ARCHIVE_BACKFILL_DEADLINE_SECONDS: '2400'
+          # 2400 -> 5400. THE DEADLINE WAS THE BINDING CONSTRAINT, not the limit.
+          # Measured from the run logs: 2026-08-04 stopped on the deadline after
+          # 1,231 of its 1,500 URLs; 08-05 and 08-06 each completed exactly ONE
+          # 500-URL server batch and stopped. So the job had been advertising a
+          # 1,500-URL capacity while delivering a median of 500, the pool needed
+          # ~404/day just to stand still, and the promised weekly re-check went
+          # false. Raising the batch size alone would have been a no-op.
+          # 5400s at the measured 0.513 URL/s floor covers 2,770 URLs, comfortably
+          # past the 2,000 limit, and still leaves half the 120-minute job
+          # timeout spare. railway/tests/test_archive_promise.py asserts this
+          # deadline can actually reach this limit, so the pair cannot drift back
+          # into a capacity the run never delivers.
+          ARCHIVE_BACKFILL_DEADLINE_SECONDS: '5400'
         # Data-changing job fails loudly: an unreachable candidate feed or a
         # failed /archive-record batch exits non-zero above.
         run: |

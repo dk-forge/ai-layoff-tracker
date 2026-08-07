@@ -120,8 +120,11 @@ def _run(payload):
 
 
 class InvariantJudgesHonestly(unittest.TestCase):
+    # A HEALTHY margin by default, so the age-half tests below keep testing the
+    # age half. 3,900 due at 4,000/day re-checked over 48h is a ~1-day cycle.
     BASE = {"distinct_source_urls": 25029, "archived": 21110, "pending": 3800,
-            "unavailable": 110, "queued": 9, "coverage_pct": 84.3, "recheck_days": 7}
+            "unavailable": 110, "queued": 9, "coverage_pct": 84.3, "recheck_days": 7,
+            "unarchived_live": 3910, "rechecked_recent": 8000, "recheck_window_hours": 48}
 
     def _payload(self, age_days):
         stamp = (datetime.now(timezone.utc) - timedelta(days=age_days)).strftime("%Y-%m-%d %H:%M:%S")
@@ -159,6 +162,140 @@ class InvariantJudgesHonestly(unittest.TestCase):
         r = _run(dict(self.BASE, archived=0, oldest_unarchived_checked_at=None,
                       pending=0, unavailable=0))
         self.assertEqual(r.state, FAIL)
+
+
+class TheCheckWarnsBeforeThePromiseBreaks(unittest.TestCase):
+    """A check that only fails once the published claim is already false is not
+    a check, it is a post-mortem.
+
+    Every number below is measured, from the archive-backfill run logs and the
+    live /archive-coverage payload on 2026-08-04 and 2026-08-06.
+    """
+
+    BASE = dict(InvariantJudgesHonestly.BASE)
+
+    def _payload(self, age_days, **over):
+        stamp = (datetime.now(timezone.utc) - timedelta(days=age_days)).strftime("%Y-%m-%d %H:%M:%S")
+        return dict(self.BASE, oldest_unarchived_checked_at=stamp, **over)
+
+    def test_the_2026_08_04_reading_that_passed_would_now_fail(self):
+        """THE REGRESSION THIS FILE EXISTS FOR.
+
+        On 2026-08-04 the invariant read 8.6d against a 10d bound and PASSED.
+        Two days later it read 11.7d and the pages had been promising a weekly
+        re-check the cron was not delivering. The pool and the throughput were
+        both visible on 08-04: 3,864 due, a measured 500/run once a day. That
+        is a 7.7d cycle and an 8.7d worst age, past the 8d projected bound, so
+        the margin was 1.4 days wide and nothing said so.
+        """
+        r = _run(self._payload(8.6, unarchived_live=3864,
+                               rechecked_recent=1000, recheck_window_hours=48))
+        self.assertEqual(r.state, FAIL,
+                         "the 2026-08-04 numbers must fail on the projection while the "
+                         "reading is still inside the bound")
+        self.assertIn("about to become false", r.detail)
+        self.assertIn("inside the 10d bound TODAY", r.detail)
+
+    def test_the_post_fix_throughput_passes_the_same_reading(self):
+        """Same pool, same day, the 2,000/run this change ships: 1.9d cycle."""
+        r = _run(self._payload(8.6, unarchived_live=3782,
+                               rechecked_recent=4000, recheck_window_hours=48))
+        self.assertEqual(r.state, PASS)
+        self.assertIn("projected bound", r.detail)
+
+    def test_a_stopped_cron_is_a_failure_not_a_fresh_reading(self):
+        """Right after the pool is drained the reading is young, so the age half
+        alone would pass for days while nothing ran at all."""
+        r = _run(self._payload(1.0, unarchived_live=3782, rechecked_recent=0))
+        self.assertEqual(r.state, FAIL)
+        self.assertIn("NOTHING was re-checked", r.detail)
+
+    def test_an_old_build_leaves_the_margin_unknown_never_a_pass(self):
+        """A server that does not publish the margin fields must not be read as
+        a healthy margin. Absence of a signal is not a pass."""
+        old = {k: v for k, v in self.BASE.items()
+               if k not in ("unarchived_live", "rechecked_recent", "recheck_window_hours")}
+        stamp = (datetime.now(timezone.utc) - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
+        r = _run(dict(old, oldest_unarchived_checked_at=stamp))
+        self.assertEqual(r.state, UNKNOWN)
+        self.assertIn("MARGIN is unmeasured", r.detail)
+
+    def test_the_projected_bound_is_derived_from_the_published_promise(self):
+        # "We re-check weekly" + one day of daily-run granularity. It is
+        # deliberately TIGHTER than MAX_AGE_DAYS: the 2 days of slack exist to
+        # absorb a missed run, not to be spent as normal operating margin.
+        self.assertEqual(ArchiveRecheckInvariant.PROJECTED_MAX_AGE_DAYS, 7 + 1)
+        self.assertLess(ArchiveRecheckInvariant.PROJECTED_MAX_AGE_DAYS,
+                        ArchiveRecheckInvariant.MAX_AGE_DAYS)
+
+    def test_the_age_half_still_fails_on_its_own(self):
+        """The projection must not be able to excuse a broken promise: a
+        healthy margin with a blown reading is still a FAIL."""
+        r = _run(self._payload(11.7, unarchived_live=3782, rechecked_recent=8000))
+        self.assertEqual(r.state, FAIL)
+        self.assertIn("promising a re-check", r.detail)
+
+
+class TheRunCanActuallyReachItsOwnLimit(unittest.TestCase):
+    """ARCHIVE_BACKFILL_LIMIT is a promise about throughput. If the deadline
+    stops the run first, the limit is a number that never happens and the
+    cadence is sized off a capacity that does not exist. That is exactly how
+    this broke: the workflow advertised 1,500 URLs a run and delivered a median
+    of 500, because the 2400s deadline (itself clamped by a 3000s cap in the
+    module) ended every run mid-pool.
+    """
+
+    # Read from SOURCE, not by importing: archive_backfill needs `requests`, and
+    # a guard about arithmetic must not be skippable because a network library
+    # is missing. Same reason ab_extraction_models.score() imports nothing.
+    BACKFILL_PY = (REPO / "railway" / "archive_backfill.py").read_text(encoding="utf-8")
+
+    def _yml_env(self, name):
+        m = re.search(name + r":\s*\$\{\{\s*github\.event\.inputs\.\w+\s*\|\|\s*'(\d+)'\s*\}\}",
+                      BACKFILL_YML)
+        if not m:
+            m = re.search(name + r":\s*'(\d+)'", BACKFILL_YML)
+        self.assertIsNotNone(m, f"{name} not found in archive-backfill.yml")
+        return int(m.group(1))
+
+    def _py_const(self, name):
+        m = re.search(rf"^{name} = ([\d./ ]+)$", self.BACKFILL_PY, re.M)
+        self.assertIsNotNone(m, f"{name} not found in archive_backfill.py")
+        return eval(m.group(1))          # noqa: S307 - a numeric literal we just matched
+
+    def test_the_deadline_is_long_enough_to_reach_the_limit(self):
+        limit = self._yml_env("ARCHIVE_BACKFILL_LIMIT")
+        deadline = self._yml_env("ARCHIVE_BACKFILL_DEADLINE_SECONDS")
+        cap = self._py_const("DEADLINE_CAP_SECONDS")
+        rate = self._py_const("MEASURED_URLS_PER_SECOND")
+        effective = min(cap, deadline)
+        reachable = effective * rate
+        self.assertGreaterEqual(
+            reachable, limit,
+            f"the workflow asks for {limit} URLs a run but its {deadline}s deadline "
+            f"(clamped to {effective}s by DEADLINE_CAP_SECONDS) only reaches "
+            f"{reachable:.0f} at the measured {rate:.3f} URL/s. The limit is a "
+            f"capacity the run never delivers.")
+
+    def test_the_module_cap_does_not_silently_clamp_the_workflow(self):
+        """A cap quietly cutting the configured deadline in half is the same
+        defect one layer down, and it leaves no trace in any log."""
+        deadline = self._yml_env("ARCHIVE_BACKFILL_DEADLINE_SECONDS")
+        self.assertGreaterEqual(
+            self._py_const("DEADLINE_CAP_SECONDS"), deadline,
+            "archive_backfill.DEADLINE_CAP_SECONDS is below the deadline the workflow "
+            "sets, so the run stops earlier than the workflow says it does")
+
+    def test_the_deadline_stays_inside_the_job_timeout(self):
+        """The deadline exists so the run stops ITSELF, cleanly, having flushed
+        its records. A run killed by the Actions timeout loses the tail."""
+        m = re.search(r"timeout-minutes:\s*(\d+)", BACKFILL_YML)
+        self.assertIsNotNone(m, "archive-backfill.yml lost its job timeout")
+        job_timeout_s = int(m.group(1)) * 60
+        deadline = self._yml_env("ARCHIVE_BACKFILL_DEADLINE_SECONDS")
+        self.assertLess(deadline, job_timeout_s - 600,
+                        "less than 10 minutes between the script's deadline and the job "
+                        "timeout leaves no room for checkout, install and the final flush")
 
 
 class RecallParagraphIsRendered(unittest.TestCase):
