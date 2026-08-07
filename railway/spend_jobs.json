@@ -441,6 +441,44 @@
    "stored": 9
   },
   {
+   "calls": 508,
+   "completion_tokens": 45257,
+   "cost_usd": 0.167332,
+   "date": "2026-08-06",
+   "gate_mode": "live",
+   "items": 310,
+   "job": "railway-cron",
+   "prompt_tokens": 456931,
+   "run_id": "railway-20260806T2233",
+   "sources": {
+    "edgar": {
+     "calls": 192,
+     "cost_usd": 0.08238,
+     "dropped": 16,
+     "items": 104,
+     "kept": 88,
+     "stored": 2
+    },
+    "gdelt": {
+     "calls": 95,
+     "cost_usd": 0.012812,
+     "dropped": 75,
+     "items": 85,
+     "kept": 10,
+     "stored": 0
+    },
+    "google_news": {
+     "calls": 221,
+     "cost_usd": 0.072139,
+     "dropped": 21,
+     "items": 121,
+     "kept": 100,
+     "stored": 2
+    }
+   },
+   "stored": 4
+  },
+  {
    "attempt": "1",
    "calls": 29,
    "changed": 400,
@@ -465,6 +503,135 @@
    "prompt_tokens": 0,
    "run_id": "31076262453",
    "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 40,
+   "changed": 3,
+   "completion_tokens": 667,
+   "cost_usd": 0.00509,
+   "date": "2026-08-07",
+   "items": 40,
+   "job": "enrich-roles",
+   "prompt_tokens": 14785,
+   "run_id": "31152132585",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 209,
+   "changed": 9,
+   "completion_tokens": 1784,
+   "cost_usd": 0.019286,
+   "date": "2026-08-07",
+   "items": 200,
+   "job": "industry-backfill",
+   "prompt_tokens": 55960,
+   "run_id": "31152493950",
+   "stored": null
+  },
+  {
+   "calls": 467,
+   "completion_tokens": 44807,
+   "cost_usd": 0.057727,
+   "date": "2026-08-07",
+   "gate_mode": "live",
+   "items": 298,
+   "job": "railway-cron",
+   "prompt_tokens": 398043,
+   "run_id": "railway-20260807T1317",
+   "sources": {
+    "edgar": {
+     "calls": 114,
+     "cost_usd": 0.019142,
+     "dropped": 16,
+     "items": 65,
+     "kept": 49,
+     "stored": 0
+    },
+    "gdelt": {
+     "calls": 111,
+     "cost_usd": 0.007783,
+     "dropped": 93,
+     "items": 102,
+     "kept": 9,
+     "stored": 0
+    },
+    "google_news": {
+     "calls": 242,
+     "cost_usd": 0.030802,
+     "dropped": 20,
+     "items": 131,
+     "kept": 111,
+     "stored": 3
+    }
+   },
+   "stored": 3
+  },
+  {
+   "attempt": "1",
+   "calls": 31,
+   "changed": 400,
+   "completion_tokens": 501,
+   "cost_usd": 0.005092,
+   "date": "2026-08-07",
+   "items": 40,
+   "job": "reason-backfill",
+   "prompt_tokens": 15663,
+   "run_id": "31152419646",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "changed": 0,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-08-07",
+   "items": 3,
+   "job": "reclassify-legacy-ai",
+   "prompt_tokens": 0,
+   "run_id": "31149616971",
+   "stored": null
+  },
+  {
+   "attempt": "1",
+   "calls": 24,
+   "changed": null,
+   "completion_tokens": 4937,
+   "cost_usd": 0.015447,
+   "date": "2026-08-07",
+   "items": null,
+   "job": "supplemental-news",
+   "prompt_tokens": 35645,
+   "run_id": "31151740131",
+   "stored": 0
+  },
+  {
+   "attempt": "1",
+   "calls": 24,
+   "changed": null,
+   "completion_tokens": 5777,
+   "cost_usd": 0.006015,
+   "date": "2026-08-07",
+   "items": null,
+   "job": "supplemental-news",
+   "prompt_tokens": 37040,
+   "run_id": "31151596266",
+   "stored": 0
+  },
+  {
+   "attempt": "1",
+   "calls": 24,
+   "changed": null,
+   "completion_tokens": 5812,
+   "cost_usd": 0.006032,
+   "date": "2026-08-07",
+   "items": null,
+   "job": "supplemental-news",
+   "prompt_tokens": 37069,
+   "run_id": "31151425995",
+   "stored": 0
   }
  ],
  "v": 1
