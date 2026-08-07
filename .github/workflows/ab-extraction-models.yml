@@ -1,8 +1,13 @@
 name: A/B extraction models (gold set)
 
-# Which extraction model should the tracker pay for? Answered against the SEC
-# Item 2.05 gold set, so the score is ACCURACY against counts a filing states,
-# not agreement with the incumbent. See railway/ab_extraction_models.py.
+# Which extraction model should the tracker pay for? Answered against a gold
+# set, so the score is ACCURACY against a count decided before any model saw
+# the item, not agreement with the incumbent. See railway/ab_extraction_models.py.
+#
+# TWO CORPORA. `sec` scores the SEC Item 2.05 set (counts a filing states about
+# itself). `news` scores the corroborated news set (counts two independent
+# outlets, or an outlet and an official filing, both state), which is the path
+# that carries the volume and was unmeasured when the SEC result came in.
 #
 # MANUAL DISPATCH ONLY, and deliberately never scheduled: this spends money to
 # answer a question, it is not a data job. It posts nothing, edits nothing, and
@@ -17,6 +22,11 @@ name: A/B extraction models (gold set)
 on:
   workflow_dispatch:
     inputs:
+      corpus:
+        description: 'Which gold set to score against'
+        type: choice
+        options: [sec, news]
+        default: sec
       limit:
         description: 'Gold events to run (one call per model each)'
         required: false
@@ -57,6 +67,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
+          AB_CORPUS: ${{ github.event.inputs.corpus }}
           AB_LIMIT: ${{ github.event.inputs.limit }}
           AB_MODELS: ${{ github.event.inputs.models }}
           AB_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}

@@ -1,9 +1,25 @@
 #!/usr/bin/env python3
 """A/B candidate extraction models against GROUND TRUTH, not against each other.
 
-    python3 ab_extraction_models.py              # the default candidate list
-    python3 ab_extraction_models.py --limit 8    # cheaper, noisier
-    python3 ab_extraction_models.py --dry-run    # fetch + window only, no LLM spend
+    python3 ab_extraction_models.py                    # SEC gold set, default models
+    python3 ab_extraction_models.py --corpus news      # the news gold set
+    python3 ab_extraction_models.py --limit 8          # cheaper, noisier
+    python3 ab_extraction_models.py --dry-run          # fetch + window only, no spend
+
+TWO CORPORA, ONE SCORER
+-----------------------
+`--corpus sec` reads the SEC Item 2.05 gold set (counts a filing states about
+itself). `--corpus news` reads the news gold set built by
+`news_goldset_build.py` (counts two independent outlets, or an outlet and an
+official filing, both state). They differ only in where an item's gold count
+and its window come from; the guard order, the three states and the arithmetic
+below are shared, because two definitions of "correct" is how a swap ships on
+the friendlier one.
+
+The news corpus exists because the SEC result was not transferable. On SEC
+filings the incumbent and `google/gemini-2.5-flash-lite` both scored 16/16 at
+0.388x the price, and the swap was still not made: news is the higher-volume,
+messier, worse-punctuated path, and nothing had measured it.
 
 WHY THIS IS NOT THE SIBLING'S HARNESS
 -------------------------------------
@@ -49,6 +65,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 # extractor / spend / sources.edgar are imported INSIDE the functions that call
@@ -59,6 +76,8 @@ from pathlib import Path
 
 GOLDSET = Path(__file__).resolve().parent.parent / "docs" / "recall-reference-sets" / \
     "sec-item-205-us-2025-07_2026-06.goldset.json"
+NEWS_GOLDSET = Path(__file__).resolve().parent.parent / "docs" / "recall-reference-sets" / \
+    "news-corroborated-2026-08.goldset.json"
 
 # Incumbent FIRST. Every table below is read against it, and the cost column is
 # only meaningful next to the model currently being paid for.
@@ -74,10 +93,29 @@ DEFAULT_MODELS = (
 # measures a model production would have truncated.
 MAX_TOKENS = 1000
 
+# Seconds between Wayback reads in the news corpus.
+WAYBACK_GAP_SECONDS = float(os.environ.get("AB_WAYBACK_GAP_SECONDS", "1.0"))
+
 
 def load_goldset(path=GOLDSET):
     events = json.loads(Path(path).read_text())["reference_events"]
     return [e for e in events if e.get("stated_job_count")]
+
+
+def load_news_goldset(path=NEWS_GOLDSET):
+    """The news items whose model input can actually be rebuilt.
+
+    `window_source` is decided by the BUILDER, before any model runs, and
+    anything other than `wayback_article` means the bytes production fed the
+    model no longer exist (a Google News headline window) or were never frozen.
+    Those items are listed in the manifest's `excluded_rows` with their reason;
+    scoring them against a substituted window would measure a task production
+    never performed.
+    """
+    events = json.loads(Path(path).read_text(encoding="utf-8"))["reference_events"]
+    return [e for e in events if e.get("stated_job_count")
+            and e.get("window_source") == "wayback_article"
+            and e.get("frozen_window_url")]
 
 
 def build_prompt(raw):
@@ -205,14 +243,19 @@ def _fmt_pct(n, d):
     return f"{100 * n / d:.0f}%" if d else "n/a"
 
 
-def report(rows, models, scored):
+def report(rows, models, scored, heading="ACCURACY AGAINST THE SEC ITEM 2.05 GOLD SET",
+           item_word="filings"):
     excluded = [r for r in rows if not r["gold_count_in_window"]]
     print("\n" + "=" * 78)
-    print("ACCURACY AGAINST THE SEC ITEM 2.05 GOLD SET")
+    print(heading)
     print("=" * 78)
-    print(f"{len(rows)} filings fetched; {len(excluded)} excluded because the stated "
+    print(f"{len(rows)} {item_word} fetched; {len(excluded)} excluded because the stated "
           f"count never entered\nthe production window (a window defect, not a model "
-          f"defect); {len(rows) - len(excluded)} scorable.\n")
+          f"defect); {len(rows) - len(excluded)} scorable.")
+    for r in excluded:
+        print(f"    EXCLUDED  {r['label'][:44]:46} gold={r['gold_count']}  "
+              f"the count is not in the rebuilt window")
+    print()
     print(f"{'model':32}{'posts':>7}{'correct':>9}{'wrong':>7}{'unkn':>6}"
           f"{'$/item':>10}{'$/mo @470':>11}")
     print("-" * 78)
@@ -221,8 +264,8 @@ def report(rows, models, scored):
         per_item = s["cost"] / s["calls"] if s["calls"] else 0
         print(f"{m:32}{s['accepted']:>7}{s['correct']:>9}{s['wrong_count']:>7}"
               f"{s['unknown']:>6}{per_item:>10.6f}{per_item * 470 * 30.4:>11.2f}")
-    print("\n'correct' = the count this model posted equals the count the filing "
-          "states.\n'$/mo @470' prices THIS token mix at the measured 470 cron calls/day.")
+    print("\n'correct' = the count this model posted equals the gold count."
+          "\n'$/mo @470' prices THIS token mix at the measured 470 cron calls/day.")
 
     print("\n" + "=" * 78)
     print("WHERE THE CANDIDATES DIFFER FROM THE INCUMBENT, ITEM BY ITEM")
@@ -239,7 +282,7 @@ def report(rows, models, scored):
                 diffs.append((m, mine))
         if not diffs:
             continue
-        print(f"  {r['filer'][:44]:46} gold={r['gold_count']}"
+        print(f"  {r['label'][:44]:46} gold={r['gold_count']}"
               f"{'' if r['gold_count_in_window'] else '  [NOT IN WINDOW]'}")
         print(f"      {incumbent:30} {base.get('stage', '?')}"
               f" count={base.get('count')}")
@@ -277,16 +320,80 @@ def run(models, limit, dry_run, out_path):
         in_window = extractor._count_in_text(gold, raw_text)
         print(f"  {i:>2}. {ev['filer'][:40]:42} gold={gold:<7} "
               f"window={'has count' if in_window else 'MISSING count'}")
-        row = {"filer": ev["filer"], "gold_count": gold,
+        row = {"label": ev["filer"], "gold_count": gold,
                "gold_count_in_window": in_window, "by_model": {}}
-        if not dry_run:
-            prompt = build_prompt(raw)
-            for m in models:
-                row["by_model"][m] = judge(m, raw_text, prompt, gold)
-                j = row["by_model"][m]
-                print(f"        {m:32} {j['stage']:32} count={j.get('count')}")
+        _judge_row(row, raw, raw_text, gold, models, dry_run)
         rows.append(row)
 
+    return _finish(rows, models, dry_run, out_path,
+                   "ACCURACY AGAINST THE SEC ITEM 2.05 GOLD SET", "filings")
+
+
+def run_news(models, limit, dry_run, out_path):
+    """The same comparison over corroborated NEWS events.
+
+    The window is rebuilt by `gdelt._fetch_article`, the production news window
+    builder, reading the FROZEN Wayback snapshot the manifest names rather than
+    the live URL. A live re-fetch would let the corpus drift between runs and
+    would score today's page against a count taken from the page as it was
+    read; a frozen snapshot makes the comparison repeatable and re-auditable.
+    A snapshot that will not load is UNKNOWN and the item is skipped, never
+    counted against a model.
+    """
+    import extractor
+    from sources import gdelt
+
+    events = load_news_goldset()[:limit]
+    print(f"{len(events)} corroborated news events; models: {', '.join(models)}")
+    if dry_run:
+        print("DRY RUN: fetching and windowing only, no model is called and "
+              "nothing is spent.")
+
+    rows = []
+    for i, ev in enumerate(events, 1):
+        gold = int(ev["stated_job_count"])
+        label = f"{ev['company_name']} ({ev['primary_outlet']})"
+        # One archive, dozens of sequential reads. The politeness gap is the
+        # difference between a measurement and a rate-limit that reads as a
+        # model failure, and every second here is cheaper than a re-run.
+        time.sleep(WAYBACK_GAP_SECONDS)
+        try:
+            raw_text = gdelt._fetch_article(ev["frozen_window_url"])
+        except Exception as exc:
+            print(f"  {i:>2}. {label[:40]:42} SNAPSHOT FETCH FAILED "
+                  f"({str(exc)[:50]}) — UNKNOWN, not a miss")
+            continue
+        # company_name is None because that is what the news path passes: the
+        # collectors never know the employer, the model names it. Handing the
+        # answer to the model in its own prompt would measure nothing.
+        raw = {"source_type": "news", "source_name": ev.get("primary_outlet"),
+               "company_name": None, "ticker": None,
+               "filing_date": ev.get("announcement_date") or ev.get("layoff_date"),
+               "raw_text": raw_text}
+        in_window = extractor._count_in_text(gold, raw_text)
+        print(f"  {i:>2}. {label[:40]:42} gold={gold:<7} "
+              f"window={'has count' if in_window else 'MISSING count'}")
+        row = {"label": label, "gold_count": gold,
+               "gold_count_in_window": in_window,
+               "corroboration": ev.get("corroboration_kinds"), "by_model": {}}
+        _judge_row(row, raw, raw_text, gold, models, dry_run)
+        rows.append(row)
+
+    return _finish(rows, models, dry_run, out_path,
+                   "ACCURACY AGAINST THE CORROBORATED NEWS GOLD SET", "news events")
+
+
+def _judge_row(row, raw, raw_text, gold, models, dry_run):
+    if dry_run:
+        return
+    prompt = build_prompt(raw)
+    for m in models:
+        row["by_model"][m] = judge(m, raw_text, prompt, gold)
+        j = row["by_model"][m]
+        print(f"        {m:32} {j['stage']:32} count={j.get('count')}")
+
+
+def _finish(rows, models, dry_run, out_path, heading, item_word):
     if dry_run:
         n_in = sum(1 for r in rows if r["gold_count_in_window"])
         print(f"\nDRY RUN COMPLETE: {len(rows)} fetched, {n_in} would be scorable, "
@@ -294,7 +401,7 @@ def run(models, limit, dry_run, out_path):
         return 0
 
     scored = score(rows, models)
-    report(rows, models, scored)
+    report(rows, models, scored, heading, item_word)
     if out_path:
         Path(out_path).write_text(json.dumps(
             {"rows": rows, "scored": scored, "models": list(models)}, indent=1))
@@ -313,6 +420,9 @@ def main():
                     default=bool(os.environ.get("AB_DRY_RUN")),
                     help="fetch and window only; calls no model and spends nothing")
     ap.add_argument("--out", default=os.environ.get("AB_OUT", ""))
+    ap.add_argument("--corpus", choices=("sec", "news"),
+                    default=(os.environ.get("AB_CORPUS") or "sec"),
+                    help="which gold set to score against")
     args = ap.parse_args()
 
     models = tuple(m.strip() for m in args.models.split(",") if m.strip()) \
@@ -332,7 +442,8 @@ def main():
                   "comparison measured nothing. Exiting 0 — a budget stop is a "
                   "deferral, not a failure. Re-dispatch after the window resets.")
             return 0
-    return run(models, args.limit, args.dry_run, args.out)
+    runner = run_news if args.corpus == "news" else run
+    return runner(models, args.limit, args.dry_run, args.out)
 
 
 if __name__ == "__main__":
