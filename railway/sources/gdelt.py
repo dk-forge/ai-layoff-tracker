@@ -693,11 +693,15 @@ def _seen_to_iso(seendate):
     return f"{s[:4]}-{s[4:6]}-{s[6:8]}" if len(s) >= 8 else ""
 
 
-def _fetch_article(url):
-    """Fetch an article and return a text window centered on the layoff mention."""
-    resp = requests.get(url, headers={"User-Agent": BROWSER_UA}, timeout=25)
-    resp.raise_for_status()
-    text = _strip_html(resp.text[:MAX_DOC_BYTES])
+def window_article_markup(markup):
+    """The text window this collector feeds the extractor, from page markup.
+
+    Split out from the fetch so a caller that already holds the bytes -- the
+    model comparison reads FROZEN archive snapshots, which need their own
+    retry and pacing -- gets the identical window instead of a second
+    implementation of it. Pure: no network, no clock.
+    """
+    text = _strip_html(markup[:MAX_DOC_BYTES])
     lowered = text.lower()
     for kw in discovery_terms():
         idx = lowered.find(kw)
@@ -705,6 +709,13 @@ def _fetch_article(url):
             start = max(0, idx - 400)
             return text[start:start + RAW_TEXT_LIMIT]
     return text[:RAW_TEXT_LIMIT]
+
+
+def _fetch_article(url):
+    """Fetch an article and return a text window centered on the layoff mention."""
+    resp = requests.get(url, headers={"User-Agent": BROWSER_UA}, timeout=25)
+    resp.raise_for_status()
+    return window_article_markup(resp.text)
 
 
 # Segmented recall sweeps: a broad "layoffs" query ranks global mega-stories

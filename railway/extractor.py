@@ -1,6 +1,11 @@
 """
 LLM extraction + classification.
-Uses DeepSeek-V3 (deepseek/deepseek-chat) via OpenRouter.
+
+Extraction runs on google/gemini-2.5-flash-lite via OpenRouter (changed
+2026-08-07 from deepseek/deepseek-chat; see MODEL below for the two gold sets
+that decided it). Classification still runs on deepseek/deepseek-chat, on
+purpose: nothing has measured it. Both are one environment variable away from
+anything else.
 
 OpenRouter serves the OpenAI-compatible chat-completions API, so this module
 uses the openai SDK with a base_url override — the anthropic SDK cannot talk
@@ -16,17 +21,41 @@ import openai
 
 import spend
 
-# Swap models without a code change: set OPENROUTER_MODEL in the environment
-# (e.g. "google/gemini-2.0-flash-001" for an even cheaper option). DeepSeek-V3
-# is the default — near the price floor while staying strong at extraction.
-MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat")
-# Cheap model for the NARROW, constrained-vocabulary calls (industry, roles,
-# reason tags, context) - "pick one label from a fixed list" tasks that a small
-# fast model handles as well as a frontier one, and which are the bulk of the
-# call volume. Defaults to MODEL so behaviour is unchanged until this is pointed
-# at e.g. "google/gemini-2.0-flash-001" after an A/B agreement check. The
-# correctness-critical calls (full extraction, AI-causation) always use MODEL.
-CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", MODEL)
+# THE EXTRACTION MODEL, AND THE ONLY ONE ANYTHING HAS MEASURED.
+#
+# Changed 2026-08-07 from deepseek/deepseek-chat, on two gold sets rather than
+# on a price list. Against the SEC Item 2.05 set (2026-08-06) both scored 16/16.
+# Against the corroborated NEWS set (2026-08-07, 35 scorable events, counts two
+# independent sources both state) both accepted 30 and got 30 right, with ZERO
+# wrong counts either way, at $0.000339 per item against $0.000875 -- 0.387x,
+# reproducing the SEC ratio almost exactly on the messier corpus.
+#
+# The two models disagreed on exactly two of the 35, one in each direction:
+# flash-lite recovered Alphabet 12,000 where the incumbent called the article
+# not a layoff event, and returned no count on TikTok 150 where the incumbent
+# recovered it. That is a tie decided by price, not a win.
+#
+# Why a cheaper extraction model is a COVERAGE change and not a saving: the
+# Railway cron hits its per-run spend ceiling on every run and defers the
+# remainder unread, so cost per candidate is what decides how many candidates
+# get read at all (see the 2026-08-06 gate entry in docs/TECHLOG.md).
+#
+# Rollback is one environment variable and no deploy: OPENROUTER_MODEL.
+MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
+
+# THE CLASSIFIER, WHICH NOTHING HAS MEASURED, AND WHICH THEREFORE DOES NOT MOVE.
+#
+# Industry, roles, reason tags and context: "pick one label from a fixed list"
+# over up to 6,000 characters, and the bulk of the call volume. Until 2026-08-07
+# this defaulted to MODEL, so an extraction benchmark would have silently moved
+# a classifier that benchmark never looked at -- three surfaces changed by a
+# measurement of one. The default is now written out, so the extraction swap
+# above leaves it exactly where it was and moving it needs its own A/B against
+# its own answer key. Pinned by tests/test_extraction_model_choice.py.
+#
+# The correctness-critical calls (full extraction, AI-causation) always use
+# MODEL, never this.
+CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", "deepseek/deepseek-chat")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "45"))
 
