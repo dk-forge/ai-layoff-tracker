@@ -33,7 +33,17 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    # 6 -> 15, MEASURED 2026-08-07. The reader-verification step below polls for
+    # up to 600s, and it was added under a 360s job timeout, so the wait could
+    # never run to completion. Every deploy from 2026-08-05 08:00 onward ran all
+    # of its steps successfully and was then killed and reported CANCELLED at
+    # 366-380s; deploys before that step took 61-114s. That cost two things: red
+    # CI on every deploy (which mails the owner), and the loss of the one signal
+    # CLAUDE.md tells an egress-blocked session to trust, since "a green deploy
+    # run IS proof it's live" needs a green deploy run to exist.
+    # 15 = 600s wait + 114s slowest measured deploy + headroom, still bounded.
+    # railway/tests/test_deploy_reaches_readers.py pins the two together.
+    timeout-minutes: 15
     steps:
       - name: Check out repo
         uses: actions/checkout@v5
