@@ -337,6 +337,35 @@ class TheGuardIsActuallyWired(unittest.TestCase):
         ops = re.sub(r"^\s*#.*$", "", ops, flags=re.M)
         self.assertIn("reader_freshness", ops)
 
+    def test_the_job_outlives_the_wait_it_is_asked_to_perform(self):
+        """MEASURED 2026-08-07. The reader check polls up to --timeout 600s
+        inside a job with timeout-minutes: 6 (360s), so the wait could never
+        run to completion: the job was killed first. Every deploy from
+        2026-08-05 08:00 onward ran all of its steps successfully, including
+        this one, and was then reported CANCELLED at 366 to 380 seconds.
+        Successful deploys before the reader step took 61 to 114 seconds.
+
+        Two things that costs. CLAUDE.md tells an egress-blocked session that a
+        green deploy run IS the proof a change is live, and there had been no
+        green deploy run for two days. And red CI mails the owner, so a
+        timeout that fires on every single deploy is a subscription to noise.
+
+        It is also the same shape as the archive defect fixed the same day: a
+        knob configured for a capacity its container never permits.
+        """
+        body = re.sub(r"^\s*#.*$", "", DEPLOY_YML, flags=re.M)
+        job = re.search(r"timeout-minutes:\s*(\d+)", body)
+        self.assertIsNotNone(job, "deploy-plugin.yml lost its job timeout")
+        wait = re.search(r"--timeout\s+(\d+)", body)
+        self.assertIsNotNone(wait, "the reader check lost its --timeout")
+        job_s, wait_s = int(job.group(1)) * 60, int(wait.group(1))
+        # 114s is the slowest deploy measured WITHOUT the reader wait.
+        self.assertGreater(
+            job_s, wait_s + 114,
+            f"deploy-plugin.yml allows the job {job_s}s but asks the reader check to "
+            f"wait up to {wait_s}s on top of a deploy measured at up to 114s. The wait "
+            f"can never finish, so a fully successful deploy is reported as cancelled.")
+
 
 if __name__ == "__main__":
     unittest.main()
