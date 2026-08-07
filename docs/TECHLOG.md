@@ -1,5 +1,84 @@
 # Tech Log
 
+## 2026-08-07 - the news path gets an answer key, and the extraction model moves
+
+The SEC gold set said `google/gemini-2.5-flash-lite` matched the incumbent at
+0.388x. The swap was not made, for a reason written down at the time: that
+corpus is SEC filings, and the news path is the higher-volume, messier one, and
+nothing had measured it. Now something has.
+
+- **68 items, and not one count was typed.** `railway/news_goldset_build.py`
+  reads all 1,013 stored news rows from the public API and keeps only the ones
+  where two INDEPENDENT sources each left a stored evidence sentence carrying
+  the same headcount verbatim: 45 corroborated by a second newsroom, 26 by a
+  state WARN notice, a Eurofound ERM record or an SEC 8-K.
+- **Event membership is not corroboration, and the live data said so twice.**
+  The server's +/-30 day fuzzy merge attaches any report for the same employer
+  whatever number it carries, which is correct for keeping a follow-up story's
+  link: the Zillow 500 event also holds an outlet saying "layoffs hit 91 jobs
+  in Washington state". So every corroborator has to pass
+  `extractor._count_in_text` and `_percent_only_mention` on its OWN evidence,
+  the same two guards production runs. And the first row the builder emitted
+  was a Singapore HR site reprinting a Straits Times paragraph about Dyson word
+  for word: two outlet names, one observation. A syndication test now refuses
+  two reports that are the same sentence.
+- **The window is the part that could not be honest by default.** The news path
+  keeps no copy of what it fed the model; the row stores the model's chosen
+  excerpt, which is its OUTPUT, and feeding that back would hand a candidate the
+  answer inside its own prompt. So the input is rebuilt through the collector's
+  own window builder from a FROZEN Wayback snapshot. `gdelt._fetch_article` was
+  split into `window_article_markup(markup)` plus the fetch so the harness reads
+  the identical window rather than a second implementation of it.
+- **19 Google News rows are EXCLUDED, with the reason in the manifest.** Their
+  model input was an RSS title and snippet; the feed is a rolling window and the
+  redirect link does not carry the item text. Substituting the full article
+  would have scored the models on a window production never used, and would have
+  looked like a bigger corpus.
+- **A rate limit is not a result.** The first full dry run read 20 snapshots and
+  then the Internet Archive stopped accepting connections; 48 items failed in a
+  row. Left alone that is a table whose corpus was chosen by a rate limiter with
+  nothing on the page saying so. The gap is now 5 seconds with the shared retry,
+  which read 68 of 68, and below `MIN_FETCHED_SHARE` the run prints UNKNOWN and
+  exits 3 instead of a percentage over the survivors.
+
+**The measurement** (run 31148942261, 50 events dispatched, 47 snapshots read,
+12 excluded for a window lacking the count, 35 scorable, incumbent first):
+
+| model | posted | correct | wrong | unknown | $/item |
+|---|---|---|---|---|---|
+| deepseek/deepseek-chat | 30 | 30 | 0 | 0 | $0.000875 |
+| deepseek/deepseek-chat-v3.1 | 31 | 31 | 0 | 0 | $0.000897 |
+| google/gemini-2.5-flash-lite | 30 | 30 | 0 | 0 | $0.000339 |
+| google/gemini-2.5-flash | 30 | 30 | 0 | 0 | $0.001456 |
+
+The whole run billed **$0.16766 over 188 calls**, inside the $0.20 per-run
+ceiling, which is why no call resolved to `budget_stop`.
+
+- **Zero wrong counts, from any model, on any item.** That is the finding under
+  the finding. The verbatim guard means a cheaper model's failure mode here is a
+  DROP, not a wrong number published, so this swap risks coverage rather than
+  accuracy, and coverage is the thing a cheaper model buys back.
+- **The two models disagreed on exactly two of the 35, one each way.**
+  flash-lite recovered Alphabet 12,000 where the incumbent called the article
+  not a layoff event; flash-lite returned no count on TikTok 150 where the
+  incumbent recovered it. A tie decided by price. (Read that before the table:
+  a candidate that disagrees by being RIGHT is not a regression.)
+- **Why cheaper extraction is a coverage change.** The Railway cron hits its
+  per-run spend ceiling on every run and defers the remainder unread, so cost
+  per candidate decides how many candidates get read at all.
+- **`CLASSIFY_MODEL` deliberately does not follow.** It defaulted to `MODEL`, so
+  this swap would have silently moved the industry, roles, reason-tag and
+  context classifier too: three surfaces changed by a measurement of one. Its
+  default is now written out at `deepseek/deepseek-chat`, and
+  `tests/test_extraction_model_choice.py` fails on the pre-fix tree with
+  `'some/other-model' != 'deepseek/deepseek-chat'`, which is that coupling
+  caught in the act. `dedupe_llm`'s separate copy is asserted through the
+  request it builds, so the third reader cannot drift unnoticed either.
+- **What this corpus can never support.** Every row in it is a row the tracker
+  already stored, so it is blind by construction to the events the pipeline
+  missed, which is the quantity recall IS. It is not a recall number and its
+  `publication_status` says so.
+
 ## 2026-08-06 - the pre-extraction gate goes live on its own shadow evidence
 
 Shadow mode existed to answer one question: does this gate ever drop a
