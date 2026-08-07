@@ -567,7 +567,10 @@ far more than collection did.
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)
 - GDELT DOC 2.0 API: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ (keyless; ~gentle rate limits, 429s happen)
 - SEC EDGAR full-text search: https://efts.sec.gov/LATEST/search-index?q= (declare a User-Agent per SEC policy)
-- Extraction model: `deepseek/deepseek-chat` via OpenRouter (openai SDK, `base_url` override) — see `railway/extractor.py`
+- Extraction model: `google/gemini-2.5-flash-lite` via OpenRouter (openai SDK, `base_url` override) — see `railway/extractor.py`.
+  Classification is PINNED separately to `deepseek/deepseek-chat` (`OPENROUTER_CLASSIFY_MODEL`); it no longer follows `OPENROUTER_MODEL`.
+  Swapped 2026-08-07 against the news-path gold set (`docs/recall-reference-sets/news-corroborated-2026-08.goldset.json`), 30/30 at 0.388x cost.
+  NOTE: if `OPENROUTER_MODEL` is pinned in the Railway environment, the code default does NOT reach the main cron - change it there too.
 - Comparable trackers for editorial judgment: technology-sector trackers (crowdsourced), announcement-survey monthly reports, WARN databases by ProPublica/USA Today
 
 ## Accepted risks / known limitations (documented, not bugs)

@@ -123,6 +123,239 @@ only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
 
+## #28 - the archive promise, the freshness fixtures, and a deploy that was green all along (2026-08-07)
+
+**Final dispatch of the session. Both trackers. Everything below is measured;
+where it is not, it says so.**
+
+### The headline: a published promise was false, and is not any more
+
+Every listing surface prints, beside a source with no Wayback snapshot yet:
+`No archive snapshot yet. We re-check weekly; next check by <date>.` That was
+false from 2026-08-05.
+
+The archiver was healthy the whole time. What was wrong is that its advertised
+throughput was fiction. From the run logs:
+
+| run | URLs touched | of a stated limit of | stopped by |
+|---|---|---|---|
+| 2026-08-04 | 1,231 | 1,500 | deadline, mid batch 3 |
+| 2026-08-05 | 500 | 1,500 | deadline, after batch 1 |
+| 2026-08-06 | 500 | 1,500 | deadline, after batch 1 |
+
+`ARCHIVE_BACKFILL_LIMIT` was **never** the binding constraint. The 2400s
+deadline was, itself silently clamped by a 3000s cap inside
+`archive_backfill.py`. The job claimed 1,500 a run and delivered a median of
+500. **The obvious fix, raising the batch size, would have done nothing** —
+which is the only part of this worth remembering.
+
+Measured cycle: on 08-04, 1,231 URLs moved the frontier 3.05 days, so the pool
+is ~404 URLs deep per day and needed ~404 re-checks a day to hold position. At
+500/day that is a 7.6-day cycle inside a 10-day bound. The margin was ~1.4 days
+and nothing ever reported it.
+
+**Both halves are fixed, because fixing only the first repeats this.**
+
+- **The cycle.** Deadline 2400 -> 5400s, cap 3000 -> 6600s, limit 1,500 ->
+  2,000, sized off the live pool over the promise rather than picked round.
+  `ARCHIVE_SPN_MAX` deliberately unchanged at 80: 16 of 80 captures were
+  already throttled, and the throughput that moves this number comes from the
+  free availability pass, which is what stamps `checked_at`.
+- **The margin.** `/archive-coverage` now publishes `unarchived_live`,
+  `rechecked_recent` and `recheck_window_hours`. `ArchiveRecheckInvariant`
+  divides them and FAILS when the PROJECTED worst age passes 8d (7d promise +
+  1d granularity), i.e. while the 2 days of slack are still intact. Fed the
+  2026-08-04 payload it fires; the age half read a comfortable 8.6d that day.
+
+**VERIFIED LIVE**, run `31147628741` dispatched from the branch so the shipped
+configuration was measured, not projected:
+
+```
+oldest un-archived attempt   11.7d  ->  3.9d   (bound 10d)
+frontier                     2026-07-26 11:29  ->  2026-08-03 07:13
+coverage                     21,455 -> 21,556   (85.3% -> 85.7%)
+touched                      1,657 URLs in 60.5 min, 5 batches
+```
+
+It stopped on an **empty batch**, not the deadline and not the limit: the whole
+due pool drained in one run. The ~3,660 still pending are all inside their 72h
+retry window, so the worst age is now bounded by that spacing rather than by
+throughput. Live `/archive-coverage` after the 2.20.2 deploy:
+`unarchived_live 3,663`, `rechecked_recent 2,657 / 48h` = 1,328/day = a
+2.8-day cycle against an 8-day projected bound.
+
+`ops_status.py [3]`: **14 passing + 1 FAILING -> 15 verified and passing.**
+
+Note `unarchived_live` (3,663) is BELOW `pending` (3,699): the difference is
+orphan archive rows the candidate query correctly never hands out, which the
+old `pending` figure had been quietly inflating the ring with.
+
+### Reader-freshness CI
+
+`d900985` narrowed `VERSION_RE` correctly but left two tests asserting on
+`/a.css?ver=`, so `Tests` was red on `None != '2.19.275'`. **The fixtures were
+the stale half, not the matcher.** Rewritten from the live page. The counts are
+what matters: three assets there carry `ver=2.0.86` against the plugin's two,
+which is exactly how a majority vote over "the first ver= on the page" was won
+by somebody else's version. The faithful fixture fails the old matcher with the
+incident's own message, `'2.0.86' != '2.19.275'`.
+
+### Found on the way out: every deploy for two days was green and reported red
+
+The reader-verification step added 2026-08-05 polls up to `--timeout 600`, and
+was added under `timeout-minutes: 6` (360s). The wait could never finish.
+Measured: deploys before that step ran 61-114s; every deploy after it ran
+366-380s and was reported CANCELLED **with every step successful**. This
+session's own 2.20.2 deploy is one of them, and it is live.
+
+Same shape as the archive defect: a knob configured for a capacity its
+container never permits. What it silently disabled matters more than the noise:
+`CLAUDE.md` tells an egress-blocked session that **a green deploy run IS proof
+it's live**, and there had been no green deploy run for two days, so that
+instruction pointed at nothing. Fixed to 15 min, pinned by a test. Run
+`31151850965` is the first green deploy since 2026-08-05.
+
+### The model swap SHIPPED, on a news-path answer key
+
+PR #19 had scored models against the SEC Item 2.05 gold set (flash-lite 16/16
+at 0.388x cost) and correctly refused to flip: the corpus was SEC-only and the
+news path is higher volume, messier and was unmeasured. That gap is now closed.
+
+`railway/news_goldset_build.py` builds the key from **already-stored rows, with
+no count typed by hand**: 68 items where two independent sources each left a
+stored evidence sentence carrying the same headcount verbatim. 45 corroborated
+by a second newsroom, 26 by an official filing (state WARN, Eurofound ERM or
+SEC 8-K), which never passes an LLM on that side.
+
+Two guards earned their place against live data:
+
+- The server's +/-30-day fuzzy merge attaches any report for the same employer
+  **whatever number it carries** (the Zillow 500 event also holds an outlet
+  saying "layoffs hit 91 jobs"), so every corroborator must pass
+  `extractor._count_in_text` and `_percent_only_mention` on its own evidence.
+- The first row emitted was a Singapore HR site reprinting a Straits Times
+  paragraph verbatim: two outlet names, **one observation**. A syndication test
+  now refuses that.
+
+The hard part was the window: the news path stores no copy of what it fed the
+model, only the model's own output excerpt, and feeding that back would hand a
+candidate the answer. Input is therefore rebuilt through the collector's own
+window builder from a frozen Wayback snapshot. 19 Google News rows are excluded
+with their reason (their input was an RSS headline that no longer exists).
+
+35 scorable items, **$0.16766 billed** over 188 calls:
+
+| model | posted | correct | wrong | $/item |
+|---|---|---|---|---|
+| deepseek/deepseek-chat (incumbent) | 30 | 30 | 0 | $0.000875 |
+| deepseek/deepseek-chat-v3.1 | 31 | 31 | 0 | $0.000897 |
+| **google/gemini-2.5-flash-lite** | 30 | 30 | 0 | **$0.000339** |
+| google/gemini-2.5-flash | 30 | 30 | 0 | $0.001456 |
+
+Zero wrong counts from any model: the verbatim guard means a cheap model's
+failure mode is a DROP, not a bad number published. Incumbent and flash-lite
+differ on exactly two items, one each way.
+
+**Flipped** (verified on `origin/main`):
+
+```
+MODEL          = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
+CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", "deepseek/deepseek-chat")
+```
+
+`CLASSIFY_MODEL` deliberately does **not** follow `MODEL` any more. It used to
+default to it, so this swap would have silently moved three surfaces on a
+measurement of one. PR #21, merge `2fba00e`.
+
+Six stale "DeepSeek-V3 extraction" claims in `CLAUDE.md`, `README.md`,
+`docs/ARCHITECTURE.md` and `docs/RUNBOOK.md` are corrected in this commit; the
+orientation doc every session reads was naming the wrong model.
+
+### Cost, both trackers
+
+Measured cost floor per tracker at full coverage, from a **0.389** cost ratio
+measured twice on independent token mixes:
+
+| scenario | per tracker, per month |
+|---|---|
+| with the model swap (SHIPPED on the layoff tracker today) | **$7.78 to $13.62** |
+| with batch on top (not built) | **$3.89 to $6.81** |
+
+The 0.389 ratio was independently reproduced twice more today: 0.388x on the
+news gold set and 0.390x on the live `supplemental-news` control run.
+
+**Batch is a second halving that only unlocks AFTER the swap.** OpenRouter
+batch pricing is confirmed real at 50% off, but the `:batch` slugs exist for
+Gemini and **not** for DeepSeek, so it is unpurchasable while the incumbent is
+a DeepSeek model. Deliberately NOT built. Do not build it before the swap.
+
+### Owner-only (a session cannot do these)
+
+- **OpenRouter runway was ~5.7 days** at a $3.49 key cap and a measured
+  $2.84/day burn. That burn is **inflated** by two armed press backfills and
+  today's A/B runs; it is not the steady state, and the $10/month allowance is
+  the policy the guards actually enforce.
+- **The talent tracker's key is 402-exhausted.** Verified in its `collect.yml`
+  run of 2026-08-07T00:09Z: `key limit reached: collection will fail with 402`,
+  $10.08 against a $10 allowance. The guard is WORKING - paid reads off, exit
+  0, free collection continues. Do not raise the allowance to make it green.
+- **Talent: the ChangXin IPO retract** needs a credentialed `retract.py` and
+  must NOT be done as a local-only retraction.
+
+### Still open
+
+1. **Five workflows are RED on main and none of them is a code defect.** All
+   five (`AI evidence sweep`, `Announcement lifecycle review candidates`,
+   `Hawaii WARN OCR import`, `Live data-integrity check`, `Superset dedup
+   reconciliation`) ran on 2026-08-06 between 17:59Z and 19:04Z and were
+   **cancelled at 905-1021s**, which matches **none** of their declared job
+   timeouts (5, 10, 10, 20, 30 min). `Announcement lifecycle review` ran 15.1
+   minutes against a declared 5-minute timeout, so the declared timeout did not
+   fire: this is an Actions-side cancellation, not a repo misconfiguration.
+   Logs have already rotated, so the cause is **UNKNOWN from here** - not
+   benign, just unproven. They should go green on their next scheduled run;
+   if they do not, that is the thing to chase.
+2. **A cancelled run produces no alert and no readable cause.** `ci_alert.py`
+   extracts the failing assertion, and a cancelled job has none, which is why
+   `ops_status [4]` prints "(cause line not read)" five times. So a whole class
+   of red is invisible to the alerting path. This is the recurring species and
+   it is unfixed.
+3. **The model swap is only half verified live, and that is recorded as a gap,
+   not rounded up to a pass.** Three `supplemental-news` dispatches (two on the
+   branch, one on main as a control) all stored 0 rows from the same 24
+   candidates, so the zero is the CANDIDATE POOL, not the model. The live cost
+   ratio came back 0.390x, independently reproducing the gold set. But **no
+   news row has actually landed with a correct count under flash-lite yet.**
+   First thing to check on the next real cron run.
+4. **`OPENROUTER_MODEL` may be pinned in the Railway environment.** If it is,
+   the new code default never reaches the main cron and the swap is a no-op
+   there. A session cannot read or change Railway env vars; the owner must
+   check. This is the single most likely way the swap silently does nothing.
+5. `warn_us` DEGRADED (generic-tier states dark) and `tracker_diff` STALE 11d,
+   both pre-existing and both in the RUNBOOK.
+
+### UNVERIFIED by this session
+
+- The **private benchmark** (`scratchpad/bm-live.html`, local only) was NOT
+  refreshed. Nothing this session changed a published metric or a source, so
+  the vs-competitor read is unaffected, and the owner is out of budget. It was
+  last written 2026-08-06.
+- The five cancelled workflows above: cause **not determined**, logs gone.
+- `[4c] DIGEST SUBSCRIBERS` is UNKNOWN from this environment (no `WP_API_KEY`).
+  That is not "zero subscribers".
+
+### The lesson, in one line
+
+Roughly a dozen defects across both trackers this week were one species: a
+mechanism reporting health while doing nothing, so the search is **"what would
+never tell us if it broke"** - and today it caught a limit that was never
+reached, a check that only fired after the promise broke, a fixture that could
+not fail, and a deploy that was green all along.
+
+**Baton left FREE.** It was FREE at the start and no concurrent session
+existed; this entry is the handoff.
+
+
 ## #26 - three UX-audit defects fixed on a branch; PR #3 open, NOT merged
 
 Two of the three were wrong published numbers. See TECHLOG 2026-08-04

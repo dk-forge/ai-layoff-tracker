@@ -67,8 +67,13 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
    Front-end is fully server-side: the browser calls `/query` (table), `/aggregate` (charts+stats),
    `/facets` (dropdowns). Data lives in a custom indexed table `wp_alt_layoffs` (scales to 100K+ rows);
    rich entries also exist as `layoffs` CPT posts for permalink pages.
-2. **`railway/`** — Python ingest. Cron 2×/day (EDGAR + NewsAPI + GDELT worldwide) → DeepSeek-V3
-   extraction via OpenRouter → POST `/add`. WARN notices skip the LLM: `warn_import.py` scrapes
+2. **`railway/`** — Python ingest. Cron 2×/day (EDGAR + NewsAPI + GDELT worldwide) → LLM
+   extraction via OpenRouter → POST `/add`. The extraction model is
+   `google/gemini-2.5-flash-lite` (swapped 2026-08-07 on a news-path gold set,
+   30/30 at 0.388x the incumbent's cost); **classification is pinned separately**
+   to `deepseek/deepseek-chat` via `OPENROUTER_CLASSIFY_MODEL`, because it used
+   to default to the extraction model and a swap measured on one surface would
+   have silently moved three. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 11AM ET GitHub cron).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental

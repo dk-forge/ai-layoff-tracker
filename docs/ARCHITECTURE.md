@@ -6,7 +6,7 @@
   ────────               │                                                │
   SEC EDGAR 8-K/6-K ────►│ cron.py (Railway cron 12:00 & 22:00 UTC)       │
   NewsAPI ──────────────►│   EDGAR + NewsAPI + GDELT(36h worldwide)       │
-  GDELT (worldwide press)│   → extractor.py (DeepSeek-V3 via OpenRouter)  │──POST /add──┐
+  GDELT (worldwide press)│   → extractor.py (flash-lite via OpenRouter)   │──POST /add──┐
   Company IR/newsroom RSS│   → evidence quote + causal AI class           │             │
                          │                                                │             │
   State WARN sites ─────►│ warn_import.py (GH cron daily 15:00 UTC)       │──POST /bulk─┤
@@ -55,7 +55,8 @@ railway/
   cron.py                    2×daily ingest (EDGAR + Google News + NewsAPI + GDELT 36h) + source health; fails loud if a cycle posts 0 with failures
   sources/google_news.py     FREE keyless layoff-headline discovery (Google News RSS) — leads the news sweep (NewsAPI is effectively dead)
   sources/claims.py          Keyless FRED puller (national ICSA/CCSA + 50 states) for the /claims macro backdrop; claims_import.py POSTs it daily
-  extractor.py               DeepSeek prompt + post-processing; source-quote guard and AI causal taxonomy
+  extractor.py               Extraction prompt + post-processing; source-quote guard and AI causal taxonomy.
+                             MODEL=google/gemini-2.5-flash-lite, CLASSIFY_MODEL=deepseek/deepseek-chat (pinned, does NOT follow MODEL)
   source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   survey_reconcile.py        Monthly like-for-like US AI-announcement benchmark check

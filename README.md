@@ -34,7 +34,7 @@ log.
 
 ```
 ┌─ Railway cron (2×/day) ── SEC EDGAR 8-K search + NewsAPI + GDELT (worldwide,
-│                           multilingual) → DeepSeek-V3 extraction via
+│                           multilingual) → LLM extraction via
 │                           OpenRouter → dedup checks → POST /add
 ├─ GitHub Actions (daily) ─ WARN notices, all obtainable states: warn-scraper
 │                           (Big Local News) + custom collectors for TX/FL/GA/
@@ -74,7 +74,8 @@ railway/                              Python ingest
   cron.py                             news pipeline entry point (Railway, 2×/day)
   warn_import.py                      WARN pipeline entry point (GitHub Actions, daily)
   sources/                            edgar, newsapi, gdelt, warn, warn_custom (8 custom state collectors)
-  extractor.py                        DeepSeek-V3 extraction + classification + guardrails
+  extractor.py                        LLM extraction (gemini-2.5-flash-lite) + classification
+                                      (deepseek-chat, pinned separately) + guardrails
 .github/workflows/                    deploy + all data jobs + editorial tools (trash/edit, audited)
 docs/ARCHITECTURE.md                  system map: components, data flow, schema, filter semantics
 docs/TECHLOG.md                       every change + every incident and its root cause
@@ -122,7 +123,7 @@ API key), set the Railway/Actions env vars (`OPENROUTER_API_KEY`,
 requires a descriptive User-Agent with contact info), and the crons do the
 rest. Steady-state cost is a few dollars a month: the data sources (EDGAR,
 WARN, GDELT) are free; only news extraction touches a paid LLM
-(deepseek/deepseek-chat, ~100–200 calls/day).
+(google/gemini-2.5-flash-lite, ~100–200 calls/day).
 
 ## License
 
