@@ -1,0 +1,72 @@
+name: A/B extraction models (gold set)
+
+# Which extraction model should the tracker pay for? Answered against the SEC
+# Item 2.05 gold set, so the score is ACCURACY against counts a filing states,
+# not agreement with the incumbent. See railway/ab_extraction_models.py.
+#
+# MANUAL DISPATCH ONLY, and deliberately never scheduled: this spends money to
+# answer a question, it is not a data job. It posts nothing, edits nothing, and
+# reports no source health — no WP_API_KEY is passed, so it cannot.
+#
+# WHAT A RUN COSTS. 2,300 prompt tokens and ~250 completion tokens per call
+# (measured: SYSTEM_PROMPT is 5,962 chars and the window cap is 3,000), one
+# call per model per filing. At 20 filings across the four default models that
+# is ~80 calls and, at the prices read live on 2026-08-06, roughly $0.06. The
+# run prints the provider's own billed figure rather than this estimate.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Gold events to run (one call per model each)'
+        required: false
+        default: '20'
+      models:
+        description: 'Comma-separated, incumbent FIRST (blank = tuned default)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Fetch and window only: calls no model, spends nothing'
+        type: boolean
+        default: false
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # The same brake every paid job here honours. If this month's measured
+      # spend is past the allowance it sets ALT_PAID_READS=off and the script
+      # reports that it measured nothing and exits 0 — a budget stop is a
+      # deferral, not a failure. Stdlib only, so it needs no install.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+
+      - name: Install deps
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+
+      - name: Compare (posts nothing)
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
+          AB_LIMIT: ${{ github.event.inputs.limit }}
+          AB_MODELS: ${{ github.event.inputs.models }}
+          AB_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+          AB_OUT: ${{ runner.temp }}/ab-extraction-models.json
+        run: python ab_extraction_models.py
+
+      - name: Upload per-item judgements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ab-extraction-models
+          path: ${{ runner.temp }}/ab-extraction-models.json
+          if-no-files-found: warn
