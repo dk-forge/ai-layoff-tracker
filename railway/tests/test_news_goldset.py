@@ -194,5 +194,44 @@ class FrozenManifestTests(unittest.TestCase):
                           ("unrecoverable_headline_window", "no_frozen_snapshot"))
 
 
+class WindowBuilderTests(unittest.TestCase):
+    """The harness must read the SAME window production reads, so the window
+    lives in one function that both call."""
+
+    def test_the_window_is_centred_on_the_layoff_mention_not_the_page_top(self):
+        from sources import gdelt
+        markup = ("<html><head><style>.x{color:red}</style></head><body>"
+                  + "<p>navigation chrome</p>" * 60
+                  + "<p>Acme said it will cut 500 jobs this year.</p></body></html>")
+        window = gdelt.window_article_markup(markup)
+        self.assertIn("cut 500 jobs", window)
+        self.assertNotIn("color:red", window)
+
+    def test_it_is_pure_so_a_caller_holding_the_bytes_gets_the_same_window(self):
+        from sources import gdelt
+        markup = "<p>Acme will cut 500 jobs.</p>"
+        self.assertEqual(gdelt.window_article_markup(markup),
+                         gdelt.window_article_markup(markup))
+
+
+class UnreachableArchiveTests(unittest.TestCase):
+    def test_an_archive_that_stops_answering_is_unknown_not_a_thin_table(self):
+        # A percentage computed over whatever survived an outage is a different
+        # measurement wearing the same label. Observed 2026-08-06: the archive
+        # refused connections after 20 reads and 48 items vanished from the run.
+        import ab_extraction_models as ab
+        import http_retry
+        from unittest import mock
+
+        events = [{"stated_job_count": 100, "company_name": f"C{i}",
+                   "primary_outlet": "example", "window_source": "wayback_article",
+                   "frozen_window_url": f"https://web.archive.org/web/1/https://e.com/{i}",
+                   "announcement_date": "2026-08-01"} for i in range(4)]
+        with mock.patch.object(ab, "load_news_goldset", return_value=events), \
+                mock.patch.object(ab, "WAYBACK_GAP_SECONDS", 0), \
+                mock.patch.object(http_retry, "get_with_retry", return_value=None):
+            self.assertEqual(ab.run_news(("m/a",), 10, True, ""), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

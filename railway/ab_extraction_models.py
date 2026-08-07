@@ -93,8 +93,17 @@ DEFAULT_MODELS = (
 # measures a model production would have truncated.
 MAX_TOKENS = 1000
 
-# Seconds between Wayback reads in the news corpus.
-WAYBACK_GAP_SECONDS = float(os.environ.get("AB_WAYBACK_GAP_SECONDS", "1.0"))
+# Pacing for the news corpus, which reads dozens of frozen snapshots from ONE
+# archive. Measured 2026-08-06: at a 1-second gap the Internet Archive stopped
+# accepting connections outright after 20 reads and refused the remaining 48,
+# which is a rate limit wearing the costume of a corpus. Five seconds is under
+# the ~15/minute the archive tolerates.
+WAYBACK_GAP_SECONDS = float(os.environ.get("AB_WAYBACK_GAP_SECONDS", "5.0"))
+# Below this share of the corpus actually read, the run reports UNKNOWN instead
+# of a table. A percentage computed over whatever survived an archive outage is
+# not a smaller measurement, it is a different one, and nothing on the page
+# would say so. Same rule as recall_goldset.UNREACHABLE_CEILING.
+MIN_FETCHED_SHARE = float(os.environ.get("AB_MIN_FETCHED_SHARE", "0.75"))
 
 
 def load_goldset(path=GOLDSET):
@@ -332,15 +341,18 @@ def run(models, limit, dry_run, out_path):
 def run_news(models, limit, dry_run, out_path):
     """The same comparison over corroborated NEWS events.
 
-    The window is rebuilt by `gdelt._fetch_article`, the production news window
-    builder, reading the FROZEN Wayback snapshot the manifest names rather than
-    the live URL. A live re-fetch would let the corpus drift between runs and
-    would score today's page against a count taken from the page as it was
+    The window is `gdelt.window_article_markup`, the production news window
+    builder, run over the FROZEN Wayback snapshot the manifest names rather than
+    over the live URL. A live re-fetch would let the corpus drift between runs
+    and would score today's page against a count taken from the page as it was
     read; a frozen snapshot makes the comparison repeatable and re-auditable.
+    The FETCH is the harness's own problem and gets the shared retry, because
+    an archive that stops answering is not a model result.
     A snapshot that will not load is UNKNOWN and the item is skipped, never
-    counted against a model.
+    counted against a model. Too many of them and the whole run is UNKNOWN.
     """
     import extractor
+    from http_retry import get_with_retry
     from sources import gdelt
 
     events = load_news_goldset()[:limit]
@@ -349,7 +361,7 @@ def run_news(models, limit, dry_run, out_path):
         print("DRY RUN: fetching and windowing only, no model is called and "
               "nothing is spent.")
 
-    rows = []
+    rows, unreachable = [], 0
     for i, ev in enumerate(events, 1):
         gold = int(ev["stated_job_count"])
         label = f"{ev['company_name']} ({ev['primary_outlet']})"
@@ -357,11 +369,21 @@ def run_news(models, limit, dry_run, out_path):
         # difference between a measurement and a rate-limit that reads as a
         # model failure, and every second here is cheaper than a re-run.
         time.sleep(WAYBACK_GAP_SECONDS)
+        resp = get_with_retry(ev["frozen_window_url"],
+                              headers={"User-Agent": gdelt.BROWSER_UA},
+                              attempts=3, timeout=30, backoff=20)
+        if resp is None or resp.status_code != 200:
+            unreachable += 1
+            got = "no response" if resp is None else f"HTTP {resp.status_code}"
+            print(f"  {i:>2}. {label[:40]:42} SNAPSHOT UNREADABLE ({got}) "
+                  f"- UNKNOWN, not a miss")
+            continue
         try:
-            raw_text = gdelt._fetch_article(ev["frozen_window_url"])
+            raw_text = gdelt.window_article_markup(resp.text)
         except Exception as exc:
-            print(f"  {i:>2}. {label[:40]:42} SNAPSHOT FETCH FAILED "
-                  f"({str(exc)[:50]}) — UNKNOWN, not a miss")
+            unreachable += 1
+            print(f"  {i:>2}. {label[:40]:42} WINDOW FAILED "
+                  f"({str(exc)[:50]}) - UNKNOWN, not a miss")
             continue
         # company_name is None because that is what the news path passes: the
         # collectors never know the employer, the model names it. Handing the
@@ -378,6 +400,13 @@ def run_news(models, limit, dry_run, out_path):
                "corroboration": ev.get("corroboration_kinds"), "by_model": {}}
         _judge_row(row, raw, raw_text, gold, models, dry_run)
         rows.append(row)
+
+    if events and len(rows) < MIN_FETCHED_SHARE * len(events):
+        print(f"\nUNKNOWN: only {len(rows)} of {len(events)} snapshots could be read "
+              f"({unreachable} unreadable).\nThe archive, not a model, decided which "
+              f"items were in this run, so there is no\ncomparison here to report. "
+              f"Re-dispatch later, or raise AB_WAYBACK_GAP_SECONDS.")
+        return 3
 
     return _finish(rows, models, dry_run, out_path,
                    "ACCURACY AGAINST THE CORROBORATED NEWS GOLD SET", "news events")
