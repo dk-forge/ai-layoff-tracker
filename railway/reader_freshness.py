@@ -68,7 +68,12 @@ PROPAGATION_MARGIN_S = 120
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 
-VERSION_RE = re.compile(r"ver=(\d+\.\d+\.\d+)")
+# Only the PLUGIN'S own fingerprinted assets carry ALT_VERSION. A bare
+# ver= match also catches the THEME'S assets (2.0.86, 1.9.2), and on
+# 2026-08-07 that made this guard report readers on a superseded build
+# while a direct read of layoffs.css?ver= showed them current. The guard
+# had the exact defect it exists to catch: measuring the wrong surface.
+VERSION_RE = re.compile(r"layoffs\.(?:css|js)\?ver=(\d+\.\d+\.\d+)")
 
 
 class Result:
