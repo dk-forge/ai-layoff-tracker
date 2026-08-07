@@ -2605,6 +2605,12 @@ if (!defined('ALT_ARCHIVE_MAX_ATTEMPTS')) define('ALT_ARCHIVE_MAX_ATTEMPTS', 5);
 if (!defined('ALT_ARCHIVE_RETRY_HOURS')) define('ALT_ARCHIVE_RETRY_HOURS', 72);
 if (!defined('ALT_ARCHIVE_RECHECK_DAYS')) define('ALT_ARCHIVE_RECHECK_DAYS', 7);
 if (!defined('ALT_ARCHIVE_DAILY_RUN_UTC')) define('ALT_ARCHIVE_DAILY_RUN_UTC', '05:25');
+// The window /archive-coverage measures real re-check throughput over. 48h, not
+// 24h, on purpose: the cron is daily, so a 24h window straddles the run and a
+// reading taken minutes before it reports a throughput of zero for a perfectly
+// healthy job. Two days always contains at least one run, and the consumer
+// divides by the window rather than assuming a cadence.
+if (!defined('ALT_ARCHIVE_THROUGHPUT_WINDOW_HOURS')) define('ALT_ARCHIVE_THROUGHPUT_WINDOW_HOURS', 48);
 
 /**
  * Key-protected: return the next batch of DISTINCT source URLs that still need
@@ -3082,6 +3088,37 @@ function alt_archive_coverage_counts() {
            JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
           WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
             AND a.status IN ('pending','unavailable')");
+    // THE MARGIN, not just the reading. $oldest says whether the promise is
+    // ALREADY broken; these two say whether it is ABOUT to break, which is the
+    // only version of this number a human can act on in time. On 2026-08-04 the
+    // reading was 8.6d and PASSED against a 10d bound; on 2026-08-06 it was
+    // 11.7d and the published weekly re-check had been false for days. The
+    // projection below was 7.7d on both dates, so a margin check would have
+    // called it while the promise was still being kept.
+    //
+    // $unarchived_live is the real ring the cron has to cycle: DISTINCT source
+    // URLs the layoffs table still cites that have no snapshot. It is not
+    // 'pending' above, which counts archive-index rows including orphans the
+    // candidate query correctly never hands out.
+    // $rechecked_recent is the MEASURED throughput: distinct cited URLs whose
+    // last attempt lands inside the window, any status, because a URL archived
+    // on this run was still re-checked by it. Divide one by the other and the
+    // cycle time is arithmetic over live data rather than an assumption about
+    // what the batch size "should" deliver.
+    $window_hours = (int) ALT_ARCHIVE_THROUGHPUT_WINDOW_HOURS;
+    $unarchived_live = (int) $wpdb->get_var(
+        "SELECT COUNT(DISTINCT l.source_url)
+           FROM $layoffs l
+           JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
+          WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
+            AND a.status IN ('pending','unavailable')");
+    $rechecked_recent = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT l.source_url)
+           FROM $layoffs l
+           JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
+          WHERE l.source_url <> '' AND l.source_url LIKE 'http%%'
+            AND a.checked_at IS NOT NULL AND a.checked_at >= %s",
+        gmdate('Y-m-d H:i:s', time() - $window_hours * HOUR_IN_SECONDS)));
     return array(
         'distinct_source_urls' => $distinct_total,
         'archived' => $archived,
@@ -3091,6 +3128,9 @@ function alt_archive_coverage_counts() {
         'coverage_pct' => $distinct_total > 0 ? round(100 * $archived / $distinct_total, 1) : 0.0,
         'oldest_unarchived_checked_at' => $oldest ? (string) $oldest : null,
         'recheck_days' => (int) ALT_ARCHIVE_RECHECK_DAYS,
+        'unarchived_live' => $unarchived_live,
+        'rechecked_recent' => $rechecked_recent,
+        'recheck_window_hours' => $window_hours,
     );
 }
 

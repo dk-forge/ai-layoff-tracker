@@ -155,17 +155,91 @@ class ReaderFreshnessMeasuresTheReaderSurface(unittest.TestCase):
             self.assertNotIn(token, src,
                              f"reader_view() must not add {token!r} to the reader's URL")
 
+    # The shapes below are the LIVE page's, read from
+    # https://asktherecruiter.com/blog/ai-layoff-tracker/ on 2026-08-06 with a
+    # browser UA and no cache buster. The plugin fingerprints its two assets as
+    # ?ver=ALT_VERSION.filemtime, so the stamp carries a FOURTH segment that is
+    # not part of the version; everything else on the page is somebody else's
+    # asset carrying somebody else's version.
+    PLUGIN_ASSETS = (
+        '<link rel="stylesheet" href="https://asktherecruiter.com/blog/wp-content/plugins/'
+        'ai-layoff-tracker/assets/layoffs.css?ver={v}.1785920771">'
+        '<script src="https://asktherecruiter.com/blog/wp-content/plugins/'
+        'ai-layoff-tracker/assets/layoffs.js?ver={v}.1785920766"></script>'
+    )
+    # Verbatim from the same page, and the COUNTS matter as much as the values:
+    # three separate assets carry ver=2.0.86 while the plugin has only two. That
+    # is how a majority vote over "the first ver= on the page" was won by
+    # somebody else's version, and a fixture with one 2.0.86 in it would let the
+    # broken matcher pass. Faithfulness to the live page IS the test here.
+    FOREIGN_ASSETS = (
+        '<link href="https://asktherecruiter.com/blog/wp-content/plugins/'
+        'easy-table-of-contents/assets/css/screen.min.css?ver=2.0.86">'
+        '<script src="https://asktherecruiter.com/blog/wp-content/plugins/'
+        'easy-table-of-contents/assets/js/front.min.js?ver=2.0.86"></script>'
+        '<script src="https://asktherecruiter.com/blog/wp-content/plugins/'
+        'easy-table-of-contents/assets/js/smooth_scroll.min.js?ver=2.0.86"></script>'
+        '<script src="https://asktherecruiter.com/blog/wp-content/plugins/'
+        'easy-table-of-contents/vendor/sticky-kit/jquery.sticky-kit.min.js?ver=1.9.2"></script>'
+        '<script src="https://asktherecruiter.com/blog/wp-includes/js/jquery/'
+        'jquery.min.js?ver=3.7.1"></script>'
+        '<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/'
+        'chart.umd.min.js?ver=4.4.0"></script>'
+    )
+
     def test_version_is_read_from_the_body_not_a_header(self):
-        html = '<link href="/a.css?ver=2.19.275"><script src="/b.js?ver=2.19.275">'
+        html = self.PLUGIN_ASSETS.format(v="2.19.275")
         self.assertEqual(reader_freshness.version_in_html(html), "2.19.275")
 
-    def test_a_single_stray_version_does_not_win(self):
-        html = ('<link href="/a.css?ver=2.19.275"><link href="/b.css?ver=2.19.275">'
-                '<link href="/third-party.css?ver=1.9.2">')
+    def test_a_foreign_version_does_not_win(self):
+        """THE MEASURED INCIDENT, 2026-08-07. The guard matched the first ver=
+        on the page. The theme's assets are enqueued BEFORE the plugin's, so it
+        answered 2.0.86 and reported every reader on a superseded build while a
+        direct read of layoffs.css showed them current. The guard built to catch
+        measuring-the-wrong-surface was measuring the wrong surface."""
+        html = self.FOREIGN_ASSETS + self.PLUGIN_ASSETS.format(v="2.19.275")
         self.assertEqual(reader_freshness.version_in_html(html), "2.19.275")
+
+    def test_a_single_stray_plugin_stamp_does_not_win(self):
+        """Majority vote, still. Both plugin assets are stamped by the same
+        render, so a lone odd one out is a half-uploaded FTP deploy, not the
+        version the page was built from."""
+        html = (self.PLUGIN_ASSETS.format(v="2.19.275")
+                + '<link href="/wp-content/plugins/ai-layoff-tracker/assets/'
+                  'layoffs.css?ver=2.19.100.1785000000">')
+        self.assertEqual(reader_freshness.version_in_html(html), "2.19.275")
+
+    def test_a_superseded_build_is_still_read_as_superseded(self):
+        """The point of the whole module. Narrowing WHAT is matched must not
+        narrow the guard's ability to see a stale build: a reader served an old
+        plugin version must still report that old version, not the new one and
+        not None."""
+        html = self.FOREIGN_ASSETS + self.PLUGIN_ASSETS.format(v="2.19.274")
+        self.assertEqual(reader_freshness.version_in_html(html), "2.19.274")
+
+    def test_a_page_without_the_plugins_assets_is_not_a_version(self):
+        """A page carrying only OTHER people's ver= stamps has told us nothing
+        about the plugin. None routes to UNKNOWN in check(); answering 2.0.86
+        here is what produced the false FAIL."""
+        self.assertIsNone(reader_freshness.version_in_html(self.FOREIGN_ASSETS))
 
     def test_no_version_is_not_a_version(self):
         self.assertIsNone(reader_freshness.version_in_html("<html></html>"))
+
+    def test_the_matcher_names_assets_the_plugin_actually_enqueues(self):
+        """If an asset is renamed, VERSION_RE matches nothing, version_in_html
+        returns None and the guard goes PERMANENTLY UNKNOWN while still running
+        daily and reporting no failure. That is the species of defect this repo
+        keeps finding: a mechanism that would never tell us it had stopped
+        working. Pin the two names to the enqueues in the plugin source."""
+        pattern = reader_freshness.VERSION_RE.pattern
+        names = re.findall(r"layoffs\\\.\(\?:([a-z|]+)\)", pattern)
+        self.assertTrue(names, f"VERSION_RE no longer names the plugin assets: {pattern}")
+        php = (PLUGIN / "ai-layoff-tracker.php").read_text(encoding="utf-8")
+        for ext in names[0].split("|"):
+            self.assertIn(f"assets/layoffs.{ext}", php,
+                          f"VERSION_RE matches layoffs.{ext} but the plugin does not "
+                          f"enqueue it, so the reader check can never find a version")
 
     def test_staleness_counts_every_hop(self):
         """One 300s window in front of another 300s window is not 300s."""

@@ -78,6 +78,86 @@ ceiling, which is why no call resolved to `budget_stop`.
   already stored, so it is blind by construction to the events the pipeline
   missed, which is the quantity recall IS. It is not a recall number and its
   `publication_status` says so.
+## 2026-08-07 - the archive limit was a capacity the run never delivered (2.20.2)
+
+Every listing surface prints, beside a source with no Wayback snapshot yet:
+`No archive snapshot yet. We re-check weekly; next check by <date>.` That
+sentence has been false since 2026-08-05, and by this repo's own rules a wrong
+published claim outranks everything else on the board.
+
+**The archiver was healthy the whole time.** Three consecutive successful runs,
+no degraded health, no failed batch. What was wrong is that the job's
+advertised throughput was fiction. From the run logs, which is where this
+should have been visible all along:
+
+| run | URLs touched | of a stated limit of | stopped by |
+|---|---|---|---|
+| 2026-08-04 `30883391601` | 1,231 | 1,500 | deadline, mid batch 3 |
+| 2026-08-05 `30980680217` | 500 | 1,500 | deadline, after batch 1 |
+| 2026-08-06 `31082958687` | 500 | 1,500 | deadline, after batch 1 |
+
+`ARCHIVE_BACKFILL_LIMIT` was never the binding constraint. The 2400s deadline
+was, and it was in turn silently clamped by a 3000s cap inside
+`archive_backfill.py`. The workflow claimed 1,500 URLs a run and delivered a
+median of 500. **The obvious fix, raising the batch size, would have changed
+nothing at all** - which is the only reason this entry is worth reading.
+
+**The cycle arithmetic, measured rather than assumed.** On 08-04 the run
+advanced the oldest un-archived attempt from `2026-07-26 10:39:29` to
+`2026-07-29 11:46:10` by touching 1,231 URLs. That is 3.05 days of ring for
+1,231 URLs, so the pool is ~404 URLs deep per day and needs ~404 re-checks a
+day just to hold its position. At 500/day the cycle is 7.6 days inside a
+10-day bound: the margin was about 1.4 days, and no surface ever said so.
+
+### Both halves are fixed, because only fixing the first one repeats this
+
+**(a) The cycle.** Deadline 2400 -> 5400s, module cap 3000 -> 6600s, limit
+1,500 -> 2,000. The limit is sized off the live pool (3,782 due on 08-06)
+divided by the promise, not chosen as a round number: ~1.9-day cycle, ~2.9-day
+worst age against the 10-day bound. `ARCHIVE_SPN_MAX` stays at 80 on purpose -
+16 of 80 captures were already being throttled, and the throughput that moves
+this number comes from the FREE availability pass, which is the thing that
+stamps `checked_at`. Cranking Save Page Now buys nothing and risks the budget.
+
+**(b) The margin.** `/archive-coverage` now publishes `unarchived_live` (the
+real ring, join-filtered exactly like the candidate query so orphan archive
+rows the cron correctly never retries cannot inflate it) and `rechecked_recent`
+over a 48-hour window, plus the window itself so the consumer divides rather
+than assuming a cadence. 48h and not 24h because the cron is daily: a 24-hour
+window sampled minutes before the run reports a throughput of zero for a
+perfectly healthy job.
+
+`ArchiveRecheckInvariant` now divides them and FAILS when the PROJECTED worst
+age exceeds 8 days (7d promise + 1d run granularity), i.e. while the two days
+of slack are still intact. Fed the 2026-08-04 payload it fires; the age half
+read a comfortable 8.6d that day and passed. That is the whole point: **a check
+that only fails once the promise is already broken is a post-mortem, not a
+check.** Roughly a dozen defects this week were this same species.
+
+Neither half weakens the other. The age FAIL is untouched, both must hold, and
+a server too old to publish the margin fields resolves to UNKNOWN rather than
+quietly dropping half of itself.
+
+### Reader-freshness CI, unstuck
+
+`d900985` narrowed `VERSION_RE` to the plugin's own fingerprinted assets and
+left two tests asserting on `/a.css?ver=`, so `Tests` had been red on
+`None != '2.19.275'`. Rewritten against the LIVE page rather than invented
+markup. The counts are the part that matters: three assets on that page carry
+`ver=2.0.86` against the plugin's two, which is exactly how a majority vote
+over "the first ver= on the page" was won by somebody else's version. A fixture
+containing one `2.0.86` lets the broken matcher pass; the faithful one fails it
+with the incident's own message, `'2.0.86' != '2.19.275'`.
+
+Also pins the two asset names to the plugin's actual enqueues. Rename either
+and the regex matches nothing, `version_in_html` returns None, and the guard
+goes permanently UNKNOWN while still running daily and reporting no failure.
+
+### Left honest
+
+The live `archive_recheck_cadence` check stays RED until the drained frontier
+ages back inside the bound. It should. The promise really was broken, and a
+check tuned green on the day of its fix is the thing this repo keeps finding.
 
 ## 2026-08-06 - the pre-extraction gate goes live on its own shadow evidence
 
