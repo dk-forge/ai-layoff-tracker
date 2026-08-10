@@ -236,6 +236,8 @@ class ContrastIsRecomputed(unittest.TestCase):
         ("--alt-crit", "--alt-red-tint", 4.5),
         ("--alt-chart-muted", "--alt-surface", 4.5),
         ("--alt-on-accent", "--alt-blue", 4.5),
+        ("--alt-toggle-ink", "--alt-toggle-btn", 4.5),
+        ("--alt-toggle-on-ink", "--alt-toggle-on", 4.5),
         ("--alt-chart-tip-body", "--alt-chart-tip-bg", 4.5),
     ]
 
@@ -314,6 +316,194 @@ class ContrastIsRecomputed(unittest.TestCase):
                     self.assertGreater(d, 15.0,
                                        "%s: %s and %s are only dE %.1f apart"
                                        % (label, names[i], names[j], d))
+
+
+class TheThemeControlSurvivesEveryTheme(unittest.TestCase):
+    """The switcher is the control that CHANGES the theme, so it has to be the
+    last thing that disappears in any theme. It was the first.
+
+    Shipped before this class existed: the group borrowed --alt-surface-2 and
+    --alt-border, which on the dark page paint it at 1.20:1 with a 1.61:1
+    edge. The labels were never the problem, at 8.50:1. The BOUNDARY was, and
+    a boundary is a 1.4.11 surface needing 3:1 in its own right, so a reader
+    on a dark OS saw a filled pill with no container around it. Light failed
+    the same bar at 1.06:1 and 1.28:1 and was merely rescued by a bright page.
+
+    These checks resolve the tokens the RULES actually name, rather than
+    naming tokens themselves. Rename the token, restyle the control, swap the
+    palette: the ratios are still recomputed from whatever ships, so this
+    cannot pass because a variable happens to exist.
+    """
+
+    GROUP = ".alt-theme {"
+    BTN = ".alt-theme-b {"
+    ON = '.alt-theme-b[aria-pressed="true"] {'
+    FOCUS = ".alt-theme-b:focus-visible {"
+    DOT = ".alt-theme-b::before {"
+    DOT_ON = '.alt-theme-b[aria-pressed="true"]::before {'
+
+    def setUp(self):
+        self.css = strip_css_comments(CSS.read_text())
+        self.palettes = {
+            "light": tokens_in(block_body(self.css, LIGHT_SEL)),
+            "dark (OS preference)": tokens_in(block_body(self.css, DARK_MEDIA_SEL)),
+            "dark (chosen)": tokens_in(block_body(self.css, DARK_EXPLICIT_SEL)),
+        }
+        # Light is the base cascade; a dark block only redefines what it names,
+        # so an unredefined token keeps its light value. Resolving against the
+        # merge is what the browser actually does.
+        for name, pal in self.palettes.items():
+            if name != "light":
+                merged = dict(self.palettes["light"])
+                merged.update(pal)
+                self.palettes[name] = merged
+
+    def _decl(self, selector, prop, absent=None):
+        """The value of one property in one rule. The rule itself must exist,
+        because a lookup that quietly found nothing would let every ratio
+        below pass vacuously. An undeclared PROPERTY is a real state and gets
+        `absent`: a control that never declares a border does have a boundary,
+        it is just the same colour as what it sits on, and that scores 1.00:1
+        rather than escaping measurement."""
+        body = block_body(self.css, selector)
+        m = re.search(r"(?:^|[;{\s])%s\s*:\s*([^;}]+)" % re.escape(prop), body)
+        if not m:
+            if absent is None:
+                raise AssertionError("rule %r declares no %r" % (selector, prop))
+            return absent
+        return m.group(1).strip()
+
+    def _colour(self, palette, value, label, behind=None):
+        """Resolve a declaration down to the hex colour a reader actually
+        sees, following var() indirection.
+
+        `transparent` composites to whatever is behind it, which is the whole
+        point: a transparent button on a group fill is painted by the group
+        fill, and measuring it as "no colour" would let the pre-fix control
+        pass by being unmeasurable rather than by being visible. A boundary
+        declared away with 0 or none resolves to the surface it sits on, which
+        scores 1.00:1 and reads in the failure list as the absent edge it is.
+        """
+        seen = 0
+        while True:
+            m = re.search(r"var\(\s*(--alt-[a-z0-9-]+)", value)
+            if not m:
+                break
+            name = m.group(1)
+            self.assertIn(name, palette, "%s: %s is not defined" % (label, name))
+            value = palette[name]
+            seen += 1
+            self.assertLess(seen, 10, "%s: var() indirection loops" % label)
+        m = re.search(r"#[0-9a-fA-F]{3,6}\b", value)
+        if m:
+            return m.group(0)
+        if behind is not None and re.match(r"^(transparent|none|0|0px)$", value.strip()):
+            return behind
+        raise AssertionError("%s: %r does not resolve to a colour" % (label, value))
+
+    def _pairs(self, pal, label):
+        """(description, foreground, background, minimum) for one palette."""
+        page = self._colour(pal, "var(--alt-page)", label)
+        grp_bg = self._colour(pal, self._decl(self.GROUP, "background"), label, page)
+        grp_edge = self._colour(pal, self._decl(self.GROUP, "border"), label, grp_bg)
+        btn_bg = self._colour(pal, self._decl(self.BTN, "background"), label, grp_bg)
+        btn_edge = self._colour(pal, self._decl(self.BTN, "border", "none"), label, btn_bg)
+        btn_ink = self._colour(pal, self._decl(self.BTN, "color"), label)
+        on_bg = self._colour(pal, self._decl(self.ON, "background"), label, btn_bg)
+        on_ink = self._colour(pal, self._decl(self.ON, "color"), label)
+        on_edge = self._colour(pal, self._decl(self.ON, "border-color", "none"), label, on_bg)
+        focus = self._colour(pal, self._decl(self.FOCUS, "outline"), label)
+        return [
+            # 1.4.11: the boundary of the control against everything touching it.
+            ("group edge vs the page", grp_edge, page, 3.0),
+            ("group edge vs the group fill", grp_edge, grp_bg, 3.0),
+            ("button edge vs its own fill", btn_edge, btn_bg, 3.0),
+            ("button edge vs the group fill", btn_edge, grp_bg, 3.0),
+            ("selected edge vs the selected fill", on_edge, on_bg, 3.0),
+            ("selected fill vs an unselected button", on_bg, btn_bg, 3.0),
+            # 1.4.3: the labels.
+            ("unselected label on its button", btn_ink, btn_bg, 4.5),
+            ("selected label on its button", on_ink, on_bg, 4.5),
+            # A focus ring nobody can see is a keyboard trap with extra steps.
+            ("focus ring vs the group fill", focus, grp_bg, 3.0),
+            ("focus ring vs the page", focus, page, 3.0),
+        ]
+
+    def test_the_control_is_legible_in_every_theme(self):
+        bad = []
+        for label in sorted(self.palettes):
+            for what, fg, bg, need in self._pairs(self.palettes[label], label):
+                got = contrast(fg, bg)
+                if got < need - 0.005:
+                    bad.append("%s: %s (%s on %s) = %.2f:1, need %.1f"
+                               % (label, what, fg, bg, got, need))
+        self.assertEqual([], bad, "the theme switcher is not visible:\n  " + "\n  ".join(bad))
+
+    # Auto-on-a-dark-OS and explicitly-dark must paint the control the same,
+    # and they do: the check for that is test_every_token_is_defined_in_all_
+    # three_blocks above, which already asserts the two dark blocks carry an
+    # identical token set with identical values. Both palettes are measured
+    # separately here anyway, so a drift would surface as one of the two
+    # failing on its own. A third assertion of the same fact would only be
+    # another thing to keep in sync.
+
+    def test_the_selected_state_is_not_carried_by_colour_alone(self):
+        """1.4.1. Strip the hues out and the pressed button must still be the
+        obvious one. The dot is hollow when off and filled when on."""
+        self.assertIn(self.DOT, self.css,
+                      "the buttons carry no non-colour indicator, so the only "
+                      "thing marking the selection is its fill")
+        dot = block_body(self.css, self.DOT)
+        self.assertRegex(dot, r"background:\s*transparent",
+                         "the resting dot must be hollow, or the two states share a shape")
+        self.assertRegex(dot, r"border:\s*\d",
+                         "a hollow dot needs a border, otherwise it is nothing at all")
+        on = block_body(self.css, self.DOT_ON)
+        self.assertRegex(on, r"background:\s*(currentColor|var\(--alt-)",
+                         "the pressed dot must fill, which is the cue that survives "
+                         "monochrome")
+
+    def test_the_indicator_cannot_speak_over_aria_pressed(self):
+        """The dot is decoration and must stay unannounceable, the way
+        .alt-datebasis-opt::before already is: a pseudo-element whose content
+        is the empty string has no accessible name to read out. Generated
+        content that is a glyph does get spoken by some screen readers, which
+        would put a second voice on a fact aria-pressed already carries.
+
+        The other half is that the buttons stay buttons. The cue is decorative
+        precisely BECAUSE aria-pressed is doing the real work, so a change
+        that dropped aria-pressed in favour of the dot would leave a screen
+        reader with nothing at all."""
+        dot = block_body(self.css, self.DOT)
+        self.assertRegex(dot, r'content:\s*""',
+                         "the indicator must carry empty content, or it can be announced")
+        php = re.sub(r"/\*.*?\*/", " ", PHP.read_text(), flags=re.S)
+        php = re.sub(r"^\s*//.*$", "", php, flags=re.M)
+        boot = php[php.index("function alt_theme_boot"):]
+        boot = boot[:boot.index("add_action('wp_head'")]
+        self.assertRegex(boot, r"setAttribute\(\s*'aria-pressed'",
+                         "state has to stay on aria-pressed")
+        self.assertRegex(boot, r"createElement\(\s*'button'\s*\)",
+                         "each mode must stay a real button, so each is a tab stop")
+
+    def test_the_control_cannot_force_a_horizontal_scroll(self):
+        """375px, guarded at the cause rather than the symptom, for the reason
+        MobileHasNothingToClip in test_card_contract.py gives: this site ships
+        an inline html,body{overflow-x:hidden}, so comparing scrollWidth to a
+        viewport passes on a page that is already clipping. What is checkable
+        is that the control cannot demand a width the viewport will not give:
+        it is bounded by its container and its pills wrap instead of pushing.
+        Three pills grew a dot each in this change, which is exactly the kind
+        of addition that walks a control past the edge."""
+        group = block_body(self.css, self.GROUP)
+        self.assertRegex(group, r"max-width:\s*100%",
+                         "the group is unbounded, so its content decides the page width")
+        self.assertRegex(group, r"flex-wrap:\s*wrap",
+                         "the pills cannot wrap, so a narrow viewport gets pushed instead")
+        for sel in (self.GROUP, self.BTN):
+            body = block_body(self.css, sel)
+            self.assertNotRegex(body, r"(?<!max-)(?<!-)\bmin-width:\s*(?!0)",
+                                "%s pins a width a 375px viewport may not have" % sel)
 
 
 class ChartsReadTheStylesheet(unittest.TestCase):

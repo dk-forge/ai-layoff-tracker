@@ -1,5 +1,40 @@
 # Tech Log
 
+## 2026-08-10 - the theme switcher was the first thing to disappear in dark
+
+The owner reported that the Light / Dark / Auto control is hard to see once the
+page is dark, on both dashboards. It is: the control that CHANGES the theme
+should be the last thing to vanish in any theme and it was the first.
+
+- **The labels were never the problem.** Unselected text measured 8.50:1 on
+  the dark page and the filled pill 7.70:1. What failed was the BOUNDARY. The
+  group borrowed `--alt-surface-2` and `--alt-border`, which paint it at
+  1.20:1 against the ground with a 1.61:1 edge, and the buttons declared
+  `border: 0` on a transparent fill, so they had no boundary at all. WCAG
+  1.4.11 asks 3:1 of exactly those surfaces. The visible result was a blue pill
+  apparently floating loose on the page with no container around it.
+- **Light failed the same bar** at 1.28:1 and 1.21:1 and was only rescued by a
+  bright ground, so it was fixed too rather than left as the next report.
+- **Seven `--alt-toggle-*` tokens now own the control** instead of it borrowing
+  generic surface tokens. Worst boundary is 3.67:1 (light) and 3.96:1 (dark);
+  worst label 8.85:1 (dark) and 9.91:1 (light). The dark blocks still redefine
+  nothing but tokens, which `test_the_dark_blocks_hold_nothing_but_tokens`
+  enforces.
+- **Selection no longer rests on colour alone** (1.4.1). Each button carries a
+  dot that is hollow when off and filled when on, plus a ring in the pressed
+  button's own ink at 10.80:1. It is the same `::before` cue
+  `.alt-datebasis-opt` already uses, so the page's two segmented switches say
+  "selected" the same way, and its content is the empty string so it cannot be
+  announced over `aria-pressed`.
+- **The checks recompute from what ships.** `TheThemeControlSurvivesEveryTheme`
+  resolves the tokens the RULES name, follows `var()`, and composites
+  `transparent` and `border: 0` onto what sits behind them, so a boundary
+  declared away scores 1.00:1 and appears in the failure list instead of
+  escaping measurement. All five fail on the pre-fix tree; the pre-fix failure
+  text is the defect, ratio by ratio.
+- **Measured at 375px in a real browser**, all three theme paths: scrollWidth
+  equals clientWidth equals 375, nothing past 375, control right edge 238.5px.
+
 ## 2026-08-07 - the news path gets an answer key, and the extraction model moves
 
 The SEC gold set said `google/gemini-2.5-flash-lite` matched the incumbent at

@@ -120,6 +120,22 @@
        dark the chip is the light element. */
     --alt-on-accent: #ffffff;
 
+    /* theme control. Its own tokens rather than the generic surface ones,
+       because this is the control that CHANGES the theme: it has to be the
+       last thing that disappears in any theme, and borrowing --alt-surface-2
+       and --alt-border made it the first. Those two draw the group at 1.20:1
+       on the dark page with a 1.61:1 edge, which is a boundary a reader
+       cannot find. Every value here is checked against 1.4.11 (3:1 for the
+       control boundary) and 1.4.3 (4.5:1 for the label) in
+       test_theme_light_dark.py, recomputed from what is shipped. */
+    --alt-toggle-bg: #eef0f4;
+    --alt-toggle-btn: #ffffff;
+    --alt-toggle-edge: #767c8a;
+    --alt-toggle-ink: #3f434c;
+    --alt-toggle-on: #1c5cab;
+    --alt-toggle-on-ink: #ffffff;
+    --alt-toggle-focus: #0b3d78;
+
     /* region tab hues. All ten clear 4.5:1 as 14px bold on the panel. */
     --alt-region-world: #52607a;
     --alt-region-usa: #2875d2;
@@ -240,6 +256,14 @@
 
         --alt-on-accent: #12141a;
 
+        --alt-toggle-bg: #303747;
+        --alt-toggle-btn: #3b4354;
+        --alt-toggle-edge: #9aa4b8;
+        --alt-toggle-ink: #f0f2f6;
+        --alt-toggle-on: #9ac8f8;
+        --alt-toggle-on-ink: #0e1116;
+        --alt-toggle-focus: #eef3fb;
+
         --alt-region-world: #7685a3;
         --alt-region-usa: #4586d3;
         --alt-region-canada: #cc6194;
@@ -353,6 +377,14 @@
     --alt-claims-rgb: 150, 150, 150;
 
     --alt-on-accent: #12141a;
+
+    --alt-toggle-bg: #303747;
+    --alt-toggle-btn: #3b4354;
+    --alt-toggle-edge: #9aa4b8;
+    --alt-toggle-ink: #f0f2f6;
+    --alt-toggle-on: #9ac8f8;
+    --alt-toggle-on-ink: #0e1116;
+    --alt-toggle-focus: #eef3fb;
 
     --alt-region-world: #7685a3;
     --alt-region-usa: #4586d3;
@@ -2945,26 +2977,60 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
    be reachable again after a visitor has chosen once. Buttons, not a select,
    so each state is one tab stop with a real pressed state for a screen
    reader. The group label carries the current state; see altTheme in
-   layoffs.js for where that string is kept in sync. */
+   layoffs.js for where that string is kept in sync.
+
+   WHY IT DOES NOT BORROW --alt-surface-2 AND --alt-border ANY MORE. It used
+   to, and on a dark page that painted the group at 1.20:1 against the ground
+   with a 1.61:1 edge. The LABELS were never the problem (8.50:1); the
+   control's outline was, so the group read as nothing at all and the filled
+   pill read as a stray chip floating on the page. A boundary is a 1.4.11
+   surface in its own right and needs 3:1, which is what --alt-toggle-edge is
+   for. It is drawn on the group AND on every button, so no single edge
+   vanishing can take the control with it.
+
+   WHY THE SELECTED STATE IS NOT ONLY A FILL. Colour alone fails 1.4.1, and
+   the fill is the only thing a monochrome or deuteranopic reader loses. Each
+   button therefore carries a dot that is HOLLOW when off and FILLED when on,
+   plus a ring in the pressed button's own ink. Strip every colour out and the
+   pressed state is still the one with a solid dot.
+
+   That hollow-to-filled dot is not invented here: .alt-datebasis-opt::before
+   a few hundred lines up is the same cue on the same kind of control, so the
+   two segmented switches on the page now say "selected" the same way. Like
+   that one it is a pseudo-element with empty content, which is why it can
+   carry no accessible name and cannot be announced. State is carried for
+   assistive tech by aria-pressed, which is the real answer; the dot is for
+   people who can see the control but not the hue. */
 .alt-theme {
-    display: inline-flex; align-items: center; gap: 2px;
-    padding: 3px; margin: 0 0 12px;
-    border: 1px solid var(--alt-border); border-radius: 999px;
-    background: var(--alt-surface-2);
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px; margin: 0 0 12px;
+    max-width: 100%; flex-wrap: wrap;
+    border: 1px solid var(--alt-toggle-edge); border-radius: 999px;
+    background: var(--alt-toggle-bg);
 }
 .alt-theme-b {
     appearance: none; -webkit-appearance: none;
+    display: inline-flex; align-items: center; gap: 6px;
     font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
-    cursor: pointer; padding: 6px 12px; border: 0; border-radius: 999px;
-    background: transparent; color: var(--alt-ink-2);
+    cursor: pointer; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--alt-toggle-edge);
+    background: var(--alt-toggle-btn); color: var(--alt-toggle-ink);
     transition: background .12s ease, color .12s ease;
 }
-.alt-theme-b:hover { color: var(--alt-ink); }
-.alt-theme-b[aria-pressed="true"] {
-    background: var(--alt-blue); color: var(--alt-on-accent);
+/* Hollow when off, filled when on. currentColor throughout, so the cue can
+   never drift from the label it sits next to, in either theme. */
+.alt-theme-b::before {
+    content: ""; width: 8px; height: 8px; flex: none; border-radius: 50%;
+    border: 2px solid currentColor; background: transparent;
 }
+.alt-theme-b:hover { border-color: currentColor; }
+.alt-theme-b[aria-pressed="true"] {
+    background: var(--alt-toggle-on); color: var(--alt-toggle-on-ink);
+    border-color: var(--alt-toggle-on-ink);
+}
+.alt-theme-b[aria-pressed="true"]::before { background: currentColor; }
 .alt-theme-b:focus-visible {
-    outline: 2px solid var(--alt-blue-dark);
+    outline: 3px solid var(--alt-toggle-focus);
     outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
