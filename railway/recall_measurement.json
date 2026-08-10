@@ -13,6 +13,30 @@
       ]
     },
     {
+      "filer": "GREEN DOT CORP",
+      "filing_date": "2025-09-03",
+      "id": "sec-205-0001386278-25-000069",
+      "new_tracker_event_ids": [
+        149755
+      ],
+      "stated_job_count": 240,
+      "tracker_event_ids": [
+        149755
+      ]
+    },
+    {
+      "filer": "SPRUCE POWER HOLDING CORP",
+      "filing_date": "2025-09-24",
+      "id": "sec-205-0001628280-25-042593",
+      "new_tracker_event_ids": [
+        149756
+      ],
+      "stated_job_count": 40,
+      "tracker_event_ids": [
+        149756
+      ]
+    },
+    {
       "filer": "KALA BIO, Inc.",
       "filing_date": "2025-09-29",
       "id": "sec-205-0001104659-25-094125",
@@ -306,7 +330,7 @@
     "sec-205-0001628280-26-039805",
     "sec-205-0001193125-26-278582"
   ],
-  "measured_at": "2026-08-03T17:01:10Z",
+  "measured_at": "2026-08-10T16:30:56Z",
   "missed": 33,
   "missed_events": [
     {
@@ -351,14 +375,18 @@
       "filing_date": "2025-09-03",
       "id": "sec-205-0001386278-25-000069",
       "stated_job_count": 240,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149755
+      ]
     },
     {
       "filer": "SPRUCE POWER HOLDING CORP",
       "filing_date": "2025-09-24",
       "id": "sec-205-0001628280-25-042593",
       "stated_job_count": 40,
-      "tracker_event_ids": []
+      "tracker_event_ids": [
+        149756
+      ]
     },
     {
       "filer": "KALA BIO, Inc.",
