@@ -123,6 +123,290 @@ only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
 
+## #29 - an outside review, checked line by line, and the incident that is set to erase itself (2026-08-10)
+
+**An external reviewer audited this codebase read-only and produced a document
+with an assessment, a repair sequence, anti-drift rules, a release checklist and
+cost controls. Its substance is folded in below. Nothing was imported as fact
+because a reviewer wrote it: every checkable claim was checked, and the verdicts
+include four refutations of the reviewer and one refutation of a document this
+repo committed two hours earlier.**
+
+The reviewer's central thesis is that the risk here is complexity rather than
+incompetence: individually sensible guards that have begun to contradict each
+other, so local correctness no longer adds up to global correctness. That thesis
+is CONFIRMED, and the sharpest instance is not in the review. It is item 1 below.
+
+### 1. THE INCIDENT IS SCHEDULED TO LAUNDER ITSELF ON 2026-08-22. Owner decision needed.
+
+`MovementInvariant` is holding the US headline FAIL open by refusing to advance
+a failing baseline, which is correct and deliberate (`data_integrity.py:1367-1371`).
+The US baseline is therefore pinned at `2026-08-07T18:23:51Z` while the other two
+slices advance daily.
+
+At `MAX_BASELINE_AGE_DAYS = 14` (`data_integrity.py:370`) a different guard takes
+over. `data_integrity.py:671-676` returns UNKNOWN for a baseline that old, with
+`pending=True` and **`suppressed` unset**. `_out`'s own docstring says that is on
+purpose: "It is NOT set for the other UNKNOWNs (no baseline, stale baseline,
+unreachable API) ... refusing to record them would freeze the guard permanently
+unarmed." And `record_baseline` skips only `FAIL` and `suppressed`
+(`:1367-1380`). So the first daily run at which the pinned baseline is more than
+14 days old **records the failing figure as the new normal**, the slice returns
+to PASS the next day, and the incident vanishes with no human involved.
+
+The baseline was captured `2026-08-07T18:23:51Z`. The recorder runs about
+18:00Z. **The 2026-08-21 run is still inside 14 days; the 2026-08-22 run is the
+one that launders it.** Eleven days from this entry.
+
+Both guards are right on their own. "Never advance over a FAIL" keeps an
+incident open. "Never let a stale baseline freeze the guard unarmed" keeps the
+check from dying silently. Together they say: hold the incident open for exactly
+fourteen days, then adopt it. Nobody decided that.
+
+**This was NOT changed in this session.** It is invariant machinery and the fix
+is a design decision, not a repair: the reviewer's recommendation is a sticky
+incident record that only a reviewed reason plus affected row IDs can close.
+UNVERIFIED: whether a slice that goes UNKNOWN-stale and is then recorded also
+resets anything else downstream.
+
+### 2. The published US headline is already strict job-location. Three artifacts say otherwise.
+
+REFUTES the reviewer, and REFUTES section 6 of
+`docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md`, which this repo committed the
+same day.
+
+`assets/layoffs.js` sets `country_basis='any'` in exactly two places: `:845`
+(export links) and `:3496`, inside `queryParams()`, which serves the results
+list. `/aggregate` is fetched from `currentParams()` (`:863-869`), which never
+sets it, and the server default is strict (`db.php:927`). The comment above
+`:3496` states this explicitly. So the headline tiles, the charts and the map are
+strict job-location, exactly as CLAUDE.md promises; the table and the exports are
+the union.
+
+Consequences, none of them fixed here:
+
+- `data_integrity.py:355-365` watches `us_all_time` with
+  `country_basis="any"`, labels it **"United States jobs, all time"**, and its
+  own note claims that is "the same basis the reader's own filter uses". It is
+  the basis the reader's TABLE uses, not the headline. Every alert, every
+  RUNBOOK reference and every line of the forensics doc quotes 7,061,880, a
+  number no headline tile has ever displayed. The tile shows 6,192,930.
+- The forensics doc's finding that 868,950 jobs are "**12.3% of the published
+  'United States jobs, all time' figure**" is true of the table and the exports
+  and is NOT true of the headline. A session acting on its section 7 would be
+  relabelling a figure that is already on the basis being demanded.
+- `railway/published_figures.py:668-670` reconciles strict state bars against a
+  `country_basis="any"` denominator, so its whole is about 869,000 jobs larger
+  than its parts, systematically permissive in the one direction that hides a
+  parts-exceed-whole defect.
+- `templates/page-methodology.php:39` and `:77` contradict each other 38 lines
+  apart, and `templates/page-tracker.php:1003` states the strict claim on the
+  page whose list is inclusive.
+
+**The 79,422 asymmetry survives all of this.** US on ANY basis is a filtered
+subset of an unfiltered worldwide, so a US rise larger than the worldwide rise is
+impossible on either basis. The incident is real; the number it is quoted in is
+the wrong one.
+
+### 3. `wp_alt_layoffs` had no `updated_at` column, so the incident window was never recoverable
+
+The forensics doc said the row list needed either a direct
+`SELECT ... WHERE updated_at BETWEEN ...` or a new endpoint. The column did not
+exist. The `updated_at` at `db.php:146` belongs to `wp_alt_company_directory`.
+The proposed query would have returned "Unknown column". The UNKNOWN verdict was
+more correct than the document that issued it knew, and stays UNKNOWN
+permanently: no archive, no snapshot and no query can now name those rows.
+
+PR #26 adds the column, an index on it, a stamp at every one of the nine writers
+to that table including the bulk re-scoring statements, and
+`GET /changed-rows` behind the existing `alt_api_permission` gate. It answers
+forward only, says so in its own response body (`window_is_instrumented`,
+`verdict_when_empty`), and states that deletions are invisible to it because
+`/trash` and `/bulk-purge` leave nothing behind. Detail in TECHLOG.
+
+### 4. Verdicts on the reviewer's other checkable claims
+
+CONFIRMED: the movement formula gets more permissive while the baseline is
+frozen, in two independent ways. `floor = move_floor * span` (`:682`) grows with
+the frozen span, so the current +93,210 passes at span 5.0d; and
+`allowance = abs(d_entries) * base_mean * mean_factor` (`:698`) with
+`base_mean = 160.787` and `mean_factor = 12` buys 1,929 jobs per net entry, so 49
+net new entries clear it. `abs()` means rows LEAVING widen it too. No incident
+state exists anywhere other than the baseline's `captured_at`. The regression
+test the reviewer asks for (day one fails, later arrivals widen the formula,
+verdict must stay FAIL) is absent from `test_headline_guards.py`.
+
+CONFIRMED: `survey_reconcile.py:29` plus `:70` plus `:162-171` calls
+`requests.get("")` when `SURVEY_FEED_URL` is unset, though the module comment and
+`survey-reconcile.yml:40-42` both promise a dormant exit.
+`test_survey_reconcile.py` never exercises the feed axis at all.
+
+CONFIRMED and currently red: `tracker_diff.py:411-417` returns without posting
+health, it is absent from `health_digest.py` `MAX_AGE_DAYS`, and it therefore
+inherits the 10-day default for a job whose real cadence is never. It is at
+14.8 days and is manufacturing a red weekly workflow plus an owner email for a
+job that is working as designed. This is the same defect CLAUDE.md's own
+retirement rule was written about, and there is no `dormant` state to put it in.
+
+CONFIRMED verbatim: the live integrity alert names
+`worldwide_all_time: recorded 20,407,113 jobs / 63,602 entries` as the cause.
+That is successful bookkeeping. `data_integrity.main()` prints FAIL lines first
+and baseline notes last, sorted, and `ci_alert.extract_cause` matches none of the
+FAIL line's shapes (`_UNITTEST_HEAD` needs `FAIL:` with a colon; the text says
+"FAILING", not "failed") so it falls through to `body_lines[-1]`. Because
+normalisation replaces the digits, the wrong cause has a stable fingerprint and
+is the one that gets deduped and mailed, while the real assertion never reaches
+the owner. `health_digest.py:231-234` already emits `::error::` for the same
+class of thing; `data_integrity.py` does not.
+
+CONFIRMED: an integrity failure is routed into the scraper-repair playbook.
+`data_integrity.py:1394-1401` posts its verdict into the SOURCE health ledger as
+`degraded`, `health_digest.py:115` folds it into `names`, and `:145-153` then
+tells the owner to "find its collector in railway/ ... and fix the parser".
+CLAUDE.md states "source health is not data integrity" as an iron rule; the rule
+holds at the definition layer and dissolves at the alerting layer.
+
+REFUTED as stated: the reviewer's "+93,211 on +19 entries" is +93,210 on +18.
+Its "79,947" mixes a one-day worldwide delta with a three-day US delta; the
+single-step figure is 79,422. Its hypothesis that old rows gained a US
+`employer_country` is refuted by the repo's own forensics (126 union-only rows,
+107 stamped with a 2026-07-19 registry, zero with evidence inside the window, and
+the only bulk domicile workflow has never run). Its named rows do not survive
+either: DOGE 60,000 was already the largest US row the day before, and Oracle
+21,000 sits in `ai_all_time`, which did not move at all.
+
+REFUTED: "the $5/month target is realistic". The named-job ledger
+(`spend_jobs.json`) says $0.19/day, projecting to $5.70/30d. The OpenRouter
+balance history says the account fell $3.73 over 08-03 to 08-10 against $1.45 of
+ledgered job spend, so **the ledger accounts for roughly 39% of the bill**.
+`ops_status [2a]` reports $0.43/day, about $13/month, against a $10 policy
+allowance. Two cost meters in one repo disagree by about 2.5x and `ops_status`
+prints both without reconciling them. Also open: `ai-evidence-sweep` spent
+$0.020 in a run against its own $0.015 ceiling, so that per-job brake is not
+holding.
+
+CONFIRMED: company-watchlist spent about $0.03/day and stored zero rows on all
+three measured days.
+
+UNKNOWN: the reviewer's Microsoft 4,800 and Block 4,000 could not be checked
+live. Its claim about invalid GitHub CLI credentials in its own environment is
+not checkable from here.
+
+### 5. Three things in the review that would violate CLAUDE.md if adopted
+
+- **"Recommended default: job location"**, with a guard that a US selection
+  cannot return a France or Multiple-countries row. CLAUDE.md is explicit:
+  "Don't 'fix' the discrepancy - it's intentional and documented." The
+  defensible version of the reviewer's point is the LABELLING on
+  `page-tracker.php:1003` and `page-methodology.php:39`, and the guard
+  configuration in item 2 above. Not the filter semantics.
+- **"Every dormant workflow lifecycle-exempt from freshness monitoring."** As
+  written that is a blanket silence. `alt_retired_sources()` (`db.php:2027-2029`)
+  deliberately refuses to mask a row whose last run postdates the retirement, and
+  any `dormant` state must inherit that rule or it becomes a way to hide a
+  collector that quietly resumed.
+- **The document is itself a second handover file**, titled "HANDOFF BATON" and
+  carrying its own baton section. `docs/HANDOFF.md` is the sole handover here;
+  its substance is in this entry and its implementation detail is in TECHLOG.
+  Do not commit it, and do not let it create a second baton register.
+
+For the record, checked explicitly: the review names no competitor, never
+proposes weakening a check to reach green (it says the opposite), never proposes
+advancing a baseline over a failing slice, and makes no automation claim.
+
+### 6. The review's substance, condensed
+
+**Assessment.** The engineering is judged sound: retained source evidence with
+quotable attribution, explicit verification tiers, a correction history,
+normalization at trust boundaries, incident-shaped alert dedup, fail-loud data
+jobs, UNKNOWN kept distinct from PASS, immutable snapshots, cost metering. No
+rewrite recommended. The stated risk is accumulated complexity, evidenced above.
+
+**Repair sequence, in the reviewer's order, corrected where it was wrong.**
+1. Geography contract: one basis per surface, named on every surface. See item 2
+   for what is actually broken; the union itself stays.
+2. Sticky integrity incidents: a full-cycle FAIL opens state that later
+   observations cannot close. See item 1 for the deadline this now has.
+3. The US headline step: already enumerated; row IDs permanently UNKNOWN per
+   item 3. Correct no data before a row list exists.
+4. Field-aware mutation provenance: every data-changing endpoint emits a bounded
+   audit record with timestamp, dataset revision, workflow and run ID, reason,
+   row IDs, fields before and after, and the aggregate contribution before and
+   after per watched headline. Record enrichment separately from correction while
+   still noting that it moved a published aggregate. PR #26 is the first quarter
+   of this and knows it: it has no prior values and cannot see deletions.
+5. Survey config semantics: pick an explicit DORMANT exit or a startup
+   configuration error, and test all four feed-by-manifest combinations.
+6. Dormant lifecycle: an explicit state that keeps the real last-active
+   timestamp, never fabricates an OK heartbeat, and inherits the postdating rule.
+7. Structured CI causes: emit a stable `CI_CAUSE:` or `::error::` marker per
+   failing invariant, make the parser prefer it, and reject success phrases
+   ("recorded", "baseline unchanged", artifact upload, cleanup). Test with a
+   failed log followed by successful baseline lines.
+8. Typed remediation: route by class (source or parser, data integrity or
+   mutation, workflow configuration, deploy or cache, monitoring defect).
+9. Cost cadence, only after 7 to 14 days of measured yield.
+
+**Anti-drift rules.** One contract per concept, machine-readable, with secondary
+representations generated or validated from it rather than hand-maintained
+alongside a comment asserting they match: filter names and semantics, geography
+bases, source lifecycle and cadence, invariant metadata and remediation class,
+verification tiers, AI-attribution classes, workflow ownership and mutation type.
+Comments explain why; tests prove behaviour, and asserting on source text is not
+evidence that behaviour exists. Separate pure logic from effects: validate
+configuration, compute a typed result, write through one effect layer, emit a
+structured summary, derive alerts from the summary and never from log-tail text.
+Keep workflows idempotent, resumable, tied to a run ID, bounded in time and
+spend, explicit about zero work, dormant, partial and failed, and unable to
+report success when a batch or verification step failed. Do not widen bounds to
+clear an incident; bounds come from a documented failure model validated against
+observed legitimate data.
+
+**Release gate.** A change is finished only when: the intended population and
+user-facing definition are one written sentence; unit and incident-shaped
+regression tests pass; cross-surface contract tests pass for page, API, chart,
+drill-down, export, embed and press or report; data-changing behaviour is
+dry-run first and names affected row IDs and the aggregate delta; plugin
+`Version:` and `ALT_VERSION` are bumped when plugin files change; the deploy
+reaches the bare reader URL and not merely a cache-busted origin (already
+enforced, `deploy-plugin.yml:240-247`); live integrity checks run against the
+current baseline and dataset revision; no previously open incident is silently
+normalised by a new baseline; corrections are logged publicly and definition or
+enrichment changes are labelled distinctly; TECHLOG and RUNBOOK record the
+observed result rather than the intended one; the tree is clean and the baton
+released.
+
+**Cost controls.** Reconcile the two meters before treating any target as met
+(see item 4). Standing measures that do hold: cut or gate the company watchlist,
+which buys nothing; avoid duplicate supplemental-news runs over one candidate
+pool; earned cadence per provider; stop finite enrichment backfills when the
+queue drains; keep the live gate and the cheaper extraction model. Do not
+economise by removing source links, evidence retention, correction provenance,
+immutable reports or integrity checks.
+
+**Do not.** Rewrite the system. Let two sessions edit the same production area at
+once. Correct the US total before the changed rows and the governing definition
+are known. Call an inclusive union "US jobs". Treat a dormant workflow as a stale
+collector. Let successful bookkeeping become an alert cause. Let a confirmed
+incident vanish because later traffic enlarged its tolerance, or because a
+fourteen-day timer expired.
+
+### What this session shipped
+
+PR #26 (`updated_at` + `/changed-rows`, plugin 2.20.4), PR #27 (the three
+`test_ci_noise_report` failures: `MainTests` fixtures are stamped against a fixed
+`NOW` while `main()` reads the wall clock, so they aged out of the window on day
+eight and would have reddened `Tests` on every push from then on). PR #24 merged
+after confirming its four red tests are identical on `origin/main`. The
+headline-movement test is untouched and stays red.
+
+**UNVERIFIED in this entry:** the strict-basis US headline was read live once and
+not over the incident window, so whether the 08-07 to 08-08 step is the same size
+on the strict basis is unmeasured. The two cost meters were compared over one
+seven-day span. No claim here rests on the reviewer's document alone; where it
+could not be checked, it says UNKNOWN.
+
+
 ## #28 - the archive promise, the freshness fixtures, and a deploy that was green all along (2026-08-07)
 
 **Final dispatch of the session. Both trackers. Everything below is measured;
