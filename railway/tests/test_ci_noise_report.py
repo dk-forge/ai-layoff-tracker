@@ -146,9 +146,19 @@ class MainTests(unittest.TestCase):
 
     def _patch(self, runs, causes=None):
         self.sent = []
-        self._orig = (cnr.fetch_runs, cnr.attach_job_counts,
+        # main() derives its window from the wall clock, while every fixture
+        # below is stamped relative to the fixed NOW. Without this seam the
+        # class passed for seven days and then went red on the eighth, on a
+        # schedule, with no code change on either side: the fixture runs aged
+        # out of main()'s own 7-day window and it took the quiet-week early
+        # return. ClassifyTests and ComposeTests already inject the same
+        # instant explicitly via SINCE / now=; this gives MainTests the same
+        # footing rather than re-dating the fixtures, which would only move
+        # the expiry.
+        self._orig = (cnr.fetch_runs, cnr.attach_job_counts, cnr._now,
                       cnr.ci_alert.fetch_failed_log,
                       cnr.ci_alert.extract_cause, cnr.ci_alert.post_alert)
+        cnr._now = lambda: NOW
         cnr.fetch_runs = lambda repo, limit: runs
         cnr.attach_job_counts = lambda r, repo: r
         cnr.ci_alert.fetch_failed_log = (
@@ -160,7 +170,7 @@ class MainTests(unittest.TestCase):
 
     def tearDown(self):
         if hasattr(self, "_orig"):
-            (cnr.fetch_runs, cnr.attach_job_counts,
+            (cnr.fetch_runs, cnr.attach_job_counts, cnr._now,
              cnr.ci_alert.fetch_failed_log,
              cnr.ci_alert.extract_cause, cnr.ci_alert.post_alert) = self._orig
         for name in ("WP_SITE_URL", "WP_API_KEY"):
