@@ -725,3 +725,94 @@ docstring names; a status stamped BEFORE the work it describes.
 only checks the harmless direction (low); and the remaining sweep backlog, 5 high
 7 medium 21 low, in the workflow journal named in #26. Owner-only: the ChangXin
 IPO retract and the archive re-check margin.
+
+## #28 - external adversarial review, folded in as the work queue (2026-08-10)
+
+A read-only second-opinion audit was commissioned from a separate AI reviewer.
+It changed no files, ran no workflows, wrote no data. Its full text lives OUTSIDE
+this repo at ~/.codex/visualizations/2026/08/10/019fec71-.../HANDOFF_BATON.md,
+which means no session will ever read it, so its substance is recorded here and
+THIS FILE stays canonical.
+
+**Its verdict, which I agree with:** the risk here is accumulated complexity, not
+bad code. Many sophisticated guards, workflows and definitions now disagree with
+one another at the seams. Local correctness is no longer enough; definitions, UI,
+monitoring, docs and alert language need ONE authoritative contract. Evidence from
+this week alone: an `if:` key added to a job that already had one (breaking the
+file), four version collisions including one that moved BACKWARDS and skipped the
+cache flush, three separate staleness definitions, and a coverage guard that
+checked a list of strings rather than whether tests existed.
+
+**Working agreement, agreed:** one implementation owner at a time; the reviewer is
+read-only and adversarial; no two agents edit the same area concurrently; every
+change starts from current origin/main; the baton is claimed before implementation
+and released only after tests, deploy verification, live verification and docs.
+
+**THE ONE ITEM THAT CONFLICTS WITH CLAUDE.md - OWNER DECISION NEEDED, DO NOT
+UNILATERALLY "FIX" IT.** The reviewer calls the geography basis a P0: the browser
+sends `country_basis=any`, a union of job-location OR employer-domicile, so a
+France FedEx cut and global Oracle/Microsoft cuts can enter a United States
+selection. CLAUDE.md says the opposite in plain terms: "Don't fix the discrepancy
+- it's intentional and documented", with headline stats staying strict
+job-location while table/exports use the union.
+Both can be true at once, and that is the actual finding: the union may be a
+legitimate second metric that is simply MISLABELLED. Three populations exist and
+only the first may ever be called "United States jobs": (1) jobs cut in the US,
+(2) global jobs cut by US-domiciled employers, (3) their union. Before any code
+change, someone must establish which population each surface currently shows and
+which it CLAIMS to show. If they already agree, this is closed and CLAUDE.md wins.
+If they do not, the fix is labelling, not arithmetic.
+
+**P0, uncontested: confirmed integrity incidents must be STICKY.** The movement
+check refuses to advance a failing baseline on first failure, but later unrelated
+rows enlarge the allowance until the same unexplained jump passes against the old
+baseline, with the cause never identified. A full-cycle FAIL must open an incident
+that later observations CANNOT close; closing requires a reviewed reason, the
+affected row ids and field changes, and a replacement baseline. Regression test to
+write: day one fails on an unexplained +93,211 jobs across +19 entries, later
+arrivals make the old formula permissive, and the incident must remain OPEN.
+This is the same species as everything else found this week: a check that heals
+itself without anyone learning why.
+
+**P0, uncontested: enumerate +93,211 BEFORE touching data.** Do not delete, edit
+or re-dedupe rows to make an alarm green. The arithmetic suggests geography
+enrichment rather than new events: US headline about +93,211 against a worldwide
+move of about +13,264 over the same interval, so roughly 79,947 jobs entered the
+US slice without entering the worldwide corpus, consistent with old rows gaining
+a US employer_country under the inclusive union. Oracle 21,000, Microsoft 4,800,
+Block 4,000 and a DOGE 60,000 row carry most of the magnitude. Required first:
+exact row ids, old and new country / employer_country, old and new counted status
+per watched headline, the workflow and run that mutated each, and whether the
+result is wrong data, correct data under a misleading label, or a deliberate
+definition change.
+
+**P1 queue, in the reviewer's order:** field-aware mutation provenance (row ids,
+fields before and after, aggregate contribution before and after, enrichment
+recorded separately from correction); survey_reconcile calling requests.get('')
+when SURVEY_FEED_URL is absent despite comments claiming dormancy, with the full
+four-way config matrix tested; an explicit dormant/retired LIFECYCLE so a
+by-design dormant collector is freshness-exempt by contract rather than drifting
+stale or faking an OK heartbeat; structured CI causes (a stable CI_CAUSE marker
+or ::error:: annotation the parser prefers) so success bookkeeping like
+"worldwide_all_time: recorded ..." can never again be reported as a failure
+cause; and typed remediation so an integrity failure does not tell the owner to
+repair a scraper.
+
+**Standing rules worth keeping verbatim:** one contract per concept, generated
+rather than hand-mirrored across Python, PHP, JS, docs and tests. Comments explain
+why, tests prove behaviour, and NEVER test for a comment as evidence behaviour
+exists. Validate config, compute with pure functions, write through one effect
+layer, emit a structured summary, and derive alerts from that summary rather than
+from log-tail text. Never widen a bound to clear an incident.
+
+**Cost, measured by the reviewer from committed ledgers:** 2026-08-07 $0.2364,
+08-08 $0.1835, 08-09 $0.1504. The three-day mean projects to about $5.71 per 30
+days and 08-09 alone to about $4.51, so the target is realistic for marginal model
+spend. Do NOT economise by removing source links, evidence retention, correction
+provenance, immutable reports or integrity checks: those are the product's
+citation advantage and the reason it can be quoted.
+
+**Review limitation it declared, and which should be respected:** GitHub CLI
+credentials were invalid in that environment, so private Actions logs were not
+read. Its conclusions rest on emails, local git objects, public API reads and
+committed ledgers. Anything resting on a private log is UNVERIFIED, not wrong.
