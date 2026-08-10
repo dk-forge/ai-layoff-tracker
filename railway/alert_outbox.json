@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "attempts": 1,
+      "key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-10T18:03:34+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290eafb29de95c1',t:'MTc4NjM4NTAxMg=='",
+      "payload": {
+        "body": "The workflow 'Announcement lifecycle review candidates' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Announcement lifecycle review candidates\n  branch:   main\n  trigger:  schedule\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593\n\nWHAT FAILED:\n  curl: (22) The requested URL returned error: 409\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Announcement lifecycle review candidates' is failing on main with: curl: (22) The requested URL returned error: 409. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
+        "subject": "CI RED: Announcement lifecycle review candidates \u2014 curl: (22) The requested URL returned error: 409"
+      },
+      "raised_at": "2026-08-10T18:03:34+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593",
+      "scope": "announcement-lifecycle-review-candidates:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -105,6 +121,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-05T10:13:45+00:00",
+  "updated_at": "2026-08-10T18:03:34+00:00",
   "version": 1
 }
