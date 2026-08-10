@@ -19,6 +19,29 @@ function alt_db_table() {
     return $wpdb->prefix . 'alt_layoffs';
 }
 
+/**
+ * The UTC stamp every writer to wp_alt_layoffs puts in `updated_at`.
+ *
+ * ONE function, and one clock, on purpose. The obvious alternative is
+ * `ON UPDATE CURRENT_TIMESTAMP` in the column definition, which would catch
+ * every writer including ones nobody remembers to edit. It was rejected for
+ * two reasons: dbDelta does not model the `Extra` field, so it would re-issue
+ * an ALTER on a 63,000-row table on every single deploy; and CURRENT_TIMESTAMP
+ * follows the MySQL session time zone while the rest of this codebase writes
+ * UTC through gmdate(), so the column would hold two clocks and a window query
+ * would silently be off by the host's offset.
+ *
+ * The raw `UPDATE $table SET ...` writers use SQL `UTC_TIMESTAMP()` instead of
+ * binding this value; the two are the same instant in the same units.
+ *
+ * railway/tests/test_changed_rows_endpoint.py fails if any writer to the
+ * layoffs table lands without a stamp, which is the part that has to survive
+ * the next person adding a backfill.
+ */
+function alt_db_touch_utc() {
+    return gmdate('Y-m-d H:i:s');
+}
+
 /** Create/upgrade the table. Safe to call repeatedly (dbDelta diffs it). */
 function alt_db_install() {
     global $wpdb;
@@ -65,6 +88,14 @@ function alt_db_install() {
          * job totals, so one real event is counted once, not twice. 0 = counts
          * normally (a standalone row or the primary of a group). */
         superset_of BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        /* When this row was last written, in UTC, stamped by alt_db_touch_utc()
+         * at every writer. NULL means not observed changing since this column
+         * shipped in 2.20.4, which is the honest value for every row that
+         * already existed: back-filling them with the migration time would
+         * claim 63,000 rows changed at once, and none of them did. The
+         * /changed-rows endpoint reads this column and nothing else, so it can
+         * never answer a question about a window that predates it. */
+        updated_at DATETIME NULL DEFAULT NULL,
         PRIMARY KEY (id),
         UNIQUE KEY dedup_hash (dedup_hash),
         KEY layoff_date (layoff_date),
@@ -82,7 +113,11 @@ function alt_db_install() {
         KEY lifecycle_lookup (announced, company_key, job_count, layoff_date),
         KEY post_id (post_id),
         KEY event_id (event_id),
-        KEY superset_of (superset_of)
+        KEY superset_of (superset_of),
+        /* The /changed-rows keyset scan orders by (updated_at, id) and the
+         * PRIMARY KEY is the implicit tail of any InnoDB secondary index, so
+         * this one index serves both the range and the tiebreak. */
+        KEY updated_at (updated_at)
     ) $charset;";
     dbDelta($sql);
 
@@ -318,7 +353,7 @@ function alt_event_for_layoff($layoff_id) {
     $events = alt_events_table();
     $wpdb->query($wpdb->prepare("INSERT IGNORE INTO $events (event_key, canonical_layoff_id, created_at) VALUES (%s, %d, UTC_TIMESTAMP())", $key, $layoff_id));
     $event_id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM $events WHERE event_key = %s", $key));
-    if ($event_id) $wpdb->update(alt_db_table(), array('event_id' => $event_id), array('id' => $layoff_id));
+    if ($event_id) $wpdb->update(alt_db_table(), array('event_id' => $event_id, 'updated_at' => alt_db_touch_utc()), array('id' => $layoff_id));
     return $event_id;
 }
 
@@ -680,6 +715,9 @@ function alt_db_upsert(array $row) {
         $ovr = alt_industry_override($data['company']);
         if ($ovr !== '') $data['industry'] = $ovr;
     }
+
+    // Every write to this table stamps when it happened; see alt_db_touch_utc().
+    $data['updated_at'] = alt_db_touch_utc();
 
     // Find an existing row by dedup_hash first, then post_id.
     $existing = null;
@@ -1349,6 +1387,16 @@ function alt_register_query_routes() {
     // Press-brief subscribers. Opt-in only (a captcha'd form on the press page).
     // GET(keyed) lists them for the monthly-brief composer; POST(keyed) is unused
     // externally. Public signup flows through admin-post, not a REST write.
+    // Key-protected, read-only: which rows changed inside a window, so a
+    // headline move can be traced to the rows that caused it instead of being
+    // reported UNKNOWN as it was on 2026-08-08. Same gate as /alert,
+    // /tracker-meta and /press-subscribers; GET only; never public, because
+    // "what changed since Friday" is an operational question and this shape is
+    // not part of the published dataset contract.
+    register_rest_route('layoffs/v1', '/changed-rows', array(
+        'methods' => 'GET', 'callback' => 'alt_api_changed_rows',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     register_rest_route('layoffs/v1', '/press-subscribers', array(
         'methods' => 'GET', 'callback' => 'alt_api_press_subs_get',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
@@ -1812,6 +1860,7 @@ function alt_api_reclassify(WP_REST_Request $r) {
             'confidence' => min(100, max(0, (int) ($item['confidence'] ?? 0))),
             'review_status' => 'verified',
         );
+        $data['updated_at'] = alt_db_touch_utc();
         if ($wpdb->update($table, $data, array('id' => $id)) === false) {
             return new WP_Error('alt_db_error', 'Reclassification update failed: ' . $wpdb->last_error, array('status' => 500));
         }
@@ -1850,6 +1899,7 @@ function alt_api_enrich_context(WP_REST_Request $r) {
             $data['announcement_evidence'] = sanitize_textarea_field($announcement_evidence);
         }
         if (!$data) { $out['rejected'][] = $id; continue; }
+        $data['updated_at'] = alt_db_touch_utc();
         if ($wpdb->update($table, $data, array('id' => $id)) === false) {
             return new WP_Error('alt_db_error', 'Context enrichment failed: ' . $wpdb->last_error, array('status' => 500));
         }
@@ -1896,6 +1946,7 @@ function alt_api_enrich_roles(WP_REST_Request $r) {
         if ($real && strlen($evidence) < 12) { $out['rejected'][] = $id; continue; }
         $data = array('role_categories' => alt_db_pack_tags($real ?: array('unknown')));
         if ($real) $data['roles_evidence'] = sanitize_textarea_field($evidence);
+        $data['updated_at'] = alt_db_touch_utc();
         if ($wpdb->update($table, $data, array('id' => $id)) === false) {
             return new WP_Error('alt_db_error', 'Role enrichment failed on id ' . $id . ': ' . $wpdb->last_error, array('status' => 500));
         }
@@ -1944,7 +1995,7 @@ function alt_api_industry_backfill(WP_REST_Request $r) {
         // model-classified fills must land exactly on a canonical label.
         if ($industry === '' || !in_array($industry, $vocabulary, true)) { $out['rejected'][] = $id; continue; }
         // FAIL LOUDLY (iron rule): a silent false must not report success.
-        if ($wpdb->update($table, array('industry' => $industry), array('id' => (int) $row->id)) === false) {
+        if ($wpdb->update($table, array('industry' => $industry, 'updated_at' => alt_db_touch_utc()), array('id' => (int) $row->id)) === false) {
             return new WP_Error('alt_db_error', 'Industry backfill failed on id ' . $id . ': ' . $wpdb->last_error,
                 array('status' => 500, 'filled_so_far' => $out['filled']));
         }
@@ -3447,6 +3498,209 @@ function alt_api_announcement_lifecycle_candidates(WP_REST_Request $r) {
     ));
 }
 
+/* ------------------------------------------------------------------ */
+/* REST: /changed-rows — which rows moved, and when                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Parse an ISO-8601 UTC instant into the `Y-m-d H:i:s` UTC form the column
+ * holds. Accepts `2026-08-07T18:23:51Z`, `2026-08-07 18:23:51`, an explicit
+ * numeric offset, and a bare `2026-08-07` (midnight UTC). Returns '' on
+ * anything else — a caller who mistypes a bound gets a 400, never a silently
+ * different window than the one they asked for.
+ */
+function alt_changed_rows_parse_instant($raw) {
+    $raw = trim((string) $raw);
+    if ($raw === '') return '';
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/', $raw)) {
+        return '';
+    }
+    // A bare date, or a date-time with no zone, is read as UTC. Everything in
+    // this codebase writes UTC, so guessing the site timezone here would be
+    // the only place a local clock leaked into a forensic window.
+    if (!preg_match('/(Z|[+-]\d{2}:?\d{2})$/', $raw)) $raw .= 'Z';
+    try {
+        $dt = new DateTimeImmutable($raw);
+    } catch (Exception $e) {
+        return '';
+    }
+    return $dt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+}
+
+/**
+ * Read-only enumeration of rows whose `updated_at` falls in a window.
+ *
+ * WHY THIS EXISTS. On 2026-08-08 the published "United States jobs, all time"
+ * headline rose 92,686 while the worldwide headline, of which US is a strict
+ * subset, rose 13,264. 79,422 jobs entered the published US figure without
+ * entering the corpus, which no real event can do. The forensic investigation
+ * (docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md) could not name a single row,
+ * because nothing in the schema recorded when a row last changed and no
+ * endpoint could have exposed it if it had. It returned UNKNOWN, correctly.
+ * This endpoint is so that the NEXT one does not have to.
+ *
+ * WHAT IT CANNOT DO, stated in the response rather than left for a reader to
+ * discover:
+ *
+ * - It cannot answer about any window before the column shipped. Existing rows
+ *   carry NULL and were deliberately not back-filled. `window_is_instrumented`
+ *   is false for such a window and `rows` is empty, and those two facts
+ *   together mean UNKNOWN, not "nothing changed". Conflating them would make
+ *   this endpoint worse than no endpoint.
+ * - It cannot see DELETIONS. /trash and /bulk-purge remove rows outright, and a
+ *   removed row has no `updated_at` to report. A headline that moves because
+ *   mass left the corpus is invisible here. Naming that would need a tombstone
+ *   table, which this change deliberately does not add.
+ * - It reports what a row looks like NOW, not what it looked like before. There
+ *   is no prior-value history, so it narrows a mutation to a row and a moment;
+ *   it does not replay the edit.
+ *
+ * Keyed like every other operational endpoint (alt_api_permission: the
+ * X-Layoff-API-Key header, 503 with no key configured, 403 on a wrong one), GET
+ * only, no-store.
+ */
+function alt_api_changed_rows(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+
+    $since = alt_changed_rows_parse_instant($r->get_param('since'));
+    if ($since === '') {
+        return new WP_Error('alt_bad_since',
+            'since is required and must be an ISO-8601 UTC instant, e.g. 2026-08-07T18:23:51Z.',
+            array('status' => 400));
+    }
+    $until_raw = $r->get_param('until');
+    $until = ($until_raw === null || trim((string) $until_raw) === '')
+        ? gmdate('Y-m-d H:i:s')
+        : alt_changed_rows_parse_instant($until_raw);
+    if ($until === '') {
+        return new WP_Error('alt_bad_until',
+            'until must be an ISO-8601 UTC instant, e.g. 2026-08-08T17:58:25Z.',
+            array('status' => 400));
+    }
+    if ($until < $since) {
+        return new WP_Error('alt_bad_window', 'until is earlier than since.', array('status' => 400));
+    }
+
+    // Default small enough to read, ceiling low enough that one call cannot
+    // pull the whole table into memory. Pagination is the supported way to
+    // walk a large window, not a bigger limit.
+    $limit = (int) $r->get_param('limit');
+    if ($limit <= 0) $limit = 200;
+    $limit = min(1000, $limit);
+
+    // Keyset cursor over the same (updated_at, id) order the index provides.
+    // Offset paging would skip or repeat rows while an import writes, which on
+    // this endpoint means silently losing the row someone is hunting.
+    $cur_ts = ''; $cur_id = 0;
+    $cursor = trim((string) $r->get_param('cursor'));
+    if ($cursor !== '') {
+        $decoded = base64_decode(strtr($cursor, '-_', '+/'), true);
+        $parts = ($decoded === false) ? array() : explode('|', $decoded);
+        if (count($parts) !== 2 || alt_changed_rows_parse_instant($parts[0]) === '' || !ctype_digit($parts[1])) {
+            return new WP_Error('alt_bad_cursor',
+                'cursor is not one this endpoint issued; omit it to restart the window.',
+                array('status' => 400));
+        }
+        $cur_ts = alt_changed_rows_parse_instant($parts[0]);
+        $cur_id = (int) $parts[1];
+    }
+
+    // How far back the column can speak for. MIN() over an indexed column that
+    // is NULL for most rows is a cheap index scan.
+    $first_stamp = $wpdb->get_var("SELECT MIN(updated_at) FROM $table WHERE updated_at IS NOT NULL");
+    $never_stamped = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE updated_at IS NULL");
+    $instrumented = ($first_stamp !== null && $first_stamp !== '' && $since >= $first_stamp);
+
+    $where = "updated_at IS NOT NULL AND updated_at >= %s AND updated_at <= %s";
+    $params = array($since, $until);
+    $total = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table WHERE $where", $params));
+
+    $page_where = $where;
+    $page_params = $params;
+    if ($cur_ts !== '') {
+        $page_where .= " AND (updated_at > %s OR (updated_at = %s AND id > %d))";
+        $page_params[] = $cur_ts; $page_params[] = $cur_ts; $page_params[] = $cur_id;
+    }
+    $page_params[] = $limit + 1;   // one extra row is how we know there is a next page
+    $sql = "SELECT id, company, job_count, job_count_max, layoff_date, announcement_date,
+                   country, employer_country, state, source_type, source_name, source_url,
+                   superset_of, updated_at
+            FROM $table
+            WHERE $page_where
+            ORDER BY updated_at ASC, id ASC
+            LIMIT %d";
+    $raw = $wpdb->get_results($wpdb->prepare($sql, $page_params), ARRAY_A) ?: array();
+
+    $next_cursor = null;
+    if (count($raw) > $limit) {
+        $raw = array_slice($raw, 0, $limit);
+        $last = end($raw);
+        $next_cursor = rtrim(strtr(base64_encode(
+            str_replace(' ', 'T', $last['updated_at']) . 'Z|' . $last['id']), '+/', '-_'), '=');
+    }
+
+    $rows = array();
+    foreach ($raw as $row) {
+        $counts = ((int) $row['superset_of'] === 0);
+        $job_country = (string) $row['country'];
+        $emp_country = (string) $row['employer_country'];
+        $rows[] = array(
+            'id'                => (int) $row['id'],
+            'company'           => (string) $row['company'],
+            'job_count'         => (int) $row['job_count'],
+            'job_count_max'     => (int) $row['job_count_max'],
+            'layoff_date'       => $row['layoff_date'],
+            'announcement_date' => $row['announcement_date'],
+            'country'           => $job_country,
+            'employer_country'  => $emp_country,
+            'state'             => (string) $row['state'],
+            'source_type'       => (string) $row['source_type'],
+            'source_name'       => (string) $row['source_name'],
+            'source_url'        => (string) $row['source_url'],
+            'superset_of'       => (int) $row['superset_of'],
+            'updated_at'        => str_replace(' ', 'T', (string) $row['updated_at']) . 'Z',
+            // The three memberships that decide whether this row is inside a
+            // headline, computed the same way the headline computes them:
+            // /aggregate appends `AND superset_of = 0`, the strict US slice is
+            // job-location country, and the published US slice is the
+            // country_basis=any union of job location OR employer domicile.
+            'counted_in_totals'            => $counts,
+            'in_us_job_location'           => ($job_country === 'United States'),
+            'in_us_employer_domicile'      => ($emp_country === 'United States'),
+            'in_us_published_slice_any'    => ($job_country === 'United States' || $emp_country === 'United States'),
+            'in_us_union_only'             => ($job_country !== 'United States' && $emp_country === 'United States'),
+        );
+    }
+
+    $resp = rest_ensure_response(array(
+        'window' => array(
+            'since' => str_replace(' ', 'T', $since) . 'Z',
+            'until' => str_replace(' ', 'T', $until) . 'Z',
+        ),
+        'instrumentation' => array(
+            'column_shipped_in' => '2.20.4',
+            'earliest_stamp' => ($first_stamp === null || $first_stamp === '')
+                ? null : str_replace(' ', 'T', $first_stamp) . 'Z',
+            'rows_never_stamped' => $never_stamped,
+            'window_is_instrumented' => $instrumented,
+            'verdict_when_empty' => $instrumented
+                ? 'The window is inside the instrumented period, so an empty result means no row changed.'
+                : 'The window starts before the earliest stamp this column holds, so an empty result is UNKNOWN, not a finding. No row-level answer exists for it and none can be reconstructed.',
+            'deletions_not_covered' => 'A row removed by /trash or /bulk-purge leaves no updated_at and cannot appear here. A headline that moved because rows LEFT the corpus is not answerable from this endpoint.',
+            'prior_values_not_retained' => 'Fields are the row as it stands now. This narrows a change to a row and an instant; it does not replay what the value was before.',
+        ),
+        'total_in_window' => $total,
+        'count_returned' => count($rows),
+        'limit' => $limit,
+        'next_cursor' => $next_cursor,
+        'rows' => $rows,
+        'generated_at' => gmdate('c'),
+    ));
+    $resp->header('Cache-Control', 'no-store, max-age=0');
+    return $resp;
+}
+
 /** Public retained reconciliation history; never a command to alter totals. */
 function alt_api_companies(WP_REST_Request $r) {
     global $wpdb;
@@ -3809,6 +4063,7 @@ function alt_api_edit(WP_REST_Request $r) {
             $data['dedup_hash'] = md5('edited:' . $row['dedup_hash']);
         }
         $data['edited'] = 1;
+        $data['updated_at'] = alt_db_touch_utc();
         if (isset($data['company'])) {
             $data['company_key'] = substr(function_exists('alt_company_key') ? alt_company_key($data['company']) : '', 0, 255);
         }
@@ -4215,9 +4470,9 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
         );
     }
     if (!$dry_run) {
-        $wpdb->query("UPDATE $table SET superset_of = 0 WHERE superset_of <> 0");  // clean slate, then re-mark
+        $wpdb->query("UPDATE $table SET superset_of = 0, updated_at = UTC_TIMESTAMP() WHERE superset_of <> 0");  // clean slate, then re-mark
         foreach ($mark as $id => $primary) {
-            $wpdb->update($table, array('superset_of' => (int) $primary), array('id' => (int) $id));
+            $wpdb->update($table, array('superset_of' => (int) $primary, 'updated_at' => alt_db_touch_utc()), array('id' => (int) $id));
         }
         if (function_exists('alt_flush_caches')) alt_flush_caches();
     }
@@ -4405,7 +4660,7 @@ function alt_api_cleanup(WP_REST_Request $r) {
             $new = call_user_func($fn, $old);
             if ($new !== $old) {
                 $changed[$col] += (int) $wpdb->query($wpdb->prepare(
-                    "UPDATE $table SET $col = %s WHERE $col = %s", $new, $old));
+                    "UPDATE $table SET $col = %s, updated_at = UTC_TIMESTAMP() WHERE $col = %s", $new, $old));
             }
         }
     }
@@ -4419,7 +4674,7 @@ function alt_api_cleanup(WP_REST_Request $r) {
             $ovr = alt_industry_override($co);
             if ($ovr !== '') {
                 $changed['industry_overrides'] += (int) $wpdb->query($wpdb->prepare(
-                    "UPDATE $table SET industry = %s WHERE company = %s AND industry <> %s AND edited = 0",
+                    "UPDATE $table SET industry = %s, updated_at = UTC_TIMESTAMP() WHERE company = %s AND industry <> %s AND edited = 0",
                     $ovr, $co, $ovr));
             }
         }
@@ -4436,7 +4691,7 @@ function alt_api_cleanup(WP_REST_Request $r) {
             $packed = alt_db_pack_tags(alt_normalize_roles($roles_text));
             if ($packed !== '') {
                 $changed['role_categories'] += (int) $wpdb->query($wpdb->prepare(
-                    "UPDATE $table SET role_categories = %s WHERE roles = %s AND role_categories = ''",
+                    "UPDATE $table SET role_categories = %s, updated_at = UTC_TIMESTAMP() WHERE roles = %s AND role_categories = ''",
                     $packed, $roles_text));
             }
         }
@@ -4447,7 +4702,7 @@ function alt_api_cleanup(WP_REST_Request $r) {
     // entry stays listed, just undated). WARN effective dates run at most
     // about a year out, so allow 18 months of headroom.
     $changed['dates'] = (int) $wpdb->query(
-        "UPDATE $table SET layoff_date = NULL
+        "UPDATE $table SET layoff_date = NULL, updated_at = UTC_TIMESTAMP()
          WHERE layoff_date > DATE_ADD(CURDATE(), INTERVAL 18 MONTH)
             OR layoff_date < '2015-01-01'");
 
