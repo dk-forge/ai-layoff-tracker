@@ -1,70 +1,6 @@
 {
   "entries": [
     {
-      "attempts": 1,
-      "key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
-      "kind": "alert",
-      "last_attempt_at": "2026-08-10T18:03:34+00:00",
-      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290eafb29de95c1',t:'MTc4NjM4NTAxMg=='",
-      "payload": {
-        "body": "The workflow 'Announcement lifecycle review candidates' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Announcement lifecycle review candidates\n  branch:   main\n  trigger:  schedule\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593\n\nWHAT FAILED:\n  curl: (22) The requested URL returned error: 409\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Announcement lifecycle review candidates' is failing on main with: curl: (22) The requested URL returned error: 409. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
-        "dedupe_key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
-        "subject": "CI RED: Announcement lifecycle review candidates \u2014 curl: (22) The requested URL returned error: 409"
-      },
-      "raised_at": "2026-08-10T18:03:34+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593",
-      "scope": "announcement-lifecycle-review-candidates:main",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "resolve:card-contract:forensics-us-headline-step-2026-",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-10T18:15:16+00:00",
-      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fc2179dd24e5',t:'MTc4NjM4NTcxNQ=='",
-      "payload": {
-        "body": "'Card contract' on forensics/us-headline-step-2026-08 passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105067\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "card-contract:forensics-us-headline-step-2026-",
-        "subject": "RECOVERED: Card contract is green again"
-      },
-      "raised_at": "2026-08-10T18:15:16+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105067",
-      "scope": "card-contract:forensics-us-headline-step-2026-",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "resolve:style-standard:forensics-us-headline-step-2026-",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-10T18:15:33+00:00",
-      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fc8a0a1fb103',t:'MTc4NjM4NTczMg=='",
-      "payload": {
-        "body": "'Style standard' on forensics/us-headline-step-2026-08 passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105075\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "style-standard:forensics-us-headline-step-2026-",
-        "subject": "RECOVERED: Style standard is green again"
-      },
-      "raised_at": "2026-08-10T18:15:33+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105075",
-      "scope": "style-standard:forensics-us-headline-step-2026-",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "tests:forensics-us-headline-step-2026-:c5a20f27fba9969c",
-      "kind": "alert",
-      "last_attempt_at": "2026-08-10T18:16:08+00:00",
-      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fd66df95e5c9',t:'MTc4NjM4NTc2Nw=='",
-      "payload": {
-        "body": "The workflow 'Tests' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Tests\n  branch:   forensics/us-headline-step-2026-08\n  trigger:  pull_request\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105050\n\nWHAT FAILED:\n  AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 409 \u2014 server regression, not a blip\n\nContext from the failed step:\n  FAIL: test_no_single_row_carries_a_headline (test_dedup_live.DedupLiveRegression.test_no_single_row_carries_a_headline)\n  FAIL: test_spirit_counts_once (test_dedup_live.DedupLiveRegression.test_spirit_counts_once)\n  FAIL: test_tyson_amarillo_not_doubled (test_dedup_live.DedupLiveRegression.test_tyson_amarillo_not_doubled)\n  AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 409; AI-attributed jobs, all time: live API returned HTTP 409; Worldwide jobs, all time: live API returned HTTP 409; United States jobs, all time: live API returned HTTP 409 \u2014 server regression, not a blip\n  AssertionError: Spirit Airlines counts once (news vs WARN): live API returned HTTP 409 \u2014 server regression, not a blip\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Tests' is failing on forensics/us-headline-step-2026-08 with: AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 409 \u2014 server regression, not a blip. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105050. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
-        "dedupe_key": "tests:forensics-us-headline-step-2026-:c5a20f27fba9969c",
-        "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 409 \u2014 server regression, not a blip"
-      },
-      "raised_at": "2026-08-10T18:16:08+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105050",
-      "scope": "tests:forensics-us-headline-step-2026-",
-      "state": "pending"
-    },
-    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -167,8 +103,60 @@
       "settled_at": "2026-08-05T10:13:45+00:00",
       "settled_because": "delivered late: not emailed: nothing was open for this scope",
       "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-10T18:03:34+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290eafb29de95c1',t:'MTc4NjM4NTAxMg=='",
+      "raised_at": "2026-08-10T18:03:34+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31417112593",
+      "scope": "announcement-lifecycle-review-candidates:main",
+      "settled_at": "2026-08-10T18:28:54+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:card-contract:forensics-us-headline-step-2026-",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-10T18:15:16+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fc2179dd24e5',t:'MTc4NjM4NTcxNQ=='",
+      "raised_at": "2026-08-10T18:15:16+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105067",
+      "scope": "card-contract:forensics-us-headline-step-2026-",
+      "settled_at": "2026-08-10T18:28:55+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:style-standard:forensics-us-headline-step-2026-",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-10T18:15:33+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fc8a0a1fb103',t:'MTc4NjM4NTczMg=='",
+      "raised_at": "2026-08-10T18:15:33+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105075",
+      "scope": "style-standard:forensics-us-headline-step-2026-",
+      "settled_at": "2026-08-10T18:28:58+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "tests:forensics-us-headline-step-2026-:c5a20f27fba9969c",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-10T18:16:08+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fd66df95e5c9',t:'MTc4NjM4NTc2Nw=='",
+      "raised_at": "2026-08-10T18:16:08+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105050",
+      "scope": "tests:forensics-us-headline-step-2026-",
+      "settled_at": "2026-08-10T18:28:59+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-10T18:16:08+00:00",
+  "updated_at": "2026-08-10T18:28:59+00:00",
   "version": 1
 }
