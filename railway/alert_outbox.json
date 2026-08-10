@@ -33,6 +33,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "resolve:style-standard:forensics-us-headline-step-2026-",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-10T18:15:33+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fc8a0a1fb103',t:'MTc4NjM4NTczMg=='",
+      "payload": {
+        "body": "'Style standard' on forensics/us-headline-step-2026-08 passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105075\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "style-standard:forensics-us-headline-step-2026-",
+        "subject": "RECOVERED: Style standard is green again"
+      },
+      "raised_at": "2026-08-10T18:15:33+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105075",
+      "scope": "style-standard:forensics-us-headline-step-2026-",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -137,6 +153,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-10T18:15:16+00:00",
+  "updated_at": "2026-08-10T18:15:33+00:00",
   "version": 1
 }
