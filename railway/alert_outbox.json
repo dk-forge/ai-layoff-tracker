@@ -17,6 +17,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "resolve:card-contract:forensics-us-headline-step-2026-",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-10T18:15:16+00:00",
+      "last_error": "HTTP 409 from /alert: <script>document.cookie = \"humans_21909=1\"; document.location.reload(true)</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a290fc2179dd24e5',t:'MTc4NjM4NTcxNQ=='",
+      "payload": {
+        "body": "'Card contract' on forensics/us-headline-step-2026-08 passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105067\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "card-contract:forensics-us-headline-step-2026-",
+        "subject": "RECOVERED: Card contract is green again"
+      },
+      "raised_at": "2026-08-10T18:15:16+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31418105067",
+      "scope": "card-contract:forensics-us-headline-step-2026-",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -121,6 +137,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-10T18:03:34+00:00",
+  "updated_at": "2026-08-10T18:15:16+00:00",
   "version": 1
 }
