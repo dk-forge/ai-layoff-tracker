@@ -1,5 +1,30 @@
 # Tech Log
 
+## 2026-08-10 - the CI-noise reporter's own tests were a time bomb
+
+Three tests in `test_ci_noise_report.MainTests` went red on 2026-08-10 with no
+code change on either side, and would have reddened `Tests` on every push from
+then on. They had passed for seven days.
+
+The fixtures are stamped relative to a fixed `NOW = 2026-08-03 12:20Z`, which is
+the hour the file was last touched. `ClassifyTests` and `ComposeTests` inject
+that instant explicitly through `SINCE` / `now=`. `MainTests` calls `cnr.main()`,
+which derives its window from the wall clock (`ci_noise_report.py:212`). On day
+eight every fixture run was older than the 7-day window, `classify` returned zero
+runs, and `main()` took the quiet-week early return: nothing posted, no subject
+printed, exit 0. The three assertions about what it posts then failed.
+
+Stale, not a real defect: reading the real clock is correct for a weekly reporter
+over `gh run list`, and nothing in shipped code misbehaves. The classification
+and key-shape guards, including the `%G-W%V` uppercase-week suite, kept passing
+throughout, so nothing real was being masked.
+
+Fixed by patching `cnr._now` alongside the other seams `MainTests` already
+installs, so `main()` sees the same instant the fixtures encode. No assertion,
+threshold or tolerance was touched. Re-dating `NOW` to today was rejected: it
+sets the same bomb for a week later, and `NOW = datetime.now()` would put wall
+clock back into the 366-day sweep in `KeyShapeTests` rather than take it out.
+
 ## 2026-08-10 - the theme switcher was the first thing to disappear in dark
 
 The owner reported that the Light / Dark / Auto control is hard to see once the
