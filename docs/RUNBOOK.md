@@ -172,6 +172,38 @@ count **once**.
 6. **If it says UNKNOWN, not FAILING**, nothing was verified — that is not a
    pass. Re-run somewhere with network access to `asktherecruiter.com`.
 
+**Closing a headline incident (the only way a movement FAIL ends)**
+
+A FAILING `headline_movement` slice opens a sticky incident in
+`railway/headline_incidents.json`, and from then on that slice reports FAIL
+because the incident is open — not because today's arithmetic still says so.
+That is deliberate. Every input the movement formula uses drifts in the
+forgiving direction while an incident sits: `floor = move_floor * span` grows
+with the elapsed span, `allowance = |Δentries| * base_mean * mean_factor` grows
+with every later arrival however unrelated, and a baseline pinned past
+`MAX_BASELINE_AGE_DAYS` used to age into a recordable UNKNOWN. Together those
+gave the open US incident a scheduled self-erase on **2026-08-22** with no human
+in the loop. Now: time does not close an incident, later rows do not close an
+incident, a stale baseline does not close an incident, and neither does deleting
+the ledger (an unreadable ledger is UNKNOWN-and-suppressed, never a pass).
+
+See what is open: `python3 railway/data_integrity.py --incidents`.
+
+Close it only once you can name the cause and the rows:
+
+```bash
+python3 railway/data_integrity.py --close-incident us_all_time --reviewed-by "<who>" --reason "<what you found, at least 40 characters of finding>" --rows "4411,4412" --replacement-jobs 6975000 --replacement-entries 43359
+```
+
+All five are required and the command writes nothing if any is missing. The row
+IDs are the real bar: if you cannot name the rows the move was made of, the
+cause has not been found and the incident is not resolved. The replacement
+baseline is the figure **you assert is correct**, typed out — adopting whatever
+the live API answers at closing time is the same laundering with a person
+standing next to it. On success, commit BOTH `railway/headline_incidents.json`
+and `railway/headline_baseline.json`; the guard is armed against your figure
+from the next run.
+
 **`recall_floor` is the one invariant that works the other way round.** Every
 other check asks whether a published number is WRONG; this one asks whether a
 number is MISSING, and it is the only one that reads a committed file rather

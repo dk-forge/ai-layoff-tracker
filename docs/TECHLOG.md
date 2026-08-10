@@ -1,5 +1,69 @@
 # Tech Log
 
+## 2026-08-10 - the open incident had a date on which it would erase itself
+
+Two guards, each correct on its own, had agreed on a laundering schedule nobody
+chose. `record_baseline` refuses to advance a FAILING slice, so the US
+headline's baseline was pinned at `2026-08-07T18:23:51Z` while the other two
+slices advanced daily — correct, and the reason the incident stayed open. A
+baseline older than `MAX_BASELINE_AGE_DAYS = 14` reports UNKNOWN with `pending`
+set and `suppressed` deliberately NOT set, because refusing to record the
+stale-baseline UNKNOWNs would freeze the guard permanently unarmed — also
+correct. And `record_baseline` skipped exactly two things: FAIL and
+`suppressed`. So on the fifteenth day the pinned baseline aged out, the slice
+stopped saying FAIL, the recorder wrote the FAILING figure, and the next day was
+green against it. The recorder runs ~18:00Z; the 2026-08-21 run was still inside
+fourteen days. **The 2026-08-22 run was the one that would have done it.**
+
+Two other clocks were widening in the same direction, so waiting was never
+neutral either. `floor = move_floor * span` grows with the elapsed span: the
+live +93,210 US move clears a 20,000/day floor at span 5.0d. `allowance =
+|Δentries| * base_mean * mean_factor` grows with every later arrival: at
+base_mean 160.787 and mean_factor 12 it swallows +93,210 once 49 net new entries
+have landed, rows with nothing to do with the defect. Any design that re-derives
+the verdict from today's numbers loses this incident eventually; the only
+question was which formula got there first.
+
+Replayed on the pre-fix module rather than reasoned about: day one FAILs and
+holds the baseline at 6,968,670; the same scenario at day 20 returns UNKNOWN and
+writes 7,073,880 as the new normal.
+
+**The fix is a sticky incident record**, `railway/headline_incidents.json`,
+committed for the same reason the baseline is and a stronger one — an incident
+that lives in a runner is gone by tomorrow, which is the thing being prevented.
+A rendered FAIL opens an incident; from then on the slice's verdict is FAIL
+*because the incident is open*, not because the arithmetic was run again. Time
+does not close it, later rows do not close it, a stale baseline does not close
+it, an unreachable API does not close it. `close_incident` does, and it demands
+what a real resolution produces: a reviewer, a reason of at least 40 characters,
+**the affected row IDs**, and an explicit replacement baseline — the figure the
+reviewer asserts, typed out, because adopting whatever the live API answers at
+closing time is the same laundering with a person standing next to it. Missing
+any one of them writes nothing.
+
+Second lock, because the first one broke: `record_baseline` refuses to advance
+any slice with an open incident whatever state it reports. The guard that opened
+the door was the one that had been reasoned about least, so anything that stops
+rendering the sticky FAIL still cannot get a number past the recorder. And an
+unreadable ledger is UNKNOWN-**and**-suppressed for every slice, never "no
+incidents open" — otherwise `rm headline_incidents.json` would be a working way
+to clear a FAIL.
+
+**No bound was weakened to reach this.** `move_floor`, `mean_factor`,
+`max_share` and `MAX_BASELINE_AGE_DAYS` are untouched, and the stale-baseline
+UNKNOWN still records for every slice with no incident open, so the guard still
+cannot freeze unarmed. All that was removed is the path from "unexplained move"
+to "normal" that had no human on it. The live us_all_time incident ships in the
+ledger, open, with the reading it was opened on. Seven new tests; the headline
+one is `StickyIncidents.test_time_and_later_rows_cannot_close_an_open_incident`
+(day one FAILs, day 20 has all three escapes open at once, verdict must stay
+FAIL and the baseline must not move).
+
+Two existing degradation tests in `test_dedup_live` had to be pointed at an
+empty ledger. They assert "a dead network can never produce a pass", and a
+sticky FAIL is deliberately independent of the network, so a real standing
+incident was answering a question they were not asking.
+
 ## 2026-08-10 - the CI-noise reporter's own tests were a time bomb
 
 Three tests in `test_ci_noise_report.MainTests` went red on 2026-08-10 with no
