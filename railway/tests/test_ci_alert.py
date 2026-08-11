@@ -122,6 +122,193 @@ class DedupeByCause(unittest.TestCase):
                         f"{key!r} would never be cleared by resolve_scope {scope!r}")
 
 
+# ---------------------------------------------------------------------------
+# The six emails of 2026-08-10/11, and the real strings that caused them.
+# ---------------------------------------------------------------------------
+#
+# Copied verbatim out of `gh run view <id> --log-failed` for the seven red runs
+# below, which between them mailed the owner six times about ONE open incident.
+# Invented strings would have proved nothing here: the whole defect lives in
+# details of the real shape (the branch each run happened to be on, and a
+# sentence that outgrew the extractor's 400-character cut), and every one of
+# those details is easy to omit when you write the fixture yourself.
+#
+# The run id is kept beside each string so a later session can re-fetch it.
+
+_US_INCIDENT_TAIL = (
+    " (6,968,670 -> 7,061,{jobs_tail}). The rows that changed carry at most "
+    "{largest} and the largest single row is 60,000, so NO ROW EXPLAINS THIS. "
+    "Something re-scored rows that were already published: check the last "
+    "reconcile-supersets run, any /bulk-purge, and the corrections log")
+
+# run 31421971041 (main), 31421827146 (main), 31421748713 (docs/handoff-external-review)
+REAL_US_93210 = (
+    "AssertionError: No headline moves without rows to explain it: United States "
+    "jobs, all time: +93,210 jobs over 3.0d on +18 entries"
+    + _US_INCIDENT_TAIL.format(jobs_tail="880", largest="34,730"))
+
+# run 31450792070 (main), 31450680641 (feat/filed-basis-default),
+# 31448285345 (feat/changed-rows-endpoint) — a day later, every figure moved
+REAL_US_93290 = (
+    "AssertionError: No headline moves without rows to explain it: United States "
+    "jobs, all time: +93,290 jobs over 3.3d on +19 entries"
+    + _US_INCIDENT_TAIL.format(jobs_tail="960", largest="36,659"))
+
+# run 31425792582 (claude/sticky-headline-incidents) — the sticky ledger's
+# "opened Nd ago (<timestamp>)" prefix and its closing instructions take this to
+# 741 characters, where the old 400-character cut fell in a different place.
+REAL_US_STICKY = (
+    "AssertionError: No headline moves without rows to explain it: United States "
+    "jobs, all time: OPEN INCIDENT, opened 0d ago (2026-08-10T19:36:59Z): "
+    "+93,210 jobs over 3.0d on +18 entries"
+    + _US_INCIDENT_TAIL.format(jobs_tail="880", largest="34,730")
+    + " | today's reading: unchanged | This stays FAIL until a human closes it: "
+      "`python3 data_integrity.py --close-incident us_all_time --reviewed-by "
+      "<who> --reason <what you found> --rows <ids> --replacement-jobs <n> "
+      "--replacement-entries <n>`. Time, later rows and a stale baseline do not "
+      "close it")
+
+#: (cause, branch) exactly as each of the seven runs presented it.
+REAL_SIX_EMAILS = (
+    (REAL_US_93210, "docs/handoff-external-review"),
+    (REAL_US_93210, "main"),
+    (REAL_US_93210, "main"),
+    (REAL_US_STICKY, "claude/sticky-headline-incidents"),
+    (REAL_US_93290, "feat/changed-rows-endpoint"),
+    (REAL_US_93290, "feat/filed-basis-default"),
+    (REAL_US_93290, "main"),
+)
+
+
+def _key(cause, workflow="Tests", branch="main"):
+    return ci_alert.build_alert(
+        repo="dk-forge/ai-layoff-tracker", workflow=workflow, branch=branch,
+        event="push", run_url="", run_id=1, cause=cause, context=[])[2]
+
+
+class OneLiveIncidentIsOneAlarm(unittest.TestCase):
+    """A live-data invariant reads the SITE, not the checkout. Every branch that
+    runs the suite is looking at the same one wrong number, so the branch that
+    happened to notice must not mint a second alarm."""
+
+    def test_the_seven_real_runs_collapse_to_one_key(self):
+        keys = {_key(cause, branch=branch) for cause, branch in REAL_SIX_EMAILS}
+        self.assertEqual(
+            len(keys), 1,
+            "one open incident mailed the owner six times in seven hours; these "
+            f"are the real strings and they still produce {len(keys)} keys: {sorted(keys)}")
+
+    def test_the_key_carries_no_branch(self):
+        """The actual root cause. `scope = workflow:branch` gave the SAME
+        incident five keys across five branches while `normalise` was doing its
+        job perfectly — the six real messages are byte-identical after it."""
+        self.assertEqual(ci_alert.normalise(REAL_US_93210),
+                         ci_alert.normalise(REAL_US_93290),
+                         "the numbers were never the problem")
+        for _cause, branch in REAL_SIX_EMAILS:
+            self.assertNotIn(ci_alert._slug(branch, 32),
+                             _key(REAL_US_93210, branch=branch).split(":")[1],
+                             f"branch {branch!r} is still in the scope")
+
+    def test_it_survives_the_sentence_growing_past_the_display_cut(self):
+        """741 characters vs 396. The sticky-incident prefix moved the old
+        400-char truncation point, so the tail differed and so did the hash."""
+        self.assertGreater(len(REAL_US_STICKY), 400)
+        self.assertEqual(_key(REAL_US_STICKY), _key(REAL_US_93210))
+
+    # --- guard the guard: what must still be a SEPARATE email ---------------
+
+    def test_a_different_slice_of_the_same_invariant_is_a_different_alarm(self):
+        worldwide = REAL_US_93210.replace("United States jobs, all time",
+                                          "Worldwide jobs, all time")
+        self.assertNotEqual(_key(worldwide), _key(REAL_US_93210),
+                            "a second headline going wrong is new information")
+
+    def test_a_different_invariant_on_the_same_slice_is_a_different_alarm(self):
+        other = REAL_US_93210.replace(
+            "No headline moves without rows to explain it",
+            "No single row carries a headline")
+        self.assertNotEqual(_key(other), _key(REAL_US_93210))
+
+    def test_a_second_slice_joining_the_first_is_a_different_alarm(self):
+        """_roll_up joins every slice at the worst state with '; '. Two failing
+        headlines must not hide behind the one that failed first."""
+        both = (REAL_US_93210 + "; Worldwide jobs, all time: +200,000 jobs over "
+                "1.0d on +2 entries")
+        self.assertNotEqual(_key(both), _key(REAL_US_93210))
+
+    def test_an_ordinary_code_failure_keeps_its_branch(self):
+        """The narrowness that stops this becoming a catch-all. A test that
+        fails only on one branch is that branch's defect, and folding it into
+        main's alarm would hide it."""
+        spirit = ("AssertionError: False is not true : Spirit US-2026=11069: "
+                  "news-vs-WARN dedup regressed")
+        self.assertNotEqual(_key(spirit, branch="main"),
+                            _key(spirit, branch="feat/whatever"))
+
+    def test_a_local_invariant_keeps_its_branch_too(self):
+        """`reads_live_data = False` means the checkout decides it, so the
+        branch is load-bearing. 'Gold-set recall has not fallen' is one."""
+        recall = ("AssertionError: Gold-set recall has not fallen: 27/30 on the "
+                  "SEC gold set, floor is 29")
+        self.assertNotEqual(_key(recall, branch="main"),
+                            _key(recall, branch="feat/whatever"))
+
+    # --- the plumbing the key depends on ------------------------------------
+
+    def test_the_key_is_one_the_endpoint_will_accept(self):
+        key = _key(REAL_US_93210)
+        self.assertRegex(key, ci_alert.KEY_SAFE)
+
+    def test_a_green_run_clears_the_branch_free_scope_too(self):
+        """The coupling: /alert clears by key PREFIX. If the resolve posted on a
+        green run does not cover the scope the alarm was raised under, the alarm
+        is permanent and the RECOVERED email never comes."""
+        key = _key(REAL_US_93210, workflow="Tests")
+        scope = ci_alert.live_data_scope("Tests")
+        self.assertTrue(key.startswith(scope + ":"),
+                        f"{key!r} would never be cleared by resolve_scope {scope!r}")
+        printed = io.StringIO()
+        with redirect_stdout(printed):
+            ci_alert.main(["--run-id", "1", "--workflow", "Tests",
+                           "--conclusion", "success", "--branch", "main",
+                           "--dry-run"])
+        self.assertIn(scope, printed.getvalue())
+
+    def test_the_vocabulary_comes_from_data_integrity_not_a_copy(self):
+        """A hand-copied label list goes stale in silence, and a stale one here
+        means a renamed invariant quietly returns to mailing once per branch."""
+        import data_integrity
+        invariants, slices = ci_alert._live_data_vocabulary()
+        self.assertIn("No headline moves without rows to explain it", invariants)
+        self.assertIn("United States jobs, all time", slices)
+        live = {i.label for i in data_integrity.INVARIANTS
+                if getattr(i, "reads_live_data", False)}
+        self.assertEqual(set(invariants), live)
+
+    def test_the_alerter_reads_the_whole_sentence_but_prints_the_same_400(self):
+        """Widening the DEFAULT would have reformatted two other surfaces —
+        ops_status [4] and the weekly noise email both print this string raw —
+        to fix a third. So the default is untouched and only the alerter asks
+        for more."""
+        log = _log(REAL_US_STICKY, "##[error]Process completed with exit code 1.")
+        self.assertEqual(len(ci_alert.extract_cause(log)[0]), 400)
+        wide, _ = ci_alert.extract_cause(log, limit=ci_alert.ALERT_CAUSE_LIMIT)
+        self.assertEqual(wide, REAL_US_STICKY)
+        self.assertEqual(_key(wide), _key(REAL_US_93210))
+        # The email body is byte-for-byte what it was: still the first 400.
+        _subject, body, _key_ = ci_alert.build_alert(
+            repo="r", workflow="Tests", branch="main", event="push",
+            run_url="", run_id=1, cause=wide, context=[])
+        self.assertIn(REAL_US_STICKY[:400], body)
+        self.assertNotIn(REAL_US_STICKY[:401], body)
+
+    def test_an_unrecognised_message_is_not_a_live_data_incident(self):
+        self.assertIsNone(ci_alert.live_data_identity("AssertionError: boom"))
+        self.assertIsNone(ci_alert.live_data_identity(""))
+        self.assertIsNone(ci_alert.live_data_identity(None))
+
+
 class Behaviour(unittest.TestCase):
     def _run(self, argv, **env):
         import os

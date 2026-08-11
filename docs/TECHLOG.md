@@ -1,5 +1,67 @@
 # Tech Log
 
+## 2026-08-11 - one open live-data incident is one alarm, whatever branch noticed it
+
+**Six emails in seven hours, all the same open incident.** The US headline
+moving +93,210 jobs with no row that explains it mailed the owner from runs
+31421748713, 31421827146, 31421971041, 31425792582, 31448285345, 31450680641
+and 31450792070. The alarm exists to be read; six copies of it is how a sender
+gets filtered, which is the original defect wearing a new hat.
+
+**The obvious suspect was wrong, and that mattered.** "The numbers keep moving"
+would have been fixed by widening `_NORMALISE`, and the widening would have
+bought nothing: run the six real assertion strings through `normalise` and they
+are byte-identical. +93,210 and +93,290, 3.0d and 3.3d, +18 and +19 entries all
+collapse to `<N>` exactly as designed.
+
+**What actually differed was the scope.** `scope = workflow:branch`, so one
+incident minted a key per branch that ran the suite - `tests:main:8a5b96fc...`,
+`tests:docs-handoff-external-review:4fe38317...`,
+`tests:feat-changed-rows-endpoint:efeece54...`,
+`tests:feat-filed-basis-default:d9078245...`,
+`tests:claude-sticky-headline-incidents:555efd27...`. Branch belongs in the
+scope for a CODE failure: a test that fails on one branch only is that branch's
+defect and folding it into main's alarm would hide it. A live-data invariant is
+the opposite animal - it reads asktherecruiter.com, not the checkout, so every
+branch is looking at the same one wrong number.
+
+**A second mechanism, on the seventh run.** The sticky-incident ledger prefixes
+the detail with "OPEN INCIDENT, opened 0d ago (timestamp)", taking the sentence
+to 741 characters. `extract_cause` cut at 400, so the tail moved
+("...reconcile-supers" instead of "...corrections log") and the hash moved with
+it. A key built by regexing numbers out of a sentence is hostage to every later
+change in that sentence's shape, and that sentence is written for a human to
+read, so it will keep changing.
+
+**The fix keys on identity, not on prose.** `live_data_identity()` matches the
+message against data_integrity's OWN registries - invariant labels where
+`reads_live_data` is true, plus the headline slice labels - and returns
+"No headline moves without rows to explain it | United States jobs, all time".
+Those incidents are raised and cleared under a branch-free
+`<workflow>:live.data` scope; a dot cannot appear in a `_slug`, so no branch can
+collide with it. Every green run of the workflow now posts that resolve as well
+as the branch one, or the RECOVERED notice would never arrive and a closed
+incident would earn a STILL FAILING reminder a fortnight later.
+
+**Narrow on purpose.** An unrecognised assertion keeps the branch-scoped
+behaviour. So does an invariant with `reads_live_data = False`, because the
+checkout genuinely decides those. A different invariant, a different slice, or a
+second slice joining the first are three different identities and three
+different emails - all four are tested, because a dedupe fix that swallows a new
+failure is worse than the noise it removed.
+
+**Proof, on the real strings.** `tests/test_ci_alert.py` carries the seven
+assertion texts verbatim from `gh run view --log-failed` and asserts they
+collapse to one key. Invented strings would have proved nothing: the whole
+defect lived in details of the real shape. Verified failing against the
+pre-fix tree with comments and docstrings stripped first.
+
+**Nothing was weakened to get here.** `move_floor`, `mean_factor`, `max_share`,
+`MAX_BASELINE_AGE_DAYS` and the baseline are untouched. The incident is still
+FAIL and still blocks. `extract_cause`'s default limit is still 400, because
+ops_status [4] and the weekly noise email print that string raw; only the
+alerter asks for more.
+
 ## 2026-08-11 - the filed basis becomes the default, and three totals stop looking like one claim
 
 **The decision.** The tracker counted every cut on the day it takes effect.
