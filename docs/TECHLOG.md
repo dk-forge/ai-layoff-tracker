@@ -1,5 +1,160 @@
 # Tech Log
 
+## 2026-08-11 - the secondary pages, audited against the live site and fixed (2.20.5)
+
+Every check in this repository reads the dashboard, because the dashboard is
+where the numbers are. An audit against the live site on 2026-08-10, in two
+independent browsers including a clean extension-free headless Chrome at real
+375px device metrics, went at the pages a reader opens once they have decided
+to test whether the numbers can be trusted. Nothing below moves a number.
+All of it moves whether a reader believes them, which is the same thing one
+step later.
+
+**Dark mode was half painted on every page, and it was the default.** 186 text
+nodes on the dashboard and 26 to 133 on each secondary page rendered between
+1.02:1 and 1.28:1 under `prefers-color-scheme: dark` with no `data-theme` set,
+which is what every dark-OS visitor gets, since Auto is the default. The h1 was
+white, the bullet lists were white, and the paragraphs and section headings
+between them were not there. The hero line carrying the whole credibility claim,
+"Every entry links to the filing, notice or report it came from.", was 1.19:1.
+
+The tokens were not the problem and never were: `--alt-ink-warm` resolves to
+`#e3e7ef` on the very element that computes `#1a1a1a`. The cause is a
+site-level rule in the document head declaring, with `!important`,
+`.entry-content p{color:#2a2a2a}`, `h2{#1a1a1a}` and `h3{#222}`. In light,
+`#2a2a2a` on white is 14.8:1 and the override is invisible as a problem; in
+dark it is the whole defect. The comment block at layoffs.css:3020 records a
+2026-08-05 measurement saying that snippet "declares no colour at all". That
+was the load-bearing assumption and it was wrong. A custom property cannot win
+an argument it is not in, so the plugin's own declaration now wins on the same
+terms: one class more specific than the site rule, `!important`, dark only,
+scoped to the site rule's own wrapper so it can never reach markup the site
+rule does not already reach. Light is untouched by construction.
+
+The site header and footer are in scope for the same reason they were half
+handled before: this stylesheet is what darkened the bands they sit on, so
+`#20283A` headings at 1.16:1 on a band we painted `--alt-surface` are a defect
+this plugin created. Each literal maps to the token whose LIGHT value is that
+exact literal, so the mapping cannot invent a colour.
+
+The same rule also draws a 2px `#eef3ee` line under every h2, which on the
+dark page is a near-white rule under all 13 headings of /methodology/ at once.
+A contrast sweep reads text and not borders, so that one survived the audit
+that found the ink. It takes --alt-border in dark, this stylesheet's own token
+for a rule between things.
+
+Why nothing caught it: `reader_freshness.py` proves which VERSION a reader is
+served, not what the served bytes render as, and no check evaluated contrast in
+the non-default theme. `test_secondary_surface_consistency.py` now recomputes
+the pairing from what ships.
+
+**/press/ clipped five of seven tables on a phone with no way to scroll.**
+`overflow: hidden` was added for the wrapper's 10px radius and silently
+replaced the base `.alt-health-table-wrap{overflow-x:auto}`, so the identical
+wrapper scrolled on /methodology/ and /sources/ and ate content here: 28 to
+164px of overflow with no scrollbar and no pan affordance, taking the whole
+"Preset view" column and every "Open the report" link in the release schedule
+out of reach, on the page built for people who copy numbers. Now
+`overflow-x: auto` with `overflow-y: hidden`, which is the clip the radius
+actually needed.
+
+**The same fact was published as two different numbers, one page apart.**
+/sources/ counted `alt_state_warn_urls()`, the registries the importer READS
+(47 states + DC). The dashboard ribbon and /methodology/ count
+`alt_warn_states_phrase()`, states PRESENT IN THE DATA (46 US states + DC).
+Both are right; neither said which it was. The comment on
+`alt_warn_states_phrase()` says it exists "so no surface has to reassemble it
+and get the DC arithmetic wrong again", and a second surface reassembled it
+anyway. The fix is a label, not a number: /sources/ now states both bases, side
+by side, reading the second from that same function rather than recomputing it.
+
+**Chart tooltips leaked a database key, and came and went down a list.**
+`renderBarList` opened its tooltip with the row's FILTER VALUE rather than its
+name, which is the same string on every card but one: on "Roles most impacted"
+hovering "Sales & marketing" answered `sales_marketing: 26,089 total`. And the
+tooltip was suppressed entirely when the AI figure was zero, so it appeared on
+four of 22 country rows with no rule a reader could infer from outside -
+Bangladesh, the third largest bar, had none; Australia at a fifth its size did.
+Hovering down the list, the control flickered and read as broken. A zero is now
+said in words. A row whose AI figure exceeds its total still claims neither.
+
+**Two countries had no flag, mid-list.** Every name is laid out from the same
+x, so a missing flag starts a row a flag's width left of the twenty above it
+and breaks the one edge the eye tracks. Five live countries were in that state.
+Two of them were vocabulary drift rather than omission: the map carried
+"Turkey" while the data has moved to "Türkiye", and "United Arab Emirates"
+while `alt_normalize_country()` canonicalises that country to "UAE". Both
+spellings are kept.
+
+**One 435-character paragraph, byte-identical, in three charts inside about
+950px of scroll.** That does not read as three captions, it reads as a template
+that fired three times, and the third copy of a paragraph is where a reader
+stops reading it - including the sentence naming the cuts that are filed but
+not yet in effect. The three charts plot three different quantities and the
+repetition was the symptom of the notes not saying so. The jobs chart keeps the
+full account, unchanged to the byte. The year-over-year note drops the
+filed-later clause, because the comparison it invites is with last year's
+finished month. The AI-share note stops quoting a job count under a percent
+line and names the base the share is computed on.
+
+**A toolbar that changed length inside one row.** Share, CSV and expand are on
+every chart card; embed is added only for an id in `EMBED_OK`, so the
+"Who is cutting, and why" band read 3, 3, 3, 3 under a band reading 4, 4. The
+four bar cards that draw from the same /aggregate payload through the same
+renderer now embed too. `alt-bars-claims-states` stays out on purpose: it is
+DOL data, drawn grey and labelled "context only, not our counts", and an embed
+would carry a number this tracker did not collect onto somebody else's page
+inside our frame. While fixing this: every bar embed since the route existed
+has been shipping bars with `barBasisNote()` stripped off, because the shell
+had no element for it, and three canvas embeds could end on an unfinished month
+and say nothing. Both note elements now ship.
+
+**Five pages printed their own name twice, in two typefaces, reworded.** The
+theme renders the post title as an `<h1>` and each plugin template renders its
+own; one lives in the database and one lives here, so they disagree
+("Methodology & Sources" over "Methodology & sources"). On /sources/ they were
+byte-identical and 199px apart. The template's `<h1>` survives, because it is
+the one that is reviewable and testable. The selector is self-limiting and
+leaves the dashboard alone, which deliberately renders no `<h1>` and uses the
+theme title demoted to a kicker.
+
+**A contents entry that promised the opposite of its section.** /sources/ listed
+"Global authorities" and landed on "Why most countries appear through news, not
+a registry" - it advertised a directory of official registers and delivered the
+explanation that for most countries no such register is read. On /methodology/,
+7 of 13 entries were a paraphrase of the heading they land on and one was out
+of document order, so reading down the list walked you back up the page. Every
+label is now the heading's own words and the list is in the document's order.
+
+**Four names for one destination, two of which did not reach it.** /sources/
+labelled a link "Methodology" and sent it to the dashboard's collapsed summary;
+so did /ai-quotes/ with "How the AI tag works". The page whose own h1 is
+"Methodology & sources" was unreachable from the sibling row of the page next
+to it. /publisher-tools/ carried no sibling row at all. One label per
+destination now, "How we count" and "Press & media", matching what the
+dashboard already says.
+
+**Three date formats and two unexplained freshness stamps on the press kit.**
+"Aug 11, 2026", "11 August 2026" and "1 Aug 2026" in one visit, plus a
+"Generated" stamp in UTC and a "Data last updated" stamp in local time about
+four hours apart with nothing saying which a citing journalist should use.
+One format now, `M j, Y`, the house convention the rest of the tracker already
+uses; both stamps say what they are and the page says to cite the access date.
+
+**Left alone, deliberately.** The `.alt-broad-strip` tiles overlapping by 24px
+and truncating "One cut can appear in both stages (an announce" is inside the
+dashboard's tile-alignment work and belongs to that change, not this one. The
+site's cookie banner and the theme's own navigation chrome carry their own
+colours from other plugins; only the bands this stylesheet darkened are
+corrected here.
+
+48 new tests in `railway/tests/test_secondary_surface_consistency.py`, of which
+27 fail on the pre-fix tree. Every string assertion runs against a
+comment-stripped copy of the file it reads, and the stripper is itself tested,
+because both codebases quote the replaced display string verbatim in their
+rationale comments - a checker that reads comments grades the commentary. The
+behavioural checks execute the real layoffs.js in node through jsrun.
+
 ## 2026-08-10 - the open incident had a date on which it would erase itself
 
 Two guards, each correct on its own, had agreed on a laundering schedule nobody
@@ -62,7 +217,7 @@ FAIL and the baseline must not move).
 Two existing degradation tests in `test_dedup_live` had to be pointed at an
 empty ledger. They assert "a dead network can never produce a pass", and a
 sticky FAIL is deliberately independent of the network, so a real standing
-incident was answering a question they were not asking.
+
 ## 2026-08-11 - one open live-data incident is one alarm, whatever branch noticed it
 
 **Six emails in seven hours, all the same open incident.** The US headline

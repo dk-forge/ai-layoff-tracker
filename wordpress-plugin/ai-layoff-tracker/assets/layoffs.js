@@ -1872,11 +1872,19 @@
         renderBarList('alt-bars-repeat', (agg.repeat_companies || []).map(function (e) { return [e[0], e[1], 0]; }), null,
             companyBox && companyBox.value ? [companyBox.value] : [],
             companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null, ' rounds');
+        // The card's title is rewritten here on every render, so this string
+        // and the one page-tracker.php ships have to be the same words. They
+        // were not: the template said "Layoffs by country" and this said "By
+        // country", so the card renamed itself a beat after load and ended up
+        // reading as a bare fragment beside its own neighbour, "Layoffs by US
+        // state" - the same component, the same basis, the same subtitle
+        // pattern, two grammars, side by side. The template's wording wins,
+        // because it is the one that also survives with JavaScript off.
         var countryTitle = document.getElementById('alt-country-chart-title');
         if (countryTitle) {
             countryTitle.innerHTML = selectedList('alt-f-country').length
-                ? 'By country <span class="alt-chart-sub">Other countries you could pivot to · tap to filter</span>'
-                : 'By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
+                ? 'Layoffs by country <span class="alt-chart-sub">Other countries you could pivot to · tap to filter</span>'
+                : 'Layoffs by country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
         }
     }
 
@@ -1890,7 +1898,21 @@
     // AI-attributed share. Rows are buttons that toggle the matching filter.
     // Country name -> ISO2 for emoji flags on the country list. Covers the
     // normalizer's vocabulary; unknown names simply render without a flag.
-    var COUNTRY_ISO = { 'United States':'US','United Kingdom':'GB','Germany':'DE','France':'FR','Netherlands':'NL','India':'IN','Israel':'IL','Japan':'JP','Sweden':'SE','Canada':'CA','Australia':'AU','Brazil':'BR','China':'CN','Ireland':'IE','Singapore':'SG','Indonesia':'ID','Denmark':'DK','Finland':'FI','Norway':'NO','Poland':'PL','Spain':'ES','Italy':'IT','Austria':'AT','Belgium':'BE','Switzerland':'CH','Portugal':'PT','Czech Republic':'CZ','Czechia':'CZ','South Korea':'KR','Kenya':'KE','Nigeria':'NG','South Africa':'ZA','Egypt':'EG','Mexico':'MX','Argentina':'AR','Chile':'CL','Colombia':'CO','United Arab Emirates':'AE','Saudi Arabia':'SA','Turkey':'TR','Russia':'RU','Ukraine':'UA','New Zealand':'NZ','Philippines':'PH','Malaysia':'MY','Thailand':'TH','Vietnam':'VN','Taiwan':'TW','Hong Kong':'HK','Greece':'GR','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Croatia':'HR','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Luxembourg':'LU','Iceland':'IS','Serbia':'RS','Pakistan':'PK','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','Cambodia':'KH','Myanmar':'MM','Laos':'LA','Mongolia':'MN','Kazakhstan':'KZ','Qatar':'QA','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Jordan':'JO','Lebanon':'LB','Iraq':'IQ','Iran':'IR','Morocco':'MA','Tunisia':'TN','Algeria':'DZ','Ghana':'GH','Ethiopia':'ET','Tanzania':'TZ','Uganda':'UG','Zambia':'ZM','Zimbabwe':'ZW','Botswana':'BW','Namibia':'NA','Mozambique':'MZ','Angola':'AO','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','Peru':'PE','Ecuador':'EC','Uruguay':'UY','Paraguay':'PY','Bolivia':'BO','Venezuela':'VE','Costa Rica':'CR','Panama':'PA','Guatemala':'GT','Dominican Republic':'DO','Jamaica':'JM','Trinidad and Tobago':'TT','Cuba':'CU','Haiti':'HT' };
+    //
+    // A GAP HERE IS VISIBLE, NOT SILENT. "renders without a flag" is not a
+    // graceful degradation in a ranked list: every name is laid out from the
+    // same x, so a row with no flag starts a flag's width to the left of the
+    // twenty above it and breaks the one edge the eye tracks down the list.
+    // On 2026-08-10 five live countries were in that state - Türkiye, Bosnia
+    // and Herzegovina, Cyprus, Isle of Man and Malta - two of them mid-list.
+    //
+    // Two of those five were not spelling gaps but VOCABULARY drift: the map
+    // carried 'Turkey' while the data has since moved to the endonym Türkiye,
+    // and 'United Arab Emirates' while alt_normalize_country() canonicalises
+    // that country to the string "UAE" (api.php). Both spellings are kept, so
+    // a re-spelled row cannot lose its flag again. test_facet_pages.py holds
+    // the list of names the country card is known to draw.
+    var COUNTRY_ISO = { 'United States':'US','United Kingdom':'GB','Germany':'DE','France':'FR','Netherlands':'NL','India':'IN','Israel':'IL','Japan':'JP','Sweden':'SE','Canada':'CA','Australia':'AU','Brazil':'BR','China':'CN','Ireland':'IE','Singapore':'SG','Indonesia':'ID','Denmark':'DK','Finland':'FI','Norway':'NO','Poland':'PL','Spain':'ES','Italy':'IT','Austria':'AT','Belgium':'BE','Switzerland':'CH','Portugal':'PT','Czech Republic':'CZ','Czechia':'CZ','South Korea':'KR','Kenya':'KE','Nigeria':'NG','South Africa':'ZA','Egypt':'EG','Mexico':'MX','Argentina':'AR','Chile':'CL','Colombia':'CO','United Arab Emirates':'AE','Saudi Arabia':'SA','Turkey':'TR','Russia':'RU','Ukraine':'UA','New Zealand':'NZ','Philippines':'PH','Malaysia':'MY','Thailand':'TH','Vietnam':'VN','Taiwan':'TW','Hong Kong':'HK','Greece':'GR','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Croatia':'HR','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Luxembourg':'LU','Iceland':'IS','Serbia':'RS','Pakistan':'PK','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','Cambodia':'KH','Myanmar':'MM','Laos':'LA','Mongolia':'MN','Kazakhstan':'KZ','Qatar':'QA','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Jordan':'JO','Lebanon':'LB','Iraq':'IQ','Iran':'IR','Morocco':'MA','Tunisia':'TN','Algeria':'DZ','Ghana':'GH','Ethiopia':'ET','Tanzania':'TZ','Uganda':'UG','Zambia':'ZM','Zimbabwe':'ZW','Botswana':'BW','Namibia':'NA','Mozambique':'MZ','Angola':'AO','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','Peru':'PE','Ecuador':'EC','Uruguay':'UY','Paraguay':'PY','Bolivia':'BO','Venezuela':'VE','Costa Rica':'CR','Panama':'PA','Guatemala':'GT','Dominican Republic':'DO','Jamaica':'JM','Trinidad and Tobago':'TT','Cuba':'CU','Haiti':'HT','Türkiye':'TR','Bosnia and Herzegovina':'BA','Cyprus':'CY','Malta':'MT','Isle of Man':'IM','UAE':'AE','Antigua and Barbuda':'AG','Saint Kitts and Nevis':'KN','Saint Vincent and the Grenadines':'VC','Sao Tome and Principe':'ST','Turks and Caicos Islands':'TC' };
     function countryFlag(name) {
         if (name === 'Multiple countries') return '\uD83C\uDF10 ';
         var iso = COUNTRY_ISO[name];
@@ -2074,11 +2096,49 @@
             // AI breakdown: expanded rows spell it out (total · AI n · x%);
             // compact rows keep the visual fill plus a hover tooltip, so the
             // small cards stay scannable and the detail is one expand away.
-            var hasAi = !suffix && ai > 0 && ai <= jobs;
+            // aiKnown: this card counts jobs and the AI figure is a real subset
+            // of them. hasAi narrows that to rows where the subset is not
+            // empty, which is what earns the orange segment.
+            var aiKnown = !suffix && ai <= jobs;
+            var hasAi = aiKnown && ai > 0;
             var aiPct = hasAi ? Math.round(100 * ai / jobs) : 0;
             var valTxt = fmt(jobs) + (suffix || '');
             if (hasAi && !compact) valTxt += ' · \uD83E\uDD16 ' + fmt(ai) + ' (' + aiPct + '%)';
-            var tip = hasAi ? (label + ': ' + fmt(jobs) + ' total · ' + fmt(ai) + ' AI-attributed (' + aiPct + '%)') : '';
+            /*
+              THE TOOLTIP SAYS THE NAME THAT WAS HOVERED, AND IT DOES NOT COME
+              AND GO DOWN THE LIST.
+
+              Two defects in one line, both measured on the live page on
+              2026-08-10.
+
+              (1) It opened with `label`, which is the row's FILTER VALUE and
+              not its name. On every card but one those are the same string. On
+              "Roles most impacted" the value is the slug, so hovering "Sales &
+              marketing" answered "sales_marketing: 26,089 total": an internal
+              identifier, and not the name the reader pointed at. `display` is
+              the string on screen, so it is the string the tooltip must open
+              with. Every other tooltip on the page already leads with the
+              human name ("United States: 369,821 total").
+
+              (2) It was suppressed outright when the AI figure was zero, so on
+              the country list it appeared on four rows of 22 with no rule a
+              reader could infer from outside: Bangladesh, the third largest
+              bar, had none, while Australia at a fifth its size did. Hovering
+              down the list the control flickered on and off and read as
+              broken. A zero is a fact about the row, so it is said in words.
+              No number moves: a row with no AI-attributed cuts still draws no
+              orange segment and still reports the same total.
+
+              The `ai > jobs` case is data we do not trust, so it claims
+              neither: no tooltip rather than a share we would have to qualify.
+              Cards drawn with a `suffix` are not counting jobs at all (rounds,
+              percent) and carry no tooltip, exactly as before.
+            */
+            var tip = '';
+            if (aiKnown) {
+                tip = display + ': ' + fmt(jobs) + ' total · '
+                    + (hasAi ? fmt(ai) + ' AI-attributed (' + aiPct + '%)' : 'none attributed to AI');
+            }
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + ((filterId || onPick) ? '' : ' disabled')
                 + (tip ? ' title="' + escapeHtml(tip) + '"' : '')
@@ -2267,11 +2327,58 @@
         return monthLabel(info.key) + ' (partial)';
     }
 
-    // The sentence under the chart. States the elapsed days and refuses the
-    // comparison, rather than making one.
-    function partialNoteText(info) {
-        var txt = monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
+    /*
+      The sentence under the chart. States the elapsed days and refuses the
+      comparison, rather than making one.
+
+      WHY IT TAKES A MODE. The treatment of the in-progress month is the same
+      on all three charts, and for a while so was the sentence: 435 bytes,
+      byte-identical, printed three times inside about 950px of scroll. That
+      did not read as three captions. It read as a template that had fired
+      three times, and the third copy of a paragraph is where a reader stops
+      reading the paragraph at all - including the sentence naming the 11,083
+      cuts that are filed but not yet in effect, which is the part they most
+      need.
+
+      The fix is not a shorter duplicate. The three charts plot three
+      different quantities, so each note now describes the point it sits
+      under, and the repetition was the symptom of them not doing that:
+
+        'jobs'  (Jobs cut per month) - the full account. This is the chart
+                whose y-axis IS the job count, so it is the one that can say
+                what the point counts and what is still to come. Unchanged,
+                to the byte.
+        'year'  (This year vs last year) - the same quantity split by year.
+                Names what the final point counts, and drops the filed-later
+                clause: the comparison it invites is with last year's finished
+                August, not with the rest of this one.
+        'share' (AI share of verified cuts) - a percentage. Quoting a job
+                count under a percent line was always a category error; what
+                a reader needs is the size of the base the share is computed
+                on, and that it is not a projection.
+
+      Default is 'jobs', so a one-argument call is the old behaviour exactly.
+    */
+    function partialNoteText(info, mode) {
+        var opened = monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
             + info.of + ' days so far.';
+        if (mode === 'share') {
+            var base = (info.charted != null)
+                ? ' The share for this month is computed on the ' + fmt(info.charted)
+                    + ' verified job cuts whose effective date has arrived, not on a whole month.'
+                : '';
+            return opened + base + ' The point is dashed for that reason, and it is not a projection'
+                + ' of the full month.';
+        }
+        if (mode === 'year') {
+            var counts = (info.charted != null)
+                ? ' The final point for this year counts the ' + fmt(info.charted)
+                    + ' verified job cuts whose effective date has arrived.'
+                : '';
+            return opened + counts + ' It is dashed because a part month is not comparable with the'
+                + ' completed month beside it, and it is not a projection of the full month.';
+        }
+        var txt = opened;
         if (info.charted != null) {
             txt += ' This point counts the ' + fmt(info.charted)
                 + ' verified job cuts whose effective date has arrived.';
@@ -2285,10 +2392,10 @@
             + ' months beside it, and it is not a projection of the full month.';
     }
 
-    function setPartialNote(elId, info) {
+    function setPartialNote(elId, info, mode) {
         var el = document.getElementById(elId);
         if (!el) return;
-        el.textContent = info ? partialNoteText(info) : '';
+        el.textContent = info ? partialNoteText(info, mode) : '';
         el.hidden = !info;
     }
 
@@ -2926,7 +3033,7 @@
                 // for the current year, which is the only series it is true of.
                 var yoyPartial = partialMonthAt([nowYearNum + '-' + nowKey2],
                     lists[picked.indexOf(String(nowYearNum))] || []);
-                setPartialNote('alt-yoy-partial', picked.indexOf(String(nowYearNum)) === -1 ? null : yoyPartial);
+                setPartialNote('alt-yoy-partial', picked.indexOf(String(nowYearNum)) === -1 ? null : yoyPartial, 'year');
                 var datasets = picked.map(function (yr, i) {
                     var by = {};
                     lists[i].forEach(function (s) { by[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
@@ -2971,7 +3078,7 @@
             // final point dropped the line under last year's completed one.
             var yoyPartial1 = (year === new Date().getFullYear())
                 ? partialMonthAt([year + '-' + nowKey], toDateMonths(series || [])) : null;
-            setPartialNote('alt-yoy-partial', yoyPartial1);
+            setPartialNote('alt-yoy-partial', yoyPartial1, 'year');
             var curDs = { label: String(year) + (yoyPartial1 ? ' (' + MONTHS[parseInt(nowKey, 10) - 1] + ' partial)' : ''), data: curData, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 };
             if (yoyPartial1) markPartialPoint(curDs, parseInt(nowKey, 10) - 1);
             mountChart('alt-chart-yoy', { type: 'line', data: { labels: labels, datasets: [
@@ -3047,7 +3154,7 @@
         // the line terminated at exactly 0.0% and read as attribution
         // collapsing rather than as a month that has barely started.
         var sharePartial = partialMonthAt(pts.map(function (p) { return p.month; }), series);
-        setPartialNote('alt-ai-share-partial', sharePartial);
+        setPartialNote('alt-ai-share-partial', sharePartial, 'share');
         var options = cloneOptions();
         options.scales.y.ticks.callback = function (v) { return v + '%'; };
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
@@ -5311,8 +5418,30 @@
     }
     var SHARE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
     var EMBED_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>';
-    // Charts the frame-safe embed route (?alt_chart_embed) can render.
-    var EMBED_OK = { 'alt-chart-weekly':1, 'alt-chart-ai-share-trend':1, 'alt-chart-ai-cumulative':1, 'alt-chart-yoy':1, 'alt-chart-reasons':1, 'alt-chart-aimap':1, 'alt-bars-industries':1, 'alt-bars-states':1, 'alt-bars-countries':1, 'alt-bars-roles':1 };
+    /*
+      Charts the frame-safe embed route (?alt_chart_embed) can render.
+
+      THIS LIST IS WHAT DECIDES HOW MANY ICONS A CARD SHOWS. Share, CSV and
+      expand are on every chart card; embed is added only for an id in here.
+      So an omission is not invisible - it prints a three-icon toolbar next to
+      two four-icon ones at the same y, and the reader is left to guess which
+      card is missing a control and why. On 2026-08-10 the "Who is cutting,
+      and why" band read 3, 3, 3, 3 while the band above it read 4, 4.
+
+      The four bar cards added here draw from the same /aggregate payload
+      through the same renderBarList as the three already listed, so the embed
+      route renders them with no new data path. Their basis sentences travel
+      with them: page-chart-embed.php now ships the note element each one
+      writes into, which the earlier bar embeds were quietly dropping.
+
+      ONE CARD IS STILL DELIBERATELY ABSENT: alt-bars-claims-states. It is
+      official DOL jobless-claims data, drawn grey, labelled "context only,
+      not our counts", and fetched from /claims rather than /aggregate. An
+      embed of it would travel to another site under this tracker's frame with
+      a number this tracker did not collect, which is exactly the confusion the
+      grey and the label exist to prevent. Its toolbar is short on purpose.
+    */
+    var EMBED_OK = { 'alt-chart-weekly':1, 'alt-chart-ai-share-trend':1, 'alt-chart-ai-cumulative':1, 'alt-chart-yoy':1, 'alt-chart-reasons':1, 'alt-chart-aimap':1, 'alt-bars-industries':1, 'alt-bars-states':1, 'alt-bars-countries':1, 'alt-bars-roles':1, 'alt-bars-sourcetypes':1, 'alt-bars-leaders':1, 'alt-bars-repeat':1, 'alt-bars-ai-intensity':1 };
     function embedSnippet(id) {
         var f = qs(currentParams());
         var src = shareBase() + '?alt_chart_embed=1&chart=' + encodeURIComponent(id) + (f ? '&' + f : '');
