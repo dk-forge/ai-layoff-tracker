@@ -276,7 +276,13 @@ class HeroCopyTests(unittest.TestCase):
         self.assertRegex(block[:400], r"In this figure:")
 
     def test_the_split_sentence_is_still_the_shared_helper_not_typed_here(self):
-        self.assertIn("alt_period_split_sentence(", TEMPLATE_RAW)
+        # The hero now calls the COMPRESSED helper (alt_period_split_short),
+        # twinned character for character by periodSplitShort() in layoffs.js.
+        # The invariant this test holds is unchanged and is not about the name:
+        # the hero must not type a reconciliation of its own. The full sentence
+        # still exists and is still called, by the press page, which
+        # test_headline_total_agreement pins separately.
+        self.assertIn("alt_period_split_short(", TEMPLATE_RAW)
         hero = TEMPLATE[at(TEMPLATE, '<header class="alt-hero">'):]
         hero = hero[: hero.index("</header>")]
         self.assertNotRegex(hero, r"\d{1,3},\d{3}",
