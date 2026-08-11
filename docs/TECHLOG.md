@@ -155,6 +155,13 @@ because both codebases quote the replaced display string verbatim in their
 rationale comments - a checker that reads comments grades the commentary. The
 behavioural checks execute the real layoffs.js in node through jsrun.
 
+**2.20.6, verified live and corrected.** Both note elements ship `hidden`. The
+basis paragraph did not, and an empty `.alt-chart-note` is not nothing: it
+carries a 10px top margin, so the two bar cards with no basis sentence to write
+("Largest single job cuts", "Repeat layoffs") hung a strip of dead space off
+the bottom of their embed. `setBarBasisNote()` clears `hidden` on the one it
+writes into.
+
 ## 2026-08-10 - the open incident had a date on which it would erase itself
 
 Two guards, each correct on its own, had agreed on a laundering schedule nobody

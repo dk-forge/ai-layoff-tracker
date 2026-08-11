@@ -131,7 +131,13 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
             // and the emptiness gets a label rather than a fix). Both are
             // emitted; each renderer fills the one it owns and leaves the
             // other hidden. ?>
-      <p class="alt-chart-note" id="<?php echo esc_attr($alt_chart); ?>-basis"></p>
+      <?php // Both start hidden. Two of these cards ("Largest single job cuts",
+            // "Repeat layoffs") have no basis sentence to write, and an empty
+            // <p class="alt-chart-note"> is not nothing: it carries a 10px top
+            // margin, so shipping it unhidden hangs a strip of dead space off
+            // the bottom of exactly the two embeds with nothing to say.
+            // setBarBasisNote() clears `hidden` on the one it writes into. ?>
+      <p class="alt-chart-note" id="<?php echo esc_attr($alt_chart); ?>-basis" hidden></p>
       <p class="alt-chart-note" id="<?php echo esc_attr($alt_chart); ?>-note" hidden></p>
     <?php endif; ?>
   </div>
