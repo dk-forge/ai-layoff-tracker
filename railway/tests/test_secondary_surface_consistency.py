@@ -395,6 +395,99 @@ class CountryFlagTests(unittest.TestCase):
         self.assertEqual(missing, [], "no flag for %r, so those rows break the "
                                       "left edge of the list" % missing)
 
+    # ------------------------------------------------------------------
+    # Completing the vocabulary fixes the countries we draw today. It does
+    # nothing for the next one the data reaches, and the data reaches new
+    # countries without being asked. These three execute renderBarList for
+    # real and assert the LAYOUT tolerates a flagless row, which is the part
+    # the vocabulary check above cannot see.
+    # ------------------------------------------------------------------
+
+    ICON_PREAMBLE = jsrun.BASE_PREAMBLE + """
+var CAPTURED = '';
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+var BARLIST_LIMIT = 24;
+var BOX = {
+    closest: function () { return null; },
+    querySelectorAll: function () { return []; },
+    querySelector: function () { return null; },
+    set innerHTML(v) { CAPTURED = v; },
+    get innerHTML() { return CAPTURED; }
+};
+var document = { getElementById: function () { return BOX; } };
+function names() {
+    var out = [], re = /<span class="alt-barrow-name">(.*?)<\\/span><span class="alt-barrow-val"/g, m;
+    while ((m = re.exec(CAPTURED)) !== null) out.push(m[1]);
+    return out;
+}
+"""
+
+    def _names(self, rows):
+        return jsrun.run(
+            ["renderBarList"], self.ICON_PREAMBLE,
+            "(function () { renderBarList('x', %s, 'f', []); return names(); })()"
+            % json.dumps(rows),
+        )
+
+    def test_a_row_with_no_flag_still_gets_the_flag_column(self):
+        # Row two is a country the emoji vocabulary has not met. Every row of
+        # the card must open with the same icon span, or its name starts a
+        # flag's width left of the rows above and below it.
+        got = self._names([
+            ["United States", 369821, 71000, "United States", "\U0001F1FA\U0001F1F8"],
+            ["Ruritania", 18000, 0, "Ruritania", ""],
+            ["India", 4415, 120, "India", "\U0001F1EE\U0001F1F3"],
+        ])
+        self.assertEqual(len(got), 3)
+        for name, row in zip(got, ["United States", "Ruritania", "India"]):
+            self.assertTrue(
+                name.startswith('<span class="alt-barrow-icon" aria-hidden="true">'),
+                "%r does not open with the reserved icon column, so its name "
+                "starts further left than its neighbours" % row)
+
+    def test_the_flagless_row_reserves_the_column_without_inventing_a_flag(self):
+        got = self._names([
+            ["India", 4415, 120, "India", "\U0001F1EE\U0001F1F3"],
+            ["Ruritania", 18000, 0, "Ruritania", ""],
+        ])
+        self.assertIn(
+            '<span class="alt-barrow-icon" aria-hidden="true"></span>Ruritania',
+            got[1],
+            "the column must be reserved and EMPTY: sparse data gets a label, "
+            "never a stand-in glyph")
+
+    def test_a_card_with_no_icons_at_all_grows_no_empty_column(self):
+        # Industries, roles, sources and company rows carry no icon. They must
+        # not gain a 1.5em indent because the country card needed one.
+        got = self._names([
+            ["Technology", 369821, 71000, "Technology"],
+            ["Retail", 18000, 0, "Retail"],
+        ])
+        for name in got:
+            self.assertNotIn("alt-barrow-icon", name)
+
+    def test_the_reserved_column_has_a_fixed_width_in_the_stylesheet(self):
+        # A span with no width reserves nothing, so the JS above would emit a
+        # column that still collapses on the flagless row.
+        css = strip_block_comments(CSS.read_text())
+        rule = re.search(r"\.alt-barrow-icon\s*\{([^}]*)\}", css)
+        self.assertIsNotNone(rule, "no .alt-barrow-icon rule; the column the "
+                                   "JS emits reserves no space")
+        body = rule.group(1)
+        self.assertRegex(body, r"width\s*:\s*[0-9.]+\s*(em|px|ch|rem)",
+                         "the icon column has no fixed width: %r" % body)
+        self.assertRegex(body, r"display\s*:\s*inline-block",
+                         "an inline span collapses to zero width when empty")
+
+    def test_the_flag_no_longer_rides_on_the_display_name(self):
+        # If the flag goes back onto the label, the tooltip says it twice and
+        # the column stops being what reserves the space.
+        js = strip_line_comments(strip_block_comments(JS.read_text()))
+        self.assertNotIn("countryFlag(e[0]) + e[0]", js)
+
     def test_multiple_countries_still_gets_the_globe_and_not_a_flag(self):
         src = JS.read_text()
         iso_line = [ln for ln in src.split("\n") if ln.strip().startswith("var COUNTRY_ISO")][0]
