@@ -50,6 +50,7 @@
     --alt-border-warm: #e6e0cf;
     --alt-border-warm-2: #d9d2bd;
     --alt-bg-2: rgba(0, 0, 0, .03);
+    --alt-load-scrim: rgba(255, 255, 255, .8);
 
     /* accents */
     --alt-blue: #1f6fd0;
@@ -184,6 +185,7 @@
         --alt-border-warm: #3a3529;
         --alt-border-warm-2: #46402f;
         --alt-bg-2: rgba(255, 255, 255, .05);
+        --alt-load-scrim: rgba(18, 20, 26, .82);
 
         --alt-blue: #6fabf2;
         --alt-blue-dark: #9ac8f8;
@@ -306,6 +308,7 @@
     --alt-border-warm: #3a3529;
     --alt-border-warm-2: #46402f;
     --alt-bg-2: rgba(255, 255, 255, .05);
+    --alt-load-scrim: rgba(18, 20, 26, .82);
 
     --alt-blue: #6fabf2;
     --alt-blue-dark: #9ac8f8;
@@ -3339,4 +3342,61 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-theme-b { transition: none; }
     .alt-tab { transition: none; }
     .alt-tab:hover { transform: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   LOADING, LOADED, FAILED. The owner reported both dashboards looking frozen
+   while a fetch was in flight, because the previous numbers stayed on screen
+   fully styled and looking final. Every async region now says it is working.
+
+   The overlay is absolutely positioned inside its region, so it consumes no
+   flow space and nothing moves when the content arrives; layoffs.js freezes
+   the region's height for the duration so an empty region does not jump
+   either. The scrim is what dims the stale content underneath, which is why
+   it is one element and not a separate dimmer plus a spinner.
+
+   The spinner is decoration. Under prefers-reduced-motion it stops turning and
+   becomes a static ring, and the word beside it carries the state in both
+   cases. A reader who never sees the animation loses nothing.
+--------------------------------------------------------------------------- */
+.alt-load-host { position: relative; }
+.alt-load {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 26px 16px;
+    text-align: center;
+    background: var(--alt-load-scrim);
+    color: var(--alt-ink);
+    font-size: 14px;
+    line-height: 1.45;
+}
+.alt-load-msg { max-width: 32ch; }
+.alt-load-spin {
+    width: 22px; height: 22px; flex: none;
+    border-radius: 50%;
+    border: 2.5px solid var(--alt-border);
+    border-top-color: var(--alt-blue);
+    animation: alt-load-turn .9s linear infinite;
+}
+@keyframes alt-load-turn { to { transform: rotate(360deg); } }
+.alt-load-retry {
+    font: inherit;
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--alt-blue-border);
+    background: var(--alt-blue-tint);
+    color: var(--alt-blue-dark);
+    cursor: pointer;
+}
+.alt-load-retry:focus-visible { outline: 3px solid var(--alt-blue); outline-offset: 2px; }
+.alt-load-failed .alt-load-spin { display: none; }
+.alt-load-failed .alt-load-msg { font-weight: 600; }
+@media (prefers-reduced-motion: reduce) {
+    .alt-load-spin { animation: none; border-top-color: var(--alt-border); }
 }

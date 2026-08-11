@@ -354,6 +354,124 @@
         el.classList.toggle('alt-status-error', !!isError);
     }
 
+    /* Loading / loaded / failed --------------------------------------------
+       THREE STATES, AND THE THIRD ONE IS THE POINT. The owner reported the
+       page looking frozen while a filter change was in flight: the old
+       behaviour left the previous numbers on screen, fully styled, looking
+       final, for as long as the host took to answer. So every async surface
+       now says out loud that it is working.
+
+       The rule this file has hit repeatedly is that a mechanism which looks
+       alive while doing nothing is worse than one that visibly stops. An
+       indicator that spins forever is exactly that defect, so busyTrack()
+       carries its own deadline: when the promise has neither resolved nor
+       rejected by LOAD_TIMEOUT_MS the region lands in the FAILED state with a
+       retry, and the fetch behind it is aborted rather than left running.
+
+       Accessibility is wired two ways on purpose, because the two answer
+       different questions. aria-busy on the region tells a screen reader that
+       what it can see is stale. The overlay is role="status", so its text is
+       announced politely on entry and again when it changes to the failure
+       copy. Neither is decorative, and neither depends on the spinner, which
+       prefers-reduced-motion removes (see .alt-load-spin in layoffs.css).
+
+       Layout does not move. The overlay is absolutely positioned inside the
+       region, so it takes no flow space, and busyBegin freezes the region's
+       current height as a min-height for the duration, so a region that was
+       empty on first paint does not jump when its rows arrive. */
+    var LOAD_TIMEOUT_MS = 20000;
+    var LOAD_MIN_H = 132;      // floor for a region that is empty on first paint
+    var BUSY = {};             // region id -> { token, el, overlay, timer, ctrl }
+    var BUSY_TOKEN = 0;
+
+    function busyOverlay(el) {
+        var node = document.createElement('div');
+        node.className = 'alt-load';
+        node.setAttribute('role', 'status');
+        node.innerHTML = '<span class="alt-load-spin" aria-hidden="true"></span>'
+            + '<span class="alt-load-msg"></span>'
+            + '<button type="button" class="alt-load-retry" hidden>Try again</button>';
+        el.appendChild(node);
+        return node;
+    }
+
+    // Begin. Idempotent per region: a second call while busy re-uses the
+    // overlay (and its reserved height) rather than stacking two of them.
+    function busyBegin(id, label) {
+        var el = document.getElementById(id);
+        if (!el) return null;
+        var st = BUSY[id];
+        if (!st || !st.overlay || !st.overlay.parentNode) {
+            el.classList.add('alt-load-host');
+            var reserved = Math.max(el.offsetHeight || 0, LOAD_MIN_H);
+            el.style.minHeight = reserved + 'px';
+            st = BUSY[id] = { el: el, overlay: busyOverlay(el), timer: null, ctrl: null };
+        }
+        st.token = ++BUSY_TOKEN;
+        el.setAttribute('aria-busy', 'true');
+        st.overlay.classList.remove('alt-load-failed');
+        st.overlay.querySelector('.alt-load-msg').textContent = label || 'Loading';
+        st.overlay.querySelector('.alt-load-retry').hidden = true;
+        return st;
+    }
+
+    function busyClear(id) {
+        var st = BUSY[id];
+        if (!st) return;
+        if (st.timer) clearTimeout(st.timer);
+        if (st.overlay && st.overlay.parentNode) st.overlay.parentNode.removeChild(st.overlay);
+        st.el.classList.remove('alt-load-host');
+        st.el.setAttribute('aria-busy', 'false');
+        // Release the reserved height only after the browser has painted the
+        // content that replaced it, so the region never collapses and reflows.
+        var el = st.el;
+        (window.requestAnimationFrame || setTimeout)(function () { el.style.minHeight = ''; });
+        delete BUSY[id];
+    }
+
+    // Failed. The region stops claiming to be working (aria-busy false), the
+    // copy says so, and the retry button is the way out. No timer survives.
+    function busyFail(id, message, retry) {
+        var st = BUSY[id];
+        if (!st) st = busyBegin(id, message);
+        if (!st) return;
+        if (st.timer) { clearTimeout(st.timer); st.timer = null; }
+        // Retire the token. A response that arrives after we gave up belongs to
+        // a request the region no longer holds, and it must not clear an error
+        // the reader is currently looking at (or paint data behind their back).
+        st.token = ++BUSY_TOKEN;
+        st.el.setAttribute('aria-busy', 'false');
+        st.overlay.classList.add('alt-load-failed');
+        st.overlay.querySelector('.alt-load-msg').textContent = message;
+        var btn = st.overlay.querySelector('.alt-load-retry');
+        btn.hidden = !retry;
+        btn.onclick = retry ? function () { busyClear(id); retry(); } : null;
+    }
+
+    // Wrap one in-flight promise in the three states. `make` receives an
+    // AbortSignal so the deadline can stop the request it gave up on.
+    function busyTrack(id, label, make, retry) {
+        var st = busyBegin(id, label);
+        if (!st) return make(null);
+        var token = st.token;
+        var ctrl = null;
+        try { ctrl = new AbortController(); } catch (e) { ctrl = null; }
+        st.ctrl = ctrl;
+        var live = function () { return BUSY[id] && BUSY[id].token === token; };
+        st.timer = setTimeout(function () {
+            if (!live()) return;
+            if (ctrl) { try { ctrl.abort(); } catch (e) { /* already settled */ } }
+            busyFail(id, 'This is taking longer than usual.', retry);
+        }, LOAD_TIMEOUT_MS);
+        return make(ctrl ? ctrl.signal : null).then(function (value) {
+            if (live()) busyClear(id);
+            return value;
+        }, function (err) {
+            if (live()) busyFail(id, 'We could not load this data.', retry);
+            throw err;
+        });
+    }
+
     // The concise result-summary links point to native disclosure panels.
     // Open the destination before the browser scrolls to it so keyboard,
     // mouse and direct fragment-link visitors all reach readable content.
@@ -388,11 +506,15 @@
             return encodeURIComponent(k) + '=' + encodeURIComponent(obj[k]);
         }).join('&');
     }
-    function apiGet(path, params) {
+    // `signal` is optional and comes from busyTrack's deadline: an abandoned
+    // request is cancelled rather than left in flight behind an error state.
+    function apiGet(path, params, signal) {
         var url = API + path;
         var q = qs(params);
         if (q) url += (url.indexOf('?') > -1 ? '&' : '?') + q;
-        return fetch(url, { credentials: 'same-origin' }).then(function (r) {
+        var opts = { credentials: 'same-origin' };
+        if (signal) opts.signal = signal;
+        return fetch(url, opts).then(function (r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         });
@@ -948,14 +1070,23 @@
         var aggParams = (window.altData && window.altData.embedParams) || currentParams();
         var boot = takeBoot('aggregate', aggParams);
         if (boot) { LAST_AGG = boot; renderStats(boot.totals); renderCharts(boot); return; }
-        apiGet('aggregate', aggParams)
+        // The tiles and the chart grid are two regions because they are two
+        // places a reader looks; both are stale until this one call answers.
+        busyBegin('alt-minigrid', 'Loading the charts');
+        busyTrack('alt-stats-bar', 'Loading the totals', function (signal) {
+            return apiGet('aggregate', aggParams, signal);
+        }, fetchAndRenderAggregate)
             .then(function (agg) {
+                busyClear('alt-minigrid');
                 if (seq !== AGG_SEQ) return;
                 LAST_AGG = agg;
                 renderStats(agg.totals);
                 renderCharts(agg);
             })
-            .catch(function () { if (seq === AGG_SEQ) setStatus('alt-dashboard-status', 'Could not load chart data.', true); });
+            .catch(function () {
+                busyFail('alt-minigrid', 'We could not load this data.', fetchAndRenderAggregate);
+                if (seq === AGG_SEQ) setStatus('alt-dashboard-status', 'Could not load chart data.', true);
+            });
     }
 
     /* Active-filter chip bar ------------------------------------------- */
@@ -3809,15 +3940,15 @@
         }
 
         var seq = ++QUERY_SEQ;   // drop responses that resolve out of order
-        list.setAttribute('aria-busy', 'true');
-        apiGet('query', p).then(function (res) {
+        busyTrack('alt-cards', 'Loading the records', function (signal) {
+            return apiGet('query', p, signal);
+        }, loadRows).then(function (res) {
             if (seq !== QUERY_SEQ) return;
             TOTAL = res.total; ROWS = res.data || [];
             renderCards(); renderPager(); renderCount();
             setStatus('alt-table-status', null);
         }).catch(function () {
             if (seq !== QUERY_SEQ) return;
-            list.setAttribute('aria-busy', 'false');
             setStatus('alt-table-status', 'Could not load layoff data.', true);
         });
     }
@@ -4843,7 +4974,9 @@
             ? Promise.resolve(KEYS.map(function (k) {
                 return { totals: boot[k].totals || {}, leaders: boot[k].leader ? [boot[k].leader] : [] };
             }))
-            : Promise.all(KEYS.map(function (k) { return apiGet('aggregate', P[k]); }));
+            : busyTrack('alt-narrative', 'Loading the at a glance board', function (signal) {
+                return Promise.all(KEYS.map(function (k) { return apiGet('aggregate', P[k], signal); }));
+            }, updateNarrative);
         ready.then(function (r) {
             var D = {};
             KEYS.forEach(function (k, i) {
@@ -4993,7 +5126,13 @@
                 updateDropdownSummaries();
                 refreshAll();
             };
-        }).catch(function () { el.textContent = ''; });
+        // A failure used to blank the board, which is indistinguishable from a
+        // board with nothing to report. It now keeps the failed state busyTrack
+        // put there, with its retry, and only supplies one when the throw came
+        // from the render above (busyTrack having already cleared its own).
+        }).catch(function () {
+            if (!BUSY['alt-narrative']) busyFail('alt-narrative', 'We could not load this data.', updateNarrative);
+        });
     }
 
     // Hero plumbing: "Search the record" scrolls to and focuses the search
@@ -5652,7 +5791,16 @@
         // everything else; the aggregate and first query page below then also
         // resolve from the bootstrap, making the default first paint zero-fetch.
         var bootFacets = takeBoot('facets', {});
-        (bootFacets ? Promise.resolve(bootFacets) : apiGet('facets', {})).then(function (facets) {
+        // The whole filter surface waits on this one call, so the dropdowns
+        // carry the busy state for it. Retrying re-runs the same boot, which
+        // is why the retry here is a reload rather than a second init pass:
+        // initTracker/initChrome below are one-shot wiring.
+        var facetsReady = bootFacets
+            ? Promise.resolve(bootFacets)
+            : busyTrack('alt-filterbar-body', 'Loading the filters', function (signal) {
+                return apiGet('facets', {}, signal);
+            }, function () { window.location.reload(); });
+        facetsReady.then(function (facets) {
             fillSelect('alt-f-industry', facets.industries);
             fillSelect('alt-f-country', facets.countries);
             fillSelect('alt-f-state', facets.states);

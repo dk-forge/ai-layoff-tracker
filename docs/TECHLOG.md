@@ -1,5 +1,72 @@
 # Tech Log
 
+## 2026-08-11 - the page looked frozen while it was working, and the explainer never named the comparison (2.20.8)
+
+Two reader-facing defects, both reported off the live page.
+
+**The page looked stalled while data loads.** A filter change fired `/query` and
+`/aggregate` and then left the previous numbers on screen, fully styled, looking
+final, for as long as the host took to answer. The table set `aria-busy` and
+nothing else; the tiles, the chart grid, the at-a-glance board and the facet
+dropdowns set nothing at all, so a reader could not tell a slow host from a
+finished page.
+
+`layoffs.js` now carries one small state machine (`busyBegin` / `busyClear` /
+`busyFail` / `busyTrack`) and every async region goes through it:
+`#alt-stats-bar`, `#alt-minigrid`, `#alt-cards`, `#alt-narrative`,
+`#alt-filterbar-body`. Loading dims the stale content under an absolutely
+positioned `role="status"` overlay and sets `aria-busy="true"` on the region.
+Loaded removes both. Failed keeps the overlay, drops `aria-busy`, says what
+happened and offers a retry.
+
+The third state is the point. This repo has hit "a mechanism that looks alive
+while doing nothing" repeatedly, and an indicator that spins forever is that
+defect with a sprite on it, so `busyTrack` carries a 20s deadline, aborts the
+request it gave up on, and retires the region's token so a late answer cannot
+clear an error a reader is looking at. That last one was a real bug found by the
+new test rather than reasoned about: before the token retirement, a response
+arriving after the deadline wiped the failed state and painted its data.
+
+No layout shift: the overlay is out of flow and the region's height is frozen
+for the duration, with a 132px floor for a region that is empty on first paint.
+Under `prefers-reduced-motion` the ring stops turning and the wording carries
+the state, which it does in every case anyway.
+
+**The monthly comparison.** A reader comparing our figure for a month against
+the US national survey's figure for the same month finds two different totals
+and assumes one of us is wrong. Paragraph 4 of "Why our numbers differ from
+other trackers" (`#alt-basis-explainer`) explained our own dating without ever
+saying what the survey is dating, which is half a reconciliation.
+
+This landed AFTER the default basis moved to the filing date in 2.20.7, and the
+paragraph is written against that default rather than against the one the brief
+assumed. It now says what each side counts: the survey counts announcements made
+during a month, our default counts each cut on the day its notice was filed or
+the cut was announced, and those are the same question, so the two can be set
+side by side for one month and read straight against each other. Both toggle
+options are named in the exact words printed on the buttons, so "you can recount
+on either basis" stops meaning "a control exists somewhere". The worked example
+stayed and flipped with the default: a notice filed in May for a July closing
+sits in May on the default and in July on the other. And the sourcing claim now
+rides along in the same paragraph, because the reader's real question is which
+figure to trust.
+
+No number, multiple or ratio is asserted, because the size of that gap moves
+with the data and nothing would recompute a figure written into prose. No
+publisher is named, here or anywhere, per the standing rule. No number, basis or
+filter semantic changed; the filing-date default that arrived in 2.20.7 is left
+exactly as it is, and `country_basis=any` is untouched.
+
+Guards: `railway/tests/test_loading_states.py` (16 tests, all 16 failed on
+origin/main@e10cc74; the state machine is executed for real in node via
+`jsrun`, not grepped) and `railway/tests/test_basis_reconciliation_copy.py` (13
+tests, 10 failed pre-fix; the three that passed are named in the file as
+regression bars). Both strip comments before matching. The two guards
+`test_date_basis_default.py` already holds over this paragraph, the
+"reported nearly everywhere on the filing date" reason and the "national
+estimate" framing, are both still satisfied by the rewritten copy; neither was
+touched.
+
 ## 2026-08-11 - the contrast fix is now checked by a machine, and the flag column is reserved (2.20.7)
 
 **The dark-mode defect below was already fixed and live. Nothing was checking
