@@ -2,7 +2,7 @@
   "note": "Day-over-day observations of the published headlines, read by data_integrity.MovementInvariant. Written by data-integrity.yml after the checks run. A slice whose movement check FAILED is deliberately left at its previous value \u2014 do not hand-edit this file to clear a failing guard.",
   "slices": {
     "ai_all_time": {
-      "captured_at": "2026-08-10T18:24:45Z",
+      "captured_at": "2026-08-11T18:26:39Z",
       "entries": 99,
       "jobs": 215065
     },
@@ -12,10 +12,10 @@
       "jobs": 6968670
     },
     "worldwide_all_time": {
-      "captured_at": "2026-08-10T18:24:47Z",
-      "entries": 63602,
-      "jobs": 20407113
+      "captured_at": "2026-08-11T18:26:48Z",
+      "entries": 63615,
+      "jobs": 20379846
     }
   },
-  "written_at": "2026-08-10T18:26:12Z"
+  "written_at": "2026-08-11T18:27:39Z"
 }
