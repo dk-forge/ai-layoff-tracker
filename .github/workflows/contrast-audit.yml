@@ -1,0 +1,88 @@
+name: Rendered contrast audit
+
+# WHAT A READER SEES, not which version they were served.
+#
+# reader_freshness.py proves a deploy reached readers. It says nothing about
+# what those bytes render as, and on 2026-08-10 that gap was the whole defect:
+# a rule living in the WordPress database - in NEITHER repo, so ungreppable -
+# declared `color:#1a1a1a !important` on `.entry-content h2` and beat every
+# token the plugin owns. In light that is 16:1. In dark it put ~173 elements
+# between 1.06:1 and 1.28:1, so paragraphs and section headings simply were not
+# there, while their bold lead-ins survived. It reads as a page that failed to
+# load. Every check in this repo was green throughout, because every check read
+# CSS text or a version string, and the defect only exists once the cascade
+# resolves.
+#
+# So this job resolves the cascade. Real headless Chrome, the BARE url, a
+# browser User-Agent, no cache buster, four theme combinations (OS light/dark
+# crossed with the reader's explicit choice), two viewports, and the computed
+# colour of every visible text element composited against its real background.
+#
+# Read-only, no secrets, no LLM, no cost. Chrome is preinstalled on the
+# GitHub-hosted ubuntu image, and railway/cdp.py drives it over the DevTools
+# protocol with the standard library alone, so this adds nothing to the
+# hash-pinned lock that data jobs install (CLAUDE.md).
+#
+# Exit codes it enforces: 2 = a violation is live for readers, 3 = it could not
+# be measured. BOTH are red here. A check that could not run is UNKNOWN, and
+# absence of a signal is not a pass; if the host is down, tomorrow's run is
+# green again and host-watch in the sibling repo owns the outage itself.
+
+on:
+  schedule:
+    - cron: '0 13 * * *'   # daily, 9:00 AM ET, after the morning data jobs
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Audit only this URL (blank = all public surfaces)'
+        required: false
+        default: ''
+      table:
+        description: 'Print every measured element, not just failures'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: contrast-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # No pip install at all: contrast_audit.py and cdp.py are stdlib-only.
+      - name: Confirm a browser exists
+        run: |
+          set -euo pipefail
+          which google-chrome || which google-chrome-stable || which chromium-browser
+          google-chrome --version || google-chrome-stable --version
+
+      - name: Audit rendered contrast
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: |
+          set -euo pipefail
+          ARGS=""
+          if [ -n "${{ github.event.inputs.url }}" ]; then
+            ARGS="--url ${{ github.event.inputs.url }}"
+          fi
+          if [ "${{ github.event.inputs.table }}" = "true" ]; then
+            ARGS="$ARGS --table"
+          fi
+          python3 railway/contrast_audit.py $ARGS --json contrast.json
+
+      - name: Keep the measurement
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contrast-audit
+          path: contrast.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -281,8 +281,11 @@ class FacetCountsBlockTests(unittest.TestCase):
 
     def test_layoffs_js_still_owns_index_three(self):
         # If this ever stops being true the guard above can be revisited; while
-        # it holds, index [3] belongs to the display label.
-        self.assertIn("countryFlag(e[0]) + e[0]", LAYOFFS_JS)
+        # it holds, index [3] belongs to the display label and index [4] to the
+        # row icon. The flag used to be concatenated onto [3]; it is its own
+        # reserved column now, so [3] is the country name alone.
+        self.assertIn("e[3] || e[0], countryFlag(e[0])", LAYOFFS_JS)
+        self.assertNotIn("countryFlag(e[0]) + e[0]", LAYOFFS_JS)
 
     def test_counts_are_events_not_jobs(self):
         block = DB_PHP.split("$facet_counts = array();")[1].split("// Reason breakdown")[0]

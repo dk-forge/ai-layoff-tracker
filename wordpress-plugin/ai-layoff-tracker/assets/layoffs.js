@@ -1729,9 +1729,22 @@
         var barTotals = agg.totals || null;
         var industryRows = verifiedBasis(agg.top_industries);
         var stateRows = verifiedBasis(agg.top_states);
-        var countryRows = verifiedBasis((agg.top_countries || []).map(function (e) {
-            return [e[0], e[1], e[2], countryFlag(e[0]) + e[0], e[4], e[5]];
-        }));
+        // THE FLAG IS A COLUMN, NOT A PREFIX ON THE NAME.
+        //
+        // It used to be concatenated into the display string, so a country
+        // COUNTRY_ISO had never met drew no flag and started its name a flag's
+        // width left of every other row - which does not read as a missing
+        // flag, it reads as a broken left edge halfway down a ranked list, on
+        // the one line the eye tracks. Adding the missing countries fixed the
+        // rows we draw TODAY and left the layout exactly as brittle for the
+        // next country the data reaches, and the data reaches new countries on
+        // its own. So the icon moved into slot 4 and renderBarList reserves
+        // that column's width for every row of the card, flag or no flag.
+        // Slot 4 is free: verifiedBasis emits four fields, and it is the last
+        // thing every bar list passes through.
+        var countryRows = verifiedBasis(agg.top_countries).map(function (e) {
+            return [e[0], e[1], e[2], e[3] || e[0], countryFlag(e[0])];
+        });
         renderBarList('alt-bars-industries', industryRows, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
         renderBarList('alt-bars-states', stateRows, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
         renderBarList('alt-bars-countries', countryRows, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
@@ -1914,11 +1927,13 @@
     // the list of names the country card is known to draw.
     var COUNTRY_ISO = { 'United States':'US','United Kingdom':'GB','Germany':'DE','France':'FR','Netherlands':'NL','India':'IN','Israel':'IL','Japan':'JP','Sweden':'SE','Canada':'CA','Australia':'AU','Brazil':'BR','China':'CN','Ireland':'IE','Singapore':'SG','Indonesia':'ID','Denmark':'DK','Finland':'FI','Norway':'NO','Poland':'PL','Spain':'ES','Italy':'IT','Austria':'AT','Belgium':'BE','Switzerland':'CH','Portugal':'PT','Czech Republic':'CZ','Czechia':'CZ','South Korea':'KR','Kenya':'KE','Nigeria':'NG','South Africa':'ZA','Egypt':'EG','Mexico':'MX','Argentina':'AR','Chile':'CL','Colombia':'CO','United Arab Emirates':'AE','Saudi Arabia':'SA','Turkey':'TR','Russia':'RU','Ukraine':'UA','New Zealand':'NZ','Philippines':'PH','Malaysia':'MY','Thailand':'TH','Vietnam':'VN','Taiwan':'TW','Hong Kong':'HK','Greece':'GR','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Croatia':'HR','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Luxembourg':'LU','Iceland':'IS','Serbia':'RS','Pakistan':'PK','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','Cambodia':'KH','Myanmar':'MM','Laos':'LA','Mongolia':'MN','Kazakhstan':'KZ','Qatar':'QA','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Jordan':'JO','Lebanon':'LB','Iraq':'IQ','Iran':'IR','Morocco':'MA','Tunisia':'TN','Algeria':'DZ','Ghana':'GH','Ethiopia':'ET','Tanzania':'TZ','Uganda':'UG','Zambia':'ZM','Zimbabwe':'ZW','Botswana':'BW','Namibia':'NA','Mozambique':'MZ','Angola':'AO','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','Peru':'PE','Ecuador':'EC','Uruguay':'UY','Paraguay':'PY','Bolivia':'BO','Venezuela':'VE','Costa Rica':'CR','Panama':'PA','Guatemala':'GT','Dominican Republic':'DO','Jamaica':'JM','Trinidad and Tobago':'TT','Cuba':'CU','Haiti':'HT','Türkiye':'TR','Bosnia and Herzegovina':'BA','Cyprus':'CY','Malta':'MT','Isle of Man':'IM','UAE':'AE','Antigua and Barbuda':'AG','Saint Kitts and Nevis':'KN','Saint Vincent and the Grenadines':'VC','Sao Tome and Principe':'ST','Turks and Caicos Islands':'TC' };
     function countryFlag(name) {
-        if (name === 'Multiple countries') return '\uD83C\uDF10 ';
+        // No trailing space: the gap is the reserved column's width now, so a
+        // space here would double it on the rows that happen to have a flag.
+        if (name === 'Multiple countries') return '\uD83C\uDF10';
         var iso = COUNTRY_ISO[name];
         if (!iso) return '';
         var A = 0x1F1E6;
-        return String.fromCodePoint(A + iso.charCodeAt(0) - 65, A + iso.charCodeAt(1) - 65) + ' ';
+        return String.fromCodePoint(A + iso.charCodeAt(0) - 65, A + iso.charCodeAt(1) - 65);
     }
 
     /* THE BARS AND THE HEADLINE MUST BE THE SAME QUANTITY -------------- */
@@ -2083,6 +2098,12 @@
             return;
         }
         var active = activeValues || [];
+        // If ANY row of this card carries an icon (slot 4), every row of it
+        // gets the icon column, empty or not. Emitting the span only where
+        // there is something to put in it would be the same defect in a new
+        // place: the rows without one would still start their name further
+        // left than the rows with one.
+        var iconCol = entries.some(function (e) { return e[4]; });
         var max = entries[0][1] || 1;
         entries.forEach(function (e) { if (e[1] > max) max = e[1]; });
 
@@ -2144,7 +2165,9 @@
                 + (tip ? ' title="' + escapeHtml(tip) + '"' : '')
                 + ' data-val="' + escapeHtml(label) + '" data-label="' + escapeHtml(display) + '"'
                 + ' aria-pressed="' + (isActive ? 'true' : 'false') + '">'
-                + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(display) + '</span>'
+                + '<span class="alt-barrow-top"><span class="alt-barrow-name">'
+                + (iconCol ? '<span class="alt-barrow-icon" aria-hidden="true">' + escapeHtml(e[4] || '') + '</span>' : '')
+                + escapeHtml(display) + '</span>'
                 + '<span class="alt-barrow-val">' + valTxt + '</span></span>'
                 + '<span class="alt-bartrack">'
                 + (aiW > 0.4 ? '<span class="alt-barfill-ai" style="width:' + aiW.toFixed(1) + '%"></span>' : '')

@@ -1,5 +1,77 @@
 # Tech Log
 
+## 2026-08-11 - the contrast fix is now checked by a machine, and the flag column is reserved (2.20.7)
+
+**The dark-mode defect below was already fixed and live. Nothing was checking
+that it stayed fixed, and nothing had checked it in the first place.** A
+session was handed the 2.20.4 symptom report and found, on measuring the live
+2.20.6 build, that every element named in it now clears WCAG AA: `h2` at
+12.9:1 where it had been 1.06:1, `.alt-hero-thesis` at 12.4:1 where it had been
+1.28:1. The 2.20.5 fix held. What did not exist was any check that would notice
+if it stopped holding, and the reason the defect ran for as long as it did is
+that `reader_freshness.py` proves which VERSION a reader is served and every
+other front-end guard reads the stylesheet as TEXT. The losing declaration is
+not in either repository. It cannot be grepped. It only exists once a cascade
+resolves, and nothing in either repo resolved a cascade.
+
+So the guard is a browser. `railway/cdp.py` is a stdlib-only Chrome DevTools
+Protocol client (~150 lines of RFC 6455 framing) and `railway/contrast_audit.py`
+loads the bare url with a browser User-Agent and no cache buster, then asks the
+browser for the computed colour of every visible text element composited
+against its real background. No new dependency: adding playwright to the
+hash-pinned lock would drag a browser download and a transitive tree into
+runners that hold `WP_API_KEY` and `OPENROUTER_API_KEY`, to render one page.
+
+Three things it does that a naive sweep does not, each of them a mistake this
+session made first and then measured:
+
+- **It freezes transitions.** `.alt-btn` carries `transition: background .15s`.
+  Reading a computed background in the same task that flipped the theme
+  returns the PREVIOUS colour, and the first run reported twenty dark-on-dark
+  violations that were entirely its own measurement. Settling for 1.5s made
+  every one of them vanish. A guard that invents failures gets muted as fast as
+  one that misses them.
+- **It measures four theme combinations, not two.** The reader's explicit
+  `data-theme` crossed with their OS `prefers-color-scheme`. The mismatched
+  pair (dark OS, Light chosen) exercises a different half of the stylesheet
+  than either matched one, and `attr=None` under a dark OS is the default that
+  shipped the 1.06:1 page.
+- **It cannot resolve to a silent pass.** Exit 2 is "a violation is live",
+  exit 3 is "could not be measured". `test_rendered_contrast.py` proves the
+  audit can actually FAIL by rebuilding the defect: same site override, same
+  tokens, same markup, plugin's winning declarations stripped back out. Run
+  against the pre-2.20.5 tree it reports `h2 rgb(26,26,26) on rgb(18,20,26)`
+  at 1.04:1, which is the incident, to the byte.
+
+Where it runs: the local-fixture half is in `Tests` on every push (offline,
+~8s, Chrome is preinstalled on the runner image); the live sweep is
+`contrast-audit.yml` daily and dispatchable, and a step on every deploy. The
+deploy step fails on exit 2 and warns on exit 3, because this repo has already
+learned that letting a host outage manufacture red runs manufactures alerts
+that also fail. The daily job goes red on both.
+
+**The sibling talent tracker has the identical defect and is NOT fixed.** Same
+install, same site rule, and only this plugin ever raised its specificity
+against it. Measured on the live pages: the dashboard fails 63 elements in dark
+at 375px and the recall page 2, with the same three literals (`#2a2a2a` on `p`,
+`#1a1a1a` on `h2`, `#222` on `h3`) plus two the layoff fix never had to cover,
+`#111` on `h1.wp-block-post-title` and on SVG `<text>`. It also has one
+light-mode failure of its own, `.tit-region-n` white on `rgb(66,151,198)` at
+3.25:1. It is the same class of fix scoped to `.tit-wrap`, but it is a
+different repository with its own deploy and its own handover, so it is
+reported here rather than reached into.
+
+**The country flag is a column now, not a prefix.** 2.20.5 fixed the missing
+flags by completing `COUNTRY_ISO`, which fixed the countries the card draws
+today and left the layout exactly as brittle for the next one the data reaches,
+and the data reaches new countries without being asked. The flag was
+concatenated into the display string, so a name with no flag started a flag's
+width left of every other row: not a missing flag, a broken left edge halfway
+down a ranked list, on the one line the eye tracks. `renderBarList` now takes
+the icon in slot 4 and reserves a fixed 1.5em column for every row of a card
+where any row has one, empty or not. The reserved cell stays EMPTY on a
+flagless row rather than getting a stand-in glyph.
+
 ## 2026-08-11 - the secondary pages, audited against the live site and fixed (2.20.5)
 
 Every check in this repository reads the dashboard, because the dashboard is

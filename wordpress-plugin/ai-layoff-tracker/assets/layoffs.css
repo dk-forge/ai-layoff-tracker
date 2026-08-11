@@ -1279,6 +1279,14 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 /* min-width:0 lets this flex child shrink so the ellipsis actually engages; without
    it a long company name pushes the row past the card edge (mobile bleed). */
 .alt-barrow-name { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 700; color: var(--alt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The country flag is a reserved column, not a prefix glued to the name. The
+   width is fixed and identical whether or not the row has a flag, so a country
+   the emoji vocabulary has not met cannot shift its name left and break the
+   list's left edge mid-list. 1.5em holds a regional-indicator pair plus the
+   gap that used to be a trailing space in countryFlag(). aria-hidden on the
+   span: the flag repeats the country name that follows it, so a screen reader
+   reading both would say the country twice. */
+.alt-barrow-icon { display: inline-block; width: 1.5em; font-style: normal; font-weight: 400; }
 /* flex:0 0 auto is load-bearing. The name above has flex-grow:1, so when a row
    is too wide the browser shrinks BOTH children in proportion to their base
    size - and the value's base is the larger one, so the value took nearly all
