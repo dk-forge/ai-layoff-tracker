@@ -238,11 +238,142 @@ def normalise(message):
     return out.strip()
 
 
-def extract_cause(raw_log):
+# ---------------------------------------------------------------------------
+# ONE LIVE-DATA INCIDENT IS ONE ALARM, WHATEVER BRANCH NOTICED IT
+# ---------------------------------------------------------------------------
+#
+# Measured on 2026-08-10/11. ONE open incident — the US headline moving +93,210
+# jobs with no row that explains it — mailed the owner SIX times in seven hours,
+# from runs 31421748713, 31421827146, 31421971041, 31425792582, 31448285345,
+# 31450680641 and 31450792070.
+#
+# The obvious suspect is wrong, and it matters that it is wrong, because "the
+# numbers keep moving" would have been fixed by widening `_NORMALISE` and the
+# widening would have bought nothing. Run the six real assertion strings through
+# `normalise` and they are BYTE-IDENTICAL: +93,210 and +93,290, 3.0d and 3.3d,
+# +18 and +19 entries all collapse to `<N>` exactly as designed.
+#
+# What actually differed was the SCOPE. `scope = workflow:branch`, so the same
+# live-data incident minted a separate key on every branch that ran the suite:
+#
+#   tests:main:8a5b96fc74f3e59d                        (3 runs, correctly 1 email)
+#   tests:docs-handoff-external-review:4fe3831793263ff8
+#   tests:feat-changed-rows-endpoint:efeece54c1a18dcd
+#   tests:feat-filed-basis-default:d9078245a54da1c5
+#   tests:claude-sticky-headline-incidents:555efd27b335228d
+#
+# Branch belongs in the scope for a CODE failure: a test that only fails on one
+# branch is that branch's defect, and folding it into main's alarm would hide it.
+# A LIVE-DATA invariant is the opposite animal. It reads asktherecruiter.com, not
+# the checkout. Every branch is looking at the same one wrong number, so every
+# branch is the SAME incident and the branch that happened to notice it is noise.
+#
+# The seventh run adds the second half of the defect. The sticky-incident ledger
+# prefixes the detail with "OPEN INCIDENT, opened 0d ago (<timestamp>)", which
+# pushed the sentence past `extract_cause`'s 400-character cut and lopped a
+# different tail off it ("...reconcile-supers" instead of "...corrections log").
+# A key built by regexing numbers out of a sentence is hostage to every later
+# change in that sentence's SHAPE, and that sentence is written to be read by a
+# human, so it will keep changing.
+#
+# So the key is not built from the sentence at all. It is built from the STABLE
+# IDENTITY of the incident: which invariant, and which slice. Both come from
+# data_integrity's own registries, which is what makes this narrow — an
+# unrecognised assertion is not a live-data incident and keeps the branch-scoped
+# behaviour above, and two different invariants, or two different slices of one
+# invariant, are two different identities and two different emails.
+
+#: The branch component of the scope, replaced for live-data incidents. A dot
+#: cannot appear in a `_slug`, so no branch name can ever collide with this.
+LIVE_DATA_SEGMENT = "live.data"
+
+#: How much of the failing line the ALERTER reads. Only ever used to decide the
+#: key; the email still shows the first 400 characters, unchanged. The live
+#: roll-up sentence runs to 741 characters with the sticky-incident prefix, and
+#: `_roll_up` appends a second slice AFTER the first, so a cut anywhere inside
+#: it is a cut through the identity.
+ALERT_CAUSE_LIMIT = 2000
+
+_VOCABULARY = None
+
+
+def _live_data_vocabulary():
+    """(invariant labels, slice labels) that mark an assertion as live-data.
+
+    Read from data_integrity's OWN registries rather than copied, for the same
+    reason ops_status imports them: a hand-copied list goes stale silently and a
+    stale list here means a renamed invariant quietly returns to mailing once
+    per branch. Only invariants with `reads_live_data` qualify — a local
+    invariant CAN genuinely fail on one branch and not another, and that one
+    must keep its branch.
+
+    Never raises: this runs on the failure path.
+    """
+    global _VOCABULARY
+    if _VOCABULARY is not None:
+        return _VOCABULARY
+    invariants, slices = (), ()
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import data_integrity
+        invariants = tuple(sorted(
+            {i.label for i in data_integrity.INVARIANTS
+             if getattr(i, "label", "") and getattr(i, "reads_live_data", False)},
+            key=len, reverse=True))
+        slices = tuple(sorted(
+            {h.label for h in data_integrity.HEADLINES if getattr(h, "label", "")},
+            key=len, reverse=True))
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"could not read the data-integrity vocabulary ({exc}): "
+              "live-data failures will be keyed per branch")
+    _VOCABULARY = (invariants, slices)
+    return _VOCABULARY
+
+
+def live_data_identity(cause):
+    """-> the stable identity of a live-data incident, or None.
+
+    "No headline moves without rows to explain it | United States jobs, all time"
+    for every run of the US incident, no matter what the numbers, the elapsed
+    span, the entry count, the opened-Nd-ago clause or the truncation did.
+
+    Deliberately NOT a catch-all. It matches only labels data_integrity declares,
+    and it keeps EVERY slice named in the message, so a second slice going bad is
+    a new identity and a new email rather than something swallowed by the first.
+    """
+    text = cause or ""
+    if not text:
+        return None
+    invariants, slices = _live_data_vocabulary()
+    invariant = next((label for label in invariants if label in text), None)
+    if not invariant:
+        return None
+    named = sorted({label for label in slices if label in text})
+    return " | ".join([invariant] + named) if named else invariant
+
+
+def live_data_scope(workflow):
+    """The branch-free scope live-data incidents are raised and cleared under.
+
+    Still workflow-qualified: `/alert` clears by key PREFIX, and a green run of
+    one workflow must not clear an alarm only another workflow can see.
+    """
+    return f"{_slug(workflow)}:{LIVE_DATA_SEGMENT}"
+
+
+def extract_cause(raw_log, limit=400):
     """Pull the actual failing assertion out of a failed run's log.
 
     Returns (cause, context) where `cause` is the single most specific line and
-    `context` is up to a handful of supporting lines. `cause` is what gets
+    `context` is up to a handful of supporting lines.
+
+    `limit` defaults to 400 because two other readers print this string
+    verbatim (ops_status.py section [4], ci_noise_report's email) and a
+    700-character line wrecks both. The ALERTER passes a wider one: its
+    fingerprint has to see the whole sentence, and 400 characters is exactly
+    where the sticky-incident prefix moved the cut and gave one open incident a
+    second identity. Widening the default would have quietly reformatted two
+    surfaces to fix a third. `cause` is what gets
     fingerprinted and what leads the subject line, because the Spirit failure
     carried its own diagnosis in the message and that sentence — not "a job
     failed" — is the entire reason the email is worth opening.
@@ -295,7 +426,7 @@ def extract_cause(raw_log):
         for ln in bucket[-3:]:
             if ln != cause and ln not in context:
                 context.append(ln)
-    return cause[:400], context[:5]
+    return cause[:limit], context[:5]
 
 
 def fetch_failed_log(repo, run_id):
@@ -328,12 +459,21 @@ def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause,
     path needs no new vocabulary. The cause fingerprint keeps them distinct
     emails.
     """
-    scope = f"{_slug(workflow)}:{_slug(branch, 32)}"
-    fingerprint = hashlib.md5(
-        f"{scope}\n{normalise(cause)}".encode("utf-8")).hexdigest()[:16]
-    dedupe_key = f"{scope}:{fingerprint}"
+    # The display line is cut; the identity is not. See extract_cause.
+    headline = (cause or "")[:400] or "no error line could be extracted from the log"
 
-    headline = cause or "no error line could be extracted from the log"
+    identity = live_data_identity(cause)
+    if identity:
+        # One live number is wrong. Every branch is reading the same one, so
+        # the branch that noticed drops out of the key entirely.
+        scope = live_data_scope(workflow)
+        fingerprint = hashlib.md5(
+            f"{scope}\n{identity}".encode("utf-8")).hexdigest()[:16]
+    else:
+        scope = f"{_slug(workflow)}:{_slug(branch, 32)}"
+        fingerprint = hashlib.md5(
+            f"{scope}\n{normalise(headline)}".encode("utf-8")).hexdigest()[:16]
+    dedupe_key = f"{scope}:{fingerprint}"
     subject = f"{label}: {workflow} — {headline}"[:180]
 
     lines = [
@@ -507,27 +647,48 @@ def main(argv=None):
 
     if conclusion == "success":
         # Recovery. The endpoint mails exactly once IF something was open for
-        # this scope, and stays silent otherwise — so this is cheap to post on
+        # each scope, and stays silent otherwise — so this is cheap to post on
         # every green run and cannot itself become noise.
-        payload = {"resolve_scope": scope,
-                   "subject": f"RECOVERED: {args.workflow} is green again",
-                   "body": (f"'{args.workflow}' on {args.branch} passed again.\n\n"
-                            f"  run: {args.run_url}\n\n"
-                            "Whatever was failing is no longer failing. Nothing to do.")}
+        #
+        # TWO scopes, because a live-data incident is raised under a branch-free
+        # one (see live_data_identity). Both are posted from every green run of
+        # this workflow: whichever one has nothing open answers "nothing was
+        # open for this scope" and sends no mail. Leaving the second one out is
+        # how a closed incident would keep its alarm open and earn a STILL
+        # FAILING reminder a fortnight later.
+        scopes = [scope, live_data_scope(args.workflow)]
         if args.dry_run or not (site and key):
-            print(f"[dry-run] resolve scope={scope}")
+            print(f"[dry-run] resolve scopes={scopes}")
             return 0
-        ok, note, transient = post_alert(site, key, payload)
-        print(f"resolve {scope}: {note}")
-        if not ok:
-            # Held like any other alert. Holding a RESOLVE is what lets the
-            # outbox cancel a RED for the same scope that never went out: if
-            # both were raised during one outage, the owner hears about
-            # neither, because neither was still true by the time anyone could
-            # have read it. See alert_outbox.enqueue.
-            return hold(envelope=args.envelope, key=f"resolve:{scope}",
-                        kind="resolve", scope=scope, payload=payload,
-                        note=note, transient=transient, run_url=args.run_url)
+        for sc in scopes:
+            payload = {"resolve_scope": sc,
+                       "subject": f"RECOVERED: {args.workflow} is green again",
+                       "body": (f"'{args.workflow}' on {args.branch} passed again.\n\n"
+                                f"  run: {args.run_url}\n\n"
+                                "Whatever was failing is no longer failing. Nothing to do.")}
+            ok, note, transient = post_alert(site, key, payload)
+            print(f"resolve {sc}: {note}")
+            if not ok:
+                # Held like any other alert. Holding a RESOLVE is what lets the
+                # outbox cancel a RED for the same scope that never went out: if
+                # both were raised during one outage, the owner hears about
+                # neither, because neither was still true by the time anyone could
+                # have read it. See alert_outbox.enqueue.
+                #
+                # And STOP after holding one. There is exactly ONE envelope
+                # path and ci-alert.yml commits exactly one, so a second hold
+                # would overwrite the first and lose the alert we were in the
+                # middle of saving. A failure here means the host is not
+                # answering, so the next scope would fail too, and the next
+                # green run reposts it.
+                remaining = scopes[scopes.index(sc) + 1:]
+                if remaining:
+                    print(f"not attempting resolve scope(s) {remaining}: the host "
+                          f"is not answering, and there is one envelope to hold. "
+                          f"The next green run of this workflow reposts them")
+                return hold(envelope=args.envelope, key=f"resolve:{sc}",
+                            kind="resolve", scope=sc, payload=payload,
+                            note=note, transient=transient, run_url=args.run_url)
         return 0
 
     label = "CI RED"
@@ -555,7 +716,9 @@ def main(argv=None):
         print(f"conclusion '{conclusion}' is not alertable, nothing to do")
         return 0
     else:
-        cause, context = extract_cause(fetch_failed_log(args.repo, args.run_id))
+        # ALERT_CAUSE_LIMIT, not the default 400: see extract_cause.
+        cause, context = extract_cause(fetch_failed_log(args.repo, args.run_id),
+                                       limit=ALERT_CAUSE_LIMIT)
 
     subject, body, dedupe_key = build_alert(
         repo=args.repo, workflow=args.workflow, branch=args.branch, event=args.event,
