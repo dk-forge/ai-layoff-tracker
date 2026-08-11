@@ -33,7 +33,17 @@ concurrency:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # DERIVED from the script's own deadline, not chosen. The runner timeout is
+    # only a backstop now: reason_backfill.py stops itself first, because a
+    # cancelled run skips its write step and loses the day's tagging (run
+    # 31462430383, 2026-08-11, killed at the old 45).
+    #   REASON_BACKFILL_DEADLINE_SECONDS                             1260s
+    # + worst single in-flight operation past the last deadline check:
+    #   one /query page = 3 attempts x 60s timeout + 5s + 10s backoff  195s
+    # + measured job overhead (9s setup on run 31462430383,
+    #   1s teardown on run 31360433167)                                10s
+    # = 1465s = 24.4 min -> 25 min, + 2 min runner variance
+    timeout-minutes: 27
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -71,9 +81,16 @@ jobs:
           REASON_BACKFILL_BATCH: ${{ github.event.inputs.model_batch || '40' }}
           REASON_BACKFILL_DETERMINISTIC_CAP: ${{ github.event.inputs.deterministic_cap || '400' }}
           REASON_BACKFILL_DRY_RUN: ${{ github.event.inputs.dry_run || '' }}
-          # Stops safely between rows well below the job timeout; the daily
-          # rotation resumes where the queue left off.
-          REASON_BACKFILL_DEADLINE_SECONDS: '900'
+          # WHOLE-RUN budget (scan + model loop + writes), measured from
+          # process start. 3 x the measured max step runtime (419s over the 11
+          # scheduled runs 2026-07-31..2026-08-10), rounded up to the whole
+          # minute: the scan is 107 pages at a measured 2.50s each, so this
+          # absorbs a 3x-slow host without truncating healthy work. The script
+          # stops itself here; timeout-minutes above is derived from it.
+          REASON_BACKFILL_DEADLINE_SECONDS: '1260'
+          # Held back from the scan and the model loop so the decided edits are
+          # always written. A cancelled run writes nothing at all.
+          REASON_BACKFILL_WRITE_RESERVE_SECONDS: '240'
           OPENROUTER_TIMEOUT_SECONDS: '35'
         # Data-changing jobs fail loudly: any failed /edit batch, health-write
         # failure, or fully failed model pass exits non-zero above.

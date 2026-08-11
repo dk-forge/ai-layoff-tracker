@@ -23,7 +23,19 @@ would burn model budget re-reading the same rows with nothing new to find.
 
 Ships DRY-RUN by default: reports what it WOULD upgrade and writes nothing until
 AI_SWEEP_LIVE=1. Env: WP_SITE_URL, WP_API_KEY, OPENROUTER_API_KEY,
-AI_SWEEP_MIN_JOBS (default 2000), AI_SWEEP_MAX (default 20), AI_SWEEP_LIVE=1.
+AI_SWEEP_MIN_JOBS (default 2000), AI_SWEEP_MAX (default 20), AI_SWEEP_LIVE=1,
+AI_SWEEP_DEADLINE_SECONDS (default 1140, whole-run wall clock).
+
+THE RUN OWNS ITS OWN CLOCK (archive_backfill / reason_backfill pattern).
+AI_SWEEP_MAX bounds the number of EVENTS, not the time: each event re-fetches
+its stored source (up to 3 retries x 40s) plus an unbounded number of Google
+News articles, and asks the model about EVERY one of them. When the Google News
+route started returning results on 2026-08-03 this job went from ~1.2 min/run
+to 8.7-15.4 min/run against a 20-minute ceiling. Per-event work is committed as
+it is decided (each upgrade POSTs immediately), so stopping between events --
+or between texts within an event -- loses nothing: the row stays untagged and
+the next daily run re-reads it. Stopping ourselves beats being cancelled, which
+would also drop the spend-ledger write at the end.
 """
 import os
 import re
@@ -58,6 +70,19 @@ LIVE = os.environ.get("AI_SWEEP_LIVE", "").lower() in {"1", "true", "yes"}
 MIN_JOBS = max(500, int(os.environ.get("AI_SWEEP_MIN_JOBS") or "2000"))
 MAX_EVENTS = max(1, int(os.environ.get("AI_SWEEP_MAX") or "20"))
 TIMEOUT = 40
+# MEASURED, the 7 successful scheduled runs after the Google News route began
+# returning results (2026-08-03..2026-08-10, "Run AI evidence sweep" step):
+# 12.8, 12.4, 8.7, 15.4, 13.7, 9.5, 9.6 minutes of job time, i.e. a max of
+# 888s of script time. 888 x 1.25 leaves room for a busier news day and rounds
+# up to the whole minute at 1140s. Below this the sweep would start truncating
+# runs that are healthy today.
+DEADLINE_SECONDS = max(60, min(3600, int(os.environ.get("AI_SWEEP_DEADLINE_SECONDS") or "1140")))
+STARTED_AT = time.monotonic()
+
+
+def past_deadline():
+    """True once the run must stop starting new work."""
+    return time.monotonic() - STARTED_AT >= DEADLINE_SECONDS
 
 def _fetch_text(url):
     if not url:
@@ -175,7 +200,15 @@ def main():
     events = _big_untagged()
     print(f"{len(events)} big untagged 2026 event(s) to check")
     upgraded = checked = 0
+    deferred = 0
     for row in events:
+        # Nothing is half-written per event (each upgrade POSTs as it is
+        # decided), so stopping here is safe and the row is re-read tomorrow.
+        if past_deadline():
+            deferred = len(events) - checked
+            print(f"  reached AI_SWEEP_DEADLINE_SECONDS={DEADLINE_SECONDS}s — "
+                  f"stopping cleanly with {deferred} event(s) deferred to the next run")
+            break
         if not spend.paid_reads_enabled():
             # Per-run ceiling tripped mid-sweep: keep what was decided,
             # defer the rest to the next schedule.
@@ -196,6 +229,13 @@ def main():
                 pass
         quote = ""
         for txt in texts:
+            # The texts list is as long as the press search returns, and each
+            # entry costs up to two model calls. This is the loop that actually
+            # made the job unbounded, so it checks the clock too.
+            if past_deadline():
+                print(f"  deadline reached mid-event for {company}; the row stays "
+                      f"untagged and is re-read next run")
+                break
             quote = _ai_quote(company, txt)
             if quote and _second_pass_agrees(company, quote):
                 break
@@ -208,7 +248,9 @@ def main():
         print(f"  {status:14} {company} ({row.get('job_count')}): \"{quote[:90]}\"")
         time.sleep(0.5)
     print(f"done: {checked} checked, {upgraded} "
-          f"{'would upgrade' if not LIVE else 'upgraded'} with an employer AI quote")
+          f"{'would upgrade' if not LIVE else 'upgraded'} with an employer AI quote"
+          + (f", {deferred} deferred on the deadline" if deferred else "")
+          + f" ({time.monotonic() - STARTED_AT:.0f}s)")
     spend.record_job_run(items=checked, changed=upgraded)
     return 0
 
