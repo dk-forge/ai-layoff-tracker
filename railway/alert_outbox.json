@@ -33,6 +33,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-11T18:07:44+00:00",
+      "last_error": "HTTP 502 from /alert: error code: 502\n",
+      "payload": {
+        "body": "The workflow 'Announcement lifecycle review candidates' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Announcement lifecycle review candidates\n  branch:   main\n  trigger:  schedule\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31521050269\n\nWHAT FAILED:\n  curl: (22) The requested URL returned error: 502\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Announcement lifecycle review candidates' is failing on main with: curl: (22) The requested URL returned error: 502. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31521050269. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "announcement-lifecycle-review-candidates:main:ad5fba2966e977c2",
+        "subject": "CI RED: Announcement lifecycle review candidates \u2014 curl: (22) The requested URL returned error: 502"
+      },
+      "raised_at": "2026-08-11T18:07:44+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31521050269",
+      "scope": "announcement-lifecycle-review-candidates:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -202,6 +218,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-11T17:36:59+00:00",
+  "updated_at": "2026-08-11T18:07:44+00:00",
   "version": 1
 }
