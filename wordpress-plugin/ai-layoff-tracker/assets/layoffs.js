@@ -646,16 +646,16 @@
         // date_basis was WRITE-only: every share URL carried it, nothing read it
         // back, so a "notice date" link silently reverted the recipient to the
         // effective-date basis while looking like it carried the setting — and
-        // the two bases produce different numbers. Set the closure state AND the
-        // segmented switch's visual/aria state (it's buttons, not a form field).
-        if (query.get('date_basis') === 'notice') {
-            DATE_BASIS = 'notice';
-            document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
-                var on = x.getAttribute('data-basis') === 'notice';
-                x.classList.toggle('alt-datebasis-on', on);
-                x.setAttribute('aria-pressed', on ? 'true' : 'false');
-            });
-        }
+        // the two bases produce different numbers.
+        //
+        // BOTH values are read now, not just the non-default one. When the
+        // default was 'effective' a link saying date_basis=effective was
+        // indistinguishable from a link saying nothing, so reading only
+        // 'notice' happened to work. The default is 'notice' now, and a link
+        // that explicitly asks for the effective basis has to be honoured or
+        // every effective-basis share silently becomes a filed-basis view.
+        var urlBasis = query.get('date_basis');
+        if (urlBasis === 'notice' || urlBasis === 'effective') setDateBasis(urlBasis);
     }
     function clearFilters() {
         FILTER_IDS.forEach(function (id) {
@@ -675,10 +675,81 @@
         return v || '';
     }
 
-    // Journalist date-basis toggle: 'effective' (default, our conservative floor)
-    // counts each cut on its effective date; 'notice' recounts by filing date
-    // (how most aggregators count). Set by the toolbar toggle; recounts the page.
-    var DATE_BASIS = 'effective';
+    /*
+      THE DATE BASIS, AND WHY THE DEFAULT IS THE FILING DATE.
+
+      'notice' counts each cut on the day it was filed or announced
+      (COALESCE(announcement_date, layoff_date) server-side, so no row is ever
+      dropped for lacking a filing date). 'effective' counts it on the day the
+      jobs end.
+
+      The default was 'effective' and is now 'notice'. The reason is not that
+      one basis is more true: it is that the filing basis is the one every
+      other published layoff figure is counted on, so a reader arriving with a
+      number in their head can reconcile ours against it in one step. On the
+      filing basis, US July 2026 reads within about one percent of the
+      independent national estimate for the same month. On the effective basis
+      the same month reads roughly double, and a correct number that needs a
+      paragraph before it can be compared gets read as a wrong one.
+
+      The effective basis is NOT demoted out of existence. It answers a real
+      and different question, when the jobs actually ended, it is one click
+      away in the toolbar, and every figure on the page recomputes on it.
+
+      Anything that renders a total reads BASIS_COPY rather than writing the
+      words itself, so a total and its basis label cannot drift apart.
+    */
+    var DATE_BASIS = 'notice';
+    var BASIS_COPY = {
+        notice: {
+            // Goes straight into the hero label after the geography and period.
+            headline: 'counted by filing date',
+            // The (i) body on the Verified job cuts tile. Names ONE basis. It
+            // used to name both ("Filed or reported, counted on the day each
+            // cut takes effect"), which was wrong on whichever basis was live.
+            tile: 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure compares directly. Every row behind it links to its source.',
+            // The switch itself, so the active option states the question it
+            // answers rather than only naming a date.
+            toggleTitle: 'Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure compares directly. This is the default.'
+        },
+        effective: {
+            headline: 'counted by effective date',
+            tile: 'Counted on the day the jobs actually end. This answers when the work stopped, rather than when it was reported. Every row behind it links to its source.',
+            toggleTitle: 'Counts each layoff on the day the cut takes effect, the day the jobs actually end. A different question from the filing basis, and equally real.'
+        }
+    };
+    function basisCopy() { return BASIS_COPY[DATE_BASIS] || BASIS_COPY.notice; }
+
+    // One writer for the basis state: the closure variable, the segmented
+    // switch's visual and aria state, and every caption that names the basis.
+    // Three callers (URL restore, the toggle click, init) used to do parts of
+    // this by hand, which is how a caption ends up naming a basis that is not
+    // the one being counted.
+    function setDateBasis(basis) {
+        DATE_BASIS = (basis === 'effective') ? 'effective' : 'notice';
+        document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
+            var on = (x.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective') === DATE_BASIS;
+            x.classList.toggle('alt-datebasis-on', on);
+            x.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        renderBasisCopy();
+    }
+
+    // Every caption that names the basis, rewritten from BASIS_COPY. Called on
+    // every basis change and on every stats render, so a caption can never
+    // survive a toggle while describing the other basis.
+    function renderBasisCopy() {
+        var c = basisCopy();
+        setText('alt-hero-total-basis', c.headline);
+        setText('alt-stat-total-basis', c.headline);
+        setText('alt-citeline-basis', c.headline);
+        var tileBody = document.getElementById('alt-stat-total-i-body');
+        if (tileBody) tileBody.textContent = c.tile;
+        document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
+            var key = x.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective';
+            x.setAttribute('title', BASIS_COPY[key].toggleTitle);
+        });
+    }
     function currentParams() {
         var p = {};
         var v;
@@ -715,7 +786,13 @@
         if (readControl('alt-f-ai')) p.ai = '1';
         if (readControl('alt-f-ai-broad')) p.ai_broad = '1';
         if (readControl('alt-f-announced')) p.stage = 'announced';
-        if (DATE_BASIS === 'notice') p.date_basis = 'notice';
+        // ALWAYS explicit, on both bases. This param feeds the API request AND
+        // (through syncUrlFromFilters) the address bar, so writing it only for
+        // the non-default value made a shared URL mean "whatever the default is
+        // on the day you open it". The default has now changed once; a link
+        // shared before this line was added would have silently changed basis.
+        // Written last so the querystring reads scope-then-basis.
+        p.date_basis = (DATE_BASIS === 'effective') ? 'effective' : 'notice';
         return p;
     }
 
@@ -789,7 +866,12 @@
     // being pasted to someone else. replaceState, not pushState: a history entry
     // per keystroke in the search box would bury the back button. The default
     // view (this year, nothing else) keeps a clean, param-free URL.
-    var URL_BASELINE = 'years=' + new Date().getFullYear();
+    // The querystring the DEFAULT view produces, so the default view keeps a
+    // clean, param-free URL. currentParams() now always writes date_basis, so
+    // the baseline has to carry it too or every unfiltered page load would
+    // rewrite the address bar with a querystring that changes nothing.
+    // qs() preserves insertion order and date_basis is written last.
+    var URL_BASELINE = 'years=' + new Date().getFullYear() + '&date_basis=notice';
     function syncUrlFromFilters() {
         if (window.altData && window.altData.embedParams) return; // embed iframe: not a shareable view
         try {
@@ -1269,6 +1351,20 @@
             + '. Together they make the ' + fmt(calendar) + ' total for ' + period + '.';
     }
 
+    // The compressed twin of alt_period_split_short() in db.php, character for
+    // character. This is the version the first screen carries: two parts, the
+    // whole, and the period, in one line. See the PHP docblock for why it is
+    // compressed rather than removed, and why it is not behind a disclosure.
+    function periodSplitShort(toDate, calendar, period) {
+        toDate = Math.max(0, toDate | 0);
+        calendar = Math.max(0, calendar | 0);
+        var later = Math.max(0, calendar - toDate);
+        if (later <= 0) return '';
+        return fmt(toDate) + ' have taken effect. The other ' + fmt(later)
+            + ' are filed for effective dates later in ' + period
+            + '. Together, ' + fmt(calendar) + '.';
+    }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
@@ -1283,11 +1379,17 @@
         var whenAnnounced = period + scope + ' · includes future-dated plans';
         setText('alt-stat-total', fmt(verifiedJ));
         setText('alt-stat-total-entries', when);
+        // The basis, on every surface that publishes a total, rewritten from
+        // the one BASIS_COPY table. Called here as well as from setDateBasis()
+        // so a filter change that re-renders the tiles cannot leave a stale
+        // basis word behind, and so the server-rendered first paint is
+        // corrected the moment JS runs.
+        renderBasisCopy();
+        setText('alt-hero-total-geo', heroGeoLabel());
         // The hero figure is the SAME number as the Verified tile, written from
         // the same variable in the same pass, so a filter change can never
         // leave the page publishing two different headline totals.
         setText('alt-hero-total', fmt(verifiedJ));
-        setText('alt-hero-total-geo', heroGeoLabel());
         setText('alt-hero-total-period', heroPeriodLabel());
         /*
           THE HERO'S RECONCILING LINE, and the citeline that quotes it.
@@ -1301,8 +1403,11 @@
         var verifiedToDate = haveToDate ? (t.to_date_jobs - t.to_date_announced_jobs) : null;
         var asOfEl = document.getElementById('alt-hero-asof');
         if (asOfEl) {
+            // The COMPRESSED reconciliation. The full sentence still exists and
+            // still runs (periodSplitSentence, above) on the press page, where a
+            // reader is deliberately looking up how to cite a figure.
             var split = haveToDate
-                ? periodSplitSentence(verifiedToDate, verifiedJ, asOfLabel(t), period) : '';
+                ? periodSplitShort(verifiedToDate, verifiedJ, period) : '';
             asOfEl.textContent = split;
             // The sentence now sits inside a labelled wrapper ("In this
             // figure: ..."), so an empty split has to hide the LABEL too or
@@ -1311,7 +1416,26 @@
             if (asOfWrap) asOfWrap.hidden = (split === '');
             else asOfEl.hidden = (split === '');
         }
+        /*
+          THE CITE LINE SAYS WHAT ITS NUMBER IS, and it is not the headline.
+
+          It read "N verified job cuts recorded for 2026 so far". Three totals
+          on this page can be live at once and all three read as the same
+          claim: the hero (the whole selected window), the at-a-glance board's
+          YTD column (its own fixed period, region tabs only) and this line
+          (the part of the selected window that has already taken effect). In
+          one live view they were 484,427, 335,637 and 24,754, with nothing on
+          screen saying which question each answered. A screenshot of the
+          smallest one, captioned as ours, is a story.
+
+          So this line now states its geography and its period from the SAME
+          labels the hero uses, and says plainly that its number is the part
+          that has already taken effect. The basis word comes from
+          renderBasisCopy(), which reads the one BASIS_COPY table.
+        */
         if (verifiedToDate != null) setText('alt-citeline-total', fmt(verifiedToDate));
+        setText('alt-citeline-geo', heroGeoLabel());
+        setText('alt-citeline-period', heroPeriodLabel());
         setText('alt-stat-announced', fmt(annJ));
         setText('alt-stat-announced-sub', whenAnnounced);
         setText('alt-stat-all', fmt(t.jobs || 0));
@@ -1664,6 +1788,42 @@
         // through the identical Industries control.
         renderBarList('alt-bars-ai-intensity', intensity, wired ? 'alt-f-industry' : null,
             selectedList('alt-f-industry'), null, '%');
+        /*
+          THIS CARD IS HONESTLY SPARSE, AND IT NOW SAYS SO.
+
+          In a typical filtered view it draws ONE row, Technology, and leaves a
+          large empty area that reads as broken. It is not broken. The 1,000-cut
+          floor is there so a share is computed on a base that can carry one: a
+          50 percent AI rate over 4 cuts is exactly the number this project
+          refuses to publish. Lowering the floor to fill the card, or padding it
+          with more rows, would trade the card's correctness for its looks.
+
+          So the emptiness gets a label instead of a fix: how many industries
+          are in this view, and how many cleared the bar. When NONE clear it the
+          card says that in words rather than rendering nothing at all, which is
+          the state that most reads as a broken card. Written as visible prose
+          into the card, and the guard test measures its RENDERED text length
+          rather than reading this source.
+        */
+        var intensityNote = document.getElementById('alt-bars-ai-intensity-note');
+        if (intensityNote) {
+            var considered = industryRows.length;
+            var cleared = intensity.length;
+            var txt;
+            if (!considered) {
+                txt = 'No industry is recorded in this view, so there is no rate to show.';
+            } else if (!cleared) {
+                txt = 'None of the ' + fmt(considered) + ' industr' + (considered === 1 ? 'y' : 'ies')
+                    + ' in this view has both 1,000 or more verified cuts and any cut the employer attributed to AI, so there is no rate to show. The floor is there so a share is never computed on a base too small to carry one.';
+            } else {
+                txt = fmt(cleared) + ' of the ' + fmt(considered) + ' industr'
+                    + (considered === 1 ? 'y' : 'ies') + ' in this view '
+                    + (cleared === 1 ? 'has' : 'have') + ' 1,000 or more verified cuts and at least one cut the employer attributed to AI, so '
+                    + (cleared === 1 ? 'one bar is' : fmt(cleared) + ' bars are') + ' shown. The floor is there so a share is never computed on a base too small to carry one.';
+            }
+            intensityNote.textContent = txt;
+            intensityNote.hidden = false;
+        }
         // Roles most impacted: fixed-category jobs with the AI-attributed
         // share as the orange segment — the AI-vs-all comparison per team.
         // Coverage is partial by construction (only events whose sources name
@@ -3638,18 +3798,15 @@
             });
         }
 
-        // Date-basis toggle: recount the whole page by effective vs filing date.
+        // Date-basis toggle: recount the whole page by filing vs effective date.
+        // setDateBasis() owns the closure state, the visual and aria state of
+        // the switch, and every caption that names the basis, so the caption
+        // and the number it sits under cannot disagree after a click.
         document.querySelectorAll('.alt-datebasis-opt').forEach(function (b) {
             b.addEventListener('click', function () {
                 var basis = b.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective';
                 if (basis === DATE_BASIS) return;
-                DATE_BASIS = basis;
-                document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
-                    x.classList.toggle('alt-datebasis-on', x === b);
-                    // Keep the accessible state in step with the visual one, so
-                    // a screen reader announces which basis is active.
-                    x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
-                });
+                setDateBasis(basis);
                 refreshAll();
             });
         });
@@ -4622,8 +4779,24 @@
             // any one of them read all four. One clause per line, each with the
             // thing it explains. The "less ... more" heat legend is gone: it
             // rendered as stray words beside the columns and was never a control.
+            /*
+              THIS BOARD IS A THIRD TOTAL, AND IT SAYS SO.
+
+              Its columns are fixed periods and it follows the region tabs
+              only, by design. It also counts on the EFFECTIVE date and always
+              has, which was harmless while the headline did too and is not
+              harmless now that the headline defaults to the filing basis. Two
+              correct totals sitting inches apart on different bases, with
+              neither saying so, is the defect this whole change exists to
+              remove. So the first line names the basis and, when the headline
+              is on the other one, says in plain words that the two answer
+              different questions and are not meant to match.
+            */
             var foot = '<ul class="alt-sb-foot">'
-                + '<li>Every row counts verified events on the day each cut takes effect.</li>'
+                + '<li>' + (DATE_BASIS === 'effective'
+                    ? 'Every row counts verified events on the day each cut takes effect, the same basis as the headline figure above.'
+                    : 'Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.')
+                + '</li>'
                 + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
                 + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
                 + '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
@@ -4854,7 +5027,73 @@
         }
     };
 
+    /*
+      QUICK DATE RANGES. Each returns the [from, to] it names, or null for "no
+      date bound at all", and each is checked for active state by recomputing
+      its own range and comparing, so the marked pill is the one that actually
+      matches what the page is showing rather than the one that was last
+      clicked. A hand-typed range in the popover that happens to equal a preset
+      therefore lights that preset, which is correct: the page IS showing it.
+
+      isoDay() is the browser's local day, matching every other date the front
+      end computes (the board's periods, the trend buckets). The server counts
+      in site time; the two differ by at most a day at the boundary, and the
+      Date Range popover has always had the same property.
+    */
+    function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function daysAgo(n) { return new Date(Date.now() - n * 86400000); }
+    var DATE_PRESETS = {
+        today: function () { var t = isoDay(new Date()); return [t, t]; },
+        d7:    function () { return [isoDay(daysAgo(6)), isoDay(new Date())]; },
+        d30:   function () { return [isoDay(daysAgo(29)), isoDay(new Date())]; },
+        // "Last quarter" as the trailing 90 days, not the previous calendar
+        // quarter. The Quarters dropdown already offers calendar quarters, and
+        // two controls whose labels both say "quarter" and mean different
+        // windows is how a reader stops trusting either.
+        d90:   function () { return [isoDay(daysAgo(89)), isoDay(new Date())]; },
+        ytd:   function () { return [new Date().getFullYear() + '-01-01', isoDay(new Date())]; },
+        all:   function () { return null; }
+    };
+
+    // Presets write the same from/to controls the Date Range popover writes, so
+    // there is one date range on this page and not two. The year, quarter and
+    // month dropdowns are cleared because alt_db_where ANDs them with the
+    // range: "Last 7 days" left standing beside years=2026 is an intersection,
+    // and beside years=2024 it is an empty one.
+    function applyDatePreset(key) {
+        var r = (DATE_PRESETS[key] || DATE_PRESETS.all)();
+        writeControl('alt-f-years', []);
+        writeControl('alt-f-quarters', []);
+        writeControl('alt-f-months', []);
+        writeControl('alt-f-from', r ? r[0] : '');
+        writeControl('alt-f-to', r ? r[1] : '');
+    }
+
+    function datePresetActive(key) {
+        var from = readControl('alt-f-from') || '';
+        var to = readControl('alt-f-to') || '';
+        var years = readControl('alt-f-years') || [];
+        var quarters = readControl('alt-f-quarters') || [];
+        var months = readControl('alt-f-months') || [];
+        // Any period dropdown in play means the view is not the bare range this
+        // pill names, so nothing is marked rather than something being marked
+        // that would not reproduce the numbers on screen.
+        if (years.length || quarters.length || months.length) return false;
+        var r = (DATE_PRESETS[key] || DATE_PRESETS.all)();
+        if (!r) return from === '' && to === '';
+        return from === r[0] && to === r[1];
+    }
+
+    function updateDatePresetStates() {
+        document.querySelectorAll('.alt-dp').forEach(function (btn) {
+            var on = datePresetActive(btn.getAttribute('data-dp'));
+            btn.classList.toggle('alt-dp-on', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
     function updateQuickViewStates() {
+        updateDatePresetStates();
         Array.prototype.forEach.call(document.querySelectorAll('.alt-qv'), function (btn) {
             var qv = QUICK_VIEWS[btn.getAttribute('data-qv')];
             btn.classList.toggle('alt-qv-on', !!(qv && qv.active()));
@@ -4877,6 +5116,17 @@
                 var qv = QUICK_VIEWS[btn.getAttribute('data-qv')];
                 if (!qv) return;
                 if (qv.active()) qv.clear(); else qv.apply();
+                refreshAll();
+            });
+        });
+
+        // Quick date ranges. Not a toggle: tapping the active one again would
+        // have to mean "all time", and a pill that silently becomes a different
+        // pill on a second tap is how a reader loses the thread of what is
+        // filtered. "All time" is its own control in the row.
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-dp'), function (btn) {
+            btn.addEventListener('click', function () {
+                applyDatePreset(btn.getAttribute('data-dp'));
                 refreshAll();
             });
         });

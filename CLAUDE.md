@@ -30,6 +30,19 @@ before hashing, open/resolved state held in the endpoint), and it mails
 Spirit assertion reddened CI eight times in one afternoon, and eight identical
 emails is how an alert channel gets filtered.
 
+**A LIVE-DATA failure is deduped by INCIDENT, not by branch.** The scope is
+`workflow:branch` for a code failure — a test that fails on one branch only is
+that branch's defect and must not hide inside main's alarm. A `data_integrity`
+invariant with `reads_live_data` reads asktherecruiter.com, not the checkout, so
+every branch sees the same one wrong number and the branch that noticed is
+noise. Those raise and clear under a branch-free `<workflow>:live.data` scope,
+keyed on `live_data_identity()` — the invariant label plus the slice labels,
+read from data_integrity's OWN registries so a rename cannot silently return it
+to one email per branch. On 2026-08-10/11 one open incident mailed six times in
+seven hours; the numbers were never the cause and widening the normaliser would
+have bought nothing (TECHLOG 2026-08-11). Do not broaden this to non-live
+failures, and do not collapse two slices or two invariants into one key.
+
 **`/alert` is a route on the host it reports about, so the alert has to survive
 that host.** On 2026-07-31 Bluehost 504'd under `/blog/` twice (~6 min in the
 afternoon, ~7 min at night) and in the sibling tracker the alerter failed four

@@ -63,6 +63,151 @@ Two existing degradation tests in `test_dedup_live` had to be pointed at an
 empty ledger. They assert "a dead network can never produce a pass", and a
 sticky FAIL is deliberately independent of the network, so a real standing
 incident was answering a question they were not asking.
+## 2026-08-11 - one open live-data incident is one alarm, whatever branch noticed it
+
+**Six emails in seven hours, all the same open incident.** The US headline
+moving +93,210 jobs with no row that explains it mailed the owner from runs
+31421748713, 31421827146, 31421971041, 31425792582, 31448285345, 31450680641
+and 31450792070. The alarm exists to be read; six copies of it is how a sender
+gets filtered, which is the original defect wearing a new hat.
+
+**The obvious suspect was wrong, and that mattered.** "The numbers keep moving"
+would have been fixed by widening `_NORMALISE`, and the widening would have
+bought nothing: run the six real assertion strings through `normalise` and they
+are byte-identical. +93,210 and +93,290, 3.0d and 3.3d, +18 and +19 entries all
+collapse to `<N>` exactly as designed.
+
+**What actually differed was the scope.** `scope = workflow:branch`, so one
+incident minted a key per branch that ran the suite - `tests:main:8a5b96fc...`,
+`tests:docs-handoff-external-review:4fe38317...`,
+`tests:feat-changed-rows-endpoint:efeece54...`,
+`tests:feat-filed-basis-default:d9078245...`,
+`tests:claude-sticky-headline-incidents:555efd27...`. Branch belongs in the
+scope for a CODE failure: a test that fails on one branch only is that branch's
+defect and folding it into main's alarm would hide it. A live-data invariant is
+the opposite animal - it reads asktherecruiter.com, not the checkout, so every
+branch is looking at the same one wrong number.
+
+**A second mechanism, on the seventh run.** The sticky-incident ledger prefixes
+the detail with "OPEN INCIDENT, opened 0d ago (timestamp)", taking the sentence
+to 741 characters. `extract_cause` cut at 400, so the tail moved
+("...reconcile-supers" instead of "...corrections log") and the hash moved with
+it. A key built by regexing numbers out of a sentence is hostage to every later
+change in that sentence's shape, and that sentence is written for a human to
+read, so it will keep changing.
+
+**The fix keys on identity, not on prose.** `live_data_identity()` matches the
+message against data_integrity's OWN registries - invariant labels where
+`reads_live_data` is true, plus the headline slice labels - and returns
+"No headline moves without rows to explain it | United States jobs, all time".
+Those incidents are raised and cleared under a branch-free
+`<workflow>:live.data` scope; a dot cannot appear in a `_slug`, so no branch can
+collide with it. Every green run of the workflow now posts that resolve as well
+as the branch one, or the RECOVERED notice would never arrive and a closed
+incident would earn a STILL FAILING reminder a fortnight later.
+
+**Narrow on purpose.** An unrecognised assertion keeps the branch-scoped
+behaviour. So does an invariant with `reads_live_data = False`, because the
+checkout genuinely decides those. A different invariant, a different slice, or a
+second slice joining the first are three different identities and three
+different emails - all four are tested, because a dedupe fix that swallows a new
+failure is worse than the noise it removed.
+
+**Proof, on the real strings.** `tests/test_ci_alert.py` carries the seven
+assertion texts verbatim from `gh run view --log-failed` and asserts they
+collapse to one key. Invented strings would have proved nothing: the whole
+defect lived in details of the real shape. Verified failing against the
+pre-fix tree with comments and docstrings stripped first.
+
+**Nothing was weakened to get here.** `move_floor`, `mean_factor`, `max_share`,
+`MAX_BASELINE_AGE_DAYS` and the baseline are untouched. The incident is still
+FAIL and still blocks. `extract_cause`'s default limit is still 400, because
+ops_status [4] and the weekly noise email print that string raw; only the
+alerter asks for more.
+
+## 2026-08-11 - the filed basis becomes the default, and three totals stop looking like one claim
+
+**The decision.** The tracker counted every cut on the day it takes effect.
+Layoffs are reported nearly everywhere on the FILING date, so a reader arriving
+with a number in their head met a figure they could not reconcile: on the filed
+basis US July 2026 reads 33,817 against 33,429 for the same month in the
+independent national estimate, within 1.2 percent, while on the effective basis
+the same month reads roughly double. Defaulting to the basis everyone else
+reports on turns the differentiator from "a different number that needs a
+paragraph" into "the same number, with a filing behind every row". The
+effective basis is one click away and every figure recomputes on it.
+
+**A default lives in four places, and all four moved.** `DATE_BASIS` in
+layoffs.js, which button carries `alt-datebasis-on` in the switch, the
+`date_basis` the server bootstrap is computed on (`alt_tracker_bootstrap_payload`),
+and the hero's own basis label. Any one left behind publishes a figure counted
+one way under a label naming the other, then swaps the number when JS runs.
+
+**Deep links needed a real fix, not a rename.** `currentParams()` wrote
+`date_basis` only for the non-default value, and the restore path read back only
+`notice`. While the default was `effective` those two were harmless, because a
+link saying `date_basis=effective` was indistinguishable from a link saying
+nothing. Under the new default that is a silent basis change on every
+effective-basis share. Both values are now written and both are read back, and
+`URL_BASELINE` carries the default so an unfiltered view still has a clean URL.
+
+**Three totals that read as the same claim.** In one live view the hero, the
+at-a-glance board's YTD column and the cite line stood at 484,427, 335,637 and
+24,754, with nothing on screen saying which question each answered. Each now
+states its geography, its period and its basis. The board keeps counting on the
+effective date (its columns are fixed periods and it follows the region tabs
+only, both by design) and its footnote now says in words that it answers a
+different question from the headline and is not meant to match; on the effective
+basis the JS swaps that for the matching-basis wording. No underlying number,
+filter semantic or the `country_basis=any` union changed.
+
+**A caption that named both bases.** The lead tile read "Filed or reported,
+counted on the day each cut takes effect", which is wrong on whichever basis is
+live. `BASIS_COPY` is now the single table every basis word is written from, and
+`renderBasisCopy()` rewrites the hero label, the tile caption, the tile scope
+line, the cite line and the switch's own titles on every basis change.
+
+**The reconciliation, compressed and still visible.** It is worth MORE under the
+filed default, because the gap between "already happened" and "on file for
+later" is the arithmetic a journalist needs to quote either figure correctly. It
+is now one line (`alt_period_split_short` / `periodSplitShort`, twinned character
+for character) with the full sentence kept on the press page and linked from the
+hero. It stays prose in the hero, never a disclosure: this codebase has shipped
+three caveats that computed to display:none and were read by nobody.
+
+**Quick date ranges restored to the surface.** Today / Last 7 days / Last 30 days
+/ Last quarter / Year to date / All time, as a visible row at the top of the
+controls that scope the page, not beside the region tabs: the tabs sit above the
+board because they scope it, and dates do not. Each writes the same from/to the
+date popover writes and clears the period dropdowns it would otherwise AND with.
+
+**Card whitespace, two opposite causes.** "Largest single job cuts" was
+truncated by the QUERY (`LIMIT 10`) while the card draws up to `BARLIST_LIMIT`
+(24), so it sat short beside full neighbours with rows still available: a layout
+bug, fixed by fetching what the card can draw. "AI intensity by industry" is
+honestly sparse, because industries under 1,000 cuts are excluded on purpose,
+and a 50 percent rate over 4 cuts is the number this project refuses to publish.
+That threshold was NOT lowered and the card was NOT padded: it now says how many
+industries were considered and how many cleared the bar, and says so explicitly
+when none do.
+
+**Also:** the five primary tiles and the three derived ones reserve a shared
+label band and a row for the optional detail line, so they align across the row
+and a filter change that grows a caption no longer shifts a neighbour. The
+cross-link to the sibling tracker is a real control with an accessible name and
+a focus ring, on theme tokens rather than hardcoded colour. The FAQ answer and
+the "short version" paragraph that still claimed the effective-date default were
+rewritten; the effective-date reasoning is relocated, not deleted.
+
+**Tests.** `railway/tests/test_date_basis_default.py`, 42 tests, 39 of which
+fail on the pre-change tree (a191e92) with comments stripped before matching.
+The three that pass are named in the docstring as regression bars. Two tests in
+the first draft passed against the defective tree for the wrong reason and were
+rewritten before landing: one read the tile caption through a helper that strips
+`<?php ... ?>` blocks, which is where the caption is built; the other compared
+the test file's own constant with itself. Four existing guards were retargeted,
+not weakened: their invariants are unchanged and only the helper name or the
+copy they locate onto moved.
 
 ## 2026-08-10 - the CI-noise reporter's own tests were a time bomb
 
