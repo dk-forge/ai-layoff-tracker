@@ -17,6 +17,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "superset-dedup-reconciliation:main:121df85ea8b5760a",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-11T17:36:59+00:00",
+      "last_error": "HTTP 502 from /alert: error code: 502\n",
+      "payload": {
+        "body": "The workflow 'Superset dedup reconciliation' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Superset dedup reconciliation\n  branch:   main\n  trigger:  schedule\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31518381399\n\nWHAT FAILED:\n  curl: (22) The requested URL returned error: 504\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Superset dedup reconciliation' is failing on main with: curl: (22) The requested URL returned error: 504. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31518381399. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "superset-dedup-reconciliation:main:121df85ea8b5760a",
+        "subject": "CI RED: Superset dedup reconciliation \u2014 curl: (22) The requested URL returned error: 504"
+      },
+      "raised_at": "2026-08-11T17:36:59+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31518381399",
+      "scope": "superset-dedup-reconciliation:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -186,6 +202,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-11T17:35:28+00:00",
+  "updated_at": "2026-08-11T17:36:59+00:00",
   "version": 1
 }
