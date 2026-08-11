@@ -24,7 +24,7 @@ would burn model budget re-reading the same rows with nothing new to find.
 Ships DRY-RUN by default: reports what it WOULD upgrade and writes nothing until
 AI_SWEEP_LIVE=1. Env: WP_SITE_URL, WP_API_KEY, OPENROUTER_API_KEY,
 AI_SWEEP_MIN_JOBS (default 2000), AI_SWEEP_MAX (default 20), AI_SWEEP_LIVE=1,
-AI_SWEEP_DEADLINE_SECONDS (default 1140, whole-run wall clock).
+AI_SWEEP_DEADLINE_SECONDS (default 1320, whole-run wall clock).
 
 THE RUN OWNS ITS OWN CLOCK (archive_backfill / reason_backfill pattern).
 AI_SWEEP_MAX bounds the number of EVENTS, not the time: each event re-fetches
@@ -70,13 +70,14 @@ LIVE = os.environ.get("AI_SWEEP_LIVE", "").lower() in {"1", "true", "yes"}
 MIN_JOBS = max(500, int(os.environ.get("AI_SWEEP_MIN_JOBS") or "2000"))
 MAX_EVENTS = max(1, int(os.environ.get("AI_SWEEP_MAX") or "20"))
 TIMEOUT = 40
-# MEASURED, the 7 successful scheduled runs after the Google News route began
-# returning results (2026-08-03..2026-08-10, "Run AI evidence sweep" step):
-# 12.8, 12.4, 8.7, 15.4, 13.7, 9.5, 9.6 minutes of job time, i.e. a max of
-# 888s of script time. 888 x 1.25 leaves room for a busier news day and rounds
-# up to the whole minute at 1140s. Below this the sweep would start truncating
-# runs that are healthy today.
-DEADLINE_SECONDS = max(60, min(3600, int(os.environ.get("AI_SWEEP_DEADLINE_SECONDS") or "1140")))
+# MEASURED, the successful runs since the Google News route began returning
+# results on 2026-08-03 ("Run AI evidence sweep" step): 12.8, 12.4, 8.7, 15.4,
+# 13.7, 9.5, 9.6 minutes of job time across the scheduled runs to 08-10, then
+# 1022s on the verification dispatch 31469499159 (2026-08-11), which checked
+# all 20 events and is the new max. 1022 x 1.25 = 1278s, rounded up to the
+# whole minute. Below this the sweep would truncate runs that finish today --
+# safely now, and reported, but truncation is still lost throughput.
+DEADLINE_SECONDS = max(60, min(3600, int(os.environ.get("AI_SWEEP_DEADLINE_SECONDS") or "1320")))
 STARTED_AT = time.monotonic()
 
 

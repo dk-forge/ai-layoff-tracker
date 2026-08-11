@@ -121,13 +121,17 @@ was never restarting the same work; it just took longer and longer to find it.
 scheduled workflows (job-level durations, cancelled jobs excluded - the 08-06
 mass cancellation makes a dozen jobs look like exactly 15.0 minutes of runtime)
 found one workflow genuinely close: `ai-evidence-sweep.yml`, 20-minute ceiling,
-15.4-minute max, 23% headroom, and no clock in the script at all. `AI_SWEEP_MAX`
+15.4-minute max, 23% headroom, and no clock in the script at all. The
+verification dispatch after the fix (31469499159) then took 17.6 minutes -- it
+would have left that ceiling 12% of headroom on an ordinary day, so the numbers
+below are set from 1022s of script time, not from the 888s the audit started
+with. `AI_SWEEP_MAX`
 bounds EVENTS, not time: each event fetches its stored source with retries plus
 an unbounded number of Google News articles and asks the model about every one
 of them, which is why the job went from ~1.2 min/run to 8.7-15.4 min/run when
 that route started returning results on 08-03. Same fix: `AI_SWEEP_DEADLINE_SECONDS`
-(1140s = 1.25 x the measured 888s max), checked in the event loop AND in the
-per-article loop inside it, with `timeout-minutes` derived at 24. Every other
+(1320s = 1.25 x the measured 1022s max), checked in the event loop AND in the
+per-article loop inside it, with `timeout-minutes` derived at 27. Every other
 scheduled workflow is at 30% headroom or better; the two nearest,
 `archive-backfill` (40%) and `data-quality` (30%), already own their deadlines
 and stop themselves by design.

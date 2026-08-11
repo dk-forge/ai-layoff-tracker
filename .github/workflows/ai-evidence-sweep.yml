@@ -22,15 +22,16 @@ jobs:
   sweep:
     runs-on: ubuntu-latest
     # DERIVED from the script's own deadline. The old 20 sat 23% above the
-    # measured max (15.4 min job time on 2026-08-07) with the script owning no
-    # clock at all, so a busier news day would have been cancelled mid-sweep.
-    #   AI_SWEEP_DEADLINE_SECONDS                                    1140s
+    # then-measured max with the script owning no clock at all; run 31469499159
+    # (2026-08-11) then took 17.6 min, which would have left that ceiling 12%
+    # of headroom on an ordinary day.
+    #   AI_SWEEP_DEADLINE_SECONDS                                    1320s
     # + worst single in-flight operation past the last deadline check:
     #   one source fetch = 3 attempts x 40s timeout + 5s + 10s backoff  135s
     # + measured job overhead (27s setup incl. the full-lock pip install,
     #   4s teardown, run 31412433065)                                   31s
-    # = 1306s = 21.8 min -> 22 min, + 2 min runner variance
-    timeout-minutes: 24
+    # = 1486s = 24.8 min -> 25 min, + 2 min runner variance
+    timeout-minutes: 27
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -55,9 +56,10 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           AI_SWEEP_LIVE: ${{ github.event.inputs.live || vars.AI_SWEEP_LIVE }}
-          # Whole-run wall clock: 1.25 x the measured max script time (888s)
-          # over the 7 runs since the Google News route went live, rounded up
-          # to the whole minute. The script stops itself here so the runner
-          # never has to; timeout-minutes above is derived from it.
-          AI_SWEEP_DEADLINE_SECONDS: '1140'
+          # Whole-run wall clock: 1.25 x the measured max script time,
+          # rounded up to the whole minute. The max is 1022s, from the
+          # verification dispatch 31469499159 (2026-08-11) which checked all 20
+          # events. The script stops itself here so the runner never has to;
+          # timeout-minutes above is derived from it.
+          AI_SWEEP_DEADLINE_SECONDS: '1320'
         run: python ai_evidence_sweep.py
