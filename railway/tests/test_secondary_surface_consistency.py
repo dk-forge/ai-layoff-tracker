@@ -510,8 +510,14 @@ class EmbedToolbarParityTests(unittest.TestCase):
         # is. It writes by id, and this shell used to ship no element for it,
         # so every bar embed left the page with the caveat stripped off - on
         # the one surface read with none of the dashboard around it.
-        self.assertIn('id="<?php echo esc_attr($alt_chart); ?>-basis"', self.php)
-        self.assertIn('id="<?php echo esc_attr($alt_chart); ?>-note"', self.php)
+        # Both ship hidden. setBarBasisNote() clears `hidden` on the one it
+        # writes into, and two of these cards have no basis sentence at all -
+        # an empty .alt-chart-note still carries its 10px top margin, so an
+        # unhidden one hangs dead space off the bottom of exactly the embeds
+        # with nothing to say.
+        for suffix in ("basis", "note"):
+            self.assertIn(
+                'id="<?php echo esc_attr($alt_chart); ?>-%s" hidden' % suffix, self.php)
 
     def test_a_canvas_embed_carries_its_partial_month_sentence(self):
         for note_id in ("alt-trend-partial", "alt-yoy-partial", "alt-ai-share-partial",
