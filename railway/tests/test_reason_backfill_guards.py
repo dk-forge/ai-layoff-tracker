@@ -134,12 +134,15 @@ class SchedulingGuards(unittest.TestCase):
         self.assertEqual(rotating_slice([], 4, 1), [])
 
     def test_worker_stops_between_rows_before_actions_limit(self):
+        # The clock is run-wide now (tests/test_job_deadlines.py pins the rest);
+        # the model loop consults it through work_stop() instead of owning it.
         self.assertIn("REASON_BACKFILL_DEADLINE_SECONDS", WORKER)
-        self.assertIn("time.monotonic() - started_at >= DEADLINE_SECONDS", WORKER)
+        self.assertIn("if work_stop():", WORKER)
         self.assertIn("stopping safely after", WORKER)
 
     def test_scheduled_workflow_has_safe_bounds_and_fails_loudly(self):
-        self.assertIn("REASON_BACKFILL_DEADLINE_SECONDS: '900'", WORKFLOW)
+        self.assertIn("REASON_BACKFILL_DEADLINE_SECONDS: '1260'", WORKFLOW)
+        self.assertIn("REASON_BACKFILL_WRITE_RESERVE_SECONDS: '240'", WORKFLOW)
         self.assertIn("OPENROUTER_TIMEOUT_SECONDS: '35'", WORKFLOW)
         self.assertIn("concurrency", WORKFLOW)
         self.assertIn("set -o pipefail", WORKFLOW)

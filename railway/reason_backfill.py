@@ -30,13 +30,31 @@ selected) because WARN notices state no reasons.
 Env: WP_SITE_URL, WP_API_KEY; OPENROUTER_API_KEY for the model path.
 Optional: REASON_BACKFILL_BATCH (model rows/run, default 40),
 REASON_BACKFILL_DETERMINISTIC_CAP (template rows/run, default 400),
-REASON_BACKFILL_DEADLINE_SECONDS (default 900, stops safely between rows),
+REASON_BACKFILL_DEADLINE_SECONDS (WHOLE-RUN budget, default 1260),
+REASON_BACKFILL_WRITE_RESERVE_SECONDS (default 240, see below),
 REASON_BACKFILL_DRY_RUN=1 (classify + print, no writes, no health reports),
 REASON_BACKFILL_LLM_ONLY=1 (disable the deterministic ERM template path).
 
 The daily slice over model rows rotates deterministically by date (the
 enrich_context pattern), so rows the model honestly leaves untagged cannot
 permanently stall the head of the queue.
+
+THE RUN OWNS ITS OWN CLOCK (archive_backfill pattern). On 2026-08-11 run
+31462430383 was killed by the workflow's timeout-minutes after five clean runs,
+and a cancelled run's work is simply gone. The deadline used to cover only the
+model loop -- the cheapest of the three phases. It is now a WHOLE-RUN budget
+measured from process start and enforced in all three:
+
+  1. the scan (fetch_candidates) checks it before each page,
+  2. the model loop checks it before each row,
+  3. post_edits checks it before starting each /edit chunk.
+
+Phases 1 and 2 stop at DEADLINE - WRITE_RESERVE so there is always budget left
+to write what was already decided. Nothing is half-written at any of those
+points: an unwritten row is simply still untagged, and the next run finds it.
+The deterministic (ERM) edits -- the bulk of a normal run's 400 writes -- are
+flushed as soon as the scan produces them, BEFORE the model loop spends a
+second, so a stall in the expensive phase can no longer discard the cheap one.
 """
 import os
 import re
@@ -55,7 +73,21 @@ SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
 BATCH = max(1, min(200, int(os.environ.get("REASON_BACKFILL_BATCH", "40"))))
 DETERMINISTIC_CAP = max(0, min(1000, int(os.environ.get("REASON_BACKFILL_DETERMINISTIC_CAP", "400"))))
-DEADLINE_SECONDS = max(60, min(1800, int(os.environ.get("REASON_BACKFILL_DEADLINE_SECONDS", "900"))))
+# MEASURED, 11 scheduled runs 2026-07-31..2026-08-10 (the "Tag stored-evidence
+# reasons" step): median 331s, max 419s. The scan alone is 21,358 non-WARN rows
+# / 200 per page = 107 pages at a measured 2.50s/page = 268s, i.e. ~80% of a
+# healthy run. A 1.25x allowance over the max would leave only ~105s of slack
+# for that scan, so a merely 2x-slow host would start truncating healthy work.
+# 3 x 419s = 1257s, rounded up to the whole minute, absorbs a 3x-slow host end
+# to end and is still far under the workflow ceiling derived from it.
+DEADLINE_SECONDS = max(60, min(1800, int(os.environ.get("REASON_BACKFILL_DEADLINE_SECONDS", "1260"))))
+# Budget held back from the scan and the model loop so the writes always run.
+# A full deterministic flush is ceil(400 / EDIT_BATCH) = 10 chunks, measured at
+# a few seconds total; 240s covers two chunks stalling to the 120s /edit
+# timeout and still leaves the rest of the flush inside the deadline.
+WRITE_RESERVE_SECONDS = max(30, min(600, int(os.environ.get("REASON_BACKFILL_WRITE_RESERVE_SECONDS", "240"))))
+# Wall clock starts at process start, not at the model loop.
+STARTED_AT = time.monotonic()
 DRY_RUN = os.environ.get("REASON_BACKFILL_DRY_RUN", "").lower() in {"1", "true", "yes"}
 LLM_ONLY = os.environ.get("REASON_BACKFILL_LLM_ONLY", "").lower() in {"1", "true", "yes"}
 
@@ -89,6 +121,16 @@ ERM_TEMPLATE = re.compile(
 )
 
 
+def elapsed():
+    """Seconds since process start (the run-wide clock)."""
+    return time.monotonic() - STARTED_AT
+
+
+def past_deadline(reserve=0):
+    """True once this run must stop starting new work of that phase."""
+    return elapsed() >= DEADLINE_SECONDS - reserve
+
+
 def erm_template_tags(row):
     """(matched, tags) for our own ERM excerpt template; tags may be empty."""
     if row.get("source_type") != "erm":
@@ -99,11 +141,29 @@ def erm_template_tags(row):
     return True, list(ERM_TYPE_TAGS.get(match.group("rtype").strip().lower(), []))
 
 
-def fetch_candidates():
-    """Page through non-WARN rows; keep untagged rows that carry evidence."""
+def fetch_candidates(stop=None):
+    """Page through non-WARN rows; keep untagged rows that carry evidence.
+
+    `stop` is a zero-arg predicate; when it returns True the scan stops and
+    returns what it has so far. A short scan is safe, not silent: it only means
+    fewer candidates were offered to this run, the rows are still there for the
+    next one, and the caller prints the shortfall. Returns
+    (candidates, pages_scanned, truncated).
+    """
+    stop = stop or (lambda: False)
     candidates = []
     page = 1
+    truncated = False
     while page <= MAX_PAGES:
+        # Checked BEFORE the request, so the scan cannot start a page it has no
+        # budget to finish. This is the phase that used to run unbounded: 107
+        # pages x up to (3 attempts x 60s + 15s backoff) is 5.8 hours, 7.7x the
+        # workflow ceiling that eventually killed run 31462430383.
+        if page > 1 and stop():
+            truncated = True
+            print(f"  scan stopped at the run deadline after {page - 1} page(s); "
+                  f"the unscanned rows are offered to the next run")
+            break
         params = {"sources": NON_WARN_SOURCES, "sort": "id", "dir": "asc",
                   "per_page": PAGE_SIZE, "page": page}
         # Retry transient host errors instead of aborting the whole scan. The
@@ -145,7 +205,7 @@ def fetch_candidates():
         if len(rows) < PAGE_SIZE or page * PAGE_SIZE >= payload.get("total", 0):
             break
         page += 1
-    return candidates
+    return candidates, page, truncated
 
 
 def rotating_slice(rows, batch, day_ordinal):
@@ -157,10 +217,23 @@ def rotating_slice(rows, batch, day_ordinal):
     return rows[start:start + batch]
 
 
-def post_edits(items):
-    """POST /edit in bounded batches; any HTTP failure raises (fail loudly)."""
-    edited, not_found = [], []
+def post_edits(items, stop=None):
+    """POST /edit in bounded batches; any HTTP failure raises (fail loudly).
+
+    `stop` is the same predicate the scan and the model loop use, checked
+    before each chunk so a stalled host cannot push the flush past the
+    workflow ceiling. Returns (edited, not_found, unwritten): rows never sent
+    stay untagged and are re-found next run, which is the whole reason the
+    /edit write is idempotent.
+    """
+    stop = stop or (lambda: False)
+    edited, not_found, unwritten = [], [], 0
     for start in range(0, len(items), EDIT_BATCH):
+        if stop():
+            unwritten = len(items) - start
+            print(f"  write deadline reached; {unwritten} decided row(s) left "
+                  f"unwritten for the next run")
+            break
         chunk = items[start:start + EDIT_BATCH]
         response = requests.post(
             f"{SITE}/wp-json/layoffs/v1/edit",
@@ -178,11 +251,16 @@ def post_edits(items):
             # with our single validated field that means vocabulary drift
             # between this worker and the plugin. Never paper over it.
             raise RuntimeError(f"/edit rejected ids {result['rejected']}: reason-tag vocabulary drift?")
-    return edited, not_found
+    return edited, not_found, unwritten
 
 
 def run():
-    candidates = fetch_candidates()
+    # The scan and the model loop hold back WRITE_RESERVE_SECONDS; the flush
+    # itself may use the full deadline. One clock, three phases.
+    work_stop = lambda: past_deadline(WRITE_RESERVE_SECONDS)
+    write_stop = lambda: past_deadline()
+
+    candidates, pages, scan_truncated = fetch_candidates(stop=work_stop)
     deterministic, model_rows = [], []
     for row in candidates:
         matched, tags = (False, []) if LLM_ONLY else erm_template_tags(row)
@@ -197,15 +275,26 @@ def run():
     deterministic_backlog = len(deterministic)
     deterministic = deterministic[:DETERMINISTIC_CAP]
 
+    # Flush the deterministic edits NOW, before the model loop spends a second
+    # on them. They are ~400 of a normal run's ~402 writes and cost no model
+    # call; holding them until the end is what made a killed run lose a whole
+    # day of tagging. Nothing downstream depends on them being unwritten.
+    edited, not_found, unwritten = [], [], 0
+    if deterministic and not DRY_RUN:
+        edited, not_found, unwritten = post_edits(deterministic, stop=write_stop)
+        print(f"deterministic flush: edited={len(edited)} not_found={len(not_found)} "
+              f"unwritten={unwritten} at {elapsed():.0f}s")
+
     items = list(deterministic)
+    model_items = []
     model_skips, model_failures, checked = 0, 0, 0
     queue = rotating_slice(model_rows, BATCH, date.today().toordinal())
-    started_at = time.monotonic()
     for row in queue:
         # Nothing is half-written per row, so stopping between rows is safe;
         # the next daily run resumes the rotation.
-        if time.monotonic() - started_at >= DEADLINE_SECONDS:
-            print(f"Reached REASON_BACKFILL_DEADLINE_SECONDS={DEADLINE_SECONDS}; "
+        if work_stop():
+            print(f"Reached REASON_BACKFILL_DEADLINE_SECONDS={DEADLINE_SECONDS} "
+                  f"(less the {WRITE_RESERVE_SECONDS}s write reserve); "
                   f"stopping safely after {checked} model row(s)")
             break
         checked += 1
@@ -215,6 +304,7 @@ def run():
             print(f"  model id={row['id']}: FAILED (retried on a later rotation)")
             continue
         if result["reason_tags"]:
+            model_items.append({"id": int(row["id"]), "reason_tags": result["reason_tags"]})
             items.append({"id": int(row["id"]), "reason_tags": result["reason_tags"]})
             print(f"  model id={row['id']}: {','.join(result['reason_tags'])}")
         else:
@@ -222,9 +312,11 @@ def run():
             print(f"  model id={row['id']}: evidence names no reason — left untagged")
         time.sleep(0.25)
 
-    print(f"candidates={len(candidates)} template_taggable={deterministic_backlog} "
+    print(f"candidates={len(candidates)} pages_scanned={pages} "
+          f"scan_truncated={int(scan_truncated)} template_taggable={deterministic_backlog} "
           f"model_queue={len(model_rows)} model_checked={checked} "
-          f"model_skips={model_skips} model_failures={model_failures} writes_queued={len(items)}")
+          f"model_skips={model_skips} model_failures={model_failures} "
+          f"writes_queued={len(items)} elapsed={elapsed():.0f}s")
 
     if DRY_RUN:
         for item in items:
@@ -232,14 +324,15 @@ def run():
         print("DRY RUN: no writes performed.")
         return {"tagged": 0, "checked": checked, "model_failures": model_failures}
 
-    edited, not_found = ([], [])
-    if items:
-        edited, not_found = post_edits(items)
-        print(f"edited={len(edited)} not_found={len(not_found)}")
-        if not_found:
-            # A vanished id means the row set changed mid-run (dedupe/purge);
-            # visible, but the other applied edits remain valid.
-            print(f"WARNING: ids not found: {not_found}")
+    if model_items:
+        m_edited, m_not_found, m_unwritten = post_edits(model_items, stop=write_stop)
+        edited, not_found = edited + m_edited, not_found + m_not_found
+        unwritten += m_unwritten
+    print(f"edited={len(edited)} not_found={len(not_found)} unwritten={unwritten}")
+    if not_found:
+        # A vanished id means the row set changed mid-run (dedupe/purge);
+        # visible, but the other applied edits remain valid.
+        print(f"WARNING: ids not found: {not_found}")
     spend.record_job_run(items=checked, changed=len(edited))
 
     # A fully failed attempted model pass must be visible in Actions rather
@@ -250,9 +343,19 @@ def run():
     det_ids = {item["id"] for item in deterministic}
     det_edited = sum(1 for row_id in edited if row_id in det_ids)
     pending = (deterministic_backlog - det_edited) + (len(model_rows) - (len(edited) - det_edited))
+    # A short run must SAY it was short. A truncated scan means the pending
+    # figure is a floor, not a count, and reading it as a count is how a
+    # silently shrinking job looks healthy.
+    short = ""
+    if scan_truncated:
+        short = (f"; run stopped early on its {DEADLINE_SECONDS}s deadline after "
+                 f"{pages - 1} scanned page(s), so the pending figure is a floor")
+    if unwritten:
+        short += f"; {unwritten} decided row(s) deferred to the next run"
     detail = (f"{len(edited)} tagged ({det_edited} from ERM recorded type, "
               f"{len(edited) - det_edited} model-classified); {model_skips} evidence-names-no-reason "
-              f"skips; {model_failures} model failures; ~{max(0, pending)} untagged rows pending")
+              f"skips; {model_failures} model failures; ~{max(0, pending)} untagged rows pending"
+              + short)
     if not report_source_health("reason_backfill", "ok", len(edited), detail):
         print("::warning::reason backfill completed but the health-ledger write failed (data is fine)")
     return {"tagged": len(edited), "checked": checked, "model_failures": model_failures}

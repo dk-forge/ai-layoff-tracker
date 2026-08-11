@@ -1,5 +1,88 @@
 # Tech Log
 
+## 2026-08-11 - Reason-tag backfill cancelled itself, and the run that did it wrote nothing
+
+Run 31462430383 (scheduled, main) was killed by `timeout-minutes: 45` after five
+consecutive clean runs. It was NOT a job that grew into its ceiling: the eleven
+scheduled runs before it took a median of 331s and a max of 419s against a 2700s
+ceiling, which is 85% headroom, and the trend across those eleven is flat. A job
+with 85% headroom does not creep past a ceiling. It had an unbounded phase.
+
+**Root cause.** The deadline covered the cheapest phase and nothing else.
+`REASON_BACKFILL_DEADLINE_SECONDS=900` was checked only inside the model loop,
+which is ~50s of a healthy run. The three phases really are:
+
+| phase | measured | bounded by |
+|---|---|---|
+| `fetch_candidates` scan | 268s (107 pages x 2.50s) | nothing |
+| model loop, 40 rows | ~50s | the 900s deadline |
+| `post_edits`, 400 rows | seconds | nothing |
+
+The scan is ~80% of a healthy run and it walks the WHOLE non-WARN corpus
+(21,358 rows / 200 per page = 107 pages) from page 1, every night, to find the
+untagged ones. Its own worst case is 107 x (3 attempts x 60s + 15s backoff) =
+5.8 hours, 7.7x the ceiling that eventually stopped it. The obvious knobs -
+`REASON_BACKFILL_BATCH`, `REASON_BACKFILL_DETERMINISTIC_CAP` - bound rows, not
+time, so turning either one down would have changed nothing. Same shape as the
+archive backfill dying at 20m on every run it ever had: the binding constraint
+was not the limit anyone was looking at.
+
+**And a cancelled run loses everything.** All 400-odd `/edit` writes happened in
+one blast at the very end, after the scan and after the model loop. The runner
+kills the step, the writes never happen, the day's tagging is gone and nothing
+records that it was gone.
+
+**Fix (the archive_backfill pattern, third time).** One wall clock, `STARTED_AT`
+at process start, consulted by all three phases: the scan before each page, the
+model loop before each row, `post_edits` before each chunk. The two deciding
+phases stop at `DEADLINE - WRITE_RESERVE_SECONDS` so the writing phase always
+gets to run. The deterministic ERM edits - ~400 of a normal run's ~402, and free
+of model calls - are now flushed the moment the scan produces them, before the
+model loop spends a second, so a stall in the expensive phase can no longer
+discard the cheap one. A short run says so: `scan_truncated`, `pages_scanned`
+and `unwritten` are printed and the health detail calls the pending figure a
+floor rather than a count. Nothing is half-written at any stop point; an
+unwritten row is simply still untagged and the next run finds it.
+
+**Ceiling, derived rather than picked.** 1260s deadline (3 x the measured 419s
+max, rounded up to the whole minute, which absorbs a 3x-slow host end to end)
++ 195s worst single in-flight operation (one `/query` page: 3 x 60s timeout plus
+15s backoff) + 10s measured job overhead = 1465s = 24.4 min, +2 min runner
+variance -> `timeout-minutes: 27`, down from 45. The arithmetic is in a comment
+beside the number in both files.
+
+**The cursor was already fine.** `rotating_slice` advances by day ordinal and
+the deterministic path drains 400 rows out of the queue per night, so the job
+was never restarting the same work; it just took longer and longer to find it.
+
+**Next one waiting to trip: the AI evidence sweep.** A headroom audit of all 42
+scheduled workflows (job-level durations, cancelled jobs excluded - the 08-06
+mass cancellation makes a dozen jobs look like exactly 15.0 minutes of runtime)
+found one workflow genuinely close: `ai-evidence-sweep.yml`, 20-minute ceiling,
+15.4-minute max, 23% headroom, and no clock in the script at all. `AI_SWEEP_MAX`
+bounds EVENTS, not time: each event fetches its stored source with retries plus
+an unbounded number of Google News articles and asks the model about every one
+of them, which is why the job went from ~1.2 min/run to 8.7-15.4 min/run when
+that route started returning results on 08-03. Same fix: `AI_SWEEP_DEADLINE_SECONDS`
+(1140s = 1.25 x the measured 888s max), checked in the event loop AND in the
+per-article loop inside it, with `timeout-minutes` derived at 24. Every other
+scheduled workflow is at 30% headroom or better; the two nearest,
+`archive-backfill` (40%) and `data-quality` (30%), already own their deadlines
+and stop themselves by design.
+
+**Guards.** `tests/test_job_deadlines.py`, 12 tests, all twelve proven to fail
+on the pre-fix tree with comments stripped before matching. They pin the clock
+being run-wide rather than per-phase, every blocking phase consulting it, the
+write reserve, the deterministic flush happening BEFORE the model loop (by
+blowing the model loop up and asserting the ERM edits are already posted), and
+- the one that would have caught this in the first place - that each ceiling is
+derived from its script's own deadline rather than being an independent guess
+with a thousand seconds of slop in it.
+
+**Still missing:** nothing in this repo validates workflow YAML, so a malformed
+file would silently produce no jobs at all. All 74 files were checked by hand
+this session and parse. Not built here on purpose - it is its own change.
+
 ## 2026-08-11 - the fix for the forever-spinner had a forever-spinner in it (2.20.9)
 
 Found by driving the live 2.20.8 page rather than by reading the diff: with
