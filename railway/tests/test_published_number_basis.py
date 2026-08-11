@@ -177,14 +177,29 @@ class TheHeroPeriodStampSaysWhatTheWindowIs(unittest.TestCase):
 
     def test_the_so_far_citeline_quotes_the_to_date_figure(self):
         """Source check: the citeline is PHP that needs WordPress to render.
-        It reads the echoed expression, with comments stripped."""
+        It reads the echoed expression, with comments stripped.
+
+        The wording moved from "recorded for <year> so far, as of <today>" to
+        "have already taken effect, as of <today>", because "so far" named
+        neither the geography nor the basis and read as the same claim as the
+        hero. The INVARIANT is unchanged and is the only thing asserted here:
+        whatever this line says, the figure it quotes is the to-date one and
+        never the whole-window total, which is 30-odd thousand larger and is
+        what the hero publishes.
+        """
         tpl = _strip_comments(TRACKER_TPL)
-        line = [l for l in tpl.splitlines() if "so far, as of" in l]
+        line = [l for l in tpl.splitlines() if 'id="alt-citeline-total"' in l]
         self.assertTrue(line, "the citeline sentence is gone")
+        self.assertIn("as of", line[0], "the citeline no longer stamps an as-of date")
         self.assertIn(
             "$alt_stat('to-date')", line[0],
-            "a sentence reading 'so far, as of <today>' must quote the to-date figure, "
+            "a sentence stamped 'as of <today>' must quote the to-date figure, "
             "not the whole-window total: %s" % line[0].strip(),
+        )
+        self.assertNotIn(
+            "$alt_stat('total')", line[0],
+            "the citeline quotes the whole-window total, which is the hero's "
+            "figure, not this line's: %s" % line[0].strip(),
         )
 
 

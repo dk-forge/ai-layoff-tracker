@@ -30,6 +30,19 @@ before hashing, open/resolved state held in the endpoint), and it mails
 Spirit assertion reddened CI eight times in one afternoon, and eight identical
 emails is how an alert channel gets filtered.
 
+**A LIVE-DATA failure is deduped by INCIDENT, not by branch.** The scope is
+`workflow:branch` for a code failure — a test that fails on one branch only is
+that branch's defect and must not hide inside main's alarm. A `data_integrity`
+invariant with `reads_live_data` reads asktherecruiter.com, not the checkout, so
+every branch sees the same one wrong number and the branch that noticed is
+noise. Those raise and clear under a branch-free `<workflow>:live.data` scope,
+keyed on `live_data_identity()` — the invariant label plus the slice labels,
+read from data_integrity's OWN registries so a rename cannot silently return it
+to one email per branch. On 2026-08-10/11 one open incident mailed six times in
+seven hours; the numbers were never the cause and widening the normaliser would
+have bought nothing (TECHLOG 2026-08-11). Do not broaden this to non-live
+failures, and do not collapse two slices or two invariants into one key.
+
 **`/alert` is a route on the host it reports about, so the alert has to survive
 that host.** On 2026-07-31 Bluehost 504'd under `/blog/` twice (~6 min in the
 afternoon, ~7 min at night) and in the sibling tracker the alerter failed four
@@ -109,6 +122,16 @@ the end check.
 - **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Competitor tracking lives ENTIRELY in the local benchmark (`gen.py` reads only our own `agg_*.json`; the competitor figures are maintained by hand in `scratchpad/bm-live.html`). **No secret is involved and none is needed.** The `BENCHMARK_FEED_URLS`/`BENCHMARK_COMPANIES` secrets power a SEPARATE, OPTIONAL automated loop (`tracker-diff`) that is **dormant by the owner's decision (2026-07-28)** — it exits green on its schedule and costs nothing. **Do not ask the owner to add those secrets.**
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
 - **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
+- **A headline FAIL is closed by a human, never by the calendar.** A failing
+  `headline_movement` slice opens a sticky incident in
+  `railway/headline_incidents.json`, and that slice reports FAIL until someone
+  closes it with `--close-incident` (reviewer + reason + **the affected row IDs**
+  + an explicit replacement baseline). It exists because two individually correct
+  guards agreed to erase the open US incident on 2026-08-22: the recorder pins a
+  failing slice's baseline, and a baseline past `MAX_BASELINE_AGE_DAYS` used to
+  age into a recordable UNKNOWN. Two other clocks widen the same way — `floor =
+  move_floor * span` and `allowance = |Δentries| * base_mean * mean_factor` — so
+  waiting was never neutral. Never close one by editing either JSON by hand.
 - **Retiring a source takes THREE steps**, and skipping the third silently voids the second: (1) drop it from `cron.py`, (2) add it to `alt_retired_sources()` in db.php, (3) **stop every remaining path that posts health under that id**. `alt_retired_sources()` deliberately refuses to mask a row whose last run postdates the retirement, so one forgotten weekly job keeps a retired collector looking live forever. Also: a staleness ceiling must match the job's REAL cadence — a 2-day ceiling on a weekly job is permanent noise that hides real breakage.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.4
+ * Version: 2.20.8
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.4');
+define('ALT_VERSION', '2.20.8');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1468,7 +1468,7 @@ function alt_faq_items() {
         array('How is this different from other layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Why is our number different from other layoff trackers?',
-            'Three reasons, and all of them point toward a number you can check. First, we date each layoff by when the cut takes effect, not when the notice was filed; most trackers use the filing date, so the same event can land in a different month and the running totals differ. Second, we are deliberately conservative and land within about 10 percent of independent WARN trackers, so our figure is a floor you can trust rather than a high estimate. Third, we never inflate a total by counting a company-wide headcount on every state filing: when one notice lists a nationwide figure, we count only the jobs in that state, so one event is never summed several times. A tracker reporting several times higher is usually doing exactly that.'),
+            'Three reasons, and all of them point toward a number you can check. First, we require a document behind every row, so a cut with no filing and no named report never enters the total. Second, we are deliberately conservative and land within about 10 percent of independent WARN trackers, so our figure is a floor you can trust rather than a high estimate. Third, we never inflate a total by counting a company-wide headcount on every state filing: when one notice lists a nationwide figure, we count only the jobs in that state, so one event is never summed several times. A tracker reporting several times higher is usually doing exactly that.'),
         array('What if a source only says "up to" a number?',
             'We record the figure the source states and keep its qualifying words with the entry, because inventing a lower number would be a guess and dropping the entry would hide a real cut. So a report of "up to 600 roles" is stored as 600 with that wording retained, which makes it a ceiling rather than a measured total. This is the one place our figures can read high, so we name it rather than bury it. Where a source gives a true range ("400 to 500"), we take the lower bound and keep the upper bound in the data as well.'),
         array('How do you check your own accuracy?',

@@ -186,11 +186,17 @@ class Concentration(unittest.TestCase):
 
 
 class Movement(unittest.TestCase):
-    def _run(self, body, prior, headlines=ONE):
+    def _run(self, body, prior, headlines=ONE, incidents=None):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "baseline.json"
             path.write_text(json.dumps({"slices": {"one": prior}} if prior else {"slices": {}}))
-            inv = di.MovementInvariant(headlines, baseline_path=path)
+            # Never the repo's own ledger: these tests would both read a real
+            # open incident and write one of their own into it.
+            ipath = Path(d) / "incidents.json"
+            if incidents is not None:
+                ipath.write_text(incidents if isinstance(incidents, str)
+                                 else json.dumps(incidents))
+            inv = di.MovementInvariant(headlines, baseline_path=path, incidents_path=ipath)
             ctx = _ctx(body)
             return inv.run(ctx), ctx
 
@@ -272,12 +278,15 @@ class Movement(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "baseline.json"
             path.write_text(json.dumps({"slices": {"one": prior}}))
+            ipath = Path(d) / "incidents.json"
             ctx = _ctx(_agg(jobs=946_000, entries=5000, largest=900))
             report = di.check_all(fetch=_feed(_agg(jobs=946_000, entries=5000, largest=900)),
-                                  invariants=(di.MovementInvariant(ONE, baseline_path=path),),
+                                  invariants=(di.MovementInvariant(ONE, baseline_path=path,
+                                                                   incidents_path=ipath),),
                                   ctx=ctx)
             self.assertEqual(report.verdict, di.FAIL)
-            written, notes = di.record_baseline(ctx, report, path=path)
+            written, notes = di.record_baseline(ctx, report, path=path,
+                                                incidents_path=ipath, headlines=ONE)
             self.assertTrue(written)
             after = json.loads(path.read_text())["slices"]["one"]
             self.assertEqual(after["jobs"], 1_000_000, "a failing slice was advanced")
@@ -288,13 +297,15 @@ class Movement(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "baseline.json"
             path.write_text(json.dumps({"slices": {"one": prior}}))
+            ipath = Path(d) / "incidents.json"
             body = _agg(jobs=1_000_400, entries=5003, largest=400)
             ctx = _ctx(body)
             report = di.check_all(fetch=_feed(body),
-                                  invariants=(di.MovementInvariant(ONE, baseline_path=path),),
+                                  invariants=(di.MovementInvariant(ONE, baseline_path=path,
+                                                                   incidents_path=ipath),),
                                   ctx=ctx)
             self.assertEqual(report.verdict, di.PASS)
-            di.record_baseline(ctx, report, path=path)
+            di.record_baseline(ctx, report, path=path, incidents_path=ipath, headlines=ONE)
             self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"], 1_000_400)
 
     # ---------------------------------------------------------------
@@ -326,11 +337,14 @@ class Movement(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "baseline.json"
             path.write_text(json.dumps({"slices": {"one": prior}}))
-            inv = di.MovementInvariant(self.WORLDWIDE, baseline_path=path)
+            ipath = Path(d) / "incidents.json"
+            inv = di.MovementInvariant(self.WORLDWIDE, baseline_path=path,
+                                       incidents_path=ipath)
             ctx = _ctx(body)
             report = di.check_all(fetch=_feed(body), invariants=(inv,), ctx=ctx)
             self.assertEqual(report.verdict, di.UNKNOWN)
-            _, notes = di.record_baseline(ctx, report, path=path)
+            _, notes = di.record_baseline(ctx, report, path=path,
+                                          incidents_path=ipath, headlines=self.WORLDWIDE)
             self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"],
                              20_186_665, "an unjudged reading was recorded as the baseline")
             self.assertTrue(any("SUPPRESSED" in n for n in notes))
@@ -364,6 +378,167 @@ class Movement(unittest.TestCase):
         # scope algebra above exists to prevent.
         watched = {h.name for h in di.MovementInvariant().headlines}
         self.assertNotIn("worldwide_recent_90d", watched)
+
+
+class StickyIncidents(unittest.TestCase):
+    """An open incident is closed by a human, never by the calendar.
+
+    THE DEFECT. Two individually correct guards combined into an automatic
+    close on a fixed date. `record_baseline` refuses to advance a FAILING slice,
+    so the failing slice's baseline is pinned. A baseline older than
+    MAX_BASELINE_AGE_DAYS reports UNKNOWN with `suppressed` deliberately unset,
+    so it IS recordable. Fifteen days after the FAIL the pinned baseline aged
+    out, the recorder wrote the failing figure, and the incident was gone with
+    no human involved — 2026-08-22, for the live us_all_time incident.
+
+    Two more inputs widened in the same direction meanwhile, which is why
+    re-deriving the verdict daily could never hold it either: the floor is
+    `move_floor * span` and grows with the span, and the allowance is
+    `|Δentries| * base_mean * mean_factor` and grows with every later arrival,
+    whether or not those rows have anything to do with the defect.
+    """
+
+    # The live incident's own numbers, scaled to nothing: baseline 6,968,670
+    # jobs over 43,341 entries, +93,210 jobs on +18 entries.
+    US = (di.Headline(name="one", label="United States jobs, all time", params={},
+                      max_share=0.02, move_floor=20000, mean_factor=12),)
+    BASE = {"jobs": 6_968_670, "entries": 43_341}
+    DAY_ONE = _agg(jobs=7_061_880, entries=43_359, largest=60_000)
+
+    def _cycle(self, path, ipath, body, prior):
+        """One daily run: check, then record. Returns (report, notes)."""
+        path.write_text(json.dumps({"slices": {"one": prior}}))
+        inv = di.MovementInvariant(self.US, baseline_path=path, incidents_path=ipath)
+        ctx = _ctx(body)
+        report = di.check_all(fetch=_feed(body), invariants=(inv,), ctx=ctx)
+        _, notes = di.record_baseline(ctx, report, path=path, incidents_path=ipath,
+                                      headlines=self.US)
+        return report, notes
+
+    def test_time_and_later_rows_cannot_close_an_open_incident(self):
+        """THE REGRESSION TEST. Day one FAILs; day 20 must still FAIL.
+
+        By day 20 all three escapes are open at once, and on the pre-fix tree
+        this run returns UNKNOWN and the recorder adopts the failing figure:
+
+          * the baseline is 20 days old -> past MAX_BASELINE_AGE_DAYS, so the
+            slice reports UNKNOWN, `pending`, NOT `suppressed`, and
+            record_baseline advances it;
+          * span 20d puts the floor at 400,000, far over the 93,210 move;
+          * 80 later entries put the allowance at ~154,000, also over it.
+
+        None of those rows had anything to do with the defect. The verdict must
+        be FAIL on the strength of the open incident alone.
+        """
+        with tempfile.TemporaryDirectory() as d:
+            path, ipath = Path(d) / "baseline.json", Path(d) / "incidents.json"
+
+            day_one = dict(self.BASE, captured_at=_stamp(3))
+            report, notes = self._cycle(path, ipath, self.DAY_ONE, day_one)
+            self.assertEqual(report.verdict, di.FAIL)
+            self.assertIn("NO ROW EXPLAINS THIS", report.one_line())
+            self.assertTrue(any("INCIDENT OPENED" in n for n in notes))
+            self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"],
+                             self.BASE["jobs"], "a failing slice was advanced on day one")
+
+            # Day 20. The baseline is still pinned where day one left it, 80
+            # unrelated entries have landed, and the span has quadrupled.
+            pinned = dict(self.BASE, captured_at=_stamp(20))
+            later = _agg(jobs=7_061_880 + 12_000, entries=43_359 + 80, largest=60_000)
+            report, notes = self._cycle(path, ipath, later, pinned)
+
+            self.assertEqual(report.verdict, di.FAIL,
+                             "the incident closed itself — this is the 2026-08-22 laundering")
+            self.assertIn("OPEN INCIDENT", report.one_line())
+            self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"],
+                             self.BASE["jobs"],
+                             "the failing figure became the new baseline with no human")
+            self.assertTrue(any("OPEN INCIDENT" in n for n in notes))
+
+    def test_the_widened_formula_really_would_have_passed_on_its_own(self):
+        """Proves the test above is testing stickiness and not a still-failing sum.
+
+        Same day-20 reading, no incident open: the formula passes it. That is
+        the whole hazard — nothing about the numbers themselves holds the FAIL.
+        """
+        prior = dict(self.BASE, captured_at=_stamp(5))
+        r, _ = Movement()._run(_agg(jobs=7_061_880, entries=43_359, largest=60_000),
+                               prior, headlines=self.US)
+        self.assertEqual(r.state, di.PASS, "span 5d already puts the floor over this move")
+
+    def test_an_incident_survives_a_reading_that_looks_perfectly_normal(self):
+        # A quiet day is the most likely way an incident would be silently
+        # dropped: nothing about today is wrong, so the formula says PASS.
+        prior = dict(self.BASE, captured_at=_stamp(1))
+        r, _ = Movement()._run(_agg(jobs=6_968_770, entries=43_342, largest=100),
+                               prior, headlines=self.US,
+                               incidents={"open": {"one": {
+                                   "slice": "one", "label": "United States jobs, all time",
+                                   "opened_at": _stamp(9), "detail": "+93,210 jobs, no row"}}})
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("OPEN INCIDENT", r.detail)
+        self.assertIn("--close-incident", r.detail)
+
+    def test_an_unreadable_ledger_is_unknown_and_suppressed_never_a_pass(self):
+        # Deleting or corrupting the ledger must not be a way to clear a FAIL,
+        # and the recorder must not advance while it cannot see the ledger.
+        prior = dict(self.BASE, captured_at=_stamp(1))
+        r, ctx = Movement()._run(_agg(jobs=6_968_770, entries=43_342, largest=100),
+                                 prior, headlines=self.US, incidents="{not json")
+        self.assertEqual(r.state, di.UNKNOWN)
+        self.assertEqual(ctx.observations["one"][2], True, "an unreadable ledger was recordable")
+
+    def test_a_close_needs_a_reviewer_a_reason_row_ids_and_a_baseline(self):
+        with tempfile.TemporaryDirectory() as d:
+            path, ipath = Path(d) / "baseline.json", Path(d) / "incidents.json"
+            self._cycle(path, ipath, self.DAY_ONE, dict(self.BASE, captured_at=_stamp(3)))
+            before = ipath.read_text()
+            good = dict(name="one", reviewed_by="dak",
+                        reason="reconcile-supersets un-matched 18 WARN rows; verified "
+                               "against the state filings",
+                        rows=["4411", "4412"], replacement_jobs=6_975_000,
+                        replacement_entries=43_359, path=ipath, baseline_path=path)
+            for missing in ("reviewed_by", "reason", "rows",
+                            "replacement_jobs", "replacement_entries"):
+                bad = dict(good)
+                bad[missing] = [] if missing == "rows" else None
+                with self.assertRaises(ValueError, msg=f"{missing} was optional"):
+                    di.close_incident(**bad)
+            # A one-word reason is a shrug, not a finding.
+            with self.assertRaises(ValueError):
+                di.close_incident(**dict(good, reason="fixed"))
+            self.assertEqual(ipath.read_text(), before, "a refused close still wrote")
+            self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"],
+                             self.BASE["jobs"], "a refused close moved the baseline")
+
+    def test_a_reviewed_close_clears_it_and_installs_the_stated_baseline(self):
+        with tempfile.TemporaryDirectory() as d:
+            path, ipath = Path(d) / "baseline.json", Path(d) / "incidents.json"
+            self._cycle(path, ipath, self.DAY_ONE, dict(self.BASE, captured_at=_stamp(3)))
+            closed = di.close_incident(
+                "one", reviewed_by="dak",
+                reason="reconcile-supersets un-matched 18 WARN rows; verified against "
+                       "the state filings and re-imported",
+                rows=["4411", "4412"], replacement_jobs=6_975_000,
+                replacement_entries=43_359, path=ipath, baseline_path=path)
+            self.assertEqual(closed["affected_row_ids"], ["4411", "4412"])
+            ledger = di.load_incidents(ipath)
+            self.assertEqual(ledger["open"], {})
+            self.assertEqual(len(ledger["closed"]), 1)
+            # The REVIEWER's figure, not the live reading of 7,061,880.
+            self.assertEqual(json.loads(path.read_text())["slices"]["one"]["jobs"], 6_975_000)
+            # And the guard is armed again the next day, not stuck FAILING.
+            r, _ = Movement()._run(_agg(jobs=6_975_400, entries=43_360, largest=400),
+                                   dict(jobs=6_975_000, entries=43_359,
+                                        captured_at=_stamp(1)), headlines=self.US)
+            self.assertEqual(r.state, di.PASS)
+
+    def test_the_shipped_ledger_is_readable_and_its_open_slices_are_real(self):
+        # A typo in a slice name would make an incident silently unenforceable.
+        ledger = di.load_incidents()
+        names = {h.name for h in di.MovementInvariant().headlines}
+        for name in ledger["open"]:
+            self.assertIn(name, names, f"{name} is not a watched movement slice")
 
 
 class DenominatorProvenance(unittest.TestCase):

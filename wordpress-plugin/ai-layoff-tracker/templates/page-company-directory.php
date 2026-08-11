@@ -170,7 +170,7 @@ $alt_verif = array(
               echo implode(', ', $alt_parts); // already escaped above ?>.</p>
     <?php endif; ?>
 
-    <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">tracker methodology</a>
+    <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 </main>
 <?php alt_render_page_footer(); ?>

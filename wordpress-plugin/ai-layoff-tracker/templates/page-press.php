@@ -253,7 +253,16 @@ if (!is_array($alt_ps)) {
     $alt_mo_lab  = gmdate('F Y', $alt_lmts);
 
     $alt_ps = array(
-        'generated' => gmdate('j F Y, H:i') . ' UTC',
+        // ONE DATE FORMAT ON THE PAGE BUILT FOR PEOPLE WHO COPY DATES.
+        // This page used to print three conventions in one visit: "Aug 11,
+        // 2026" in the period table, "11 August 2026" here and on the weekly
+        // card, and "1 Aug 2026" down the release schedule. A journalist
+        // copying a date off a press kit should not have to normalise it
+        // first, and three renderings of one convention is the tell that
+        // nobody owns the convention. M j, Y is the house format the rest of
+        // the tracker already uses (alt_data_last_updated_label, the
+        // methodology audit stamp), so it is the one that stays.
+        'generated' => gmdate('M j, Y') . ', ' . gmdate('H:i') . ' UTC',
         'tiers'     => array(
             't1' => (int) ($alt_tiers->t1 ?? 0),
             't2' => (int) ($alt_tiers->t2 ?? 0),
@@ -261,7 +270,7 @@ if (!is_array($alt_ps)) {
             'year' => $alt_y2,
         ),
         'sets' => array(
-            array('id' => 'weekly', 'title' => 'This week', 'sub' => 'rolling 7 days to ' . gmdate('j F Y'),
+            array('id' => 'weekly', 'title' => 'This week', 'sub' => 'rolling 7 days to ' . gmdate('M j, Y'),
                   'items' => $alt_build($alt_wk_from, $alt_wk_to, 'the last seven days',
                                         array('from' => $alt_wk_from, 'to' => $alt_wk_to))),
             array('id' => 'monthly', 'title' => $alt_mo_lab, 'sub' => 'complete calendar month',
@@ -304,7 +313,7 @@ if (!is_array($alt_ps)) {
         if ((int) ($st->v ?? 0) <= 0) continue;
         $alt_rel[] = array(
             'label'    => gmdate('F Y', $ts),
-            'released' => gmdate('j M Y', strtotime(gmdate('Y-m-01', $ts) . ' +1 month')),
+            'released' => gmdate('M j, Y', strtotime(gmdate('Y-m-01', $ts) . ' +1 month')),
             'v' => (int) $st->v, 'ai' => (int) $st->ai,
             'report'   => esc_url(add_query_arg(array('period' => gmdate('Y-m', $ts)),
                                                 home_url('/ai-layoff-tracker/report/'))),
@@ -507,7 +516,16 @@ if (!is_array($alt_ps)) {
   <h2 id="alt-key-stats">Yearly totals</h2>
   <p>Live figures from the same database the tracker serves, cut at today, so the current year is a part year. <b>These columns count the verified and announced tiers together</b>, which is why the current-year row runs above the verified headline at the top of this page. "AI-attributed" uses our strict standard: the company named AI as a primary or contributing cause, with a supporting quote on file. A separate broader measure is available in the <code>ai_broad_jobs</code> API field.</p>
   <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
-  <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?>, the moment the underlying database last changed (a new filing/notice/report was added), not the time you loaded this page.</p><?php endif; ?>
+  <?php /* This page carries two freshness stamps a few hours apart, in two
+       time zones, and until now neither said which one a citing journalist
+       should use. They are different facts and both are needed, so the fix is
+       to name them rather than to drop one: "Generated" is when this page's
+       wording and figures were assembled (UTC, at the top of the page), and
+       "Data last updated" is when the database behind them last changed, which
+       is reported in the site's local zone because that is the zone the
+       collectors are scheduled in. The accessed-date sentence says which one
+       goes in a citation. */ ?>
+  <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?>, the moment the underlying database last changed (a new filing/notice/report was added), not the time you loaded this page. <?php if (!empty($alt_ps['generated'])) : ?>That is a different stamp from <b>Generated <?php echo esc_html($alt_ps['generated']); ?></b> higher up the page, which is when these figures were assembled. <?php endif; ?> In a citation, use the date you accessed the tracker.</p><?php endif; ?>
   <div class="alt-health-table-wrap"><table class="alt-press-table">
     <thead><tr><th>Year</th><th class="num">Layoff events recorded</th><th class="num">Job cuts recorded<br><small>verified and announced</small></th><th class="num">AI-attributed (strict)</th></tr></thead>
     <tbody>

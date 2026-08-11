@@ -155,8 +155,21 @@
       "settled_at": "2026-08-10T18:28:59+00:00",
       "settled_because": "delivered late: emailed the owner",
       "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "tests:live.data:64f59bc3c7ca3d17",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-11T02:54:55+00:00",
+      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "raised_at": "2026-08-11T02:54:55+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31453717230",
+      "scope": "tests:main",
+      "settled_at": "2026-08-11T04:04:39+00:00",
+      "settled_because": "delivered late: not emailed: suppressed: this exact cause is already open (raised 1 hour ago)",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-10T18:28:59+00:00",
+  "updated_at": "2026-08-11T04:04:39+00:00",
   "version": 1
 }

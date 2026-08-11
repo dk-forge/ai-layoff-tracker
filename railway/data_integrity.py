@@ -147,6 +147,10 @@ REPO_ROOT = HERE.parent
 # thing being watched changes without a commit and a baseline that lives only in
 # a runner is a baseline that resets every night. Written by data-integrity.yml.
 BASELINE_PATH = HERE / "headline_baseline.json"
+# Open incidents. Also committed, and for a stronger reason than the baseline:
+# an incident must outlive the condition that raised it. See INCIDENTS_PATH's
+# own section below.
+INCIDENTS_PATH = HERE / "headline_incidents.json"
 DB_PHP = REPO_ROOT / "wordpress-plugin" / "ai-layoff-tracker" / "includes" / "db.php"
 
 
@@ -368,6 +372,190 @@ HEADLINES = (
 # A baseline older than this cannot bound a daily movement, so the movement
 # check reports UNKNOWN rather than stretching its budget to fit.
 MAX_BASELINE_AGE_DAYS = 14
+
+# ---------------------------------------------------------------------------
+# STICKY INCIDENTS: a FAIL is closed by a human, never by the calendar
+# ---------------------------------------------------------------------------
+#
+# THE DEFECT THIS EXISTS FOR, which was two correct guards agreeing to launder
+# an open incident on a date nobody chose.
+#
+#   1. `record_baseline` refuses to advance a FAILING slice. Correct: recording
+#      today's figure makes the defect tomorrow's normal. Consequence: the
+#      failing slice's baseline is PINNED while the others advance daily.
+#   2. A baseline older than MAX_BASELINE_AGE_DAYS returns UNKNOWN, `pending`,
+#      and deliberately NOT `suppressed` (see `_out`) — because refusing to
+#      record the other stale-baseline UNKNOWNs would freeze the guard
+#      permanently unarmed. Also correct, on its own.
+#   3. `record_baseline` skipped exactly two things: FAIL and `suppressed`.
+#
+# So on the fifteenth day the pinned baseline aged out, the slice stopped
+# saying FAIL and started saying UNKNOWN-not-suppressed, the recorder wrote the
+# FAILING figure as the new baseline, and the next day's comparison was green
+# against it. The live us_all_time incident (baseline pinned 2026-08-07T18:23:51Z,
+# recorder at ~18:00Z) was on course to erase itself on the 2026-08-22 run.
+#
+# Two more clocks were widening in the same direction while the baseline sat
+# still, which is why "wait and see" was never going to hold either:
+#   * `floor = move_floor * span` grows with the span. The live +93,210 US move
+#     clears a 20,000/day floor at span 5.0d.
+#   * `allowance = |Δentries| * base_mean * mean_factor` grows with every later
+#     arrival. At base_mean 160.787 and mean_factor 12 it swallows +93,210 once
+#     49 net new entries have landed — rows with nothing to do with the defect.
+#
+# THE RULE. A rendered FAIL opens an incident here, and from that moment the
+# slice's verdict is FAIL, full stop: not by re-deriving it from a formula whose
+# inputs keep moving, but because the incident is open. Time cannot close it,
+# later rows cannot close it, a stale baseline cannot close it, and an
+# unreachable API cannot close it. Only `close_incident` closes it, and it
+# demands the three things a human resolution actually produces:
+#
+#   a reviewer, a reason, THE AFFECTED ROW IDs, and an explicit replacement
+#   baseline — the figure the reviewer asserts is correct, stated on purpose
+#   rather than inherited from whatever the site happened to read that minute.
+#
+# This weakens no bound. move_floor, mean_factor, max_share and
+# MAX_BASELINE_AGE_DAYS are untouched; the stale-baseline UNKNOWN still records
+# for every slice with no incident open, so the guard still cannot freeze
+# unarmed. All this removes is the path from "unexplained move" to "normal"
+# that had no human on it.
+
+# A closing reason has to be a finding, not a shrug. Rejecting the one-word
+# close is the cheapest part of this and the part most likely to be tested by a
+# tired session at 2am.
+MIN_CLOSE_REASON_CHARS = 40
+
+
+class IncidentLedgerUnreadable(Exception):
+    """The ledger exists and could not be parsed.
+
+    Never degrades to "no incidents open" — that is indistinguishable from a
+    laundered incident, and it would make `rm headline_incidents.json` a
+    working way to clear a FAIL.
+    """
+
+
+def load_incidents(path=None):
+    """{"open": {slice: record}, "closed": [record, ...]}.
+
+    A MISSING file is an empty ledger: this has to bootstrap. A file that is
+    present and unparseable raises — see IncidentLedgerUnreadable.
+    """
+    p = Path(path or INCIDENTS_PATH)
+    if not p.exists():
+        return {"open": {}, "closed": []}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise IncidentLedgerUnreadable(f"{p}: {exc}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("open", {}), dict):
+        raise IncidentLedgerUnreadable(f"{p}: not an incident ledger")
+    return {"open": dict(data.get("open") or {}),
+            "closed": list(data.get("closed") or [])}
+
+
+LEDGER_NOTE = (
+    "Open headline incidents, read by data_integrity.MovementInvariant. A slice "
+    "listed under `open` reports FAIL regardless of what today's numbers say — "
+    "that is the point: the movement formula's own inputs (elapsed span, arriving "
+    "rows, baseline age) all widen over time, so an incident left to the calendar "
+    "closes itself. Do not hand-edit this file. Close an incident with "
+    "`python3 data_integrity.py --close-incident <slice> --reviewed-by ... "
+    "--reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, "
+    "which is the only path that also writes the replacement baseline."
+)
+
+
+def save_incidents(ledger, path=None):
+    p = Path(path or INCIDENTS_PATH)
+    payload = {"note": LEDGER_NOTE,
+               "written_at": _utc_now_iso(),
+               "open": ledger.get("open") or {},
+               "closed": ledger.get("closed") or []}
+    p.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def open_incident(ledger, name, label, detail, baseline, observed):
+    """Record a FAIL as an open incident. Idempotent.
+
+    Re-rendering the same FAIL tomorrow must not restamp `opened_at`: the age of
+    an incident is the most useful thing about it, and a rolling one reads as
+    fresh forever.
+    """
+    if name in (ledger.get("open") or {}):
+        return False
+    ledger.setdefault("open", {})[name] = {
+        "slice": name,
+        "label": label,
+        "opened_at": _utc_now_iso(),
+        "detail": detail,
+        "baseline_at_open": baseline,
+        "observed_at_open": observed,
+    }
+    return True
+
+
+def close_incident(name, reviewed_by, reason, rows, replacement_jobs,
+                   replacement_entries, path=None, baseline_path=None):
+    """Close an incident and install the reviewer's replacement baseline.
+
+    Every argument is a requirement, not a formality:
+
+    `reviewed_by` / `reason`  someone looked, and said what they found. An
+        incident closed with "fixed" is an incident nobody can audit later.
+    `rows`  the affected row IDs. This is the difference between "the number
+        looks fine now" and "these are the rows that moved it". If they cannot
+        be named, the cause was not found and the incident is not resolved.
+    `replacement_jobs` / `replacement_entries`  the figure the reviewer asserts
+        is correct, typed out. Adopting whatever the live API happens to answer
+        at closing time is the laundering with a human standing next to it.
+
+    Raises ValueError on any of them, and writes NOTHING when it raises.
+    Returns the closed record.
+    """
+    ledger = load_incidents(path)
+    rec = (ledger.get("open") or {}).get(name)
+    if not rec:
+        raise ValueError(f"no open incident for {name!r} "
+                         f"(open: {sorted((ledger.get('open') or {}))})")
+    reviewed_by = (reviewed_by or "").strip()
+    reason = (reason or "").strip()
+    if not reviewed_by:
+        raise ValueError("--reviewed-by is required: a closed incident names who reviewed it")
+    if len(reason) < MIN_CLOSE_REASON_CHARS:
+        raise ValueError(f"--reason must be at least {MIN_CLOSE_REASON_CHARS} characters "
+                         f"of actual finding (got {len(reason)})")
+    rows = [str(r).strip() for r in (rows or []) if str(r).strip()]
+    if not rows:
+        raise ValueError("--rows is required: name the row IDs this incident was about. "
+                         "If they cannot be named, the cause has not been found")
+    try:
+        jobs = int(replacement_jobs)
+        entries = int(replacement_entries)
+    except (TypeError, ValueError):
+        raise ValueError("--replacement-jobs and --replacement-entries must both be "
+                         "integers: the reviewer states the correct figure explicitly") from None
+    if jobs <= 0 or entries <= 0:
+        raise ValueError("the replacement baseline must be positive on both axes")
+
+    now = _utc_now_iso()
+    closed = dict(rec)
+    closed.update({"closed_at": now, "reviewed_by": reviewed_by, "reason": reason,
+                   "affected_row_ids": rows,
+                   "replacement_baseline": {"jobs": jobs, "entries": entries,
+                                            "captured_at": now}})
+    ledger.setdefault("closed", []).append(closed)
+    ledger["open"].pop(name, None)
+
+    bpath = Path(baseline_path or BASELINE_PATH)
+    base = load_baseline(bpath) or {}
+    slices = dict(base.get("slices") or {})
+    slices[name] = {"jobs": jobs, "entries": entries, "captured_at": now}
+    base["slices"] = slices
+    base["written_at"] = now
+    bpath.write_text(json.dumps(base, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    save_incidents(ledger, path)
+    return closed
 
 # The other end of the same rule, and it was missing until 2026-08-02.
 #
@@ -626,22 +814,73 @@ class MovementInvariant:
     label = "No headline moves without rows to explain it"
     reads_live_data = True
 
-    def __init__(self, headlines=HEADLINES, baseline_path=None):
+    def __init__(self, headlines=HEADLINES, baseline_path=None, incidents_path=None):
         self.headlines = tuple(h for h in headlines if h.watch_movement)
         self.baseline_path = baseline_path or BASELINE_PATH
+        self.incidents_path = incidents_path or INCIDENTS_PATH
 
     def run(self, ctx):
         base = load_baseline(self.baseline_path)
         slices = (base or {}).get("slices") or {}
+        try:
+            open_incidents = load_incidents(self.incidents_path).get("open") or {}
+        except IncidentLedgerUnreadable as exc:
+            # We cannot tell an empty ledger from a destroyed one, so no slice
+            # gets a verdict and none may be recorded. `suppressed`, because
+            # this is a verdict we were not entitled to render — the same rule
+            # as the partial cycle, for the same reason.
+            per = [(h, _out(UNKNOWN,
+                            f"the incident ledger could not be read ({exc}) — an open "
+                            f"incident may be hidden, so nothing here is judged and "
+                            f"nothing is recorded", pending=True, suppressed=True))
+                   for h in self.headlines]
+            for h, out in per:
+                ctx.observations[h.name] = (out["state"], None, True)
+            return _roll_up(self, ctx, per)
         per = []
         for h in self.headlines:
-            out = self._one(ctx, h, slices.get(h.name))
+            out = self._one(ctx, h, slices.get(h.name), open_incidents.get(h.name))
             ctx.observations[h.name] = (out["state"], out.get("observed"),
                                         out.get("suppressed", False))
+            ctx.details[h.name] = out.get("detail")
             per.append((h, out))
         return _roll_up(self, ctx, per)
 
-    def _one(self, ctx, h, prior):
+    def _one(self, ctx, h, prior, incident=None):
+        """The formula's verdict, then the incident's — and the incident wins.
+
+        An open incident is not re-litigated against today's numbers. Every
+        input the formula uses drifts in the forgiving direction while an
+        incident sits open (the span widens the floor, later arrivals widen the
+        allowance, the pinned baseline eventually ages into UNKNOWN), so
+        re-deriving the verdict daily is exactly how the incident closes itself.
+        """
+        out = self._verdict(ctx, h, prior)
+        if not incident:
+            return out
+        return _out(FAIL, self._sticky_detail(h, incident, out),
+                    observed=out.get("observed"))
+
+    @staticmethod
+    def _sticky_detail(h, incident, out):
+        age = _days_since(incident.get("opened_at"))
+        aged = f"{age:.0f}d ago" if age is not None else "at an unrecorded time"
+        now = out.get("detail") or "no reading this run"
+        # The alert email is the main reader of this sentence, and on most days
+        # today's reading is word-for-word the incident. Say so instead of
+        # printing it twice.
+        same = re.sub(r"[\d,.]+", "#", now) == \
+            re.sub(r"[\d,.]+", "#", str(incident.get("detail") or ""))
+        if same:
+            now = "unchanged"
+        return (f"OPEN INCIDENT, opened {aged} ({incident.get('opened_at')}): "
+                f"{incident.get('detail')} | today's reading: {now} | This stays FAIL "
+                f"until a human closes it: `python3 data_integrity.py --close-incident "
+                f"{h.name} --reviewed-by <who> --reason <what you found> --rows <ids> "
+                f"--replacement-jobs <n> --replacement-entries <n>`. Time, later rows "
+                f"and a stale baseline do not close it")
+
+    def _verdict(self, ctx, h, prior):
         payload, bad_state, why, err = _fetch_aggregate(ctx, _headline_params(h, ctx.today))
         if bad_state:
             ctx.errors[h.name] = err
@@ -1316,6 +1555,7 @@ class Ctx:
         self.today = today or datetime.now(timezone.utc).date()
         self.errors = {}          # slice name -> transport exception, for Result.transport
         self.observations = {}    # slice name -> (state, {jobs, entries, captured_at}, suppressed)
+        self.details = {}         # slice name -> its sentence, so an incident records WHY
 
     def fetch(self, url, timeout):
         if url not in self._cache:
@@ -1345,7 +1585,7 @@ def check_all(fetch=None, timeout=20, invariants=INVARIANTS, ctx=None):
     return Report(results)
 
 
-def record_baseline(ctx, report, path=None):
+def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADLINES):
     """Advance the committed baseline — but never over a FAILING slice.
 
     This is the anti-masking rule and it is the reason the recorder lives beside
@@ -1355,13 +1595,46 @@ def record_baseline(ctx, report, path=None):
     instead of catching it. A failing slice keeps yesterday's baseline and keeps
     failing until a human resolves it.
 
+    A FAIL also OPENS A STICKY INCIDENT here, and an open incident is the second
+    lock on the same door: the slice is refused whatever state it reports later.
+    The first lock is MovementInvariant returning FAIL for an open incident at
+    all, and one lock was demonstrably not enough — the guard that opened the
+    door was the one that had been reasoned about least (a baseline aged past
+    MAX_BASELINE_AGE_DAYS reports UNKNOWN, unsuppressed, and used to be
+    recordable). Anything that stops rendering the sticky FAIL still cannot get
+    a number past this loop.
+
     Returns (written, [notes]).
     """
     path = Path(path or BASELINE_PATH)
     current = load_baseline(path) or {}
     slices = dict(current.get("slices") or {})
+    labels = {h.name: h.label for h in headlines}
     notes = []
+    try:
+        ledger = load_incidents(incidents_path)
+    except IncidentLedgerUnreadable as exc:
+        # No advance at all. An unreadable ledger cannot rule out an open
+        # incident on any slice, and a baseline written in that state is a
+        # baseline nobody can vouch for.
+        return False, [f"the incident ledger could not be read ({exc}) — NO baseline "
+                       f"was advanced; fix or restore railway/headline_incidents.json"]
+    open_before = set(ledger.get("open") or {})
+    ledger_changed = False
     for name, (state, observed, suppressed) in sorted(ctx.observations.items()):
+        if state == FAIL and observed is not None:
+            detail = (getattr(ctx, "details", {}) or {}).get(name) \
+                or f"{name} FAILED the headline movement check"
+            if open_incident(ledger, name, labels.get(name, name), detail,
+                             slices.get(name), observed):
+                ledger_changed = True
+                notes.append(f"{name}: INCIDENT OPENED — it now reports FAIL until a "
+                             f"human closes it, not until the numbers drift back")
+        if name in open_before or name in (ledger.get("open") or {}):
+            notes.append(f"{name}: OPEN INCIDENT, baseline NOT advanced. Only "
+                         f"`--close-incident {name}` (reviewer + reason + row IDs + an "
+                         f"explicit replacement baseline) can advance it")
+            continue
         if observed is None:
             notes.append(f"{name}: nothing observed, baseline untouched")
             continue
@@ -1392,6 +1665,8 @@ def record_baseline(ctx, report, path=None):
         "slices": slices,
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if ledger_changed:
+        save_incidents(ledger, incidents_path)
     return True, notes
 
 
@@ -1407,9 +1682,57 @@ def ledger_status(report):
     return "ok", len(report.passed), report.one_line()[:240]
 
 
+def _arg(argv, flag, default=None):
+    return argv[argv.index(flag) + 1] if flag in argv and argv.index(flag) + 1 < len(argv) \
+        else default
+
+
+def _print_incidents(ledger):
+    open_ = ledger.get("open") or {}
+    if not open_:
+        print("OPEN HEADLINE INCIDENTS: none")
+        return
+    print(f"OPEN HEADLINE INCIDENTS: {len(open_)}")
+    for name, rec in sorted(open_.items()):
+        age = _days_since(rec.get("opened_at"))
+        print(f"  {name}  opened {rec.get('opened_at')}"
+              f"{f' ({age:.0f}d ago)' if age is not None else ''}")
+        print(f"    {rec.get('detail')}")
+    print("  Close one with --close-incident <slice> --reviewed-by ... --reason ... "
+          "--rows ... --replacement-jobs ... --replacement-entries ...")
+
+
 def main(argv=None):
     argv = argv or sys.argv[1:]
     import uuid
+
+    # Both of these are LOCAL and key-free, and neither may run the live checks:
+    # closing an incident is a human act on a committed ledger, not a re-read of
+    # a site whose current numbers are exactly what must not decide it.
+    if "--incidents" in argv:
+        _print_incidents(load_incidents())
+        return 0
+    if "--close-incident" in argv:
+        rows = [r for r in (_arg(argv, "--rows", "") or "").replace(" ", ",").split(",") if r]
+        try:
+            closed = close_incident(
+                _arg(argv, "--close-incident"),
+                reviewed_by=_arg(argv, "--reviewed-by"),
+                reason=_arg(argv, "--reason"),
+                rows=rows,
+                replacement_jobs=_arg(argv, "--replacement-jobs"),
+                replacement_entries=_arg(argv, "--replacement-entries"))
+        except (ValueError, IncidentLedgerUnreadable) as exc:
+            print(f"REFUSED: {exc}")
+            print("Nothing was written. An incident closes on a finding, not on a flag.")
+            return 2
+        rb = closed["replacement_baseline"]
+        print(f"CLOSED {closed['slice']} — reviewed by {closed['reviewed_by']}")
+        print(f"  rows: {', '.join(closed['affected_row_ids'])}")
+        print(f"  replacement baseline: {rb['jobs']:,} jobs / {rb['entries']:,} entries")
+        print(f"  COMMIT both {INCIDENTS_PATH.name} and {BASELINE_PATH.name}.")
+        return 0
+
     ctx = Ctx(_default_fetch, 20, uuid.uuid4().hex[:12])
     report = check_all(ctx=ctx)
     print("LIVE DATA-INTEGRITY CHECKS")

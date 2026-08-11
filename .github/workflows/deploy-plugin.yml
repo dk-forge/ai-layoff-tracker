@@ -245,3 +245,37 @@ jobs:
           # shared caches), with generous headroom so an edge that is slow to
           # expire is not reported as a stuck deploy.
           python3 railway/reader_freshness.py --wait-for "$VERSION" --timeout 600 --interval 15
+
+      # And the check that measures what those bytes RENDER AS. The step above
+      # proves readers have the new version; it cannot tell a readable page
+      # from one whose paragraphs are 1.06:1 against their own background,
+      # which is what shipped on 2026-08-10 with every check green. A deploy is
+      # the moment a stylesheet change reaches readers, so this runs here as
+      # well as on its own daily schedule.
+      #
+      # Exit 2 (a violation is LIVE) fails the deploy. Exit 3 (could not be
+      # measured at all) does NOT, and that asymmetry is deliberate: this repo
+      # has already learned that letting a host outage manufacture red runs
+      # manufactures alerts that also fail (CLAUDE.md, /alert). An UNKNOWN here
+      # is loud in the log and is caught within the day by the scheduled
+      # Rendered contrast audit, which DOES go red on it.
+      - name: Verify the deployed page is readable in both themes
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        run: |
+          set -uo pipefail
+          python3 railway/contrast_audit.py \
+            --url "$WP_SITE_URL/ai-layoff-tracker/" --json contrast.json
+          STATUS=$?
+          if [ "$STATUS" = "2" ]; then
+            echo "::error::Text below WCAG AA is live on the tracker page."
+            exit 1
+          fi
+          if [ "$STATUS" = "3" ]; then
+            # One line, no backslash continuations: a continuation that starts
+            # at column 0 is BELOW this block scalar's indentation, which ends
+            # the block and stops the whole file parsing. That is what broke
+            # the 2.20.7 deploy.
+            echo "::warning::Rendered contrast could NOT be measured. This is UNKNOWN, not a pass; the daily Rendered contrast audit goes red if it persists."
+          fi
+          exit 0

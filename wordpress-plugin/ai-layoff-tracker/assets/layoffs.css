@@ -527,6 +527,27 @@ body:has(.alt-tracker-wrap) .entry-title {
     font-weight: 700;
 }
 body:has(.alt-tracker-wrap) .entry-content { margin-top: 12px; }
+
+/* ONE PAGE, ONE NAME.
+   Every plugin page except the dashboard renders its own <h1>, and the theme
+   renders the WordPress post title as a second <h1> immediately above it. Five
+   pages therefore printed their own name twice, in two typefaces, at 47.2px
+   each, and the two copies did not agree: "Methodology & Sources" over
+   "Methodology & sources", "AI layoffs, in their own words" over "AI layoffs,
+   in the employer's own words", "Embed the Layoff Tracker" over "Embed the
+   layoff tracker". On /sources/ they were byte-identical and 199px apart, with
+   neither subordinate to the other, which reads as a rendering fault rather
+   than a heading.
+   The template's <h1> is the one that survives, for two reasons: it is in this
+   repository, so it is reviewable and testable, and the post title lives in the
+   database where nothing here can keep it in step. Two <h1> elements is also
+   the worse of the two states for search and for a screen reader.
+   The selector is self-limiting: it fires only where the plugin supplied an
+   <h1> of its own, so a page that has none keeps the theme's. That is what
+   leaves the DASHBOARD alone - it deliberately has no <h1> in its markup and
+   uses the theme title, demoted to a kicker by the rule above. */
+body:has(.alt-wrap h1) h1.wp-block-post-title,
+body:has(.alt-wrap h1) .entry-title { display: none; }
 /* The theme stacks ~60px of padding above the title on this page; tighten it */
 body:has(.alt-tracker-wrap) main.wp-block-group { margin-top: 24px !important; }
 body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px !important; }
@@ -630,6 +651,60 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-stat-desc { font-size: 11.5px; line-height: 1.4; color: var(--alt-accent-dark); margin: 1px 0 2px; }
 .alt-stat-desc b { color: var(--alt-ink-2); font-weight: 700; }
 .alt-stat-sub { font-size: 12px; color: var(--alt-ink-2); font-variant-numeric: tabular-nums; margin-top: auto; }
+
+/* ---------------------------------------------------------------------------
+   TILE ALIGNMENT: ONE INTERNAL STRUCTURE, AND THE SPACE IS RESERVED.
+
+   The five tiles carried wildly different amounts of caption text. One had a
+   single scope line; the AI tile added a share sentence that appears and
+   disappears with the filters; the Companies tile stacks three. Because every
+   caption pushed the next thing down by however tall it happened to be, the
+   numbers and labels did not line up across the row, and changing a filter
+   made neighbouring tiles jump as one caption grew a line.
+
+   The structure is now the same in every tile: value, label, scope line, then
+   AT MOST one optional detail line. The scope line sits on a reserved row, so
+   a tile without a detail line does not collapse and shift its neighbours, and
+   a detail line that appears on a filter change grows into space that was
+   already there instead of taking it from the tile beside it.
+
+   Nothing is deleted to achieve this. Where a tile genuinely needs more than a
+   detail line, that text lives in the (i) disclosure the tile already has.
+   --------------------------------------------------------------------------- */
+/* The cards are already flex columns and the first .alt-stat-sub already
+   carries margin-top:auto, so the CAPTION BLOCK is bottom-aligned. What was
+   ragged is everything between: a label that wraps to two lines in one tile
+   and one line in the next starts its caption block at a different height, and
+   an optional detail line that appears on a filter change takes its space from
+   the layout rather than from space already reserved.
+
+   Two reservations fix both, and neither deletes anything.
+
+   1. The label occupies the same vertical band in every tile. min-height, not
+      height, so a third line still wraps instead of being clipped. Scoped to
+      DIRECT children: the Companies tile puts its label inside
+      .alt-stat-value-row beside the number, and inflating that would push its
+      own three measures down. */
+.alt-stats-bar > .alt-stat-card > .alt-stat-label { min-height: 2.7em; }
+/* 2. The optional detail line has a row whether or not it has text. This is
+      the AI tile's share sentence (which disappears entirely once the view is
+      filtered to AI rows) and the lead tile's basis line. Without the reserve,
+      one filter change shortened one tile and moved its neighbours. */
+.alt-stats-bar > .alt-stat-card > .alt-stat-detail,
+.alt-stats-bar > .alt-stat-card > .alt-stat-sub + .alt-stat-sub { min-height: 1.35em; }
+/* The three derived tiles get the same treatment, so the strip inside the
+   disclosure lines up the way the row above it does. */
+.alt-broad-strip > .alt-stat-card > .alt-stat-label { min-height: 2.7em; }
+.alt-broad-strip > .alt-stat-card > .alt-stat-sub + .alt-stat-sub { min-height: 1.35em; }
+/* On a single-column phone layout the tiles stack, so there is no row to align
+   ACROSS and the reserved bands are only wasted height. */
+@media (max-width: 460px) {
+    .alt-stats-bar > .alt-stat-card > .alt-stat-label,
+    .alt-broad-strip > .alt-stat-card > .alt-stat-label { min-height: 0; }
+    .alt-stats-bar > .alt-stat-card > .alt-stat-detail,
+    .alt-stats-bar > .alt-stat-card > .alt-stat-sub + .alt-stat-sub,
+    .alt-broad-strip > .alt-stat-card > .alt-stat-sub + .alt-stat-sub { min-height: 0; }
+}
 
 /* ---------------- Toolbar (download + title) ---------------- */
 
@@ -1204,6 +1279,14 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 /* min-width:0 lets this flex child shrink so the ellipsis actually engages; without
    it a long company name pushes the row past the card edge (mobile bleed). */
 .alt-barrow-name { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 700; color: var(--alt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The country flag is a reserved column, not a prefix glued to the name. The
+   width is fixed and identical whether or not the row has a flag, so a country
+   the emoji vocabulary has not met cannot shift its name left and break the
+   list's left edge mid-list. 1.5em holds a regional-indicator pair plus the
+   gap that used to be a trailing space in countryFlag(). aria-hidden on the
+   span: the flag repeats the country name that follows it, so a screen reader
+   reading both would say the country twice. */
+.alt-barrow-icon { display: inline-block; width: 1.5em; font-style: normal; font-weight: 400; }
 /* flex:0 0 auto is load-bearing. The name above has flex-grow:1, so when a row
    is too wide the browser shrinks BOTH children in proportion to their base
    size - and the value's base is the larger one, so the value took nearly all
@@ -2324,7 +2407,20 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 .alt-press-page table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); font-weight: 700; padding: 9px 14px; border-bottom: 2px solid var(--alt-grid); background: var(--alt-surface-2); }
 .alt-press-page table td { padding: 10px 14px; border-bottom: 1px solid var(--alt-grid); vertical-align: top; line-height: 1.5; }
 .alt-press-page table tbody tr:last-child td { border-bottom: 0; }
-.alt-press-page .alt-health-table-wrap { border: 1px solid var(--alt-grid); border-radius: 10px; overflow: hidden; margin: 6px 0 14px; }
+/* THE ROUNDED BORDER MUST NOT COST THE SCROLLBAR.
+   `overflow: hidden` was here to keep the table's corners inside the 10px
+   radius, and it silently replaced the base rule's `overflow-x: auto`
+   (.alt-health-table-wrap, further up). The same wrapper therefore scrolled on
+   /methodology/ and /sources/ and ate content on /press/: at 375px, five of
+   seven tables overflowed by 28 to 164px with no scrollbar and no pan
+   affordance, taking the whole "Preset view" column, and every "Open the …
+   report" link in the release schedule, out of reach. The page built for
+   people who copy numbers was the one page they could not reach the numbers
+   on.
+   `overflow-x: auto` with `overflow-y: hidden` keeps the vertical clip that
+   the radius actually needs and gives the horizontal axis back. A radius is
+   worth less than a column. */
+.alt-press-page .alt-health-table-wrap { border: 1px solid var(--alt-grid); border-radius: 10px; overflow-x: auto; overflow-y: hidden; margin: 6px 0 14px; }
 .alt-press-page .alt-angles-table td:first-child { width: 34%; }
 .alt-angles-table td:first-child { white-space: nowrap; vertical-align: top; }
 .alt-angles-table td { line-height: 1.5; }
@@ -2615,8 +2711,66 @@ figure.alt-soundbite figcaption.alt-sb-actions,
   padding: 4px 6px; margin-left: -6px;
 }
 
-/* Cross-link to the hiring-signals product, after the stats. */
-.alt-crosslink { margin: 10px 0 0; font-size: 13px; color: var(--alt-ink-2); }
+/* Cross-link to the hiring-signals product, after the stats. The sentence is
+   context; the LINK is a control. It was an inline anchor in 13px body grey,
+   which is the only route between the two products rendered as body prose.
+   Colours come from the theme tokens (--alt-accent / --alt-on-accent, the pair
+   the primary hero action uses), so contrast holds in light and dark without a
+   second hardcoded set to keep in step. */
+.alt-crosslink {
+    margin: 10px 0 0; font-size: 13px; color: var(--alt-ink-2);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.alt-crosslink-btn {
+    background: var(--alt-accent); color: var(--alt-on-accent);
+    border: 1px solid var(--alt-accent); text-decoration: none;
+    font-weight: 700; white-space: nowrap;
+}
+.alt-crosslink-btn:hover { background: var(--alt-accent-dark); border-color: var(--alt-accent-dark); color: var(--alt-on-accent); }
+.alt-crosslink-btn:focus-visible { outline: 2px solid var(--alt-accent); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   QUICK DATE RANGES. Deliberately the SAME pill language as the quick views
+   (.alt-qv) and the region tabs: this page already has one vocabulary for "tap
+   this to change what you are looking at", and a third would read as a
+   different kind of control. Wraps rather than scrolling, so on a 375px phone
+   it becomes two short rows inside the container instead of pushing the page
+   wider than the viewport.
+   --------------------------------------------------------------------------- */
+.alt-datepresets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.alt-dp-label { font-size: 13px; color: var(--alt-muted); font-weight: 500; margin-right: 2px; }
+.alt-dp {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px;
+    border: 1px solid var(--alt-border); border-radius: 999px; cursor: pointer;
+    background: var(--alt-surface); color: var(--alt-ink-2);
+}
+.alt-dp:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
+.alt-dp-on, .alt-dp-on:hover { background: var(--alt-ink); border-color: var(--alt-ink); color: var(--alt-on-accent); }
+.alt-dp:focus-visible { outline: 2px solid var(--alt-accent); outline-offset: 1px; }
+
+/* The compressed reconciliation's link out to the full explanation. Inline,
+   because the sentence it follows is prose and a second button beside the hero
+   would compete with the two hero actions. */
+.alt-hero-asof-more { white-space: nowrap; }
+
+/* ---------------------------------------------------------------------------
+   CARD HEIGHTS: TRUNCATION IS A BUG, HONEST EMPTINESS IS A LABEL.
+
+   Cards in one row stretch to the tallest, which is right. What was wrong was
+   a ranked list that stopped short while rows remained, leaving dead space
+   beside a full neighbour. Where a list is scrollable, its visible portion
+   fills the card before the scroll begins, so nobody is looking at blank space
+   above a scrollbar. Where a card is genuinely short because its data is
+   genuinely short (AI intensity by industry, which excludes industries under
+   1,000 cuts on purpose), it is NOT padded: it carries a sentence saying how
+   many were considered and how many cleared the bar.
+
+   The truncation itself was NOT a CSS problem and is not fixed here: the
+   largest-events query fetched 10 rows while the card draws up to 24, so the
+   card was starved by the fetch. That is fixed in db.php. This rule only stops
+   a scrollable list from leaving blank space above its own scrollbar.
+   --------------------------------------------------------------------------- */
+.alt-chart-card .alt-barlist { align-content: start; }
 
 /* Static (server-rendered) bar rows that navigate instead of filtering:
    same component, link semantics. */
@@ -2969,6 +3123,154 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     :root:not([data-theme="light"]) .wp-block-navigation__submenu-container {
         background-color: var(--alt-surface);
         border-color: var(--alt-border);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   THE SITE SNIPPET DOES DECLARE COLOUR, AND IN DARK IT WAS THE WHOLE PAGE.
+
+   The block above records a measurement taken on 2026-08-05: "the WPCode
+   snippet is layout only ... it declares no colour at all, so it has no
+   opinion here." That has not been true for some time, and the cost of it not
+   being true was invisible in the theme it was measured in. The site-level
+   CSS in the document head declares, with !important:
+
+       .entry-content p , .wp-block-post-content p  { color:#2a2a2a !important }
+       .entry-content h2, .wp-block-post-content h2 { color:#1a1a1a !important }
+       .entry-content h3, .wp-block-post-content h3 { color:#222    !important }
+
+   Every plugin surface renders inside .entry-content, so those three rules
+   beat every var(--alt-ink*) this stylesheet sets on a paragraph or a section
+   heading, in BOTH themes. In light, #2a2a2a on white is 14.8:1 and the
+   override is invisible as a problem. In dark it is the defect: measured in a
+   clean, extension-free browser on 2026-08-10, 186 text nodes on the
+   dashboard and 26 to 133 on each secondary page rendered between 1.02:1 and
+   1.28:1. The hero line that carries the whole credibility claim, "Every
+   entry links to the filing, notice or report it came from.", was 1.19:1. The
+   h2 "Why our number is lower, and why it's the one to cite" was 1.07:1.
+
+   WHAT A READER SAW, which is worse than "hard to read": the h1 was white,
+   the bullet lists were white, and the paragraphs and section headings
+   between them were not there. "In this figure:" was legible and the number
+   after it was a smudge. That is not a dark theme, it is a page that looks
+   like it failed to load.
+
+   AND IT WAS THE DEFAULT, not an edge case. It reproduces with no data-theme
+   attribute set at all, under prefers-color-scheme: dark - which is what
+   every dark-OS visitor gets, since Auto is the default.
+
+   WHY THE TOKENS COULD NOT FIX IT. They are correct and they are applied:
+   --alt-ink-warm resolves to #e3e7ef on the very element that computes
+   #1a1a1a. A custom property cannot win an argument it is not in. The losing
+   declaration is ours, so this raises OUR declaration instead: one class more
+   specific than .entry-content p, and !important, which is the only currency
+   the other side is spending.
+
+   WHY IT IS THE THREE TAGS AND NOT A LIST OF PLUGIN CLASSES. Because the
+   override is not per-class: the site rule flattens every p, h2 and h3 in the
+   wrapper to one ink, and it has been doing that in light for as long as it
+   has existed. Mirroring that flattening with the dark ink is therefore
+   parity, not a new decision, and it cannot regress light, which this block
+   does not touch.
+
+   THE SELECTOR IS THE SITE RULE'S OWN SCOPE PLUS .alt-wrap: one class more
+   specific, and never wider. It cannot reach markup the site rule does not
+   already reach, so it cannot flatten a colour that is currently surviving -
+   including the standalone chart embed, which renders .alt-chart-card outside
+   any .entry-content and is left exactly as it is.
+
+   WHY THERE IS NO CHECK THAT CAUGHT IT. reader_freshness.py proves which
+   VERSION a reader is served, not what the served bytes render as, and
+   nothing evaluated contrast in the non-default theme.
+   test_theme_light_dark.py now recomputes this pairing from what ships.
+   --------------------------------------------------------------------------- */
+:root[data-theme="dark"] .entry-content .alt-wrap p,
+:root[data-theme="dark"] .entry-content .alt-wrap h2,
+:root[data-theme="dark"] .entry-content .alt-wrap h3,
+:root[data-theme="dark"] .wp-block-post-content .alt-wrap p,
+:root[data-theme="dark"] .wp-block-post-content .alt-wrap h2,
+:root[data-theme="dark"] .wp-block-post-content .alt-wrap h3 {
+    color: var(--alt-ink) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .entry-content .alt-wrap p,
+    :root:not([data-theme="light"]) .entry-content .alt-wrap h2,
+    :root:not([data-theme="light"]) .entry-content .alt-wrap h3,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-wrap p,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-wrap h2,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-wrap h3 {
+        color: var(--alt-ink) !important;
+    }
+}
+
+/* The same site rule also draws a 2px rule under every h2, and it declares
+   that rule's colour as a literal too: `border-bottom: 2px solid #eef3ee`.
+   On the dark page that is a near-white line, measured at rgb(238,243,238)
+   on rgb(18,20,26), under all 13 headings of /methodology/ at once. It is the
+   same defect as the ink and it was invisible to a contrast sweep, which
+   reads text and not borders. The dark value is --alt-border, this
+   stylesheet's own token for a rule between things, rather than the dark end
+   of the green tint the light literal happens to be: a hairline separator is
+   what the declaration is FOR, and a 2px tint in dark would be a colour
+   decision nobody made. Light keeps its literal, untouched. */
+:root[data-theme="dark"] .entry-content .alt-wrap h2,
+:root[data-theme="dark"] .wp-block-post-content .alt-wrap h2 {
+    border-bottom-color: var(--alt-border) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .entry-content .alt-wrap h2,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-wrap h2 {
+        border-bottom-color: var(--alt-border) !important;
+    }
+}
+
+/* The site header and footer carry their ink as INLINE style attributes in
+   the block markup, so nothing but !important reaches them. They are in scope
+   because this stylesheet is what darkened the bands they sit on: the rule
+   above paints the footer band --alt-surface and leaves #20283A headings on
+   it at 1.16:1, and black navigation labels at 1.23:1. Leaving them is worse
+   than never having darkened the band. Each literal maps to the token whose
+   LIGHT value is that exact literal, so the light rendering is unchanged by
+   construction and dark simply gets the other end of the same pair:
+   #20283A is --alt-ink-warm, #404858 is --alt-ink-warm-2, #5E6675 is
+   --alt-muted. Narrow to the site's own header and footer regions; no plugin
+   markup is inside either. */
+:root[data-theme="dark"] .wp-site-blocks > footer .wp-block-group.has-background [style*="#20283A"],
+:root[data-theme="dark"] .wp-site-blocks > footer .wp-block-group.has-background [style*="#20283a"] {
+    color: var(--alt-ink-warm) !important;
+}
+:root[data-theme="dark"] .wp-site-blocks > footer .wp-block-group.has-background [style*="#404858"] {
+    color: var(--alt-ink-warm-2) !important;
+}
+:root[data-theme="dark"] .wp-site-blocks > footer .wp-block-group.has-background [style*="#5E6675"],
+:root[data-theme="dark"] .wp-site-blocks > footer .wp-block-group.has-background [style*="#5e6675"] {
+    color: var(--alt-muted) !important;
+}
+:root[data-theme="dark"] .wp-site-blocks > footer svg text {
+    fill: var(--alt-ink-warm-2);
+}
+:root[data-theme="dark"] .wp-block-navigation-item__label,
+:root[data-theme="dark"] .wp-block-navigation .wp-block-navigation-item__content {
+    color: var(--alt-ink);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#20283A"],
+    :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#20283a"] {
+        color: var(--alt-ink-warm) !important;
+    }
+    :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#404858"] {
+        color: var(--alt-ink-warm-2) !important;
+    }
+    :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#5E6675"],
+    :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#5e6675"] {
+        color: var(--alt-muted) !important;
+    }
+    :root:not([data-theme="light"]) .wp-site-blocks > footer svg text {
+        fill: var(--alt-ink-warm-2);
+    }
+    :root:not([data-theme="light"]) .wp-block-navigation-item__label,
+    :root:not([data-theme="light"]) .wp-block-navigation .wp-block-navigation-item__content {
+        color: var(--alt-ink);
     }
 }
 

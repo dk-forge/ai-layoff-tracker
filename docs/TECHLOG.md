@@ -1,5 +1,448 @@
 # Tech Log
 
+## 2026-08-11 - the contrast fix is now checked by a machine, and the flag column is reserved (2.20.7)
+
+**The dark-mode defect below was already fixed and live. Nothing was checking
+that it stayed fixed, and nothing had checked it in the first place.** A
+session was handed the 2.20.4 symptom report and found, on measuring the live
+2.20.6 build, that every element named in it now clears WCAG AA: `h2` at
+12.9:1 where it had been 1.06:1, `.alt-hero-thesis` at 12.4:1 where it had been
+1.28:1. The 2.20.5 fix held. What did not exist was any check that would notice
+if it stopped holding, and the reason the defect ran for as long as it did is
+that `reader_freshness.py` proves which VERSION a reader is served and every
+other front-end guard reads the stylesheet as TEXT. The losing declaration is
+not in either repository. It cannot be grepped. It only exists once a cascade
+resolves, and nothing in either repo resolved a cascade.
+
+So the guard is a browser. `railway/cdp.py` is a stdlib-only Chrome DevTools
+Protocol client (~150 lines of RFC 6455 framing) and `railway/contrast_audit.py`
+loads the bare url with a browser User-Agent and no cache buster, then asks the
+browser for the computed colour of every visible text element composited
+against its real background. No new dependency: adding playwright to the
+hash-pinned lock would drag a browser download and a transitive tree into
+runners that hold `WP_API_KEY` and `OPENROUTER_API_KEY`, to render one page.
+
+Three things it does that a naive sweep does not, each of them a mistake this
+session made first and then measured:
+
+- **It freezes transitions.** `.alt-btn` carries `transition: background .15s`.
+  Reading a computed background in the same task that flipped the theme
+  returns the PREVIOUS colour, and the first run reported twenty dark-on-dark
+  violations that were entirely its own measurement. Settling for 1.5s made
+  every one of them vanish. A guard that invents failures gets muted as fast as
+  one that misses them.
+- **It measures four theme combinations, not two.** The reader's explicit
+  `data-theme` crossed with their OS `prefers-color-scheme`. The mismatched
+  pair (dark OS, Light chosen) exercises a different half of the stylesheet
+  than either matched one, and `attr=None` under a dark OS is the default that
+  shipped the 1.06:1 page.
+- **It cannot resolve to a silent pass.** Exit 2 is "a violation is live",
+  exit 3 is "could not be measured". `test_rendered_contrast.py` proves the
+  audit can actually FAIL by rebuilding the defect: same site override, same
+  tokens, same markup, plugin's winning declarations stripped back out. Run
+  against the pre-2.20.5 tree it reports `h2 rgb(26,26,26) on rgb(18,20,26)`
+  at 1.04:1, which is the incident, to the byte.
+
+Where it runs: the local-fixture half is in `Tests` on every push (offline,
+~8s, Chrome is preinstalled on the runner image); the live sweep is
+`contrast-audit.yml` daily and dispatchable, and a step on every deploy. The
+deploy step fails on exit 2 and warns on exit 3, because this repo has already
+learned that letting a host outage manufacture red runs manufactures alerts
+that also fail. The daily job goes red on both.
+
+**The sibling talent tracker has the identical defect and is NOT fixed.** Same
+install, same site rule, and only this plugin ever raised its specificity
+against it. Measured on the live pages: the dashboard fails 63 elements in dark
+at 375px and the recall page 2, with the same three literals (`#2a2a2a` on `p`,
+`#1a1a1a` on `h2`, `#222` on `h3`) plus two the layoff fix never had to cover,
+`#111` on `h1.wp-block-post-title` and on SVG `<text>`. It also has one
+light-mode failure of its own, `.tit-region-n` white on `rgb(66,151,198)` at
+3.25:1. It is the same class of fix scoped to `.tit-wrap`, but it is a
+different repository with its own deploy and its own handover, so it is
+reported here rather than reached into.
+
+**The country flag is a column now, not a prefix.** 2.20.5 fixed the missing
+flags by completing `COUNTRY_ISO`, which fixed the countries the card draws
+today and left the layout exactly as brittle for the next one the data reaches,
+and the data reaches new countries without being asked. The flag was
+concatenated into the display string, so a name with no flag started a flag's
+width left of every other row: not a missing flag, a broken left edge halfway
+down a ranked list, on the one line the eye tracks. `renderBarList` now takes
+the icon in slot 4 and reserves a fixed 1.5em column for every row of a card
+where any row has one, empty or not. The reserved cell stays EMPTY on a
+flagless row rather than getting a stand-in glyph.
+
+## 2026-08-11 - the secondary pages, audited against the live site and fixed (2.20.5)
+
+Every check in this repository reads the dashboard, because the dashboard is
+where the numbers are. An audit against the live site on 2026-08-10, in two
+independent browsers including a clean extension-free headless Chrome at real
+375px device metrics, went at the pages a reader opens once they have decided
+to test whether the numbers can be trusted. Nothing below moves a number.
+All of it moves whether a reader believes them, which is the same thing one
+step later.
+
+**Dark mode was half painted on every page, and it was the default.** 186 text
+nodes on the dashboard and 26 to 133 on each secondary page rendered between
+1.02:1 and 1.28:1 under `prefers-color-scheme: dark` with no `data-theme` set,
+which is what every dark-OS visitor gets, since Auto is the default. The h1 was
+white, the bullet lists were white, and the paragraphs and section headings
+between them were not there. The hero line carrying the whole credibility claim,
+"Every entry links to the filing, notice or report it came from.", was 1.19:1.
+
+The tokens were not the problem and never were: `--alt-ink-warm` resolves to
+`#e3e7ef` on the very element that computes `#1a1a1a`. The cause is a
+site-level rule in the document head declaring, with `!important`,
+`.entry-content p{color:#2a2a2a}`, `h2{#1a1a1a}` and `h3{#222}`. In light,
+`#2a2a2a` on white is 14.8:1 and the override is invisible as a problem; in
+dark it is the whole defect. The comment block at layoffs.css:3020 records a
+2026-08-05 measurement saying that snippet "declares no colour at all". That
+was the load-bearing assumption and it was wrong. A custom property cannot win
+an argument it is not in, so the plugin's own declaration now wins on the same
+terms: one class more specific than the site rule, `!important`, dark only,
+scoped to the site rule's own wrapper so it can never reach markup the site
+rule does not already reach. Light is untouched by construction.
+
+The site header and footer are in scope for the same reason they were half
+handled before: this stylesheet is what darkened the bands they sit on, so
+`#20283A` headings at 1.16:1 on a band we painted `--alt-surface` are a defect
+this plugin created. Each literal maps to the token whose LIGHT value is that
+exact literal, so the mapping cannot invent a colour.
+
+The same rule also draws a 2px `#eef3ee` line under every h2, which on the
+dark page is a near-white rule under all 13 headings of /methodology/ at once.
+A contrast sweep reads text and not borders, so that one survived the audit
+that found the ink. It takes --alt-border in dark, this stylesheet's own token
+for a rule between things.
+
+Why nothing caught it: `reader_freshness.py` proves which VERSION a reader is
+served, not what the served bytes render as, and no check evaluated contrast in
+the non-default theme. `test_secondary_surface_consistency.py` now recomputes
+the pairing from what ships.
+
+**/press/ clipped five of seven tables on a phone with no way to scroll.**
+`overflow: hidden` was added for the wrapper's 10px radius and silently
+replaced the base `.alt-health-table-wrap{overflow-x:auto}`, so the identical
+wrapper scrolled on /methodology/ and /sources/ and ate content here: 28 to
+164px of overflow with no scrollbar and no pan affordance, taking the whole
+"Preset view" column and every "Open the report" link in the release schedule
+out of reach, on the page built for people who copy numbers. Now
+`overflow-x: auto` with `overflow-y: hidden`, which is the clip the radius
+actually needed.
+
+**The same fact was published as two different numbers, one page apart.**
+/sources/ counted `alt_state_warn_urls()`, the registries the importer READS
+(47 states + DC). The dashboard ribbon and /methodology/ count
+`alt_warn_states_phrase()`, states PRESENT IN THE DATA (46 US states + DC).
+Both are right; neither said which it was. The comment on
+`alt_warn_states_phrase()` says it exists "so no surface has to reassemble it
+and get the DC arithmetic wrong again", and a second surface reassembled it
+anyway. The fix is a label, not a number: /sources/ now states both bases, side
+by side, reading the second from that same function rather than recomputing it.
+
+**Chart tooltips leaked a database key, and came and went down a list.**
+`renderBarList` opened its tooltip with the row's FILTER VALUE rather than its
+name, which is the same string on every card but one: on "Roles most impacted"
+hovering "Sales & marketing" answered `sales_marketing: 26,089 total`. And the
+tooltip was suppressed entirely when the AI figure was zero, so it appeared on
+four of 22 country rows with no rule a reader could infer from outside -
+Bangladesh, the third largest bar, had none; Australia at a fifth its size did.
+Hovering down the list, the control flickered and read as broken. A zero is now
+said in words. A row whose AI figure exceeds its total still claims neither.
+
+**Two countries had no flag, mid-list.** Every name is laid out from the same
+x, so a missing flag starts a row a flag's width left of the twenty above it
+and breaks the one edge the eye tracks. Five live countries were in that state.
+Two of them were vocabulary drift rather than omission: the map carried
+"Turkey" while the data has moved to "Türkiye", and "United Arab Emirates"
+while `alt_normalize_country()` canonicalises that country to "UAE". Both
+spellings are kept.
+
+**One 435-character paragraph, byte-identical, in three charts inside about
+950px of scroll.** That does not read as three captions, it reads as a template
+that fired three times, and the third copy of a paragraph is where a reader
+stops reading it - including the sentence naming the cuts that are filed but
+not yet in effect. The three charts plot three different quantities and the
+repetition was the symptom of the notes not saying so. The jobs chart keeps the
+full account, unchanged to the byte. The year-over-year note drops the
+filed-later clause, because the comparison it invites is with last year's
+finished month. The AI-share note stops quoting a job count under a percent
+line and names the base the share is computed on.
+
+**A toolbar that changed length inside one row.** Share, CSV and expand are on
+every chart card; embed is added only for an id in `EMBED_OK`, so the
+"Who is cutting, and why" band read 3, 3, 3, 3 under a band reading 4, 4. The
+four bar cards that draw from the same /aggregate payload through the same
+renderer now embed too. `alt-bars-claims-states` stays out on purpose: it is
+DOL data, drawn grey and labelled "context only, not our counts", and an embed
+would carry a number this tracker did not collect onto somebody else's page
+inside our frame. While fixing this: every bar embed since the route existed
+has been shipping bars with `barBasisNote()` stripped off, because the shell
+had no element for it, and three canvas embeds could end on an unfinished month
+and say nothing. Both note elements now ship.
+
+**Five pages printed their own name twice, in two typefaces, reworded.** The
+theme renders the post title as an `<h1>` and each plugin template renders its
+own; one lives in the database and one lives here, so they disagree
+("Methodology & Sources" over "Methodology & sources"). On /sources/ they were
+byte-identical and 199px apart. The template's `<h1>` survives, because it is
+the one that is reviewable and testable. The selector is self-limiting and
+leaves the dashboard alone, which deliberately renders no `<h1>` and uses the
+theme title demoted to a kicker.
+
+**A contents entry that promised the opposite of its section.** /sources/ listed
+"Global authorities" and landed on "Why most countries appear through news, not
+a registry" - it advertised a directory of official registers and delivered the
+explanation that for most countries no such register is read. On /methodology/,
+7 of 13 entries were a paraphrase of the heading they land on and one was out
+of document order, so reading down the list walked you back up the page. Every
+label is now the heading's own words and the list is in the document's order.
+
+**Four names for one destination, two of which did not reach it.** /sources/
+labelled a link "Methodology" and sent it to the dashboard's collapsed summary;
+so did /ai-quotes/ with "How the AI tag works". The page whose own h1 is
+"Methodology & sources" was unreachable from the sibling row of the page next
+to it. /publisher-tools/ carried no sibling row at all. One label per
+destination now, "How we count" and "Press & media", matching what the
+dashboard already says.
+
+**Three date formats and two unexplained freshness stamps on the press kit.**
+"Aug 11, 2026", "11 August 2026" and "1 Aug 2026" in one visit, plus a
+"Generated" stamp in UTC and a "Data last updated" stamp in local time about
+four hours apart with nothing saying which a citing journalist should use.
+One format now, `M j, Y`, the house convention the rest of the tracker already
+uses; both stamps say what they are and the page says to cite the access date.
+
+**Left alone, deliberately.** The `.alt-broad-strip` tiles overlapping by 24px
+and truncating "One cut can appear in both stages (an announce" is inside the
+dashboard's tile-alignment work and belongs to that change, not this one. The
+site's cookie banner and the theme's own navigation chrome carry their own
+colours from other plugins; only the bands this stylesheet darkened are
+corrected here.
+
+48 new tests in `railway/tests/test_secondary_surface_consistency.py`, of which
+27 fail on the pre-fix tree. Every string assertion runs against a
+comment-stripped copy of the file it reads, and the stripper is itself tested,
+because both codebases quote the replaced display string verbatim in their
+rationale comments - a checker that reads comments grades the commentary. The
+behavioural checks execute the real layoffs.js in node through jsrun.
+
+**2.20.6, verified live and corrected.** Both note elements ship `hidden`. The
+basis paragraph did not, and an empty `.alt-chart-note` is not nothing: it
+carries a 10px top margin, so the two bar cards with no basis sentence to write
+("Largest single job cuts", "Repeat layoffs") hung a strip of dead space off
+the bottom of their embed. `setBarBasisNote()` clears `hidden` on the one it
+writes into.
+
+## 2026-08-10 - the open incident had a date on which it would erase itself
+
+Two guards, each correct on its own, had agreed on a laundering schedule nobody
+chose. `record_baseline` refuses to advance a FAILING slice, so the US
+headline's baseline was pinned at `2026-08-07T18:23:51Z` while the other two
+slices advanced daily — correct, and the reason the incident stayed open. A
+baseline older than `MAX_BASELINE_AGE_DAYS = 14` reports UNKNOWN with `pending`
+set and `suppressed` deliberately NOT set, because refusing to record the
+stale-baseline UNKNOWNs would freeze the guard permanently unarmed — also
+correct. And `record_baseline` skipped exactly two things: FAIL and
+`suppressed`. So on the fifteenth day the pinned baseline aged out, the slice
+stopped saying FAIL, the recorder wrote the FAILING figure, and the next day was
+green against it. The recorder runs ~18:00Z; the 2026-08-21 run was still inside
+fourteen days. **The 2026-08-22 run was the one that would have done it.**
+
+Two other clocks were widening in the same direction, so waiting was never
+neutral either. `floor = move_floor * span` grows with the elapsed span: the
+live +93,210 US move clears a 20,000/day floor at span 5.0d. `allowance =
+|Δentries| * base_mean * mean_factor` grows with every later arrival: at
+base_mean 160.787 and mean_factor 12 it swallows +93,210 once 49 net new entries
+have landed, rows with nothing to do with the defect. Any design that re-derives
+the verdict from today's numbers loses this incident eventually; the only
+question was which formula got there first.
+
+Replayed on the pre-fix module rather than reasoned about: day one FAILs and
+holds the baseline at 6,968,670; the same scenario at day 20 returns UNKNOWN and
+writes 7,073,880 as the new normal.
+
+**The fix is a sticky incident record**, `railway/headline_incidents.json`,
+committed for the same reason the baseline is and a stronger one — an incident
+that lives in a runner is gone by tomorrow, which is the thing being prevented.
+A rendered FAIL opens an incident; from then on the slice's verdict is FAIL
+*because the incident is open*, not because the arithmetic was run again. Time
+does not close it, later rows do not close it, a stale baseline does not close
+it, an unreachable API does not close it. `close_incident` does, and it demands
+what a real resolution produces: a reviewer, a reason of at least 40 characters,
+**the affected row IDs**, and an explicit replacement baseline — the figure the
+reviewer asserts, typed out, because adopting whatever the live API answers at
+closing time is the same laundering with a person standing next to it. Missing
+any one of them writes nothing.
+
+Second lock, because the first one broke: `record_baseline` refuses to advance
+any slice with an open incident whatever state it reports. The guard that opened
+the door was the one that had been reasoned about least, so anything that stops
+rendering the sticky FAIL still cannot get a number past the recorder. And an
+unreadable ledger is UNKNOWN-**and**-suppressed for every slice, never "no
+incidents open" — otherwise `rm headline_incidents.json` would be a working way
+to clear a FAIL.
+
+**No bound was weakened to reach this.** `move_floor`, `mean_factor`,
+`max_share` and `MAX_BASELINE_AGE_DAYS` are untouched, and the stale-baseline
+UNKNOWN still records for every slice with no incident open, so the guard still
+cannot freeze unarmed. All that was removed is the path from "unexplained move"
+to "normal" that had no human on it. The live us_all_time incident ships in the
+ledger, open, with the reading it was opened on. Seven new tests; the headline
+one is `StickyIncidents.test_time_and_later_rows_cannot_close_an_open_incident`
+(day one FAILs, day 20 has all three escapes open at once, verdict must stay
+FAIL and the baseline must not move).
+
+Two existing degradation tests in `test_dedup_live` had to be pointed at an
+empty ledger. They assert "a dead network can never produce a pass", and a
+sticky FAIL is deliberately independent of the network, so a real standing
+
+## 2026-08-11 - one open live-data incident is one alarm, whatever branch noticed it
+
+**Six emails in seven hours, all the same open incident.** The US headline
+moving +93,210 jobs with no row that explains it mailed the owner from runs
+31421748713, 31421827146, 31421971041, 31425792582, 31448285345, 31450680641
+and 31450792070. The alarm exists to be read; six copies of it is how a sender
+gets filtered, which is the original defect wearing a new hat.
+
+**The obvious suspect was wrong, and that mattered.** "The numbers keep moving"
+would have been fixed by widening `_NORMALISE`, and the widening would have
+bought nothing: run the six real assertion strings through `normalise` and they
+are byte-identical. +93,210 and +93,290, 3.0d and 3.3d, +18 and +19 entries all
+collapse to `<N>` exactly as designed.
+
+**What actually differed was the scope.** `scope = workflow:branch`, so one
+incident minted a key per branch that ran the suite - `tests:main:8a5b96fc...`,
+`tests:docs-handoff-external-review:4fe38317...`,
+`tests:feat-changed-rows-endpoint:efeece54...`,
+`tests:feat-filed-basis-default:d9078245...`,
+`tests:claude-sticky-headline-incidents:555efd27...`. Branch belongs in the
+scope for a CODE failure: a test that fails on one branch only is that branch's
+defect and folding it into main's alarm would hide it. A live-data invariant is
+the opposite animal - it reads asktherecruiter.com, not the checkout, so every
+branch is looking at the same one wrong number.
+
+**A second mechanism, on the seventh run.** The sticky-incident ledger prefixes
+the detail with "OPEN INCIDENT, opened 0d ago (timestamp)", taking the sentence
+to 741 characters. `extract_cause` cut at 400, so the tail moved
+("...reconcile-supers" instead of "...corrections log") and the hash moved with
+it. A key built by regexing numbers out of a sentence is hostage to every later
+change in that sentence's shape, and that sentence is written for a human to
+read, so it will keep changing.
+
+**The fix keys on identity, not on prose.** `live_data_identity()` matches the
+message against data_integrity's OWN registries - invariant labels where
+`reads_live_data` is true, plus the headline slice labels - and returns
+"No headline moves without rows to explain it | United States jobs, all time".
+Those incidents are raised and cleared under a branch-free
+`<workflow>:live.data` scope; a dot cannot appear in a `_slug`, so no branch can
+collide with it. Every green run of the workflow now posts that resolve as well
+as the branch one, or the RECOVERED notice would never arrive and a closed
+incident would earn a STILL FAILING reminder a fortnight later.
+
+**Narrow on purpose.** An unrecognised assertion keeps the branch-scoped
+behaviour. So does an invariant with `reads_live_data = False`, because the
+checkout genuinely decides those. A different invariant, a different slice, or a
+second slice joining the first are three different identities and three
+different emails - all four are tested, because a dedupe fix that swallows a new
+failure is worse than the noise it removed.
+
+**Proof, on the real strings.** `tests/test_ci_alert.py` carries the seven
+assertion texts verbatim from `gh run view --log-failed` and asserts they
+collapse to one key. Invented strings would have proved nothing: the whole
+defect lived in details of the real shape. Verified failing against the
+pre-fix tree with comments and docstrings stripped first.
+
+**Nothing was weakened to get here.** `move_floor`, `mean_factor`, `max_share`,
+`MAX_BASELINE_AGE_DAYS` and the baseline are untouched. The incident is still
+FAIL and still blocks. `extract_cause`'s default limit is still 400, because
+ops_status [4] and the weekly noise email print that string raw; only the
+alerter asks for more.
+
+## 2026-08-11 - the filed basis becomes the default, and three totals stop looking like one claim
+
+**The decision.** The tracker counted every cut on the day it takes effect.
+Layoffs are reported nearly everywhere on the FILING date, so a reader arriving
+with a number in their head met a figure they could not reconcile: on the filed
+basis US July 2026 reads 33,817 against 33,429 for the same month in the
+independent national estimate, within 1.2 percent, while on the effective basis
+the same month reads roughly double. Defaulting to the basis everyone else
+reports on turns the differentiator from "a different number that needs a
+paragraph" into "the same number, with a filing behind every row". The
+effective basis is one click away and every figure recomputes on it.
+
+**A default lives in four places, and all four moved.** `DATE_BASIS` in
+layoffs.js, which button carries `alt-datebasis-on` in the switch, the
+`date_basis` the server bootstrap is computed on (`alt_tracker_bootstrap_payload`),
+and the hero's own basis label. Any one left behind publishes a figure counted
+one way under a label naming the other, then swaps the number when JS runs.
+
+**Deep links needed a real fix, not a rename.** `currentParams()` wrote
+`date_basis` only for the non-default value, and the restore path read back only
+`notice`. While the default was `effective` those two were harmless, because a
+link saying `date_basis=effective` was indistinguishable from a link saying
+nothing. Under the new default that is a silent basis change on every
+effective-basis share. Both values are now written and both are read back, and
+`URL_BASELINE` carries the default so an unfiltered view still has a clean URL.
+
+**Three totals that read as the same claim.** In one live view the hero, the
+at-a-glance board's YTD column and the cite line stood at 484,427, 335,637 and
+24,754, with nothing on screen saying which question each answered. Each now
+states its geography, its period and its basis. The board keeps counting on the
+effective date (its columns are fixed periods and it follows the region tabs
+only, both by design) and its footnote now says in words that it answers a
+different question from the headline and is not meant to match; on the effective
+basis the JS swaps that for the matching-basis wording. No underlying number,
+filter semantic or the `country_basis=any` union changed.
+
+**A caption that named both bases.** The lead tile read "Filed or reported,
+counted on the day each cut takes effect", which is wrong on whichever basis is
+live. `BASIS_COPY` is now the single table every basis word is written from, and
+`renderBasisCopy()` rewrites the hero label, the tile caption, the tile scope
+line, the cite line and the switch's own titles on every basis change.
+
+**The reconciliation, compressed and still visible.** It is worth MORE under the
+filed default, because the gap between "already happened" and "on file for
+later" is the arithmetic a journalist needs to quote either figure correctly. It
+is now one line (`alt_period_split_short` / `periodSplitShort`, twinned character
+for character) with the full sentence kept on the press page and linked from the
+hero. It stays prose in the hero, never a disclosure: this codebase has shipped
+three caveats that computed to display:none and were read by nobody.
+
+**Quick date ranges restored to the surface.** Today / Last 7 days / Last 30 days
+/ Last quarter / Year to date / All time, as a visible row at the top of the
+controls that scope the page, not beside the region tabs: the tabs sit above the
+board because they scope it, and dates do not. Each writes the same from/to the
+date popover writes and clears the period dropdowns it would otherwise AND with.
+
+**Card whitespace, two opposite causes.** "Largest single job cuts" was
+truncated by the QUERY (`LIMIT 10`) while the card draws up to `BARLIST_LIMIT`
+(24), so it sat short beside full neighbours with rows still available: a layout
+bug, fixed by fetching what the card can draw. "AI intensity by industry" is
+honestly sparse, because industries under 1,000 cuts are excluded on purpose,
+and a 50 percent rate over 4 cuts is the number this project refuses to publish.
+That threshold was NOT lowered and the card was NOT padded: it now says how many
+industries were considered and how many cleared the bar, and says so explicitly
+when none do.
+
+**Also:** the five primary tiles and the three derived ones reserve a shared
+label band and a row for the optional detail line, so they align across the row
+and a filter change that grows a caption no longer shifts a neighbour. The
+cross-link to the sibling tracker is a real control with an accessible name and
+a focus ring, on theme tokens rather than hardcoded colour. The FAQ answer and
+the "short version" paragraph that still claimed the effective-date default were
+rewritten; the effective-date reasoning is relocated, not deleted.
+
+**Tests.** `railway/tests/test_date_basis_default.py`, 42 tests, 39 of which
+fail on the pre-change tree (a191e92) with comments stripped before matching.
+The three that pass are named in the docstring as regression bars. Two tests in
+the first draft passed against the defective tree for the wrong reason and were
+rewritten before landing: one read the tile caption through a helper that strips
+`<?php ... ?>` blocks, which is where the caption is built; the other compared
+the test file's own constant with itself. Four existing guards were retargeted,
+not weakened: their invariants are unchanged and only the helper name or the
+copy they locate onto moved.
+
 ## 2026-08-10 - the CI-noise reporter's own tests were a time bomb
 
 Three tests in `test_ci_noise_report.MainTests` went red on 2026-08-10 with no

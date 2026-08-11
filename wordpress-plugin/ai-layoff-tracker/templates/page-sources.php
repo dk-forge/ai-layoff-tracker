@@ -46,7 +46,14 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>Data Sources</h1>
   <p class="alt-lead"><span class="alt-lead-text">Every number in the tracker traces back to one of the sources below. That means an official government filing, a legally required layoff notice, an EU restructuring record, or a named news report. Nothing is estimated or modeled into existence. Each row links to the raw source so you can check it yourself.</span></p>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-metric-definitions">Methodology</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code</a></p>
+  <?php /* This row said "Methodology" and went to #alt-metric-definitions on
+       the DASHBOARD - the short summary - so the one page with a methodology
+       in its own H1 was unreachable from the sibling row of the page next to
+       it. Four labels across the tracker pointed at one subject and two of
+       them did not arrive at it. The label is now the same words the dashboard
+       and the press page already use for this destination, "How we count", and
+       it goes to the page. */ ?>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="https://github.com/dk-forge/ai-layoff-tracker/blob/main/railway/sources/warn.py" target="_blank" rel="noopener">Source code</a></p>
   <?php $alt_lu = function_exists('alt_data_last_updated_label') ? alt_data_last_updated_label() : ''; ?>
   <?php if ($alt_lu) : ?><p class="alt-muted"><b>Data last updated:</b> <?php echo esc_html($alt_lu); ?> (the last time the database actually changed). Live collector status is on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-tracker-health/')); ?>">health page</a>. Note: <b>this source list is a reference.</b> It changes only when we add or remove a collector, which happens on a deploy, not every day. So it is honest for the list to stay the same between updates.</p><?php endif; ?>
 
@@ -55,7 +62,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     <a href="#alt-src-glance">Sources at a glance</a> &middot;
     <a href="#alt-state-warn">US state WARN</a> &middot;
     <a href="#alt-src-gaps">States not in the feed yet</a> &middot;
-    <a href="#alt-src-global">Global authorities</a> &middot;
+    <a href="#alt-src-global">Why most countries appear through news</a> &middot;
     <a href="#alt-src-news">Worldwide news outlets</a> &middot;
     <a href="#alt-src-verify">How verification works</a> &middot;
     <a href="#alt-ai-rubric">AI rubric</a>
@@ -72,7 +79,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://efts.sec.gov/LATEST/search-index?q=%22reduction%20in%20force%22&forms=8-K" target="_blank" rel="noopener">Full-text search &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>State WARN notices</b></td><td><?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> US states + DC</td>
+        <td><b>State WARN notices</b></td><td><?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> US state registries + DC that we read</td>
         <td>Official mass-layoff notices employers must file with the state. Imported daily, no AI processing. Full list below.</td>
         <td>Verified</td>
         <td><a href="#alt-state-warn">See all <?php echo count($alt_state_urls); ?> &darr;</a></td>
@@ -153,8 +160,31 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   </table></div>
   <p class="alt-muted"><b>Verified</b> means a filing or a named report is behind it. That is the headline number. <b>Announced</b> means a company plan reported at the announcement stage, before it takes effect. We keep it in a separate tier and never mix it into the verified total.</p>
 
-  <h2 id="alt-state-warn">US state WARN registries (<?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> states + DC)</h2>
+  <h2 id="alt-state-warn">US state WARN registries we read (<?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> states + DC)</h2>
   <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page, the exact source our importer reads.</p>
+  <?php /*
+     TWO COUNTS OF ONE THING, AND NEITHER OF THEM SAID WHICH IT WAS.
+
+     This page counted alt_state_warn_urls(), the registries the importer
+     reads. The dashboard ribbon and the methodology page count
+     alt_warn_states_phrase(), which is distinct states PRESENT IN THE DATA.
+     Those are different questions and on 2026-08-10 they gave different
+     answers on the same tracker, one page apart, with no basis stated on
+     either: "47 states + DC" here, "46 US states + DC" there. A journalist
+     checking the WARN claim across two of our own pages found two numbers and
+     no way to tell which one to cite.
+
+     Neither number is wrong and neither moves. What was missing is the label,
+     so both are now named here, on the page that shows the list, next to the
+     list. The comment on alt_warn_states_phrase() says it exists "so no
+     surface has to reassemble it and get the DC arithmetic wrong again"; the
+     reconciliation below is read from that same function rather than
+     recomputed, for the same reason.
+  */
+  $alt_filed_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_phrase() : '';
+  if ($alt_filed_phrase) : ?>
+  <p class="alt-muted"><b>Two counts, and they answer different questions.</b> The <?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> states and DC above are the registries we <em>read</em>, every day. Elsewhere on the tracker you will see <b><?php echo esc_html($alt_filed_phrase); ?></b>: that is the narrower count of jurisdictions whose notices are actually <em>in</em> the database so far. A registry we read that has not yet published a notice we could count appears in the first number and not the second.</p>
+  <?php endif; ?>
   <?php if ($alt_state_urls) : ?>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table alt-warn-table">
     <thead><tr><th>State</th><th>Official WARN registry (direct link)</th><th>We re-import</th></tr></thead>

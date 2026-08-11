@@ -797,6 +797,13 @@ def main():
     print("      -> must list EXACTLY the live collectors; update on any source add/remove.")
     print("[6] BENCHMARK      scratchpad/bm-live.html (LOCAL ONLY, never commit)")
     print("      -> refresh vs-competitor read; every table shows ours + theirs.")
+    # [1b] proves which VERSION a reader is served. It cannot tell a readable
+    # page from one whose paragraphs are 1.06:1, which is exactly what shipped
+    # on 2026-08-10. Not run inline: it needs a browser, and this script is
+    # stdlib-only and must work anywhere. A red run shows up in [4] on its own.
+    print("[7] RENDERED CONTRAST  python3 railway/contrast_audit.py")
+    print("      -> what the page RENDERS AS in both themes, not which version")
+    print("         it is. Runs daily (Rendered contrast audit) and on deploy.")
 
     print("\n" + "-" * 64)
     if issues:

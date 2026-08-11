@@ -646,16 +646,16 @@
         // date_basis was WRITE-only: every share URL carried it, nothing read it
         // back, so a "notice date" link silently reverted the recipient to the
         // effective-date basis while looking like it carried the setting — and
-        // the two bases produce different numbers. Set the closure state AND the
-        // segmented switch's visual/aria state (it's buttons, not a form field).
-        if (query.get('date_basis') === 'notice') {
-            DATE_BASIS = 'notice';
-            document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
-                var on = x.getAttribute('data-basis') === 'notice';
-                x.classList.toggle('alt-datebasis-on', on);
-                x.setAttribute('aria-pressed', on ? 'true' : 'false');
-            });
-        }
+        // the two bases produce different numbers.
+        //
+        // BOTH values are read now, not just the non-default one. When the
+        // default was 'effective' a link saying date_basis=effective was
+        // indistinguishable from a link saying nothing, so reading only
+        // 'notice' happened to work. The default is 'notice' now, and a link
+        // that explicitly asks for the effective basis has to be honoured or
+        // every effective-basis share silently becomes a filed-basis view.
+        var urlBasis = query.get('date_basis');
+        if (urlBasis === 'notice' || urlBasis === 'effective') setDateBasis(urlBasis);
     }
     function clearFilters() {
         FILTER_IDS.forEach(function (id) {
@@ -675,10 +675,81 @@
         return v || '';
     }
 
-    // Journalist date-basis toggle: 'effective' (default, our conservative floor)
-    // counts each cut on its effective date; 'notice' recounts by filing date
-    // (how most aggregators count). Set by the toolbar toggle; recounts the page.
-    var DATE_BASIS = 'effective';
+    /*
+      THE DATE BASIS, AND WHY THE DEFAULT IS THE FILING DATE.
+
+      'notice' counts each cut on the day it was filed or announced
+      (COALESCE(announcement_date, layoff_date) server-side, so no row is ever
+      dropped for lacking a filing date). 'effective' counts it on the day the
+      jobs end.
+
+      The default was 'effective' and is now 'notice'. The reason is not that
+      one basis is more true: it is that the filing basis is the one every
+      other published layoff figure is counted on, so a reader arriving with a
+      number in their head can reconcile ours against it in one step. On the
+      filing basis, US July 2026 reads within about one percent of the
+      independent national estimate for the same month. On the effective basis
+      the same month reads roughly double, and a correct number that needs a
+      paragraph before it can be compared gets read as a wrong one.
+
+      The effective basis is NOT demoted out of existence. It answers a real
+      and different question, when the jobs actually ended, it is one click
+      away in the toolbar, and every figure on the page recomputes on it.
+
+      Anything that renders a total reads BASIS_COPY rather than writing the
+      words itself, so a total and its basis label cannot drift apart.
+    */
+    var DATE_BASIS = 'notice';
+    var BASIS_COPY = {
+        notice: {
+            // Goes straight into the hero label after the geography and period.
+            headline: 'counted by filing date',
+            // The (i) body on the Verified job cuts tile. Names ONE basis. It
+            // used to name both ("Filed or reported, counted on the day each
+            // cut takes effect"), which was wrong on whichever basis was live.
+            tile: 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure compares directly. Every row behind it links to its source.',
+            // The switch itself, so the active option states the question it
+            // answers rather than only naming a date.
+            toggleTitle: 'Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure compares directly. This is the default.'
+        },
+        effective: {
+            headline: 'counted by effective date',
+            tile: 'Counted on the day the jobs actually end. This answers when the work stopped, rather than when it was reported. Every row behind it links to its source.',
+            toggleTitle: 'Counts each layoff on the day the cut takes effect, the day the jobs actually end. A different question from the filing basis, and equally real.'
+        }
+    };
+    function basisCopy() { return BASIS_COPY[DATE_BASIS] || BASIS_COPY.notice; }
+
+    // One writer for the basis state: the closure variable, the segmented
+    // switch's visual and aria state, and every caption that names the basis.
+    // Three callers (URL restore, the toggle click, init) used to do parts of
+    // this by hand, which is how a caption ends up naming a basis that is not
+    // the one being counted.
+    function setDateBasis(basis) {
+        DATE_BASIS = (basis === 'effective') ? 'effective' : 'notice';
+        document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
+            var on = (x.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective') === DATE_BASIS;
+            x.classList.toggle('alt-datebasis-on', on);
+            x.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        renderBasisCopy();
+    }
+
+    // Every caption that names the basis, rewritten from BASIS_COPY. Called on
+    // every basis change and on every stats render, so a caption can never
+    // survive a toggle while describing the other basis.
+    function renderBasisCopy() {
+        var c = basisCopy();
+        setText('alt-hero-total-basis', c.headline);
+        setText('alt-stat-total-basis', c.headline);
+        setText('alt-citeline-basis', c.headline);
+        var tileBody = document.getElementById('alt-stat-total-i-body');
+        if (tileBody) tileBody.textContent = c.tile;
+        document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
+            var key = x.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective';
+            x.setAttribute('title', BASIS_COPY[key].toggleTitle);
+        });
+    }
     function currentParams() {
         var p = {};
         var v;
@@ -715,7 +786,13 @@
         if (readControl('alt-f-ai')) p.ai = '1';
         if (readControl('alt-f-ai-broad')) p.ai_broad = '1';
         if (readControl('alt-f-announced')) p.stage = 'announced';
-        if (DATE_BASIS === 'notice') p.date_basis = 'notice';
+        // ALWAYS explicit, on both bases. This param feeds the API request AND
+        // (through syncUrlFromFilters) the address bar, so writing it only for
+        // the non-default value made a shared URL mean "whatever the default is
+        // on the day you open it". The default has now changed once; a link
+        // shared before this line was added would have silently changed basis.
+        // Written last so the querystring reads scope-then-basis.
+        p.date_basis = (DATE_BASIS === 'effective') ? 'effective' : 'notice';
         return p;
     }
 
@@ -789,7 +866,12 @@
     // being pasted to someone else. replaceState, not pushState: a history entry
     // per keystroke in the search box would bury the back button. The default
     // view (this year, nothing else) keeps a clean, param-free URL.
-    var URL_BASELINE = 'years=' + new Date().getFullYear();
+    // The querystring the DEFAULT view produces, so the default view keeps a
+    // clean, param-free URL. currentParams() now always writes date_basis, so
+    // the baseline has to carry it too or every unfiltered page load would
+    // rewrite the address bar with a querystring that changes nothing.
+    // qs() preserves insertion order and date_basis is written last.
+    var URL_BASELINE = 'years=' + new Date().getFullYear() + '&date_basis=notice';
     function syncUrlFromFilters() {
         if (window.altData && window.altData.embedParams) return; // embed iframe: not a shareable view
         try {
@@ -1269,6 +1351,20 @@
             + '. Together they make the ' + fmt(calendar) + ' total for ' + period + '.';
     }
 
+    // The compressed twin of alt_period_split_short() in db.php, character for
+    // character. This is the version the first screen carries: two parts, the
+    // whole, and the period, in one line. See the PHP docblock for why it is
+    // compressed rather than removed, and why it is not behind a disclosure.
+    function periodSplitShort(toDate, calendar, period) {
+        toDate = Math.max(0, toDate | 0);
+        calendar = Math.max(0, calendar | 0);
+        var later = Math.max(0, calendar - toDate);
+        if (later <= 0) return '';
+        return fmt(toDate) + ' have taken effect. The other ' + fmt(later)
+            + ' are filed for effective dates later in ' + period
+            + '. Together, ' + fmt(calendar) + '.';
+    }
+
     function renderStats(t) {
         if (!document.getElementById('alt-stats-bar') || !t) return;
         var period = statPeriodLabel();
@@ -1283,11 +1379,17 @@
         var whenAnnounced = period + scope + ' · includes future-dated plans';
         setText('alt-stat-total', fmt(verifiedJ));
         setText('alt-stat-total-entries', when);
+        // The basis, on every surface that publishes a total, rewritten from
+        // the one BASIS_COPY table. Called here as well as from setDateBasis()
+        // so a filter change that re-renders the tiles cannot leave a stale
+        // basis word behind, and so the server-rendered first paint is
+        // corrected the moment JS runs.
+        renderBasisCopy();
+        setText('alt-hero-total-geo', heroGeoLabel());
         // The hero figure is the SAME number as the Verified tile, written from
         // the same variable in the same pass, so a filter change can never
         // leave the page publishing two different headline totals.
         setText('alt-hero-total', fmt(verifiedJ));
-        setText('alt-hero-total-geo', heroGeoLabel());
         setText('alt-hero-total-period', heroPeriodLabel());
         /*
           THE HERO'S RECONCILING LINE, and the citeline that quotes it.
@@ -1301,8 +1403,11 @@
         var verifiedToDate = haveToDate ? (t.to_date_jobs - t.to_date_announced_jobs) : null;
         var asOfEl = document.getElementById('alt-hero-asof');
         if (asOfEl) {
+            // The COMPRESSED reconciliation. The full sentence still exists and
+            // still runs (periodSplitSentence, above) on the press page, where a
+            // reader is deliberately looking up how to cite a figure.
             var split = haveToDate
-                ? periodSplitSentence(verifiedToDate, verifiedJ, asOfLabel(t), period) : '';
+                ? periodSplitShort(verifiedToDate, verifiedJ, period) : '';
             asOfEl.textContent = split;
             // The sentence now sits inside a labelled wrapper ("In this
             // figure: ..."), so an empty split has to hide the LABEL too or
@@ -1311,7 +1416,26 @@
             if (asOfWrap) asOfWrap.hidden = (split === '');
             else asOfEl.hidden = (split === '');
         }
+        /*
+          THE CITE LINE SAYS WHAT ITS NUMBER IS, and it is not the headline.
+
+          It read "N verified job cuts recorded for 2026 so far". Three totals
+          on this page can be live at once and all three read as the same
+          claim: the hero (the whole selected window), the at-a-glance board's
+          YTD column (its own fixed period, region tabs only) and this line
+          (the part of the selected window that has already taken effect). In
+          one live view they were 484,427, 335,637 and 24,754, with nothing on
+          screen saying which question each answered. A screenshot of the
+          smallest one, captioned as ours, is a story.
+
+          So this line now states its geography and its period from the SAME
+          labels the hero uses, and says plainly that its number is the part
+          that has already taken effect. The basis word comes from
+          renderBasisCopy(), which reads the one BASIS_COPY table.
+        */
         if (verifiedToDate != null) setText('alt-citeline-total', fmt(verifiedToDate));
+        setText('alt-citeline-geo', heroGeoLabel());
+        setText('alt-citeline-period', heroPeriodLabel());
         setText('alt-stat-announced', fmt(annJ));
         setText('alt-stat-announced-sub', whenAnnounced);
         setText('alt-stat-all', fmt(t.jobs || 0));
@@ -1605,9 +1729,22 @@
         var barTotals = agg.totals || null;
         var industryRows = verifiedBasis(agg.top_industries);
         var stateRows = verifiedBasis(agg.top_states);
-        var countryRows = verifiedBasis((agg.top_countries || []).map(function (e) {
-            return [e[0], e[1], e[2], countryFlag(e[0]) + e[0], e[4], e[5]];
-        }));
+        // THE FLAG IS A COLUMN, NOT A PREFIX ON THE NAME.
+        //
+        // It used to be concatenated into the display string, so a country
+        // COUNTRY_ISO had never met drew no flag and started its name a flag's
+        // width left of every other row - which does not read as a missing
+        // flag, it reads as a broken left edge halfway down a ranked list, on
+        // the one line the eye tracks. Adding the missing countries fixed the
+        // rows we draw TODAY and left the layout exactly as brittle for the
+        // next country the data reaches, and the data reaches new countries on
+        // its own. So the icon moved into slot 4 and renderBarList reserves
+        // that column's width for every row of the card, flag or no flag.
+        // Slot 4 is free: verifiedBasis emits four fields, and it is the last
+        // thing every bar list passes through.
+        var countryRows = verifiedBasis(agg.top_countries).map(function (e) {
+            return [e[0], e[1], e[2], e[3] || e[0], countryFlag(e[0])];
+        });
         renderBarList('alt-bars-industries', industryRows, wired ? 'alt-f-industry' : null, selectedList('alt-f-industry'));
         renderBarList('alt-bars-states', stateRows, wired ? 'alt-f-state' : null, selectedList('alt-f-state'));
         renderBarList('alt-bars-countries', countryRows, wired ? 'alt-f-country' : null, selectedList('alt-f-country'));
@@ -1664,6 +1801,42 @@
         // through the identical Industries control.
         renderBarList('alt-bars-ai-intensity', intensity, wired ? 'alt-f-industry' : null,
             selectedList('alt-f-industry'), null, '%');
+        /*
+          THIS CARD IS HONESTLY SPARSE, AND IT NOW SAYS SO.
+
+          In a typical filtered view it draws ONE row, Technology, and leaves a
+          large empty area that reads as broken. It is not broken. The 1,000-cut
+          floor is there so a share is computed on a base that can carry one: a
+          50 percent AI rate over 4 cuts is exactly the number this project
+          refuses to publish. Lowering the floor to fill the card, or padding it
+          with more rows, would trade the card's correctness for its looks.
+
+          So the emptiness gets a label instead of a fix: how many industries
+          are in this view, and how many cleared the bar. When NONE clear it the
+          card says that in words rather than rendering nothing at all, which is
+          the state that most reads as a broken card. Written as visible prose
+          into the card, and the guard test measures its RENDERED text length
+          rather than reading this source.
+        */
+        var intensityNote = document.getElementById('alt-bars-ai-intensity-note');
+        if (intensityNote) {
+            var considered = industryRows.length;
+            var cleared = intensity.length;
+            var txt;
+            if (!considered) {
+                txt = 'No industry is recorded in this view, so there is no rate to show.';
+            } else if (!cleared) {
+                txt = 'None of the ' + fmt(considered) + ' industr' + (considered === 1 ? 'y' : 'ies')
+                    + ' in this view has both 1,000 or more verified cuts and any cut the employer attributed to AI, so there is no rate to show. The floor is there so a share is never computed on a base too small to carry one.';
+            } else {
+                txt = fmt(cleared) + ' of the ' + fmt(considered) + ' industr'
+                    + (considered === 1 ? 'y' : 'ies') + ' in this view '
+                    + (cleared === 1 ? 'has' : 'have') + ' 1,000 or more verified cuts and at least one cut the employer attributed to AI, so '
+                    + (cleared === 1 ? 'one bar is' : fmt(cleared) + ' bars are') + ' shown. The floor is there so a share is never computed on a base too small to carry one.';
+            }
+            intensityNote.textContent = txt;
+            intensityNote.hidden = false;
+        }
         // Roles most impacted: fixed-category jobs with the AI-attributed
         // share as the orange segment — the AI-vs-all comparison per team.
         // Coverage is partial by construction (only events whose sources name
@@ -1712,11 +1885,19 @@
         renderBarList('alt-bars-repeat', (agg.repeat_companies || []).map(function (e) { return [e[0], e[1], 0]; }), null,
             companyBox && companyBox.value ? [companyBox.value] : [],
             companyBox ? function (val) { companyBox.value = (companyBox.value === val) ? '' : val; } : null, ' rounds');
+        // The card's title is rewritten here on every render, so this string
+        // and the one page-tracker.php ships have to be the same words. They
+        // were not: the template said "Layoffs by country" and this said "By
+        // country", so the card renamed itself a beat after load and ended up
+        // reading as a bare fragment beside its own neighbour, "Layoffs by US
+        // state" - the same component, the same basis, the same subtitle
+        // pattern, two grammars, side by side. The template's wording wins,
+        // because it is the one that also survives with JavaScript off.
         var countryTitle = document.getElementById('alt-country-chart-title');
         if (countryTitle) {
             countryTitle.innerHTML = selectedList('alt-f-country').length
-                ? 'By country <span class="alt-chart-sub">Other countries you could pivot to · tap to filter</span>'
-                : 'By country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
+                ? 'Layoffs by country <span class="alt-chart-sub">Other countries you could pivot to · tap to filter</span>'
+                : 'Layoffs by country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
         }
     }
 
@@ -1730,13 +1911,29 @@
     // AI-attributed share. Rows are buttons that toggle the matching filter.
     // Country name -> ISO2 for emoji flags on the country list. Covers the
     // normalizer's vocabulary; unknown names simply render without a flag.
-    var COUNTRY_ISO = { 'United States':'US','United Kingdom':'GB','Germany':'DE','France':'FR','Netherlands':'NL','India':'IN','Israel':'IL','Japan':'JP','Sweden':'SE','Canada':'CA','Australia':'AU','Brazil':'BR','China':'CN','Ireland':'IE','Singapore':'SG','Indonesia':'ID','Denmark':'DK','Finland':'FI','Norway':'NO','Poland':'PL','Spain':'ES','Italy':'IT','Austria':'AT','Belgium':'BE','Switzerland':'CH','Portugal':'PT','Czech Republic':'CZ','Czechia':'CZ','South Korea':'KR','Kenya':'KE','Nigeria':'NG','South Africa':'ZA','Egypt':'EG','Mexico':'MX','Argentina':'AR','Chile':'CL','Colombia':'CO','United Arab Emirates':'AE','Saudi Arabia':'SA','Turkey':'TR','Russia':'RU','Ukraine':'UA','New Zealand':'NZ','Philippines':'PH','Malaysia':'MY','Thailand':'TH','Vietnam':'VN','Taiwan':'TW','Hong Kong':'HK','Greece':'GR','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Croatia':'HR','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Luxembourg':'LU','Iceland':'IS','Serbia':'RS','Pakistan':'PK','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','Cambodia':'KH','Myanmar':'MM','Laos':'LA','Mongolia':'MN','Kazakhstan':'KZ','Qatar':'QA','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Jordan':'JO','Lebanon':'LB','Iraq':'IQ','Iran':'IR','Morocco':'MA','Tunisia':'TN','Algeria':'DZ','Ghana':'GH','Ethiopia':'ET','Tanzania':'TZ','Uganda':'UG','Zambia':'ZM','Zimbabwe':'ZW','Botswana':'BW','Namibia':'NA','Mozambique':'MZ','Angola':'AO','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','Peru':'PE','Ecuador':'EC','Uruguay':'UY','Paraguay':'PY','Bolivia':'BO','Venezuela':'VE','Costa Rica':'CR','Panama':'PA','Guatemala':'GT','Dominican Republic':'DO','Jamaica':'JM','Trinidad and Tobago':'TT','Cuba':'CU','Haiti':'HT' };
+    //
+    // A GAP HERE IS VISIBLE, NOT SILENT. "renders without a flag" is not a
+    // graceful degradation in a ranked list: every name is laid out from the
+    // same x, so a row with no flag starts a flag's width to the left of the
+    // twenty above it and breaks the one edge the eye tracks down the list.
+    // On 2026-08-10 five live countries were in that state - Türkiye, Bosnia
+    // and Herzegovina, Cyprus, Isle of Man and Malta - two of them mid-list.
+    //
+    // Two of those five were not spelling gaps but VOCABULARY drift: the map
+    // carried 'Turkey' while the data has since moved to the endonym Türkiye,
+    // and 'United Arab Emirates' while alt_normalize_country() canonicalises
+    // that country to the string "UAE" (api.php). Both spellings are kept, so
+    // a re-spelled row cannot lose its flag again. test_facet_pages.py holds
+    // the list of names the country card is known to draw.
+    var COUNTRY_ISO = { 'United States':'US','United Kingdom':'GB','Germany':'DE','France':'FR','Netherlands':'NL','India':'IN','Israel':'IL','Japan':'JP','Sweden':'SE','Canada':'CA','Australia':'AU','Brazil':'BR','China':'CN','Ireland':'IE','Singapore':'SG','Indonesia':'ID','Denmark':'DK','Finland':'FI','Norway':'NO','Poland':'PL','Spain':'ES','Italy':'IT','Austria':'AT','Belgium':'BE','Switzerland':'CH','Portugal':'PT','Czech Republic':'CZ','Czechia':'CZ','South Korea':'KR','Kenya':'KE','Nigeria':'NG','South Africa':'ZA','Egypt':'EG','Mexico':'MX','Argentina':'AR','Chile':'CL','Colombia':'CO','United Arab Emirates':'AE','Saudi Arabia':'SA','Turkey':'TR','Russia':'RU','Ukraine':'UA','New Zealand':'NZ','Philippines':'PH','Malaysia':'MY','Thailand':'TH','Vietnam':'VN','Taiwan':'TW','Hong Kong':'HK','Greece':'GR','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Croatia':'HR','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Luxembourg':'LU','Iceland':'IS','Serbia':'RS','Pakistan':'PK','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','Cambodia':'KH','Myanmar':'MM','Laos':'LA','Mongolia':'MN','Kazakhstan':'KZ','Qatar':'QA','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Jordan':'JO','Lebanon':'LB','Iraq':'IQ','Iran':'IR','Morocco':'MA','Tunisia':'TN','Algeria':'DZ','Ghana':'GH','Ethiopia':'ET','Tanzania':'TZ','Uganda':'UG','Zambia':'ZM','Zimbabwe':'ZW','Botswana':'BW','Namibia':'NA','Mozambique':'MZ','Angola':'AO','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','Peru':'PE','Ecuador':'EC','Uruguay':'UY','Paraguay':'PY','Bolivia':'BO','Venezuela':'VE','Costa Rica':'CR','Panama':'PA','Guatemala':'GT','Dominican Republic':'DO','Jamaica':'JM','Trinidad and Tobago':'TT','Cuba':'CU','Haiti':'HT','Türkiye':'TR','Bosnia and Herzegovina':'BA','Cyprus':'CY','Malta':'MT','Isle of Man':'IM','UAE':'AE','Antigua and Barbuda':'AG','Saint Kitts and Nevis':'KN','Saint Vincent and the Grenadines':'VC','Sao Tome and Principe':'ST','Turks and Caicos Islands':'TC' };
     function countryFlag(name) {
-        if (name === 'Multiple countries') return '\uD83C\uDF10 ';
+        // No trailing space: the gap is the reserved column's width now, so a
+        // space here would double it on the rows that happen to have a flag.
+        if (name === 'Multiple countries') return '\uD83C\uDF10';
         var iso = COUNTRY_ISO[name];
         if (!iso) return '';
         var A = 0x1F1E6;
-        return String.fromCodePoint(A + iso.charCodeAt(0) - 65, A + iso.charCodeAt(1) - 65) + ' ';
+        return String.fromCodePoint(A + iso.charCodeAt(0) - 65, A + iso.charCodeAt(1) - 65);
     }
 
     /* THE BARS AND THE HEADLINE MUST BE THE SAME QUANTITY -------------- */
@@ -1901,6 +2098,12 @@
             return;
         }
         var active = activeValues || [];
+        // If ANY row of this card carries an icon (slot 4), every row of it
+        // gets the icon column, empty or not. Emitting the span only where
+        // there is something to put in it would be the same defect in a new
+        // place: the rows without one would still start their name further
+        // left than the rows with one.
+        var iconCol = entries.some(function (e) { return e[4]; });
         var max = entries[0][1] || 1;
         entries.forEach(function (e) { if (e[1] > max) max = e[1]; });
 
@@ -1914,17 +2117,57 @@
             // AI breakdown: expanded rows spell it out (total · AI n · x%);
             // compact rows keep the visual fill plus a hover tooltip, so the
             // small cards stay scannable and the detail is one expand away.
-            var hasAi = !suffix && ai > 0 && ai <= jobs;
+            // aiKnown: this card counts jobs and the AI figure is a real subset
+            // of them. hasAi narrows that to rows where the subset is not
+            // empty, which is what earns the orange segment.
+            var aiKnown = !suffix && ai <= jobs;
+            var hasAi = aiKnown && ai > 0;
             var aiPct = hasAi ? Math.round(100 * ai / jobs) : 0;
             var valTxt = fmt(jobs) + (suffix || '');
             if (hasAi && !compact) valTxt += ' · \uD83E\uDD16 ' + fmt(ai) + ' (' + aiPct + '%)';
-            var tip = hasAi ? (label + ': ' + fmt(jobs) + ' total · ' + fmt(ai) + ' AI-attributed (' + aiPct + '%)') : '';
+            /*
+              THE TOOLTIP SAYS THE NAME THAT WAS HOVERED, AND IT DOES NOT COME
+              AND GO DOWN THE LIST.
+
+              Two defects in one line, both measured on the live page on
+              2026-08-10.
+
+              (1) It opened with `label`, which is the row's FILTER VALUE and
+              not its name. On every card but one those are the same string. On
+              "Roles most impacted" the value is the slug, so hovering "Sales &
+              marketing" answered "sales_marketing: 26,089 total": an internal
+              identifier, and not the name the reader pointed at. `display` is
+              the string on screen, so it is the string the tooltip must open
+              with. Every other tooltip on the page already leads with the
+              human name ("United States: 369,821 total").
+
+              (2) It was suppressed outright when the AI figure was zero, so on
+              the country list it appeared on four rows of 22 with no rule a
+              reader could infer from outside: Bangladesh, the third largest
+              bar, had none, while Australia at a fifth its size did. Hovering
+              down the list the control flickered on and off and read as
+              broken. A zero is a fact about the row, so it is said in words.
+              No number moves: a row with no AI-attributed cuts still draws no
+              orange segment and still reports the same total.
+
+              The `ai > jobs` case is data we do not trust, so it claims
+              neither: no tooltip rather than a share we would have to qualify.
+              Cards drawn with a `suffix` are not counting jobs at all (rounds,
+              percent) and carry no tooltip, exactly as before.
+            */
+            var tip = '';
+            if (aiKnown) {
+                tip = display + ': ' + fmt(jobs) + ' total · '
+                    + (hasAi ? fmt(ai) + ' AI-attributed (' + aiPct + '%)' : 'none attributed to AI');
+            }
             html += '<button type="button" class="alt-barrow' + (isActive ? ' alt-barrow-on' : '') + (dim ? ' alt-barrow-dim' : '') + '"'
                 + ((filterId || onPick) ? '' : ' disabled')
                 + (tip ? ' title="' + escapeHtml(tip) + '"' : '')
                 + ' data-val="' + escapeHtml(label) + '" data-label="' + escapeHtml(display) + '"'
                 + ' aria-pressed="' + (isActive ? 'true' : 'false') + '">'
-                + '<span class="alt-barrow-top"><span class="alt-barrow-name">' + escapeHtml(display) + '</span>'
+                + '<span class="alt-barrow-top"><span class="alt-barrow-name">'
+                + (iconCol ? '<span class="alt-barrow-icon" aria-hidden="true">' + escapeHtml(e[4] || '') + '</span>' : '')
+                + escapeHtml(display) + '</span>'
                 + '<span class="alt-barrow-val">' + valTxt + '</span></span>'
                 + '<span class="alt-bartrack">'
                 + (aiW > 0.4 ? '<span class="alt-barfill-ai" style="width:' + aiW.toFixed(1) + '%"></span>' : '')
@@ -2107,11 +2350,58 @@
         return monthLabel(info.key) + ' (partial)';
     }
 
-    // The sentence under the chart. States the elapsed days and refuses the
-    // comparison, rather than making one.
-    function partialNoteText(info) {
-        var txt = monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
+    /*
+      The sentence under the chart. States the elapsed days and refuses the
+      comparison, rather than making one.
+
+      WHY IT TAKES A MODE. The treatment of the in-progress month is the same
+      on all three charts, and for a while so was the sentence: 435 bytes,
+      byte-identical, printed three times inside about 950px of scroll. That
+      did not read as three captions. It read as a template that had fired
+      three times, and the third copy of a paragraph is where a reader stops
+      reading the paragraph at all - including the sentence naming the 11,083
+      cuts that are filed but not yet in effect, which is the part they most
+      need.
+
+      The fix is not a shorter duplicate. The three charts plot three
+      different quantities, so each note now describes the point it sits
+      under, and the repetition was the symptom of them not doing that:
+
+        'jobs'  (Jobs cut per month) - the full account. This is the chart
+                whose y-axis IS the job count, so it is the one that can say
+                what the point counts and what is still to come. Unchanged,
+                to the byte.
+        'year'  (This year vs last year) - the same quantity split by year.
+                Names what the final point counts, and drops the filed-later
+                clause: the comparison it invites is with last year's finished
+                August, not with the rest of this one.
+        'share' (AI share of verified cuts) - a percentage. Quoting a job
+                count under a percent line was always a category error; what
+                a reader needs is the size of the base the share is computed
+                on, and that it is not a projection.
+
+      Default is 'jobs', so a one-argument call is the old behaviour exactly.
+    */
+    function partialNoteText(info, mode) {
+        var opened = monthLabel(info.key) + ' is still in progress: ' + info.days + ' of '
             + info.of + ' days so far.';
+        if (mode === 'share') {
+            var base = (info.charted != null)
+                ? ' The share for this month is computed on the ' + fmt(info.charted)
+                    + ' verified job cuts whose effective date has arrived, not on a whole month.'
+                : '';
+            return opened + base + ' The point is dashed for that reason, and it is not a projection'
+                + ' of the full month.';
+        }
+        if (mode === 'year') {
+            var counts = (info.charted != null)
+                ? ' The final point for this year counts the ' + fmt(info.charted)
+                    + ' verified job cuts whose effective date has arrived.'
+                : '';
+            return opened + counts + ' It is dashed because a part month is not comparable with the'
+                + ' completed month beside it, and it is not a projection of the full month.';
+        }
+        var txt = opened;
         if (info.charted != null) {
             txt += ' This point counts the ' + fmt(info.charted)
                 + ' verified job cuts whose effective date has arrived.';
@@ -2125,10 +2415,10 @@
             + ' months beside it, and it is not a projection of the full month.';
     }
 
-    function setPartialNote(elId, info) {
+    function setPartialNote(elId, info, mode) {
         var el = document.getElementById(elId);
         if (!el) return;
-        el.textContent = info ? partialNoteText(info) : '';
+        el.textContent = info ? partialNoteText(info, mode) : '';
         el.hidden = !info;
     }
 
@@ -2766,7 +3056,7 @@
                 // for the current year, which is the only series it is true of.
                 var yoyPartial = partialMonthAt([nowYearNum + '-' + nowKey2],
                     lists[picked.indexOf(String(nowYearNum))] || []);
-                setPartialNote('alt-yoy-partial', picked.indexOf(String(nowYearNum)) === -1 ? null : yoyPartial);
+                setPartialNote('alt-yoy-partial', picked.indexOf(String(nowYearNum)) === -1 ? null : yoyPartial, 'year');
                 var datasets = picked.map(function (yr, i) {
                     var by = {};
                     lists[i].forEach(function (s) { by[s.month.slice(5)] = (s.verified_jobs != null) ? s.verified_jobs : s.jobs; });
@@ -2811,7 +3101,7 @@
             // final point dropped the line under last year's completed one.
             var yoyPartial1 = (year === new Date().getFullYear())
                 ? partialMonthAt([year + '-' + nowKey], toDateMonths(series || [])) : null;
-            setPartialNote('alt-yoy-partial', yoyPartial1);
+            setPartialNote('alt-yoy-partial', yoyPartial1, 'year');
             var curDs = { label: String(year) + (yoyPartial1 ? ' (' + MONTHS[parseInt(nowKey, 10) - 1] + ' partial)' : ''), data: curData, borderColor: SEQ_BLUE, backgroundColor: SEQ_BLUE_FILL, borderWidth: 2, pointRadius: 0, pointHitRadius: 12, fill: true, tension: 0.3 };
             if (yoyPartial1) markPartialPoint(curDs, parseInt(nowKey, 10) - 1);
             mountChart('alt-chart-yoy', { type: 'line', data: { labels: labels, datasets: [
@@ -2887,7 +3177,7 @@
         // the line terminated at exactly 0.0% and read as attribution
         // collapsing rather than as a month that has barely started.
         var sharePartial = partialMonthAt(pts.map(function (p) { return p.month; }), series);
-        setPartialNote('alt-ai-share-partial', sharePartial);
+        setPartialNote('alt-ai-share-partial', sharePartial, 'share');
         var options = cloneOptions();
         options.scales.y.ticks.callback = function (v) { return v + '%'; };
         options.plugins.tooltip.callbacks = { label: function (ctx) { return 'AI share: ' + ctx.parsed.y + '%'; } };
@@ -3638,18 +3928,15 @@
             });
         }
 
-        // Date-basis toggle: recount the whole page by effective vs filing date.
+        // Date-basis toggle: recount the whole page by filing vs effective date.
+        // setDateBasis() owns the closure state, the visual and aria state of
+        // the switch, and every caption that names the basis, so the caption
+        // and the number it sits under cannot disagree after a click.
         document.querySelectorAll('.alt-datebasis-opt').forEach(function (b) {
             b.addEventListener('click', function () {
                 var basis = b.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective';
                 if (basis === DATE_BASIS) return;
-                DATE_BASIS = basis;
-                document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
-                    x.classList.toggle('alt-datebasis-on', x === b);
-                    // Keep the accessible state in step with the visual one, so
-                    // a screen reader announces which basis is active.
-                    x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
-                });
+                setDateBasis(basis);
                 refreshAll();
             });
         });
@@ -4622,8 +4909,24 @@
             // any one of them read all four. One clause per line, each with the
             // thing it explains. The "less ... more" heat legend is gone: it
             // rendered as stray words beside the columns and was never a control.
+            /*
+              THIS BOARD IS A THIRD TOTAL, AND IT SAYS SO.
+
+              Its columns are fixed periods and it follows the region tabs
+              only, by design. It also counts on the EFFECTIVE date and always
+              has, which was harmless while the headline did too and is not
+              harmless now that the headline defaults to the filing basis. Two
+              correct totals sitting inches apart on different bases, with
+              neither saying so, is the defect this whole change exists to
+              remove. So the first line names the basis and, when the headline
+              is on the other one, says in plain words that the two answer
+              different questions and are not meant to match.
+            */
             var foot = '<ul class="alt-sb-foot">'
-                + '<li>Every row counts verified events on the day each cut takes effect.</li>'
+                + '<li>' + (DATE_BASIS === 'effective'
+                    ? 'Every row counts verified events on the day each cut takes effect, the same basis as the headline figure above.'
+                    : 'Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.')
+                + '</li>'
                 + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
                 + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
                 + '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
@@ -4854,7 +5157,73 @@
         }
     };
 
+    /*
+      QUICK DATE RANGES. Each returns the [from, to] it names, or null for "no
+      date bound at all", and each is checked for active state by recomputing
+      its own range and comparing, so the marked pill is the one that actually
+      matches what the page is showing rather than the one that was last
+      clicked. A hand-typed range in the popover that happens to equal a preset
+      therefore lights that preset, which is correct: the page IS showing it.
+
+      isoDay() is the browser's local day, matching every other date the front
+      end computes (the board's periods, the trend buckets). The server counts
+      in site time; the two differ by at most a day at the boundary, and the
+      Date Range popover has always had the same property.
+    */
+    function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function daysAgo(n) { return new Date(Date.now() - n * 86400000); }
+    var DATE_PRESETS = {
+        today: function () { var t = isoDay(new Date()); return [t, t]; },
+        d7:    function () { return [isoDay(daysAgo(6)), isoDay(new Date())]; },
+        d30:   function () { return [isoDay(daysAgo(29)), isoDay(new Date())]; },
+        // "Last quarter" as the trailing 90 days, not the previous calendar
+        // quarter. The Quarters dropdown already offers calendar quarters, and
+        // two controls whose labels both say "quarter" and mean different
+        // windows is how a reader stops trusting either.
+        d90:   function () { return [isoDay(daysAgo(89)), isoDay(new Date())]; },
+        ytd:   function () { return [new Date().getFullYear() + '-01-01', isoDay(new Date())]; },
+        all:   function () { return null; }
+    };
+
+    // Presets write the same from/to controls the Date Range popover writes, so
+    // there is one date range on this page and not two. The year, quarter and
+    // month dropdowns are cleared because alt_db_where ANDs them with the
+    // range: "Last 7 days" left standing beside years=2026 is an intersection,
+    // and beside years=2024 it is an empty one.
+    function applyDatePreset(key) {
+        var r = (DATE_PRESETS[key] || DATE_PRESETS.all)();
+        writeControl('alt-f-years', []);
+        writeControl('alt-f-quarters', []);
+        writeControl('alt-f-months', []);
+        writeControl('alt-f-from', r ? r[0] : '');
+        writeControl('alt-f-to', r ? r[1] : '');
+    }
+
+    function datePresetActive(key) {
+        var from = readControl('alt-f-from') || '';
+        var to = readControl('alt-f-to') || '';
+        var years = readControl('alt-f-years') || [];
+        var quarters = readControl('alt-f-quarters') || [];
+        var months = readControl('alt-f-months') || [];
+        // Any period dropdown in play means the view is not the bare range this
+        // pill names, so nothing is marked rather than something being marked
+        // that would not reproduce the numbers on screen.
+        if (years.length || quarters.length || months.length) return false;
+        var r = (DATE_PRESETS[key] || DATE_PRESETS.all)();
+        if (!r) return from === '' && to === '';
+        return from === r[0] && to === r[1];
+    }
+
+    function updateDatePresetStates() {
+        document.querySelectorAll('.alt-dp').forEach(function (btn) {
+            var on = datePresetActive(btn.getAttribute('data-dp'));
+            btn.classList.toggle('alt-dp-on', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
     function updateQuickViewStates() {
+        updateDatePresetStates();
         Array.prototype.forEach.call(document.querySelectorAll('.alt-qv'), function (btn) {
             var qv = QUICK_VIEWS[btn.getAttribute('data-qv')];
             btn.classList.toggle('alt-qv-on', !!(qv && qv.active()));
@@ -4877,6 +5246,17 @@
                 var qv = QUICK_VIEWS[btn.getAttribute('data-qv')];
                 if (!qv) return;
                 if (qv.active()) qv.clear(); else qv.apply();
+                refreshAll();
+            });
+        });
+
+        // Quick date ranges. Not a toggle: tapping the active one again would
+        // have to mean "all time", and a pill that silently becomes a different
+        // pill on a second tap is how a reader loses the thread of what is
+        // filtered. "All time" is its own control in the row.
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-dp'), function (btn) {
+            btn.addEventListener('click', function () {
+                applyDatePreset(btn.getAttribute('data-dp'));
                 refreshAll();
             });
         });
@@ -5061,8 +5441,30 @@
     }
     var SHARE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
     var EMBED_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>';
-    // Charts the frame-safe embed route (?alt_chart_embed) can render.
-    var EMBED_OK = { 'alt-chart-weekly':1, 'alt-chart-ai-share-trend':1, 'alt-chart-ai-cumulative':1, 'alt-chart-yoy':1, 'alt-chart-reasons':1, 'alt-chart-aimap':1, 'alt-bars-industries':1, 'alt-bars-states':1, 'alt-bars-countries':1, 'alt-bars-roles':1 };
+    /*
+      Charts the frame-safe embed route (?alt_chart_embed) can render.
+
+      THIS LIST IS WHAT DECIDES HOW MANY ICONS A CARD SHOWS. Share, CSV and
+      expand are on every chart card; embed is added only for an id in here.
+      So an omission is not invisible - it prints a three-icon toolbar next to
+      two four-icon ones at the same y, and the reader is left to guess which
+      card is missing a control and why. On 2026-08-10 the "Who is cutting,
+      and why" band read 3, 3, 3, 3 while the band above it read 4, 4.
+
+      The four bar cards added here draw from the same /aggregate payload
+      through the same renderBarList as the three already listed, so the embed
+      route renders them with no new data path. Their basis sentences travel
+      with them: page-chart-embed.php now ships the note element each one
+      writes into, which the earlier bar embeds were quietly dropping.
+
+      ONE CARD IS STILL DELIBERATELY ABSENT: alt-bars-claims-states. It is
+      official DOL jobless-claims data, drawn grey, labelled "context only,
+      not our counts", and fetched from /claims rather than /aggregate. An
+      embed of it would travel to another site under this tracker's frame with
+      a number this tracker did not collect, which is exactly the confusion the
+      grey and the label exist to prevent. Its toolbar is short on purpose.
+    */
+    var EMBED_OK = { 'alt-chart-weekly':1, 'alt-chart-ai-share-trend':1, 'alt-chart-ai-cumulative':1, 'alt-chart-yoy':1, 'alt-chart-reasons':1, 'alt-chart-aimap':1, 'alt-bars-industries':1, 'alt-bars-states':1, 'alt-bars-countries':1, 'alt-bars-roles':1, 'alt-bars-sourcetypes':1, 'alt-bars-leaders':1, 'alt-bars-repeat':1, 'alt-bars-ai-intensity':1 };
     function embedSnippet(id) {
         var f = qs(currentParams());
         var src = shareBase() + '?alt_chart_embed=1&chart=' + encodeURIComponent(id) + (f ? '&' + f : '');
