@@ -195,7 +195,11 @@ class NeitherSurfaceBuildsItsOwnWording(unittest.TestCase):
                 "home page and the press page came to publish 33,939 apart." % name)
 
     def test_the_hero_calls_the_helper(self):
-        self.assertIn("alt_period_split_sentence(", _strip_php_comments(TRACKER_TPL))
+        # The hero carries the COMPRESSED reconciliation now, so it calls
+        # alt_period_split_short(). Same invariant: the wording is a shared
+        # helper with a JS twin, never typed into the template. The press page
+        # keeps the full sentence and is pinned by the test below.
+        self.assertIn("alt_period_split_short(", _strip_php_comments(TRACKER_TPL))
 
     def test_the_press_page_calls_the_helper(self):
         self.assertIn("alt_period_split_sentence(", _strip_php_comments(PRESS_TPL))

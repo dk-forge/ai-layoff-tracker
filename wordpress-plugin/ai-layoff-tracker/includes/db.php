@@ -2783,6 +2783,38 @@ function alt_period_split_sentence($to_date, $calendar, $as_of, $period) {
 }
 
 /**
+ * THE SAME RECONCILIATION, COMPRESSED FOR THE FIRST SCREEN.
+ *
+ * The full sentence above is 40-odd words and it is the third thing a reader
+ * meets. It still earns its place on the press page, where somebody is
+ * deliberately looking up how to cite a figure. On the home page it needs to
+ * carry the arithmetic in one line: the two parts, the whole, and the period
+ * they belong to. The as-of date is dropped here and only here, because the
+ * cite line a few pixels below already stamps it and printing it twice on one
+ * screen is what made this note read as boilerplate.
+ *
+ * IT IS MORE VALUABLE UNDER THE FILED-BASIS DEFAULT, NOT LESS. On the filing
+ * basis the headline counts notices by the day they were filed, so the gap
+ * between "already happened" and "on file for later" is exactly the arithmetic
+ * a journalist needs in order to quote either figure correctly. That is why it
+ * is compressed rather than removed, and why it stays visible prose rather
+ * than moving inside a disclosure. Three caveats in this codebase have
+ * computed to display:none and been read by nobody.
+ *
+ * Twinned character for character by periodSplitShort() in layoffs.js and
+ * pinned by railway/tests/test_headline_total_agreement.py.
+ */
+function alt_period_split_short($to_date, $calendar, $period) {
+    $to_date  = max(0, (int) $to_date);
+    $calendar = max(0, (int) $calendar);
+    $later    = max(0, $calendar - $to_date);
+    if ($later <= 0) return '';
+    return number_format($to_date) . ' have taken effect. The other ' . number_format($later)
+        . ' are filed for effective dates later in ' . $period
+        . '. Together, ' . number_format($calendar) . '.';
+}
+
+/**
  * Descriptive WARN notice-gap distribution, computed from the main table's own
  * recorded dates and nothing else. For US WARN rows, announcement_date holds
  * the state-recorded notice/received date and layoff_date the effective date
@@ -5044,13 +5076,23 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         $series[] = $s;
     }
 
-    // Largest single events. Location is surfaced so several rows for the same
-    // company (e.g. a company that legally filed WARN notices in six different
-    // cities/states) read as the distinct events they are, not as duplicates.
+    /*
+      Largest single events. Location is surfaced so several rows for the same
+      company (e.g. a company that legally filed WARN notices in six different
+      cities/states) read as the distinct events they are, not as duplicates.
+
+      THE LIMIT WAS 10 AND THE CARD DRAWS UP TO BARLIST_LIMIT (24). "Largest
+      single job cuts" was therefore truncated by the QUERY, not by the card,
+      and it sat beside neighbours twice its height with a block of dead space
+      under it while rows it could have drawn still existed. That is a layout
+      bug caused by a fetch ceiling, and the fix is to fetch what the card can
+      already draw rather than to pad the card. The board's include=leaders
+      callers read leaders[0] only, so nothing else changes.
+    */
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id
-         FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 10", $p2));
+         FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
         $leaders[] = array(
@@ -5297,17 +5339,31 @@ function alt_tracker_bootstrap_payload() {
     // Mirrors the front-end default scope: every load starts on the current
     // year ("All time" is one click away). Site timezone, like the site copy.
     $year = (string) current_time('Y');
-    $aggregate_params = array('years' => $year);
+    /*
+      THE BOOTSTRAP IS COMPUTED ON THE DEFAULT BASIS, which is now the FILING
+      basis (date_basis=notice), matching DATE_BASIS in layoffs.js.
+
+      This is not cosmetic. The bootstrap IS the first paint and it is what a
+      reader without JS, and every crawler, is served. Left on the effective
+      basis it would have published a figure counted one way under a hero label
+      naming the other, and then silently swapped the number when JS ran.
+      bootParamsMatch() compares the key SET and every value (order does not
+      matter), and a mismatch does not fail loudly: it just makes the
+      zero-fetch first paint quietly become a fetch.
+    */
+    $aggregate_params = array('years' => $year, 'date_basis' => 'notice');
     // Mirrors the results list's first request: newest first, 25 per page.
     // These params must stay byte-identical to what queryParams() builds in
     // layoffs.js, or takeBoot() rejects the payload and the zero-fetch first
-    // paint silently becomes a fetch.
+    // paint silently becomes a fetch. queryParams() writes date_basis last of
+    // currentParams()' keys, then the four paging keys.
     $query_params = array(
-        'years'    => $year,
-        'per_page' => '25',
-        'page'     => '1',
-        'sort'     => 'layoff_date',
-        'dir'      => 'desc',
+        'years'      => $year,
+        'date_basis' => 'notice',
+        'per_page'   => '25',
+        'page'       => '1',
+        'sort'       => 'layoff_date',
+        'dir'        => 'desc',
     );
 
     $call = function ($handler, $route, $params) {

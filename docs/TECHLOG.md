@@ -1,5 +1,89 @@
 # Tech Log
 
+## 2026-08-11 - the filed basis becomes the default, and three totals stop looking like one claim
+
+**The decision.** The tracker counted every cut on the day it takes effect.
+Layoffs are reported nearly everywhere on the FILING date, so a reader arriving
+with a number in their head met a figure they could not reconcile: on the filed
+basis US July 2026 reads 33,817 against 33,429 for the same month in the
+independent national estimate, within 1.2 percent, while on the effective basis
+the same month reads roughly double. Defaulting to the basis everyone else
+reports on turns the differentiator from "a different number that needs a
+paragraph" into "the same number, with a filing behind every row". The
+effective basis is one click away and every figure recomputes on it.
+
+**A default lives in four places, and all four moved.** `DATE_BASIS` in
+layoffs.js, which button carries `alt-datebasis-on` in the switch, the
+`date_basis` the server bootstrap is computed on (`alt_tracker_bootstrap_payload`),
+and the hero's own basis label. Any one left behind publishes a figure counted
+one way under a label naming the other, then swaps the number when JS runs.
+
+**Deep links needed a real fix, not a rename.** `currentParams()` wrote
+`date_basis` only for the non-default value, and the restore path read back only
+`notice`. While the default was `effective` those two were harmless, because a
+link saying `date_basis=effective` was indistinguishable from a link saying
+nothing. Under the new default that is a silent basis change on every
+effective-basis share. Both values are now written and both are read back, and
+`URL_BASELINE` carries the default so an unfiltered view still has a clean URL.
+
+**Three totals that read as the same claim.** In one live view the hero, the
+at-a-glance board's YTD column and the cite line stood at 484,427, 335,637 and
+24,754, with nothing on screen saying which question each answered. Each now
+states its geography, its period and its basis. The board keeps counting on the
+effective date (its columns are fixed periods and it follows the region tabs
+only, both by design) and its footnote now says in words that it answers a
+different question from the headline and is not meant to match; on the effective
+basis the JS swaps that for the matching-basis wording. No underlying number,
+filter semantic or the `country_basis=any` union changed.
+
+**A caption that named both bases.** The lead tile read "Filed or reported,
+counted on the day each cut takes effect", which is wrong on whichever basis is
+live. `BASIS_COPY` is now the single table every basis word is written from, and
+`renderBasisCopy()` rewrites the hero label, the tile caption, the tile scope
+line, the cite line and the switch's own titles on every basis change.
+
+**The reconciliation, compressed and still visible.** It is worth MORE under the
+filed default, because the gap between "already happened" and "on file for
+later" is the arithmetic a journalist needs to quote either figure correctly. It
+is now one line (`alt_period_split_short` / `periodSplitShort`, twinned character
+for character) with the full sentence kept on the press page and linked from the
+hero. It stays prose in the hero, never a disclosure: this codebase has shipped
+three caveats that computed to display:none and were read by nobody.
+
+**Quick date ranges restored to the surface.** Today / Last 7 days / Last 30 days
+/ Last quarter / Year to date / All time, as a visible row at the top of the
+controls that scope the page, not beside the region tabs: the tabs sit above the
+board because they scope it, and dates do not. Each writes the same from/to the
+date popover writes and clears the period dropdowns it would otherwise AND with.
+
+**Card whitespace, two opposite causes.** "Largest single job cuts" was
+truncated by the QUERY (`LIMIT 10`) while the card draws up to `BARLIST_LIMIT`
+(24), so it sat short beside full neighbours with rows still available: a layout
+bug, fixed by fetching what the card can draw. "AI intensity by industry" is
+honestly sparse, because industries under 1,000 cuts are excluded on purpose,
+and a 50 percent rate over 4 cuts is the number this project refuses to publish.
+That threshold was NOT lowered and the card was NOT padded: it now says how many
+industries were considered and how many cleared the bar, and says so explicitly
+when none do.
+
+**Also:** the five primary tiles and the three derived ones reserve a shared
+label band and a row for the optional detail line, so they align across the row
+and a filter change that grows a caption no longer shifts a neighbour. The
+cross-link to the sibling tracker is a real control with an accessible name and
+a focus ring, on theme tokens rather than hardcoded colour. The FAQ answer and
+the "short version" paragraph that still claimed the effective-date default were
+rewritten; the effective-date reasoning is relocated, not deleted.
+
+**Tests.** `railway/tests/test_date_basis_default.py`, 42 tests, 39 of which
+fail on the pre-change tree (a191e92) with comments stripped before matching.
+The three that pass are named in the docstring as regression bars. Two tests in
+the first draft passed against the defective tree for the wrong reason and were
+rewritten before landing: one read the tile caption through a helper that strips
+`<?php ... ?>` blocks, which is where the caption is built; the other compared
+the test file's own constant with itself. Four existing guards were retargeted,
+not weakened: their invariants are unchanged and only the helper name or the
+copy they locate onto moved.
+
 ## 2026-08-10 - the CI-noise reporter's own tests were a time bomb
 
 Three tests in `test_ci_noise_report.MainTests` went red on 2026-08-10 with no

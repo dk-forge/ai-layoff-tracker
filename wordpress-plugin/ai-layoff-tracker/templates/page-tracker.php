@@ -111,6 +111,17 @@ $alt_period_ann = $alt_sv === null ? '' : current_time('Y') . ' · includes futu
 // grid where the hero has already established both.
 $alt_hero_period = $alt_sv === null ? '' : 'calendar year ' . current_time('Y');
 $alt_hero_geo    = 'worldwide';
+/*
+  THE DEFAULT BASIS, IN ONE PLACE ON THE SERVER.
+
+  It is the FILING basis, matching the DATE_BASIS default in layoffs.js and the
+  date_basis the bootstrap payload is computed on. These three have to agree or
+  the first paint publishes a figure counted one way under a label naming the
+  other, which is the exact defect this change removes rather than one to
+  introduce. The wording is byte-identical to BASIS_COPY.notice.headline in
+  layoffs.js and pinned by railway/tests/test_date_basis_default.py.
+*/
+$alt_hero_basis  = 'counted by filing date';
 ?>
 <div class="alt-wrap alt-tracker-wrap alt-dashboard">
 
@@ -172,7 +183,16 @@ $alt_hero_geo    = 'worldwide';
                          The as-of line directly below splits the two.
                          Both spans are kept in step live by renderStats(), which
                          swaps in the active filter's geography and period. */ ?>
-                <span class="alt-hero-figure-label">verified job cuts <span id="alt-hero-total-geo"><?php echo esc_html($alt_hero_geo); ?></span>, <span id="alt-hero-total-period"><?php echo esc_html($alt_hero_period); ?></span></span>
+                <?php /* THE BASIS IS PART OF THE LABEL, not a footnote. The
+                         default basis changed to the filing date so that this
+                         figure can be reconciled against the independent
+                         national estimate a reader arrives with, and a figure
+                         that does not say which of the two questions it answers
+                         invites exactly the "why is yours wrong" the change was
+                         made to end. Written by renderBasisCopy() in layoffs.js
+                         from the one BASIS_COPY table, so the word here and the
+                         number above it cannot drift. */ ?>
+                <span class="alt-hero-figure-label">verified job cuts <span id="alt-hero-total-geo"><?php echo esc_html($alt_hero_geo); ?></span>, <span id="alt-hero-total-period"><?php echo esc_html($alt_hero_period); ?></span>, <span id="alt-hero-total-basis"><?php echo esc_html($alt_hero_basis); ?></span></span>
                 <?php /* THE AI LINE, written to the rubric it reports and no wider.
                          It read "blamed on AI by the employer". "Blamed" is a verdict,
                          and this tracker does not return one: the record is that the
@@ -210,10 +230,18 @@ $alt_hero_geo    = 'worldwide';
                      see does not reconcile anything. Kept in step live by
                      renderStats(), which hides the WRAPPER (label and all) in a
                      past-year view where there is nothing left to split. */ ?>
-            <?php $alt_split = ($alt_sv !== null && function_exists('alt_period_split_sentence'))
-                ? alt_period_split_sentence($alt_sv['to-date'], $alt_sv['total'], date_i18n('M j, Y'), $alt_period)
+            <?php /* COMPRESSED, NOT REMOVED, AND STILL VISIBLE PROSE. The full
+                     40-word sentence stays on the press page, where somebody is
+                     deliberately looking up how to cite a figure. Here it is one
+                     line carrying the two parts, the whole and the period, with
+                     the fuller explanation a click away in "Why our numbers
+                     differ". Under the filing-basis default this line is worth
+                     MORE than it was: it is the arithmetic that lets a
+                     journalist quote either figure correctly. */ ?>
+            <?php $alt_split = ($alt_sv !== null && function_exists('alt_period_split_short'))
+                ? alt_period_split_short($alt_sv['to-date'], $alt_sv['total'], $alt_period)
                 : ''; ?>
-            <p class="alt-hero-figure-asof" id="alt-hero-asof-wrap"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><b class="alt-hero-asof-label">In this figure:</b> <span id="alt-hero-asof"><?php echo esc_html($alt_split); ?></span></p>
+            <p class="alt-hero-figure-asof" id="alt-hero-asof-wrap"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><b class="alt-hero-asof-label">In this figure:</b> <span id="alt-hero-asof"><?php echo esc_html($alt_split); ?></span> <a class="alt-hero-asof-more" href="#alt-basis-explainer">Why two figures</a></p>
         </div>
     </header>
     <?php
@@ -315,7 +343,12 @@ $alt_hero_geo    = 'worldwide';
         // it explains. The "less ▪▪▪ more" heat legend is gone: it rendered as
         // stray words beside the columns and it was never a control.
         $alt_board_html .= '<ul class="alt-sb-foot">'
-            . '<li>Every row counts verified events on the day each cut takes effect.</li>'
+            // The server render is the DEFAULT view, and the default basis is
+            // now the filing date, so this is the "two different questions"
+            // wording. layoffs.js swaps it for the matching-basis wording the
+            // moment a reader toggles to the effective basis. See the comment
+            // on the same footnote in updateNarrative().
+            . '<li>Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
             . '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
             . '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
             . '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
@@ -379,6 +412,45 @@ $alt_hero_geo    = 'worldwide';
 
     <div id="alt-dashboard-status" class="alt-status" role="status" style="display:none"></div>
 
+    <?php
+    /*
+      QUICK DATE RANGES, BACK ON THE SURFACE.
+
+      A date preset is a one-tap, high-intent control and it had no visible
+      home: the only way to ask for "the last 30 days" was to open the Date
+      Range popover and type two dates, or to open the Filters panel and
+      assemble it from the year, quarter and month dropdowns. That is three
+      interactions for the most common question anyone brings to a layoff
+      tracker.
+
+      WHY HERE AND NOT BESIDE THE REGION TABS. The tabs sit above the
+      at-a-glance board because they DO scope it. Dates do not: the board's four
+      columns are fixed periods, so a date range over a Today column is a
+      different question rather than a narrower one. Putting a date control
+      above the board would restore precisely the "controls standing above
+      content they do not control" defect that ordering was built to fix. So
+      these sit at the top of the block of controls that DOES scope everything
+      below, immediately above the date range they are shorthand for.
+
+      They write the same from/to controls the popover writes, so they compose
+      with the date basis: "Last 30 days" on the filing basis means filed in the
+      last 30 days, and on the effective basis it means taking effect in them.
+      Each one clears the year, quarter and month dropdowns, because those AND
+      with a range and would otherwise silently return an empty intersection.
+      No dropdown was demoted to make room: this row is new chrome, one line
+      tall, and it removes two panel-opens from the common path.
+    */
+    ?>
+    <div class="alt-datepresets" id="alt-datepresets" role="group" aria-label="Quick date ranges">
+        <span class="alt-dp-label">Date:</span>
+        <button type="button" class="alt-dp" data-dp="today">Today</button>
+        <button type="button" class="alt-dp" data-dp="d7">Last 7 days</button>
+        <button type="button" class="alt-dp" data-dp="d30">Last 30 days</button>
+        <button type="button" class="alt-dp" data-dp="d90">Last quarter</button>
+        <button type="button" class="alt-dp" data-dp="ytd">Year to date</button>
+        <button type="button" class="alt-dp" data-dp="all">All time</button>
+    </div>
+
     <div class="alt-toolbar2">
         <div class="alt-range-wrap">
             <button type="button" class="alt-range-btn" id="alt-range-btn" aria-expanded="false">
@@ -399,13 +471,31 @@ $alt_hero_geo    = 'worldwide';
                 <button type="button" class="alt-btn alt-btn-sm" id="alt-range-clear">Clear Dates</button>
             </div>
         </div>
+        <?php /* THE DEFAULT IS "WHEN IT WAS FILED", AND IT IS LISTED FIRST.
+
+                 Both facts matter. A segmented switch is read left to right, so
+                 the option carrying alt-datebasis-on has to be the one a reader
+                 meets first or the control teaches that the page is showing the
+                 other one. The default moved because the filing basis is the
+                 basis every other published layoff figure is counted on: on it,
+                 US July 2026 sits within about one percent of the independent
+                 national estimate for the same month, so a reader lands on a
+                 number they can reconcile with what they already have. On the
+                 effective basis the same month reads roughly double and needs a
+                 paragraph before it can be compared at all.
+
+                 The effective basis is not demoted out of existence. It is one
+                 click away, every figure on the page recomputes on it, and a
+                 deep link that names it is honoured. The titles are rewritten
+                 by renderBasisCopy() from BASIS_COPY so this markup and the JS
+                 cannot drift; these are the same strings. */ ?>
         <div class="alt-datebasis-wrap" role="group" aria-label="Count layoffs by">
             <span class="alt-datebasis-label">Count Layoffs By:</span>
             <span class="alt-datebasis-switch">
-            <button type="button" class="alt-datebasis-opt alt-datebasis-on" data-basis="effective" aria-pressed="true"
-                title="Counts each layoff on the day the cut takes effect, the day the jobs actually end. This is our default.">When it takes effect</button>
-            <button type="button" class="alt-datebasis-opt" data-basis="notice" aria-pressed="false"
-                title="Counts each layoff on the day its notice was filed or announced. This is the basis most other trackers use.">When it was filed</button>
+            <button type="button" class="alt-datebasis-opt alt-datebasis-on" data-basis="notice" aria-pressed="true"
+                title="Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure compares directly. This is the default.">When it was filed</button>
+            <button type="button" class="alt-datebasis-opt" data-basis="effective" aria-pressed="false"
+                title="Counts each layoff on the day the cut takes effect, the day the jobs actually end. A different question from the filing basis, and equally real.">When it takes effect</button>
             </span>
         </div>
         <div class="alt-search-wrap">
@@ -601,16 +691,30 @@ $alt_hero_geo    = 'worldwide';
           or 0x0 and were never read by anybody, so the guard test opens each
           one and measures RENDERED TEXT LENGTH rather than reading markup.
         */
-        $alt_tile_i = function ($label, $body) {
+        // $id is optional and exists for ONE case: the lead tile's body names
+        // the active date basis, so layoffs.js has to be able to rewrite it
+        // when the toggle changes. Every other body is a fixed definition and
+        // carries no id.
+        $alt_tile_i = function ($label, $body, $id = '') {
             return '<details class="alt-stat-i alt-stat-i-tile"><summary aria-label="' . esc_attr($label) . '">i</summary>'
-                . '<span class="alt-stat-i-body">' . $body . '</span></details>';
+                . '<span class="alt-stat-i-body"' . ($id !== '' ? ' id="' . esc_attr($id) . '"' : '') . '>' . $body . '</span></details>';
         };
         ?>
         <div class="alt-stats-bar" id="alt-stats-bar">
             <div class="alt-stat-card alt-stat-card-lead alt-fam-verified">
                 <span class="alt-stat-value" id="alt-stat-total"><?php echo esc_html($alt_stat('total')); ?></span>
-                <span class="alt-stat-label">Verified job cuts <?php echo $alt_tile_i('What counts as verified', 'Filed or reported, counted on the day each cut takes effect. This is the main number, and every row behind it links to its source.'); // phpcs:ignore ?></span>
+                <?php /* ONE BASIS PER SENTENCE. This read "Filed or reported,
+                         counted on the day each cut takes effect", which names
+                         BOTH bases in one breath and is therefore wrong on
+                         whichever one is live. The body is now written by
+                         renderBasisCopy() in layoffs.js from BASIS_COPY, so it
+                         names the active basis and only that one, and it
+                         changes when the toggle changes. The server prints the
+                         default (filing) wording, byte-identical to
+                         BASIS_COPY.notice.tile. */ ?>
+                <span class="alt-stat-label">Verified job cuts <?php echo $alt_tile_i('What counts as verified', 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure compares directly. Every row behind it links to its source.', 'alt-stat-total-i-body'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"><?php echo esc_html($alt_period); ?></span>
+                <span class="alt-stat-sub alt-stat-detail" id="alt-stat-total-basis"><?php echo esc_html($alt_hero_basis); ?></span>
             </div>
             <div class="alt-stat-card alt-fam-announced">
                 <span class="alt-stat-value" id="alt-stat-announced"><?php echo esc_html($alt_stat('announced')); ?></span>
@@ -686,7 +790,18 @@ $alt_hero_geo    = 'worldwide';
                  in the hero, next to the number it explains. Every destination
                  those links pointed at is still on this page, in the methodology
                  section, and the full methodology page links on to each. */ ?>
-        <p class="alt-crosslink">Looking for who is hiring instead? Hiring signals are tracked on the <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Talent Intelligence Tracker</a>.</p>
+        <?php /* THE ONLY ROUTE BETWEEN THE TWO PRODUCTS, and it was a sentence
+                 with an inline link in 13px body grey. Somebody who wants the
+                 hiring side has to notice a phrase in a paragraph they have no
+                 other reason to read. The sentence stays, because it is the
+                 context that makes the destination make sense, and the link is
+                 now a control: a real button-shaped target with its own
+                 accessible name, a visible focus ring, and colours from the
+                 theme tokens so it holds contrast in light and dark alike.
+                 Nothing here is hardcoded; --alt-accent and --alt-on-accent are
+                 the same pair the primary hero action uses. */ ?>
+        <p class="alt-crosslink">Looking for who is hiring instead? Hiring signals are tracked separately.
+            <a class="alt-btn alt-btn-sm alt-crosslink-btn" href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>" aria-label="Open the Talent Intelligence Tracker, our hiring signals tracker">Talent Intelligence Tracker</a></p>
     </section>
 
     <?php /* NOT A <details>. This is the paragraph that makes our figure
@@ -862,6 +977,13 @@ $alt_hero_geo    = 'worldwide';
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">AI intensity by industry <span class="alt-chart-sub">share of each industry's cuts the employer attributed to AI · tap to filter · industries under 1,000 cuts excluded</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-ai-intensity" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
             <div class="alt-barlist" id="alt-bars-ai-intensity"></div>
+            <?php /* THE SPARSENESS, LABELLED. This card legitimately draws one
+                     bar in most views because of its 1,000-cut floor, and an
+                     unexplained single row beside a full-height neighbour reads
+                     as a broken card. Written by layoffs.js from the counts it
+                     just used, so it cannot claim a number the bars contradict.
+                     Not hidden and not inside a disclosure. */ ?>
+            <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-ai-intensity-note" hidden></p>
             <p class="alt-chart-note">Each share is the employer's own words, not our inference. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">See the verbatim quotes and their sources →</a></p>
         </div>
         <div class="alt-mini alt-chart-card" id="alt-roles-card">
@@ -977,8 +1099,18 @@ $alt_hero_geo    = 'worldwide';
             <?php /* "so far, as of <today>" is a TO-DATE claim, so it quotes the
                      to-date figure. It used to quote the whole-window total, which
                      disagreed with the FAQPage JSON-LD this same page emits from
-                     alt_live_numbers() (that query has always clamped at today). */ ?>
-            <span class="alt-citeline-stat"><b id="alt-citeline-total"><?php echo esc_html($alt_stat('to-date')); ?></b> verified job cuts recorded for <?php echo esc_html(current_time('Y')); ?> so far, as of <?php echo esc_html(date_i18n('M j, Y')); ?>.</span>
+                     alt_live_numbers() (that query has always clamped at today).
+
+                     IT NOW SAYS WHICH OF THE PAGE'S TOTALS IT IS. "N verified job
+                     cuts recorded for 2026 so far" named no geography, no basis,
+                     and a period that reads like the hero's. Three live totals on
+                     this page answered three different questions under wording
+                     that made them look like one claim, and this was the smallest
+                     of the three: 24,754 beside a hero of 484,427. A screenshot of
+                     this line, captioned as our figure, was a story we handed out.
+                     The geography, period and basis spans are written by
+                     renderStats() from the SAME labels the hero uses. */ ?>
+            <span class="alt-citeline-stat"><b id="alt-citeline-total"><?php echo esc_html($alt_stat('to-date')); ?></b> verified job cuts <span id="alt-citeline-geo"><?php echo esc_html($alt_hero_geo); ?></span> have already taken effect, as of <?php echo esc_html(date_i18n('M j, Y')); ?>. This view covers <span id="alt-citeline-period"><?php echo esc_html($alt_hero_period); ?></span>, <span id="alt-citeline-basis"><?php echo esc_html($alt_hero_basis); ?></span>.</span>
             <?php endif; ?>
             <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
         </p>
@@ -1000,7 +1132,7 @@ $alt_hero_geo    = 'worldwide';
     <details class="alt-methodology" id="alt-metric-definitions" open>
         <summary>Methodology &amp; sources (for journalists &amp; researchers)</summary>
         <div class="alt-method-body">
-            <p><b>The short version.</b> <b>Verified job cuts</b> are cuts with a filing or named source behind them, counted on the day they take effect; the main figure. <b>AI-attributed</b> is the subset where the employer named AI in words we can quote. <b>Announced</b> is a separate, labeled tier of announcement-stage plans, never mixed into the verified total. Nothing is estimated; every number links to a legal filing or named report, and country/US-state filters describe where the jobs were, not an employer's headquarters.</p>
+            <p><b>The short version.</b> <b>Verified job cuts</b> are cuts with a filing or named source behind them; the main figure. By default we count each on the day it was filed or announced, the basis used elsewhere. The &ldquo;Count layoffs by&rdquo; control recounts the page on the effective date instead. <b>AI-attributed</b> is the subset where the employer named AI in words we can quote. <b>Announced</b> is a separate, labeled tier of announcement-stage plans, never mixed into the verified total. Nothing is estimated; every number links to a legal filing or named report, and country/US-state filters describe where the jobs were, not an employer's headquarters.</p>
             <p><b>How the AI tag works.</b> Only a primary or contributing cause counts, and each one needs an exact supporting quote. Investment in AI, future projections, or AI used to pick who goes do not qualify. A separate broader measure is labeled and never merged in.</p>
             <p class="alt-method-cta"><a class="alt-method-fulllink" href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">Read the full methodology and sources &rarr;</a> &middot; extraction, dedup, coverage limits, why our totals differ, and API access, all in detail.</p>
         </div>
@@ -1078,7 +1210,15 @@ $alt_hero_geo    = 'worldwide';
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
-            <p><b>4 &middot; We date each cut by when it takes effect, not when it was filed.</b> Most trackers count a layoff on the day its WARN notice is filed or the cut is announced. We count it on the day the jobs actually end. That is what a worker lives through, and what a labor-market reader wants to measure. The two bases answer different questions. Filing date asks when we heard about it. Effective date asks when it happened. The gap is small, and it can fall either way. In 2026 the effective-date basis runs slightly higher. Companies filed more notices in 2025 for cuts landing in 2026 than they filed in 2026 for cuts landing in 2027. We store both dates. You can recount any figure here on either basis.</p>
+            <?php /* REWRITTEN WITH THE DEFAULT, and it had to be: this paragraph
+                     argued FOR the effective date as the default ("that is what
+                     a worker lives through"), so the moment the default became
+                     the filing date it contradicted the control it explained.
+                     The effective-date reasoning is NOT deleted. It is the
+                     second half of this paragraph, stated as the real question
+                     it answers, one click away. Anchored so the hero's
+                     "Why two figures" link lands here. */ ?>
+            <p id="alt-basis-explainer"><b>4 &middot; We count each cut on the day it was filed, and you can recount it on the day it takes effect.</b> Layoffs are reported nearly everywhere on the filing date. That is the day a WARN notice reaches the state, or the day a company announces the cut. It is our default, so the figure at the top of this page can be set beside a national estimate for the same month and read directly against it. The effective date answers a different and equally real question: when the jobs actually ended. That is what a worker lives through, and what a labour-market reader often wants. Neither basis is the true one. We store both dates on every row, and the &ldquo;Count layoffs by&rdquo; control recounts every figure, chart and table here on either. The gap between them is not noise. Companies file notices weeks or months ahead, so in any given month the two totals can differ widely. The line under the headline figure shows how they split.</p>
             <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>. It is smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate. A number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year. We surface AI attributions from primary sources they never itemize.</p>
 
             <p><b>Where we lead, and where we don't, stated honestly.</b> Because our figure is built from receipts, it is not always smaller. Measured like-for-like against the public trackers by category:</p>
