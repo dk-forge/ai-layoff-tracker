@@ -70,7 +70,11 @@ $src_label = function ($t) {
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>AI layoffs, in the employer's own words</h1>
   <p class="alt-lead"><span class="alt-lead-text">Every layoff we attribute to AI carries the company's own statement, quoted verbatim, with a link to where they said it. This is the receipt behind the AI number: not inference, not press framing, the employer's words. Filter it, quote it, check it.</span></p>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">How the AI tag works</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+  <?php /* Both of these used to land on the dashboard's collapsed summary
+       block. "How the AI tag works" is the exact title of a section on the
+       METHODOLOGY page, so that is where a link carrying that label has to go;
+       the anchor takes the reader to the section rather than the top. */ ?>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>#m-ai">How the AI tag works</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a></p>
 
   <div class="alt-qw-summary">
     <b><?php echo number_format($alt_total); ?></b> AI attributions<?php echo $alt_total > $LIMIT ? ' (showing the ' . $LIMIT . ' most recent)' : ''; ?> · <b><?php echo number_format($alt_jobs); ?></b> jobs · <?php echo $alt_year ? esc_html($alt_year) : 'all-time'; ?> · each with the employer's quote and its source.
@@ -144,5 +148,5 @@ $src_label = function ($t) {
   <?php endif; ?>
   <?php endif; ?>
 
-  <p class="alt-qw-foot alt-muted"><b>How these are chosen:</b> a cut appears here only when the employer named AI or automation as a cause in words we can quote, confirmed by two independent passes, with the source on file. Investment in AI, a future projection, or AI used to pick who goes does not qualify. This is the strict, quotable standard; the tracker also has a broader AI-linked measure, labelled separately. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/#alt-metric-definitions')); ?>">Full methodology &rarr;</a></p>
+  <p class="alt-qw-foot alt-muted"><b>How these are chosen:</b> a cut appears here only when the employer named AI or automation as a cause in words we can quote, confirmed by two independent passes, with the source on file. Investment in AI, a future projection, or AI used to pick who goes does not qualify. This is the strict, quotable standard; the tracker also has a broader AI-linked measure, labelled separately. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">Full methodology &rarr;</a></p>
 </main>

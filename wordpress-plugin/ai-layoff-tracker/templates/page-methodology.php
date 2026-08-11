@@ -14,21 +14,41 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>Methodology &amp; sources</h1>
   <p class="alt-lead"><span class="alt-lead-text">How we collect, verify, classify and count every number on this tracker. We wrote it for journalists and researchers who need to check a figure before they cite it. We estimate nothing into existence. Every published number traces back to a primary source.</span></p>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit</a></p>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a></p>
 
+  <?php /*
+     A CONTENTS LIST IS A PROMISE ABOUT WHAT IS DOWN THERE.
+
+     Seven of these thirteen labels used to be a paraphrase of the heading
+     they land on, and one pair reversed its meaning: "Coverage & limits"
+     landed on "Coverage and honest limitations", "Self-audit" on "The tracker
+     audits itself", "What the numbers mean" on "What the summary cards mean".
+     A reader who scans the list, picks an entry and arrives at a different
+     title cannot tell whether they mis-clicked or whether the page moved
+     under them, and either way they lose the thread on the page that exists
+     to be checked line by line.
+
+     So every label below is the heading's own words, verbatim, including "and"
+     where the heading says "and". Shorten a heading and this list has to be
+     re-shortened with it; copy the heading and it cannot drift.
+
+     The ORDER is the document's order too. "How the AI tag works" was listed
+     fourth while its section sits after "Reason tags", so reading down the
+     list walked you back up the page.
+  */ ?>
   <nav class="alt-method-toc" aria-label="On this page">
     <b>On this page:</b>
-    <a href="#m-cards">What the numbers mean</a> ·
+    <a href="#m-cards">What the summary cards mean</a> ·
     <a href="#m-sources">Where the data comes from</a> ·
-    <a href="#m-extract">Extraction &amp; checks</a> ·
-    <a href="#m-ai">How the AI tag works</a> ·
+    <a href="#m-extract">How we extract and check an entry</a> ·
     <a href="#m-reasons">Reason tags</a> ·
-    <a href="#m-roles">Roles most impacted</a> ·
-    <a href="#m-coverage">Coverage &amp; limits</a> ·
-    <a href="#m-jurisdictions">What qualifies, by jurisdiction</a> ·
+    <a href="#m-ai">How the AI tag works</a> ·
+    <a href="#m-roles">How "Roles most impacted" works</a> ·
+    <a href="#m-coverage">Coverage and honest limitations</a> ·
+    <a href="#m-jurisdictions">What qualifies as a record, by jurisdiction</a> ·
     <a href="#m-notice-gap">WARN notice periods, measured</a> ·
-    <a href="#m-differ">Why our totals differ</a> ·
-    <a href="#m-audit">Self-audit</a> ·
+    <a href="#m-differ">Why our totals differ from other headline numbers</a> ·
+    <a href="#m-audit">The tracker audits itself</a> ·
     <a href="#m-who">Who runs this</a> ·
     <a href="#m-use">Using the data</a>
   </nav>
