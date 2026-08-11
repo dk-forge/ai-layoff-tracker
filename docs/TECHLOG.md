@@ -467,6 +467,70 @@ installs, so `main()` sees the same instant the fixtures encode. No assertion,
 threshold or tolerance was touched. Re-dating `NOW` to today was rejected: it
 sets the same bomb for a week later, and `NOW = datetime.now()` would put wall
 clock back into the 366-day sweep in `KeyShapeTests` rather than take it out.
+## 2026-08-10 - the column the forensics said existed did not exist
+
+The 2026-08-08 US headline step could not be traced to a single row. The
+forensic note (docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md, section 4) said
+the reason was that `wp_alt_layoffs` carries `updated_at` but no endpoint
+exposes it, and proposed either a direct SQL window query or a new read-only
+endpoint.
+
+**The premise was wrong, and it is worth saying plainly because it changes what
+was recoverable.** `wp_alt_layoffs` had no `updated_at` column at all. The
+`updated_at` at db.php line 146 belongs to `wp_alt_company_directory`, a
+different table in the same install function. The proposed
+`SELECT ... WHERE updated_at BETWEEN ...` would have returned "Unknown column",
+not a row list. Nothing in the schema recorded when a row was last written, so
+the incident window was never recoverable from the database either, and the
+UNKNOWN verdict was even more correct than the document that issued it knew.
+
+- **`updated_at DATETIME NULL DEFAULT NULL`, plus `KEY updated_at`.** Existing
+  rows are NULL and were deliberately not back-filled. `DEFAULT CURRENT_TIMESTAMP`
+  on an ADD COLUMN would stamp all 63,000 rows with the migration instant and
+  assert that every one of them changed at once. A fabricated timestamp is worse
+  than a missing one because it reads as evidence.
+- **Nine writers stamp it, through one helper.** `alt_db_touch_utc()` for the
+  `$wpdb->update`/`insert` paths, SQL `UTC_TIMESTAMP()` for the raw bulk
+  statements. `ON UPDATE CURRENT_TIMESTAMP` in the column definition was the
+  obvious alternative and was rejected twice over: dbDelta does not model the
+  `Extra` field, so it would re-issue an ALTER on the whole table every deploy,
+  and CURRENT_TIMESTAMP follows the MySQL session timezone while everything else
+  here writes UTC through gmdate. Two clocks in one column is a window query
+  that is silently off by the host offset.
+- **The bulk re-scoring paths are stamped too**, which is the point. The
+  superset reconciler opens with `UPDATE ... SET superset_of = 0 WHERE
+  superset_of <> 0`, a clean slate over every marked row before it re-marks; the
+  cleanup normalizer rewrites country, industry and role categories across the
+  table by value. Those are the shape of mutation the 08-08 step is suspected to
+  be, and they are the ones a per-row hand-stamp would have missed.
+- **`GET /layoffs/v1/changed-rows`**, keyed by `alt_api_permission` exactly as
+  /alert, /tracker-meta and /press-subscribers are: 503 with no key configured,
+  403 on a wrong one. `since` required, `until` defaulting to now, both ISO-8601
+  UTC and both rejected with a 400 rather than reinterpreted. Keyset pagination
+  on `(updated_at, id)`, limit default 200 and ceiling 1000, `no-store`, and it
+  is in neither of the two lists that grant a public cache lifetime by endpoint
+  name.
+- **The response states what it cannot answer.** `window_is_instrumented` is
+  false for any window starting before the earliest stamp the column holds, and
+  `verdict_when_empty` then says UNKNOWN in words. An empty array with no
+  qualification is how a future session writes "no rows changed" and is wrong in
+  the most convincing available way. It also declares that DELETIONS are
+  invisible: /trash and /bulk-purge remove rows outright, and a headline that
+  moved because mass left the corpus cannot be seen here at all.
+- **The incident window returns nothing, and that is UNKNOWN, not a finding.**
+  2026-08-07T18:23:51Z to 2026-08-08T17:58:25Z predates the column by two days.
+  No endpoint, query or archive can now name those rows. The instrumentation
+  starts from this deploy forward.
+- `railway/tests/test_changed_rows_endpoint.py`, 23 checks, all 23 failing on
+  the pre-fix tree. PHP comments are stripped before matching, so a rule
+  satisfied only by a sentence in a comment fails. The load-bearing one is
+  `EveryWriterStamps`: it fails when a future backfill mutates rows without
+  recording that it did, which is the one way this column quietly stops meaning
+  anything with every other check green.
+- `ALT_SCHEMA_SENTINEL_COLUMN` advanced to `updated_at`. Leaving it on
+  `role_categories` lets a mid-FTP deploy mark the schema verified while the new
+  column was never created, which is how `role_categories` itself was lost in
+  2026-07.
 
 ## 2026-08-10 - the theme switcher was the first thing to disappear in dark
 

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.7
+ * Version: 2.20.8
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.7');
+define('ALT_VERSION', '2.20.8');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -432,7 +432,7 @@ add_action('init', 'alt_flush_caches_on_deploy');
 // because the version-gated flush can fire mid-FTP-upload and run against
 // the previous includes/db.php (deploy race, 2026-07-19: role_categories
 // never got created and every roles query silently returned nothing).
-define('ALT_SCHEMA_SENTINEL_COLUMN', 'role_categories');
+define('ALT_SCHEMA_SENTINEL_COLUMN', 'updated_at');
 
 function alt_db_schema_verified() {
     global $wpdb;
