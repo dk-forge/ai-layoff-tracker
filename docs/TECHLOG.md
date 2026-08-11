@@ -1,5 +1,31 @@
 # Tech Log
 
+## 2026-08-11 - the fix for the forever-spinner had a forever-spinner in it (2.20.9)
+
+Found by driving the live 2.20.8 page rather than by reading the diff: with
+every API call stalled, the tiles reached the failed state on the deadline
+exactly as designed, and the chart grid kept spinning underneath them.
+
+**Root cause.** `fetchAndRenderAggregate` began `#alt-minigrid` by hand and
+ended it from the tracked promise's `then`/`catch`. A promise that neither
+resolves nor rejects reaches neither, which is the precise case the deadline
+exists for. So the region with the deadline recovered and the region without
+one did not. The defect the whole change was written to prevent,
+reintroduced by the fix for it, one indirection away.
+
+**Fix.** `busyTrack` takes `companions` as `[id, label]` pairs and owns their
+whole lifecycle: begun with the request, cleared with it, failed with it, and
+failed on the deadline whether or not the promise ever settles. Callers no
+longer touch them.
+
+**Guard.** `test_a_companion_region_cannot_outlive_the_deadline_it_shares`,
+whose `make` deliberately ignores the abort signal, because a companion whose
+only exit is the tracked promise settling has no deadline at all. Both new
+tests fail on the shipped 2.20.8. The wiring test was widened to accept a
+companion pair as valid wiring, and that is not a weakening: it is now a
+STRONGER arrangement than the direct call it replaced, because one deadline
+moves every region it started.
+
 ## 2026-08-11 - the page looked frozen while it was working, and the explainer never named the comparison (2.20.8)
 
 Two reader-facing defects, both reported off the live page.

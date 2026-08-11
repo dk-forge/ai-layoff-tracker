@@ -281,6 +281,58 @@ class LoadingStateMachineTests(unittest.TestCase):
         self.assertTrue(out["aborted"], "the abandoned request was left in flight")
         self.assertEqual(out["retried"], 1)
 
+    def test_a_companion_region_cannot_outlive_the_deadline_it_shares(self):
+        # MEASURED ON THE LIVE 2.20.8 PAGE, not reasoned about. The chart grid
+        # is painted by the same /aggregate call as the tiles, and the first
+        # shipped version moved it from that call's then/catch. A promise that
+        # neither resolves nor rejects reaches neither, so the tiles reported
+        # the timeout honestly and the grid spun underneath them forever, which
+        # is the defect this whole file exists to prevent, reintroduced by the
+        # fix for it. `make` here deliberately ignores the abort signal, because
+        # a companion whose only exit is the tracked promise settling is a
+        # companion with no deadline at all.
+        out = js_states("""
+            region('lead', 200); region('mate', 200);
+            busyTrack('lead', 'Loading the totals', function () {
+                return new Promise(function () {});
+            }, function () {}, [['mate', 'Loading the charts']]);
+            var begun = snapshot('mate');
+            await new Promise(function (res) { setTimeout(res, 120); });
+            return { begun: begun, lead: snapshot('lead'), mate: snapshot('mate') };
+        """)
+        self.assertIsNotNone(out["begun"]["overlay"],
+                             "the companion region never entered the loading state")
+        self.assertEqual(out["begun"]["overlay"]["message"], "Loading the charts")
+        self.assertTrue(out["lead"]["overlay"]["failed"])
+        self.assertIsNotNone(out["mate"]["overlay"])
+        self.assertTrue(out["mate"]["overlay"]["failed"],
+                        "the companion was still spinning after the deadline the "
+                        "request it shares had already given up on")
+        self.assertEqual(out["mate"]["ariaBusy"], "false")
+        self.assertFalse(out["mate"]["overlay"]["retryHidden"])
+
+    def test_a_companion_region_clears_with_the_request_it_shares(self):
+        # The busy snapshot is taken BEFORE the await on purpose. Without it a
+        # tree that ignores the companions argument entirely would pass this
+        # test for the worst possible reason: a region that was never marked
+        # busy is, at the end, indistinguishable from one that was cleared.
+        out = js_states("""
+            region('lead', 200); region('mate', 200);
+            var p = busyTrack('lead', 'Loading', function () { return Promise.resolve(1); },
+                              null, [['mate', 'Loading the charts']]);
+            var busy = snapshot('mate');
+            await p;
+            await new Promise(function (res) { setTimeout(res, 5); });
+            return { busy: busy, lead: snapshot('lead'), mate: snapshot('mate') };
+        """)
+        self.assertIsNotNone(out["busy"]["overlay"],
+                             "the companion region never entered the loading state")
+        self.assertEqual(out["busy"]["ariaBusy"], "true")
+        self.assertIsNone(out["lead"]["overlay"])
+        self.assertIsNone(out["mate"]["overlay"],
+                          "the companion outlived the data it was waiting for")
+        self.assertEqual(out["mate"]["minHeight"], "")
+
     def test_a_late_answer_cannot_resurrect_a_region_that_already_failed(self):
         # The response that arrives after the deadline belongs to a token the
         # region no longer holds, so it must not clear an error a reader is
@@ -319,9 +371,16 @@ class WiringTests(unittest.TestCase):
     """Every async surface is actually wired, in the shipped source."""
 
     def test_every_async_region_is_marked_busy_by_name(self):
+        # Either the region is tracked directly, or it rides along as a
+        # companion pair, which is the ['id', 'Loading ...'] literal busyTrack
+        # takes. A companion is NOT a weaker wiring: busyTrack begins, clears
+        # and fails it on the same deadline as the region it accompanies, which
+        # is the whole reason the pairs live there and not in a caller's catch.
         for rid, what in REGIONS.items():
             self.assertRegex(
-                JS, r"busy(?:Track|Begin)\(\s*'%s'" % re.escape(rid),
+                JS,
+                r"(busy(?:Track|Begin)\(\s*'%s')|(\[\s*'%s'\s*,\s*'Loading)"
+                % (re.escape(rid), re.escape(rid)),
                 "%s (#%s) starts a fetch with no loading state" % (what, rid))
 
     def test_every_async_region_exists_in_the_template(self):
