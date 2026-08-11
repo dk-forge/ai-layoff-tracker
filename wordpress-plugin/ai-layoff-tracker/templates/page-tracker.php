@@ -832,7 +832,10 @@ $alt_hero_basis  = 'counted by filing date';
     </section>
 
     <?php $alt_expand = '<button type="button" class="alt-expand" aria-label="Expand chart" title="Expand"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'; ?>
-    <div class="alt-minigrid">
+    <?php /* id, not just a class: layoffs.js marks this whole grid busy while
+             the one /aggregate call every chart in it depends on is in
+             flight (busyTrack in assets/layoffs.js). */ ?>
+    <div class="alt-minigrid" id="alt-minigrid">
         <div class="alt-grid-h"><h2>Where the cuts are</h2><p>Geography first: the map plots every cut with a named place, then the state and country rankings below it.</p></div>
         <div class="alt-mini alt-chart-card alt-map-card" id="alt-map-card">
             <div class="alt-chart-head">
@@ -1210,15 +1213,32 @@ $alt_hero_basis  = 'counted by filing date';
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
-            <?php /* REWRITTEN WITH THE DEFAULT, and it had to be: this paragraph
-                     argued FOR the effective date as the default ("that is what
-                     a worker lives through"), so the moment the default became
-                     the filing date it contradicted the control it explained.
-                     The effective-date reasoning is NOT deleted. It is the
-                     second half of this paragraph, stated as the real question
-                     it answers, one click away. Anchored so the hero's
-                     "Why two figures" link lands here. */ ?>
-            <p id="alt-basis-explainer"><b>4 &middot; We count each cut on the day it was filed, and you can recount it on the day it takes effect.</b> Layoffs are reported nearly everywhere on the filing date. That is the day a WARN notice reaches the state, or the day a company announces the cut. It is our default, so the figure at the top of this page can be set beside a national estimate for the same month and read directly against it. The effective date answers a different and equally real question: when the jobs actually ended. That is what a worker lives through, and what a labour-market reader often wants. Neither basis is the true one. We store both dates on every row, and the &ldquo;Count layoffs by&rdquo; control recounts every figure, chart and table here on either. The gap between them is not noise. Companies file notices weeks or months ahead, so in any given month the two totals can differ widely. The line under the headline figure shows how they split.</p>
+            <?php /* PARAGRAPH 4 IS THE MONTH-TO-MONTH RECONCILIATION, and it is
+                     the one a reader arrives holding: our figure for a month
+                     against the US national survey's figure for the same month,
+                     two different totals, and the assumption that one of us is
+                     wrong.
+
+                     THE DEFAULT MOVED, AND THIS PARAGRAPH MOVED WITH IT. It
+                     used to argue FOR the effective date as the default ("that
+                     is what a worker lives through"), which contradicted the
+                     control the moment the default became the filing date. The
+                     effective-date reasoning is not deleted; it is the second
+                     half, stated as the real question it answers, one click
+                     away. What this revision adds is the comparison itself: say
+                     what the survey is counting, say what we are counting, name
+                     BOTH toggle options in the exact words printed on the
+                     buttons, and say what stands behind our rows. A reader who
+                     is told only that "you can recount on either basis" has been
+                     told a control exists somewhere.
+
+                     STANDING RULE: the survey's publisher is never named, here
+                     or anywhere in this repo. "The US national survey" is the
+                     approved framing, and railway/published_figures.py checks
+                     that this explainer is present and open on the live page.
+
+                     Anchored so the hero's "Why two figures" link lands here. */ ?>
+            <p id="alt-basis-explainer"><b>4 &middot; We count each cut on the day it was filed, and you can recount it on the day it takes effect.</b> Layoffs are reported nearly everywhere on the filing date. The US national survey counts announcements made during a month. Our default counts each cut on the day its notice was filed or the cut was announced, which is the same question. So the figure at the top of this page can be set beside a national estimate for the same month and read straight against it. The effective date answers a different and equally real question: when the jobs actually ended. That is what a worker lives through, and what a labour-market reader often wants. Neither basis is the true one. <b>When it was filed</b> is the default, and the one that lines up with the survey. Set &ldquo;Count Layoffs By&rdquo; to <b>When it takes effect</b> and every figure, chart and table here is recounted on it. The gap between the two is not noise. A notice filed in May for a July closing sits in May on the default and in July on the other. In any given month the two totals can differ widely. The line under the headline figure shows how they split. On either basis, every row we count has a filing or a named report behind it.</p>
             <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>. It is smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate. A number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year. We surface AI attributions from primary sources they never itemize.</p>
 
             <p><b>Where we lead, and where we don't, stated honestly.</b> Because our figure is built from receipts, it is not always smaller. Measured like-for-like against the public trackers by category:</p>
