@@ -450,24 +450,37 @@
 
     // Wrap one in-flight promise in the three states. `make` receives an
     // AbortSignal so the deadline can stop the request it gave up on.
-    function busyTrack(id, label, make, retry) {
+    //
+    // `companions` are regions painted by the SAME call, given as [id, label]
+    // pairs. They have to be here rather than managed by the caller, because a
+    // caller can only move them from the promise's own then/catch, and a
+    // promise that never settles never runs either. That is exactly what the
+    // deadline exists for, and it is not hypothetical: the first shipped
+    // version drove the chart grid from the aggregate call's catch, and a
+    // stalled fetch left the tiles correctly in the failed state with the chart
+    // grid spinning underneath them forever. Measured on the live 2.20.8 page.
+    // One deadline now moves every region it started.
+    function busyTrack(id, label, make, retry, companions) {
+        companions = companions || [];
         var st = busyBegin(id, label);
         if (!st) return make(null);
+        companions.forEach(function (c) { busyBegin(c[0], c[1]); });
         var token = st.token;
         var ctrl = null;
         try { ctrl = new AbortController(); } catch (e) { ctrl = null; }
         st.ctrl = ctrl;
         var live = function () { return BUSY[id] && BUSY[id].token === token; };
+        var all = function (fn) { fn(id); companions.forEach(function (c) { fn(c[0]); }); };
         st.timer = setTimeout(function () {
             if (!live()) return;
             if (ctrl) { try { ctrl.abort(); } catch (e) { /* already settled */ } }
-            busyFail(id, 'This is taking longer than usual.', retry);
+            all(function (r) { busyFail(r, 'This is taking longer than usual.', retry); });
         }, LOAD_TIMEOUT_MS);
         return make(ctrl ? ctrl.signal : null).then(function (value) {
-            if (live()) busyClear(id);
+            if (live()) all(busyClear);
             return value;
         }, function (err) {
-            if (live()) busyFail(id, 'We could not load this data.', retry);
+            if (live()) all(function (r) { busyFail(r, 'We could not load this data.', retry); });
             throw err;
         });
     }
@@ -1072,19 +1085,20 @@
         if (boot) { LAST_AGG = boot; renderStats(boot.totals); renderCharts(boot); return; }
         // The tiles and the chart grid are two regions because they are two
         // places a reader looks; both are stale until this one call answers.
-        busyBegin('alt-minigrid', 'Loading the charts');
+        // The grid rides along as a companion so that ONE deadline moves both.
+        // Driving it from the catch below was the bug: a fetch that neither
+        // resolves nor rejects never reaches a catch, so the tiles reported the
+        // timeout honestly while the grid spun under them forever.
         busyTrack('alt-stats-bar', 'Loading the totals', function (signal) {
             return apiGet('aggregate', aggParams, signal);
-        }, fetchAndRenderAggregate)
+        }, fetchAndRenderAggregate, [['alt-minigrid', 'Loading the charts']])
             .then(function (agg) {
-                busyClear('alt-minigrid');
                 if (seq !== AGG_SEQ) return;
                 LAST_AGG = agg;
                 renderStats(agg.totals);
                 renderCharts(agg);
             })
             .catch(function () {
-                busyFail('alt-minigrid', 'We could not load this data.', fetchAndRenderAggregate);
                 if (seq === AGG_SEQ) setStatus('alt-dashboard-status', 'Could not load chart data.', true);
             });
     }
