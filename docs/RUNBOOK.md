@@ -536,7 +536,14 @@ gh workflow run apply-correction.yml -f ids=70289 -f action=trash -f reason="aud
    wrong. Both suppress the original hash so the nightly re-scrape cannot
    resurrect the row, and both append to the PUBLIC corrections log
    automatically. Re-run with `apply=true` once the dry run shows the right row.
-5. Update the published accuracy figure in the FAQ and log the audit in
+5. **Also run `python3 railway/erm_provenance_check.py`** (read-only, keyless).
+   It reads the country each ERM row was IMPORTED with back out of its own
+   excerpt and reports every row that no longer agrees, which is how three
+   already-published Eurofound rows were caught silently re-scored to "United
+   States" on 2026-08-11 (docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md
+   section 8). A sample audit cannot find this class; it is 3 rows in 19,494.
+   Unreadable excerpts are reported as UNCHECKED, never as clean.
+6. Update the published accuracy figure in the FAQ and log the audit in
    TECHLOG under "## Audits". Report register-level rows separately from real
    errors, and say what you could NOT verify.
 

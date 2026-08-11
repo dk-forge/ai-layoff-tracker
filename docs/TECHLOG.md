@@ -1,5 +1,67 @@
 # Tech Log
 
+## 2026-08-11 - the US headline is wrong by 92,000, and the rows say so themselves
+
+`test_no_headline_moves_without_rows_to_explain_it` has been red since
+2026-08-10. The earlier forensic pass
+(docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md, PR #25) established the shape
+of the defect - the US slice rose 92,686 while the worldwide superset it belongs
+to rose 13,264 - and reported the affected rows as UNKNOWN, correctly, because
+`updated_at` did not exist during the window and still cannot see it.
+
+This pass was asked a different question: **is the number published today
+correct**, recomputed from the corpus rather than reconstructed from history.
+The recomputation is what named the rows.
+
+**The published figure is an exact function of the rows.** Walking `/query` for
+the `country_basis=any` US slice returns 43,755 rows summing to 7,162,028; 395
+are superset members that `/aggregate` excludes; 7,162,028 - 100,068 =
+**7,061,960**, the published headline, to the job. The same walk worldwide
+overshoots by **105,513 over 402 rows**, which is exactly what the reconciler's
+own run log reports. Containment holds at row identity on both bases: all 43,755
+US ids appear among the 64,007 worldwide ids.
+
+**And three of those rows contradict their own source.** `erm_import.py` writes
+the country into the excerpt (`f"{rtype} at {company} ({country}): ..."`), so
+every ERM row carries the country it was imported with, in text that is written
+once and never rewritten. Across 19,494 live ERM rows exactly three disagree
+with it - 114335 Citigroup 52,000, 113529 General Motors 47,000, 64351
+Cinemaworld 45,000 - all three imported as "Multiple countries", all three now
+stored as "United States", all three `edited: true`, and all three carrying
+`Country: World` on their own cited Eurofound factsheet. The importer has mapped
+`World` to `Multiple countries` since the day it was written, so it never
+produced these values; they were written afterwards, through `/edit`.
+
+**They are the step.** Two carry no `employer_country`, so they move the `any`
+slice; Citigroup's is already United States, so it moves only the strict slice.
+That is +144,000 strict, **+92,000 on the published basis, and zero worldwide** -
+against an observed +92,686 US and +13,264 worldwide, leaving +686 of ordinary
+US ingest. The 79,422 nobody could place is not a quantity in the data: it is
+92,000 of re-scoring minus that day's 12,578 of non-US ingest, which is why
+searching the corpus for it finds nothing. Correcting the three leaves the
+headline at 6,969,960 against a pre-step baseline of 6,968,670 - **+1,290 over
+four days**, against a floor of 20,000 a day. The step disappears.
+
+**No row was written and the incident was left OPEN.** A country relabel needs
+no purge-and-reimport (the dedup hash keys on the count), and the exact
+`Apply a signed-off correction` dispatch is written out in section 8.5 of the
+forensics doc, along with the corrections-log entry to ship WITH it rather than
+before it. Naming a cause does not close an incident; a landed correction and an
+agreeing recomputation do. Nothing here advances the baseline or widens
+`move_floor`, `mean_factor` or `max_share`.
+
+**Guard.** `railway/erm_provenance_check.py`, read-only and keyless, reads the
+imported country back out of each ERM excerpt and reports every row that no
+longer agrees. It found these three from public endpoints alone and would have
+found them on the day. It is deliberately NOT in `data_integrity.INVARIANTS`
+yet: it fails right now for the right reason, and a live check that goes red
+before its own defect is fixed manufactures exactly the alert noise the sticky
+ledger exists to avoid. Wire it in the session that applies the correction.
+`test_erm_provenance_check.py` is offline and fails on the pre-fix tree. Its
+bracket case is not decoration: anchoring the parse on the first parenthesis
+reads a company's own abbreviation as the country and fails on 459 of 19,494
+rows, and those rows resolve to UNCHECKED, never to clean.
+
 ## 2026-08-11 - the fix for the forever-spinner had a forever-spinner in it (2.20.9)
 
 Found by driving the live 2.20.8 page rather than by reading the diff: with
