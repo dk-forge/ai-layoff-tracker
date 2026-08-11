@@ -272,8 +272,10 @@ jobs:
             exit 1
           fi
           if [ "$STATUS" = "3" ]; then
-            echo "::warning::Rendered contrast could NOT be measured. This is \
-UNKNOWN, not a pass; the daily Rendered contrast audit will go red if it \
-persists."
+            # One line, no backslash continuations: a continuation that starts
+            # at column 0 is BELOW this block scalar's indentation, which ends
+            # the block and stops the whole file parsing. That is what broke
+            # the 2.20.7 deploy.
+            echo "::warning::Rendered contrast could NOT be measured. This is UNKNOWN, not a pass; the daily Rendered contrast audit goes red if it persists."
           fi
           exit 0
