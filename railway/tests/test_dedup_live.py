@@ -177,6 +177,24 @@ class DedupLiveRegression(unittest.TestCase):
 LIVE_ONLY = tuple(i for i in INVARIANTS if getattr(i, "reads_live_data", True))
 
 
+def _without_open_incidents(invariants):
+    """The same registry, with the movement guard pointed at an EMPTY ledger.
+
+    An open incident in `railway/headline_incidents.json` makes its slice report
+    FAIL *on purpose*, and deliberately without consulting the network — time,
+    later rows and an unreachable API must not close an incident. The
+    degradation tests below are claims about TRANSPORT: "a dead network can
+    never produce a pass". Leaving a real standing incident in the registry
+    would let a true statement about that incident answer a question nobody
+    asked here, and the tests would go red the moment one is open.
+    """
+    empty = Path(__file__).with_name("no-such-incident-ledger.json")
+    assert not empty.exists(), f"{empty} must not exist — it stands in for an empty ledger"
+    return tuple(data_integrity.MovementInvariant(incidents_path=empty)
+                 if isinstance(i, data_integrity.MovementInvariant) else i
+                 for i in invariants)
+
+
 class DegradationContract(unittest.TestCase):
     """Offline unit tests for the honest-degradation rules. These need no
     network, so they still run (and still protect the contract) in the CI job
@@ -191,7 +209,8 @@ class DegradationContract(unittest.TestCase):
     def test_unreachable_is_unknown_never_pass(self):
         def dead(url, timeout):
             raise OSError("Network is unreachable")
-        report = data_integrity.check_all(fetch=dead, invariants=LIVE_ONLY)
+        report = data_integrity.check_all(fetch=dead,
+                                          invariants=_without_open_incidents(LIVE_ONLY))
         self.assertEqual(report.verdict, UNKNOWN)
         self.assertEqual(report.passed, [])
         self.assertTrue(all(r.transport for r in report.unknown))
@@ -209,7 +228,8 @@ class DegradationContract(unittest.TestCase):
     def test_empty_payload_is_unknown_not_pass(self):
         # The sibling repo's failure mode in miniature: a response that carries
         # no answer must never be scored as a good answer.
-        report = data_integrity.check_all(fetch=lambda url, timeout: b"{}")
+        report = data_integrity.check_all(fetch=lambda url, timeout: b"{}",
+                                          invariants=_without_open_incidents(INVARIANTS))
         self.assertEqual(report.verdict, UNKNOWN)
 
     def test_a_confirmed_failure_outranks_an_unverifiable_one(self):

@@ -122,6 +122,16 @@ the end check.
 - **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Competitor tracking lives ENTIRELY in the local benchmark (`gen.py` reads only our own `agg_*.json`; the competitor figures are maintained by hand in `scratchpad/bm-live.html`). **No secret is involved and none is needed.** The `BENCHMARK_FEED_URLS`/`BENCHMARK_COMPANIES` secrets power a SEPARATE, OPTIONAL automated loop (`tracker-diff`) that is **dormant by the owner's decision (2026-07-28)** — it exits green on its schedule and costs nothing. **Do not ask the owner to add those secrets.**
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
 - **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
+- **A headline FAIL is closed by a human, never by the calendar.** A failing
+  `headline_movement` slice opens a sticky incident in
+  `railway/headline_incidents.json`, and that slice reports FAIL until someone
+  closes it with `--close-incident` (reviewer + reason + **the affected row IDs**
+  + an explicit replacement baseline). It exists because two individually correct
+  guards agreed to erase the open US incident on 2026-08-22: the recorder pins a
+  failing slice's baseline, and a baseline past `MAX_BASELINE_AGE_DAYS` used to
+  age into a recordable UNKNOWN. Two other clocks widen the same way — `floor =
+  move_floor * span` and `allowance = |Δentries| * base_mean * mean_factor` — so
+  waiting was never neutral. Never close one by editing either JSON by hand.
 - **Retiring a source takes THREE steps**, and skipping the third silently voids the second: (1) drop it from `cron.py`, (2) add it to `alt_retired_sources()` in db.php, (3) **stop every remaining path that posts health under that id**. `alt_retired_sources()` deliberately refuses to mask a row whose last run postdates the retirement, so one forgotten weekly job keeps a retired collector looking live forever. Also: a staleness ceiling must match the job's REAL cadence — a 2-day ceiling on a weekly job is permanent noise that hides real breakage.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 

@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write   # commit railway/headline_baseline.json
+  contents: write   # commit railway/headline_baseline.json + headline_incidents.json
 
 jobs:
   check:
@@ -63,7 +63,13 @@ jobs:
           set -o pipefail
           python data_integrity.py --report --record-baseline | tee "$GITHUB_STEP_SUMMARY"
 
-      # THE BASELINE THIS RUN JUST OBSERVED.
+      # THE BASELINE THIS RUN JUST OBSERVED, AND ANY INCIDENT IT OPENED.
+      #
+      # headline_incidents.json travels with the baseline and for a stronger
+      # reason: an incident that lives only in a runner is an incident that is
+      # gone by tomorrow, and "gone by tomorrow" is precisely the laundering it
+      # exists to stop. A FAIL opens one; only `--close-incident` (reviewer +
+      # reason + row IDs + an explicit replacement baseline) closes one.
       #
       # headline_movement compares each published headline against what it read
       # yesterday, and that comparison has to survive the runner being thrown
@@ -76,16 +82,16 @@ jobs:
       # advance a FAILING slice (recording it would make the defect tomorrow's
       # normal) but does advance the slices that passed, so one bad headline
       # cannot freeze the others' baselines into staleness.
-      - name: Commit the headline baseline
+      - name: Commit the headline baseline and incident ledger
         if: ${{ !cancelled() }}
         run: |
           set -euo pipefail
           git config user.name  'ai-layoff-tracker-bot'
           git config user.email 'bot@users.noreply.github.com'
           for attempt in 1 2 3; do
-            git add railway/headline_baseline.json 2>/dev/null || true
+            git add railway/headline_baseline.json railway/headline_incidents.json 2>/dev/null || true
             if git diff --staged --quiet; then
-              echo "Baseline unchanged."
+              echo "Baseline and incident ledger unchanged."
               exit 0
             fi
             git commit -q -m "data-integrity: headline baseline $(date -u +%Y-%m-%dT%H:%MZ)"

@@ -169,6 +169,35 @@ incident record that only a reviewed reason plus affected row IDs can close.
 UNVERIFIED: whether a slice that goes UNKNOWN-stale and is then recorded also
 resets anything else downstream.
 
+**FIXED 2026-08-10 (branch `claude/sticky-headline-incidents`).** The sticky
+incident record is in: `railway/headline_incidents.json`, read by
+`MovementInvariant` and written by `record_baseline`. A rendered FAIL opens an
+incident, and from that moment the slice's verdict is FAIL **because the
+incident is open**, not because the formula is re-derived each day — which is
+the point, since every input to that formula (span, later arrivals, baseline
+age) drifts in the forgiving direction while an incident sits. Closing takes
+`--close-incident <slice> --reviewed-by --reason --rows --replacement-jobs
+--replacement-entries`; all five are required and it writes nothing if any is
+missing. Second lock: `record_baseline` refuses to advance any slice with an
+open incident whatever state it reports. An unreadable ledger is
+UNKNOWN-and-suppressed for every slice, so `rm headline_incidents.json` is not a
+way to clear a FAIL either. No bound was touched — `move_floor`, `mean_factor`,
+`max_share` and `MAX_BASELINE_AGE_DAYS` are unchanged, and the stale-baseline
+UNKNOWN still records for slices with no incident open, so the guard still
+cannot freeze unarmed. The live us_all_time incident ships in the ledger, open.
+The laundering was replayed on the pre-fix module to confirm the date arithmetic
+rather than assume it: at day 20 the old code returns UNKNOWN and writes the
+failing figure as the new baseline. Regression test:
+`StickyIncidents.test_time_and_later_rows_cannot_close_an_open_incident`.
+
+The UNVERIFIED question is answered. `record_baseline` writes exactly one file,
+`headline_baseline.json`, and resets nothing else — so the laundering had no
+direct downstream reach. Its INDIRECT reach is the whole point and is total:
+with the baseline moved, the next run's slice reads PASS, and every consumer of
+that one verdict follows it green — `ops_status [3]`, the public health ledger,
+the weekly digest, `test_dedup_live`. One quiet file write, four surfaces
+turning green, no row corrected.
+
 ### 2. The published US headline is already strict job-location. Three artifacts say otherwise.
 
 REFUTES the reviewer, and REFUTES section 6 of
