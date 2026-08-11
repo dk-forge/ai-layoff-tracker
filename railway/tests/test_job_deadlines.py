@@ -267,11 +267,12 @@ class SweepOwnsItsClock(unittest.TestCase):
                                 "per-article model calls inside each event")
 
     def test_the_sweep_deadline_is_above_its_measured_max(self):
-        # 888s was the slowest healthy script run (2026-08-07). A deadline at
-        # or below it would truncate work that finishes fine today.
+        # 1022s is the slowest healthy script run (dispatch 31469499159,
+        # 2026-08-11, all 20 events checked). A deadline at or below it would
+        # truncate work that finishes fine today.
         m = re.search(r"AI_SWEEP_DEADLINE_SECONDS:\s*'(\d+)'", SWEEP_YML)
         self.assertIsNotNone(m)
-        self.assertGreater(int(m.group(1)), 888)
+        self.assertGreater(int(m.group(1)), 1022)
 
 
 if __name__ == "__main__":
