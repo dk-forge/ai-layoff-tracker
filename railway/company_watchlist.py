@@ -42,6 +42,22 @@ BATCH = max(1, int(os.environ.get("WATCHLIST_BATCH", "60")))
 # separate path — GDELT / direct add — since free NewsAPI can't reach them.)
 DAYS_BACK = max(7, min(28, int(os.environ.get("WATCHLIST_DAYS_BACK", "28"))))
 DEADLINE = max(60, int(os.environ.get("WATCHLIST_DEADLINE_SECONDS", "900")))
+# HOW MANY COMPANY-TARGETED NEWS QUERIES ONE RUN MAY SEND.
+#
+# One query per company is what this collector is FOR, and it is also the
+# constraint that decides how big a sweep can honestly be: NewsAPI's Developer
+# plan gives the whole key 100 requests/day, and the twice-daily cron spends 6
+# of them on the discovery set that is the tracker's primary AI-attribution
+# channel. A watchlist run that sends 150 company queries does not sweep 150
+# companies - it exhausts the day's quota and 429s the cron.
+#
+# So the honest ceiling on a company-targeted pass is ~90 companies/day on this
+# plan, not the 9,504-name universe. `already_have()` costs nothing against
+# this budget (it reads our own API), so the universe can still be WALKED at
+# full speed; it is only the companies with no current-year entry that cost a
+# request. Default 40 leaves the cron's 6 and most of the day's headroom
+# untouched.
+NEWS_BUDGET = max(0, int(os.environ.get("WATCHLIST_NEWS_BUDGET", "40")))
 DRY_RUN = os.environ.get("WATCHLIST_DRY_RUN", "").lower() in {"1", "true", "yes"}
 WATCHLIST_PATH = os.path.join(os.path.dirname(__file__), "seed_data", "company_watchlist.csv")
 
@@ -154,11 +170,27 @@ def run():
                              f"checked {len(todays)}, none missing this slice")
         return
 
+    # Bound the run by the news-request budget BEFORE spending any of it, and
+    # record the shortfall as a truncation. A sweep that queried 40 of 53
+    # missing companies has not swept the slice, and its "0 posted" must not be
+    # readable as "these 53 companies have no cuts".
+    unqueried = 0
+    if NEWS_BUDGET and len(missing) > NEWS_BUDGET:
+        unqueried = len(missing) - NEWS_BUDGET
+        missing = missing[:NEWS_BUDGET]
+        why = (f"news-request budget {NEWS_BUDGET}/run reached; {unqueried} "
+               f"missing compan{'y' if unqueried == 1 else 'ies'} were not queried")
+        print(f"::warning::watchlist: {why}. They are deferred, not cleared.")
+        spend.note_truncated(why)
+    os.environ.setdefault("NEWSAPI_MAX_REQUESTS", str(NEWS_BUDGET or 0))
+
     posted = ai = extract_fail = 0
     started = time.monotonic()
     for i in range(0, len(missing), 20):
         if time.monotonic() - started > DEADLINE:
             print(f"deadline hit after {i} companies; remaining resume next run")
+            spend.note_truncated(f"wall-clock deadline {DEADLINE}s reached after "
+                                 f"{i} of {len(missing)} companies")
             break
         chunk = missing[i:i + 20]
         try:
@@ -195,10 +227,14 @@ def run():
                 print(f"post error: {exc}")
         time.sleep(1)
 
-    detail = (f"checked {len(todays)} watchlist companies, {len(missing)} missing, "
-              f"{posted} posted ({ai} AI-attributed), {extract_fail} extract fails")
+    detail = (f"checked {len(todays)} watchlist companies, {len(missing)} queried"
+              + (f" ({unqueried} over budget, deferred)" if unqueried else "")
+              + f", {posted} posted ({ai} AI-attributed), {extract_fail} extract fails")
     print("watchlist sweep:", detail)
-    spend.record_job_run(items=len(todays), stored=posted)
+    # `items` is companies actually QUERIED, not companies in the slice. The
+    # slice size was what this job used to report, and it is the number that
+    # made "0 rows from 150 companies" look like evidence about 150 companies.
+    spend.record_job_run(items=len(missing), stored=posted)
     if not DRY_RUN and not report_source_health("company_watchlist", "ok", posted, detail):
         # Completion telemetry: the sweep already finished, so a failed health
         # write is a warning, never a reason to fail the run and page the owner.
