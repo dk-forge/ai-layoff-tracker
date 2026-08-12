@@ -1,23 +1,36 @@
 {
-  "closed": [],
-  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say — that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {
-    "us_all_time": {
+  "closed": [
+    {
+      "affected_row_ids": [
+        "114335",
+        "113529",
+        "64351"
+      ],
       "baseline_at_open": {
         "captured_at": "2026-08-07T18:23:51Z",
         "entries": 43341,
         "jobs": 6968670
       },
+      "closed_at": "2026-08-12T04:42:24Z",
       "detail": "+93,210 jobs over 3.0d on +18 entries (6,968,670 -> 7,061,880). The rows that changed carry at most 34,730 and the largest single row is 60,000, so NO ROW EXPLAINS THIS. Something re-scored rows that were already published: check the last reconcile-supersets run, any /bulk-purge, and the corrections log",
       "label": "United States jobs, all time",
-      "note": "Recorded retroactively when the sticky ledger shipped. The FAIL itself has been open since the 2026-08-08 daily run — the baseline has been pinned at 2026-08-07T18:23:51Z ever since, which is what record_baseline refusing to advance a failing slice looks like. Left to the previous code this incident would have been adopted as the new normal by the 2026-08-22 run, when the pinned baseline passed MAX_BASELINE_AGE_DAYS. `detail` and `observed_at_open` are the reading from ops_status.py [3] on 2026-08-10; `entries` there is the baseline's 43,341 plus the +18 the check reported, not a separately fetched figure. docs/HANDOFF.md #29 item 1 has the full account.",
+      "note": "Recorded retroactively when the sticky ledger shipped. The FAIL itself has been open since the 2026-08-08 daily run \u2014 the baseline has been pinned at 2026-08-07T18:23:51Z ever since, which is what record_baseline refusing to advance a failing slice looks like. Left to the previous code this incident would have been adopted as the new normal by the 2026-08-22 run, when the pinned baseline passed MAX_BASELINE_AGE_DAYS. `detail` and `observed_at_open` are the reading from ops_status.py [3] on 2026-08-10; `entries` there is the baseline's 43,341 plus the +18 the check reported, not a separately fetched figure. docs/HANDOFF.md #29 item 1 has the full account.",
       "observed_at_open": {
         "captured_at": "2026-08-10T19:36:59Z",
         "entries": 43359,
         "jobs": 7061880
       },
-      "opened_at": "2026-08-10T19:36:59Z"
+      "opened_at": "2026-08-10T19:36:59Z",
+      "reason": "Traced to daily_classification_spotcheck.py, which sampled the 15 largest rows by job_count and auto-applied model-confirmed country relabels with no magnitude bound, no cap and no human. On 2026-08-08 it moved three ERM rows off 'Multiple countries' to 'United States'. Reverted 2026-08-12T01:51Z; the public corrections log records 'ERM country reverted to the value Eurofound records', 144,000 jobs across 3 rows, all three factsheets stating Country = World. Only 92,000 of that 144,000 could ever move THIS headline: Citigroup 52,000 already sat inside the country_basis=any slice through its employer_country=United States HQ stamp, so relabelling its job-location country added nothing here. General Motors 47,000 + Cinemaworld 45,000 = 92,000 moved, plus 1,210 of legitimate arrivals on +18 entries, which is the +93,210 this incident recorded. Mechanism bounded in 68bd698: AUTO_APPLY_MAX_JOBS=5000, any country relabel off a worldwide label refused at any size, enforced in the function that POSTs. Replacement baseline measured live 2026-08-12: +9,433 jobs over 4.4d against a floor of 88,019.",
+      "replacement_baseline": {
+        "captured_at": "2026-08-12T04:42:24Z",
+        "entries": 43368,
+        "jobs": 6978103
+      },
+      "reviewed_by": "dak"
     }
-  },
-  "written_at": "2026-08-10T19:36:59Z"
+  ],
+  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
+  "open": {},
+  "written_at": "2026-08-12T04:42:24Z"
 }

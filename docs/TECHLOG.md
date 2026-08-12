@@ -1,5 +1,53 @@
 # Tech Log
 
+## 2026-08-12 - the US incident is closed, and closing it broke the closer twice (railway only, no deploy)
+
+`us_all_time` is CLOSED, reviewed by the owner, and `ops_status.py [3]` reads
+**15 of 15 verified and passing** for the first time since 2026-08-08.
+
+**The finding, and the number that reconciles three others.** The cause was
+`daily_classification_spotcheck.py` relabelling three ERM rows off
+`Multiple countries` (traced and bounded in the entry below). Three sources
+disagreed about the size and all three were right:
+
+| Source | Figure |
+|---|---:|
+| public corrections log | 144,000 relabelled across 3 rows |
+| the guard commit | 92,000 reached the US headline |
+| the incident record | +93,210 |
+
+**Citigroup's 52,000 was already inside the `country_basis=any` slice** through
+its `employer_country = United States` HQ stamp, so relabelling its job-location
+country moved nothing here. General Motors 47,000 + Cinemaworld 45,000 = 92,000
+moved, and +1,210 of legitimate arrivals on +18 entries is the rest. Rows
+114335, 113529, 64351; replacement baseline 6,978,103 jobs / 43,368 entries,
+measured live at +9,433 over 4.4d against a floor of 88,019.
+
+**Running the closer for real found two defects in it, and only running it
+could.** This is the one command in the repo a human is REQUIRED to run, and it
+had never been executed end to end.
+
+* **`--rows` silently kept the first ID and dropped the rest.** It read
+  `_arg(argv, "--rows", "")`, one token, then split on commas and spaces.
+  `--rows 114335,113529,64351` worked; `--rows 114335 113529 64351`, which is
+  what a person types, stored ONLY 114335 and exited zero. The first close
+  attempt did exactly that and had to be reverted before it was committed.
+  This is the worst field in the record to truncate quietly: `--rows` exists
+  because "if they cannot be named, the cause has not been found", so a silent
+  partial list is a closed incident asserting a finding nobody made, inside the
+  file that is the audit trail for precisely that. `_multi_arg` now takes every
+  value up to the next `--flag` and accepts all three spellings.
+* **Every successful close crashed after writing.** The summary printed
+  `closed['slice']`; the record carries `label` and no `slice`. So the ledger
+  and the replacement baseline were written, then `KeyError`, then a non-zero
+  exit. Success looked like failure, which invites the reviewer to run it again
+  on an incident that is already closed.
+
+Neither was reachable by reading the source: the parser did exactly what it
+said, on one token. The tests DRIVE `main()` against a temp ledger and read
+what was stored; 6 of 7 were red beforehand, and the seventh (an empty `--rows`
+is still refused) is a regression bar on the gate itself.
+
 ## 2026-08-12 - a collector that was parked read as one that died, and a floor that was not under the page (2.20.17)
 
 Two published statements that did not describe the thing they named. Neither is

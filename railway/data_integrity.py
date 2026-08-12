@@ -1793,6 +1793,29 @@ def _arg(argv, flag, default=None):
         else default
 
 
+def _multi_arg(argv, flag):
+    """Every value after `flag` up to the next `--flag`, comma or space separated.
+
+    `_arg` takes exactly one token, which is correct for --reason and --reviewed-by
+    and silently lossy for a list. Both spellings a reviewer would reasonably
+    type now mean the same thing:
+
+        --rows 114335 113529 64351
+        --rows 114335,113529,64351
+
+    Splitting on commas AND whitespace keeps the old quoted form working, so a
+    documented invocation from before this change still records what it says.
+    """
+    if flag not in argv:
+        return []
+    out = []
+    for tok in argv[argv.index(flag) + 1:]:
+        if tok.startswith("--"):
+            break
+        out.extend(p for p in tok.replace(",", " ").split() if p)
+    return out
+
+
 def _print_incidents(ledger):
     open_ = ledger.get("open") or {}
     if not open_:
@@ -1819,7 +1842,22 @@ def main(argv=None):
         _print_incidents(load_incidents())
         return 0
     if "--close-incident" in argv:
-        rows = [r for r in (_arg(argv, "--rows", "") or "").replace(" ", ",").split(",") if r]
+        # --rows TAKES EVERY VALUE UNTIL THE NEXT FLAG, and that is the fix.
+        #
+        # This read `_arg(argv, "--rows", "")`, which takes the single token
+        # after the flag and then splits it on commas and spaces. Comma-joined
+        # or quoted input worked; the natural `--rows 114335 113529 64351`
+        # silently recorded ONLY 114335 and dropped the rest, with no error and
+        # a zero exit. On 2026-08-12 that closed the us_all_time incident
+        # naming one of the three ERM rows it was about.
+        #
+        # That is the worst possible field to truncate quietly. `--rows` exists
+        # because "if they cannot be named, the cause has not been found" (see
+        # close_incident), so a partial list is a closed incident asserting a
+        # finding nobody made. Silence is the whole defect: the reviewer typed
+        # three IDs, the ledger stored one, and the printed summary is the only
+        # place the difference would ever have shown.
+        rows = _multi_arg(argv, "--rows")
         try:
             closed = close_incident(
                 _arg(argv, "--close-incident"),
@@ -1833,7 +1871,14 @@ def main(argv=None):
             print("Nothing was written. An incident closes on a finding, not on a flag.")
             return 2
         rb = closed["replacement_baseline"]
-        print(f"CLOSED {closed['slice']} — reviewed by {closed['reviewed_by']}")
+        # `closed` is the stored record, which carries `label`, not `slice`: this
+        # line raised KeyError on EVERY successful close, after the ledger and
+        # the replacement baseline had already been written. So the one command
+        # in this repo that a human is required to run printed a traceback and
+        # exited non-zero on success, which reads as "it failed, run it again".
+        # The slice name is the key the record was filed under, not a field
+        # inside it, so it comes from the argument.
+        print(f"CLOSED {_arg(argv, '--close-incident')} — reviewed by {closed['reviewed_by']}")
         print(f"  rows: {', '.join(closed['affected_row_ids'])}")
         print(f"  replacement baseline: {rb['jobs']:,} jobs / {rb['entries']:,} entries")
         print(f"  COMMIT both {INCIDENTS_PATH.name} and {BASELINE_PATH.name}.")

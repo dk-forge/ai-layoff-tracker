@@ -7,9 +7,9 @@
       "jobs": 215065
     },
     "us_all_time": {
-      "captured_at": "2026-08-07T18:23:51Z",
-      "entries": 43341,
-      "jobs": 6968670
+      "captured_at": "2026-08-12T04:42:24Z",
+      "entries": 43368,
+      "jobs": 6978103
     },
     "worldwide_all_time": {
       "captured_at": "2026-08-11T18:26:48Z",
@@ -17,5 +17,5 @@
       "jobs": 20379846
     }
   },
-  "written_at": "2026-08-11T18:27:39Z"
+  "written_at": "2026-08-12T04:42:24Z"
 }
