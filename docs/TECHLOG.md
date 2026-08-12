@@ -3,9 +3,19 @@
 ## 2026-08-12 - the twelve gold months, swept; the recall figure did not move, and it was never going to
 
 **Authorised: about \$1.01 to sweep the twelve SEC Item 2.05 gold-set months
-(2025-07..2026-06), predicted recall ~93%. Spent: SPEND_A_PLACEHOLDER. Measured
-recall afterwards: RECALL_A_PLACEHOLDER. The prediction was not close, and the
-reason is a property of the measurement, not of the sweep.**
+(2025-07..2026-06), predicted recall ~93%. Spent: \$0.6012 across three runs.
+Measured recall afterwards: 24/57 = 42.1%, exactly what it was before. The
+prediction was right about the pipeline and wrong about the number, and the
+difference between those two is the whole entry.**
+
+    run           months                    candidates read  posted  cost
+    31570100147   2026-02 (mis-dispatched)              309       1  $0.1061
+    31570908283   2025-07, 2025-08                      653      17  $0.2230
+    31572141302   2025-11, 2025-12, 2026-01             800       1  $0.2721
+                                                      1,762      19  $0.6012
+
+All three `complete: true` - none was truncated by its ceiling. \$0.000341 per
+candidate against the \$0.000310 modelled.
 
 ### Most of the sweep had already happened
 
@@ -31,10 +41,13 @@ them at the filing's exact stated headcount**, and only 6 with nothing at all.
 The collection half of the 2026-08-01 prediction had, in other words, already
 come true and nothing had reported it.
 
-Sweeping the five remaining months finished the job. 2025-07 and 2025-08 alone
-(run 31570908283, 653 candidates, **0 already held** in either month - they had
-genuinely never been searched) posted **17 rows** for \$0.2230, \$0.0131 per
-stored row, and the probe moved to:
+Sweeping the five remaining months finished the job, and the yield was lopsided
+in a way worth recording. 2025-07 and 2025-08 (run 31570908283, 653 candidates,
+**0 already held** in either month - they had genuinely never been searched)
+posted **17 rows** at \$0.0131 per stored row. 2025-11, 2025-12 and 2026-01
+(run 31572141302, 800 candidates, but 34 already held between them) posted
+**1**, at \$0.2721 per stored row - a twentyfold worse rate, because those
+months had been partly reached already. The probe moved to:
 
     missed gold events probed   33        (before -> after)
       any matching row          27 -> 31
@@ -46,7 +59,16 @@ stored row, and the probe moved to:
 headcount.** That is the 2026-08-01 replay forensics reproduced number for
 number on live data - 29 accepted, 28 with the exact count - which is about as
 direct a confirmation as this project gets that the diagnosis was right and the
-fix was the whole fix.
+fix was the whole fix. Sweeping the final three months moved none of these
+counts, which is the correct outcome: those months had already been reached.
+
+**The residual is two events, and they are a real miss, not an unswept month.**
+CODEXIS (2025-11-06, 46) and PLAYSTUDIOS (2026-03-16, 177) still have no row of
+any kind, and both of their months have now been searched - 2025-11 by run
+31572141302 tonight, 2026-03 by the rotation on 2026-08-10. So for these two
+the pipeline read the corpus and produced nothing. That is the honest floor of
+this exercise and the only remaining EDGAR question worth a probe
+(`railway/edgar_recall_probe.py` answers "which stage dropped this filing?").
 
 ### The recall figure cannot move without a human, by design
 
@@ -102,10 +124,17 @@ the empty string, which is falsy, so `|| '1'` wins - the rotation, on exactly
 the dispatch that asked for a range. Run 31570100147 was dispatched for
 2025-07..2025-12, printed `explicit range 2025-07-01..2025-12-31` in its own
 notice, and three lines later printed `Backfill 2026-02-01 -> 2026-02-28`. It
-swept the rotation's month for \$0.1061. (2026-02 is itself a gold month, so
-the money bought a real sweep, just not the one that was asked for.) Now an
-explicit `'range'`/`'rotate'` mode, and `backfill.py` refuses a contradictory
-environment loudly instead of silently preferring one.
+swept the rotation's month for \$0.1061. Now an explicit `'range'`/`'rotate'`
+mode, and `backfill.py` refuses a contradictory environment loudly instead of
+silently preferring one.
+
+**What that mistake cost, exactly: \$0.1061, all of it wasted.** 2026-02 is a
+gold month, so it looked like the money bought a real sweep - but the day's
+SCHEDULED run swept 2026-02 anyway forty minutes later (run 31571077391: 343
+candidates, 5 already held, **0 posted**), because the concurrency group
+prevents two runs racing, not two runs doing the same month in sequence. The
+schedule would have found the same filing for free. Recorded here rather than
+netted off: a mis-dispatch that lands on a useful month is still a mis-dispatch.
 
 **The ceiling override is a dispatch input, not a table edit.** A raised
 ceiling written into `JOB_RUN_CEILINGS_USD` is a raised ceiling for every
