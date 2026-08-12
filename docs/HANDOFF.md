@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
+- **STATUS:** HELD
+- **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** — (last: #31, the board's cell links, live-verified inside the 2.20.15 build)
+- **WORKING ON:** the US incident close (prepared for the owner to sign), tracker_diff's dormant health row, the SERP floor, then WARN scrapers for NH/AR/OK/WY
 
 **Left FREE on purpose by the session behind PR #3.** That session was told not
 to push to main, and the baton only gates anything when it is ON main: a claim
