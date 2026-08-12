@@ -114,8 +114,8 @@ checked, not assumed. `railway-cron` is absent on purpose, which is exactly why
 The ladder is a worst case, not a forecast. The committed ledger
 (`railway/spend_jobs.json`, 109 entries, 2026-08-03..08-12) measures **$1.94 of
 actual spend over 10 days, ~$5.8/month**, of which `railway-cron` is $1.0165.
-The $11.10 is what the ceilings would permit if every job hit its cap every run,
-which none of them do. Do not read the spare $1.80 as the real margin; read it
+The $11.70 is what the ceilings would permit if every job hit its cap every run,
+which none of them do. Do not read the spare $1.20 as the real margin; read it
 as the margin on the guarantee.
 
 ### What was checked and not touched
