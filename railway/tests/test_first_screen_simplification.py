@@ -396,7 +396,11 @@ class DisclosureVisibilityTests(unittest.TestCase):
 
     def test_every_tile_explanation_is_a_real_details(self):
         grid = TEMPLATE[at(TEMPLATE, 'id="alt-stats-bar"'):]
-        grid = grid[: grid.index('<details class="alt-stats-derived">')]
+        # The boundary is the derived-totals section. It was a <details> until
+        # the owner asked for its caveat to be readable without a click; the
+        # element changed, what this test asserts about the tiles above it did
+        # not.
+        grid = grid[: grid.index('<section class="alt-stats-derived"')]
         self.assertEqual(5, grid.count("$alt_tile_i("),
                          "a tile lost its (i) or grew a second one")
         # And what that helper emits is a real <details> with a real <summary>:
@@ -410,7 +414,7 @@ class DisclosureVisibilityTests(unittest.TestCase):
 
     def test_no_tile_still_carries_standing_prose(self):
         grid = TEMPLATE[at(TEMPLATE, 'id="alt-stats-bar"'):]
-        grid = grid[: grid.index('<details class="alt-stats-derived">')]
+        grid = grid[: grid.index('<section class="alt-stats-derived"')]
         self.assertNotIn("alt-stat-desc", grid,
                          "a tile still explains itself in a paragraph on its face")
 
@@ -532,8 +536,15 @@ var document = { getElementById: function (id) {
         self.assertEqual(3, n)
 
     def test_a_deep_linked_filter_leaves_the_panel_open(self):
+        # The panel now ships OPEN (the owner asked for the filters to be
+        # visible rather than hidden behind the toggle), and a reader may
+        # collapse it for the session. `chosen` survives that as the term that
+        # WINS: a deep link carrying one of these filters opens the panel even
+        # for a reader who collapsed it, because the control that shaped the
+        # page is never the one we hide. That is what this asserts, and it is
+        # the same guarantee it asserted when the default was closed.
         body = strip_js_comments(jsrun.extract("initFilterPanel", JS_RAW))
-        self.assertIn("setFilterPanelOpen(chosen)", body)
+        self.assertRegex(body, r"setFilterPanelOpen\(\s*chosen\s*\|\|")
         # The years pill is set for every reader on first load, so it is not
         # evidence that anybody chose anything.
         self.assertIn("if (id === 'alt-f-years') return false;", body)

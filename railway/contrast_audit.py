@@ -17,6 +17,14 @@ visible text element, composited against its real background. That is the only
 evidence that survives an override we do not control and cannot see from the
 repo.
 
+It measures TWO things, because they fail independently. Text contrast (1.4.3)
+answers "can I read the words". Control-boundary contrast (1.4.11) answers "can
+I see that this is a control", and nothing measured it until the owner reported
+that the filter bar "gets lost": every outline in that bar was one hairline of
+--alt-border on a surface of the same family, 1.14:1 in light and 1.56:1 in
+dark, with one segmented option at 1.00:1 because its border was transparent.
+Perfectly readable text, invisible controls, and a green audit throughout.
+
   python3 railway/contrast_audit.py                  # all surfaces, both themes
   python3 railway/contrast_audit.py --url <u>        # one page
   python3 railway/contrast_audit.py --json out.json  # machine-readable
@@ -76,16 +84,34 @@ FREEZE_CSS = """
   animation: none !important;
   caret-color: transparent !important;
 }
+/* Smooth scrolling is the same class of measurement lie as a colour
+   transition. `scrollIntoView()` returns before a smooth scroll has finished,
+   so a bounding rect read straight after it is the rect from BEFORE the
+   scroll, and a synthetic click aimed at that rect lands somewhere else
+   entirely. The first mobile walkthrough written against this file reported
+   that the Filters toggle did not respond to a tap; the toggle was fine and
+   the tap was 1500px above it. */
+html, body, * { scroll-behavior: auto !important; }
 """
 
 # WCAG 2.1 AA. Large text is >=24px, or >=18.66px when bold (>=700).
 AA_NORMAL = 4.5
 AA_LARGE = 3.0
+# WCAG 2.1 AA 1.4.11 Non-text Contrast: the visual boundary of a user
+# interface component needs 3:1 against the colours adjacent to it. Text
+# contrast has been measured here since 2026-08-10; component boundaries were
+# not, which is how a filter bar whose every control outline sits at 1.14:1 in
+# light and 1.56:1 in dark passed every check in the repository.
+AA_NONTEXT = 3.0
 
-# Read the computed colour of every visible text-bearing element and composite
-# it against the real background stack. Runs in the page; returns plain data.
-PROBE_JS = r"""
-(function () {
+# WCAG 2.5.5 target size. The mobile sweep asserts this on filter controls at
+# 375px, where a control is hit with a thumb and not a mouse.
+TAP_MIN = 44.0
+
+# The colour arithmetic, written once. Both probes below paste this in rather
+# than carrying their own copy: two implementations of a contrast ratio is two
+# numbers to reconcile the first time they disagree.
+_COLOR_JS = r"""
   function parse(c) {
     var m = /^rgba?\(([^)]+)\)$/.exec(c || '');
     if (!m) return null;
@@ -144,7 +170,11 @@ PROBE_JS = r"""
       .filter(Boolean).slice(0, 3);
     return cls.length ? s + '.' + cls.join('.') : s;
   }
+"""
 
+# Read the computed colour of every visible text-bearing element and composite
+# it against the real background stack. Runs in the page; returns plain data.
+PROBE_JS = "(function () {" + _COLOR_JS + r"""
   var out = [];
   var all = document.body ? document.body.querySelectorAll('*') : [];
   for (var i = 0; i < all.length; i++) {
@@ -193,6 +223,196 @@ PROBE_JS = r"""
 })()
 """
 
+# ---------------------------------------------------------------------------
+# THE FILTER BAR'S CONTROLS, AND WHETHER YOU CAN SEE WHERE THEY ARE.
+#
+# The text probe above answers "can I read the words". It says nothing about
+# "can I tell this is a control at all", and those are different failures with
+# different causes. The owner's report was "it gets lost": every boundary in
+# this filter bar was one hairline of --alt-border or --alt-grid on a surface
+# of the same family, which measures 1.14:1 in light and 1.56:1 in dark, and
+# one segmented option carried `border: 1px solid transparent` on a tinted
+# track, which is 1.00:1 - no boundary at all, just text sitting on a panel.
+#
+# Every entry here is a control a reader operates in order to change what the
+# page shows. The list is deliberately explicit rather than "everything that
+# looks like a button": a guard that discovers its own scope silently stops
+# covering a control the day its class name changes, and this bar has been
+# rebuilt three times.
+# ---------------------------------------------------------------------------
+FILTER_CONTROLS = (
+    ('date preset',      '#alt-datepresets .alt-dp'),
+    ('date range button', '.alt-range-btn'),
+    ('date from/to',     '#alt-range-pop input[type="date"]'),
+    ('date basis option', '.alt-datebasis-opt'),
+    ('search box',       '#alt-search'),
+    ('sort select',      '#alt-sort'),
+    ('quick view',       '.alt-quickviews .alt-qv'),
+    ('filters toggle',   '#alt-filters-toggle'),
+    ('filter dropdown',  '#alt-filterbar-body .alt-dd'),
+    ('filter text input', '#alt-filterbar-body input[type="text"]'),
+    ('filter number input', '#alt-filterbar-body input[type="number"]'),
+    ('reset button',     '#alt-f-reset'),
+)
+
+# TAP TARGETS THAT ARE NOT BOUNDED CONTROLS.
+#
+# A row inside an open dropdown is something a thumb has to hit, and the first
+# mobile walkthrough measured those rows at 31px. It is NOT a bounded control:
+# the thing WCAG 1.4.11 is about there is the checkbox, which the browser draws
+# itself, and demanding a 3:1 box around every row of a list would be asking
+# for a border nobody wants and no guideline requires. So these are measured
+# for target size and not for a boundary, and the two lists are kept apart so
+# that distinction is visible rather than buried in an exception.
+FILTER_TAP_TARGETS = (
+    ('dropdown option', '.alt-dd-pop .alt-dd-row'),
+)
+
+# Measure the perimeter of each control.
+#
+# THE RULE, stated so it can be argued with. Walking outward across a control's
+# edge a reader crosses at most three colours: the page behind it, the border
+# line, and the fill. The edge is perceivable when SOME adjacent pair along
+# that walk differs by 3:1, so the test is
+#     max(ratio(border, outside), ratio(border, fill)) >= 3
+# when a border line actually paints, and
+#     ratio(fill, outside) >= 3
+# when it does not (zero width, `none`, or a fully transparent colour).
+#
+# Both halves matter and neither alone is right. Dropping the second half
+# passes a control whose border is transparent, which is the exact defect on
+# the inactive segment of the date-basis switch. Dropping ratio(border, fill)
+# fails a filled active pill whose border matches its own fill, which is
+# visible precisely because the fill contrasts with the page.
+#
+# Translucent layers are composited, not swept: `backdrop()` walks up
+# compositing every partially transparent background it meets until it reaches
+# an opaque one, and the border colour is composited over the outside colour
+# before either ratio is taken. Naively reading `backgroundColor` and calling
+# rgba(0,0,0,0) "white" is how the first version of this file reported a clean
+# bar on a page that had none.
+CONTROLS_JS = "(function () {" + _COLOR_JS + r"""
+  var GROUPS = __GROUPS__;
+  var out = [];
+  for (var gi = 0; gi < GROUPS.length; gi++) {
+    var kind = GROUPS[gi][0], sel = GROUPS[gi][1], tapOnly = GROUPS[gi][2];
+    var found;
+    try { found = document.querySelectorAll(sel); } catch (e) { found = []; }
+    for (var i = 0; i < found.length; i++) {
+      var el = found[i];
+      var cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+      var rect = el.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) continue;
+
+      var outside = backdrop(el.parentElement || document.body).color;
+      var own = parse(cs.backgroundColor) || { r: 0, g: 0, b: 0, a: 0 };
+      var fill = over(own, outside);
+
+      // The weakest of the four sides is the one that decides whether the
+      // shape reads, so take the minimum rather than an average.
+      var sides = ['Top', 'Right', 'Bottom', 'Left'];
+      var best = null, line = null, painted = false, widths = [];
+      for (var s = 0; s < sides.length; s++) {
+        var w = parseFloat(cs['border' + sides[s] + 'Width']) || 0;
+        var st = cs['border' + sides[s] + 'Style'];
+        var bc = parse(cs['border' + sides[s] + 'Color']);
+        widths.push(w);
+        var r;
+        if (w <= 0 || st === 'none' || st === 'hidden' || !bc || bc.a === 0) {
+          r = ratio(fill, outside);          // no line: the fill is the edge
+        } else {
+          painted = true;
+          var lc = over(bc, outside);
+          r = Math.max(ratio(lc, outside), ratio(lc, fill));
+          if (line === null) line = lc;
+        }
+        if (best === null || r < best) best = r;
+      }
+
+      out.push({
+        kind: kind,
+        tapOnly: !!tapOnly,
+        sel: selectorOf(el),
+        text: (el.textContent || el.value || el.placeholder || '')
+                .replace(/\s+/g, ' ').trim().slice(0, 40),
+        outside: rgbstr(outside),
+        fill: rgbstr(fill),
+        line: line ? rgbstr(line) : '(none)',
+        bordered: painted,
+        borderWidths: widths,
+        radius: cs.borderTopLeftRadius,
+        fontSize: parseFloat(cs.fontSize) || 0,
+        w: Math.round(rect.width * 10) / 10,
+        h: Math.round(rect.height * 10) / 10,
+        ratio: Math.round(best * 100) / 100
+      });
+    }
+  }
+  return out;
+})()
+"""
+
+
+def controls_js():
+    """The control probe with the selector table baked in.
+
+    Kept as a function so the selector list has ONE definition (the tuple
+    above) and the tests can assert against that tuple rather than against a
+    second copy embedded in a string.
+    """
+    groups = [[k, s, False] for k, s in FILTER_CONTROLS]
+    groups += [[k, s, True] for k, s in FILTER_TAP_TARGETS]
+    return CONTROLS_JS.replace('__GROUPS__', json.dumps(groups))
+
+
+def control_violations(rows, tap_min=None):
+    """Controls whose perimeter is below 3:1, or below the tap floor.
+
+    `tap_min` is opt-in because 44px is a mobile assertion: the same control at
+    a desk is operated with a pointer. Passing it at 1280 would fail the page
+    for a defect that is not there.
+    """
+    bad = []
+    for r in rows:
+        why = []
+        if not r.get('tapOnly') and r['ratio'] < AA_NONTEXT:
+            why.append('boundary %.2f:1 (need %.1f)' % (r['ratio'], AA_NONTEXT))
+        if tap_min and (r['w'] < tap_min or r['h'] < tap_min):
+            why.append('target %.0fx%.0f (need %.0f)' % (r['w'], r['h'], tap_min))
+        if why:
+            r = dict(r)
+            r['why'] = '; '.join(why)
+            bad.append(r)
+    bad.sort(key=lambda r: r['ratio'])
+    return bad
+
+
+# Controls that live behind a disclosure are still controls. The filter panel
+# remembers a reader's collapse choice and the date popover opens on click, so
+# a sweep that measured only what happens to be expanded would report a clean
+# bar by measuring three controls out of twenty-five. This forces every one of
+# them into the layout before the probe runs, and it is a MEASUREMENT-ONLY
+# mutation: nothing here changes a filter value, and the page is reloaded for
+# the next theme anyway.
+REVEAL_JS = r"""
+(function () {
+  // The toggle itself ships `hidden` and is unhidden by layoffs.js, so a
+  // fixture with no script has to be told, and the live page is unaffected.
+  var ids = ['alt-filterbar-body', 'alt-range-pop', 'alt-filters-toggle'];
+  var n = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (el && el.hidden) { el.hidden = false; n++; }
+  }
+  // Every dropdown's option list, which is where the 31px rows were hiding.
+  document.querySelectorAll('.alt-dd-pop[hidden]').forEach(function (p) {
+    p.hidden = false; n++;
+  });
+  return n;
+})()
+"""
+
 
 def _freeze(page):
     page.eval_js(
@@ -229,13 +449,20 @@ def audit_page(page, url, os_scheme, attr):
     page.call('Emulation.setEmulatedMedia', {
         'features': [{'name': 'prefers-color-scheme', 'value': os_scheme}]})
     page.navigate(url)
+    # ORDER MATTERS AND IT IS NOT OBVIOUS. Freeze first, theme second, read
+    # third. `.alt-btn` and every control in the bar carry a background
+    # transition, so a computed background read in the same task that flipped
+    # `data-theme` returns the colour it is transitioning FROM. The first run
+    # of this script invented ten dark-on-dark violations per theme that way.
     _freeze(page)
     body_bg = _apply_theme(page, attr)
     rows = page.eval_js(PROBE_JS)
+    page.eval_js(REVEAL_JS)
+    controls = page.eval_js(controls_js())
     overflow = page.eval_js(
         "JSON.stringify({s: document.documentElement.scrollWidth,"
         " c: document.documentElement.clientWidth})")
-    return rows, body_bg, json.loads(overflow)
+    return rows, controls, body_bg, json.loads(overflow)
 
 
 def violations(rows):
@@ -280,19 +507,32 @@ def main():
                     for theme, os_scheme, attr in themes:
                         label = '%s @%dpx %s' % (name, width, theme)
                         try:
-                            rows, body_bg, ovf = audit_page(
+                            rows, ctls, body_bg, ovf = audit_page(
                                 page, url, os_scheme, attr)
                         except CDPError as exc:
                             report['unknown'].append('%s: %s' % (label, exc))
                             continue
                         bad = violations(rows)
-                        report['fail'] += len(bad)
+                        cbad = control_violations(
+                            ctls, TAP_MIN if width < 768 else None)
+                        # A tracker page that yields zero controls has not been
+                        # checked, and an unchecked filter bar is UNKNOWN. This
+                        # is the failure mode where a class rename quietly
+                        # empties the sweep and every run turns green.
+                        if name == 'tracker' and not ctls:
+                            report['unknown'].append(
+                                '%s: the filter bar matched 0 controls, so its '
+                                'boundaries were not measured' % label)
+                        report['fail'] += len(bad) + len(cbad)
                         report['surfaces'].append({
                             'surface': name, 'url': url, 'theme': theme,
                             'width': width, 'body_bg': body_bg,
                             'measured': len(rows), 'violations': bad,
+                            'controls_measured': len(ctls),
+                            'control_violations': cbad,
                             'scrollWidth': ovf['s'], 'clientWidth': ovf['c'],
                             'rows': rows if args.table or args.json else [],
+                            'controls': ctls if args.table or args.json else [],
                         })
         except CDPUnavailable as exc:
             report['unknown'].append('@%dpx: %s' % (width, exc))
@@ -304,8 +544,8 @@ def main():
             json.dump(report, fh, indent=2)
 
     print('=' * 68)
-    print('RENDERED CONTRAST AUDIT (WCAG AA: %.1f normal, %.1f large)'
-          % (AA_NORMAL, AA_LARGE))
+    print('RENDERED CONTRAST AUDIT (WCAG AA: %.1f normal text, %.1f large '
+          'text, %.1f control boundaries)' % (AA_NORMAL, AA_LARGE, AA_NONTEXT))
     print('=' * 68)
 
     for s in report['surfaces']:
@@ -329,12 +569,43 @@ def main():
                 print('      ... %d more' % (len(s['violations']) - args.limit))
         else:
             print('    PASS: every text element meets AA')
+
+        # The filter bar is only on the tracker page; elsewhere this measures
+        # nothing, and "nothing measured" is reported rather than passed.
+        if s.get('controls_measured'):
+            if s['control_violations']:
+                print('    FAIL %d filter control(s): boundary below %.1f:1%s'
+                      % (len(s['control_violations']), AA_NONTEXT,
+                         ' or target below %.0fpx' % TAP_MIN
+                         if s['width'] < 768 else ''))
+                print('      %-22s %-26s %-16s %-16s %6s  %s'
+                      % ('control', 'selector', 'line', 'outside', 'ratio', 'why'))
+                for v in s['control_violations'][:args.limit]:
+                    print('      %-22s %-26s %-16s %-16s %6.2f  %s'
+                          % (v['kind'][:22], v['sel'][:26], v['line'],
+                             v['outside'], v['ratio'], v['why']))
+                if len(s['control_violations']) > args.limit:
+                    print('      ... %d more'
+                          % (len(s['control_violations']) - args.limit))
+            else:
+                print('    PASS: all %d filter controls have a visible boundary'
+                      % s['controls_measured'])
+        elif s['surface'] == 'tracker':
+            print('    (no filter controls matched — treat as UNKNOWN, the '
+                  'bar did not render or the selectors moved)')
+
         if args.table:
             print('      --- all measured elements ---')
             for r in sorted(s['rows'], key=lambda r: r['ratio']):
                 print('      %-38s %-16s %-16s %6.2f %s'
                       % (r['sel'][:38], r['color'], r['bg'], r['ratio'],
                          'large' if r['large'] else ''))
+            print('      --- all measured controls ---')
+            for r in sorted(s['controls'], key=lambda r: r['ratio']):
+                print('      %-20s %-26s line=%-16s out=%-16s %6.2f  '
+                      '%6.1fx%-5.1f r=%-6s fs=%.1f'
+                      % (r['kind'][:20], r['sel'][:26], r['line'], r['outside'],
+                         r['ratio'], r['w'], r['h'], r['radius'], r['fontSize']))
 
     if report['unknown']:
         print('\nUNKNOWN (could not measure — this is NOT a pass):')
@@ -346,8 +617,8 @@ def main():
         print('RESULT: UNKNOWN — nothing was measured.')
         return 3
     if report['fail']:
-        print('RESULT: FAIL — %d contrast violation(s) are live for readers.'
-              % report['fail'])
+        print('RESULT: FAIL — %d contrast violation(s) are live for readers '
+              '(text and/or control boundaries).' % report['fail'])
         return 2
     if report['unknown']:
         print('RESULT: UNKNOWN — some surfaces measured clean, others could '
