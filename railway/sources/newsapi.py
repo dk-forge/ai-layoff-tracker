@@ -105,13 +105,53 @@ def pull_news_articles(days_back=4, queries=None):
         "%Y-%m-%dT%H:%M:%SZ"
     )
 
+    # THE `queries` ARGUMENT WAS ACCEPTED AND THEN IGNORED (fixed 2026-08-12).
+    #
+    # The docstring above has said since this parameter was added that the
+    # company-watchlist sweep "passes company-targeted queries here to reuse
+    # all of this fetch/domain/shaping logic". The loop below read
+    # `DISCOVERY_QUERIES + _segment_queries_for_now()` unconditionally, so the
+    # caller's list went nowhere. Every company_watchlist.py run therefore
+    # pulled the SAME broad daily discovery set the twice-daily cron had
+    # already pulled, once per 20-company chunk, and paid to re-extract it.
+    #
+    # Measured in run 31512613030 (2026-08-11): three chunks, each printing
+    # "153 unique articles pulled across 6 queries", 112 model calls, $0.0301
+    # spent, 0 rows stored. That is the whole of the collector's six-run
+    # "finds nothing" record. The company dimension - the entire premise, the
+    # thing that was supposed to catch the cuts the broad net does not name -
+    # had never once reached the API.
+    active = tuple(queries) if queries else (tuple(DISCOVERY_QUERIES)
+                                             + tuple(_segment_queries_for_now()))
+
+    # A HARD REQUEST BUDGET, because one query per company meets a 100/day key.
+    # NewsAPI's Developer plan allows 100 requests/day for the WHOLE key, and
+    # that key is also what the twice-daily cron uses for its 6 discovery
+    # requests - the primary AI-attribution channel. A caller handing this
+    # function a list of 150 company queries would exhaust the day's quota in
+    # one run and 429 the cron, turning a watchlist sweep into an outage of the
+    # main news path. The budget is the caller's to set, but it is enforced
+    # here, next to the only loop that can spend it.
+    budget = int(os.environ.get("NEWSAPI_MAX_REQUESTS", "0") or 0)
+    if budget and len(active) > budget:
+        print(f"NewsAPI: {len(active)} queries requested, budget is "
+              f"{budget}/run - sending the first {budget}. The rest are NOT "
+              f"failed, they are unsent, and the caller must treat its pass as "
+              f"partial.")
+        pull_news_articles.budget_truncated = len(active) - budget
+        active = active[:budget]
+    else:
+        pull_news_articles.budget_truncated = 0
+
     results, seen_urls = [], set()
     # Record a hard API error (dead/exhausted key, 429, plan restriction) so the
     # cron caller can report this source DEGRADED instead of a masked "ok" with
     # 0 rows. NewsAPI is the primary AI-attribution channel; a silent zero here
     # starves the site's core differentiator, so it must fail loud.
     pull_news_articles.last_error = None
-    for query in tuple(DISCOVERY_QUERIES) + tuple(_segment_queries_for_now()):
+    pull_news_articles.requests_sent = 0
+    for query in active:
+        pull_news_articles.requests_sent += 1
         params = {
             "q": query,
             "from": from_date,
@@ -159,6 +199,13 @@ def pull_news_articles(days_back=4, queries=None):
             # Preserve a usable result from the other bounded query, but make
             # this source attempt visibly degraded to the cron caller.
             print(f"NewsAPI query error: {e}")
+    # Print what was ACTUALLY sent, not what the default set would have been.
+    # The old line recomputed the default query count regardless of the loop it
+    # had just run, so a caller-supplied set printed "6 queries" - which is how
+    # the ignored `queries` argument stayed invisible in the logs for as long
+    # as it did. A log line that cannot disagree with the code is not evidence.
+    kind = "caller-supplied" if queries else "discovery + rotating segments"
     print(f"NewsAPI: {len(results)} unique articles pulled across "
-          f"{len(DISCOVERY_QUERIES) + len(_segment_queries_for_now())} queries (incl. rotating segments)")
+          f"{pull_news_articles.requests_sent} {kind} quer"
+          f"{'y' if pull_news_articles.requests_sent == 1 else 'ies'}")
     return results

@@ -205,6 +205,33 @@ JOB_RUN_CEILINGS_USD = {
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
 }
 
+# PAID JOBS THE LEDGER MUST COLLECT THAT THE CEILING TABLE DOES NOT NAME.
+#
+# `harvest()` used `set(JOB_RUN_CEILINGS_USD)` as its list of workflows worth
+# reading logs for, which quietly made two different questions one question:
+# "does this job have a NAMED ceiling" and "does this job SPEND". Those came
+# apart on `edgar-history-sweep`, a daily paid job that has never been in the
+# table -- so its cost could not enter railway/spend_jobs.json however loudly
+# backfill.py printed it, and it lived permanently inside the UNATTRIBUTED
+# REMAINDER that unattributed_report() prints.
+#
+# WHY IT IS NOT SIMPLY GIVEN A NAMED CEILING (2026-08-12). Because writing one
+# down is a budget statement, and the arithmetic does not currently close. The
+# sweep's effective ceiling today is the $0.200 global default; at DAILY
+# cadence that is $6.00/month, and the named table's worst case is already
+# $6.60/month beside a MEASURED ~$5.1/month ingest inside a $10 allowance.
+# Adding it at $0.200 makes `test_spend_ledger.
+# NamedCeilingsAreArithmeticNotHope` red, correctly. Its MEASURED cost is
+# lower -- $0.1061 for a full 309-candidate month, run 31570100147, i.e.
+# ~$3/month at daily cadence -- and that does not close the ladder either.
+#
+# Naming a ceiling would therefore mean either asserting $6/month the budget
+# does not have, or throttling a live collector. Both are the owner's call,
+# not this module's. So the job is harvested (it is measured, and the
+# measurement is the input to that decision) and left un-named (no throttle is
+# imposed by a session that was not authorised to impose one).
+LEDGER_ONLY_JOBS = frozenset({"edgar-history-sweep"})
+
 # The committed per-job ledger. One entry per (job, run): what it cost, how
 # many items it touched, what it stored or changed. Jobs only PRINT their
 # SPEND_LEDGER_V1 line; `--harvest` (run by the daily balance job, the only
@@ -833,7 +860,7 @@ def harvest(days: int = 2) -> int:
 
     since = (datetime.datetime.now(datetime.timezone.utc)
              - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
-    wanted = set(JOB_RUN_CEILINGS_USD)
+    wanted = set(JOB_RUN_CEILINGS_USD) | set(LEDGER_ONLY_JOBS)
     found: list[dict] = []
     scanned = 0
     try:
