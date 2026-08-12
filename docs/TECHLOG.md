@@ -363,10 +363,18 @@ resulting `currentParams()` against the href that click suppressed. 8 of its 15
 tests fail on the pre-change tree; the other 7 are named in the file as
 regression bars.
 
-**Rebased onto 2.20.13.** This was measured and written against `ab4dea1` and
-landed after two other sessions' entries below, so the numbers in the table
-above are the 2026-08-11 origin reads, not post-2.20.13 ones; the defect and
-the code paths are unchanged by either. `alt_live_numbers()`, which the entry
+**Bumped 2.20.14, and no reader ever saw that version.** This was measured and
+written against `ab4dea1` and landed while two other sessions were pushing, so
+it sits below their entries here and its deploy run was cancelled by GitHub
+when 2.20.15 queued behind it. The code is live inside 2.20.15, which is what
+`reader_freshness.py` PASSed on and what the after-numbers below were read
+from. The before-numbers in the table above are the 2026-08-11 origin reads;
+the defect and the code paths are unchanged by anything that landed between.
+
+**Verified live after the deploy**, from a reader's view (bare URL, browser
+User-Agent, no cache buster), each cell against the `/aggregate` behind its own
+href: 373/1, 5,621/49, 38,154/124 and 479,410/2,700, all four exact. On the old
+link the same four cells would have opened 373, 4,444, 35,725 and 461,033. `alt_live_numbers()`, which the entry
 below listed beside this one, was fixed in 2.20.12. **Still open from that
 list:** `data_integrity.py`'s `HEADLINES`/`INVARIANTS`, `recall_precision`, and
 the CSV export's missing `announcement_date` column.

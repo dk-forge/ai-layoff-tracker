@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** HELD
-- **HOLDER:** local
+- **STATUS:** FREE
+- **HOLDER:** —
 - **SINCE:** 2026-08-12
-- **WORKING ON:** 2.20.14 - the at-a-glance board's cell links carrying the basis they were counted on, the item 2.20.11 left open
+- **WORKING ON:** — (last: #31, the board's cell links, live-verified inside the 2.20.15 build)
 
 **Left FREE on purpose by the session behind PR #3.** That session was told not
 to push to main, and the baton only gates anything when it is ON main: a claim
@@ -122,6 +122,51 @@ entry in the log below has an UNVERIFIED line. That is not hedging; it is the
 only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
+
+## #31 - the board's cells linked to a page that recounted them (2026-08-12, bumped 2.20.14, shipped inside 2.20.15)
+
+Picked up the second item `ab4dea1` left open, the one #30's entry below also
+names. The at-a-glance board counts on the EFFECTIVE date (deliberate, and its
+footnote says so) and its cell `hrefs` carried only `from`/`to`, so since 2.20.4
+a click landed on a filing-basis view. **Measured on the origin before touching
+anything: YTD workers 479,037 in the cell against 460,660 in the view the link
+opened, 18,377 apart; this month 37,781 against 35,352; this week 14,162 against
+13,071.** Verified live AFTER the deploy, from a reader's view, cell against the
+`/aggregate` behind its own href: 373/1, 5,621/49, 38,154/124, 479,410/2,700,
+all four exact. The old link would still have shown 4,444 for the week and
+461,033 for YTD.
+
+**Both paths or nothing.** The href names `date_basis` AND the `.alt-nfilter`
+click handler reads `data-date-basis` and goes through `setDateBasis()`, because
+the handler `preventDefault()`s the href: fixing one alone makes the same cell
+mean two things depending on whether JS ran. The board's PARAMS were NOT touched
+(`alt_signal_board_periods()` and `P` must stay byte-identical or `takeBoot`
+rejects the inlined board and every first paint costs four fetches), and the
+basis is READ OFF those params rather than hardcoded. New
+`railway/tests/test_board_link_basis.py` RUNS both renderers, php and node: 8 of
+its 15 fail on the pre-change tree, the other 7 are named in the file as
+regression bars.
+
+**One thing fixed that this change caused:** `refreshAll()` does not repaint the
+board, so a basis switch never reached the board's footnote. The two wordings
+moved into `boardBasisNote()` and `renderBasisCopy()` now swaps that one line in
+place with no refetch.
+
+**UNVERIFIED / know before you build on it.** (a) The tap path is proven in node
+against the real handler body, not in a browser: no session here has a DOM. (b)
+Three concurrent sessions were pushing to main during this one. This work landed
+as 2.20.14, a deploy that GitHub cancelled when 2.20.15 queued behind it, so
+**2.20.14 never reached a reader**; the code is live inside 2.20.15, which is
+what `reader_freshness.py` PASSed on. Its work commit also carries a `wip:`
+subject, left rather than force-rewriting shared main history; the TECHLOG entry
+is the record. (c) The baton was claimed and released here, and another session
+pushed 2.20.15 and 2.20.16 to main while it was HELD. If baton discipline
+matters, that is worth the owner knowing.
+
+**Still open in this area:** `data_integrity.py`'s `HEADLINES`/`INVARIANTS` send
+no `date_basis` while their comments claim they use the page's, `recall_precision`
+queries an announcement-year gold set on the effective basis, and the CSV export
+has no `announcement_date` column.
 
 ## #30 - the seventh basis, in the one place a reader cannot see it (2026-08-12, 2.20.12)
 
