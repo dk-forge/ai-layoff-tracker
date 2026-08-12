@@ -682,6 +682,58 @@ class FigureReconciliationInvariant:
                 per.append((sl, di._out(di.PASS,
                             f"{len(series)} months sum to {s:,}, equal to the headline")))
 
+        # --- monthly series: every bucket must sit inside the window it is drawn in
+        #
+        # THE OTHER HALF OF THE SAME DEFECT, and the half a sum cannot catch. A
+        # chart that selects rows by one date and stacks them by another is
+        # wrong in two independent ways: the total drifts (above) AND buckets
+        # appear that the filter excluded. On 2026-08-11 the page's own default
+        # query, years=2026, returned 2027-02 and 2027-03 buckets, because the
+        # WHERE ran on COALESCE(announcement_date, layoff_date) and the GROUP BY
+        # ran on layoff_date. Those two symptoms can also occur ALONE: a
+        # compensating pair of stray buckets can sum to the right number, and a
+        # dropped row can shorten the sum without adding a bucket. So they are
+        # two slices, not one.
+        #
+        # Only years= is checked, and deliberately: it is the one filter whose
+        # correct bucket set is knowable from the request alone, without
+        # re-deriving the server's own window arithmetic here and thereby
+        # grading this checker's copy of it instead of the page.
+        sl = _Slice("series_window", "monthly chart buckets vs the window they are drawn in")
+        want_years = {y.strip() for y in str(params.get("years", "")).split(",") if y.strip()}
+        if not series:
+            per.append((sl, di._out(di.UNKNOWN,
+                        "the live response carried no series block — the chart's "
+                        "buckets are NOT being checked")))
+        elif not want_years:
+            per.append((sl, di._out(di.UNKNOWN,
+                        f"the home query carries no years= filter ({params!r}), so "
+                        "there is no window to hold the buckets against")))
+        else:
+            labelled = [str(p.get("month") or "") for p in series if p.get("month")]
+            stray = sorted({m for m in labelled if m[:4] not in want_years})
+            if not labelled:
+                # Absence of a signal is not a pass. A bucket with no label
+                # cannot be held against the window it is drawn in, and a slice
+                # that quietly skipped those would report "no stray buckets"
+                # about a chart whose buckets it never read.
+                per.append((sl, di._out(di.UNKNOWN,
+                            f"none of the {len(series)} series rows carry a month "
+                            f"key, so the chart's buckets cannot be held against "
+                            f"the {'/'.join(sorted(want_years))} window")))
+            elif stray:
+                per.append((sl, di._out(di.FAIL,
+                            f"the monthly chart is drawn for "
+                            f"{'/'.join(sorted(want_years))} but the response carries "
+                            f"{len(stray)} bucket(s) outside it: {', '.join(stray)}. A "
+                            f"bucket has to contain what its label says it contains, so "
+                            f"the rows were selected on one date and stacked on another",
+                            observed=len(stray))))
+            else:
+                per.append((sl, di._out(di.PASS,
+                            f"all {len(labelled)} labelled buckets fall inside "
+                            f"{'/'.join(sorted(want_years))}")))
+
         # --- reasons doughnut: overlap allowed, unbounded overlap is not
         reasons = payload.get("reasons") or []
         sl = _Slice("reasons", "reasons doughnut vs its own basis")

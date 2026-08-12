@@ -476,7 +476,7 @@ if (!is_array($alt_ps)) {
         <td>The employer states AI or automation is <b>the</b> reason for the cut, with the exact quote on file.</td>
         <td rowspan="2" class="alt-tier-map">Together these are the <b>&#34;AI cuts, verified (specific)&#34;</b> box on the tracker, and the AI figure we headline. Each also has an announced-stage counterpart in <b>&#34;AI cuts, announced&#34;</b>.</td>
         <td><b><?php echo number_format($alt_ps['tiers']['t1']); ?></b></td>
-        <td rowspan="2"><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai' => '1'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Tiers 1 + 2 &rarr;</a><br><small class="alt-muted">One view: the employer's own words. The per-tier split is in the table.</small></td>
+        <td rowspan="2"><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai' => '1', 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Tiers 1 + 2 &rarr;</a><br><small class="alt-muted">One view: the employer's own words. The per-tier split is in the table.</small></td>
       </tr>
       <tr>
         <td><b>Tier 2</b><br><small>AI named among the causes</small></td>
@@ -488,7 +488,7 @@ if (!is_array($alt_ps)) {
         <td>No employer statement. An AI pivot is underway, or the press framed the cut that way. Reported separately and <b>never</b> merged into the tiers above.</td>
         <td>This tier is exactly what the <b>&#34;AI-linked, broad&#34;</b> box adds on top of the specific figure. It is the only reason that box is larger.</td>
         <td><b><?php echo number_format($alt_ps['tiers']['t3']); ?></b></td>
-        <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_broad' => '1'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Tiers 1 + 2 + 3 &rarr;</a></td>
+        <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_broad' => '1', 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Tiers 1 + 2 + 3 &rarr;</a></td>
       </tr>
     </tbody>
   </table></div>

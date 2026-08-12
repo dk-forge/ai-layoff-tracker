@@ -164,8 +164,14 @@ $alt_geo = $alt_us ? " AND country = 'United States'" : '';
 // Every figure on this report links to the tracker filtered to the SAME period
 // (and dimension), so a reader can go from any number straight to the rows and
 // sources behind it - the report is a summary, the link is the receipt.
+// THE LINK CARRIES THE BASIS ITS NUMBER WAS COUNTED ON. Every figure on this
+// page is computed from hardcoded `layoff_date BETWEEN` SQL, so it is an
+// effective-date figure. Since 2.20.4 the tracker DEFAULTS to the filing basis,
+// which means a receipt link that named only the period opened a page counting
+// a different way and showing a different number than the one just clicked.
+// Naming the basis explicitly is what makes the link a receipt again.
 $alt_rlink = function ($extra = array()) use ($alt_from, $alt_to, $alt_us) {
-    $args = array('from' => $alt_from, 'to' => $alt_to);
+    $args = array('from' => $alt_from, 'to' => $alt_to, 'date_basis' => 'effective');
     if ($alt_us) { $args['country'] = 'United States'; }
     return esc_url(add_query_arg(array_merge($args, $extra), home_url('/ai-layoff-tracker/')));
 };
@@ -331,7 +337,7 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
         </li>
         <?php endforeach; ?>
       </ul>
-      <p class="alt-op-aiwords-foot"><a href="<?php echo esc_url(add_query_arg(array('years' => substr($alt_from,0,4), 'ai' => '1'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Open every AI-attributed cut in the tracker, filtered &rarr;</a></p>
+      <p class="alt-op-aiwords-foot"><a href="<?php echo esc_url(add_query_arg(array('years' => substr($alt_from,0,4), 'ai' => '1', 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Open every AI-attributed cut in the tracker, filtered &rarr;</a></p>
     </section>
     <?php endif; ?>
 

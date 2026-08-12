@@ -856,6 +856,44 @@ function alt_filter_param_names() {
 }
 
 /**
+ * THE DATE COLUMN THIS REQUEST IS COUNTED ON. One definition, one caller-visible
+ * expression, for the WHERE clause AND for anything that buckets, orders or
+ * labels a period from the same rows.
+ *
+ *   (default)      layoff_date: when the layoff takes EFFECT (our conservative
+ *                  floor).
+ *   announcement   announcement_date ONLY (strict, source-evidenced; used by
+ *                  benchmark/reconciliation callers that must compare against
+ *                  genuine announcement-stage dates and deliberately exclude
+ *                  rows without one).
+ *   notice         COALESCE(announcement_date, layoff_date): when it was
+ *                  FILED/announced where known, else effective. This is the
+ *                  page's own default since 2.20.4, and the apples-to-apples
+ *                  basis for comparing against WARN aggregators that count by
+ *                  filing date; it never drops a row for lacking a filing date.
+ *
+ * IT IS A FUNCTION BECAUSE IT WAS A LOCAL, AND A LOCAL IS UNREACHABLE. This
+ * expression used to live inside alt_db_where() where nothing else could see
+ * it, so alt_api_aggregate_compute() SELECTed rows through alt_db_where (basis
+ * aware) and then grouped them with a hand-written YEAR(layoff_date) /
+ * MONTH(layoff_date). On the page's own default view the monthly chart
+ * therefore picked rows by one date and bucketed them by another: it drew
+ * 2027-02 and 2027-03 buckets inside a view labelled 2026, and summed to
+ * 480,678 verified jobs under a headline publishing 480,685. Both symptoms are
+ * the same mismatch. Anything that groups, orders, windows or labels a period
+ * over rows selected by alt_db_where must take its date expression from HERE.
+ *
+ * Contains no `%`, so it is safe to inline into SQL that is later run through
+ * $wpdb->prepare(). It names bare columns, so it binds under an alias too.
+ */
+function alt_db_date_col(WP_REST_Request $r) {
+    $db_basis = (string) $r->get_param('date_basis');
+    if ($db_basis === 'announcement') return 'announcement_date';
+    if ($db_basis === 'notice') return 'COALESCE(announcement_date, layoff_date)';
+    return 'layoff_date';
+}
+
+/**
  * Build a parameterized WHERE clause from request filters. `$except` drops one
  * dimension (for slicer charts). Returns array($sql, $params).
  *
@@ -879,26 +917,7 @@ function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
     $params = array();
     // What a correlated subquery must call the outer row.
     $self = ($alias !== '') ? $alias : alt_db_table();
-    // Date basis for period filtering:
-    //   (default)      -> layoff_date: when the layoff takes EFFECT (our
-    //                     conservative floor; what the public UI shows).
-    //   announcement   -> announcement_date ONLY (strict, source-evidenced;
-    //                     used by benchmark/reconciliation callers that must
-    //                     compare against genuine announcement-stage dates and
-    //                     deliberately exclude rows without one).
-    //   notice         -> COALESCE(announcement_date, layoff_date): when it was
-    //                     FILED/announced where known, else effective. This is
-    //                     the apples-to-apples basis for comparing against WARN
-    //                     aggregators that count by filing date; it never drops
-    //                     a row for lacking a filing date.
-    $db_basis = (string) $r->get_param('date_basis');
-    if ($db_basis === 'announcement') {
-        $date_col = 'announcement_date';
-    } elseif ($db_basis === 'notice') {
-        $date_col = 'COALESCE(announcement_date, layoff_date)';
-    } else {
-        $date_col = 'layoff_date';
-    }
+    $date_col = alt_db_date_col($r);
 
     $from = $r->get_param('from');
     $to = $r->get_param('to');
@@ -5096,7 +5115,52 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     $today_sql = current_time('Y-m-d');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $today_sql)) $today_sql = gmdate('Y-m-d');
 
-    // Headline totals
+    /*
+      THE AXIS THIS RESPONSE IS COUNTED ON, taken from the same place
+      alt_db_where() takes it (alt_db_date_col), so the monthly buckets below
+      cannot be keyed on a different date from the one that selected the rows.
+
+      AND WHY `to_date_*` DELIBERATELY DOES NOT USE IT. Every to_date figure
+      below stays pinned to layoff_date, on every basis, and that is not an
+      oversight left over from the effective-date default.
+
+      A bucket must contain what its label says it contains, and these two
+      labels say different things. The bucket key says WHEN THIS WAS COUNTED,
+      so it follows the view's basis. `to_date` says WHAT HAS ALREADY HAPPENED,
+      and the sentence this repo publishes from it is literally "N have taken
+      effect. The other M are filed for effective dates later in <period>"
+      (alt_period_split_short, rendered verbatim by the hero, the press page and
+      renderStats). "Taken effect" is an effective-date claim in any view. Move
+      to_date onto the filed basis and that sentence starts describing filings
+      and keeps the word "effect", which is the exact kind of correct-number-
+      under-a-wrong-label defect the basis work was done to remove.
+
+      It is also the figure's whole reason for existing under this default.
+      Under the filed basis the headline counts a notice on the day it was
+      filed, so the gap between "already happened" and "on file for later" is
+      the arithmetic a journalist needs in order to quote either number, and it
+      is WIDER here than it was on the effective basis, not narrower.
+
+      Consequence to know about, because it changes what the payload looks
+      like: on the filed basis a COMPLETED month can now carry a to_date block
+      (a notice filed in March for an October effective date). The note further
+      down still says to_date appears "in practice on the in-progress month and
+      nothing else" only for the effective basis. Nothing downstream assumes
+      otherwise: toDateMonths() swaps in whatever bucket carries the block, and
+      futureDatedJobs() totals `jobs - to_date.jobs` for every bucket that has
+      one rather than only the current month, so the chart note still names the
+      whole remainder.
+    */
+    $date_col = alt_db_date_col($r);
+
+    // Headline totals.
+    //
+    // min_date/max_date are the COVERAGE of this filtered set and are read as a
+    // period ("Covering 2019 to 2026", schema.org temporalCoverage on the facet
+    // pages), so they run on $date_col: a window selected on the filed basis
+    // whose coverage was reported from layoff_date could claim to cover a year
+    // the filter excluded. The facet pages send no date_basis, so $date_col is
+    // layoff_date there and their published coverage is unchanged.
     $totals = $wpdb->get_row(alt_db_prep(
         "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                 COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' THEN job_count END),0) to_date_jobs,
@@ -5120,8 +5184,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COUNT(DISTINCT NULLIF(industry,'')) industries,
                 COUNT(DISTINCT NULLIF(country,'')) countries,
                 COUNT(DISTINCT NULLIF(state,'')) states,
-                MIN(CASE WHEN layoff_date > '2000-01-01' THEN layoff_date END) min_date,
-                MAX(layoff_date) max_date
+                MIN(CASE WHEN $date_col > '2000-01-01' THEN $date_col END) min_date,
+                MAX($date_col) max_date
          FROM $table WHERE $where_dd", $params));
 
     // ONE ROW'S CONTRIBUTION TO THIS HEADLINE.
@@ -5275,11 +5339,29 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         usort($top_roles, function ($x, $y) { return $y[1] - $x[1]; });
     }
 
-    // Monthly series (all jobs + AI jobs) for trend + cumulative charts.
-    // CONCAT(YEAR,LPAD(MONTH)) avoids '%' so it's safe whether or not this SQL
-    // is run through $wpdb->prepare (which would otherwise eat DATE_FORMAT's %).
+    /*
+      Monthly series (all jobs + AI jobs) for trend + cumulative charts.
+      CONCAT(YEAR,LPAD(MONTH)) avoids '%' so it's safe whether or not this SQL
+      is run through $wpdb->prepare (which would otherwise eat DATE_FORMAT's %).
+
+      A BUCKET IS KEYED ON THE SAME DATE THE FILTER SELECTED ON, and that is the
+      whole of this block's correctness. $date_col comes from alt_db_date_col(),
+      which is the same expression alt_db_where() built $where_dd from, so the
+      axis the rows were chosen along and the axis they are stacked along cannot
+      drift apart. They did: this used to say YEAR(layoff_date) unconditionally,
+      and on the page's own default view (years=2026&date_basis=notice) it drew
+      2027-02 and 2027-03 buckets inside a year labelled 2026 and summed 7 jobs
+      short of the headline above it.
+
+      The `> '2000-01-01'` sentinel moves with it for the same reason. On the
+      filed basis a row can have a real announcement_date and a NULL
+      layoff_date; guarding on layoff_date dropped exactly those rows from the
+      chart while the headline still counted them, which is where the 7 went.
+      On any basis the guard now means "this row has a usable date on the axis
+      this view is counted on", which is the only thing it was ever for.
+    */
     $months = !$want('series') ? array() : $wpdb->get_results(alt_db_prep(
-        "SELECT CONCAT(YEAR(layoff_date),'-',LPAD(MONTH(layoff_date),2,'0')) m,
+        "SELECT CONCAT(YEAR($date_col),'-',LPAD(MONTH($date_col),2,'0')) m,
                 SUM(job_count) jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs,
                 COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) verified_jobs,
@@ -5294,7 +5376,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND ai_explicit=1 AND announced=0 THEN job_count END),0) td_ai_verified_jobs,
                 COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND ai_explicit=1 AND announced=1 THEN job_count END),0) td_ai_announced_jobs,
                 COALESCE(SUM(CASE WHEN layoff_date <= '$today_sql' AND (ai_explicit=1 OR ai_causation='ai_linked') THEN job_count END),0) td_ai_broad_jobs
-         FROM $table WHERE $where_dd AND layoff_date > '2000-01-01'
+         FROM $table WHERE $where_dd AND $date_col > '2000-01-01'
          GROUP BY m ORDER BY m ASC", $params));
     $series = array();
     foreach ($months ?: array() as $row) {
@@ -5307,17 +5389,24 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         /*
           THE MONTH THE CLOCK IS STILL INSIDE, cut at today.
 
-          A month bucket is a bucket of EFFECTIVE dates, so the current month
-          holds notices already filed for dates later this month. On
-          2026-08-04 the August bucket held 35,362 verified cuts of which
-          21,776 had taken effect: the chart drew the first number under a
-          caption reading "4 of 31 days so far", and the This-month card a
-          few pixels away published the second.
+          On the EFFECTIVE basis a month bucket is a bucket of effective
+          dates, so the current month holds notices already filed for dates
+          later this month. On 2026-08-04 the August bucket held 35,362
+          verified cuts of which 21,776 had taken effect: the chart drew the
+          first number under a caption reading "4 of 31 days so far", and the
+          This-month card a few pixels away published the second.
 
-          `to_date` is emitted ONLY when the two differ, which in practice is
-          the in-progress month and nothing else. Every completed month keeps
-          the payload it always had, and a consumer that ignores the key gets
-          exactly the previous behaviour.
+          `to_date` is emitted ONLY when the two differ. On the effective
+          basis that is the in-progress month and nothing else. ON THE FILED
+          BASIS IT IS NOT: a bucket is a bucket of FILING dates, so a
+          completed month can hold a notice filed in March for an October
+          effective date, and that bucket carries a to_date block too. Both
+          consumers already handle it. toDateMonths() swaps in whichever
+          buckets carry the block, and futureDatedJobs() totals the remainder
+          for every bucket that has one rather than only for the current
+          month, so the chart note still names the whole of what has not
+          happened yet. A consumer that ignores the key gets the calendar
+          figure, which is the number the headline publishes.
         */
         if ((int) $row->td_jobs !== (int) $row->jobs) {
             $s['to_date'] = array(

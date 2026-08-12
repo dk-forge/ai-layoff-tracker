@@ -7,7 +7,15 @@ $alt_widget_year = max(2015, min((int) gmdate('Y'), $alt_widget_year));
 $alt_widget_state = isset($_GET['state']) ? strtoupper(sanitize_text_field(wp_unslash($_GET['state']))) : '';
 $alt_widget_state = function_exists('alt_normalize_state') ? alt_normalize_state($alt_widget_state) : '';
 
-$alt_widget_params = array('years' => (string) $alt_widget_year, 'country' => 'United States');
+// ONE PARAM SET FEEDS BOTH THE FIGURE AND THE LINK UNDER IT, so the basis has
+// to be named rather than left to whatever the tracker's default is that month.
+// This array is sent to /aggregate AND used to build trackerUrl. Naming
+// 'effective' keeps the embedded number exactly what it has always been (the
+// server default before 2.20.4) while making "View sources and filters" open a
+// page that recounts it the same way. Left unnamed, the widget published one
+// basis and linked to the other.
+$alt_widget_params = array('years' => (string) $alt_widget_year, 'country' => 'United States',
+                           'date_basis' => 'effective');
 if ($alt_widget_state !== '') $alt_widget_params['state'] = $alt_widget_state;
 $alt_widget_label = $alt_widget_state !== '' ? $alt_widget_state . ' layoffs' : 'US layoffs';
 $alt_widget_tracker_url = add_query_arg($alt_widget_params, home_url('/ai-layoff-tracker/'));

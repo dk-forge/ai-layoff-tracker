@@ -1,5 +1,105 @@
 # Tech Log
 
+## 2026-08-12 - the sixth place was the chart, and it bucketed on a date its own filter never used (2.20.11)
+
+`28e255d` (2.20.4) moved the default date basis from the effective date to the
+filing date, and said the default "lives in four places and all four moved". The
+fifth was the live-integrity checker (`b0c86b0`). Repairing that put the headline
+and the charts on one basis for the first time and immediately reddened
+`figure_parts_reconcile`, which is how the sixth surfaced.
+
+**The sixth is `alt_api_aggregate_compute`'s monthly series.** Its rows came from
+`alt_db_where()`, which is basis aware. Its buckets came from a hand-written
+`CONCAT(YEAR(layoff_date), MONTH(layoff_date))`, which is not. On the page's own
+default query, `years=2026&date_basis=notice`, the chart therefore selected rows
+by one date and stacked them by another. Measured live before the change:
+
+* the payload carried **2027-02 and 2027-03 buckets inside a view labelled
+  2026** (notices filed in 2026 for effective dates in 2027);
+* the series summed to **480,678 verified jobs under a headline of 480,685**,
+  seven short.
+
+Both are one mismatch and both are gone. The seven were rows carrying a real
+`announcement_date` and a NULL `layoff_date`: the filter counted them and the
+series' own `AND layoff_date > '2000-01-01'` sentinel threw them away, so the
+sentinel moved onto the request's column too.
+
+**The expression is a function now, and that is the actual fix.** It used to be a
+local inside `alt_db_where()`, unreachable, which is exactly why the series
+hand-wrote its own copy. `alt_db_date_col($r)` is the one definition;
+`alt_db_where` takes it from there as well, so the accessor cannot drift from the
+filter it describes. `min_date`/`max_date` moved onto it too: they are published
+as a period ("Covering 2019 to 2026", schema.org `temporalCoverage`), and read
+off `layoff_date` under a filed-basis filter a 2026 view could claim to cover
+2027. The facet pages send no `date_basis`, so their published coverage is
+byte-identical.
+
+**`to_date_*` deliberately did NOT move, and that is the decision in this
+change.** It answers "what has already taken effect", which is an effective-date
+question in every view, and `alt_period_split_short` renders it verbatim on the
+hero and the press page as "N have taken effect. The other M are filed for
+effective dates later in <period>". On the filing basis that sentence would start
+describing filings while keeping the word "effect": a correct number under a
+wrong label, which is the defect the basis work exists to remove. It is also
+*more* valuable under this default, not less, because the gap it names is wider.
+One consequence worth knowing: on the filed basis a COMPLETED month can now
+carry a `to_date` block (filed in March, effective in October), so the old note
+saying that only happens to the in-progress month is true of the effective basis
+only. Both consumers already handle it (`toDateMonths` swaps whichever buckets
+carry the block; `futureDatedJobs` totals the remainder per bucket, not per
+current month).
+
+**The checker gained the half a sum cannot catch.** `figure_parts_reconcile` had
+one series slice, the total. A compensating pair of stray buckets sums correctly,
+and a dropped row shortens a sum without adding a bucket, so `series_window` is
+now its own slice: every bucket must sit inside the `years=` window the chart is
+drawn in. It reproduced the defect exactly ("drawn for 2026 but the response
+carries 2 bucket(s) outside it: 2027-02, 2027-03") before the fix shipped.
+
+**Three receipt links were opening a page that recounted them.** Every figure on
+the report page, the press page and the embeddable widget is computed on
+hardcoded `layoff_date` SQL, and each links to the tracker "so a reader can go
+from any number straight to the rows behind it". Since 2.20.4 that tracker
+defaults to the filing basis, so the link showed a different number from the one
+just clicked. Each link now names `date_basis=effective`. The widget's array
+feeds both its own `/aggregate` call and its link, so naming the basis leaves the
+embedded figure exactly as it was and makes the link reproduce it.
+
+**Found and NOT fixed here, each because it needs its own measurement:**
+
+* **The at-a-glance board's cell links.** The board counting on the effective
+  basis is deliberate and disclosed in its own footnote (pinned by
+  `test_date_basis_default.py`). Its cell *hrefs* are not: they carry only
+  `from`/`to`, so clicking a cell lands on a filing-basis view showing a
+  different number than the cell. Fixing it needs the `.alt-nfilter` click
+  handler in `layoffs.js` to carry the basis too, or the JS and no-JS paths
+  diverge.
+* **`alt_live_numbers()`** (`ai-layoff-tracker.php:1422`) is hardcoded
+  `YEAR(layoff_date)` and feeds the FAQPage JSON-LD and the meta description,
+  while the citeline beside it now reads `to_date_jobs` off the filing-basis
+  bootstrap. `page-tracker.php`'s own comment still claims those two agree.
+* **`data_integrity.py`'s `HEADLINES`/`INVARIANTS`** send no `date_basis`, so
+  they read the effective basis while their comments claim they use "the same
+  basis the reader's own filter uses". Self-consistent as ceilings; the stated
+  justification is stale.
+* **`recall_precision.py:219`** queries the gold set by `years` on the effective
+  basis, but the gold set's `year` column is the ANNOUNCEMENT year, so an event
+  announced in 2026 for a 2027 effective date scores as a recall miss.
+* **The CSV export** has no `announcement_date` column, so a `date_basis=notice`
+  export ships rows selected by a date the file never shows. Not a bucketing
+  bug; a provenance gap with the same long fuse.
+
+Judged correct as-is and left alone: `/conversion` (drops the date filters,
+re-applies them on its own `$anchor`, and groups on that same `$anchor` - the
+worked example, now pinned); `/query`'s `ORDER BY layoff_date` (it sorts by the
+column the table visibly displays); the facet pages, company directory and
+digest (window and bucket agree, or no date filter at all); every place that
+prints a row's own `layoff_date` as a column value rather than as a bucket.
+
+`railway/tests/test_series_bucket_basis.py` is new: 8 of its 10 tests fail
+against the pre-fix tree, and the two that pass there are named in its docstring
+as regression bars rather than left looking like proof.
+
 ## 2026-08-11 - the alerter learned to hold; the jobs that talk to the same host had not
 
 `ops_status [4]` showed two workflows RED with no defect in either:

@@ -213,7 +213,7 @@ class ReconciliationTest(unittest.TestCase):
             "ai-layoff-tracker/": html,
             "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
             "aggregate": _agg(reasons=reasons,
-                              series=[{"verified_jobs": VERIFIED}],
+                              series=[{"month": "2026-06", "verified_jobs": VERIFIED}],
                               countries=self.COUNTRIES, states=self.STATES),
         })
         return pf.FigureReconciliationInvariant().run(_ctx(fetch))
@@ -244,7 +244,7 @@ class ReconciliationTest(unittest.TestCase):
             "ai-layoff-tracker/": home_html(),
             "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
             "aggregate": _agg(reasons=LIVE_REASONS,
-                              series=[{"verified_jobs": VERIFIED}],
+                              series=[{"month": "2026-06", "verified_jobs": VERIFIED}],
                               countries=self.COUNTRIES, states=self.STATES),
         }, default=None)
 
@@ -303,11 +303,69 @@ class ReconciliationTest(unittest.TestCase):
             "ai-layoff-tracker/": home_html(),
             "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
             "aggregate": _agg(reasons=FIXED_REASONS,
-                              series=[{"verified_jobs": VERIFIED - 40_000}]),
+                              series=[{"month": "2026-06", "verified_jobs": VERIFIED - 40_000}]),
         })
         r = pf.FigureReconciliationInvariant().run(_ctx(fetch))
         self.assertEqual(r.state, di.FAIL)
         self.assertIn("cannot reach the published number", r.detail)
+
+    # A SUM AND A BUCKET LABEL FAIL INDEPENDENTLY, which is why the series has
+    # two slices and not one. The 2026-08-11 defect showed both at once (the
+    # chart drew 2027-02 and 2027-03 inside a 2026 view AND landed 7 short), but
+    # a compensating pair of stray buckets sums to exactly the right number, and
+    # a dropped row shortens a sum without adding a bucket. Each of the three
+    # tests below isolates one of those cases.
+    #
+    # This is also why every series fixture in this file now carries a `month`
+    # key: the real payload always has one, and a bucket with no label cannot be
+    # held against the window it is drawn in.
+
+    def test_a_bucket_outside_the_charted_year_fails(self):
+        # THE LIVE DEFECT, in miniature: rows selected on
+        # COALESCE(announcement_date, layoff_date) and stacked on layoff_date,
+        # so notices filed in 2026 for 2027 effective dates opened 2027 buckets
+        # inside a view labelled 2026.
+        fetch = _router({
+            "ai-layoff-tracker/": home_html(),
+            "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
+            "aggregate": _agg(reasons=FIXED_REASONS,
+                              series=[{"month": "2026-06", "verified_jobs": VERIFIED - 500},
+                                      {"month": "2027-03", "verified_jobs": 500}]),
+        })
+        r = pf.FigureReconciliationInvariant().run(_ctx(fetch))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("2027-03", r.detail)
+        self.assertIn("outside it", r.detail)
+
+    def test_stray_buckets_fail_even_when_the_total_is_right(self):
+        # The case a sum check cannot see. These buckets add up to the headline
+        # exactly; one of them is still in a year the filter excluded.
+        fetch = _router({
+            "ai-layoff-tracker/": home_html(),
+            "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
+            "aggregate": _agg(reasons=FIXED_REASONS,
+                              series=[{"month": "2026-06", "verified_jobs": VERIFIED - 500},
+                                      {"month": "2027-02", "verified_jobs": 500}]),
+        })
+        r = pf.FigureReconciliationInvariant().run(_ctx(fetch))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("2027-02", r.detail)
+        self.assertNotIn("cannot reach the published number", r.detail,
+                         "the sum slice should be silent here: it is correct")
+
+    def test_buckets_with_no_month_label_are_unknown_not_pass(self):
+        # Absence of a signal is never a pass in this codebase. A series whose
+        # rows carry no month cannot be held against a window, and saying so is
+        # the whole difference between UNKNOWN and PASS.
+        fetch = _router({
+            "ai-layoff-tracker/": home_html(),
+            "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
+            "aggregate": _agg(reasons=FIXED_REASONS,
+                              series=[{"verified_jobs": VERIFIED}]),
+        })
+        r = pf.FigureReconciliationInvariant().run(_ctx(fetch))
+        self.assertEqual(r.state, di.UNKNOWN)
+        self.assertNotEqual(r.state, di.PASS)
 
     def test_scoped_bars_are_reconciled_against_their_own_denominator(self):
         # The ~104,000 defect: a US-scoped list measured against a WORLDWIDE
@@ -317,7 +375,7 @@ class ReconciliationTest(unittest.TestCase):
             "ai-layoff-tracker/": home_html(),
             "country=United+States": _agg(_totals(jobs=500_000, announced=100_000)),
             "aggregate": _agg(reasons=FIXED_REASONS,
-                              series=[{"verified_jobs": VERIFIED}],
+                              series=[{"month": "2026-06", "verified_jobs": VERIFIED}],
                               states=[["CA", 0, 0, 0, 450_000]]),
         })
         r = pf.FigureReconciliationInvariant().run(_ctx(fetch))
