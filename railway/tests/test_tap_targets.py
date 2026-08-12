@@ -113,6 +113,16 @@ JS_BUILT = """
     <button type="button" class="alt-card-more" aria-expanded="false">Details</button>
   </div>
 </div>
+<fieldset class="alt-digest-lists">
+  <legend>What would you like?</legend>
+  <label><input type="checkbox" name="alt_list_layoff" value="1"> AI Layoff Tracker digest.</label>
+  <label><input type="checkbox" name="alt_list_articles" value="1"> Occasional articles.</label>
+</fieldset>
+<fieldset class="alt-digest-freq">
+  <legend>How often?</legend>
+  <label><input type="radio" name="alt_freq" value="weekly" checked> Weekly</label>
+  <label><input type="radio" name="alt_freq" value="daily"> Daily</label>
+</fieldset>
 <div class="alt-pager">
   <div class="alt-page-nums">
     <button type="button" class="alt-page-btn alt-page-nav" data-page="0">Previous</button>
@@ -154,7 +164,12 @@ PROBE = r"""
 (function () {
   var SEL = 'a[href], button, [role="button"], [role="tab"], [role="link"],'
           + ' input:not([type="hidden"]), select, textarea, summary,'
-          + ' [tabindex]:not([tabindex="-1"]), .alt-dd-row';
+          + ' [tabindex]:not([tabindex="-1"]), .alt-dd-row,'
+          // A <label> that WRAPS its control is the target: the browser draws
+          // a 13px checkbox and hitting the label hits it. A label that only
+          // titles a control sitting beneath it is not, so this is :has(input)
+          // rather than every label on the page.
+          + ' label:has(input)';
   var out = [];
   Array.prototype.forEach.call(document.querySelectorAll(SEL), function (el) {
     var cs = getComputedStyle(el);

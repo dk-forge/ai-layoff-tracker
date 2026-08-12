@@ -340,7 +340,7 @@ filed-basis one (10,685 of slack on 2026-08-12, and nothing enforces it). It
 still reads `alt_live_numbers()` rather than querying for itself, which is what
 the new test holds.
 
-## 2026-08-12 - the 44px floor stopped at the edge of the filter bar (2.20.13)
+## 2026-08-12 - the 44px floor stopped at the edge of the filter bar (2.20.13, 2.20.16)
 
 2.20.10 gave every control INSIDE the filter bar one shape and a 44px height
 under 768px, and it listed what it had not touched. This is that list,
@@ -436,6 +436,18 @@ against the pre-fix tree it reports **60 controls below 44x44, 30 links under a
 from `getBoundingClientRect` and text from `innerText`, never `textContent`: a
 closed `<details>` in current Chrome still has a box and still has
 `textContent` for words no reader can read.
+
+**Two things only the LIVE page could say, found on the verification pass and
+fixed in the same release.** The offline fixture renders a card headline at
+21.6px and the live document renders it at 17.6px, because the live font stack
+is not the fixture's, so `padding: 12px 0` measured 45.6 in the test and 41.6
+on the page. A floor does not care what the line measures, so it is a
+`min-height` now as well. And the digest subscribe form lives in
+`includes/subscribe.php`, which the template pulls in through a function call
+the PHP strip removes: five label-wrapped checkboxes at 13x13, invisible to a
+template-only fixture. The form is in the fixture now, the labels are 44px
+rows, and they are 8px apart, which on a consent box is where a mis-tap costs
+the most.
 
 No number, no filter, no threshold and no data changed.
 

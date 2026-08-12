@@ -3731,6 +3731,10 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-theme { gap: 8px; }
     .alt-conv-range { gap: 8px; }
     .alt-af-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    /* Stacked consent choices. 44px rows touching each other is the mis-tap
+       this whole section is about, and a consent box is the worst place for
+       it. */
+    .alt-digest-lists, .alt-digest-freq { display: flex; flex-direction: column; gap: 8px; }
     .alt-barlist, .alt-mini .alt-barlist { gap: 10px; }
     /* The map scope switch is segmented: its halves SHARE an edge by design,
        the way the date-basis switch does. Splitting them would say they are
@@ -3840,7 +3844,9 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
        LABEL is the target: it already wraps the box and its own sentence, so
        giving the label the height gives the checkbox a 44px row to be hit
        in. */
-    .alt-claims-toggle {
+    .alt-claims-toggle,
+    .alt-digest-lists label,
+    .alt-digest-freq label {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -3851,8 +3857,14 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     /* 305 x 21.6. Full-width already, so it needs height and nothing else,
        and it gets it the way a sentence link does: the hit box grows, the
        headline stays where the reader saw it. */
+    /* min-height as well as padding, and the reason is worth writing down:
+       the offline fixture renders this headline at 21.6px and the LIVE page at
+       17.6px, because the live document's font stack is not the fixture's. The
+       padding alone therefore measured 45.6px in the test and 41.6px on the
+       page. A floor does not care what the line measures. */
     .alt-card-h {
         display: block;
+        min-height: 44px;
         padding: 12px 0;
         margin: -12px 0;
     }
