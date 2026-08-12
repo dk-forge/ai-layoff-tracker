@@ -104,6 +104,16 @@ JS_CARD_NOTE = (
 
 SCRIPT_TAG = '<script src="https://example.test/assets/layoffs.js?ver=9"></script>'
 
+# The page states, beside its own numbers, the query they were computed from —
+# and the checks read that stamp rather than carrying a hand-typed copy of it
+# (see test_figure_stamp_comes_from_the_page.py for why). Every fixture that
+# stands in for the home page has to carry it, or it is standing in for a page
+# that does not exist. Written in the MINIFIED shape the host serves.
+BOOT_PARAMS = {"years": "2026", "date_basis": "notice"}
+BOOT_SCRIPT = ('<script>window.ALT_BOOTSTRAP='
+               + json.dumps({"ver": "test", "aggregate_params": BOOT_PARAMS})
+               + ';</script>')
+
 HOME_HTML = (
     '<span class="alt-hero-figure-value" id="alt-hero-total">{hero}</span> '
     '<span class="alt-hero-figure-label">{label}</span> '
@@ -146,8 +156,10 @@ FAQ_USING_THE_PHRASE = ('<details class="alt-faq-item"><summary>How is this '
 
 
 def home_html(hero="484,468", label="verified job cuts, 2026 YTD", extra=""):
-    return HOME_HTML.format(hero=hero, label=label,
-                            extra=(extra or OPEN_EXPLAINER) + SCRIPT_TAG)
+    # BOOT_SCRIPT is prepended rather than templated into HOME_HTML: it is JSON,
+    # its braces are not format placeholders, and str.format eats them.
+    return BOOT_SCRIPT + HOME_HTML.format(
+        hero=hero, label=label, extra=(extra or OPEN_EXPLAINER) + SCRIPT_TAG)
 
 
 def press_html(total="484,468", split=""):
@@ -437,7 +449,9 @@ class AgreementTest(unittest.TestCase):
         self.assertEqual(self._run("484,468").state, di.PASS)
 
     def test_a_missing_figure_is_unknown_never_a_quiet_pass(self):
-        fetch = _router({"ai-layoff-tracker/": "<p>no figures here</p>",
+        # Stamped, so this is a page whose FIGURES are gone — not one whose
+        # stamp is gone, which is a different UNKNOWN with its own test.
+        fetch = _router({"ai-layoff-tracker/": BOOT_SCRIPT + "<p>no figures here</p>",
                          "aggregate": _agg()})
         r = pf.FigureAgreementInvariant().run(_ctx(fetch))
         self.assertEqual(r.state, di.UNKNOWN)
