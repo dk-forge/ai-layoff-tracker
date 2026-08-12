@@ -102,7 +102,18 @@ def _ai_quote(company, text):
     Constrained hard: the quote must be a verbatim substring of the source, or
     we discard it (the model does not get to paraphrase AI evidence into
     existence). Fails closed on any error.
+
+    THREE RETURN VALUES, and the third is why this comment exists:
+      a quote  -- the employer named AI
+      ''       -- we asked and the employer did not name AI (a VERDICT)
+      None     -- we did not ask (budget), so there is NO verdict
+
+    None is not '' . The caller writes "keep-untagged: no employer AI quote
+    found" on '', which is a statement that we looked. Collapsing a budget stop
+    into that branch would publish a finding about a row nobody read.
     """
+    if not spend.paid_reads_enabled():
+        return None
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not (OpenAI and api_key and text):
         return ""
@@ -136,7 +147,12 @@ def _ai_quote(company, text):
 
 
 def _second_pass_agrees(company, quote):
-    """A cheap independent check that the quote really is an EMPLOYER AI cause."""
+    """A cheap independent check that the quote really is an EMPLOYER AI cause.
+
+    True / False are verdicts; None means the budget stopped us before asking.
+    """
+    if not spend.paid_reads_enabled():
+        return None
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not (OpenAI and api_key):
         return False
@@ -190,8 +206,14 @@ def main():
     # failing — a deferred AI-evidence sweep is re-run on its next
     # schedule, and reddening CI over a budget decision is noise.
     if not spend.paid_reads_enabled():
-        print("paid reads are OFF (spend ceiling) — skipping the AI-evidence sweep "
-              "this run; it resumes on the next schedule")
+        print("paid reads are OFF (spend ceiling or the monthly cap) — skipping "
+              "the AI-evidence sweep this run; it resumes on the next schedule")
+        # Record the skip: a job that never ran is not a job that found nothing,
+        # and a month with no ledger entry for it reads as 'no metered run yet'
+        # (UNKNOWN) rather than as a budget stop nobody can see.
+        spend.record_job_run(items=0, changed=0,
+                             truncated=spend.run_truncation()
+                             or "paid reads were off for the whole run")
         return 0
     if not SITE:
         print("WP_SITE_URL required")
@@ -202,19 +224,24 @@ def main():
     print(f"{len(events)} big untagged 2026 event(s) to check")
     upgraded = checked = 0
     deferred = 0
+    truncated = None
     for row in events:
         # Nothing is half-written per event (each upgrade POSTs as it is
         # decided), so stopping here is safe and the row is re-read tomorrow.
         if past_deadline():
             deferred = len(events) - checked
+            truncated = (f"wall-clock deadline {DEADLINE_SECONDS}s reached with "
+                         f"{deferred} event(s) unread")
             print(f"  reached AI_SWEEP_DEADLINE_SECONDS={DEADLINE_SECONDS}s — "
                   f"stopping cleanly with {deferred} event(s) deferred to the next run")
             break
         if not spend.paid_reads_enabled():
-            # Per-run ceiling tripped mid-sweep: keep what was decided,
+            # Ceiling or monthly cap tripped mid-sweep: keep what was decided,
             # defer the rest to the next schedule.
-            print("  per-run spend ceiling reached — deferring the remaining "
-                  "events to the next run")
+            deferred = len(events) - checked
+            truncated = (f"spend ceiling reached with {deferred} event(s) unread")
+            print(f"  spend ceiling reached — deferring the remaining "
+                  f"{deferred} event(s) to the next run")
             break
         checked += 1
         rid = row.get("id")
@@ -229,18 +256,41 @@ def main():
             except Exception:
                 pass
         quote = ""
+        unread = ""            # why this event never reached a verdict
         for txt in texts:
             # The texts list is as long as the press search returns, and each
-            # entry costs up to two model calls. This is the loop that actually
-            # made the job unbounded, so it checks the clock too.
+            # entry costs up to two model calls -- ~25 calls per event on a
+            # normal day. THIS is the loop that made the named per-run ceiling
+            # leak: the outer loop checked the budget once per event, so the
+            # last event could overshoot by a whole event's worth of calls
+            # (measured 2026-08-07: $0.0196 against a $0.015 ceiling). It now
+            # checks the clock AND the budget per text.
             if past_deadline():
+                unread = "wall-clock deadline reached mid-event"
                 print(f"  deadline reached mid-event for {company}; the row stays "
                       f"untagged and is re-read next run")
                 break
             quote = _ai_quote(company, txt)
-            if quote and _second_pass_agrees(company, quote):
+            if quote is None:            # not asked: budget, not a finding
+                unread = "spend ceiling reached mid-event"
+                break
+            agrees = _second_pass_agrees(company, quote) if quote else False
+            if agrees is None:
+                unread = "spend ceiling reached mid-event"
+                quote = ""
+                break
+            if quote and agrees:
                 break
             quote = ""
+        if unread and not quote:
+            # No verdict was reached for this event. Do not count it as checked
+            # and do not print a keep-untagged decision: nothing was decided.
+            checked -= 1
+            deferred = len(events) - checked
+            truncated = truncated or (f"{unread}; {deferred} event(s) undecided")
+            print(f"  undecided      {company}: stopped before a verdict "
+                  f"(budget or deadline); re-read next run")
+            break
         if not quote:
             print(f"  keep-untagged  {company} ({row.get('job_count')}): no employer AI quote found")
             continue
@@ -248,11 +298,11 @@ def main():
         upgraded += 1 if status in ("would-upgrade", "upgraded") else 0
         print(f"  {status:14} {company} ({row.get('job_count')}): \"{quote[:90]}\"")
         time.sleep(0.5)
-    print(f"done: {checked} checked, {upgraded} "
+    print(f"{'TRUNCATED' if truncated else 'done'}: {checked} checked, {upgraded} "
           f"{'would upgrade' if not LIVE else 'upgraded'} with an employer AI quote"
-          + (f", {deferred} deferred on the deadline" if deferred else "")
+          + (f", {deferred} deferred ({truncated})" if deferred else "")
           + f" ({time.monotonic() - STARTED_AT:.0f}s)")
-    spend.record_job_run(items=checked, changed=upgraded)
+    spend.record_job_run(items=checked, changed=upgraded, truncated=truncated)
     return 0
 
 

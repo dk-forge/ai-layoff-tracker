@@ -112,6 +112,25 @@ RUN_CEILING_USD = float(os.environ.get("ALT_RUN_CEILING_USD",
 # the only module in this repo that can spend.
 PAID_READS_ENV = "ALT_PAID_READS"
 
+# WHY THE NAMED CEILING USED TO BE A LABEL (fixed 2026-08-11)
+# ----------------------------------------------------------
+# JOB_RUN_CEILINGS_USD below names a per-run ceiling for each paid job. Until
+# today the ONLY route from that table to the brake was `apply_job_ceiling()`,
+# which runs inside `spend.py --degrade` and writes ALT_RUN_CEILING_USD to
+# $GITHUB_ENV for the STEPS THAT FOLLOW. So the named number bound only when a
+# separate workflow step had run, succeeded, and been able to write that file.
+# Anywhere else — a local run, a `python ai_evidence_sweep.py` by hand, a guard
+# step whose $GITHUB_ENV write failed (which that function catches and prints),
+# the Railway cron — the job silently got the $0.20 GLOBAL default instead:
+# 13x ai-evidence-sweep's named $0.015. ops_status.py read the table and
+# reported the job as over "its named ceiling", which was true, and the reason
+# was that nothing in the job's own process had ever heard of it.
+#
+# `effective_run_ceiling_usd()` closes that: the ceiling is resolved IN THE
+# JOB'S PROCESS, from the same table, every time it is checked. The env var
+# keeps working and still wins, because an explicit operator override must not
+# be silently re-tightened.
+
 SNAPSHOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "spend_month.json")
 
@@ -397,41 +416,106 @@ def run_summary(rows_stored: int | None = None) -> str:
 # The gate
 # --------------------------------------------------------------------------
 
+def effective_run_ceiling_usd(job: str | None = None) -> float:
+    """This run's per-run ceiling, resolved in THIS process.
+
+    Precedence, highest first:
+      1. ALT_RUN_CEILING_USD in the environment -- an explicit operator (or
+         `apply_job_ceiling`) override. Never silently re-tightened.
+      2. JOB_RUN_CEILINGS_USD[current job] -- the NAMED ceiling, which is now
+         a brake wherever the job runs and not only where a guard step ran.
+      3. RUN_CEILING_USD -- the global default, which is what `railway-cron`
+         keeps by deliberately not being in the table.
+    """
+    override = (os.environ.get("ALT_RUN_CEILING_USD") or "").strip()
+    if override:
+        try:
+            return float(override)
+        except ValueError:
+            pass  # unparseable override: fall through rather than run uncapped
+    named = JOB_RUN_CEILINGS_USD.get(job or current_job())
+    return float(named) if named is not None else RUN_CEILING_USD
+
+
 def paid_reads_enabled() -> bool:
     """False when paid model calls must not be made right now.
 
-    Two independent reasons, either sufficient:
-      * ALT_PAID_READS=off  -- a `--degrade` step decided the month is spent.
-      * this process has already spent RUN_CEILING_USD -- the state-free brake.
+    Three independent reasons, any one sufficient:
+      * ALT_PAID_READS=off   -- a `--degrade` step decided the month is spent.
+      * this run has already spent its per-run ceiling (see
+        effective_run_ceiling_usd) -- the state-free brake.
+      * the MONTH is spent, measured here rather than inherited from a step
+        that may not have run -- see month_gate().
 
-    Checked by extractor.py at the top of every paid function.
+    Checked by extractor.py at the top of every paid function, and by the five
+    scripts that build their own client.
     """
     global _run_ceiling_tripped
     if (os.environ.get(PAID_READS_ENV, "").strip().lower() == "off"):
+        note_truncated("paid reads were switched off for this run "
+                       "(ALT_PAID_READS=off)")
         return False
     # Measured against the LOGICAL run (this process + earlier attempts of the
     # same run), so a shell retry loop cannot buy itself a fresh ceiling.
     spent = logical_run_cost_usd()
-    if spent >= RUN_CEILING_USD:
+    ceiling = effective_run_ceiling_usd()
+    if spent >= ceiling:
         if not _run_ceiling_tripped:
             _run_ceiling_tripped = True
             print(f"::warning::spend: this run has spent ${spent:.4f}, "
-                  f"at or past the ${RUN_CEILING_USD:.2f} per-run ceiling. Paid "
-                  f"extraction is OFF for the rest of this run. Free ingest "
-                  f"continues; deferred candidates are unmarked and return on a "
-                  f"later run.")
+                  f"at or past the ${ceiling:.3f} per-run ceiling for "
+                  f"'{current_job()}'. Paid extraction is OFF for the rest of "
+                  f"this run. Free ingest continues; deferred candidates are "
+                  f"unmarked and return on a later run. This run is TRUNCATED "
+                  f"and is recorded as such.")
+        note_truncated(f"per-run ceiling ${ceiling:.3f} reached after "
+                       f"${spent:.4f}")
+        return False
+    blocked, why = month_gate()
+    if blocked:
+        note_truncated(why)
         return False
     return True
 
 
+# --------------------------------------------------------------------------
+# A truncated run is not a clean run
+# --------------------------------------------------------------------------
+#
+# PASS / FAIL / UNKNOWN are three states in this repo, and "the job exited 0"
+# is not evidence that the job finished its work. A run stopped by its ceiling,
+# by the monthly cap, or by a wall-clock deadline has left work undone, and the
+# ledger it writes has to say so -- otherwise a throttled job and a job with
+# nothing to do produce identical records, and the $/row it reports is computed
+# over an amount of work nobody can name.
+_truncation: str | None = None
+
+
+def note_truncated(reason: str) -> None:
+    """Record that this run stopped short. First reason wins (it is the cause;
+    everything after it is a consequence). Never raises."""
+    global _truncation
+    try:
+        if _truncation is None and reason:
+            _truncation = str(reason)[:300]
+    except Exception:  # noqa: BLE001 — bookkeeping must not break the job
+        pass
+
+
+def run_truncation() -> str | None:
+    """Why this run stopped early, or None if it ran to completion."""
+    return _truncation
+
+
 def reset_run_meter() -> None:
     """Test-only: clear the process meter."""
-    global _run_ceiling_tripped, _carried_usd, _meter_tag
+    global _run_ceiling_tripped, _carried_usd, _meter_tag, _truncation
     _run.update({"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
                  "completion_tokens": 0, "cached_prompt_tokens": 0})
     _run_ceiling_tripped = False
     _carried_usd = None
     _meter_tag = None
+    _truncation = None
     _by_tag.clear()
 
 
@@ -575,7 +659,7 @@ def _write_ledger(ledger: dict) -> bool:
 
 def record_job_run(items: int | None = None, stored: int | None = None,
                    changed: int | None = None, job: str | None = None,
-                   run_id: str | None = None) -> dict:
+                   run_id: str | None = None, truncated: str | None = None) -> dict:
     """Close out this run's ledger entry: exact metered cost + what it bought.
 
     Called once at the end of each LLM job. Never raises — a ledger must not
@@ -597,6 +681,14 @@ def record_job_run(items: int | None = None, stored: int | None = None,
         "stored": stored,
         "changed": changed,
     }
+    # A run stopped early is not a run that finished. `complete` is always
+    # written, both ways, so a reader never has to infer completeness from the
+    # absence of a field (an absent field means an old entry, which is UNKNOWN,
+    # not a pass).
+    if truncated:
+        note_truncated(truncated)
+    entry["truncated"] = run_truncation()
+    entry["complete"] = entry["truncated"] is None
     if _run["cached_prompt_tokens"]:
         entry["cached_prompt_tokens"] = _run["cached_prompt_tokens"]
     # Per-source attribution, when the caller tagged its calls (the Railway
@@ -616,6 +708,11 @@ def record_job_run(items: int | None = None, stored: int | None = None,
     try:
         rows_known = stored if stored is not None else changed
         print(run_summary(rows_known))
+        if entry["truncated"]:
+            print(f"::warning::spend: this run is TRUNCATED, not complete — "
+                  f"{entry['truncated']}. What it did not reach is deferred to "
+                  f"the next run, not decided. Do not read its counts as a "
+                  f"full pass over the queue.")
         print(f"{LEDGER_MARKER} {json.dumps(entry, sort_keys=True)}")
         # Deliberately NO file write here: the committed ledger has exactly
         # one writer (`--harvest`, in the balance job). A job-side write would
@@ -823,7 +920,7 @@ def harvest_railway_runs() -> list[dict]:
                  ("job", "date", "cost_usd", "calls", "prompt_tokens",
                   "completion_tokens", "cached_prompt_tokens", "items",
                   "stored", "changed", "run_id", "sources", "gate_mode",
-                  "gate_false_drops")
+                  "gate_false_drops", "truncated", "complete")
                  if rec.get(k) is not None}
         entry.setdefault("job", "railway-cron")
         out.append(entry)
@@ -1066,8 +1163,11 @@ def key_fingerprint(api_key: str) -> str:
     return hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:12]
 
 
-def fetch_key_state(api_key: str) -> dict:
-    return _get_json(KEY_URL, api_key).get("data") or {}
+def fetch_key_state(api_key: str, timeout: int = 15) -> dict:
+    """The key's live state. The timeout is short on purpose: the monthly gate
+    calls this in-line before a job's first paid call, and a budget lookup must
+    never be able to hang a data job. An unanswered lookup is UNKNOWN."""
+    return _get_json(KEY_URL, api_key, timeout=timeout).get("data") or {}
 
 
 def month_delta(lifetime_used: float, fingerprint: str) -> tuple[float | None, str, bool]:
@@ -1105,6 +1205,120 @@ def month_delta(lifetime_used: float, fingerprint: str) -> tuple[float | None, s
         # value and tell the truth about it.
         return 0.0, month, False
     return 0.0, month, True
+
+
+# --------------------------------------------------------------------------
+# The monthly cap, as a STOP rather than a report
+# --------------------------------------------------------------------------
+#
+# The $10/month hard cap used to reach a job only through ALT_PAID_READS, which
+# `spend.py --degrade` writes to $GITHUB_ENV in a step before the job. That is a
+# real mechanism and it stays, but it has three holes: it needs that step to
+# have run, it needs the $GITHUB_ENV write to have succeeded (the failure is
+# caught and printed, then the job spends as normal), and it cannot cover a
+# process the step does not precede -- which is the Railway cron, the single
+# largest consumer.
+#
+# So the job also asks, itself, once per process, through the same
+# `paid_reads_enabled()` every paid call site in this repo already calls. One
+# place knows month-to-date against the allowance.
+#
+# THE READ IS NON-MUTATING, ON PURPOSE. `month_delta()` ARMS a baseline when it
+# finds none and returns 0.0 as a persisted figure. On an ephemeral runner that
+# write is discarded, so a lost or not-yet-committed snapshot would make every
+# job of the day read "$0.00 spent this month" -- a confident zero derived from
+# no evidence, which is precisely the shape of bug this file exists to refuse.
+# The gate therefore READS the committed snapshot only. No snapshot for this
+# month means month-to-date is UNKNOWN here, and UNKNOWN is reported as UNKNOWN.
+#
+# UNKNOWN DOES NOT HALT. Halting every collector because a bookkeeping file
+# could not be read would take the free 95% of this pipeline down to protect a
+# budget it does not spend -- the self-inflicted outage the module docstring
+# describes. Under UNKNOWN the per-run ceiling is what enforces, and the fact
+# that the month was not measured is printed and recorded.
+_month_gate: tuple[bool, str] | None = None
+
+
+def reset_month_gate() -> None:
+    """Test-only: forget this process's cached monthly verdict."""
+    global _month_gate
+    _month_gate = None
+
+
+def month_to_date_usd(api_key: str) -> tuple[float | None, str, str]:
+    """(spent_this_month, month, basis) WITHOUT arming anything.
+
+    basis is one of:
+      "measured"  -- a committed month-start exists for this key and month
+      "no-baseline" -- none exists here, so month-to-date is UNKNOWN
+      "unreadable"  -- the snapshot file could not be read/parsed
+    """
+    month = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m")
+    try:
+        with open(SNAPSHOT_PATH) as fh:
+            snap = json.load(fh) or {}
+    except OSError:
+        return None, month, "no-baseline"
+    except ValueError:
+        return None, month, "unreadable"
+    if not isinstance(snap, dict):
+        return None, month, "unreadable"
+    entry = snap.get(key_fingerprint(api_key))
+    if (not isinstance(entry, dict) or entry.get("month") != month
+            or not isinstance(entry.get("usage_at_start"), (int, float))):
+        return None, month, "no-baseline"
+    try:
+        # Short timeout on purpose: this runs once, in-line, before the first
+        # paid call of a job. A budget lookup must not be able to hang a data
+        # job -- an unanswered lookup is UNKNOWN, and UNKNOWN keeps the free
+        # collectors running under the per-run ceiling.
+        used = float(fetch_key_state(api_key).get("usage") or 0)
+    except Exception as exc:  # network, proxy block, schema change
+        return None, month, f"unreadable ({exc})"
+    return max(0.0, used - float(entry["usage_at_start"])), month, "measured"
+
+
+def month_gate() -> tuple[bool, str]:
+    """(blocked, why) — is the month's budget spent? Cached per process.
+
+    `blocked` True means no further PAID call may be made in this process. It is
+    only ever True on a MEASURED figure: an unmeasurable month is UNKNOWN and
+    says so in `why`.
+    """
+    global _month_gate
+    if _month_gate is None:
+        try:
+            _month_gate = _evaluate_month_gate()
+        except Exception as exc:  # noqa: BLE001 — a guard must not break the job
+            _month_gate = (False, f"month-to-date is UNKNOWN — the monthly gate "
+                                  f"could not run ({exc}). Not a pass; the "
+                                  f"per-run ceiling is what is enforcing.")
+    return _month_gate
+
+
+def _evaluate_month_gate() -> tuple[bool, str]:
+    key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+    if not key:
+        return False, ("month-to-date is UNKNOWN — no OPENROUTER_API_KEY in this "
+                       "runtime, so nothing about the month could be measured. "
+                       "Not a pass.")
+    spent, month, basis = month_to_date_usd(key)
+    if spent is None:
+        return False, (f"month-to-date for {month} is UNKNOWN ({basis}: no "
+                       f"committed month-start for this key here). Not a pass; "
+                       f"the per-run ceiling is what is enforcing.")
+    stop_at = MONTHLY_ALLOWANCE_USD * STOP_AT_FRACTION
+    if spent >= stop_at:
+        msg = (f"the ${MONTHLY_ALLOWANCE_USD:.2f} monthly cap is spent: "
+               f"${spent:.4f} used in {month}, at or past the "
+               f"{int(STOP_AT_FRACTION * 100)}% stop line (${stop_at:.2f}). "
+               f"Paid reads are OFF for the rest of {month}. Every free "
+               f"collector keeps running; deferred candidates are UNMARKED and "
+               f"are read on a later run.")
+        print(f"::warning::spend: {msg}")
+        return True, msg
+    return False, (f"${spent:.4f} of ${MONTHLY_ALLOWANCE_USD:.2f} spent in "
+                   f"{month} (measured)")
 
 
 # --------------------------------------------------------------------------
@@ -1153,6 +1367,12 @@ def apply_job_ceiling() -> None:
     ALT_RUN_CEILING_USD already in the environment wins — an operator
     override must not be silently re-tightened. Jobs not in the table keep
     the global default, which is how the Railway cron stays untouched.
+
+    Since 2026-08-11 this is a CONVENIENCE, not the enforcement path: the job's
+    own process resolves the same table through `effective_run_ceiling_usd()`,
+    so the named ceiling binds whether or not this step ran or its $GITHUB_ENV
+    write succeeded. Exporting it keeps the number visible in the step log and
+    in `env` for anything that reads it directly.
     """
     job = current_job()
     ceiling = JOB_RUN_CEILINGS_USD.get(job)
