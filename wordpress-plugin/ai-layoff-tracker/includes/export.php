@@ -151,8 +151,33 @@ function alt_export_csv() {
     // UTF-8 BOM so Excel renders umlauts/CJK correctly instead of mojibake
     fwrite($out, "\xEF\xBB\xBF");
 
+    /*
+      announcement_date SITS BESIDE layoff_date BECAUSE THE EXPORT HAS TO BE
+      ABLE TO REPRODUCE THE VIEW IT CAME FROM.
+
+      This file has always accepted `date_basis` — alt_export_filters() hands
+      the request straight to alt_db_where(), so a `date_basis=notice` export
+      selects its rows on COALESCE(announcement_date, layoff_date). Since 2.20.4
+      that is the tracker page's DEFAULT, so the ordinary "CSV" link beside the
+      headline shipped rows chosen by a date the file did not contain. A
+      journalist could not re-derive the count they had just been shown, on the
+      one artifact whose entire purpose is that they can check it.
+
+      Not a bucketing bug, and that is why it outlived six of them: every
+      individual row was correct. The provenance was missing, and a missing
+      column looks like a design decision rather than a defect.
+
+      The JSON export already carried the field (alt_db_row_to_array() has
+      emitted it for as long as the column has existed), so the two formats of
+      the same download disagreed about what a row is. They agree now.
+
+      Placed next to layoff_date rather than appended: the CSV is the format
+      somebody opens in a spreadsheet, and two dates for one event belong in
+      adjacent columns. Nothing in this repo reads the header positionally, and
+      the JSON export remains the stable machine surface.
+    */
     fputcsv($out, array(
-        'company_name', 'ticker', 'job_count', 'layoff_date', 'industry',
+        'company_name', 'ticker', 'job_count', 'layoff_date', 'announcement_date', 'industry',
         'country', 'state', 'roles', 'role_categories', 'source_type', 'verification_level', 'source_url',
         'source_list_url', 'ai_explicit', 'ai_language', 'reason_tags', 'excerpt', 'source_attribution',
     ));
@@ -163,6 +188,7 @@ function alt_export_csv() {
             alt_csv_guard((string) $row->ticker),
             (int) $row->job_count,
             $row->layoff_date ?: '',
+            $row->announcement_date ?: '',
             alt_csv_guard($row->industry),
             alt_csv_guard($row->country),
             alt_csv_guard($row->state),

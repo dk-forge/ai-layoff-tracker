@@ -253,6 +253,37 @@ def _home_params(ctx):
     return _home_stamp(ctx)[0]
 
 
+def home_basis(ctx):
+    """The BASIS the home page counted its own figures on, and NOTHING else.
+
+    Returns `(basis, problem)`. `basis` is a dict holding only the keys in
+    `_STAMP_BASIS_KEYS` that the page's stamp actually carried — so `{}` is a
+    real answer meaning "the page took every basis default", and `None` means
+    the basis could not be established, with `problem` saying why in the words
+    the caller will print.
+
+    WHY THIS IS SEPARATE FROM `_home_params`, and why it exists at all. This
+    module's stamp is the whole query: scope AND basis. A guard elsewhere in the
+    repo watches a DIFFERENT scope on purpose (all time, trailing 90 days, the
+    AI subset), so it cannot take the page's query — but it must not go on
+    reading a basis the page stopped using either, which is precisely how
+    `_home_params` itself spent 2026-08-10 to 2026-08-11 grading four correct
+    figures as wrong. Splitting the stamp lets a caller keep its own scope and
+    still defer on the basis, which is the same line `_STAMP_ALLOWED` already
+    draws from the other side: the page may choose its basis, it may not choose
+    its scope.
+
+    The validation is not bypassed. This calls `_home_stamp`, so a stamp that
+    narrows the population, or names the wrong year, yields `None` here as well
+    — a page that cannot be trusted to state its own scope is not a page whose
+    basis is worth copying either.
+    """
+    stamp, problem, _is_defect, _terr = _home_stamp(ctx)
+    if stamp is None:
+        return None, problem
+    return {k: v for k, v in stamp.items() if k in _STAMP_BASIS_KEYS}, None
+
+
 # ---------------------------------------------------------------------------
 # THE REGISTRY: every home-page figure that is independently recomputable
 # ---------------------------------------------------------------------------

@@ -323,6 +323,32 @@ class Headline:
         self.watch_movement = watch_movement
         self.note = note
 
+    # The params that make a query pick rows BY DATE. Only a headline carrying
+    # one of these has a date basis at all; see `date_windowed`.
+    _DATE_PARAMS = ("trailing_days", "from", "to", "years", "quarters", "months")
+
+    @property
+    def date_windowed(self):
+        """Does this headline select rows by date, and therefore have a basis?
+
+        MEASURED, NOT ASSUMED, and the measurement is the reason three of the
+        four headlines below need no basis wiring at all. `alt_db_where()` uses
+        `alt_db_date_col()` in exactly one place: the block that applies
+        from/to/years/quarters/months. A query carrying none of those adds no
+        date predicate, so `date_basis` cannot change which rows it returns.
+        Confirmed against the live API on 2026-08-11, effective vs notice:
+
+            ai_all_time         215,065 jobs / 99 entries      identical
+            worldwide_all_time  20,383,596 / 63,619            identical
+            us_all_time         6,978,103 / 43,368             identical
+
+        `worldwide_recent_90d` is the one that carries a window, and it is not
+        identical: 326,218 jobs / 1,371 entries on the effective basis against
+        293,826 / 1,178 on the page's own, with a DIFFERENT largest row in each
+        (Aeternum Health 20,000 vs Dird Group 18,000).
+        """
+        return any(k in self.params for k in self._DATE_PARAMS)
+
     def scope(self):
         return Scope(self.params)
 
@@ -337,7 +363,12 @@ HEADLINES = (
         note="The sharp one. A fresh bad row lands here first and the denominator is "
              "small enough to see it: the RI 98,912 misparse would have read 34%, the "
              "AT&T 78,788 test notice 27%, the Coal India by-2050 projection 25%. A "
-             "real 50,000-job announcement reads 17% and passes.",
+             "real 50,000-job announcement reads 17% and passes. THE ONLY HEADLINE "
+             "HERE WITH A DATE WINDOW, so the only one whose basis is read off the "
+             "page (see `date_windowed` and `_page_date_basis`). On the effective "
+             "basis this window could not see a notice filed today for a cut "
+             "effective in four months — a fresh row, already inside every published "
+             "total, invisible to the guard whose whole job is catching fresh rows.",
     ),
     Headline(
         name="ai_all_time",
@@ -365,7 +396,12 @@ HEADLINES = (
         max_share=0.02,                        # live 2026-07-31: 0.86% (60,000 of 6,939,141)
         move_floor=20000,
         note="country_basis=any is the documented union of job location and employer "
-             "domicile — the same basis the reader's own filter uses.",
+             "domicile — the same COUNTRY basis the reader's own table and exports "
+             "use. That word was doing two jobs. The sentence was written before "
+             "2.20.4 moved the page's DATE basis, and read as a claim that this slice "
+             "matched the reader's view in every respect; it never named a date basis "
+             "and does not need one, because this query carries no date filter at all "
+             "and `date_basis` is a measured no-op on it (see `date_windowed`).",
     ),
 )
 
@@ -616,15 +652,73 @@ MIN_CYCLE_SPAN_DAYS = 0.95
 # amount of ordinary churn produces that.
 
 
-def _headline_params(h, today=None):
-    """Concrete query params. `trailing_days` becomes from=/to= at call time."""
+def _headline_params(h, today=None, date_basis=None):
+    """Concrete query params. `trailing_days` becomes from=/to= at call time.
+
+    `date_basis` is applied ONLY to a headline that selects rows by date, and it
+    is never typed into this file — see `_page_date_basis` for where it comes
+    from and why.
+    """
     params = dict(h.params)
     days = params.pop("trailing_days", None)
     if days:
         end = today or datetime.now(timezone.utc).date()
         params["from"] = str(end - timedelta(days=int(days)))
         params["to"] = str(end)
+    if date_basis and h.date_windowed:
+        params["date_basis"] = str(date_basis)
     return params
+
+
+def _page_date_basis(ctx):
+    """(date_basis, problem) — the date basis the LIVE PAGE says it counts on.
+
+    WHY THIS IS NOT A CONSTANT IN THIS FILE. These guards watch numbers a reader
+    can see, and a guard on a different basis from the surface it guards is a
+    guard that goes green over a wrong published number. On 2026-08-10 the
+    page's default moved from the effective date to the filing date; the commit
+    said the default "lives in four places and all four moved", and it has since
+    been found in six, then seven. Every one of those was a HAND-COPIED default
+    that did not get re-typed. Writing `"notice"` here would be the eighth copy,
+    and it would be wrong on the day somebody moves the default again.
+
+    So the basis is read from the stamp the page publishes beside its own
+    figures (`window.ALT_BOOTSTRAP.aggregate_params`), through the mechanism
+    published_figures.py already owns and validates. This deliberately takes
+    ONLY `date_basis` from it:
+
+      * `country_basis` is a per-headline decision here — `us_all_time` sets
+        `any` on purpose, and blanket-applying the page's would overwrite a
+        choice this file made for its own reasons;
+      * the SCOPE is never taken. These headlines watch all time, the trailing
+        90 days and the AI subset precisely because they are NOT the page's
+        query, and `_home_stamp`'s allowlist already refuses to let a page
+        narrow its way to green.
+
+    THREE STATES, as everywhere. If the page cannot be reached or does not state
+    a stamp, this returns `(None, problem)` and the caller reports UNKNOWN. It
+    does NOT fall back to the effective basis: a silent fallback to the basis
+    this change exists to stop reading is the same defect with a retry in front
+    of it. Cached on ctx, and ctx.fetch is memoised anyway, so the page is
+    fetched at most once per run however many slices ask.
+    """
+    cached = getattr(ctx, "_page_date_basis", None)
+    if cached is None:
+        import published_figures
+        basis, problem = published_figures.home_basis(ctx)
+        cached = (None, problem) if basis is None else (basis.get("date_basis"), None)
+        ctx._page_date_basis = cached
+    return cached
+
+
+def _headline_query(ctx, h):
+    """(params, problem). The query for one headline, on the page's own basis."""
+    if not h.date_windowed:
+        return _headline_params(h, ctx.today), None
+    basis, problem = _page_date_basis(ctx)
+    if basis is None and problem:
+        return None, problem
+    return _headline_params(h, ctx.today, date_basis=basis), None
 
 
 def _excusable(err):
@@ -729,7 +823,14 @@ class ConcentrationInvariant:
         return _roll_up(self, ctx, per)
 
     def _one(self, ctx, h):
-        payload, bad_state, why, err = _fetch_aggregate(ctx, _headline_params(h, ctx.today))
+        params, problem = _headline_query(ctx, h)
+        if params is None:
+            return _out(UNKNOWN,
+                        f"{problem} — this headline is windowed by date, so without the "
+                        f"page's own basis it is NOT being checked (reading it on the "
+                        f"effective basis would guard a population the site does not "
+                        f"publish)")
+        payload, bad_state, why, err = _fetch_aggregate(ctx, params)
         if bad_state:
             ctx.errors[h.name] = err
             return _out(bad_state, why, pending=_excusable(err))
@@ -881,7 +982,12 @@ class MovementInvariant:
                 f"and a stale baseline do not close it")
 
     def _verdict(self, ctx, h, prior):
-        payload, bad_state, why, err = _fetch_aggregate(ctx, _headline_params(h, ctx.today))
+        params, problem = _headline_query(ctx, h)
+        if params is None:
+            return _out(UNKNOWN,
+                        f"{problem} — this headline is windowed by date, so without the "
+                        f"page's own basis its movement is NOT being checked")
+        payload, bad_state, why, err = _fetch_aggregate(ctx, params)
         if bad_state:
             ctx.errors[h.name] = err
             return _out(bad_state, why, pending=_excusable(err))
@@ -933,7 +1039,7 @@ class MovementInvariant:
         # The denominator is the observation window, never a running total —
         # plausibility_ratio() enforces that, which is the point of routing a
         # one-line division through it.
-        window = Scope(_headline_params(h, ctx.today), window_days=max(1, round(span)))
+        window = Scope(params, window_days=max(1, round(span)))
         allowance = abs(d_entries) * base_mean * h.mean_factor
         if allowance:
             ratio = plausibility_ratio(

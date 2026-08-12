@@ -47,18 +47,39 @@ jobs:
               req = urllib.request.Request(API + q, headers={
                   "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
               return json.load(urllib.request.urlopen(req, timeout=60))["totals"]
+          # THIS TABLE IS A RECONCILIATION SURFACE, so it is read on the basis
+          # the page it reconciles against publishes. Every windowed call names
+          # date_basis=notice: since 2.20.4 the tracker's default is the FILING
+          # date, and a step whose own name is "the reconciliation ping" printing
+          # the effective-basis total beside a link telling the reader to compare
+          # it with the live page is the seven-places defect, daily, at the exact
+          # moment somebody checks the number.
+          #
+          # Rows with no date filter (All time) are basis-independent: alt_db_where
+          # applies alt_db_date_col only to from/to/years/quarters/months, so a
+          # query carrying none of them adds no date predicate. Measured
+          # 2026-08-11: worldwide all time is byte-identical on both bases
+          # (20,383,596 jobs / 63,619 entries).
+          #
+          # The labels changed with the basis. `years=<y>` was printed as "YTD"
+          # and is the whole calendar year, which under either basis holds
+          # notices already filed for effective dates still ahead. The tracker
+          # hero says "calendar year" for the same window and for the same
+          # reason; this now matches it instead of contradicting it.
+          NOTICE = "&date_basis=notice"
           y = datetime.date.today().year
-          allt = get(); ytd = get(f"?years={y}"); prev = get(f"?years={y-1}")
-          us = get(f"?years={y}&country=United%20States")
-          print(f"## Daily snapshot — {datetime.date.today()}")
+          allt = get(); ytd = get(f"?years={y}{NOTICE}"); prev = get(f"?years={y-1}{NOTICE}")
+          us = get(f"?years={y}&country=United%20States{NOTICE}")
+          print(f"## Daily snapshot - {datetime.date.today()}")
           print(f"| Scope | Layoffs | Jobs | AI jobs | Announced |")
           print(f"|---|---|---|---|---|")
           print(f"| All time | {allt['entries']:,} | {allt['jobs']:,} | {allt['ai_jobs']:,} | {allt.get('announced_jobs',0):,} |")
-          print(f"| {y} YTD | {ytd['entries']:,} | {ytd['jobs']:,} | {ytd['ai_jobs']:,} | {ytd.get('announced_jobs',0):,} |")
-          print(f"| {y} YTD US | {us['entries']:,} | {us['jobs']:,} | {us['ai_jobs']:,} | {us.get('announced_jobs',0):,} |")
-          print(f"| {y-1} full | {prev['entries']:,} | {prev['jobs']:,} | {prev['ai_jobs']:,} | — |")
-          print(f"\nRange: {allt['min_date']} → {allt['max_date']} · {allt['states']} US states · {allt['countries']} countries")
-          print(f"\nHow we compare to announcement surveys, tech-event trackers and WARN aggregators is explained by CATEGORY (no competitor named) at https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-metric-definitions — differences are definitional.")
+          print(f"| {y} calendar year | {ytd['entries']:,} | {ytd['jobs']:,} | {ytd['ai_jobs']:,} | {ytd.get('announced_jobs',0):,} |")
+          print(f"| {y} calendar year, US | {us['entries']:,} | {us['jobs']:,} | {us['ai_jobs']:,} | {us.get('announced_jobs',0):,} |")
+          print(f"| {y-1} full | {prev['entries']:,} | {prev['jobs']:,} | {prev['ai_jobs']:,} | - |")
+          print(f"\nRange: {allt['min_date']} to {allt['max_date']} · {allt['states']} US states · {allt['countries']} countries")
+          print(f"\nDated rows are counted on the FILING date (date_basis=notice), the tracker page's own default since 2.20.4, so these figures reproduce what the page publishes. All-time rows carry no date filter and are the same on either basis.")
+          print(f"\nHow we compare to announcement surveys, tech-event trackers and WARN aggregators is explained by CATEGORY (no competitor named) at https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-metric-definitions - differences are definitional.")
           PY
 
       - name: Build report

@@ -84,6 +84,38 @@ PRECISION_LOWER_FLOOR = 0.80
 PRECISION_MIN_CHECKED = 20
 _STOP = {"inc", "corp", "co", "ltd", "plc", "llc", "the", "group", "sa", "se", "ag"}
 
+# THE DATE BASIS EVERY `years=` WINDOW IN THIS FILE IS ASKED ON.
+#
+# Every year window below is looking for a company in the year that company was
+# ANNOUNCED to be cutting: the CSV gold set's `year` column is an announcement
+# year, and the precision samples are drawn from what has recently been
+# PUBLISHED. The API's default basis is the EFFECTIVE date, so an event
+# announced in 2026 for an effective date in 2027 falls outside `years=2026` and
+# scores as a miss it is not. `notice` is COALESCE(announcement_date,
+# layoff_date): the filing date where we hold one, the effective date otherwise.
+#
+# STRICT `announcement` WOULD BE WRONG HERE, and that was measured rather than
+# argued. It counts announcement_date ONLY, so it drops every row we hold no
+# filing date for. Run against the 40-company CSV set on 2026-08-11:
+#
+#     effective     33/40 hits    (what this file used to ask)
+#     notice        33/40 hits    (what it asks now)
+#     announcement  19/40 hits    (strict; those 14 losses are rows with no
+#                                  announcement_date, not real misses)
+#
+# So on today's data this moves NOTHING: the verdict is identical for all 40
+# companies, and no figure this module publishes changes. It is made anyway
+# because the disagreement is structural — the window and the gold set were
+# keyed on different dates, and the day a gold company's row carries a future
+# effective date the two start disagreeing silently, understating our own
+# coverage.
+#
+# Deliberately NOT read off the live page the way data_integrity._page_date_basis
+# is. The reason this file needs the filing basis is a property of the GOLD SET,
+# not of whatever the tracker page happens to default to; if the page moved back
+# to the effective basis tomorrow these queries would still be asked this way.
+GOLDSET_DATE_BASIS = "notice"
+
 
 def _count_in_text(n, text):
     if not text or not n:
@@ -120,7 +152,8 @@ def measure_precision():
         yr = date.today().year
         r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
                          params={"years": str(yr), "sources": "news", "per_page": SAMPLE * 3,
-                                 "sort": "id", "dir": "desc"}, headers=UA, timeout=30)
+                                 "sort": "id", "dir": "desc",
+                                 "date_basis": GOLDSET_DATE_BASIS}, headers=UA, timeout=30)
         rows = r.json().get("data", []) if r.status_code == 200 else []
     except Exception as exc:
         print(f"precision: could not sample ({exc})")
@@ -166,7 +199,8 @@ def measure_ai_precision():
     try:
         yr = date.today().year
         r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
-                         params={"years": str(yr), "ai": "1", "per_page": 300},
+                         params={"years": str(yr), "ai": "1", "per_page": 300,
+                                 "date_basis": GOLDSET_DATE_BASIS},
                          headers=UA, timeout=30)
         rows = r.json().get("data", []) if r.status_code == 200 else []
     except Exception as exc:
@@ -217,7 +251,9 @@ def measure_recall():
         try:
             r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
                              params={"company": company, "years": g.get("year", "2026"),
-                                     "per_page": 30}, headers=UA, timeout=30)
+                                     "per_page": 30,
+                                     "date_basis": GOLDSET_DATE_BASIS},
+                             headers=UA, timeout=30)
             data = r.json().get("data", []) if r.status_code == 200 else []
         except Exception:
             data = []

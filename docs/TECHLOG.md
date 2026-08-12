@@ -1,5 +1,176 @@
 # Tech Log
 
+## 2026-08-12 - the guards, the gold set, the export and the press page were all still on the old basis (2.20.15)
+
+`28e255d` (2.20.4) moved the default date basis from the effective date to the
+filing date and said the default "lives in four places and all four moved". Six
+was the chart (2.20.11), seven the structured data (2.20.12, landed alongside
+this from another session). This is eight through eleven, and the pattern is now
+explicit enough to state: **every one of these was a hand-typed copy of a
+default that nobody re-typed.**
+
+**NO PUBLISHED FIGURE MOVED.** Every claim below was measured against the live
+API before and after and the numbers are in this entry. The one thing a reader
+sees differently is where two press-page links land, which is a citability
+defect of the same family rather than a wrong number.
+
+**Two of the four sites originally in scope were dropped mid-session** (the
+FAQPage JSON-LD / citeline and the at-a-glance board hrefs) because other
+sessions took them. Findings inside those areas are reported to those sessions,
+not fixed here.
+
+### The guards were reading a basis they were not entitled to assume
+
+`data_integrity.py`'s HEADLINES sent no `date_basis`, under a note saying they
+used "the same basis the reader's own filter uses". Measured live 2026-08-11,
+effective vs notice:
+
+    ai_all_time           215,065 jobs / 99 entries      identical
+    worldwide_all_time    20,383,596 / 63,619            identical
+    us_all_time           6,978,103 / 43,368             identical
+    worldwide_recent_90d  326,218 / 1,371  vs  293,826 / 1,178   NOT identical
+
+**Three of the four are a measured no-op, and that is the finding rather than a
+let-off.** `alt_db_where()` applies `alt_db_date_col()` in exactly one place,
+the from/to/years/quarters/months block, so a query carrying none of those adds
+no date predicate at all. `Headline.date_windowed` now decides which is which
+off the params rather than off the name. The `us_all_time` note was the real
+defect there: the word "basis" was doing two jobs, and it now says plainly that
+it is a COUNTRY-basis claim.
+
+`worldwide_recent_90d` is the one that carries a window, and on the effective
+basis it could not see a notice filed today for a cut effective in four months.
+A fresh row, already inside every published total, invisible to the guard whose
+entire stated job is catching fresh rows. It now reads the page's own basis and
+the largest row it watches changed with it (Aeternum Health 20,000 to Dird Group
+18,000). Neither trips the 20% bound: 6.13% before, 6.36% after, so no verdict
+moved.
+
+**The basis is not typed into data_integrity.py, and that is the actual fix.**
+It comes from `published_figures.home_basis()`, a new split of the stamp that
+module already reads off `window.ALT_BOOTSTRAP.aggregate_params` and already
+validates. The split is the point: a guard watching all time cannot take the
+page's SCOPE, but it must not go on reading a basis the page stopped using
+either. The allowlist is untouched, so the page still cannot narrow its way to
+green and `home_basis` returns None on a narrowed stamp exactly as
+`_home_params` does. An unreadable stamp is UNKNOWN, never a fallback to the
+effective basis: a silent fallback to the thing this change exists to stop
+reading is the same defect with a retry in front of it. `country_basis` is
+deliberately NOT taken, because `us_all_time` sets `any` for its own reasons.
+
+### The gold set's window disagreed with the gold set
+
+`recall_precision.py` asked `years=<the CSV gold set's ANNOUNCEMENT year>` on
+the effective basis. Measured across all 40 companies on 2026-08-11:
+
+    effective     33/40 hits      (what it used to ask)
+    notice        33/40 hits      (what it asks now)
+    announcement  19/40 hits      (strict; those 14 losses are rows with no
+                                   announcement_date, not real misses)
+
+**Nothing moves today and no published figure is involved at all.** That set is
+the "LEGACY NAME-PRESENCE CHECK, NOT event recall, NO threshold" line, and its
+return value is printed and then never read: not by `worst`, not by the health
+post, not by the render copy. The PUBLISHED recall figure is the SEC Item 2.05
+gold set, and it is basis-independent by construction -
+`recall_goldset.measure()` queries by `company` alias with no date filter and
+windows locally. That was checked before anything was touched, because a
+published recall figure moving would be a data-correctness matter and not a
+cleanup.
+
+The two precision samples take the same basis for the same reason: their frame
+is "what has recently been published", and on the effective basis that frame
+silently excluded future-effective rows, which is exactly where a fresh misparse
+lives. `GOLDSET_DATE_BASIS` is deliberately NOT read off the live page - the
+reason this file needs the filing basis is a property of the gold set, so it
+would not follow the page back if the page moved. Strict `announcement` was
+measured and rejected rather than argued about.
+
+### The CSV export could not reproduce its own view
+
+`alt_export_filters()` has always handed the request straight to
+`alt_db_where()`, so a `date_basis=notice` export selects rows on
+COALESCE(announcement_date, layoff_date), and since 2.20.4 that is the page's
+default: the ordinary CSV link beside the headline shipped rows chosen by a date
+the file did not contain. Judged worth closing now rather than deferring, for
+three reasons. It is additive and one line. The JSON export of the same rows has
+carried `announcement_date` for as long as the column has existed, so two
+formats of one download disagreed about what a row is. And the CSV is the
+artifact a journalist opens in a spreadsheet and cites, which is the whole
+argument for the export existing. Placed beside `layoff_date` rather than
+appended: nothing in the repo reads the header positionally, and the JSON export
+remains the stable machine surface.
+
+### THE EIGHTH PLACE: sixteen press links labelled "See the rows behind this number" did not
+
+Every figure on `page-press.php` is computed on hardcoded `layoff_date BETWEEN`.
+Both of its link builders passed args to `add_query_arg` with no `date_basis`,
+and a tracker URL naming no basis gets the page default, which is now the filing
+date. 2.20.11 fixed three links on this page; these sixteen were in the same
+file, under the same sentence, built by two closures nobody had opened.
+
+**It is fixed in the two closures, not at the sixteen call sites**, because a
+default copied into sixteen places is a default that will next be updated in
+fifteen. That is this entire class of defect in one line.
+
+**And fixing the basis alone would have made the page visibly worse.** Measured
+2026-08-11, the year-to-date press headline:
+
+    the sentence                 479,037 verified jobs / 3,308 entries
+    the link, before             480,685 / 3,450        (gap 1,648)
+    the link, basis fixed only   514,111 / 3,689        (gap 35,074)
+    the link, both fixed         479,037 / 3,308        (gap 0)
+
+Two wrong things were partly cancelling. The second is that a figure computed
+Jan 1 to today and labelled "<year> so far" was linked as `years=<year>`, the
+whole calendar year - the same defect `alt_signal_board_periods()` fixed for the
+board's YTD column. The year-to-date and per-country blocks now link with
+`from`/`to`. The completed-month and prior-year links were already
+window-consistent and are untouched.
+
+### The ninth: the daily reconciliation ping
+
+`data-quality.yml`'s "Daily numbers snapshot (the reconciliation ping)" printed
+a "2026 YTD" table into every run summary on the effective basis, directly above
+a line inviting the reader to compare it against the live page. Daily, at 11 AM
+ET, which is when somebody checks the number. The three windowed calls now name
+`date_basis=notice`; the all-time row carries no date filter and is identical on
+either basis, which the step now states rather than leaving to be rediscovered.
+"YTD" became "calendar year" to match the hero, because `years=<y>` is the whole
+year under either basis.
+
+### Checked and left alone, each with the reason
+
+* **`survey_reconcile.py` sends `date_basis=announcement` explicitly, and that
+  is correct.** It was flagged in the sweep as a defect on the strength of the
+  19/40 measurement above, which is the wrong transplant: that measurement is
+  about a company-presence gold set, and this is the announcement-survey
+  comparator, where excluding rows with no genuine announcement date is the
+  point. `alt_db_date_col()` documents `announcement` as existing for exactly
+  this caller, ARCHITECTURE.md documents the strict comparator, and the query
+  also carries `stage=announced`.
+* `recall_goldset.match_event()` windows locally on `layoff_date or
+  announcement_date`, the inverse of `notice`, against a filing-keyed
+  `match_window`. Its API call carries no date filter and the window's +270d
+  tail absorbs the difference. Noted, not changed.
+* `/facets` computes `min_date`/`max_date` on `layoff_date` and those bound the
+  Years selector, so a year reachable only on the notice basis has no chip. The
+  route accepts no filters at all, so no caller can pass a basis; it needs its
+  own change and its own measurement.
+* `company_watchlist.already_have()`, `source_verification_audit`,
+  `ai_evidence_sweep`, `employer_domicile_backfill` and `tracker_diff` all
+  window by year with no basis. None publishes a figure a reader can quote: they
+  select POPULATIONS to enrich or audit. Real, lower-stakes, and each needs its
+  own measurement of what the population change does.
+
+`railway/tests/test_guard_and_export_basis.py` is new: 14 of its 17 tests fail
+against the pre-fix tree (`ab4dea1`), and the three that pass there are named in
+its own `Provenance` case rather than left looking like proof. The first
+failure:
+
+    AssertionError: 'date_basis' not found in {'from': '2026-05-13', 'to':
+    '2026-08-11'} : the 90-day headline is windowed by date, so its query must
+    name the basis it is windowed on
 ## 2026-08-12 - the board's cells linked to a page that recounted them, and the tap and the link had to learn the same thing (2.20.14)
 
 The entry below listed the at-a-glance board's cell links as found and not

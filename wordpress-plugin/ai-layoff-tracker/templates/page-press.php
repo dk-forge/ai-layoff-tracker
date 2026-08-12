@@ -35,7 +35,36 @@ if (!is_array($alt_sb_groups)) {
     $alt_lm = strtotime(gmdate('Y-m-01') . ' -1 day');
     $alt_m_from = gmdate('Y-m-01', $alt_lm); $alt_m_to = gmdate('Y-m-t', $alt_lm);
     $alt_m_label = gmdate('F Y', $alt_lm);
-    $alt_lk = function ($args) use ($alt_tk) { return esc_url(add_query_arg($args, $alt_tk)); };
+    /*
+      EVERY LINK OFF THIS PAGE NAMES THE BASIS ITS FIGURE WAS COUNTED ON, and it
+      is done here rather than at the sixteen call sites for the reason this
+      whole class of defect exists: a default copied by hand into sixteen places
+      is a default that will next be updated in fifteen.
+
+      Every statistic on this page is computed by the closures below on
+      hardcoded `layoff_date BETWEEN` — the EFFECTIVE date. Since 2.20.4 the
+      tracker page a reader lands on defaults to the FILING date, and a URL that
+      says nothing gets that default (layoffs.js only overrides on an explicit
+      date_basis). So "See the rows behind this number" was opening a view that
+      recounted the number. 2.20.11 fixed three such links on this page (the two
+      evidence-tier links further down, and the report/widget ones); these were
+      the other sixteen, in the same file, under the same sentence.
+
+      Measured live 2026-08-11, the year-to-date press headline:
+        the sentence      479,037 verified jobs / 3,308 entries
+        the link, before  480,685 / 3,450
+      1,648 apart, which is the trap: two wrong things partly cancelling. Naming
+      the basis ALONE would have moved the link to 514,111, a 35,074 gap and a
+      visibly worse page. See the year-to-date window note below; both halves
+      ship together or neither is a fix.
+
+      Unconditional, not conditional on the args carrying a date window: on a
+      windowless link the basis is a no-op, and a rule with an exception in it is
+      the next thing to drift.
+    */
+    $alt_lk = function ($args) use ($alt_tk) {
+        return esc_url(add_query_arg(array_merge(array('date_basis' => 'effective'), $args), $alt_tk));
+    };
     $alt_stmap = alt_us_state_names();
 
     // Query helpers (columns are fixed literals, not user input).
@@ -103,7 +132,24 @@ if (!is_array($alt_sb_groups)) {
     };
 
     $alt_sb_groups = array();
-    $ytd_items = $alt_period_items($alt_ytd_from, $alt_ytd_to, $alt_y . ' so far', array('years' => $alt_y), '');
+    /*
+      "SO FAR" IS A WINDOW, AND THE LINK HAS TO CARRY THAT WINDOW.
+
+      These figures are computed Jan 1 -> TODAY and labelled "<year> so far",
+      but the link was `years=<year>`: the whole calendar year. Rows are dated by
+      effective date and WARN notices are filed by law weeks ahead, so the
+      calendar year legitimately holds cuts that have not happened, and the link
+      under a "so far" sentence opened a wider view than the sentence described.
+      alt_signal_board_periods() fixed exactly this for the board's YTD column
+      (33,939 not-yet-effective jobs on 2026-08-04); the press page still had it.
+
+      Measured 2026-08-11 on the matched effective basis: `years=2026` returns
+      514,111 verified jobs against the sentence's 479,037. Naming the basis
+      without narrowing the window would therefore have widened the gap from
+      1,648 to 35,074 - the two defects were partly cancelling.
+    */
+    $ytd_items = $alt_period_items($alt_ytd_from, $alt_ytd_to, $alt_y . ' so far',
+                                   array('from' => $alt_ytd_from, 'to' => $alt_ytd_to), '');
     if ($ytd_items) $alt_sb_groups[] = array('id' => 'sb-ytd', 'title' => $alt_y . ' year to date', 'items' => $ytd_items);
     $m_items = $alt_period_items($alt_m_from, $alt_m_to, $alt_m_label, array('years' => $alt_y, 'months' => (int) gmdate('n', $alt_lm)), '');
     if ($m_items) $alt_sb_groups[] = array('id' => 'sb-month', 'title' => 'Latest complete month (' . $alt_m_label . ')', 'items' => $m_items);
@@ -124,7 +170,10 @@ if (!is_array($alt_sb_groups)) {
         $s = $alt_stats($alt_ytd_from, $alt_ytd_to, $p[1]); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
         $pct = $v ? round(100 * $aiv / $v) : 0; $pctb = $v ? round(100 * $aib / $v) : 0;
         $flag = alt_country_flag($p[1] === '' ? 'World' : $p[1]);
-        if ($v > 0) $geo_items[] = array('label' => ($flag ? $flag . ' ' : '') . $p[0], 'text' => $p[2] . number_format($v) . ' job cuts are on record for ' . $alt_y . '. Employers blamed AI for ' . $pct . '% of them; ' . $pctb . '% carry any AI link.', 'link' => $alt_lk($p[1] === '' ? array('years' => $alt_y) : array('years' => $alt_y, 'country' => $p[1])), 'linklabel' => 'See the rows behind this number');
+        // Same Jan 1 -> today window as the year-to-date block above (these come
+        // from the same $alt_ytd_from/$alt_ytd_to pair), so the same from/to link.
+        $geo_win = array('from' => $alt_ytd_from, 'to' => $alt_ytd_to);
+        if ($v > 0) $geo_items[] = array('label' => ($flag ? $flag . ' ' : '') . $p[0], 'text' => $p[2] . number_format($v) . ' job cuts are on record for ' . $alt_y . '. Employers blamed AI for ' . $pct . '% of them; ' . $pctb . '% carry any AI link.', 'link' => $alt_lk($p[1] === '' ? $geo_win : array_merge($geo_win, array('country' => $p[1]))), 'linklabel' => 'See the rows behind this number');
     }
     if ($geo_items) $alt_sb_groups[] = array('id' => 'sb-geo', 'title' => 'By region and country (' . $alt_y . ')', 'items' => $geo_items);
 
@@ -143,7 +192,12 @@ $alt_ps = get_transient('alt_press_statements_' . ALT_VERSION);
 if (!is_array($alt_ps)) {
     global $wpdb; $alt_pt = alt_db_table();
     $alt_ptk = home_url('/ai-layoff-tracker/');
-    $alt_plk = function ($args) use ($alt_ptk) { return esc_url(add_query_arg($args, $alt_ptk)); };
+    // Same rule, same reason, second cache block: see the note on $alt_lk above.
+    // Every $alt_pstats / $alt_ptopcol / $alt_pbig figure below is computed on
+    // `layoff_date BETWEEN`, so every link off one of them says so.
+    $alt_plk = function ($args) use ($alt_ptk) {
+        return esc_url(add_query_arg(array_merge(array('date_basis' => 'effective'), $args), $alt_ptk));
+    };
     $alt_pn = function ($v) { return number_format((int) $v); };
 
     // Evidence tiers. These are not new labels: they are the ai_causation values
@@ -277,8 +331,12 @@ if (!is_array($alt_ps)) {
                   'items' => $alt_build($alt_mo_from, $alt_mo_to, $alt_mo_lab,
                                         array('from' => $alt_mo_from, 'to' => $alt_mo_to))),
             array('id' => 'yearly', 'title' => $alt_y2 . ' year to date', 'sub' => '1 January to today',
+                  // from/to, not years=: this block is "1 January to today", and
+                  // the calendar year is a wider window. See the note on
+                  // $ytd_items above for the measurement.
                   'items' => $alt_build(sprintf('%04d-01-01', $alt_y2), gmdate('Y-m-d'), $alt_y2 . ' so far',
-                                        array('years' => $alt_y2))),
+                                        array('from' => sprintf('%04d-01-01', $alt_y2),
+                                              'to' => gmdate('Y-m-d')))),
         ),
     );
 
