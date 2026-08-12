@@ -18,11 +18,20 @@ Safety model (matches the /industry-backfill endpoint's guarantees):
   skip. The endpoint re-validates against `alt_industry_vocabulary()` and
   rejects any label outside it (a rejection here is treated as vocabulary
   drift and fails loudly).
-- Double-confirmed: each row is classified by TWO independent model passes and
-  written only when both agree on the same non-empty label. A disagreement or
-  an "unknown" from either pass leaves the row untouched in the backlog. This
-  is the "double-confirmed by two model passes" the endpoint records in its
-  corrections trail.
+- Two-pass agreement: each row is classified TWICE and written only when both
+  passes agree on the same non-empty label. A disagreement or an "unknown" from
+  either pass leaves the row untouched in the backlog. This is the
+  "double-confirmed by two model passes" the endpoint records in its corrections
+  trail.
+  **The two passes are NOT independent** and this docstring used to say they
+  were. They are the same `classify_industry` call, same model, same prompt, so
+  a shared prior survives both: agreement catches a one-off parse or attention
+  slip and buys nothing against a systematic bias. The daily classification
+  spot-check advertised the same false independence and used it to justify
+  unattended edits on the biggest rows in the corpus, which is how 92,000 wrong
+  jobs reached the published US headline on 2026-08-08 (TECHLOG 2026-08-12).
+  The gate here is left as it is - blank fields only, closed vocabulary,
+  never overwriting a set label - but do not read it as two opinions.
 
 Env: WP_SITE_URL, WP_API_KEY; OPENROUTER_API_KEY for the model path.
 Optional: INDUSTRY_BACKFILL_BATCH (rows/run, default 40),

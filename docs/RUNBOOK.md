@@ -497,6 +497,45 @@ else the next import re-creates it). 3. Remove/correct data: single entries →
 in the site's corrections log (templates/page-tracker.php) + TECHLOG. Counts are part of
 the dedup hash — corrected counts need the purge path, plain re-import duplicates.
 
+**A label relabel was HELD (you got "N label relabel(s) HELD for review, not applied")**
+
+The daily classification spot-check (`railway/daily_classification_spotcheck.py`,
+run by `data-quality.yml` at 15:00 UTC) proposed a country or industry relabel,
+its second pass agreed, and it **refused to apply it** because the row is at or
+above `AUTO_APPLY_MAX_JOBS` (5,000) or because it moves a row off a guarded
+country label like `Multiple countries`. **Nothing was written.** The same mail
+lists the row id, the old and new label, the job count and the model's reason,
+and the run summary in Actions says the same.
+
+**Doing nothing is a legitimate outcome and is usually the right one.** This
+mail exists because on 2026-08-08 that exact suggestion, applied unattended, put
+92,000 jobs into the published US headline for four days (TECHLOG 2026-08-12;
+`docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md` section 8). A model asked
+whether "Citigroup" belongs under "Multiple countries" answers from the
+company's nationality, not from where the jobs were cut.
+
+To act on one:
+
+1. **Read the row's own source**, not the model's reason. The mail names the
+   company; `curl -s "$API/query?company=<name>&per_page=50"` gives the excerpt
+   and `source_url` for it (`/query` filters by company, not by id). For an ERM row the
+   excerpt states the country it was **imported** with, which is the fact that
+   settles it (`railway/erm_provenance_check.py` reads exactly that).
+2. **Only if the source disagrees with the stored label**, dispatch `Apply a
+   signed-off correction` (`apply-correction.yml`) with `apply=false`, read the
+   dry run, then `apply=true`. That dispatch **is** the human sign-off, and the
+   reason you type is appended verbatim to the public corrections log, so write
+   it as public copy.
+3. **If you decide the stored label is right**, do nothing. `/alert` dedupes by
+   the exact set of held ids, so you get one mail per distinct backlog and a
+   `STILL FAILING` reminder once a fortnight, never one a day. It clears itself
+   the first day the model stops proposing it.
+
+The backlog is **recomputed from live rows every run**, not stored, so there is
+no queue to drain and nothing is lost if a mail fails to send. That also means
+an unread hold cannot rot into a stale to-do: if it stops being proposed, it
+stops being raised.
+
 **An announced plan may have later executed / been filed**
 1. Inspect the public `/announcement-lifecycle-candidates` queue. It is only a narrow, read-only lead: exact company/count/country plus a source-evidenced announcement date and a later record within 365 days.
 2. Compare every retained source report for both events; confirm the scope, geography and timeline describe the same underlying cut.

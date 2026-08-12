@@ -1,5 +1,101 @@
 # Tech Log
 
+## 2026-08-12 - the loop that wrote the wrong US headline is still armed, and now it is bounded (railway only, no deploy)
+
+The 2026-08-08 US headline step was traced on 2026-08-11 to three ERM rows
+re-scored from `Multiple countries` to `United States`
+(`docs/US_HEADLINE_MOVEMENT_FORENSICS_2026_08.md` section 8). What that
+document names as the cause of the wrong number, this entry closes as the cause
+of the *mechanism*: **the thing that made the edit was a scheduled job, it was
+unchanged, and it runs again at 15:00 UTC every day.**
+
+**The writer.** `railway/daily_classification_spotcheck.py`, step 4 of
+`data-quality.yml`. Its sample is fifteen rows by `sort=layoff_date&dir=desc`
+plus fifteen by **`sort=job_count&dir=desc`** — the largest rows in the corpus.
+It asks a model whether each row's industry and country look right, asks a
+second time whether it agrees, and then applied every agreed answer through
+`/edit`. No magnitude bound, no cap, no human. Run 31264210709 reported
+"Auto-applied 14 double-confirmed label fix(es)"; three of those fourteen were
+114335 Citigroup 52,000, 113529 General Motors 47,000 and 64351 Cinemaworld
+45,000, worth +92,000 on the published `country_basis=any` US figure and
++144,000 on the strict job-location one, with worldwide untouched.
+
+**Two properties made it systematic, not unlucky, and a fix has to answer both.**
+
+1. **The sampling selects for headline leverage by construction.** `sort=job_count
+   desc` is, definitionally, the fifteen rows most able to move a public number.
+   Those were the rows getting unattended edits.
+2. **The bait is permanent and the confirmation is not a check.** Asked whether
+   "Citigroup" belongs under "Multiple countries", a model answers from the
+   company's nationality rather than from where the jobs were cut. Today's same
+   sample holds Philips 60,000, VW Group 50,000, Lufthansa 39,000, UBS 36,000
+   and HSBC 35,000, every one legitimately "Multiple countries". And the "two
+   independent LLM passes" were **the same `ask_model` called twice with the same
+   model**, so the shared prior survives both. That claim was in the run summary
+   and, worse, in the reason written to the **public corrections log**. It was
+   wrong and is gone; the second pass is now described as what it is, a repeat
+   that catches a parse slip and nothing else.
+
+**What changed (railway/ only; no plugin bytes, so no version bump).**
+
+- `AUTO_APPLY_MAX_JOBS = 5000`. A confirmed relabel on a row at or above it is
+  **HELD, never applied**. Not an arbitrary line: it is the one this same
+  workflow already draws, since its anomaly report exists to surface "single
+  WARN notices with unusually large headcounts (>= 5,000)" for a human to read.
+  A row the job flags for human eyes in step 2 is not a row a model may relabel
+  unattended in step 4.
+- That bound also answers the sampling problem **without changing the sampling**.
+  The size-selected half bottoms out around 35,000, so auto-apply is now
+  effectively removed from it while the `layoff_date` half keeps fixing ordinary
+  small rows. Reading the big rows stays valuable - flagging them is how this
+  would have been *found*. It was the writing that had no business being
+  unattended.
+- `GUARDED_COUNTRY_LABELS`: a country relabel is never auto-applied **away from**
+  `Multiple countries` / `worldwide` / `global` and friends, at any size. Separate
+  rule, separate reason: the nationality bias does not switch off below 5,000
+  jobs, it is just cheaper when it is wrong.
+- **The bound is enforced in the function that writes.** `guard_edits()` re-checks
+  magnitude immediately before the POST and raises. It deliberately duplicates
+  the screening step: a bound computed in one place and trusted in another is one
+  refactor away from being reported and not enforced, which is this defect again.
+- Magnitude is read from `jobs_by_id`, built from the **API's** rows. A job count
+  echoed back inside a model's flag is model output and never decides whether an
+  edit is small enough to apply.
+
+**Industry was decided separately and got the same magnitude bound, deliberately
+not under the country justification.** An industry relabel cannot move a country
+headline, which is why it is a different question. But it moves the published
+by-industry aggregate by the row's full job count, so the leverage argument is
+identical and only the surface differs. What industry did **not** get is the
+guarded-label rule, which is specific to the country reasoning error. Small
+industry fixes still land untouched.
+
+**How the owner hears about a hold, without a new mechanism.** The existing
+cause-keyed `/alert` route, the one the CI alerter and the weekly health digest
+already use: `dedupe_key = relabel-hold:<the exact held ids>`, so one mail per
+distinct backlog and the endpoint's own fortnightly `STILL FAILING` reminder,
+never one a day. A run that holds nothing posts `resolve_scope`, so a drained
+backlog stops reminding. **There is no queue to drain**: the backlog is
+recomputed from live rows every run, so an undelivered mail loses nothing and an
+unread hold cannot rot into a stale to-do. Holding exits 0 - a held relabel is a
+kept promise, not a failed run. Operator playbook: RUNBOOK, "a label relabel was
+HELD".
+
+**Tests.** `railway/tests/test_spotcheck_relabel_bounds.py`, 12 cases, offline.
+They drive the real `main()` and watch the HTTP it makes, rather than testing the
+screening function in isolation, because the claim being made is about the
+writer. Against the pre-fix tree 9 of 12 failed, the load-bearing one reading
+`AssertionError: 114335 unexpectedly found in {114335, 113529, 64351} : a
+confirmed country relabel on a 52,000-job row reached /edit; this is the
+2026-08-08 defect, unchanged`.
+
+**Not done here, on purpose.** The three live rows were corrected on
+2026-08-12T01:51Z by another session; this change writes no data and closes no
+incident. `railway/industry_backfill.py` makes the same "two independent model
+passes" claim about the same one-model-twice pattern; its docstring wording is
+corrected in this change, its logic is not touched (blank-only fills, a far
+smaller blast radius) and re-deciding its gate is a separate job.
+
 ## 2026-08-12 - the guards, the gold set, the export and the press page were all still on the old basis (2.20.15)
 
 `28e255d` (2.20.4) moved the default date basis from the effective date to the
