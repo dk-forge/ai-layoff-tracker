@@ -1,5 +1,65 @@
 # Tech Log
 
+## 2026-08-12 - the filter bar "gets lost": every control boundary was under 2:1 (2.20.10)
+
+The owner's report was three words. The measurement, taken off the live page in
+all four theme combinations before anything changed, is that every unselected
+control boundary in the filter bar sat between 1.00:1 and 1.28:1 in light and
+between 1.00:1 and 1.61:1 in dark. WCAG 1.4.11 asks a control's visual boundary
+for 3:1. The worst was the date-basis switch's inactive option at exactly
+1.00:1, because it carried `border: 1px solid transparent` on a tinted track:
+not a faint boundary, none at all.
+
+**Every text-contrast check on the page was green throughout, and had been
+since 2026-08-10.** That work measured whether a reader could READ the words. It
+never asked whether they could see that a control was a control, and those fail
+independently: `--alt-border` on `--alt-surface` is a perfectly reasonable
+hairline between two panels and a non-existent edge around a button.
+
+`railway/contrast_audit.py` now measures both. The new probe walks each
+control's perimeter and asks whether SOME adjacent pair across that edge differs
+by 3:1: border against the page behind it, or border against its own fill, or
+(when no border paints) fill against the page. Both halves are needed. Without
+the last one a transparent border passes; without the middle one a filled
+active pill fails for having a border the same colour as itself.
+
+Alongside the boundaries the bar carried nine control heights (29.6 to 38.0px),
+four radii (8, 10, 20, 999px), four type sizes, one dashed border, one
+transparent one, and five hand-picked widths. It is one shape now, one height
+token (40px at a desk, 44px under 768px, which is WCAG 2.5.5 target size), and
+two width tokens: a field minimum and a chip minimum, both growing with their
+content. One label treatment, uppercase micro type above the control, replaces
+three; the search box has a real `<label>` where it had only a placeholder.
+
+**Three things the measurement found that nobody was looking for.**
+
+1. `.alt-broad-strip .alt-stat-card { width: 100% }` made every derived tile
+   34px WIDER than its own grid track, because `.alt-stat-card` is content-box:
+   three tiles measured 1282px inside a 1180px strip. Invisible only because
+   the strip was inside a closed disclosure.
+2. The option rows inside an open filter dropdown were 31px tall, stacked
+   eleven deep. They are 44px on a phone now and are measured by the audit as
+   target size only: the control on that row is the checkbox, which the browser
+   draws, so demanding a 3:1 box around each row would be inventing a rule.
+3. A closed `<details>` in current Chrome uses `content-visibility: hidden`, so
+   its children still have layout boxes and still carry `textContent`. The
+   derived-totals caveat measured 758x60 with 145 characters of markup and zero
+   readable characters. `innerText` is the only one of the three that reports
+   what a reader can read, and it is what the guard asserts on.
+
+**Two owner reversals landed in the same change.** The filter panel ships OPEN
+again (it collapses on request and remembers that for the session, in
+sessionStorage, because a collapse is a "not right now" and not a preference),
+and the derived-totals section is a `<section>` rather than a `<details>`. The
+five primary tiles are a five-column grid rather than four across with an
+orphan on a second row. Nothing was removed, reordered or re-scoped:
+`test_no_filter_was_removed_or_re_scoped` pins the filter set and its order
+from the template itself.
+
+`railway/tests/test_filter_controls.py` is 18 tests against the real stylesheet
+and the real template markup, in three theme states and two widths, and every
+one of them was run against the pre-fix tree first: 16 fail there.
+
 ## 2026-08-11 - the US headline is wrong by 92,000, and the rows say so themselves
 
 `test_no_headline_moves_without_rows_to_explain_it` has been red since

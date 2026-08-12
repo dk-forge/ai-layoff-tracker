@@ -25,6 +25,31 @@
 :root {
     color-scheme: light;
 
+    /* ---------------------------------------------------------------------
+       CONTROL GEOMETRY. One shape, one height, one width scheme, for every
+       control in the filter bar.
+
+       Before this existed the bar carried nine distinct control heights
+       (29.6, 31.0, 31.5, 33.5, 34.0, 35.5, 36.0, 36.8 and 38.0px), four
+       border radii (8, 10, 20 and 999px), four type sizes (12.5, 13, 13.5,
+       14px), a dashed border on one control and a transparent one on another,
+       and widths picked per control: a 320px flex basis on search, a 150px
+       minimum in the date popover, a 160px grid minimum in the panel, a 190px
+       one in the legacy grid, and a reset button spanning 1118px. Those are
+       measurements off the live page, not an impression.
+
+       Two width tokens, not one. A field is a place you put a value into and
+       gets --alt-ctl-min; a chip is a one-word toggle in a strip of six and
+       gets --alt-ctl-chip-min, which is the tap floor. Both grow with their
+       content. What is gone is the per-control number.
+       --------------------------------------------------------------------- */
+    --alt-ctl-h: 40px;
+    --alt-ctl-r: 8px;
+    --alt-ctl-fs: 13.5px;
+    --alt-ctl-pad: 12px;
+    --alt-ctl-min: 160px;
+    --alt-ctl-chip-min: 44px;
+
     /* ground and panels */
     --alt-page: #ffffff;
     --alt-surface: #ffffff;
@@ -48,6 +73,17 @@
     --alt-border: #e2e3e8;
     --alt-line: #e2e8f0;
     --alt-border-warm: #e6e0cf;
+    /* THE EDGE OF A CONTROL IS NOT THE EDGE OF A PANEL, and for a long time
+       both used --alt-border. A panel edge separates two regions and may be
+       quiet; a control edge tells a reader "this is a thing you operate", and
+       WCAG 1.4.11 asks it for 3:1 against the colours either side of it.
+       --alt-border measures 1.28:1 against --alt-surface here and --alt-grid
+       measures 1.22:1, which is why the owner's report was that the filter bar
+       "gets lost". This token is the control edge and only that. Measured, not
+       eyeballed: 3.55:1 on --alt-surface, 3.34:1 on --alt-surface-2, 3.21:1 on
+       --alt-blue-tint, 3.16:1 on --alt-tint, 3.15:1 on --alt-red-tint, so it
+       clears 3:1 on every background any control in the bar sits on. */
+    --alt-control-border: #838893;
     --alt-border-warm-2: #d9d2bd;
     --alt-bg-2: rgba(0, 0, 0, .03);
     --alt-load-scrim: rgba(255, 255, 255, .8);
@@ -157,6 +193,17 @@
     --alt-serif: ui-serif, "New York", Georgia, "Iowan Old Style", "Times New Roman", serif;
 }
 
+/* THE ONE VIEWPORT OVERRIDE, and it lives here rather than beside the control
+   rules on purpose. test_theme_light_dark.py forbids any --alt-* token being
+   redefined with a literal after the palette blocks, because a token
+   redeclared on a component pins it to one theme, and three of them once were.
+   This is a geometry token and a viewport is not a theme, but the guard is
+   right to be blunt about it, so the declaration sits inside the palette where
+   every other token definition is. 44px is WCAG 2.5.5 target size: at a desk a
+   control is hit with a pointer, on a phone with a thumb. */
+@media (max-width: 767px) { :root { --alt-ctl-h: 44px; } }
+
+
 /* Dark, by OS preference. Applies unless the visitor explicitly chose light. */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -182,6 +229,10 @@
         --alt-grid: #2c313b;
         --alt-border: #343a46;
         --alt-line: #343a46;
+        /* Same job in dark, same measurement. 3.79:1 on --alt-surface,
+           3.41:1 on --alt-surface-2, 4.27:1 on --alt-blue-tint, 3.71:1 on
+           --alt-red-tint. The light value would sit at 1.61:1 here. */
+        --alt-control-border: #6f7787;
         --alt-border-warm: #3a3529;
         --alt-border-warm-2: #46402f;
         --alt-bg-2: rgba(255, 255, 255, .05);
@@ -305,6 +356,9 @@
     --alt-grid: #2c313b;
     --alt-border: #343a46;
     --alt-line: #343a46;
+    /* Chosen-dark carries the identical control edge; the two dark blocks are
+       token-for-token or the themes drift. */
+    --alt-control-border: #6f7787;
     --alt-border-warm: #3a3529;
     --alt-border-warm-2: #46402f;
     --alt-bg-2: rgba(255, 255, 255, .05);
@@ -587,10 +641,28 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 
 .alt-stats-bar {
     display: grid;
-    /* Fixed 4-up so the four job-count cards (Verified / AI-attributed /
-       Announced / Announced-AI) share one even row, and the context cards
-       (AI share / Companies / Industries / Countries) share the next. */
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* FIVE TILES DO NOT FIT A FOUR-COLUMN GRID, and for a while they were put
+       in one anyway: four across, then the fifth alone on a second row with
+       three empty columns beside it. An orphan reads as a tile that failed to
+       load, not as a tile that belongs.
+
+       Five columns for five tiles. The alternative was six columns with the
+       lead tile spanning two, which also completes the row and gives the
+       published figure a wider box, and it was measured and rejected: it
+       leaves the other four tiles 182px wide, where the caption wraps to three
+       lines and the row stands 191px tall. Five equal columns are 221px wide
+       and 173px tall for the same content. The lead figure still reads as the
+       lead through its 40px value and its accent, and it was measured to fit:
+       187px of type in a 187px box, no overflow.
+
+       Every column count below is chosen the same way. It has to divide five
+       with nothing left over.
+
+       Equal heights come free and are worth stating, because they are load
+       bearing. Grid items stretch, so tiles in one row match whatever the
+       tallest needs (the Companies tile, which stacks three measures) instead
+       of each ending wherever its own caption ran out. */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
     margin: 0 0 18px;
 }
@@ -598,9 +670,17 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-stat-value-row { display: flex; align-items: baseline; gap: 8px; }
 .alt-stat-line { display: block; font-size: 13.5px; color: var(--alt-ink-2); margin: 5px 0; }
 .alt-stat-line b { color: var(--alt-ink); font-weight: 800; }
-@media (max-width: 980px) { .alt-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 460px) { .alt-stat-card-tall { grid-row: auto; } }
-@media (max-width: 460px) { .alt-stats-bar { grid-template-columns: 1fr; } }
+/* Two columns with the lead across the top: 2 + 2 + 2 = one full row and two
+   full rows, still no orphan. */
+@media (max-width: 1100px) {
+    .alt-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .alt-stats-bar > .alt-stat-card-lead { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+    .alt-stat-card-tall { grid-row: auto; }
+    .alt-stats-bar { grid-template-columns: 1fr; }
+    .alt-stats-bar > .alt-stat-card-lead { grid-column: auto; }
+}
 .alt-stat-card {
     position: relative;
     background: var(--alt-surface);
@@ -701,7 +781,10 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-broad-strip > .alt-stat-card > .alt-stat-sub + .alt-stat-sub { min-height: 1.35em; }
 /* On a single-column phone layout the tiles stack, so there is no row to align
    ACROSS and the reserved bands are only wasted height. */
-@media (max-width: 460px) {
+/* Matched to the single-column breakpoint above, not to a number of its own.
+   When the tiles stack there is no row to align ACROSS, so the reserved bands
+   are only wasted height. These two numbers drifted apart once already. */
+@media (max-width: 560px) {
     .alt-stats-bar > .alt-stat-card > .alt-stat-label,
     .alt-broad-strip > .alt-stat-card > .alt-stat-label { min-height: 0; }
     .alt-stats-bar > .alt-stat-card > .alt-stat-detail,
@@ -748,6 +831,120 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-btn-primary:hover { background: var(--alt-blue-dark); border-color: var(--alt-blue-dark); color: var(--alt-on-accent); }
 .alt-btn-sm { padding: 6px 12px; font-size: 13px; }
 .alt-btn-active, .alt-btn-active:hover { background: var(--alt-blue); border-color: var(--alt-blue); color: var(--alt-on-accent); }
+
+/* ===========================================================================
+   THE FILTER CONTROLS ARE ONE COMPONENT WITH ONE SHAPE.
+
+   The owner's report was "it gets lost". The measurement behind it, taken off
+   the live page in all four theme combinations, is that every unselected
+   control boundary in this bar sat between 1.00:1 and 1.28:1 in light and
+   between 1.00:1 and 1.61:1 in dark. WCAG 1.4.11 asks for 3:1 on the visual
+   boundary of a user interface component. The worst was the date-basis
+   switch's inactive option at exactly 1.00:1, because it carried
+   `border: 1px solid transparent` on a tinted track: not a faint boundary, no
+   boundary at all, just a word sitting on a panel.
+
+   Two rules hold now and both are asserted by railway/contrast_audit.py
+   against the RENDERED page rather than against this file:
+
+     1. Every control draws its edge from --alt-control-border, which is
+        measured to clear 3:1 against every background any of them sits on, in
+        light, in dark, and in auto on a dark OS.
+     2. Every control is the same shape and the same height. --alt-ctl-h is
+        40px at a desk and 44px under 768px, where a control is hit with a
+        thumb and WCAG 2.5.5 asks for 44.
+
+   This is a selector list rather than a class because the markup for these
+   controls is spread across a PHP template and a JS builder, and a shape rule
+   that depends on eleven call sites remembering to add a class is a shape rule
+   that silently stops applying. The list is the definition; adding a control
+   to the bar means adding it here and to FILTER_CONTROLS in the audit.
+   =========================================================================== */
+
+.alt-datepresets .alt-dp,
+.alt-quickviews .alt-qv,
+.alt-range-btn,
+.alt-datebasis-opt,
+#alt-search,
+#alt-sort,
+.alt-filter > .alt-dd,
+.alt-filter input[type="text"],
+.alt-filter input[type="number"],
+.alt-filter input[type="date"],
+.alt-filter select:not([multiple]),
+.alt-filterbar-toggle,
+.alt-btn-reset {
+    box-sizing: border-box;
+    min-height: var(--alt-ctl-h);
+    padding: 0 var(--alt-ctl-pad);
+    font-family: inherit;
+    font-size: var(--alt-ctl-fs);
+    font-weight: 600;
+    line-height: 1.25;
+    border: 1px solid var(--alt-control-border);
+    border-radius: var(--alt-ctl-r);
+    background: var(--alt-surface);
+    color: var(--alt-ink);
+    cursor: pointer;
+}
+/* Buttons and selects centre their content in the box; a text input paints its
+   own value and only needs the box to be the right size. Splitting the display
+   rule is what lets a single height token cover both without a fixed height,
+   so a label that wraps still grows rather than being clipped. */
+.alt-datepresets .alt-dp,
+.alt-quickviews .alt-qv,
+.alt-range-btn,
+.alt-datebasis-opt,
+.alt-filter > .alt-dd,
+.alt-filterbar-toggle,
+.alt-btn-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    justify-content: center;
+}
+.alt-filter > .alt-dd { justify-content: space-between; text-align: left; }
+#alt-search,
+.alt-filter input[type="text"],
+.alt-filter input[type="number"],
+.alt-filter input[type="date"] { cursor: text; }
+
+/* THE WIDTH SCHEME. A shared minimum and content-based growth, in place of a
+   number chosen per control. Fields take --alt-ctl-min; chips take the tap
+   floor. Nothing here sets a fixed width, so a long option label still widens
+   its control instead of ellipsizing inside an arbitrary box. */
+.alt-datepresets .alt-dp,
+.alt-quickviews .alt-qv { min-width: var(--alt-ctl-chip-min); }
+#alt-sort,
+.alt-range-btn { min-width: var(--alt-ctl-min); }
+.alt-search-wrap { flex: 1 1 var(--alt-ctl-min); min-width: var(--alt-ctl-min); }
+.alt-filter > .alt-dd,
+.alt-filter input[type="text"],
+.alt-filter input[type="number"],
+.alt-filter input[type="date"],
+.alt-filter select:not([multiple]) { width: 100%; }
+.alt-range-pop .alt-filter { min-width: var(--alt-ctl-min); }
+
+/* THE LABEL TREATMENT, ONCE. The panel's controls were labelled above in
+   uppercase micro type; the strips outside it used a sentence-case inline
+   prefix with a colon in three different colours and weights; and the search
+   box had no visible label at all, only a placeholder that disappears the
+   moment anybody types. One treatment now, above the control it names, and
+   the search box has a real one. .alt-filter > label already carried this
+   styling, so it joins the rule rather than being restated. */
+.alt-ctl-label,
+.alt-filter > label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--alt-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    margin: 0 0 5px;
+}
+/* A labelled group is a column: label on its own line, controls under it. */
+.alt-ctl-group { display: flex; flex-direction: column; }
 
 /* ---------------- Region tabs + narrative ---------------- */
 
@@ -923,27 +1120,42 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 }
 .alt-subtitle { margin: 14px 0 0; font-size: 16px; line-height: 1.5; color: var(--alt-ink-2); max-width: 680px; }
 
-.alt-toolbar2 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
-.alt-search-wrap { position: relative; flex: 1 1 320px; min-width: 220px; }
-.alt-search-ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--alt-muted); pointer-events: none; }
+/* align-items: end, not center: each member of this row is now a label over a
+   control, and the labels are different lengths. Aligning the CONTROLS along
+   one baseline is what makes the row read as a row. */
+.alt-toolbar2 { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 12px; margin: 0 0 14px; }
+.alt-search-wrap { position: relative; }
+/* The icon sits inside the field, so the field's left padding is the shared
+   padding plus room for the glyph. Everything else about this box (height,
+   radius, border, type size) comes from the one control rule. */
+/* Pinned to the FIELD, not to the wrapper: the wrapper is now taller than the
+   field because it carries the label, so a 50% offset would float the glyph
+   between the two. Measured from the bottom, where the field is. */
+.alt-search-ico { position: absolute; left: var(--alt-ctl-pad); bottom: calc(var(--alt-ctl-h) / 2); transform: translateY(50%); color: var(--alt-ink-2); pointer-events: none; }
 #alt-search {
-    width: 100%; box-sizing: border-box; font-size: 14px;
-    padding: 10px 14px 10px 38px; border: 1px solid var(--alt-border);
-    border-radius: 10px; background: var(--alt-surface); color: var(--alt-ink);
+    width: 100%;
+    padding-left: calc(var(--alt-ctl-pad) + 24px);
+    font-weight: 400;
 }
 #alt-search:focus { outline: none; border-color: var(--alt-blue); box-shadow: 0 0 0 3px var(--alt-blue-tint); }
 /* Date-basis segmented toggle (effective vs filing date) */
-.alt-datebasis-wrap { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
-.alt-datebasis-label { color: var(--alt-ink, var(--alt-ink)); font-weight: 600; }
-.alt-datebasis-label::after { content: ""; }
+.alt-datebasis-wrap { display: flex; flex-direction: column; }
 /* Segmented control: a sunken track makes the raised active segment read as a
    switch. Previously both options sat flat on the page background, so the
    control looked like static label text and readers missed that the whole
    page can be recounted on a different date basis. */
-.alt-datebasis-switch { display: inline-flex; padding: 3px; gap: 3px; border-radius: 11px;
-  background: var(--alt-tint, var(--alt-tint)); border: 1px solid var(--alt-border); }
-.alt-datebasis-opt { font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border: 1px solid transparent;
-  background: transparent; color: var(--alt-muted); cursor: pointer; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;
+/* The sunken track has gone. It existed to make the raised segment read as a
+   switch, and it did that by putting a second box around a control that now
+   has a boundary of its own; two nested edges 3px apart is noise, and the
+   track's tint was also the background that made the inactive option
+   unmeasurable. The two segments sit side by side on the page surface. */
+.alt-datebasis-switch { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+/* THE 1.00:1 CONTROL. This carried `border: 1px solid transparent` on a
+   transparent background inside a tinted track, so the unselected option had
+   no boundary of any kind: a reader saw two words on a panel and no reason to
+   believe either was pressable. It is a real box now, on the page surface,
+   with the same edge as every other control. */
+.alt-datebasis-opt { color: var(--alt-ink-2);
   transition: background .15s ease, color .15s ease, box-shadow .15s ease; }
 .alt-datebasis-opt:hover:not(.alt-datebasis-on) { background: rgba(0,0,0,.05); color: var(--alt-ink, var(--alt-ink)); }
 .alt-datebasis-opt::before { content: ""; width: 9px; height: 9px; border-radius: 50%;
@@ -952,18 +1164,11 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
   box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .alt-datebasis-opt.alt-datebasis-on::before { opacity: 1; background: var(--alt-surface); border-color: var(--alt-surface); }
 .alt-datebasis-opt:focus-visible { outline: 2px solid var(--alt-accent, var(--alt-accent)); outline-offset: 1px; }
-.alt-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--alt-muted); }
-.alt-sort select { font-size: 14px; padding: 9px 12px; border: 1px solid var(--alt-border); border-radius: 10px; background: var(--alt-surface); color: var(--alt-ink); cursor: pointer; }
+.alt-sort { display: flex; flex-direction: column; }
 #alt-filters-toggle svg { vertical-align: -2px; margin-right: 4px; }
 
-.alt-quickviews { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
-.alt-qv-label { font-size: 13px; color: var(--alt-muted); font-weight: 500; margin-right: 2px; }
-.alt-qv {
-    font-size: 13px; font-weight: 600; color: var(--alt-ink-2);
-    background: var(--alt-surface); border: 1px solid var(--alt-border);
-    border-radius: 20px; padding: 6px 14px; cursor: pointer; line-height: 1.2;
-    transition: background .15s ease, color .15s ease, border-color .15s ease;
-}
+.alt-quickviews { display: flex; flex-direction: column; margin: 0 0 18px; }
+.alt-qv { transition: background .15s ease, color .15s ease, border-color .15s ease; }
 .alt-qv:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
 .alt-qv-on, .alt-qv-on:hover { background: var(--alt-ink); border-color: var(--alt-ink); color: var(--alt-on-accent); }
 
@@ -1109,12 +1314,6 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 
 /* Multi-select checkbox dropdowns (presentation over hidden native selects) */
 .alt-filter { position: relative; }
-.alt-dd {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    width: 100%; box-sizing: border-box; font-size: 14px; text-align: left;
-    padding: 8px 10px; border: 1px solid var(--alt-grid); border-radius: 8px;
-    background: var(--alt-surface); color: var(--alt-ink); cursor: pointer; line-height: 1.25;
-}
 .alt-dd:hover { border-color: var(--alt-blue); }
 .alt-dd-on { border-color: var(--alt-blue); background: var(--alt-blue-tint, var(--alt-blue-tint)); font-weight: 600; }
 .alt-dd-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1125,30 +1324,44 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     box-shadow: 0 6px 24px rgba(16, 18, 24, .14); padding: 6px;
 }
 .alt-dd-pop[hidden] { display: none; }
+/* A row here is a tap target, and it measured 31px tall on a phone: below the
+   44px floor every control outside the popover already clears, and stacked
+   with eleven neighbours 31px away. It takes the same height token as the
+   control that opened it. No boundary is added, because the control on this
+   row is the checkbox and the browser draws that. */
 .alt-dd-row {
-    display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--alt-ink);
-    padding: 6px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+    display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--alt-ink);
+    box-sizing: border-box; min-height: var(--alt-ctl-h);
+    padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap;
 }
+/* 16px is the smallest a checkbox can be and still be aimed at; the row around
+   it carries the target size. */
+.alt-dd-row input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
 .alt-dd-row:hover { background: var(--alt-surface-2); }
 .alt-dd-row input { accent-color: var(--alt-blue); }
 
 /* Reset button: visually distinct so it isn't mistaken for a filter */
+/* Distinct from a filter without being a different shape: the tint and the
+   ink carry the meaning, the box is the same box as everything else. It used
+   to be width:100%, which drew a 1118px button across the whole panel. */
 .alt-btn-reset {
-    width: 100%; justify-content: center;
-    color: var(--alt-crit); border-color: var(--alt-crit-border); background: var(--alt-red-tint);
+    color: var(--alt-crit); background: var(--alt-red-tint);
+    min-width: var(--alt-ctl-min);
 }
-.alt-btn-reset:hover { background: var(--alt-red-tint); border-color: var(--alt-crit-border); color: var(--alt-crit); }
+.alt-btn-reset:hover { background: var(--alt-red-tint); border-color: var(--alt-crit); color: var(--alt-crit); }
 
 /* Clickable date-range control under the stats */
 /* Lives inside .alt-toolbar2 (one compact row with search + sort) */
-.alt-range-wrap { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; }
+.alt-range-wrap { position: relative; display: flex; flex-direction: column; margin: 0; }
+/* This was the one dashed border on the page, which read as a placeholder
+   rather than a control. Solid, like everything else; the blue tint still
+   marks it as the control that owns the date range. */
 .alt-range-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    font-size: 13.5px; font-weight: 600; color: var(--alt-blue-dark);
-    background: var(--alt-blue-tint); border: 1px dashed var(--alt-blue-border); border-radius: 8px;
-    padding: 7px 12px; cursor: pointer;
+    color: var(--alt-blue-dark);
+    background: var(--alt-blue-tint);
+    justify-content: space-between;
 }
-.alt-range-btn:hover { border-style: solid; border-color: var(--alt-blue); }
+.alt-range-btn:hover { border-color: var(--alt-blue); }
 .alt-range-note-data { font-size: 13.5px; color: var(--alt-ink-2); font-weight: 500; }
 .alt-range-pop {
     position: absolute; z-index: 60; top: calc(100% + 6px); left: 0;
@@ -1157,7 +1370,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     box-shadow: 0 6px 24px rgba(16, 18, 24, .14);
 }
 .alt-range-pop[hidden] { display: none; }
-.alt-range-pop .alt-filter { min-width: 150px; }
+
 
 /* Per-dimension chip colors so stacked cross-filters read at a glance */
 .alt-af-blue   { background: var(--alt-blue); border-color: var(--alt-blue); }
@@ -1176,7 +1389,7 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     background: var(--alt-surface); border: 1px solid var(--alt-border);
     border-radius: 12px; box-shadow: var(--alt-shadow); padding: 14px 16px; margin: 0 0 16px;
 }
-.alt-filterbar-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 14px; align-items: end; }
+.alt-filterbar-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--alt-ctl-min), 1fr)); gap: 12px 14px; align-items: end; }
 .alt-filterbar-reset { display: flex; justify-content: flex-end; margin-top: 12px; }
 .alt-filterbar-period {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -1369,7 +1582,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-filters-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--alt-ink-2); }
 .alt-filters {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--alt-ctl-min), 1fr));
     gap: 14px 18px;
     padding: 18px;
 }
@@ -1385,14 +1598,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
 .alt-filter input[type="number"],
 .alt-filter input[type="date"],
 .alt-filter select {
-    font-size: 14px;
-    padding: 8px 10px;
-    border: 1px solid var(--alt-grid);
-    border-radius: 8px;
-    background: var(--alt-surface);
-    color: var(--alt-ink);
-    width: 100%;
-    box-sizing: border-box;
+    font-weight: 400;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .alt-filter input:focus,
@@ -2655,29 +2861,36 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    sums across a row that mixes measures. Same card component, laid flat. */
 /* The derived-totals strip now holds all three non-addable figures, so it is a
    grid rather than one full-width card. */
+/* Three tiles, three columns, stated rather than inferred. auto-fit with a
+   240px floor gave 3 across on a wide screen and 2-then-1 as soon as the
+   column narrowed, which is the same orphan defect one section up and it also
+   made the three tiles different widths at the same viewport. */
 .alt-broad-strip {
     margin: 10px 0 0;
     display: grid; gap: 10px;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.alt-broad-strip .alt-stat-card { width: 100%; }
+@media (max-width: 860px) { .alt-broad-strip { grid-template-columns: 1fr; } }
+/* `width: 100%` used to live here and it made every one of these tiles 34px
+   WIDER than its own grid track: .alt-stat-card is content-box, so 100% of the
+   track plus 32px of padding and 2px of border overflows by exactly that. The
+   three tiles measured 1282px inside a 1180px strip. Nobody saw it because the
+   whole strip was inside a closed disclosure; making it visible would have
+   made it a horizontal bleed. A grid item already fills its track. */
+/* The third tile carries a two-line description where the others carry one,
+   so reserve the band rather than letting it set a different height. */
+.alt-broad-strip > .alt-stat-card > .alt-stat-desc { min-height: 3.2em; }
+@media (max-width: 860px) { .alt-broad-strip > .alt-stat-card > .alt-stat-desc { min-height: 0; } }
 
-/* DERIVED TOTALS DISCLOSURE. Closed by default: everything inside is built
-   from the tiles above and cannot be added to them, which is a caveat, and a
-   caveat is a poor use of the first screen. */
-.alt-stats-derived { margin: 12px 0 0; }
-.alt-stats-derived-summary {
-    cursor: pointer; list-style: none;
-    display: inline-flex; align-items: center; gap: 7px;
-    font-size: 13px; font-weight: 600; color: var(--alt-ink-2);
-    padding: 7px 12px; border: 1px solid var(--alt-border); border-radius: 999px;
-    background: var(--alt-surface);
+/* DERIVED TOTALS. A section, not a disclosure: see the template comment. The
+   heading keeps the words the old summary used, so nothing a reader or a
+   search engine had indexed changed except its visibility. */
+.alt-stats-derived { margin: 16px 0 0; }
+.alt-stats-derived-h {
+    margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.35;
+    color: var(--alt-ink-2); letter-spacing: 0;
 }
-.alt-stats-derived-summary::-webkit-details-marker { display: none; }
-.alt-stats-derived-summary::before { content: "+"; font-weight: 700; line-height: 1; }
-.alt-stats-derived[open] .alt-stats-derived-summary::before { content: "\2212"; }
-.alt-stats-derived-summary:hover { color: var(--alt-ink); }
-.alt-stats-derived-note { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2); max-width: 72ch; }
+.alt-stats-derived-note { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2); max-width: 72ch; }
 
 /* THE LEAD TILE. Among the totals that remain in the grid, the verified figure
    is the one the page publishes, so it is not the same size as its neighbours.
@@ -2740,13 +2953,8 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    it becomes two short rows inside the container instead of pushing the page
    wider than the viewport.
    --------------------------------------------------------------------------- */
-.alt-datepresets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
-.alt-dp-label { font-size: 13px; color: var(--alt-muted); font-weight: 500; margin-right: 2px; }
-.alt-dp {
-    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px;
-    border: 1px solid var(--alt-border); border-radius: 999px; cursor: pointer;
-    background: var(--alt-surface); color: var(--alt-ink-2);
-}
+.alt-datepresets { display: flex; flex-direction: column; margin: 0 0 12px; }
+.alt-ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .alt-dp:hover { border-color: var(--alt-blue); color: var(--alt-blue); }
 .alt-dp-on, .alt-dp-on:hover { background: var(--alt-ink); border-color: var(--alt-ink); color: var(--alt-on-accent); }
 .alt-dp:focus-visible { outline: 2px solid var(--alt-accent); outline-offset: 1px; }
@@ -3204,6 +3412,21 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     :root:not([data-theme="light"]) .wp-block-post-content .alt-wrap h3 {
         color: var(--alt-ink) !important;
     }
+}
+
+/* The derived-totals heading is an h3 inside .entry-content, so the same site
+   rule that hard-codes h3 colour also hard-codes `font-size: 1.15rem` and
+   `font-weight: 600` on it. That is a page-heading size on what is a caption
+   above three tiles, and it would make the section shout louder than the tiles
+   it introduces. Same shape of override as everything else in this block: the
+   site rule's own scope plus .alt-wrap, one class more specific, never wider.
+   Colour is deliberately NOT set here, so the light page keeps the site's ink
+   and the dark page keeps the --alt-ink rule above; restating it would give
+   this one heading a third source of truth for its colour. */
+.entry-content .alt-wrap h3.alt-stats-derived-h,
+.wp-block-post-content .alt-wrap h3.alt-stats-derived-h {
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
 }
 
 /* The same site rule also draws a 2px rule under every h2, and it declares

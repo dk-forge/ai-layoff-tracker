@@ -1171,12 +1171,41 @@
         if (btn) btn.classList.toggle('alt-filterbar-toggle-on', n > 0);
     }
 
+    var FILTER_PANEL_PREF = 'alt-filters-open';
+
     function setFilterPanelOpen(open) {
         var body = document.getElementById('alt-filterbar-body');
         var btn = document.getElementById('alt-filters-toggle');
         if (!body || !btn) return;
         body.hidden = !open;
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    /* THE FILTERS ARE VISIBLE UNLESS THE READER HID THEM.
+
+       They shipped collapsed for a while, on the argument that eleven stacked
+       controls between the headline and the first row of data is a poor first
+       screen. The owner used the page and reversed it: he wants to see what he
+       can filter by without first discovering that a button reveals it.
+
+       What the collapse actually bought is kept, and it was never the collapse
+       that bought it. The first screen got shorter because the controls a
+       reader reaches for (region, dates, search, basis, sort, quick views)
+       were lifted ABOVE the panel. The panel sits below all of them, so
+       opening it moves nothing that was already there: it adds height beneath
+       the search box rather than in front of it.
+
+       sessionStorage, not localStorage: a collapse is a "not right now", and
+       carrying it across weeks means a reader who tidied the page once in
+       March meets a hidden bar in June with no memory of hiding it. */
+    function readFilterPanelPref() {
+        try { return sessionStorage.getItem(FILTER_PANEL_PREF); }
+        catch (e) { return null; }
+    }
+
+    function writeFilterPanelPref(open) {
+        try { sessionStorage.setItem(FILTER_PANEL_PREF, open ? '1' : '0'); }
+        catch (e) { /* private mode: the default stands, which is open */ }
     }
 
     /*
@@ -1201,9 +1230,15 @@
             var v = readControl(id);
             return Array.isArray(v) ? v.length > 0 : (v !== '' && v != null && v !== false);
         });
-        setFilterPanelOpen(chosen);
+        // Open unless this reader collapsed it in this session. A deep link
+        // that already carries one of these filters overrides even that: the
+        // control that shaped the page is never the one we hide.
+        var pref = readFilterPanelPref();
+        setFilterPanelOpen(chosen || pref !== '0');
         btn.addEventListener('click', function () {
-            setFilterPanelOpen(btn.getAttribute('aria-expanded') !== 'true');
+            var open = btn.getAttribute('aria-expanded') !== 'true';
+            setFilterPanelOpen(open);
+            writeFilterPanelPref(open);
         });
         updateFilterPanelCount();
     }

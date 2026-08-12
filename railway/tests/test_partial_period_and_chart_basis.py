@@ -340,17 +340,23 @@ class OneDominantFigureTests(unittest.TestCase):
         hero = hero[: hero.index("</aside>")]
         self.assertNotIn("$alt_stat('total')", hero)
 
-    def test_tiles_that_exist_only_to_be_warned_about_are_off_the_first_screen(self):
+    def test_tiles_that_exist_only_to_be_warned_about_are_kept_out_of_the_grid(self):
         # Each of these carried a caption whose only job was to warn a reader
-        # off the tile it was printed on. None is deleted; all three moved
-        # behind one disclosure, with their element IDs unchanged so
-        # renderStats keeps writing them.
+        # off the tile it was printed on. None is deleted; all three sit in
+        # their own section with their element IDs unchanged, so renderStats
+        # keeps writing them.
+        #
+        # That section was a closed <details> and is now a visible <section>:
+        # the sentence explaining that these three cannot be added to the tiles
+        # above is the sentence that stops a double count, and behind a click
+        # it measured zero rendered characters. The separation this test
+        # guards is unchanged. Only its visibility moved.
         grid = TEMPLATE[TEMPLATE.index('<div class="alt-stats-bar" id="alt-stats-bar">'):]
         grid = grid[: grid.index("</div>\n        <?php")]
         for demoted in ("alt-stat-all", "alt-stat-ai-total", "alt-stat-ai-broad"):
             self.assertNotIn('id="%s"' % demoted, grid,
                              "%s is back in the first-screen tile grid" % demoted)
-        derived = TEMPLATE[TEMPLATE.index('<details class="alt-stats-derived">'):]
+        derived = TEMPLATE[TEMPLATE.index('<section class="alt-stats-derived"'):]
         for demoted in ("alt-stat-all", "alt-stat-ai-total", "alt-stat-ai-broad"):
             self.assertIn('id="%s"' % demoted, derived,
                           "%s was dropped instead of demoted" % demoted)

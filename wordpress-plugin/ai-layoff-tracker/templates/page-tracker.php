@@ -441,14 +441,16 @@ $alt_hero_basis  = 'counted by filing date';
       tall, and it removes two panel-opens from the common path.
     */
     ?>
-    <div class="alt-datepresets" id="alt-datepresets" role="group" aria-label="Quick date ranges">
-        <span class="alt-dp-label">Date:</span>
+    <div class="alt-datepresets" id="alt-datepresets">
+        <span class="alt-ctl-label" id="alt-dp-label">Date</span>
+        <div class="alt-ctl-row" role="group" aria-labelledby="alt-dp-label">
         <button type="button" class="alt-dp" data-dp="today">Today</button>
         <button type="button" class="alt-dp" data-dp="d7">Last 7 days</button>
         <button type="button" class="alt-dp" data-dp="d30">Last 30 days</button>
         <button type="button" class="alt-dp" data-dp="d90">Last quarter</button>
         <button type="button" class="alt-dp" data-dp="ytd">Year to date</button>
         <button type="button" class="alt-dp" data-dp="all">All time</button>
+        </div>
     </div>
 
     <div class="alt-toolbar2">
@@ -489,9 +491,9 @@ $alt_hero_basis  = 'counted by filing date';
                  deep link that names it is honoured. The titles are rewritten
                  by renderBasisCopy() from BASIS_COPY so this markup and the JS
                  cannot drift; these are the same strings. */ ?>
-        <div class="alt-datebasis-wrap" role="group" aria-label="Count layoffs by">
-            <span class="alt-datebasis-label">Count Layoffs By:</span>
-            <span class="alt-datebasis-switch">
+        <div class="alt-datebasis-wrap">
+            <span class="alt-ctl-label" id="alt-datebasis-label">Count Layoffs By</span>
+            <span class="alt-datebasis-switch" role="group" aria-labelledby="alt-datebasis-label">
             <button type="button" class="alt-datebasis-opt alt-datebasis-on" data-basis="notice" aria-pressed="true"
                 title="Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure compares directly. This is the default.">When it was filed</button>
             <button type="button" class="alt-datebasis-opt" data-basis="effective" aria-pressed="false"
@@ -499,10 +501,11 @@ $alt_hero_basis  = 'counted by filing date';
             </span>
         </div>
         <div class="alt-search-wrap">
+            <label class="alt-ctl-label" for="alt-search">Search</label>
             <svg class="alt-search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input type="search" id="alt-search" placeholder="Search company, industry, keyword…" autocomplete="off" aria-label="Search">
+            <input type="search" id="alt-search" placeholder="Search company, industry, keyword…" autocomplete="off">
         </div>
-        <label class="alt-sort"><span>Sort</span>
+        <label class="alt-sort"><span class="alt-ctl-label">Sort</span>
             <select id="alt-sort">
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -513,12 +516,14 @@ $alt_hero_basis  = 'counted by filing date';
     </div>
 
     <div class="alt-quickviews">
-        <span class="alt-qv-label">Quick Views:</span>
+        <span class="alt-ctl-label" id="alt-qv-label">Quick Views</span>
+        <div class="alt-ctl-row" role="group" aria-labelledby="alt-qv-label">
         <button type="button" class="alt-qv" data-qv="month">This Month</button>
         <button type="button" class="alt-qv" data-qv="largest">Largest Cuts</button>
         <button type="button" class="alt-qv" data-qv="sec">SEC-verified</button>
         <button type="button" class="alt-qv" data-qv="announced">Announced Only</button>
         <button type="button" class="alt-qv" data-qv="tech">Tech Industry</button>
+        </div>
     </div>
 
     <?php
@@ -740,22 +745,29 @@ $alt_hero_basis  = 'counted by filing date';
             </div>
         </div>
         <?php
-        // DERIVED TOTALS, BEHIND A DISCLOSURE.
+        // DERIVED TOTALS, AND THE SENTENCE THAT STOPS A DOUBLE COUNT.
         //
-        // These three used to sit in the tile grid at the same 28px as every
-        // other total, and each carried a caption whose only job was to warn
-        // the reader off the tile it was printed on: "do not add it to the
-        // tiles above", "this is not a count of distinct people", "This is the
-        // two boxes to the left, summed". A number that needs a warning label
-        // to be read safely is not a first-screen number. None is deleted, and
-        // none moves: the element IDs are unchanged, so renderStats() keeps
-        // writing all three and anyone who wants them is one click away.
+        // These three sat behind a <details> for a while, on the argument that
+        // a caveat is a poor use of the first screen. The owner questioned
+        // that and he is right to: "Each of these is built from the tiles above
+        // rather than counted separately, so adding one of them to those tiles
+        // would count the same cuts twice" is precisely the sentence that stops
+        // a journalist publishing a number twice its true size, and it was
+        // sitting behind a click that most readers never make.
         //
-        // What is left in the grid above is the five totals that can be read
-        // without a caveat, led by the verified figure.
+        // This is the same correction .alt-why-lower already carries a few
+        // hundred lines down: that paragraph was a <details> too, and for as
+        // long as it was, it measured 0px wide on a rendered page and nobody
+        // outside this repository had ever read it. A <section> has no open
+        // state that can default shut and no toggle a later edit can leave
+        // closed.
+        //
+        // The heading, every number, every per-tile explanation and every
+        // element ID are unchanged, so renderStats() keeps writing all three.
+        // The change is which of them a reader can see without asking.
         ?>
-        <details class="alt-stats-derived">
-            <summary class="alt-stats-derived-summary">Derived totals, and why they do not add up with the tiles above</summary>
+        <section class="alt-stats-derived" aria-labelledby="alt-stats-derived-h">
+            <h3 class="alt-stats-derived-h" id="alt-stats-derived-h">Derived totals, and why they do not add up with the tiles above</h3>
             <div class="alt-stats-derived-body">
                 <p class="alt-stats-derived-note">Each of these is built from the tiles above rather than counted separately, so adding one of them to those tiles would count the same cuts twice.</p>
                 <div class="alt-broad-strip">
@@ -780,7 +792,7 @@ $alt_hero_basis  = 'counted by filing date';
                     </div>
                 </div>
             </div>
-        </details>
+        </section>
         <?php /* DELETED: the "New here? Start with:" box and its three links
                  ("What these numbers mean", "Where do we get this data?", "How we
                  catch & fix errors"). A page that needs a start-here list has
