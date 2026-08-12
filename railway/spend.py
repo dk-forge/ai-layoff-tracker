@@ -200,6 +200,16 @@ JOB_RUN_CEILINGS_USD = {
     "hi-warn-import":          0.015,  # daily    COUNTED few new notices
     "hi-warn-dryrun":          0.015,  # manual   same probe, dry
     "foreign-filings":         0.020,  # dormant  cron commented out
+    # MEASURED 2026-08-12: a live EFTS count put one month at 271 candidate
+    # documents and the measured price at $0.000310 per candidate, i.e. ~$0.084
+    # for a full month window -- and most windows are deep history the seen-URL
+    # pre-check drops before anything is charged, so a typical run costs far
+    # less. 0.200 is NOT a new throttle: it is the global RUN_CEILING_USD this
+    # job has always silently got, written down. It is here because
+    # `harvest()` only collects ledger lines for jobs named in this table, so
+    # while the sweep was absent its spend could not enter spend_jobs.json at
+    # all -- see backfill._summary.
+    "edgar-history-sweep":     0.200,  # daily    one month window per run
     "news-catchup":            0.150,  # weekly   MODELLED ~113 x $0.0011
     "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
