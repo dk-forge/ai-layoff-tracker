@@ -224,17 +224,30 @@ class NamedCeilingsAreArithmeticNotHope(unittest.TestCase):
                 self.assertLessEqual(ceiling, 0.20)
 
     def test_the_worst_case_sum_fits_beside_the_measured_ingest(self):
-        """Ingest is MEASURED at ~$5.1/month. The named ceilings' worst case
-        must leave that much headroom inside the $10 interim allowance —
-        if this fails, someone widened a ceiling without redoing the ladder."""
+        """Ingest is MEASURED. The named ceilings' worst case must leave that
+        much headroom inside the allowance — if this fails, someone widened a
+        ceiling (or named a new job) without redoing the ladder.
+
+        THE RESERVE USED TO BE A LITERAL `- 3.0` (fixed 2026-08-12) while this
+        docstring and the failure message both said the reserve was the ~$5.1
+        MEASURED ingest. So the test permitted $7.00 of named ceilings on a $10
+        allowance, i.e. $12.10 of claims inside $10, and reported that as green.
+        The reserve is now `spend.MEASURED_INGEST_USD_PER_MONTH`, the same
+        constant the module's ladder comment is written against, so the number
+        the test enforces and the number the comment claims cannot drift apart
+        again — and raising the allowance can no longer silently widen the
+        ladder by more than it widened the budget.
+        """
         total = 0.0
         for job, ceiling in spend.JOB_RUN_CEILINGS_USD.items():
             total += ceiling * self.RUNS_PER_MONTH.get(job, 30)
+        budget = spend.MONTHLY_ALLOWANCE_USD - spend.MEASURED_INGEST_USD_PER_MONTH
         self.assertLessEqual(
-            total, spend.MONTHLY_ALLOWANCE_USD - 3.0,
-            f"named ceilings sum to ${total:.2f}/month worst case; with "
-            f"ingest at ~$5.1 that cannot fit the "
-            f"${spend.MONTHLY_ALLOWANCE_USD:.0f} allowance")
+            total, budget,
+            f"named ceilings sum to ${total:.2f}/month worst case; with ingest "
+            f"MEASURED at ~${spend.MEASURED_INGEST_USD_PER_MONTH:.2f} that "
+            f"leaves ${budget:.2f} inside the "
+            f"${spend.MONTHLY_ALLOWANCE_USD:.0f} allowance, so it does not fit")
 
     def test_the_five_dollar_target_is_documented_not_pretended(self):
         self.assertIn("$5/MONTH TARGET", SPEND.upper())

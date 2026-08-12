@@ -1,5 +1,134 @@
 # Tech Log
 
+## 2026-08-12 - the allowance goes to $18, the ladder's reserve stops being a fiction, and the sweep finally gets a ceiling (railway only, no deploy)
+
+`MONTHLY_ALLOWANCE_USD` is **18.0**. The owner raised this tracker's OpenRouter
+key to a **$20/month provider limit** and found it bought nothing: the policy
+cap in code is the one that binds, so the provider headroom above $10 was
+unreachable.
+
+**Why $18 and not $20.** Two ceilings exist and only one of them can be the one
+that fires. The provider cap is a HARD stop - the next paid call returns 402 at
+whatever arbitrary point the run had reached, mid-batch, mid-candidate. The
+policy cap is a GRACEFUL stop - paid reads switch off, every free collector
+(WARN, SEC structured fields, ERM, every state scraper, the seen-URL pre-check,
+all server-side dedup) keeps running, and each deferred candidate returns
+UNMARKED so a later run reads it. **At parity our own guard can never fire**,
+and a clean disclosed degradation becomes a failed call. $2 of headroom keeps
+the graceful stop ahead of the hard one; the 90% line ($16.20) sits $3.80 under
+it. If the provider limit moves, move this to stay under it, do not match it.
+
+### Three things had to move with it, and one of them was a defect
+
+**1. `RUN_CEILING_USD` was a FRACTION of the allowance, and that was a trap.**
+It read `MONTHLY_ALLOWANCE_USD * 0.02`. Raising the allowance 10 -> 18 would
+have silently widened the state-free per-run brake from $0.20 to **$0.36** - and
+that brake is the ONLY thing guarding the Railway cron, which cannot write a
+month-to-date snapshot and is the single largest consumer. At $0.36 x 2/day the
+cron would have been free to spend ~$21/month, more than the entire allowance,
+with nothing in the diff saying so. It is now a flat `0.20`, sized from the
+MEASURED ~$0.09 cron run. **A brake sized from a measured run cost must not move
+when a budget moves.**
+
+**2. The ladder's reserve was a literal `- 3.0` while everything around it said
+$5.1.** `test_spend_ledger.test_the_worst_case_sum_fits_beside_the_measured_ingest`
+asserted `total <= MONTHLY_ALLOWANCE_USD - 3.0`, while its own docstring and
+failure message both said the reserve was the ~$5.1 MEASURED ingest. So on a $10
+allowance it permitted $7.00 of named ceilings beside a $5.1 ingest - **$12.10 of
+claims inside $10, reported as green**. That is why last night's session found
+the table "already over-subscribed" at $6.60 and the test disagreed.
+
+The reserve is now `spend.MEASURED_INGEST_USD_PER_MONTH`, a named constant the
+module's ladder comment is written against, so the number the test enforces and
+the number the comment claims cannot drift apart again - and **raising the
+allowance can no longer widen the ladder by more than it widened the budget**,
+which the literal would have done (reserve stays 3.0, budget goes 7.00 -> 15.00,
+a 2.1x loosening for free).
+
+Red on the honest reserve at the old allowance, quoted:
+
+```
+AssertionError: 6.6000000000000005 not less than or equal to 4.9 : named
+ceilings sum to $6.60/month worst case; with ingest MEASURED at ~$5.10 that
+leaves $4.90 inside the $10 allowance, so it does not fit
+```
+
+**3. `edgar-history-sweep` finally has a named ceiling - the ladder verdict.**
+It is a DAILY paid job that had never been in `JOB_RUN_CEILINGS_USD`, because at
+$10 it could not be: at the $0.200 global default it silently ran under, it
+claims $6.00/month against a $4.90 budget the table was already over-subscribing
+at $6.60.
+
+Sized from **MEASUREMENT, not from the default**. The three authorised runs on
+2026-08-11 cost $0.6012 for 1,762 candidates, all `complete: true`, none
+truncated - but those were multi-month RANGE dispatches, and the daily rotation
+sweeps one month-window. Per single window that is **$0.0907 to $0.1115**.
+`0.150` is ~35% above the dearest window observed, and it is a **tightening** of
+the $0.200 it had been running under, not a loosening.
+
+It binds without any workflow change: `backfill.py` calls `extract_layoff_data`,
+and `extractor.py` gates every paid function on `spend.paid_reads_enabled()`,
+which resolves the table in-process via `effective_run_ceiling_usd()` (the
+2026-08-11 fix). The named number is a brake wherever the job runs, not only
+where a `--degrade` step happened to write `$GITHUB_ENV`.
+
+Red with it named at the old allowance, quoted:
+
+```
+AssertionError: 11.1 not less than or equal to 4.9 : named ceilings sum to
+$11.10/month worst case; with ingest MEASURED at ~$5.10 that leaves $4.90
+inside the $10 allowance, so it does not fit
+```
+
+### The ladder at $18
+
+| | |
+|---|---:|
+| allowance | $18.00 |
+| less MEASURED ingest (Railway cron) | -$5.10 |
+| **budget the named ceilings may claim** | **$12.90** |
+| claimed by the table, worst case | $11.10 |
+| spare | $1.80 |
+
+**Every paid job in this repo now carries a named ceiling. No job remains
+unnamed.** `railway-cron` is still deliberately absent and that is not an
+omission - it keeps the global default so free ingest is untouched by the table,
+and it is the reason `RUN_CEILING_USD` had to be de-coupled from the allowance
+above.
+
+### The number this does NOT change
+
+The ladder is a worst case, not a forecast. The committed ledger
+(`railway/spend_jobs.json`, 109 entries, 2026-08-03..08-12) measures **$1.94 of
+actual spend over 10 days, ~$5.8/month**, of which `railway-cron` is $1.0165.
+The $11.10 is what the ceilings would permit if every job hit its cap every run,
+which none of them do. Do not read the spare $1.80 as the real margin; read it
+as the margin on the guarantee.
+
+### What was checked and not touched
+
+`data_integrity.py`, `published_figures.py`, `company_watchlist.py`,
+`backfill.py` and everything under `wordpress-plugin/` are untouched - other
+sessions and PRs #46/#47 own them. PR #46 also edits `spend.py` (it adds
+`LEDGER_ONLY_JOBS` below the table and deliberately did NOT name this ceiling,
+calling it the owner's call); this change names it, in a different region of the
+file. No plugin byte changed, so no `Version:`/`ALT_VERSION` bump and nothing to
+deploy. The handoff baton is HELD by a local session; per the file's own PR-#3
+precedent a claim only gates when it is on main, so this worked on a branch and
+opened a PR rather than claiming.
+
+Tests: RED before and green after, both assertions quoted above. Three tests
+pinned the allowance literal (`test_spend_guard.PolicyIsInTheDiffNotASecret`,
+`test_spend_ceilings_bind`) and were updated; a fourth,
+`test_a_paid_job_refuses_to_start_when_the_month_is_spent`, hard-coded `$9.50`
+against `$10` and would have become a test of nothing at $18 - it now derives
+95% of the allowance from the constant and failed loudly rather than silently
+passing for the wrong reason. Full suite **1,464 tests**, `FAILED (errors=4,
+skipped=4)` - the same 4 pre-existing loader `ImportError`s (`No module named
+'urllib3'`) before and after.
+
+---
+
 ## 2026-08-12 - the US incident is closed, and closing it broke the closer twice (railway only, no deploy)
 
 `us_all_time` is CLOSED, reviewed by the owner, and `ops_status.py [3]` reads
