@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.16
+ * Version: 2.20.17
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.16');
+define('ALT_VERSION', '2.20.17');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1225,8 +1225,18 @@ function alt_tracker_meta_description($desc) {
     // Early-year guard: with small totals the injected line reads worse than
     // the static field, so only take over once the figures carry weight.
     if (empty($n['jobs']) || (int) $n['jobs'] < 50000 || (int) $n['ai_jobs'] < 5000) return $desc;
-    $jobs = (int) (floor(((int) $n['jobs']) / 10000) * 10000);  // round DOWN, defensible
-    $ai   = (int) (floor(((int) $n['ai_jobs']) / 1000) * 1000);
+    // Round DOWN, and round down from the SMALLER of the two bases. A "N+"
+    // claim is only defensible if it sits under every figure on the page it
+    // describes, and the page publishes its totals on the filing basis while
+    // these figures are counted on the effective one. A 0 means the second
+    // query found nothing, which is a reason to fall back to the one basis we
+    // do have rather than floor the description to zero.
+    $jobs_basis = ((int) ($n['jobs_filed'] ?? 0) > 0)
+        ? min((int) $n['jobs'], (int) $n['jobs_filed']) : (int) $n['jobs'];
+    $ai_basis   = ((int) ($n['ai_jobs_filed'] ?? 0) > 0)
+        ? min((int) $n['ai_jobs'], (int) $n['ai_jobs_filed']) : (int) $n['ai_jobs'];
+    $jobs = (int) (floor($jobs_basis / 10000) * 10000);
+    $ai   = (int) (floor($ai_basis / 1000) * 1000);
     return sprintf(
         'Layoff tracker, updated daily: %s+ jobs cut in %d, %s+ tied to AI. Every number links to an SEC filing, WARN notice, or news report. Free.',
         number_format($jobs), (int) $n['y'], number_format($ai));
@@ -1460,6 +1470,32 @@ function alt_live_numbers() {
              FROM $t WHERE superset_of = 0 AND announced = 0
                AND YEAR(layoff_date) = %d AND layoff_date <= %s",
             $y, gmdate('Y-m-d')));
+        // THE SAME WINDOW ON THE PAGE'S OWN BASIS, for the meta description's
+        // floor and for nothing else.
+        //
+        // The FAQ answers an effective-date question and says so (above). The
+        // SERP description makes a LOOSER claim, "N+ jobs cut in <year>", with
+        // no room in 155 pixels to name a basis, so the only thing that keeps
+        // it honest is being a floor under every figure a reader can see on the
+        // page. Rounding down 10,000 was doing that against the FAQ's number
+        // only. On 2026-08-12 the effective to-date figure was 479,410 and the
+        // filed one 445,869: floor-of-479,410 is 470,000, which is ABOVE the
+        // cite line. Nothing enforced the gap and nothing measured it.
+        //
+        // So the same window is measured on both bases here, in the same hour
+        // transient (one extra indexed COUNT per hour, and the description then
+        // floors on the smaller). COALESCE(announcement_date, layoff_date) is
+        // alt_db_date_col()'s 'notice' expression written out: this file cannot
+        // call it without a WP_REST_Request, and a hand-typed copy of a date
+        // basis is the exact defect 2.20.11 and 2.20.12 were both about, so it
+        // is named here and pinned by test_date_basis_default.py section 4b.
+        $row_filed = $wpdb->get_row($wpdb->prepare(
+            "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
+                    COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
+             FROM $t WHERE superset_of = 0 AND announced = 0
+               AND YEAR(COALESCE(announcement_date, layoff_date)) = %d
+               AND layoff_date <= %s",
+            $y, gmdate('Y-m-d')));
         // MIN(layoff_date) is guarded against the sentinel/zero dates that a bad
         // parse can leave behind, so the published coverage start is a real event.
         $all = $wpdb->get_row(
@@ -1478,6 +1514,11 @@ function alt_live_numbers() {
             'entries'   => $row ? (int) $row->entries : 0,
             'jobs'      => $row ? (int) $row->jobs : 0,
             'ai_jobs'   => $row ? (int) $row->ai_jobs : 0,
+            // The same window counted on the page's own basis. Used ONLY as the
+            // meta description's floor; no visible copy quotes these, because a
+            // second unlabelled total is the defect, not the fix.
+            'jobs_filed'    => $row_filed ? (int) $row_filed->jobs : 0,
+            'ai_jobs_filed' => $row_filed ? (int) $row_filed->ai_jobs : 0,
             'all'       => $all ? (int) $all->entries : 0,
             'countries' => (int) $cov['countries'],
             'states'    => (int) $cov['states'],

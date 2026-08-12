@@ -414,6 +414,30 @@ def run():
               "dormant, nothing to diff. Paste a competitor company list into the "
               "BENCHMARK_COMPANIES secret (or a feed URL into BENCHMARK_FEED_URLS) "
               "to activate; either stays out of the repo.")
+        # A DORMANT RUN STILL REPORTS, and that is the whole point of this call.
+        #
+        # This branch used to `return` here, before any report_source_health().
+        # The job is scheduled daily and exits green daily, so the LAST health
+        # row stayed frozen at whatever the final armed run wrote: 2026-07-26,
+        # two days before the owner made it dormant. Staleness is measured from
+        # checked_at, so the public Tracker Health page has said this collector
+        # "may have STOPPED" ever since and would have said it forever. That is
+        # the CLAUDE.md three-step retirement rule missing its third step: a
+        # source removed from duty whose remaining path still owns a health id.
+        #
+        # Reported as `ok` deliberately, not `degraded`. Nothing is broken: the
+        # job ran, and doing nothing is the correct behaviour when unarmed. The
+        # detail carries WHY, so nobody re-diagnoses this as a dead scraper, and
+        # the checked_at it refreshes is a real run of real code. `dormant` is
+        # not a status the health page, ops_status or the digest understand, and
+        # inventing one here would publish a word three readers render as
+        # unknown. This is also NOT `retired`: retired is one-way and masked,
+        # while this is one secret away from live.
+        report_source_health(
+            "tracker_diff", "ok", 0,
+            "Dormant by owner decision (2026-07-28): no competitor feed configured, "
+            "so there is nothing to diff and the run costs nothing. Not broken and "
+            "not retired. Set BENCHMARK_COMPANIES or BENCHMARK_FEED_URLS to re-arm.")
         return
     by_key = {}
     for i, url in enumerate(FEEDS, 1):

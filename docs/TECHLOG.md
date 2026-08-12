@@ -1,5 +1,89 @@
 # Tech Log
 
+## 2026-08-12 - a collector that was parked read as one that died, and a floor that was not under the page (2.20.17)
+
+Two published statements that did not describe the thing they named. Neither is
+a wrong total; both are the same family as the basis work above, which is why
+they are pinned in one file.
+
+### tracker_diff read STALE for 16 days while succeeding daily
+
+`ops_status.py [2]` said `tracker_diff: 16d old — collector may have STOPPED`
+and pointed at the RUNBOOK's broken-scraper playbook. It has not stopped. It
+runs at 15:50 UTC daily and **every run since 2026-07-28 has been green**. Its
+`run()` returned on the dormant branch, before any `report_source_health()`
+call, so its last health row was frozen at 2026-07-26: two days before the owner
+made it dormant, and the last day it was armed.
+
+Staleness is measured from `checked_at`, so nothing was ever going to age this
+out. It would have said "may have STOPPED" forever, on the PUBLIC Tracker
+Health page, about a job that ran correctly that morning. This is the CLAUDE.md
+three-step retirement rule missing its third step, arriving through a collector
+that was **parked rather than retired** - a case the rule's own wording did not
+cover, because it is written for sources that are going away.
+
+Reported `ok`, deliberately, with the reason in the detail:
+
+* Nothing is broken. The job ran and doing nothing is correct when unarmed.
+  `degraded` would put a permanent red row on a transparency page, which trains
+  both the reader and the weekly digest to ignore that row.
+* Not `retired` either. Retired is one-way and masked by
+  `alt_retired_sources()`; this is one secret away from live.
+* Not a new `dormant` status. Three readers (the health page, `ops_status.py`,
+  `health_digest.py`) would each render an unknown word as unknown. A status
+  vocabulary is an interface, and widening it for one row is not worth it.
+
+The detail names the decision date and the two secrets that re-arm it, so the
+next reader does not re-diagnose this as a dead scraper.
+
+### The SERP snippet's "N+" was not a floor under the page
+
+`alt_tracker_meta_description()` publishes "N+ jobs cut in \<year\>" and rounds
+DOWN 10,000 to make the claim defensible. It rounded down from
+`alt_live_numbers()`, which counts on the EFFECTIVE basis, while the page it
+describes has published on the FILING basis since 2.20.4. Measured live
+2026-08-12:
+
+| Figure | Basis | 2026 |
+|---|---|---:|
+| `alt_live_numbers()` to-date | effective | 479,410 |
+| **the snippet's floor**, `floor(479,410)` | effective | **470,000** |
+| the cite line a reader actually lands on | filing | 445,869 |
+
+**The floor sat 24,131 ABOVE the cite line.** The rounding was doing real work
+and measuring it against the wrong side. Nothing enforced the gap, nothing
+measured it, and 2.20.12 recorded it as noted-not-fixed for exactly this
+reason: it needed its own measurement.
+
+The same window is now counted on both bases inside the same hour transient
+(one extra indexed COUNT per hour) and the description floors on the smaller,
+which puts it under every figure a reader can see. `COALESCE(announcement_date,
+layoff_date)` is `alt_db_date_col()`'s notice expression written out; this file
+has no `WP_REST_Request` to call it with, and a hand-typed copy of a date basis
+is the precise defect of 2.20.11 through 2.20.15, so it is named in the comment
+and pinned by a test rather than left to be rediscovered a seventh time. The
+filing-basis pair is used by the description and by nothing else: a second
+unlabelled total on a visible surface is the defect, not the fix.
+
+**Tests run the code where it can be run.** The dormant path executes `run()`
+with the reporter stubbed and reads what it was handed, rather than grepping
+for a call. 6 of 7 were red beforehand; three surface as errors because the
+defect is that no post happened at all, so the assertion indexes an empty list.
+The seventh is a named regression bar.
+
+**Still open and NOT closed here:** the `us_all_time` incident. The cause is
+found and the mechanism is bounded (entry above), the three ERM rows are
+identified (Citigroup 114335, General Motors 113529, Cinemaworld 64351) and a
+close is drafted, but `close_incident()` requires a human reviewer by design and
+this session is not one. One number worth recording while it is fresh: the
+public corrections log says 144,000 jobs were relabelled across the three rows,
+the guard commit says 92,000 reached the US headline, and the incident recorded
++93,210. All three are right. **Citigroup's 52,000 was already inside the
+`country_basis=any` slice through its `employer_country = United States` HQ
+stamp**, so relabelling its job-location country added nothing to this headline.
+47,000 + 45,000 = 92,000 moved, plus 1,210 of legitimate arrivals on +18
+entries.
+
 ## 2026-08-12 - the loop that wrote the wrong US headline is still armed, and now it is bounded (railway only, no deploy)
 
 The 2026-08-08 US headline step was traced on 2026-08-11 to three ERM rows
