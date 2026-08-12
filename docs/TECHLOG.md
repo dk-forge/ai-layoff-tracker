@@ -1,5 +1,100 @@
 # Tech Log
 
+## 2026-08-12 - the 29 recovered gold events, prepared for a human and not decided (railway + docs, no deploy)
+
+**Nothing in this entry moves the published recall figure. It is still 24 of 57
+= 42.1% [30.2%, 55.0%], and it stays there until a person decides 29 times.**
+
+The 2026-08-01 rotation fix and last night's history sweep did what they
+predicted: re-measured live at 2026-08-12T17:59Z, **29 of the 33 missed SEC Item
+2.05 gold events now carry a tracker row**, 28 of them at the filing's exact
+stated headcount and 28 citing the filing's own accession. `measure()` reports
+all 29 under `candidates_needing_adjudication` and counts none of them, because
+the numerator is the manifest's `matched` field and only an editor writes it.
+That gate is the point and it was not touched. What was missing was the other
+half of it: a way for the editor to actually do the 29, and a place for the
+answer to live.
+
+**The sheet.** `railway/recall_adjudication_pack.py` rebuilds
+`docs/recall-reference-sets/sec-item-205-adjudication-queue.{json,md}` from two
+primary artefacts per event, both re-fetched: the FILING's own count sentence
+from SEC EDGAR, and OUR row as the public `/query` serves it today. It carries
+the manifest's `count_evidence` and `match_notes` clearly labelled
+`manifest_says_*` and relies on neither - a sheet that quotes the manifest at
+the person auditing the manifest can only ever agree with itself.
+
+It records no recommendation, and that is a design constraint rather than a
+style preference: a pre-ticked sheet moves the gate from the human to the
+machine while leaving the machine's fingerprints off it. Ordering is by how much
+there is to CHECK - 13 entries where the count, both dates, the name and the
+accession all line up come first because they are fast to verify, not because
+they are right to accept.
+
+**Three things the flags found that a count-equality check would not have.**
+- **Two gold events contest one tracker row.** Event 149625 (EnerSys, 474,
+  Tijuana, March 2026) satisfies the alias+window rule for the JULY 2025
+  575-employee plan as well, 246 days away. Its correct partner, 149911, exists
+  and matches 575 exactly. The wide window is doing what the 2026-08-01 entry
+  said it does: proposing a Hormel-Georgia-WARN-shaped mistake for a human to
+  refuse.
+- **A number that is the filing's other number.** Goodyear's 8-K states 600
+  gross and 400 net in one sentence. We hold 400; the gold set holds 600. The
+  sheet quotes the sentence and declines to pick.
+- **A different accession that the manifest itself already resolved.** Our KALA
+  BIO row cites the 8-K/A, which `collapsed_duplicate_filings` recorded on
+  2026-08-01 as the same announcement filed twice. The pack reads that list, so
+  the flag says so instead of sending the editor to re-derive it.
+
+**The recorder.** `railway/recall_adjudicate.py`, local, stdlib-only and
+network-free for the same reason `close_incident` refuses to re-read the site it
+is about: the decision is made against the evidence the reviewer read, not
+against whatever the host is serving when they press return. Four properties,
+each with a test that is red without it:
+1. **Reversible.** Every write snapshots the event's mutable fields into
+   `railway/recall_adjudications.json` first. `--revert` restores them byte for
+   byte, including removing a key that was absent - proven by accepting and
+   reverting the REAL manifest in a copy and diffing the bytes.
+2. **Attributed.** `--reviewed-by` and `--reason` are required and may not be
+   blank. An unnamed decision is indistinguishable from the machine promoting
+   itself.
+3. **No silent match.** `--verify` fails on any `matched` event carrying neither
+   an `adjudication` block nor membership in `PRE_TOOL_MATCHED`, the frozen 24
+   decided on 2026-08-01. `tests/test_recall_adjudication.py` runs it against
+   the committed files, so a hand-edited `match_decision` reddens CI rather than
+   quietly raising the coverage claim.
+4. **Idempotent.** The same decision twice writes once and exits 0. A different
+   decision is REFUSED until reverted, so both readings stay on the record.
+
+`--event-ids` takes every value until the next flag, and there is a test that
+types it the way a person types it. That is not a hypothetical: on 2026-08-12
+`--rows 114335 113529 64351` recorded one of three ids and exited zero, closing
+an incident that named a third of its own cause.
+
+**The arithmetic, stated so nobody has to guess at it mid-pass.** 24 today. If
+all 29 are accepted, 53/57 = 93.0% [83.3%, 97.2%]. If the four with hard
+discrepancies (both EnerSys events, Goodyear, Dow) are rejected, 49/57 = 86.0%
+[74.7%, 92.7%]. If only the 13 clean ones are accepted, 37/57 = 64.9% [51.9%,
+76.0%]. Those are three arithmetics, not three targets.
+
+**The four that are NOT in the 29, confirmed against live `/query` today** - and
+the list in circulation was wrong by one. Codexis (46, 2025-11-06) and
+PLAYSTUDIOS (177, 2026-03-16) are real misses: Codexis holds only two 2023 CA
+WARN rows and PLAYSTUDIOS returns zero rows at any date. Both counts live in an
+EX-99.1 exhibit the extractor does not read, which 2026-08-01 already recorded.
+Wabash National (270) stays refused correctly - the count is the sum of four
+stated components and our extractor refuses derived counts by design; the only
+in-window rows remain the CA WARN 94+6 for a different site. **EnerSys is not
+the fourth. It is recovered, twice** - 149911 at 575 for the July 2025 plan and
+149625 at 474 for the March 2026 Tijuana closure, both citing their own
+accession. The fourth real miss is **HP Inc (4,000, 2025-11-25)**: no HP Inc row
+after 2017, and the only in-window HP-prefix rows are HP Composites (already in
+`rejected_candidate_event_ids`) and HP Hood (an excluded prefix). The ceiling is
+unchanged at 53 of 57; which company occupies the fourth slot is not.
+
+**`MATCHED_FLOOR` stays at 20** and no published figure, measurement file or
+manifest decision was written by this change, for the reason the 2026-08-01
+entry gives: recall moves when a re-measurement moves, after a human has
+decided, and not before.
 ## 2026-08-12 - the allowance goes to $18, the ladder's reserve stops being a fiction, and the sweep finally gets a ceiling (railway only, no deploy)
 
 `MONTHLY_ALLOWANCE_USD` is **18.0**. The owner raised this tracker's OpenRouter
