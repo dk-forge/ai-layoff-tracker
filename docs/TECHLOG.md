@@ -87,14 +87,27 @@ inside the $10 allowance, so it does not fit
 | allowance | $18.00 |
 | less MEASURED ingest (Railway cron) | -$5.10 |
 | **budget the named ceilings may claim** | **$12.90** |
-| claimed by the table, worst case | $11.10 |
-| spare | $1.80 |
+| claimed by the table, worst case | $11.70 |
+| spare | $1.20 |
 
-**Every paid job in this repo now carries a named ceiling. No job remains
-unnamed.** `railway-cron` is still deliberately absent and that is not an
-omission - it keeps the global default so free ingest is untouched by the table,
-and it is the reason `RUN_CEILING_USD` had to be de-coupled from the allowance
-above.
+**A second unnamed job turned up while checking that claim, and naming it
+matters more than the ceiling does.** `historical-news-sweep` is a scheduled
+DAILY LLM sweep (`BACKFILL_MAX_ARTICLES=10`) that was not in the table either.
+`harvest()` collects a run's `SPEND_LEDGER_V1` line only when
+`job_id in set(JOB_RUN_CEILINGS_USD)`, so **an unnamed job is also an unharvested
+one**: its spend has never appeared in `railway/spend_jobs.json` and has been
+sitting inside the unattributed remainder by construction. Named at $0.020
+(~1.8x its modelled $0.011), itself a tightening of the $0.200 default.
+
+**The ladder verdict: one job remains unnamed, deliberately - `tracker-diff`.**
+Its cron is armed and it runs daily, but it is DORMANT by the owner's decision
+(2026-07-28): unarmed for want of a secret this repo is instructed never to ask
+for, so it exits green having spent nothing. A ceiling there would be a budget
+for work that does not happen. The ladder has room for it ($1.20 spare) the day
+it is armed. The other two scheduled workflows holding `OPENROUTER_API_KEY` -
+`warn-import` and `openrouter-balance-check` - make no model call at all;
+checked, not assumed. `railway-cron` is absent on purpose, which is exactly why
+`RUN_CEILING_USD` had to be de-coupled from the allowance above.
 
 ### The number this does NOT change
 

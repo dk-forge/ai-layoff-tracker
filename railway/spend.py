@@ -217,8 +217,8 @@ SNAPSHOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #   allowance                                            $18.00
 #   less MEASURED ingest (the Railway cron)              -$5.10
 #   = budget the named ceilings may claim                $12.90
-#   claimed by the table below, worst case               $11.10
-#   spare                                                 $1.80
+#   claimed by the table below, worst case               $11.70
+#   spare                                                 $1.20
 # At $10 that budget was $4.90 and the table already claimed $6.60, so the
 # ladder was over-subscribed before this change and the test said so the
 # moment its reserve stopped being a literal `- 3.0` (see the test).
@@ -233,6 +233,23 @@ SNAPSHOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # daily rotation runs — the three were multi-month range dispatches) that is
 # $0.0907 to $0.1115. $0.150 is ~35% above the dearest window observed, and it
 # is a TIGHTENING of the $0.200 it silently ran under before, not a loosening.
+#
+# historical-news-sweep was named in the same pass and for a sharper reason: an
+# UNNAMED JOB IS ALSO AN UNHARVESTED ONE. `harvest()` collects a run's
+# SPEND_LEDGER_V1 line only when `job_id in set(JOB_RUN_CEILINGS_USD)`, so a
+# daily paid job missing from this table is missing from railway/spend_jobs.json
+# too, and its spend lives inside the unattributed remainder by construction.
+# It is a scheduled daily LLM sweep (BACKFILL_MAX_ARTICLES=10, ~$0.0011 per
+# extract), so $0.020 is ~1.8x its modelled appetite and, again, a tightening of
+# the $0.200 default it had been running under.
+#
+# STILL UNNAMED, deliberately: `tracker-diff`. Its cron is armed and it runs
+# daily, but it is DORMANT by the owner's decision (2026-07-28) — unarmed for
+# want of a secret this repo is instructed never to ask for, so it exits green
+# having spent nothing. A ceiling there would be a budget for work that does not
+# happen. If it is ever armed, name it in the same pass; the ladder has room.
+# Everything else holding OPENROUTER_API_KEY on a schedule (warn-import,
+# openrouter-balance-check) makes no model call at all — checked, not assumed.
 #
 # THE $5/MONTH TARGET is documented here and NOT yet enforced: it requires
 # (a) the ingest funnel port (dedup-before-LLM + headline gate on the cron's
@@ -263,6 +280,7 @@ JOB_RUN_CEILINGS_USD = {
     "hi-warn-dryrun":          0.015,  # manual   same probe, dry
     "foreign-filings":         0.020,  # dormant  cron commented out
     "edgar-history-sweep":     0.150,  # daily    MEASURED, see note below
+    "historical-news-sweep":   0.020,  # daily    MODELLED 10 x ~$0.0011
     "news-catchup":            0.150,  # weekly   MODELLED ~113 x $0.0011
     "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
