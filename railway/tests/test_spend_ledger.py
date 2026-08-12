@@ -47,9 +47,20 @@ class _LedgerSandbox(unittest.TestCase):
             self._stash(var)
 
     def _stash(self, var):
+        """Clear `var` for this test and RESTORE IT EITHER WAY afterwards.
+
+        It used to restore only when the variable had been set beforehand, so a
+        test whose subject SETS one (apply_job_ceiling writes
+        ALT_RUN_CEILING_USD) leaked that value into every test that ran after
+        it. That was invisible while the per-run ceiling was a module constant
+        frozen at import; once the ceiling became live (2026-08-11) the leak
+        surfaced as an unrelated retry test failing only in a full run.
+        """
         old = os.environ.pop(var, None)
         if old is not None:
             self.addCleanup(os.environ.__setitem__, var, old)
+        else:
+            self.addCleanup(os.environ.pop, var, None)
 
 
 class MeterAcceptsRawResponses(unittest.TestCase):
