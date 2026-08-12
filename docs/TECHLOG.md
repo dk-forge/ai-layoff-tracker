@@ -1,5 +1,226 @@
 # Tech Log
 
+## 2026-08-12 - company-watchlist: measurement only. It grows, it reports green, it has produced one row, and every run we can price was cut off before it finished (no code change, no deploy)
+
+`ops_status.py` reads `company-watchlist  6 runs  $0.0301/run  0 rows  bought 0`.
+The obvious reading is "a hand-maintained list nobody curates, firing on
+nothing, retire it". Every clause of that is wrong in a different way, and the
+measurement is below. **Nothing in this entry changes code or cadence** — the
+decision is the owner's, and the one number that would settle it has never been
+taken.
+
+### What it watches, and how it got there
+
+| | |
+|---|---:|
+| seed file `railway/seed_data/company_watchlist.csv` | **199** names |
+| commits to that file since it was created 2026-07-20 | **0** |
+| watched universe, first run (2026-07-27) | **9,397** |
+| watched universe, latest run (2026-08-11) | **9,504** |
+| of which self-grown from our own `/companies` endpoint | 9,343 → **9,450** |
+| seed names NOT already in our own captures | **54** |
+
+So it is **not** a hand-maintained list, and it is **not** stalled: it adds
+about nine companies a day without a commit, exactly as designed
+(`WATCHLIST_SELF_GROW`). But read where the growth comes from. **99.4% of the
+watched universe is on the list because another collector already found that
+company.** The only names on it that no collector has ever captured are the 54
+survivors of a seed file written once, three weeks ago, and never touched
+since. The self-grow makes the list compound; it cannot make it novel.
+
+### What it has ever found: one row
+
+Complete lifetime, from the Actions history (16 runs, 2026-07-27 → 2026-08-11;
+15 succeeded, 2026-08-06 cancelled). The workflow was committed 2026-07-20 but
+no run exists before 07-27 — why, is UNKNOWN from here.
+
+| Run date | slice | checked | missing | posted |
+|---|---:|---:|---:|---:|
+| 07-27 | 2400 | 60 | 0 | — |
+| 07-28 | 2400 | 150 | 0 | — |
+| 07-29 | 2550 | 150 | 4 | **1** |
+| 07-30 | 2700 | 150 | 40 | 0 |
+| 07-31 | 2850 | 150 | 145 | 0 (deadline after 40 companies) |
+| 08-01 | 3000 | 150 | 147 | 0 (deadline after 40 companies) |
+| 08-02 | 3150 | 150 | 146 | 0 (deadline after 40 companies) |
+| 08-03 | 3300 | 150 | 147 | 0 (ceiling, paid reads OFF) |
+| 08-04 | 3450 | 150 | 146 | 0 (ceiling, paid reads OFF) |
+| 08-05 | 8550 | 150 | 147 | 0 (ceiling, paid reads OFF) |
+| 08-07 | 8850 | 150 | 145 | 0 (ceiling, paid reads OFF) |
+| 08-08 | 9000 | 150 | 148 | 0 (ceiling, paid reads OFF) |
+| 08-09 | 9150 | 150 | 150 | 0 (ceiling, paid reads OFF) |
+| 08-10 | 9300 | 150 | 147 | 0 (ceiling, paid reads OFF) |
+| 08-11 | 9450 | 54 | 53 | 0 (ceiling, paid reads OFF) |
+
+**The one row, in full:** `SAMHSA`, 17 jobs, `layoff_date` 2026-07-28, source
+Fortune, `source_type` news, `verification_level` bronze,
+`reason_tags: ["federal_workforce"]`, `ai_explicit: false`, posted by the
+2026-07-29 run. Verified live today: `/query?company=SAMHSA` returns
+`total: 1`, so no other collector holds it. That is the collector's entire
+lifetime contribution to the dataset: one 17-person federal-agency item that
+nothing else caught.
+
+### The reason the zeros are not evidence of "nothing to find"
+
+**Every run we can price hit its per-run spend ceiling and stopped extracting.**
+All eight ledgered runs (2026-08-03 onward) printed:
+
+```
+##[notice]paid reads are OFF (spend ceiling) - deferring layoff extraction
+```
+
+with `cost_usd` of 0.030371 / 0.030227 / 0.030001 / 0.030160 / 0.030040 /
+0.030163 / 0.030087 / 0.030076 against a named ceiling of $0.030
+(`JOB_RUN_CEILINGS_USD["company-watchlist"]`). That is not a job that looked and
+found nothing. That is a job that spent its whole budget looking and was
+switched off partway. The three runs before the ceiling bound (07-31 → 08-02)
+printed `deadline hit after 40 companies` instead — same shape, different brake.
+
+**And "remaining resume next run" is false for the companies.** The comment is
+true of the URLs — a deferred candidate writes no row, so `seen_urls` never
+learns it and a later run re-reads it. It is not true of the slice. The rotation
+index is
+
+```python
+pages = max(1, (len(companies) + BATCH - 1) // BATCH)
+start = (date.today().toordinal() % pages) * BATCH
+```
+
+purely date-derived, with nothing persisted. Tomorrow the window has moved 150
+companies on. So the ~110 companies of each 150-slice that the ceiling never
+reached are not retried tomorrow; they wait for their slice to come round again,
+and by then the sweep's own 28-day news window has slid past the event. Two
+further consequences fall out of the same three lines:
+
+* the docstring's "every company is revisited ~weekly" is wrong by an order of
+  magnitude — 9,504 / 150 is a **63-day** rotation, and at the ~40 companies a
+  run the brakes actually allow, a **~237-day** one;
+* `pages` changes as the universe grows (63 ↔ 64), which reshuffles the entire
+  slice map. That is why the slice jumps 3450 (08-04) → 8550 (08-05). The
+  rotation is not a stable cycle over the list; it is a different partition
+  every time the list crosses a multiple of 150.
+
+### The redundancy question, which is the decisive one
+
+For the 199 seed companies, the 2026 rows we hold, by the collector that
+produced them:
+
+| source_type | 2026 rows |
+|---|---:|
+| warn | 427 |
+| news | 82 |
+| erm | 38 |
+| 8-K | 5 |
+
+Narrowed to the watchlist's own operating window, 2026-07-27 → 2026-08-11 — the
+period in which it had the chance to be first — we hold **25 events across 13
+watched companies**:
+
+| first finder | events |
+|---|---:|
+| WARN | 17 |
+| general news net | 8 |
+| **company-watchlist** | **0** |
+
+**The split is 25/25 to other collectors, 0/25 to the tripwire.** Three of the
+25 are exactly the archetype the sweep exists for, a large non-US employer with
+no prior current-year entry:
+
+* **BMW, 8,000** — 2026-07-29, moneycontrol.com. BMW had no 2026 row before
+  that day. The sweep ran that same day; its slice was 2550 and BMW was not in
+  it. The broad net got it anyway.
+* **Heineken, 3,000** — 2026-08-05, Reuters. Sweep ran, paid reads off.
+* **Paramount Skydance, 2,500** — 2026-08-11, aljazeera.com. Sweep ran, paid
+  reads off.
+
+So the answer to "is zero correct because the watched companies announced
+nothing?" is **no**. They announced plenty; 25 recorded events including three
+of 2,500 jobs or more. Other collectors caught all of them and this one caught
+none. Reuters is named in the module docstring as the reason this collector can
+see big European cuts — and Reuters reached us through the daily net.
+
+### Cost, measured
+
+| | |
+|---|---:|
+| measured cost per run | **$0.0301** (ceiling-bound, 8/8 runs) |
+| at the current daily cron | **$0.92/month**, 9.2% of the $10 allowance |
+| total ledgered spend, 2026-08-03 → 08-11 | **$0.2411** over 8 runs |
+| rows stored in that window | **0** |
+| cost per stored row, ledgered window | undefined — `ops_status` prints "bought 0" |
+| the 7 runs before 2026-08-03 | **UNKNOWN** — the harvest could not write until `ed38307` |
+
+Retiring it saves **$0.92/month** and about 10 minutes of Actions time a day.
+Against the $10 interim allowance that is real but small; it is roughly one
+sixth of what the main ingest costs.
+
+### What this does and does not establish
+
+Established: the list grows and grows from our own captures, so it is
+structurally a re-watch of companies other collectors found; it has produced one
+row in sixteen runs; and over the window where we can attribute first-finding it
+is 0 for 25.
+
+**Not** established: what it would find at full budget. Every measurable run was
+truncated, so "does a targeted query beat the broad net" has never actually been
+tested here. Six runs is not too short a window to see the zeros — the zeros are
+real — but it is the wrong window to conclude from, because none of the six was
+allowed to finish. The number that would settle it is **one uncapped,
+full-universe dispatch**: 9,504 companies at the modelled $0.055 per 150-company
+slice is about **$3.50 once**, inside the monthly allowance, and it converts
+"UNKNOWN because throttled" into a measured yield.
+
+The structural argument runs the other way and does not depend on the
+throttling: `already_have()` only lets the sweep fire on a company with **no**
+current-year entry, and when it fires it queries the **same NewsAPI net** the
+daily ingest already reads, 28 days back. Its entire edge is that a
+company-targeted query can surface an article a broad query missed. That edge is
+real — it is why HP and Intel were once missed — but it has bought one federal
+17-person row.
+
+### Recommendation, as consequences
+
+1. **Do not retire on this evidence.** Retiring now retires a collector that has
+   never once been allowed to complete a sweep, and the entry would read "0
+   rows" when the honest reading is "0 rows, brakes on".
+2. **Take the $3.50 measurement.** One dispatch at a raised
+   `ALT_RUN_CEILING_USD` over the full universe. Zero novel rows → retire, and
+   retiring takes THREE steps: drop it from the schedule, add it to
+   `alt_retired_sources()` in `db.php`, and **stop every remaining path that
+   posts health under `company_watchlist`** — `report_source_health` is called in
+   four places in `company_watchlist.py`, and the id also carries a public label
+   in `assets/health.js` and a 4-day freshness ceiling in both `ops_status.py`
+   and `health_digest.py`. Skipping the third step silently voids the second.
+   **Do not delete the module either way**: `distress_watchlist.py` and
+   `tracker_diff.py` import `already_have`, `query_for` and `DAYS_BACK` from it.
+3. **If it is kept, the shape has to change, because the current shape cannot
+   work at any budget.** At $0.030 a run it can sweep ~40 companies; the list is
+   9,504. Either the watched set shrinks to what the budget can actually cover —
+   the 54 never-captured seed names plus the largest employers, where a targeted
+   query has a chance of beating the broad net, giving a 1-2 day rotation instead
+   of 63 — or the budget grows to match the list. A 9,500-company list on a
+   $0.030 ceiling is a rotation nobody completes.
+4. **One fix is worth making whichever way the decision goes, and it is free:**
+   persist the rotation cursor instead of deriving it from
+   `date.today().toordinal()`. As written, a run stopped by the ceiling or the
+   deadline permanently skips its remainder, and the log line that says
+   "remaining resume next run" is not true of the companies.
+
+**The signature defect is present.** `report_source_health("company_watchlist",
+"ok", posted, ...)` posted `ok` on all fifteen successful runs, `ops_status`
+monitors it on a 4-day freshness ceiling, and `assets/health.js` publishes it to
+the health page as "Targeted sweep of large employers with no current-year
+entry". Sixteen runs, one row, and every surface green throughout. "Did it run"
+was answered continuously; "did it produce anything" was answered by nothing
+until the per-job ledger shipped on 2026-08-02, and even then only as a number
+in a table nobody had a reason to read.
+
+This closes the (b) half of the deferred decision recorded on 2026-08-03 — with
+the finding that the premise of that deferral ("if the cost per stored row stays
+effectively infinite, move it to weekly") is answerable but that weekly is the
+wrong lever: it would halve the cost and triple a rotation that already takes
+63 days.
+
 ## 2026-08-12 - the US incident is closed, and closing it broke the closer twice (railway only, no deploy)
 
 `us_all_time` is CLOSED, reviewed by the owner, and `ops_status.py [3]` reads
