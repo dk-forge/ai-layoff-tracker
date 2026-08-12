@@ -72,13 +72,16 @@ on:
       # `spend.effective_run_ceiling_usd()` resolves an explicit
       # ALT_RUN_CEILING_USD first, then JOB_RUN_CEILINGS_USD, then the global
       # default -- and since 2026-08-11 that genuinely binds mid-run. A run
-      # that needs more than the named $0.200 therefore needs an override, and
-      # the override belongs HERE, on one dispatch, not in the table: a raised
+      # that needs more than the $0.200 global default therefore needs an
+      # override, and it belongs HERE, on one dispatch, not in the table: a raised
       # ceiling edited into the table is a raised ceiling for every scheduled
       # run afterwards, which is how a one-off authorisation quietly becomes
-      # the budget. Left blank -> the named ceiling, unchanged.
+      # the budget. This job deliberately has NO entry in
+      # JOB_RUN_CEILINGS_USD (see LEDGER_ONLY_JOBS in spend.py: naming one is a
+      # budget claim the ladder cannot currently absorb), so blank falls
+      # through to the global default, unchanged.
       run_ceiling_usd:
-        description: 'Per-run spend ceiling in USD for THIS dispatch only. Blank = the named $0.200.'
+        description: 'Per-run spend ceiling in USD for THIS dispatch only. Blank = the $0.200 global default.'
         required: false
         default: ''
 
@@ -166,7 +169,7 @@ jobs:
             unset BACKFILL_ROTATE
           fi
           if [ -n "${ALT_RUN_CEILING_USD:-}" ]; then
-            echo "::notice::per-run ceiling overridden to \$${ALT_RUN_CEILING_USD} for THIS dispatch only (named ceiling \$0.200); the schedule is unchanged"
+            echo "::notice::per-run ceiling overridden to \$${ALT_RUN_CEILING_USD} for THIS dispatch only (global default \$0.200); the schedule is unchanged"
           fi
           if [ -n "${BACKFILL_START:-}" ]; then
             echo "::notice::explicit range ${BACKFILL_START}..${BACKFILL_END} - the date-keyed rotation is bypassed for this dispatch only"
