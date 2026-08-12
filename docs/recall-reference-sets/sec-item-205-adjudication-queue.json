@@ -1,0 +1,1806 @@
+{
+ "built_at": "2026-08-12T18:21:01Z",
+ "entries": [
+  {
+   "accession": "0001193125-25-163439",
+   "cik": "0001705843",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Cibus"
+   ],
+   "filer": "Cibus, Inc.",
+   "filing_date": "2025-07-23",
+   "filing_says": [
+    "(the \"Company\" or \"Cibus\") approved a reduction in workforce of approximately 34 full-time employees as a pivotal step in implementing the Company's previously announced streamlined business focus, prioritizing its nearest-term and currently funded commercial opportunities."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduction in workforce of approximately 34 full-time employees'",
+   "manifest_says_match_notes": "No Cibus row in the tracker at any date.",
+   "match_window": [
+    "2025-04-24",
+    "2026-04-19"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1705843/000119312525163439/d946086d8k.htm",
+   "proposed_tracker_event_ids": [
+    149909
+   ],
+   "reference_row_id": "sec-205-0001193125-25-163439",
+   "rows": [
+    {
+     "announcement_date": "2025-07-23",
+     "cites_the_gold_accession": true,
+     "company_name": "Cibus, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 34,
+     "layoff_date": "2025-07-23",
+     "our_excerpt": "On July 21, 2025, the Board of Directors of Cibus, Inc. (the \u201cCompany\u201d or \u201cCibus\u201d) approved a reduction in workforce of approximately 34 full-time employees as a pivotal step in implementing the Company\u2019s previously announced streamlined business focus, prioritizing its nearest-term and currently funded commercial opportunities.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/cibus-inc-2025-07-23/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1705843/000119312525163439/d946086d8k.htm",
+     "tracker_event_id": 149909,
+     "tracker_row_id": 177176,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 34,
+   "weight": 0
+  },
+  {
+   "accession": "0001655210-25-000149",
+   "cik": "0001655210",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Beyond Meat"
+   ],
+   "filer": "BEYOND MEAT, INC.",
+   "filing_date": "2025-08-06",
+   "filing_says": [
+    "On August 6, 2025, management of the Company approved a plan to reduce the Company's current workforce in North America by approximately 44 employees, representing approximately 6% of the Company's total global workforce."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduce ... workforce in North America by approximately 44 employees'",
+   "manifest_says_match_notes": "No Beyond Meat row in the tracker at any date (a q= search returns only Bed Bath & Beyond).",
+   "match_window": [
+    "2025-05-08",
+    "2026-05-03"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1655210/000165521025000149/bynd-20250806.htm",
+   "proposed_tracker_event_ids": [
+    149919
+   ],
+   "reference_row_id": "sec-205-0001655210-25-000149",
+   "rows": [
+    {
+     "announcement_date": "2025-08-06",
+     "cites_the_gold_accession": true,
+     "company_name": "BEYOND MEAT, INC.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 44,
+     "layoff_date": "2025-08-06",
+     "our_excerpt": "On August 6, 2025, management of the Company approved a plan to reduce the Company\u2019s current workforce in North America by approximately 44 employees, representing approximately 6% of the Company\u2019s total global workforce. This decision was based on cost-reduction initiatives intended to reduce cost of goods sold and operating expenses.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/beyond-meat-inc-2025-08-06/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1655210/000165521025000149/bynd-20250806.htm",
+     "tracker_event_id": 149919,
+     "tracker_row_id": 177186,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 44,
+   "weight": 0
+  },
+  {
+   "accession": "0001531177-25-000007",
+   "cik": "0001531177",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Sight Sciences"
+   ],
+   "filer": "Sight Sciences, Inc.",
+   "filing_date": "2025-08-27",
+   "filing_says": [
+    "Pursuant to the Plan, the Company intends to (a) reduce its headcount by 43 employees, or approximately 20% of its global workforce, and (b) reduce its operating expenses, principally by (i) delaying certain research and development project spend while prioritizing near term pipeline projects, (ii) reducing its selling, general, and administrative operating expenses by implementing measures to limit marketing, travel, and administrative costs, and (iii) not backfilling certain open and planned headcount."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduce its headcount by 43 employees'",
+   "manifest_says_match_notes": "No Sight Sciences row. The company= filter returns only 'Insight Behavioral' / 'Insights Training', different employers.",
+   "match_window": [
+    "2025-05-29",
+    "2026-05-24"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1531177/000153117725000007/sght-20250827.htm",
+   "proposed_tracker_event_ids": [
+    149918
+   ],
+   "reference_row_id": "sec-205-0001531177-25-000007",
+   "rows": [
+    {
+     "announcement_date": "2025-08-27",
+     "cites_the_gold_accession": true,
+     "company_name": "Sight Sciences, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 43,
+     "layoff_date": "2025-08-27",
+     "our_excerpt": "On August 27, 2025, Sight Sciences, Inc. (the \u201cCompany\u201d) informed its employees that it is implementing a targeted plan, commencing immediately, intended to reduce operating expenses, improve cost efficiencies, and better align its operating structure for long-term, profitable growth (the \u201cPlan\u201d). Pursuant to the Plan, the Company intends to (a) reduce its headcount by 43 employees, or approximately 20% of its global workforce...",
+     "permalink": "https://asktherecruiter.com/blog/layoff/sight-sciences-inc-2025-08-27/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1531177/000153117725000007/sght-20250827.htm",
+     "tracker_event_id": 149918,
+     "tracker_row_id": 177185,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 43,
+   "weight": 0
+  },
+  {
+   "accession": "0001386278-25-000069",
+   "cik": "0001386278",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Green Dot"
+   ],
+   "filer": "GREEN DOT CORP",
+   "filing_date": "2025-09-03",
+   "filing_says": [
+    "This action will impact up to approximately 240 employees, representing approximately 22% of the Company's global workforce."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'impact up to approximately 240 employees' (ceiling)",
+   "manifest_says_match_notes": "Only Green Dot row is a 2020 event.",
+   "match_window": [
+    "2025-06-05",
+    "2026-05-31"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1386278/000138627825000069/gdot-20250902.htm",
+   "proposed_tracker_event_ids": [
+    149755
+   ],
+   "reference_row_id": "sec-205-0001386278-25-000069",
+   "rows": [
+    {
+     "announcement_date": "2025-09-02",
+     "cites_the_gold_accession": true,
+     "company_name": "GREEN DOT CORP",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -1,
+     "days_effective_minus_filing": 119,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 240,
+     "layoff_date": "2025-12-31",
+     "our_excerpt": "On September 2, 2025, Green Dot Corporation (the \u201cCompany\u201d) announced a plan to exit the Company's operational activities in China by the end of 2025 as a means of reducing complexity and promoting long-term structural improvements for its business. This action will impact up to approximately 240 employees, representing approximately 22% of the Company\u2019s global workforce.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/green-dot-corp-2025-12-31/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1386278/000138627825000069/gdot-20250902.htm",
+     "tracker_event_id": 149755,
+     "tracker_row_id": 177022,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 240,
+   "weight": 0
+  },
+  {
+   "accession": "0001628280-25-042593",
+   "cik": "0001772720",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Spruce Power"
+   ],
+   "filer": "SPRUCE POWER HOLDING CORP",
+   "filing_date": "2025-09-24",
+   "filing_says": [
+    "The reduction in force is expected to affect approximately 40 employees and contractors, representing approximately 19% of the Company's workforce, who were informed of the reduction in force on September 24, 2025."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'affect approximately 40 employees and contractors'",
+   "manifest_says_match_notes": "No Spruce Power row in the tracker at any date.",
+   "match_window": [
+    "2025-06-26",
+    "2026-06-21"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1772720/000162828025042593/spru-20250924.htm",
+   "proposed_tracker_event_ids": [
+    149756
+   ],
+   "reference_row_id": "sec-205-0001628280-25-042593",
+   "rows": [
+    {
+     "announcement_date": "2025-09-24",
+     "cites_the_gold_accession": true,
+     "company_name": "SPRUCE POWER HOLDING CORP",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 40,
+     "layoff_date": "2025-09-24",
+     "our_excerpt": "The reduction in force is expected to affect approximately 40 employees and contractors, representing approximately 19% of the Company\u2019s workforce, who were informed of the reduction in force on September 24, 2025.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/spruce-power-holding-corp-2025-09-24/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1772720/000162828025042593/spru-20250924.htm",
+     "tracker_event_id": 149756,
+     "tracker_row_id": 177023,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 40,
+   "weight": 0
+  },
+  {
+   "accession": "0001193125-25-228293",
+   "cik": "0001641281",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Bolt Biotherapeutics"
+   ],
+   "filer": "Bolt Biotherapeutics, Inc.",
+   "filing_date": "2025-10-02",
+   "filing_says": [
+    "The restructuring plan includes a reduction of the Company's current workforce by approximately 20 employees, or approximately 50% of the Company's workforce."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduction of the Company's current workforce by approximately 20 employees'",
+   "manifest_says_match_notes": "Bolt Biotherapeutics rows exist but are 2024 events, outside the window.",
+   "match_window": [
+    "2025-07-04",
+    "2026-06-29"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1641281/000119312525228293/bolt-20251001.htm",
+   "proposed_tracker_event_ids": [
+    149632
+   ],
+   "reference_row_id": "sec-205-0001193125-25-228293",
+   "rows": [
+    {
+     "announcement_date": "2025-10-01",
+     "cites_the_gold_accession": true,
+     "company_name": "Bolt Biotherapeutics, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -1,
+     "days_effective_minus_filing": -1,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 20,
+     "layoff_date": "2025-10-01",
+     "our_excerpt": "The restructuring plan includes a reduction of the Company\u2019s current workforce by approximately 20 employees, or approximately 50% of the Company\u2019s workforce.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/bolt-biotherapeutics-inc-2025-10-01/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1641281/000119312525228293/bolt-20251001.htm",
+     "tracker_event_id": 149632,
+     "tracker_row_id": 176899,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 20,
+   "weight": 0
+  },
+  {
+   "accession": "0001666071-25-000135",
+   "cik": "0001666071",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Cardlytics"
+   ],
+   "filer": "Cardlytics, Inc.",
+   "filing_date": "2025-10-02",
+   "filing_says": [
+    "(the \"Company\") committed to a plan to reduce its workforce by approximately 90 full-time employees, representing approximately 24% of the Company's current workforce (the \"Plan\")."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "8-K body: 'reduce its workforce by approximately 90 full-time employees'. The attached release says ~120 including contractors.",
+   "manifest_says_match_notes": "No Cardlytics row in the tracker at any date.",
+   "match_window": [
+    "2025-07-04",
+    "2026-06-29"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1666071/000166607125000135/cdlx-20251001.htm",
+   "proposed_tracker_event_ids": [
+    149634
+   ],
+   "reference_row_id": "sec-205-0001666071-25-000135",
+   "rows": [
+    {
+     "announcement_date": "2025-10-01",
+     "cites_the_gold_accession": true,
+     "company_name": "Cardlytics, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -1,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 90,
+     "layoff_date": "2025-10-02",
+     "our_excerpt": "On October 1, 2025, Cardlytics, Inc. (the \u201cCompany\u201d) committed to a plan to reduce its workforce by approximately 90 full-time employees, representing approximately 24% of the Company\u2019s current workforce (the \u201cPlan\u201d). The Plan is intended to optimize the Company\u2019s cost structure and is part of a broader cost-reduction initiative that also includes measures beyond full-time employee reductions.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/cardlytics-inc-2025-10-02/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1666071/000166607125000135/cdlx-20251001.htm",
+     "tracker_event_id": 149634,
+     "tracker_row_id": 176901,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 90,
+   "weight": 0
+  },
+  {
+   "accession": "0001193125-25-266980",
+   "cik": "0001788999",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Xperi"
+   ],
+   "filer": "Xperi Inc.",
+   "filing_date": "2025-11-05",
+   "filing_says": [
+    "On November 1, 2025, the Company approved a restructuring plan (the \"Restructuring Plan\") that will result in a reduction of approximately 250 employees globally and impacts all business and functional areas."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduction of approximately 250 employees globally'",
+   "manifest_says_match_notes": "No Xperi row. The company= filter returns only Experian, a different employer.",
+   "match_window": [
+    "2025-08-07",
+    "2026-08-02"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1788999/000119312525266980/xper-20251101.htm",
+   "proposed_tracker_event_ids": [
+    149598
+   ],
+   "reference_row_id": "sec-205-0001193125-25-266980",
+   "rows": [
+    {
+     "announcement_date": "2025-11-05",
+     "cites_the_gold_accession": true,
+     "company_name": "Xperi Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 250,
+     "layoff_date": "2025-11-05",
+     "our_excerpt": "On November 1, 2025, the Company approved a restructuring plan (the \u201cRestructuring Plan\u201d) that will result in a reduction of approximately 250 employees globally and impacts all business and functional areas.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/xperi-inc-2025-11-05/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1788999/000119312525266980/xper-20251101.htm",
+     "tracker_event_id": 149598,
+     "tracker_row_id": 176865,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 250,
+   "weight": 0
+  },
+  {
+   "accession": "0002055592-26-000008",
+   "cik": "0002055592",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Gemini Space Station",
+    "Gemini Trust"
+   ],
+   "filer": "Gemini Space Station, Inc.",
+   "filing_date": "2026-02-05",
+   "filing_says": [
+    "The Plan is expected to include a reduction in force of up to 200 global employees, including employees in Europe, the United States, and Singapore, and representing approximately 25% of the Company's total global workforce as of February 4, 2026."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduction in force of up to 200 global employees' (ceiling)",
+   "manifest_says_match_notes": "No Gemini Space Station row. The company= filter returns only Capgemini, a different employer.",
+   "match_window": [
+    "2025-11-07",
+    "2026-11-02"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/2055592/000205559226000008/gemi-20260205.htm",
+   "proposed_tracker_event_ids": [
+    149908
+   ],
+   "reference_row_id": "sec-205-0002055592-26-000008",
+   "rows": [
+    {
+     "announcement_date": "2026-02-05",
+     "cites_the_gold_accession": true,
+     "company_name": "Gemini Space Station, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 200,
+     "layoff_date": "2026-02-05",
+     "our_excerpt": "On February 4, 2026, Gemini Space Station, Inc. (\u201cGemini,\u201d the \u201cCompany,\u201d \u201cwe,\u201d or \u201cus\u201d) approved a plan to exit and wind down its operations in the United Kingdom, the European Union and other European jurisdictions, and Australia as part of a broader initiative to reduce operating expenses and support the Company\u2019s path to profitability (the \u201cPlan\u201d). The Plan is expected to include a reduction in force of up to 200 global employees, including employees in Europe, the United States, and Singapore, and representing approximately 25% of the Company\u2019s total global workforce as of February 4, 2026.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/gemini-space-station-inc-2026-02-05/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/2055592/000205559226000008/gemi-20260205.htm",
+     "tracker_event_id": 149908,
+     "tracker_row_id": 177175,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 200,
+   "weight": 0
+  },
+  {
+   "accession": "0001628280-26-024066",
+   "cik": "0001500435",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "GoPro"
+   ],
+   "filer": "GoPro, Inc.",
+   "filing_date": "2026-04-07",
+   "filing_says": [
+    "The Restructuring Plan is anticipated to entail a global reduction in force of approximately 145 employees, representing approximately 23% of the Company's ending first quarter headcount of 631 employees (the \"Reduction in Force\")."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'global reduction in force of approximately 145 employees' (631 is the ENDING headcount, not the cut)",
+   "manifest_says_match_notes": "GoPro rows exist but stop at 2018.",
+   "match_window": [
+    "2026-01-07",
+    "2027-01-02"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1500435/000162828026024066/gpro-20260407.htm",
+   "proposed_tracker_event_ids": [
+    149629
+   ],
+   "reference_row_id": "sec-205-0001628280-26-024066",
+   "rows": [
+    {
+     "announcement_date": "2026-04-07",
+     "cites_the_gold_accession": true,
+     "company_name": "GoPro, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 145,
+     "layoff_date": "2026-04-07",
+     "our_excerpt": "On April 7, 2026, GoPro, Inc. (the \u201cCompany\u201d) announced that the Board of Directors (the \u201cBoard\u201d) of the Company approved a restructuring plan (the \u201cRestructuring Plan\u201d) in order to reduce operating costs and drive stronger operating leverage. The Restructuring Plan is anticipated to entail a global reduction in force of approximately 145 employees, representing approximately 23% of the Company\u2019s ending first quarter headcount of 631 employees (the \u201cReduction in Force\u201d).",
+     "permalink": "https://asktherecruiter.com/blog/layoff/gopro-inc-2026-04-07/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1500435/000162828026024066/gpro-20260407.htm",
+     "tracker_event_id": 149629,
+     "tracker_row_id": 176896,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 145,
+   "weight": 0
+  },
+  {
+   "accession": "0001104659-26-050407",
+   "cik": "0001806837",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Vertex"
+   ],
+   "filer": "Vertex, Inc.",
+   "filing_date": "2026-04-28",
+   "filing_says": [
+    "The Plan includes a reduction in force of approximately 170 employees, representing approximately 9% of the Company's global workforce as of April 27, 2026."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduction in force of approximately 170 employees'",
+   "manifest_says_match_notes": "No row for Vertex, Inc. The similarly named rows are Vertex Pharmaceuticals and Vertex Aerospace, different employers.",
+   "match_window": [
+    "2026-01-28",
+    "2027-01-23"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1806837/000110465926050407/tm2612960d1_8k.htm",
+   "proposed_tracker_event_ids": [
+    149630
+   ],
+   "reference_row_id": "sec-205-0001104659-26-050407",
+   "rows": [
+    {
+     "announcement_date": "2026-04-28",
+     "cites_the_gold_accession": true,
+     "company_name": "Vertex, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 170,
+     "layoff_date": "2026-04-28",
+     "our_excerpt": "The Plan includes a reduction in force of approximately 170 employees, representing approximately 9% of the Company\u2019s global workforce as of April 27, 2026.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/vertex-inc-2026-04-28/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1806837/000110465926050407/tm2612960d1_8k.htm",
+     "tracker_event_id": 149630,
+     "tracker_row_id": 176897,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 170,
+   "weight": 0
+  },
+  {
+   "accession": "0001315257-26-000036",
+   "cik": "0001315257",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Koppers"
+   ],
+   "filer": "Koppers Holdings Inc.",
+   "filing_date": "2026-05-08",
+   "filing_says": [
+    "The conditional decision, which is pending negotiations and consultation with the union, was driven by challenging market conditions over the past decade, including unit operating costs outpacing our ability to capture higher pricing, reduced raw material supply from North American steel manufacturers, and increased capital requirements and, if finalized, will affect approximately 85 employees."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'will affect approximately 85 employees' (1,850 is the company-wide headcount in the About boilerplate)",
+   "manifest_says_match_notes": "The filing concerns Stickney, Illinois. The only in-window Koppers row is SC WARN 66 dated 2026-04-21, a different site and before the announcement.",
+   "match_window": [
+    "2026-02-07",
+    "2027-02-02"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1315257/000131525726000036/kop-20260507.htm",
+   "proposed_tracker_event_ids": [
+    149641
+   ],
+   "reference_row_id": "sec-205-0001315257-26-000036",
+   "rows": [
+    {
+     "announcement_date": "2026-05-08",
+     "cites_the_gold_accession": true,
+     "company_name": "Koppers Holdings Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 237,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 85,
+     "layoff_date": "2026-12-31",
+     "our_excerpt": "On May 8, 2026, the Company announced that it has made a conditional decision to discontinue distillation and chemical manufacturing operations at its facility in Stickney, Illinois, subject to the satisfaction of any bargaining obligations that might exist with the union that represents certain employees at that facility. The conditional decision, which is pending negotiations and consultation with the union, was driven by challenging market conditions over the past decade, including unit operating costs outpacing our ability to capture higher pricing, reduced raw material supply from North American steel manufacturers, and increased capital requirements and, if finalized, will affect approximately 85 employees.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/koppers-holdings-inc-2026-12-31/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1315257/000131525726000036/kop-20260507.htm",
+     "tracker_event_id": 149641,
+     "tracker_row_id": 176908,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 85,
+   "weight": 0
+  },
+  {
+   "accession": "0001193125-26-216107",
+   "cik": "0001034670",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Autoliv"
+   ],
+   "filer": "AUTOLIV INC",
+   "filing_date": "2026-05-11",
+   "filing_says": [
+    "In addition, Autoliv estimates that there will be a reduction of approximately 2,200 employees in T\u00fcrkiye upon completion."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 0,
+   "manifest_says_count_evidence": "'reduction of approximately 2,200 employees in Turkiye'",
+   "manifest_says_match_notes": "Autoliv rows exist but the newest dated one is 2019; nothing represents the 2,200-employee Turkiye closure.",
+   "match_window": [
+    "2026-02-10",
+    "2027-02-05"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1034670/000119312526216107/alv-20260506.htm",
+   "proposed_tracker_event_ids": [
+    149638
+   ],
+   "reference_row_id": "sec-205-0001193125-26-216107",
+   "rows": [
+    {
+     "announcement_date": "2026-05-08",
+     "cites_the_gold_accession": true,
+     "company_name": "Autoliv Inc",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -3,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [],
+     "job_count": 2200,
+     "layoff_date": "2026-05-11",
+     "our_excerpt": "Management determined that manufacturing capacity in the EMEA region exceeds future demand. As a result of the closures, Autoliv estimates that there will be a reduction of approximately 2,200 employees in T\u00fcrkiye upon completion.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/autoliv-inc-2026-05-11/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1034670/000119312526216107/alv-20260506.htm",
+     "tracker_event_id": 149638,
+     "tracker_row_id": 176905,
+     "verification_level": "gold",
+     "weight": 0
+    }
+   ],
+   "stated_job_count": 2200,
+   "weight": 0
+  },
+  {
+   "accession": "0000950170-25-104347",
+   "cik": "0001964979",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Allurion"
+   ],
+   "filer": "ALLURION TECHNOLOGIES, INC.  (ALUR, ALUR-WT)",
+   "filing_date": "2025-08-07",
+   "filing_says": [
+    "The Restructuring Plan includes a reduction in force of approximately 70 employees, or approximately 65% of its workforce, which the Company expects to substantially complete by the end of the third quarter of 2025."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reduction in force of approximately 70 employees'",
+   "manifest_says_match_notes": "No Allurion row in the tracker at any date.",
+   "match_window": [
+    "2025-05-09",
+    "2026-05-04"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1964979/000095017025104347/alur-20250804.htm",
+   "proposed_tracker_event_ids": [
+    149917
+   ],
+   "reference_row_id": "sec-205-0000950170-25-104347",
+   "rows": [
+    {
+     "announcement_date": "2025-08-05",
+     "cites_the_gold_accession": true,
+     "company_name": "ALLURION TECHNOLOGIES, INC.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -2,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'ALLURION TECHNOLOGIES, INC.' against alias(es) 'Allurion'"
+     ],
+     "job_count": 70,
+     "layoff_date": "2025-08-07",
+     "our_excerpt": "On August 5, 2025, the Company announced a strategic restructuring plan adopted by the Company\u2019s board of directors on July 23, 2025 (the \u201cRestructuring Plan\u201d). In connection with the Restructuring Plan, the Company is focusing on low-dose GLP-1 combination therapy, muscle mass maintenance, and U.S. market entry, in combination with other cost-saving measures. The Restructuring Plan includes a reduction in force of approximately 70 employees, or approximately 65% of its workforce, which the Company expects to substantially complete by the end of the third quarter of 2025.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/allurion-technologies-inc-2025-08-07/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1964979/000095017025104347/alur-20250804.htm",
+     "tracker_event_id": 149917,
+     "tracker_row_id": 177184,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 70,
+   "weight": 1
+  },
+  {
+   "accession": "0001104659-25-094125",
+   "cik": "0001479419",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "KALA BIO",
+    "Kala Pharmaceuticals"
+   ],
+   "filer": "KALA BIO, Inc.",
+   "filing_date": "2025-09-29",
+   "filing_says": [
+    "In connection with such decisions, the Board approved a reduction in the Company's workforce by approximately 19 employees, or approximately 51% (the \"Reduction\")."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reduction in the Company's workforce by approximately 19 employees'",
+   "manifest_says_match_notes": "No KALA BIO row. The company= filter returns only Estonian/Lithuanian fish processors.",
+   "match_window": [
+    "2025-07-01",
+    "2026-06-26"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1479419/000110465925094125/tm2527340d1_8k.htm",
+   "proposed_tracker_event_ids": [
+    149633
+   ],
+   "reference_row_id": "sec-205-0001104659-25-094125",
+   "rows": [
+    {
+     "announcement_date": "2025-09-28",
+     "cites_the_gold_accession": false,
+     "company_name": "KALA BIO, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -1,
+     "days_effective_minus_filing": 3,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "the URL we cite is a different accession, and the gold set's own `collapsed_duplicate_filings` records it as the same announcement filed twice - not a different event by the manifest's own finding"
+     ],
+     "job_count": 19,
+     "layoff_date": "2025-10-02",
+     "our_excerpt": "In connection with such decisions, the Board approved a reduction in the Company\u2019s workforce by approximately 19 employees, or approximately 51% (the 'Reduction').",
+     "permalink": "https://asktherecruiter.com/blog/layoff/kala-bio-inc-2025-10-02/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1479419/000110465925096071/tm2527808d1_8ka.htm",
+     "tracker_event_id": 149633,
+     "tracker_row_id": 176900,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 19,
+   "weight": 1
+  },
+  {
+   "accession": "0001104659-25-100648",
+   "cik": "0000024545",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Molson Coors"
+   ],
+   "filer": "MOLSON COORS BEVERAGE CO  (TAP, TAP-A)",
+   "filing_date": "2025-10-20",
+   "filing_says": [
+    "The restructuring involves the planned elimination of approximately 400 salaried positions across the Company's Americas business by the end of December 2025, estimated at approximately 9% of its Americas business salaried workforce, including hundreds of salaried positions that were already open from role prioritization efforts put in place earlier this year and those who may be granted voluntary severance as part of this restructuring."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'elimination of approximately 400 salaried positions'",
+   "manifest_says_match_notes": "Molson Coors rows exist (2020, 2025-01) but none represents the October 2025 400-position Americas restructuring.",
+   "match_window": [
+    "2025-07-22",
+    "2026-07-17"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/24545/000110465925100648/tm2529052d1_8k.htm",
+   "proposed_tracker_event_ids": [
+    149635
+   ],
+   "reference_row_id": "sec-205-0001104659-25-100648",
+   "rows": [
+    {
+     "announcement_date": "2025-10-20",
+     "cites_the_gold_accession": true,
+     "company_name": "Molson Coors Beverage Company",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 72,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'Molson Coors Beverage Company' against alias(es) 'Molson Coors'"
+     ],
+     "job_count": 400,
+     "layoff_date": "2025-12-31",
+     "our_excerpt": "On October 20, 2025, Molson Coors Beverage Company (the \u201cCompany\u201d) announced a corporate restructuring plan designed to create a leaner, more agile Americas organization while advancing its ability to reinvest in the business and position the Company for future growth. The restructuring involves the planned elimination of approximately 400 salaried positions across the Company\u2019s Americas business by the end of December 2025, estimated at approximately 9% of its Americas business salaried workforce.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/molson-coors-beverage-company-2025-12-31/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/24545/000110465925100648/tm2529052d1_8k.htm",
+     "tracker_event_id": 149635,
+     "tracker_row_id": 176902,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 400,
+   "weight": 1
+  },
+  {
+   "accession": "0001193125-25-261612",
+   "cik": "0001783328",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "TScan"
+   ],
+   "filer": "TScan Therapeutics, Inc.",
+   "filing_date": "2025-11-03",
+   "filing_says": [
+    "Pursuant to such strategy, the Company also implemented a workforce reduction of approximately 30% of the Company's workforce, or 66 roles.",
+    "On November 3, 2025, the Company issued a press release announcing its alignment with the Food & Drug Administration on the pivotal study design for TSC-101, the Company's strategic decision to prioritize clinical development of its heme program, while pausing further enrollment in its solid tumor Phase 1 trial and focusing preclinical efforts on in vivo engineering for solid tumors and target discovery in autoimmunity, as well as a workforce reduction of approximately 30%, or 66 employees.",
+    "Strategic Prioritization \u2022 The strategic prioritization is expected to produce annual cost savings of $45.0 million in 2026 and 2027, and will impact approximately 30% of the Company's workforce, or 66 employees."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'workforce reduction of approximately 30% ... or 66 roles'",
+   "manifest_says_match_notes": "No TScan row in the tracker at any date.",
+   "match_window": [
+    "2025-08-05",
+    "2026-07-31"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1783328/000119312525261612/d873161d8k.htm",
+   "proposed_tracker_event_ids": [
+    149600
+   ],
+   "reference_row_id": "sec-205-0001193125-25-261612",
+   "rows": [
+    {
+     "announcement_date": "2025-11-03",
+     "cites_the_gold_accession": true,
+     "company_name": "TScan Therapeutics, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'TScan Therapeutics, Inc.' against alias(es) 'TScan'"
+     ],
+     "job_count": 66,
+     "layoff_date": "2025-11-03",
+     "our_excerpt": "Pursuant to such strategy, the Company also implemented a workforce reduction of approximately 30% of the Company\u2019s workforce, or 66 roles.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/tscan-therapeutics-inc-2025-11-03/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1783328/000119312525261612/d873161d8k.htm",
+     "tracker_event_id": 149600,
+     "tracker_row_id": 176867,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 66,
+   "weight": 1
+  },
+  {
+   "accession": "0000048465-25-000053",
+   "cik": "0000048465",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Hormel"
+   ],
+   "filer": "HORMEL FOODS CORP /DE/",
+   "filing_date": "2025-11-04",
+   "filing_says": [
+    "As part of the plan, the Company expects to eliminate approximately 250 corporate and sales roles, with most of the related employee departures to occur by December 31, 2025."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'eliminate approximately 250 corporate and sales roles'",
+   "manifest_says_match_notes": "The only in-window Hormel row is GA WARN 135 dated 2025-08-25, ten weeks BEFORE the announcement and a plant action, not the 250 corporate/sales roles.",
+   "match_window": [
+    "2025-08-06",
+    "2026-08-01"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/48465/000004846525000053/hrl-20251104.htm",
+   "proposed_tracker_event_ids": [
+    149597
+   ],
+   "reference_row_id": "sec-205-0000048465-25-000053",
+   "rows": [
+    {
+     "announcement_date": "2025-11-04",
+     "cites_the_gold_accession": true,
+     "company_name": "HORMEL FOODS CORP /DE/",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 57,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'HORMEL FOODS CORP /DE/' against alias(es) 'Hormel'"
+     ],
+     "job_count": 250,
+     "layoff_date": "2025-12-31",
+     "our_excerpt": "The restructuring includes a voluntary early retirement program for certain groups of employees, the closing of certain open roles, involuntary role reductions, and making select changes to benefit programs. As part of the plan, the Company expects to eliminate approximately 250 corporate and sales roles, with most of the related employee departures to occur by December 31, 2025.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/hormel-foods-corp-de-2025-12-31/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/48465/000004846525000053/hrl-20251104.htm",
+     "tracker_event_id": 149597,
+     "tracker_row_id": 176864,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 250,
+   "weight": 1
+  },
+  {
+   "accession": "0001173514-25-000133",
+   "cik": "0001173514",
+   "current_match_decision": "ambiguous_not_matched",
+   "employer_aliases": [
+    "Hyster-Yale"
+   ],
+   "filer": "HYSTER-YALE, INC.",
+   "filing_date": "2025-11-19",
+   "filing_says": [
+    "This action will reduce the Company's global workforce by approximately 575 employees."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reduce the Company's global workforce by approximately 575 employees'",
+   "manifest_says_match_notes": "IL WARN events 149251 (90) + 108571 (76) dated 2026-03-31 could be execution of the global 575 plan announced 2025-11-19, but the filing names no site, so the same-underlying-event test cannot be met. Resolved in the conservative direction, as the CA WARN protocol does.",
+   "match_window": [
+    "2025-08-21",
+    "2026-08-16"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1173514/000117351425000133/hy-20251113.htm",
+   "proposed_tracker_event_ids": [
+    149596
+   ],
+   "reference_row_id": "sec-205-0001173514-25-000133",
+   "rows": [
+    {
+     "announcement_date": "",
+     "cites_the_gold_accession": true,
+     "company_name": "Hyster-Yale, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": null,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "we hold no announcement_date, so the FILING basis cannot be compared; only the effective date is available"
+     ],
+     "job_count": 575,
+     "layoff_date": "2025-11-19",
+     "our_excerpt": "On November 13, 2025, the Board of Directors of Hyster-Yale, Inc. (the 'Company') approved a restructuring plan that furthers progress toward the Company's cost reduction initiatives in response to current economic and industry dynamics. This action will reduce the Company's global workforce by approximately 575 employees.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/hyster-yale-inc-2025-11-19/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1173514/000117351425000133/hy-20251113.htm",
+     "tracker_event_id": 149596,
+     "tracker_row_id": 176863,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 575,
+   "weight": 1
+  },
+  {
+   "accession": "0001193125-25-303185",
+   "cik": "0000814453",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Newell"
+   ],
+   "filer": "NEWELL BRANDS INC.",
+   "filing_date": "2025-12-01",
+   "filing_says": [
+    "The Company plans to reduce its professional and clerical headcount by approximately 10% globally (approximately 900 employees) and to close approximately twenty Company-operated retail locations in connection with the Plan."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reduce its global workforce by over 900 employees'",
+   "manifest_says_match_notes": "Newell rows exist but stop at 2024-03.",
+   "match_window": [
+    "2025-09-02",
+    "2026-08-28"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/814453/000119312525303185/nwl-20251126.htm",
+   "proposed_tracker_event_ids": [
+    149613
+   ],
+   "reference_row_id": "sec-205-0001193125-25-303185",
+   "rows": [
+    {
+     "announcement_date": "2025-11-26",
+     "cites_the_gold_accession": true,
+     "company_name": "Newell Brands Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -5,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'Newell Brands Inc.' against alias(es) 'Newell'"
+     ],
+     "job_count": 900,
+     "layoff_date": "2025-12-01",
+     "our_excerpt": "The Company plans to reduce its professional and clerical headcount by approximately 10% globally (approximately 900 employees) and to close approximately twenty Company-operated retail locations in connection with the Plan.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/newell-brands-inc-2025-12-01/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/814453/000119312525303185/nwl-20251126.htm",
+     "tracker_event_id": 149613,
+     "tracker_row_id": 176880,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 900,
+   "weight": 1
+  },
+  {
+   "accession": "0001193125-25-311445",
+   "cik": "0001381531",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Domtar"
+   ],
+   "filer": "Domtar CORP",
+   "filing_date": "2025-12-08",
+   "filing_says": [
+    "The announcement will affect approximately 350 employees."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'The announcement will affect approximately 350 employees'",
+   "manifest_says_match_notes": "Domtar rows stop at 2020; the 2025-09-25 'Resolute Forest Products US Inc. / Domtar' row is a different, earlier event.",
+   "match_window": [
+    "2025-09-09",
+    "2026-09-04"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1381531/000119312525311445/d30819d8k.htm",
+   "proposed_tracker_event_ids": [
+    149611
+   ],
+   "reference_row_id": "sec-205-0001193125-25-311445",
+   "rows": [
+    {
+     "announcement_date": "2025-12-02",
+     "cites_the_gold_accession": true,
+     "company_name": "Domtar Corporation",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -6,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "ANNOUNCEMENT date is -6 days from the filing date"
+     ],
+     "job_count": 350,
+     "layoff_date": "2025-12-08",
+     "our_excerpt": "On December 2, 2025, Domtar Corporation (\u201cDomtar\u201d) announced that it will permanently close operations at its Crofton, British Columbia, facility. The announcement will affect approximately 350 employees.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/domtar-corporation-2025-12-08/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1381531/000119312525311445/d30819d8k.htm",
+     "tracker_event_id": 149611,
+     "tracker_row_id": 176878,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 350,
+   "weight": 1
+  },
+  {
+   "accession": "0001104659-25-119486",
+   "cik": "0001739104",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Elanco"
+   ],
+   "filer": "Elanco Animal Health Inc",
+   "filing_date": "2025-12-09",
+   "filing_says": [
+    "The Restructuring Plan will result in a global headcount reduction of approximately 300 employees, plus an approximate 300 employees whose positions will be replaced with positions in growth areas or in lower-cost geographies."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'global headcount reduction of approximately 300 employees' eliminated; a further ~300 roles are shifted, not cut ('600 roles impacted').",
+   "manifest_says_match_notes": "Elanco rows exist (2020, 2024) but none represents the December 2025 plan.",
+   "match_window": [
+    "2025-09-10",
+    "2026-09-05"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1739104/000110465925119486/tm2533048d1_8k.htm",
+   "proposed_tracker_event_ids": [
+    149612
+   ],
+   "reference_row_id": "sec-205-0001104659-25-119486",
+   "rows": [
+    {
+     "announcement_date": "2025-12-05",
+     "cites_the_gold_accession": true,
+     "company_name": "Elanco Animal Health Incorporated",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -4,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'Elanco Animal Health Incorporated' against alias(es) 'Elanco'"
+     ],
+     "job_count": 300,
+     "layoff_date": "2025-12-09",
+     "our_excerpt": "The Restructuring Plan will result in a global headcount reduction of approximately 300 employees, plus an approximate 300 employees whose positions will be replaced with positions in growth areas or in lower-cost geographies.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/elanco-animal-health-incorporated-2025-12-09/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1739104/000110465925119486/tm2533048d1_8k.htm",
+     "tracker_event_id": 149612,
+     "tracker_row_id": 176879,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 300,
+   "weight": 1
+  },
+  {
+   "accession": "0001213900-26-052921",
+   "cik": "0001859199",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "reAlpha"
+   ],
+   "filer": "reAlpha Tech Corp.",
+   "filing_date": "2026-05-06",
+   "filing_says": [
+    "Pursuant to the Plan, among others, the Company is expected to reduce its global headcount by approximately 21 full-time employees, in addition to a number of consultants, temporary workers and independent contractors, collectively representing approximately 25% of the Company's global workforce.",
+    "The information provided under this Item 7.01 of this Form 8-K, including Exhibit 99.1 attached hereto, is being furnished and shall not be deemed \"filed\" for the purposes of Section 18 of the Securities Exchange Act of 1934, as amended (the \"Exchange Act\"), or otherwise subject to the liabilities of that section, nor shall it be deemed incorporated by reference in any filing under the Securities Act of 1933, as amended, or the Exchange Act except as shall be expressly set forth by specific reference in such filing. 1 Forward-Looking Statements This Form 8-K contains \"forward-looking statements\" within the meaning of the federal securities laws, including Section 27A of the Securities Act and Section 21E of the Exchange Act."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reduce its global headcount by approximately 21 full-time employees'",
+   "manifest_says_match_notes": "No reAlpha row in the tracker at any date.",
+   "match_window": [
+    "2026-02-05",
+    "2027-01-31"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1859199/000121390026052921/ea0289539-8k_realpha.htm",
+   "proposed_tracker_event_ids": [
+    149640
+   ],
+   "reference_row_id": "sec-205-0001213900-26-052921",
+   "rows": [
+    {
+     "announcement_date": "2026-05-06",
+     "cites_the_gold_accession": true,
+     "company_name": "reAlpha Tech Corp.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'reAlpha Tech Corp.' against alias(es) 'reAlpha'"
+     ],
+     "job_count": 21,
+     "layoff_date": "2026-05-06",
+     "our_excerpt": "Pursuant to the Plan, among others, the Company is expected to reduce its global headcount by approximately 21 full-time employees, in addition to a number of consultants, temporary workers and independent contractors, collectively representing approximately 25% of the Company\u2019s global workforce.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/realpha-tech-corp-2026-05-06/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1859199/000121390026052921/ea0289539-8k_realpha.htm",
+     "tracker_event_id": 149640,
+     "tracker_row_id": 176907,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 21,
+   "weight": 1
+  },
+  {
+   "accession": "0001477932-26-003057",
+   "cik": "0001425627",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "SOBR Safe"
+   ],
+   "filer": "SOBR Safe, Inc.",
+   "filing_date": "2026-05-13",
+   "filing_says": [
+    "Under the restructuring plan, the Company is reducing its workforce by 11 employees (approximately 70%)."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reducing its workforce by 11 employees'",
+   "manifest_says_match_notes": "No SOBR Safe row in the tracker at any date.",
+   "match_window": [
+    "2026-02-12",
+    "2027-02-07"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1425627/000147793226003057/sobr_8k.htm",
+   "proposed_tracker_event_ids": [
+    149637
+   ],
+   "reference_row_id": "sec-205-0001477932-26-003057",
+   "rows": [
+    {
+     "announcement_date": "2026-05-07",
+     "cites_the_gold_accession": true,
+     "company_name": "SOBR Safe, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": -6,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "ANNOUNCEMENT date is -6 days from the filing date"
+     ],
+     "job_count": 11,
+     "layoff_date": "2026-05-13",
+     "our_excerpt": "Under the restructuring plan, the Company is reducing its workforce by 11 employees (approximately 70%). The Company expects that the workforce reduction will decrease its annual operating costs by approximately $1.6 million.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/sobr-safe-inc-2026-05-13/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1425627/000147793226003057/sobr_8k.htm",
+     "tracker_event_id": 149637,
+     "tracker_row_id": 176904,
+     "verification_level": "gold",
+     "weight": 1
+    }
+   ],
+   "stated_job_count": 11,
+   "weight": 1
+  },
+  {
+   "accession": "0001628280-25-050671",
+   "cik": "0001645666",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Kezar"
+   ],
+   "filer": "Kezar Life Sciences, Inc.",
+   "filing_date": "2025-11-07",
+   "filing_says": [
+    "(the \"Company\") implemented a restructuring plan pursuant to which the Company will reduce its workforce by approximately 31 employees, or approximately 70%."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 2,
+   "manifest_says_count_evidence": "'reduce its workforce by approximately 31 employees'",
+   "manifest_says_match_notes": "No Kezar row in the tracker at any date.",
+   "match_window": [
+    "2025-08-09",
+    "2026-08-04"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1645666/000162828025050671/kzr-20251106.htm",
+   "proposed_tracker_event_ids": [
+    149595
+   ],
+   "reference_row_id": "sec-205-0001628280-25-050671",
+   "rows": [
+    {
+     "announcement_date": "",
+     "cites_the_gold_accession": true,
+     "company_name": "Kezar Life Sciences, Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": null,
+     "days_effective_minus_filing": -1,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "NAME matches by prefix, not exactly: we hold 'Kezar Life Sciences, Inc.' against alias(es) 'Kezar'",
+      "we hold no announcement_date, so the FILING basis cannot be compared; only the effective date is available"
+     ],
+     "job_count": 31,
+     "layoff_date": "2025-11-06",
+     "our_excerpt": "On November 6, 2025, Kezar Life Sciences, Inc. (the 'Company') implemented a restructuring plan pursuant to which the Company will reduce its workforce by approximately 31 employees, or approximately 70%.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/kezar-life-sciences-inc-2025-11-06/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1645666/000162828025050671/kzr-20251106.htm",
+     "tracker_event_id": 149595,
+     "tracker_row_id": 176862,
+     "verification_level": "gold",
+     "weight": 2
+    }
+   ],
+   "stated_job_count": 31,
+   "weight": 2
+  },
+  {
+   "accession": "0001289308-26-000009",
+   "cik": "0001289308",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "EnerSys"
+   ],
+   "filer": "EnerSys",
+   "filing_date": "2026-03-25",
+   "filing_says": [
+    "In addition, EnerSys estimates that there will be a reduction of approximately 474 employees upon completion."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 1,
+   "manifest_says_count_evidence": "'reduction of approximately 474 employees upon completion'",
+   "manifest_says_match_notes": "Only EnerSys row is the undated ERM Bulgaria record; nothing represents the Tijuana closure.",
+   "match_window": [
+    "2025-12-25",
+    "2026-12-20"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1289308/000128930826000009/ens-20260325.htm",
+   "proposed_tracker_event_ids": [
+    149625
+   ],
+   "reference_row_id": "sec-205-0001289308-26-000009",
+   "rows": [
+    {
+     "announcement_date": "2026-03-25",
+     "cites_the_gold_accession": true,
+     "company_name": "EnerSys",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "this SAME tracker event 149625 is also proposed for gold event sec-205-0001289308-25-000025"
+     ],
+     "job_count": 474,
+     "layoff_date": "2026-03-25",
+     "our_excerpt": "On March 25, 2026, EnerSys announced a plan to close its facility in Tijuana, Mexico, which focused on manufacturing lead acid batteries. In connection with this restructuring plan, which is estimated to be substantially complete by December 2027, EnerSys plans to sell the land and buildings and possibly the plant and equipment to other parties. In addition, EnerSys estimates that there will be a reduction of approximately 474 employees upon completion.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/enersys-2026-03-25/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1289308/000128930826000009/ens-20260325.htm",
+     "tracker_event_id": 149625,
+     "tracker_row_id": 176892,
+     "verification_level": "gold",
+     "weight": 100
+    }
+   ],
+   "stated_job_count": 474,
+   "weight": 100
+  },
+  {
+   "accession": "0001628280-26-020222",
+   "cik": "0000042582",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Goodyear"
+   ],
+   "filer": "GOODYEAR TIRE & RUBBER CO /OH/",
+   "filing_date": "2026-03-20",
+   "filing_says": [
+    "The proposed restructuring actions would lead to a reduction of approximately 600 positions across multiple countries within EMEA, while also creating approximately 200 new roles to support the organization moving forward, resulting in an overall net reduction of approximately 400 positions."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 3,
+   "manifest_says_count_evidence": "'reduction of approximately 600 positions across ... EMEA' (net 400 after ~200 new roles)",
+   "manifest_says_match_notes": "Goodyear rows exist, but the in-window ones are an Ohio WARN (85) and a later 2026-07-21 8-K (1,750). Neither is the March 2026 EMEA 600-position plan.",
+   "match_window": [
+    "2025-12-20",
+    "2026-12-15"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/42582/000162828026020222/gt-20260316.htm",
+   "proposed_tracker_event_ids": [
+    149624
+   ],
+   "reference_row_id": "sec-205-0001628280-26-020222",
+   "rows": [
+    {
+     "announcement_date": "2026-03-16",
+     "cites_the_gold_accession": true,
+     "company_name": "The Goodyear Tire & Rubber Company",
+     "count_delta": -200,
+     "days_announcement_minus_filing": -4,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [
+      "The proposed restructuring actions would lead to a reduction of approximately 600 positions across multiple countries within EMEA, while also creating approximately 200 new roles to support the organization moving forward, resulting in an overall net reduction of approximately 400 positions."
+     ],
+     "flags": [
+      "COUNT differs by -200: we hold 400, the filing states 600",
+      "the filing states our number too - read both sentences",
+      "NAME matches by prefix, not exactly: we hold 'The Goodyear Tire & Rubber Company' against alias(es) 'Goodyear'"
+     ],
+     "job_count": 400,
+     "layoff_date": "2026-03-20",
+     "our_excerpt": "The proposed restructuring actions would lead to a reduction of approximately 600 positions across multiple countries within EMEA, while also creating approximately 200 new roles to support the organization moving forward, resulting in an overall net reduction of approximately 400 positions.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/the-goodyear-tire-rubber-company-2026-03-20/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/42582/000162828026020222/gt-20260316.htm",
+     "tracker_event_id": 149624,
+     "tracker_row_id": 176891,
+     "verification_level": "gold",
+     "weight": 101
+    }
+   ],
+   "stated_job_count": 600,
+   "weight": 101
+  },
+  {
+   "accession": "0001751788-26-000009",
+   "cik": "0001751788",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "Dow"
+   ],
+   "filer": "DOW INC.",
+   "filing_date": "2026-01-29",
+   "filing_says": [
+    "On January 26, 2026, the Company's Board of Directors approved certain severance and related benefit costs for a workforce reduction of approximately 4,500 roles globally related to Transform to Outperform.",
+    "The Company anticipates ~$1.1-1.5 billion in one-time costs associated with Transform to Outperform, including ~$600-800 million in severance for ~4,500 Dow roles and ~$500-700 million in other one-time costs."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 6,
+   "manifest_says_count_evidence": "'workforce reduction of approximately 4,500 roles globally'",
+   "manifest_says_match_notes": "The in-window Dow rows are separate European site records (ERM 138/605/110, June 2026) and a different employer (Dow Jones). None represents the 4,500-role global plan.",
+   "match_window": [
+    "2025-10-31",
+    "2026-10-26"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1751788/000175178826000009/dow-20260126.htm",
+   "proposed_tracker_event_ids": [
+    149592,
+    149616
+   ],
+   "reference_row_id": "sec-205-0001751788-26-000009",
+   "rows": [
+    {
+     "announcement_date": "",
+     "cites_the_gold_accession": false,
+     "company_name": "Dow",
+     "count_delta": -4362,
+     "days_announcement_minus_filing": null,
+     "days_effective_minus_filing": 184,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "COUNT differs by -4362: we hold 138, the filing states 4500",
+      "SOURCE is 'news', not the 8-K",
+      "the URL we cite is not an EDGAR archive path",
+      "we hold no announcement_date, so the FILING basis cannot be compared; only the effective date is available",
+      "2 different tracker rows are proposed for this one gold event - at most one can be it"
+     ],
+     "job_count": 138,
+     "layoff_date": "2026-08-01",
+     "our_excerpt": "The Provincial Council claims European protection for the chemical hub in Tarragona in the face of 138 layoffs at Dow.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/dow-2026-08-01/",
+     "source_name": "APD Noticies",
+     "source_type": "news",
+     "source_url": "https://news.google.com/rss/articles/CBMigwJBVV95cUxQR2FRbDROY1NxbG9pd0tkWGx3MG9sOGVWQ3MwejFNRFNUaTRGQnZmS3J3UjJqdUZjWVpQbHFGeUNjeE5jRkNmYnN6U3cwdW9Nck5CbW45QTFMTTlzdUEwWERWam00cS1QcGV0aFpjaG1EZFpLaXQxTjFtdUJXTXdXeGtURjEwbzVJbUFrampYdmoxR2ZVZ2xZRlBBeGY2V3BVTm1leGdXeUc1SDRYWGdDOXpKUE9CWnBOQkVkUkFHUGRYVFBHNDNzdWMtN0JVbmpSSWZ6SmxYVlc5MFpDNWlINTlHUlJrdFRwWGN5T1VrWnB5Um1lMnFVZ1Jod0dkUTY4cmhR?oc=5",
+     "tracker_event_id": 149592,
+     "tracker_row_id": 176859,
+     "verification_level": "bronze",
+     "weight": 401
+    },
+    {
+     "announcement_date": "2026-01-29",
+     "cites_the_gold_accession": true,
+     "company_name": "Dow Inc.",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "2 different tracker rows are proposed for this one gold event - at most one can be it"
+     ],
+     "job_count": 4500,
+     "layoff_date": "2026-01-29",
+     "our_excerpt": "On January 26, 2026, the Company\u2019s Board of Directors approved certain severance and related benefit costs for a workforce reduction of approximately 4,500 roles globally related to Transform to Outperform.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/dow-inc-2026-01-29/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1751788/000175178826000009/dow-20260126.htm",
+     "tracker_event_id": 149616,
+     "tracker_row_id": 176883,
+     "verification_level": "gold",
+     "weight": 100
+    }
+   ],
+   "stated_job_count": 4500,
+   "weight": 501
+  },
+  {
+   "accession": "0001289308-25-000025",
+   "cik": "0001289308",
+   "current_match_decision": "not_matched",
+   "employer_aliases": [
+    "EnerSys"
+   ],
+   "filer": "EnerSys",
+   "filing_date": "2025-07-22",
+   "filing_says": [
+    "The Plan is expected to reduce EnerSys' non-production global workforce by approximately 11%, or approximately 575 employees, and is focused primarily on corporate and management positions."
+   ],
+   "filing_unreadable": null,
+   "flag_count": 6,
+   "manifest_says_count_evidence": "'reduce ... global workforce by approximately 11%, or approximately 575 employees'",
+   "manifest_says_match_notes": "Only EnerSys row is an undated ERM record for Bulgaria (400). Nothing represents the 575-employee July 2025 plan.",
+   "match_window": [
+    "2025-04-23",
+    "2026-04-18"
+   ],
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1289308/000128930825000025/ens-20250722.htm",
+   "proposed_tracker_event_ids": [
+    149625,
+    149911
+   ],
+   "reference_row_id": "sec-205-0001289308-25-000025",
+   "rows": [
+    {
+     "announcement_date": "2026-03-25",
+     "cites_the_gold_accession": false,
+     "company_name": "EnerSys",
+     "count_delta": -101,
+     "days_announcement_minus_filing": 246,
+     "days_effective_minus_filing": 246,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "COUNT differs by -101: we hold 474, the filing states 575",
+      "the URL we cite is a DIFFERENT accession than the gold filing",
+      "ANNOUNCEMENT date is +246 days from the filing date",
+      "this SAME tracker event 149625 is also proposed for gold event sec-205-0001289308-26-000009",
+      "2 different tracker rows are proposed for this one gold event - at most one can be it"
+     ],
+     "job_count": 474,
+     "layoff_date": "2026-03-25",
+     "our_excerpt": "On March 25, 2026, EnerSys announced a plan to close its facility in Tijuana, Mexico, which focused on manufacturing lead acid batteries. In connection with this restructuring plan, which is estimated to be substantially complete by December 2027, EnerSys plans to sell the land and buildings and possibly the plant and equipment to other parties. In addition, EnerSys estimates that there will be a reduction of approximately 474 employees upon completion.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/enersys-2026-03-25/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1289308/000128930826000009/ens-20260325.htm",
+     "tracker_event_id": 149625,
+     "tracker_row_id": 176892,
+     "verification_level": "gold",
+     "weight": 500
+    },
+    {
+     "announcement_date": "2025-07-22",
+     "cites_the_gold_accession": true,
+     "company_name": "EnerSys",
+     "count_delta": 0,
+     "days_announcement_minus_filing": 0,
+     "days_effective_minus_filing": 0,
+     "filing_sentences_stating_our_count": [],
+     "flags": [
+      "2 different tracker rows are proposed for this one gold event - at most one can be it"
+     ],
+     "job_count": 575,
+     "layoff_date": "2025-07-22",
+     "our_excerpt": "On July 22, 2025, EnerSys announced a reduction in force plan (the \"Plan\") as part of EnerSys' strategic restructuring plan under its new leadership to better align resources with current business priorities and long-term objectives. The Plan is expected to reduce EnerSys' non-production global workforce by approximately 11%, or approximately 575 employees, and is focused primarily on corporate and management positions.",
+     "permalink": "https://asktherecruiter.com/blog/layoff/enersys-2025-07-22/",
+     "source_name": "SEC EDGAR 8-K Item 2.05 (exit/disposal costs)",
+     "source_type": "8K",
+     "source_url": "https://www.sec.gov/Archives/edgar/data/1289308/000128930825000025/ens-20250722.htm",
+     "tracker_event_id": 149911,
+     "tracker_row_id": 177178,
+     "verification_level": "gold",
+     "weight": 100
+    }
+   ],
+   "stated_job_count": 575,
+   "weight": 600
+  }
+ ],
+ "if_all_pending_accepted": "53/57 = 93.0%  (Wilson 95% CI [83.3%, 97.2%], width 13.9%)",
+ "matched_today": 24,
+ "measured_at": "2026-08-12T18:18:59Z",
+ "not_in_queue": [
+  {
+   "already_rejected_event_ids": [],
+   "current_match_decision": "not_matched",
+   "filer": "CODEXIS, INC.",
+   "filing_date": "2025-11-06",
+   "manifest_says_match_notes": "Codexis rows exist but are 2023 events.",
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1200375/000119312525269716/d80118d8k.htm",
+   "reference_row_id": "sec-205-0001193125-25-269716",
+   "rows_for_this_employer_at_any_date": [
+    {
+     "announcement_date": "2023-07-20",
+     "company_name": "Codexis, Inc.",
+     "job_count": 28,
+     "layoff_date": "2023-09-30",
+     "source_type": "warn",
+     "source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn_report1.xlsx",
+     "tracker_event_id": 5973
+    },
+    {
+     "announcement_date": "2023-07-20",
+     "company_name": "Codexis, Inc.",
+     "job_count": 31,
+     "layoff_date": "2023-09-30",
+     "source_type": "warn",
+     "source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn_report1.xlsx",
+     "tracker_event_id": 5974
+    }
+   ],
+   "stated_job_count": 46
+  },
+  {
+   "already_rejected_event_ids": [
+    35397
+   ],
+   "current_match_decision": "not_matched",
+   "filer": "HP INC",
+   "filing_date": "2025-11-25",
+   "manifest_says_match_notes": "No HP Inc row after 2017. The only in-window candidate, 'HP Composites', is a different company.",
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/47217/000004721725000068/hpq-20251125.htm",
+   "reference_row_id": "sec-205-0000047217-25-000068",
+   "rows_for_this_employer_at_any_date": [
+    {
+     "announcement_date": "",
+     "company_name": "HP Pelzer",
+     "job_count": 103,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/75186",
+     "tracker_event_id": 82197
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP Foods",
+     "job_count": 125,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/63490",
+     "tracker_event_id": 89419
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP Deutschland",
+     "job_count": 1100,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/59488",
+     "tracker_event_id": 92581
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP - Compaq",
+     "job_count": 165,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/59208",
+     "tracker_event_id": 92654
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP - Compaq",
+     "job_count": 325,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/59465",
+     "tracker_event_id": 92670
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP - Compaq",
+     "job_count": 1580,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/59284",
+     "tracker_event_id": 92691
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP - Compaq",
+     "job_count": 1206,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/59625",
+     "tracker_event_id": 92692
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP - Compaq",
+     "job_count": 5900,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/60262",
+     "tracker_event_id": 92704
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP - Compaq",
+     "job_count": 15000,
+     "layoff_date": "",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/59411",
+     "tracker_event_id": 92830
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP Inc.",
+     "job_count": 74,
+     "layoff_date": "2016-01-22",
+     "source_type": "warn",
+     "source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn_report1.xlsx",
+     "tracker_event_id": 139513
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP Inc.",
+     "job_count": 3000,
+     "layoff_date": "2016-10-14",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/89019",
+     "tracker_event_id": 40739
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP Inc",
+     "job_count": 500,
+     "layoff_date": "2017-02-08",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/90199",
+     "tracker_event_id": 40498
+    },
+    {
+     "announcement_date": "",
+     "company_name": "HP Composites",
+     "job_count": 100,
+     "layoff_date": "2025-09-05",
+     "source_type": "erm",
+     "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/203278",
+     "tracker_event_id": 35397
+    }
+   ],
+   "stated_job_count": 4000
+  },
+  {
+   "already_rejected_event_ids": [
+    1467,
+    1466
+   ],
+   "current_match_decision": "not_matched",
+   "filer": "WABASH NATIONAL Corp",
+   "filing_date": "2026-01-05",
+   "manifest_says_match_notes": "The filing idles Little Falls, Minnesota and Goshen, Indiana. The only in-window Wabash rows are CA WARN (94+6), a different site.",
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/879526/000087952626000003/wnc-20260105.htm",
+   "reference_row_id": "sec-205-0000879526-26-000003",
+   "rows_for_this_employer_at_any_date": [
+    {
+     "announcement_date": "2009-05-01",
+     "company_name": "Wabash National",
+     "job_count": 790,
+     "layoff_date": "2009-05-01",
+     "source_type": "warn",
+     "source_url": "https://www.in.gov/dwd/warn-notices/",
+     "tracker_event_id": 144268
+    },
+    {
+     "announcement_date": "2026-01-05",
+     "company_name": "Wabash National LP",
+     "job_count": 6,
+     "layoff_date": "2026-03-06",
+     "source_type": "warn",
+     "source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn_report1.xlsx",
+     "tracker_event_id": 1466
+    },
+    {
+     "announcement_date": "2026-01-05",
+     "company_name": "Wabash National LP",
+     "job_count": 94,
+     "layoff_date": "2026-03-06",
+     "source_type": "warn",
+     "source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn_report1.xlsx",
+     "tracker_event_id": 1467
+    }
+   ],
+   "stated_job_count": 270
+  },
+  {
+   "already_rejected_event_ids": [],
+   "current_match_decision": "not_matched",
+   "filer": "PLAYSTUDIOS, Inc.  (MYPS, MYPSW)",
+   "filing_date": "2026-03-16",
+   "manifest_says_match_notes": "No PLAYSTUDIOS row in the tracker at any date.",
+   "official_source_url": "https://www.sec.gov/Archives/edgar/data/1823878/000182387826000018/myps-20260310.htm",
+   "reference_row_id": "sec-205-0001823878-26-000018",
+   "rows_for_this_employer_at_any_date": [],
+   "stated_job_count": 177
+  }
+ ],
+ "note": "Evidence pack for the human adjudication of gold events that have newly acquired a tracker row. Rebuilt by railway/recall_adjudication_pack.py from the live /query endpoint and from SEC EDGAR. It records evidence and records NO recommendation. Decisions are made with railway/recall_adjudicate.py, which writes the manifest and the ledger.",
+ "pending": 29,
+ "reference_events": 57,
+ "reference_set_id": "sec-item-205-us-2025-07_2026-06"
+}

@@ -1,0 +1,5 @@
+{
+ "note": "Append-only record of every human adjudication of the SEC Item 2.05 gold set, and of every reversal. Written ONLY by railway/recall_adjudicate.py. `manifest_before` is the snapshot --revert restores; do not hand-edit this file, and do not hand-edit match_decision in the manifest -- `--verify` fails on a matched event that has no entry here, and the test suite runs it.",
+ "reference_set_id": "sec-item-205-us-2025-07_2026-06",
+ "decisions": []
+}
