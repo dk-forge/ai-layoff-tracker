@@ -1,5 +1,112 @@
 # Tech Log
 
+## 2026-08-12 - three guards that did not guard (railway only, no deploy)
+
+All three are the same shape: code that was correct and was not, in practice,
+protecting anything. `ops_status.py [3]` now reads **17 of 17 verified and
+passing** (15 before). No plugin byte changed, so no version bump and nothing
+to deploy.
+
+### 1. The containment invariant: a subset headline may not outrun its superset
+
+**The gap, in the numbers from the incident above.** `headline_movement`
+budgets a move as `|Δentries| * base_mean * mean_factor` — how many rows
+ARRIVED. A re-scoring moves a headline while nothing arrives, so the budget is
+measured on an axis unrelated to the thing that moved the number. On
+2026-08-08 the US headline rose 92,686 (93,210 by the 2026-08-10 reading) while
+worldwide, which strictly contains it, rose 14,911. The 18 entries that landed
+bought 34,730 and the check failed; **49 would have bought 94,543 and the
+identical 93,210 re-scoring would have passed in silence.**
+
+**The rule, and why it needs no entry counts.** For a strict subset S of T, the
+complement `C = T - S` is a real population and its figures are exact by
+subtraction. A row can only arrive with its jobs or leave with its jobs, so in
+any population Δjobs and Δentries move in the SAME direction. When they do not,
+nothing that arrived or left did it: jobs were re-scored across the boundary
+between two published slices. On the 2026-08-10 readings the complement of the
+US slice reads **-78,299 jobs on +10 entries**, and it reads that whatever the
+US slice's own entry count was — the test asserts FAIL at +0, +18, +49, +200 and
++5,000 arriving entries.
+
+**Established from the code, not assumed.** `containment_problem()` requires the
+superset's params to appear identically on the subset and BOTH sides to carry no
+date window, because a subset on one date basis and a superset on another is not
+a containment relation. That leaves `us_all_time ⊂ worldwide_all_time` and
+`ai_all_time ⊂ worldwide_all_time`, which is what `CONTAINMENTS` declares.
+
+**Bound:** `CONTAINMENT_FLOOR_JOBS = 25000`, worldwide's own `move_floor`
+reused rather than reinvented, and deliberately **flat, not scaled by span** —
+a re-scoring is a step change, not a rate, and every clock in that module that
+widens with time is one the August incident had to be rescued from. Baselines
+more than `MAX_PAIR_SKEW_DAYS = 1.0` apart report UNKNOWN, because two readings
+a day apart are not a complement. It also **cannot launder itself**:
+`record_baseline` now refuses to advance EITHER side of a failing pair (the
+finding is the difference between them, so recording either erases it) and opens
+the sticky incident under the subset.
+
+**The other unexplained movement, and the honest answer.** Worldwide fell
+27,267 on 2026-08-11 on +13 entries, breaching its own 25,000 floor, and passed
+because `13 * 320.86 * 12 = 50,054` absorbed it. **Containment would not have
+caught it** and cannot: worldwide is the top slice and has no superset, so
+there is no complement to read. What would catch it is the same sign rule
+applied to a slice's OWN movement — gate the `|Δentries| * base_mean` allowance
+on Δjobs and Δentries agreeing in direction, since arriving rows cannot explain
+departing jobs. On that day: -27,267 jobs on +13 entries, allowance refused,
+floor 25,000 breached, FAIL. That is a one-line change to `MovementInvariant`
+that re-arms the floor for every slice, so it is deliberately NOT in this
+change; it wants its own read.
+
+### 2. erm_provenance: a check nobody ran is the same as no check
+
+`erm_provenance_check.py` was written during the ERM incident, held back until
+the correction landed, and then left unwired. It is now
+`data_integrity.ErmProvenanceInvariant`, in the one registry the test,
+ops_status and the weekly digest all read. Confirmed green live before wiring:
+**19,497 ERM rows, 0 unreadable, 0 contradictions.**
+
+**It reads a committed measurement, not the live API**, which is the
+`recall_floor` shape and for a sharper version of the same reason: `/query` has
+no `source_type` filter, so the question can only be answered by paging the
+whole corpus — 319 requests, **measured at ~25 minutes** against the live host.
+`check_all()` is the first command of every session and is documented as about
+one round trip; a 25-minute scan inside it stops anybody running ops_status.
+So `erm-provenance-check.yml` re-measures weekly (Wednesdays, stdlib only, no
+keys, no pip install) and commits `railway/erm_provenance_measurement.json`, and
+the consequence is stated rather than hidden: a silent re-scoring is caught
+within a WEEK, not within a day. Stale, missing or containing an unparseable
+excerpt -> UNKNOWN, never a pass; `UNREADABLE_CEILING = 0`, because the live
+count is 0 and any unreadable row means `erm_import.py`'s excerpt sentence has
+changed shape and the check has quietly stopped covering part of the corpus.
+`judge()` is the single definition, so the script's exit code and the
+dashboard's verdict are the same sentence.
+
+### 3. alert_drain said the run was green in the same breath as it went red
+
+`alert_drain.py`'s host-down branch printed **"This run is NOT failing"** and
+then, further down the same branch, could `return 1` — when the queue is stuck
+AND the host-independent GitHub-issue fallback also fails. A red `Alert drain`
+fires `ci-alert.yml`, which emails the owner. So the log asserted greenness on a
+run that reddened CI and mailed, and that log is the only place a session can
+tell "the host was down and we kept the alert" from "the alerter is broken".
+
+**The behaviour is right and is unchanged**: when nothing at all can reach the
+owner, a red run is the last signal left and is worth the amplification the
+other paths exist to avoid. The words moved. The claim now sits on the path
+where it is true, the red path says `THIS RUN IS FAILING deliberately` and why,
+and the module's EXIT CODES list — which named two causes for exit 1 and not
+this one — now names the case that actually fires during an outage. Two new
+tests drive `main()` and pin the pairing: green path says it is green, red path
+must not.
+
+**Verified:** 1,497 offline tests (17 new in `test_headline_containment.py`, 13
+in `test_erm_provenance_check.py`, 3 in `test_alert_outbox.py`); the 4 loader
+errors are the pre-existing missing-`requests` imports and are identical before
+and after. `test_dedup_live` gained both keys under `DELEGATED`, so the mutation
+guard blinds each new invariant and demands its test case redden.
+`python3 railway/data_integrity.py` = 17/17, exit 0. `ops_status.py` exit 2,
+unchanged and for unrelated reasons (`tracker_diff` stale, the two ledger rows,
+the ai-evidence-sweep ceiling).
+
 ## 2026-08-12 - the US incident is closed, and closing it broke the closer twice (railway only, no deploy)
 
 `us_all_time` is CLOSED, reviewed by the owner, and `ops_status.py [3]` reads
