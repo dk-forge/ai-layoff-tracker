@@ -154,15 +154,25 @@ class TheMonthlyCapRefusesToStartPaidWork(_SpendCase):
         self.addCleanup(spend.reset_month_gate)
 
     def test_a_paid_job_refuses_to_start_when_the_month_is_spent(self):
+        """Spent 95% of the allowance: past the 90% stop line, so paid reads
+        must be off.
+
+        The figures are DERIVED from the constants, not written in (they were
+        `109.5` and "a $10.00 hard cap" until 2026-08-12, so raising the
+        allowance to $18 turned this into a test of nothing — $9.50 of $18 is
+        comfortably inside the cap and it failed loudly, which is the only
+        reason it did not silently start passing for the wrong reason)."""
         self._arm(100.0)
+        month_spend = spend.MONTHLY_ALLOWANCE_USD * 0.95
         self.addCleanup(setattr, spend, "fetch_key_state", spend.fetch_key_state)
-        spend.fetch_key_state = lambda key: {"usage": 109.5}   # $9.50 this month
+        spend.fetch_key_state = lambda key: {"usage": 100.0 + month_spend}
         blocked, why = spend.month_gate()
         self.assertTrue(blocked, f"month gate did not block: {why}")
         self.assertFalse(
             spend.paid_reads_enabled(),
-            "month-to-date is $9.50 of a $10.00 hard cap and paid reads are "
-            "still ON — the monthly cap is a report, not a stop")
+            f"month-to-date is ${month_spend:.2f} of a "
+            f"${spend.MONTHLY_ALLOWANCE_USD:.2f} hard cap and paid reads are "
+            f"still ON — the monthly cap is a report, not a stop")
 
     def test_a_month_inside_the_allowance_does_not_block(self):
         self._arm(100.0)
@@ -198,7 +208,7 @@ class TheMonthlyCapRefusesToStartPaidWork(_SpendCase):
         """The cap is the owner's, and it is a policy in a diff."""
         src = (ROOT / "railway/spend.py").read_text()
         self.assertNotIn("ALT_MONTHLY_ALLOWANCE", src)
-        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 10.0)
+        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 18.0)
 
 
 class TheSweepCannotMistakeABudgetStopForAVerdict(unittest.TestCase):

@@ -91,22 +91,62 @@ USER_AGENT = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 # The budget the owner set. Kept here rather than in a secret so it is reviewable
 # in a diff -- it is a policy, not a credential.
 #
-# INTERIM. $10/month is the owner's current interim number for the sibling
-# tracker, adopted here unchanged until told otherwise. It is not yet a measured
-# statement about what full coverage costs on this tracker; it is a ceiling low
-# enough that the 2026-07-28..08-02 burn ($6.45-$7.00/day, i.e. ~$200/month)
-# could not have happened under it.
-MONTHLY_ALLOWANCE_USD = 10.0
+# INTERIM. It is not yet a measured statement about what full coverage costs on
+# this tracker; it is a ceiling low enough that the 2026-07-28..08-02 burn
+# ($6.45-$7.00/day, i.e. ~$200/month) could not have happened under it.
+#
+# WHY $18 AND NOT $20 (owner's decision, 2026-08-12)
+# -------------------------------------------------
+# This tracker's OpenRouter key carries its OWN $20/month PROVIDER limit (the
+# sibling tracker has a separate key with a separate $20). Two caps therefore
+# exist, and only one of them can be the one that binds:
+#
+#   * the PROVIDER cap is a HARD STOP. It does not degrade. When it is reached
+#     the next paid call returns 402 at whatever arbitrary point the run had
+#     got to — mid-batch, mid-candidate — and the job's own accounting of what
+#     it did and did not reach is whatever it happened to be at that instant.
+#   * the POLICY cap here is a GRACEFUL STOP. Crossing it switches paid reads
+#     off, leaves every free collector running, and returns each deferred
+#     candidate UNMARKED so a later run reads it. The stop is disclosed, the
+#     run is recorded as TRUNCATED, and no coverage is lost.
+#
+# Setting the policy cap EQUAL to the provider cap means our own guard can
+# never fire first: the provider hard-stops us instead, and we trade a clean
+# disclosed degradation for a failed call. So the policy cap sits $2 below the
+# provider cap, and the 90% STOP_AT_FRACTION line ($16.20) sits $3.80 below it.
+# That gap is the whole point of the number — if the provider limit moves,
+# move this one to stay under it, do not match it.
+#
+# Raised 10.0 -> 18.0 because $10 was the cap actually binding: on 2026-08-12
+# the sibling tracker's collect run printed "the monthly spend allowance was
+# already exhausted ($10.08 of ...)" and degraded, so the provider headroom
+# above $10 was unreachable. See docs/TECHLOG.md 2026-08-12.
+MONTHLY_ALLOWANCE_USD = 18.0
 
 # Stop with headroom left, so a long batch cannot overshoot mid-run.
 STOP_AT_FRACTION = 0.9
 
+# MEASURED, not modelled: what the free-standing ingest costs per month, from
+# record_usage() on real Railway cron runs (~$0.09/run x 2/day). Every ladder
+# below is written against this number, so it lives here as a constant rather
+# than as a sentence in three comments and a magic `- 3.0` in a test. If ingest
+# is re-measured, this is the ONE place to change, and the ladder test moves
+# with it.
+MEASURED_INGEST_USD_PER_MONTH = 5.1
+
 # Per-run ceiling: the backstop that works without durable state (see the module
-# docstring). 2% of the allowance. The measured Railway cron run costs ~$0.09,
-# so this is ~2x headroom on a normal run, and it caps the 2x/day cron at
-# ~$12/month even in the total absence of a month-to-date reading.
-RUN_CEILING_USD = float(os.environ.get("ALT_RUN_CEILING_USD",
-                                       MONTHLY_ALLOWANCE_USD * 0.02))
+# docstring). The measured Railway cron run costs ~$0.09, so this is ~2x
+# headroom on a normal run, and it caps the 2x/day cron at ~$12/month even in
+# the total absence of a month-to-date reading.
+#
+# THIS IS A FLAT NUMBER, NOT A FRACTION OF THE ALLOWANCE (2026-08-12). It used
+# to be `MONTHLY_ALLOWANCE_USD * 0.02`, which quietly made the state-free brake
+# on the single largest consumer a function of the policy cap: raising the
+# allowance 10 -> 18 would have widened this from $0.20 to $0.36, i.e. the
+# unguardable-by-month Railway cron would have been free to spend ~$21/month —
+# more than the whole allowance — with nothing in the diff saying so. A brake
+# sized from a MEASURED run cost must not move when a budget moves.
+RUN_CEILING_USD = float(os.environ.get("ALT_RUN_CEILING_USD", 0.20))
 
 # The environment variable a degraded run sets. Read by extractor.py, which is
 # the only module in this repo that can spend.
@@ -164,13 +204,52 @@ SNAPSHOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #             model to ~$0.20-0.28/day (~$6-8.5/month) — which does NOT fit
 #             $5/month on top of a $5.1 ingest, and does not even fit $10.
 #
-# So the ceilings below are set to make the $10 INTERIM allowance hold:
-# ingest $5.1 MEASURED + small jobs capped at ~$0.175/day of dailies
-# (~$5.25/month worst case) + ~$1.1/month of weekly/monthly jobs. The three
-# jobs whose modelled appetite exceeds their share — industry-backfill,
+# So the ceilings below are set to make the INTERIM allowance hold, and
+# `test_spend_ledger.test_the_worst_case_sum_fits_beside_the_measured_ingest`
+# is the arithmetic in a test: sum(ceiling x runs-per-month) must fit inside
+# MONTHLY_ALLOWANCE_USD - MEASURED_INGEST_USD_PER_MONTH. The three jobs whose
+# modelled appetite exceeds their share — industry-backfill,
 # company-watchlist, supplemental-news — run THROTTLED against it: each
 # already resumes where it stopped, so a ceiling slows the queue drain, it
 # never loses coverage. That is a stated throttle, not a silent cut.
+#
+# THE LADDER AT $18 (2026-08-12), stated so the next reader can check it:
+#   allowance                                            $18.00
+#   less MEASURED ingest (the Railway cron)              -$5.10
+#   = budget the named ceilings may claim                $12.90
+#   claimed by the table below, worst case               $11.70
+#   spare                                                 $1.20
+# At $10 that budget was $4.90 and the table already claimed $6.60, so the
+# ladder was over-subscribed before this change and the test said so the
+# moment its reserve stopped being a literal `- 3.0` (see the test).
+#
+# WHAT $18 BOUGHT: edgar-history-sweep finally has a named ceiling. It is a
+# DAILY paid job that had never been in this table, because naming it at $10
+# was impossible in either direction — at its $0.200 global default it claims
+# $6.00/month on a $4.90 budget, and even at its measured cost it does not
+# close the gap. Sized from MEASUREMENT, not from the default: three
+# authorised runs on 2026-08-11 cost $0.6012 for 1,762 candidates, all
+# `complete: true`, none truncated; per SINGLE MONTH-WINDOW (which is what the
+# daily rotation runs — the three were multi-month range dispatches) that is
+# $0.0907 to $0.1115. $0.150 is ~35% above the dearest window observed, and it
+# is a TIGHTENING of the $0.200 it silently ran under before, not a loosening.
+#
+# historical-news-sweep was named in the same pass and for a sharper reason: an
+# UNNAMED JOB IS ALSO AN UNHARVESTED ONE. `harvest()` collects a run's
+# SPEND_LEDGER_V1 line only when `job_id in set(JOB_RUN_CEILINGS_USD)`, so a
+# daily paid job missing from this table is missing from railway/spend_jobs.json
+# too, and its spend lives inside the unattributed remainder by construction.
+# It is a scheduled daily LLM sweep (BACKFILL_MAX_ARTICLES=10, ~$0.0011 per
+# extract), so $0.020 is ~1.8x its modelled appetite and, again, a tightening of
+# the $0.200 default it had been running under.
+#
+# STILL UNNAMED, deliberately: `tracker-diff`. Its cron is armed and it runs
+# daily, but it is DORMANT by the owner's decision (2026-07-28) — unarmed for
+# want of a secret this repo is instructed never to ask for, so it exits green
+# having spent nothing. A ceiling there would be a budget for work that does not
+# happen. If it is ever armed, name it in the same pass; the ladder has room.
+# Everything else holding OPENROUTER_API_KEY on a schedule (warn-import,
+# openrouter-balance-check) makes no model call at all — checked, not assumed.
 #
 # THE $5/MONTH TARGET is documented here and NOT yet enforced: it requires
 # (a) the ingest funnel port (dedup-before-LLM + headline gate on the cron's
@@ -200,6 +279,8 @@ JOB_RUN_CEILINGS_USD = {
     "hi-warn-import":          0.015,  # daily    COUNTED few new notices
     "hi-warn-dryrun":          0.015,  # manual   same probe, dry
     "foreign-filings":         0.020,  # dormant  cron commented out
+    "edgar-history-sweep":     0.150,  # daily    MEASURED, see note below
+    "historical-news-sweep":   0.020,  # daily    MODELLED 10 x ~$0.0011
     "news-catchup":            0.150,  # weekly   MODELLED ~113 x $0.0011
     "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
@@ -215,22 +296,27 @@ JOB_RUN_CEILINGS_USD = {
 # backfill.py printed it, and it lived permanently inside the UNATTRIBUTED
 # REMAINDER that unattributed_report() prints.
 #
-# WHY IT IS NOT SIMPLY GIVEN A NAMED CEILING (2026-08-12). Because writing one
-# down is a budget statement, and the arithmetic does not currently close. The
-# sweep's effective ceiling today is the $0.200 global default; at DAILY
-# cadence that is $6.00/month, and the named table's worst case is already
-# $6.60/month beside a MEASURED ~$5.1/month ingest inside a $10 allowance.
-# Adding it at $0.200 makes `test_spend_ledger.
-# NamedCeilingsAreArithmeticNotHope` red, correctly. Its MEASURED cost is
-# lower -- $0.1061 for a full 309-candidate month, run 31570100147, i.e.
-# ~$3/month at daily cadence -- and that does not close the ladder either.
+# THAT DISTINCTION IS STILL THE POINT, BUT THE SET IS NOW EMPTY (2026-08-12).
+# When it was written, `edgar-history-sweep` was harvested-but-un-named on
+# purpose: at a $10 allowance, naming it at its $0.200 global default claimed
+# $6.00/month against a table already claiming $6.60 beside a MEASURED
+# ~$5.1/month ingest, and even its measured cost did not close the ladder. So
+# that session harvested the job (the measurement being exactly the input the
+# decision needed) and refused to name a ceiling, because naming one would have
+# meant either asserting money the budget did not have or throttling a live
+# collector -- both the owner's call, not this module's.
 #
-# Naming a ceiling would therefore mean either asserting $6/month the budget
-# does not have, or throttling a live collector. Both are the owner's call,
-# not this module's. So the job is harvested (it is measured, and the
-# measurement is the input to that decision) and left un-named (no throttle is
-# imposed by a session that was not authorised to impose one).
-LEDGER_ONLY_JOBS = frozenset({"edgar-history-sweep"})
+# The owner then made that call: the allowance went to $18, and the sweep is
+# named above at $0.150, sized from the measurement this mechanism collected
+# rather than from the $0.200 default. `historical-news-sweep` was named in the
+# same pass for the same reason -- an UNNAMED job is also an UNHARVESTED one.
+# Both are now in JOB_RUN_CEILINGS_USD, so neither needs to be listed here.
+#
+# The set is KEPT, empty, because the distinction it draws is real and the next
+# paid job to arrive without an affordable ceiling belongs in it rather than in
+# the unattributed remainder. `harvest()` unions it with the ceiling table, so
+# an entry here never has to be removed from there.
+LEDGER_ONLY_JOBS: frozenset[str] = frozenset()
 
 # The committed per-job ledger. One entry per (job, run): what it cost, how
 # many items it touched, what it stored or changed. Jobs only PRINT their
