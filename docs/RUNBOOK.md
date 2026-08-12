@@ -75,6 +75,44 @@ read the diagnostics (they log the raw API status) before trusting live output.
 
 ## "X is broken" playbooks
 
+**The month's budget is spent - what happens now**
+`ops_status.py [2a]` shows month-to-date at or past the stop line, or a job log
+carries `::warning::spend: the $10.00 monthly cap is spent`.
+
+**What stops.** Paid model calls, and only those. `spend.month_gate()` returns
+blocked, `paid_reads_enabled()` returns False, and every paid call site in the
+repo routes through it: `extractor.py`'s six paid functions, `_get_client()`
+itself, and the five scripts that build their own OpenAI client
+(`ai_evidence_sweep`, `process_tips`, `source_verification_audit`,
+`daily_classification_spotcheck`, `dedupe_llm`).
+
+**What keeps running.** Everything that does not call a model, which is most of
+what this tracker collects: WARN scrapers, SEC/EDGAR structured fields, ERM, the
+seen-URL pre-check, all server-side dedup, every WordPress surface. A deferred
+candidate writes no row, so its URL never enters the record, so the next run
+pulls it again. **This costs depth for the rest of the month, never coverage.**
+
+**Nothing goes red.** A budget stop is a decision, not a failure. Jobs exit 0
+and record a TRUNCATED ledger entry (`complete: false` plus the reason), so the
+stop is visible in `railway/spend_jobs.json` rather than looking like a quiet
+day.
+
+| What you see | What it means | What to do |
+|---|---|---|
+| `the $10.00 monthly cap is spent: $9.xx used` | MEASURED month-to-date at the 90% stop line | Nothing is broken. Either wait for the 1st (the balance job takes the new month-start snapshot and paid reads resume by themselves), or take the owner the cut-list in `[2a]` and change `MONTHLY_ALLOWANCE_USD` - **a budget change is the owner's call, never a session's** |
+| `month-to-date for 2026-08 is UNKNOWN (no-baseline...)` | No committed month-start for this key here | UNKNOWN, not a pass, and not a fault. The per-run ceiling is what is enforcing. Check the daily `openrouter-balance-check` workflow is green - it is the one job that commits `railway/spend_month.json` |
+| `this run is TRUNCATED, not complete` | The run stopped at its per-run ceiling or its deadline | Expected under throttle. What it did not reach is **deferred, not decided** - do not read its counts as a full pass over the queue |
+| A job spent past its named ceiling in `[2a]` | The brake leaked | This is a defect, not a budget question. The ceiling is resolved by `spend.effective_run_ceiling_usd()`; a job that overshoots is checking it too coarsely (once per item instead of once per model call) |
+
+**Do not "fix" a budget stop by making the coverage smaller.** Costs and
+coverage are the same dial here. Slowing a QUEUE-DRAINING job (industry-backfill,
+reason-backfill, enrich-roles, enrich-context, reclassify-legacy-ai) only drains
+a backlog slower and cannot miss anything. Slowing a DISCOVERY job
+(supplemental-news, company-watchlist, distress-watchlist, ai-evidence-sweep,
+news-catchup) is a real chance of noticing an event later or not at all. That
+second trade is the owner's to make - `earned_skip()` refuses to make it
+automatically, and so should you.
+
 **A deploy is not reaching readers**
 `ops_status.py` section `[1b]` said `FAIL`, or the deploy workflow's "Verify the
 deploy has reached READERS" step went red. The symptom is that the site is
