@@ -8,12 +8,16 @@ These run with no network: every row is a literal dict of the shape /query
 returns. The live figures they encode are the ones the check actually found on
 2026-08-11.
 """
+import json
 import sys
+import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import data_integrity as di
 import erm_provenance_check as epc
 
 
@@ -90,6 +94,106 @@ class Contradictions(unittest.TestCase):
         bad, unreadable = epc.contradictions([row])
         self.assertEqual(bad, [])
         self.assertEqual(unreadable, [])
+
+
+def _measurement(rows=19497, unreadable=0, bad=(), age_days=0.0):
+    when = datetime.now(timezone.utc) - timedelta(days=age_days)
+    return {"measured_at": when.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "erm_rows": rows, "unreadable": unreadable,
+            "contradictions": list(bad), "jobs": sum(x["jobs"] for x in bad)}
+
+
+CONTRADICTION = {"id": 114335, "company": "Citigroup", "jobs": 52000,
+                 "imported_country": "Multiple countries",
+                 "stored_country": "United States", "edited": True}
+
+
+class Judge(unittest.TestCase):
+    """The bound, in the ONE place the dashboard and the exit code both read."""
+
+    def test_the_live_2026_08_12_measurement_passes(self):
+        state, detail = epc.judge(_measurement())
+        self.assertEqual(state, epc.PASS, detail)
+        self.assertIn("19,497", detail)
+
+    def test_a_contradiction_is_a_fail_that_names_the_row(self):
+        state, detail = epc.judge(_measurement(bad=[CONTRADICTION]))
+        self.assertEqual(state, epc.FAIL)
+        self.assertIn("114335", detail)
+        self.assertIn("52,000", detail)
+        self.assertIn("Multiple countries", detail)
+
+    def test_an_unparseable_excerpt_is_unknown_never_a_pass(self):
+        # Unchecked rows are the one state this check must never round down.
+        state, detail = epc.judge(_measurement(unreadable=459))
+        self.assertEqual(state, epc.UNKNOWN)
+        self.assertIn("459", detail)
+
+    def test_a_stale_measurement_is_unknown_never_a_pass(self):
+        state, detail = epc.judge(
+            _measurement(age_days=epc.MAX_MEASUREMENT_AGE_DAYS + 1))
+        self.assertEqual(state, epc.UNKNOWN)
+        self.assertIn("UNVERIFIED", detail)
+
+    def test_a_measurement_inside_the_weekly_cadence_is_still_judged(self):
+        state, _ = epc.judge(_measurement(age_days=7.5))
+        self.assertEqual(state, epc.PASS)
+
+    def test_no_measurement_at_all_is_unknown_and_says_how_to_seed_it(self):
+        state, detail = epc.judge(None)
+        self.assertEqual(state, epc.UNKNOWN)
+        self.assertIn("--write", detail)
+
+    def test_an_empty_erm_corpus_is_a_fail(self):
+        state, detail = epc.judge(_measurement(rows=0))
+        self.assertEqual(state, epc.FAIL)
+
+    def test_a_garbled_measurement_is_unknown(self):
+        self.assertEqual(epc.judge({"erm_rows": "lots"})[0], epc.UNKNOWN)
+
+
+class WiredIntoTheOneRegistry(unittest.TestCase):
+    """It was a check nobody ran, which is the same as no check."""
+
+    def _run(self, measurement):
+        path = Path(tempfile.mkdtemp()) / "m.json"
+        if measurement is not None:
+            path.write_text(json.dumps(measurement), encoding="utf-8")
+        inv = di.ErmProvenanceInvariant(measurement_path=path)
+        return inv.run(di.Ctx(lambda url, timeout: b"{}", 5, "cb"))
+
+    def test_it_is_registered(self):
+        self.assertIn("erm_provenance", [i.key for i in di.INVARIANTS])
+
+    def test_the_committed_measurement_makes_it_pass_today(self):
+        self.assertEqual(self._run(_measurement()).state, di.PASS)
+
+    def test_a_contradiction_reddens_the_invariant(self):
+        res = self._run(_measurement(bad=[CONTRADICTION]))
+        self.assertEqual(res.state, di.FAIL)
+        self.assertIn("114335", res.detail)
+
+    def test_a_missing_measurement_is_unknown_and_pending(self):
+        res = self._run(None)
+        self.assertEqual(res.state, di.UNKNOWN)
+        self.assertTrue(res.pending)
+
+    def test_it_does_not_touch_the_network(self):
+        # It reads the committed file, so it must be honest about that: a check
+        # declaring reads_live_data would be claimed by the degradation
+        # contract tests it cannot satisfy.
+        inv = next(i for i in di.INVARIANTS if i.key == "erm_provenance")
+        self.assertFalse(inv.reads_live_data)
+
+
+class TheCommittedFileIsReal(unittest.TestCase):
+
+    def test_the_repos_own_measurement_parses_and_is_judgeable(self):
+        m = epc.load_measurement()
+        self.assertIsInstance(m, dict, "railway/erm_provenance_measurement.json is missing")
+        state, detail = epc.judge(m)
+        self.assertIn(state, (epc.PASS, epc.FAIL, epc.UNKNOWN), detail)
+        self.assertIsInstance(m.get("contradictions"), list)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,81 @@
+name: ERM provenance check
+
+# Does every published ERM row still carry the country it was IMPORTED with?
+#
+# erm_import.py writes each row's excerpt as "... at <company> (<country>):
+# <n> announced job losses.", once, and never rewrites it. Comparing that
+# sentence to the row's `country` column asks "has this row been re-scored
+# since it was published?" with no history table, no snapshot and no timestamp.
+# It is the only thing in this repo that could have named the three rows behind
+# the 2026-08-08 US headline incident on the day it happened.
+#
+# WHY WEEKLY, AND WHY IT COMMITS. /query has no source_type filter, so the
+# question can only be answered by paging the whole published corpus: 319
+# requests, ~25 minutes measured against the live host on 2026-08-12. That is
+# far too heavy for data_integrity.check_all(), which every session runs at the
+# top of ops_status.py. So this job measures on a cadence it can actually meet
+# and COMMITS the result to railway/erm_provenance_measurement.json;
+# data_integrity.ErmProvenanceInvariant reads the committed file, and a stale
+# one reports UNKNOWN rather than a pass. The consequence is stated rather than
+# hidden: a silent re-scoring is caught within a week, not within a day.
+#
+# Read-only against the site (public GETs only), stdlib only, no keys and no
+# pip install. The `contents: write` permission is for the committed
+# measurement, nothing else.
+
+on:
+  schedule:
+    - cron: '40 16 * * 3'   # Wednesdays 12:40 PM ET, away from Monday's recall job
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: erm-provenance-check
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    # The measured pass is ~25 min against a host that has 504'd before; 45
+    # leaves room for a slow day without letting a hung run sit all afternoon.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Measure ERM provenance
+        id: measure
+        # The exit code is captured rather than allowed to end the job, so the
+        # measurement is still committed before the run is failed below. A
+        # breach that leaves no committed evidence is the worst of both.
+        run: |
+          set +e
+          python3 railway/erm_provenance_check.py --write
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit the measurement
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add railway/erm_provenance_measurement.json
+          # It legitimately runs a whole week without a finding: on a clean week
+          # the file's only delta is its timestamp, and that is committed on
+          # purpose, because a measurement whose age cannot be read resolves to
+          # UNKNOWN, not to a pass.
+          git diff --cached --quiet && { echo "no change to commit"; exit 0; }
+          git commit -m "erm: provenance measurement $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1
+      - name: Fail the run on a breached bound
+        run: |
+          rc="${{ steps.measure.outputs.rc }}"
+          case "$rc" in
+            0) echo "every published ERM row still agrees with its own import-time excerpt" ;;
+            3) echo "::error::ERM provenance could not be verified (exit 3). UNKNOWN is not a pass."; exit 3 ;;
+            *) echo "::error::published ERM rows disagree with the country they were imported with (exit $rc) - see the step above for the rows"; exit "$rc" ;;
+          esac

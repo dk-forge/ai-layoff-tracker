@@ -304,6 +304,8 @@ class InvariantCoverage(unittest.TestCase):
         "figure_basis_is_stated": ("test_published_figure_guards", "BasisTest"),
         "figures_agree_across_surfaces": ("test_published_figure_guards", "CrossSurfaceTest"),
         "comparison_basis_is_visible": ("test_published_figure_guards", "ComparisonBasisTest"),
+        "headline_containment": ("test_headline_containment", "TheIncidentItWasWrittenFor"),
+        "erm_provenance": ("test_erm_provenance_check", "WiredIntoTheOneRegistry"),
     }
 
     @staticmethod

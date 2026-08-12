@@ -100,6 +100,7 @@ def rotating_window(anchor_year, now=None):
         else datetime(wy, wm + 1, 1, tzinfo=timezone.utc)
     return start, min(nxt - timedelta(seconds=1), now)
 
+import spend
 from sources.edgar import pull_edgar_filings_between
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
@@ -125,6 +126,20 @@ def month_windows(start, end):
 
 
 def run():
+    # A CONTRADICTORY ENVIRONMENT IS AN ERROR, NOT A PREFERENCE.
+    #
+    # BACKFILL_ROTATE used to win silently over BACKFILL_START/END, and on
+    # 2026-08-12 a workflow expression set both: run 31570100147 was dispatched
+    # for 2025-07..2025-12, printed that range in its own log, and swept the
+    # rotation's 2026-02 instead. $0.1061 went to a month nobody had asked for
+    # and the only evidence was one line of backfill's own output disagreeing
+    # with the notice three lines above it. An explicit range is the more
+    # specific instruction and a human typed it, so it wins -- loudly.
+    if os.environ.get("BACKFILL_ROTATE") and os.environ.get("BACKFILL_START"):
+        print("::warning::backfill: BACKFILL_ROTATE and BACKFILL_START are BOTH "
+              "set. Honouring the explicit range and ignoring the rotation -- an "
+              "explicit range is what a human typed. Fix the caller.")
+        os.environ.pop("BACKFILL_ROTATE", None)
     if os.environ.get("BACKFILL_ROTATE"):
         anchor = int(os.environ.get("BACKFILL_ANCHOR_YEAR") or 2015)
         start, end = rotating_window(anchor)
@@ -179,7 +194,8 @@ def run():
         for raw in entries:
             if limit and posted >= limit:
                 print(f"Reached BACKFILL_LIMIT={limit}; stopping early.")
-                _summary(posted, dupes, skipped, failed)
+                _summary(posted, dupes, skipped, failed, calls,
+                         truncated=f"BACKFILL_LIMIT={limit} posts reached")
                 return
             # A CEILING ON CALLS, NOT ONLY ON POSTS. BACKFILL_LIMIT counts rows
             # that made it through, so a window where nothing qualifies could
@@ -189,7 +205,8 @@ def run():
             # bounds what it can spend.
             if call_limit and calls >= call_limit:
                 print(f"Reached BACKFILL_MAX_CALLS={call_limit}; stopping early.")
-                _summary(posted, dupes, skipped, failed)
+                _summary(posted, dupes, skipped, failed, calls,
+                         truncated=f"BACKFILL_MAX_CALLS={call_limit} reached")
                 return
             try:
                 calls += 1
@@ -211,12 +228,33 @@ def run():
         print(f"[{label}] totals so far — posted {posted}, dupes {dupes}, "
               f"non-events {skipped}, failed {failed}")
 
-    _summary(posted, dupes, skipped, failed)
+    _summary(posted, dupes, skipped, failed, calls)
 
 
-def _summary(posted, dupes, skipped, failed):
+def _summary(posted, dupes, skipped, failed, calls=None, truncated=None):
+    """Print the run's result AND close its ledger entry.
+
+    WHY THE LEDGER LINE IS HERE (added 2026-08-12). This file spends money on
+    every candidate filing it reads and, alone among the paid jobs, never
+    emitted a `SPEND_LEDGER_V1` line. `spend.harvest()` collects those lines out
+    of the run logs, so the EDGAR sweep contributed nothing to
+    railway/spend_jobs.json and its cost could only ever be inferred from the
+    account balance -- i.e. it lived inside the UNATTRIBUTED REMAINDER that
+    unattributed_report() prints. The sweep is also the job with the largest
+    historical burn in this repo (~$3.80/day during the 2026-07-29 hourly
+    sprint), which is precisely the job that should not be unmeasured.
+
+    `items` is candidate filings actually READ (one paid extraction each), not
+    filings pulled: the seen-URL pre-check drops what the site already holds
+    before anything is charged, and counting those would report a cost per row
+    over work nobody paid for.
+    """
     print(f"Backfill complete: {posted} posted, {dupes} duplicates, "
           f"{skipped} non-events skipped, {failed} failed")
+    try:
+        spend.record_job_run(items=calls, stored=posted, truncated=truncated)
+    except Exception as exc:  # noqa: BLE001 — a meter must never break the job
+        print(f"backfill: could not record the spend ledger entry ({exc})")
 
 
 if __name__ == "__main__":

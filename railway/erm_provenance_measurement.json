@@ -1,0 +1,8 @@
+{
+  "contradictions": [],
+  "erm_rows": 19497,
+  "jobs": 0,
+  "measured_at": "2026-08-12T06:32:00Z",
+  "note": "Does each published ERM row's stored country still agree with the country erm_import.py wrote into that row's own excerpt? Written by erm-provenance-check.yml, read by data_integrity.ErmProvenanceInvariant. Committed because the data changes without a commit.",
+  "unreadable": 0
+}
