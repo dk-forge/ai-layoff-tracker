@@ -1,5 +1,70 @@
 # Tech Log
 
+## 2026-08-11 - the basis default lived in five places, and the fifth was the checker
+
+`figures_agree_with_api` had been red since 2.20.4, reporting four home-page
+figures as wrong by 33,426 jobs and 150 companies. The figures were correct.
+
+**The mechanism, proven.** The served page inlines
+`window.ALT_BOOTSTRAP.aggregate_params`, and on the live page it reads
+`{"years":"2026","date_basis":"notice"}`. `railway/published_figures.py`
+`_home_params()` returned `{"years": "2026"}` - hand-written, under a docstring
+promising it was "exactly what the unfiltered home page sends". So the checker
+asked `/aggregate` a question the page never asks. Both answers are real and
+both are live: `years=2026` returns 998,606 jobs / 2,698 companies on the
+effective-date basis, `years=2026&date_basis=notice` returns 965,180 / 2,548 on
+the filing basis. 965,180 - 484,495 = 480,685, exactly what the page renders.
+The delta was a basis, not a staleness.
+
+**Ruled out, each by measurement.** Not an edge cache (`?cb=` fetch, both
+`MISS`, fresh `last-modified`, still 480,685). Not the transient splitting keys
+(`alt_api_cached` strips `cb`; bare and busted calls returned identical bodies).
+Not REST-dispatch defaults or sanitize callbacks diverging between the internal
+`WP_REST_Request` and an external one - `/aggregate` is registered with no
+`args` at all, so there are no defaults and no sanitizers to diverge. Not
+`alt_data_ver`. The disagreement survived every one of those because it was
+never a cache: it was two different questions.
+
+**Root cause.** 28e255d (2.20.4, "default to the filing basis") says a default
+"lives in four places and all four moved": `DATE_BASIS` in layoffs.js, the
+switch's active option, the bootstrap's `$aggregate_params`, and the hero label.
+There was a fifth, outside the plugin, and nothing could notice it drift because
+it was a hand-copied constant.
+
+**Fix.** `_home_stamp()` reads the query off the page - the bootstrap publishes
+it beside the totals it computed from it, same code, same render - so a basis
+change reaches the checker with no second edit. It is not obedience: the stamp
+must name the current year and may otherwise carry only a BASIS
+(`date_basis`, `country_basis`); a stamp carrying anything that NARROWS the
+population is a FAIL naming the offending key, because the page may choose its
+basis and may not choose its scope. `test_figure_stamp_comes_from_the_page.py`
+is offline and 6 of its 7 tests fail on the pre-fix tree, reproducing production
+verbatim: *"the check asked /aggregate {'years': '2026', 'cb': 'cb'}; the page
+said its figures came from date_basis=notice"*.
+
+**The AGREEMENT docstring was also overclaiming and now says less.** The
+bootstrap calls the same `/aggregate` callback through the same transient, so
+this is not two independent SQL computes. It is the number a reader is served -
+the template's arithmetic, minified and replayed by whatever caches sit in front
+of `/blog` - against what `/aggregate` answers live. That catches template
+arithmetic, a mislabelled tile, a vanished figure and a stale served page. It
+does not catch a wrong number both paths compute identically, and it now says so.
+
+**A sixth place, found by the repaired check and NOT fixed here.** With the
+comparison finally on one basis, `figures_reconcile` went red: the monthly chart
+sums to 480,678 against a headline of 480,685. The series SQL in
+`alt_api_aggregate_compute` groups on `layoff_date` unconditionally while the
+filter runs on `COALESCE(announcement_date, layoff_date)`, so a `years=2026`
+filed-basis view draws `2027-02` and `2027-03` buckets and drops 7 jobs. Its
+previous pass was meaningless - it was comparing a chart on one basis against a
+headline on the other. This is a published chart and the fix has a real
+question inside it (whether the to-date columns stay on the effective date), so
+it is reported rather than guessed at.
+
+**No plugin bytes changed, so `ALT_VERSION` was not bumped.** The defect was
+entirely in the checker. A version bump here would cache-bust every asset for
+every reader to ship nothing.
+
 ## 2026-08-11 - the US headline is wrong by 92,000, and the rows say so themselves
 
 `test_no_headline_moves_without_rows_to_explain_it` has been red since

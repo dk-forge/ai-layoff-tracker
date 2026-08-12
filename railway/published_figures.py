@@ -169,13 +169,88 @@ def _year(ctx):
     return str(ctx.today.year)
 
 
-def _home_params(ctx):
-    """Exactly what the unfiltered home page sends. Nothing more, nothing less.
+# The only parameters the home page's stamped query may contain. Each one
+# chooses a BASIS — which date a row is counted on, which country column a
+# country matches — and a basis is the page's to choose. Anything else
+# (`company`, `ai`, `sources`, `state`, a `from`/`to` window) NARROWS the
+# population, and a narrowed population under a figure labelled "worldwide,
+# year to date" is the defect this module exists to catch. The allowlist is
+# what stops "read the query off the page" from degenerating into "believe
+# whatever the page says": the page may pick its basis, it may not pick its
+# scope.
+_STAMP_BASIS_KEYS = ("date_basis", "country_basis")
+_STAMP_ALLOWED = ("years",) + _STAMP_BASIS_KEYS
 
-    The page's own currentParams() defaults to the current year and no other
-    filter. A check that added `sourced=1` or `exclude_supersets=1` here would be
-    checking a query no reader ever issues, and would agree with itself."""
-    return {"years": _year(ctx)}
+_BOOT_RE = re.compile(r"window\.ALT_BOOTSTRAP\s*=\s*(\{.*?\})\s*;\s*</script>", re.S)
+
+
+def _home_stamp(ctx):
+    """The query the home page ITSELF says produced its server-rendered figures.
+
+    Returns (params, problem, is_defect, transport). `params` is None whenever it
+    could not be established, and then `problem` says why in the words the check
+    will print. `transport` is the fetch exception when the page could not be
+    reached at all, and it is carried out of here rather than swallowed: an
+    UNKNOWN without its exception is indistinguishable from an UNKNOWN that
+    decided something, and the degradation contract in test_dedup_live requires
+    every transport UNKNOWN to name its cause.
+
+    WHY THIS IS READ OFF THE PAGE AND NOT WRITTEN DOWN HERE. It used to be
+    written down here, as `{"years": <current year>}`, under a docstring
+    promising it was "exactly what the unfiltered home page sends". On 2026-08-10
+    the page's default date basis moved from the effective date to the filing
+    date (2.20.4). The commit message for that change says a default "lives in
+    four places and all four moved" — layoffs.js, the switch markup, the server
+    bootstrap and the hero's label. There was a fifth: this constant. It did not
+    move, so from that day this module asked /aggregate a question the page never
+    asks, got the effective-basis answer, compared it against the filed-basis
+    figure the page had rendered, and reported a 33,426-job disagreement on four
+    figures that were in fact correct and internally consistent.
+
+    A stamp copied by hand drifts the moment the page changes and the copy is not
+    updated, and nothing in the repo can notice. The page already publishes the
+    stamp: `window.ALT_BOOTSTRAP.aggregate_params` is written by
+    alt_tracker_bootstrap_payload() alongside the totals it computed from them,
+    by the same code, in the same render. That is the stamp. Read it there.
+
+    WHAT THIS DOES NOT DO. It does not let the page define its way to green. The
+    stamp must name the current year and may otherwise carry only a basis (see
+    _STAMP_ALLOWED); a stamp that narrows the population is reported as the
+    defect it is rather than obediently queried.
+    """
+    html, err = _get_html(ctx, HOME_URL)
+    if html is None:
+        return None, _why_unreachable(err), False, err
+    m = _BOOT_RE.search(html)
+    if not m:
+        return None, ("the home page inlines no window.ALT_BOOTSTRAP, so it does "
+                      "not state which query produced its figures"), False, None
+    try:
+        boot = json.loads(m.group(1))
+        stamp = boot.get("aggregate_params")
+    except ValueError:
+        return (None, "the home page's window.ALT_BOOTSTRAP is not readable JSON",
+                False, None)
+    if not isinstance(stamp, dict) or not stamp:
+        return None, ("window.ALT_BOOTSTRAP carries no aggregate_params, so the "
+                      "query behind the rendered figures is unstated"), False, None
+    params = {str(k): str(v) for k, v in stamp.items()}
+
+    extra = sorted(k for k in params if k not in _STAMP_ALLOWED)
+    if extra:
+        return None, (f"the home page's figures were computed on a NARROWED query "
+                      f"{params} — {', '.join(extra)} scopes the population under "
+                      f"figures labelled worldwide, year to date"), True, None
+    if params.get("years") != _year(ctx):
+        return None, (f"the home page's figures were computed for years="
+                      f"{params.get('years')!r} but the page publishes them as "
+                      f"{_year(ctx)} year to date"), True, None
+    return params, None, False, None
+
+
+def _home_params(ctx):
+    """The stamped home query, or None when the page did not state one."""
+    return _home_stamp(ctx)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -415,10 +490,28 @@ class FigureAgreementInvariant:
     says, and it does not matter which is which — the site is publishing a number
     it cannot reproduce.
 
-    WHY IT IS NOT SELF-AGREEING. Each figure's params come from FIGURES, stamped
-    from the page's own defaults, not re-derived here from what the figure "ought"
-    to mean. A checker that recomputed the query from an assumption would agree
-    with its own assumption and pass while the page was wrong.
+    WHY IT IS NOT SELF-AGREEING. Each figure's params come from FIGURES, and
+    FIGURES reads the stamp the PAGE published beside its own numbers
+    (window.ALT_BOOTSTRAP.aggregate_params), not an assumption re-derived here
+    about what the figure "ought" to mean. A checker that recomputed the query
+    from an assumption agrees with its own assumption; one that hard-codes the
+    page's default agrees with the page as of the day someone last typed it out,
+    which is how this check spent 2026-08-10 to 2026-08-11 failing four correct
+    figures. And the page cannot define its way to green either: a stamp that
+    narrows the population instead of choosing a basis is a FAIL (see
+    _home_stamp).
+
+    WHAT THE TWO DERIVATIONS ACTUALLY ARE, stated exactly, because overclaiming
+    it is worse than the narrower truth. The bootstrap calls the same /aggregate
+    callback through the same transient, so this is NOT two independent SQL
+    computes of the same figure. It is (1) the number a reader is served — the
+    page's own arithmetic over the totals it inlined, rendered, minified, and
+    replayed by whatever caches sit in front of /blog — against (2) what
+    /aggregate answers, live and cache-busted, right now. That catches wrong
+    arithmetic in the template, a mislabelled tile, a figure that vanished, and a
+    served page whose numbers are older than the data. It does not catch a wrong
+    number that both paths compute identically; RECONCILIATION and DRILL_DOWN
+    are what stand behind that.
     """
 
     key = "figures_agree_with_api"
@@ -433,7 +526,17 @@ class FigureAgreementInvariant:
             return di.Result(self, di.UNKNOWN, error=err,
                              detail=_why_unreachable(err) + " — home figures NOT checked")
 
-        payload, err = _get_json(ctx, "aggregate", _home_params(ctx))
+        stamp, problem, is_defect, terr = _home_stamp(ctx)
+        if stamp is None:
+            # A stamp that NARROWS is a defect in what was published, not a gap
+            # in what could be measured, so it is a FAIL and not an UNKNOWN.
+            if terr is not None:
+                ctx.errors[self.key] = terr
+            return di.Result(self, di.FAIL if is_defect else di.UNKNOWN, error=terr,
+                             detail=problem + ("" if is_defect
+                                               else " — home figures NOT checked"))
+
+        payload, err = _get_json(ctx, "aggregate", stamp)
         if payload is None:
             ctx.errors[self.key] = err
             return di.Result(self, di.UNKNOWN, error=err,
@@ -538,7 +641,12 @@ class FigureReconciliationInvariant:
 
     def run(self, ctx):
         di = _di()
-        params = _home_params(ctx)
+        params, problem, _defect, terr = _home_stamp(ctx)
+        if params is None:
+            if terr is not None:
+                ctx.errors[self.key] = terr
+            return di.Result(self, di.UNKNOWN, error=terr,
+                             detail=problem + " — reconciliation NOT checked")
         html, _herr = _get_html(ctx, HOME_URL)
         payload, err = _get_json(ctx, "aggregate", params)
         if payload is None:
@@ -733,7 +841,12 @@ class DrillDownInvariant:
 
     def run(self, ctx):
         di = _di()
-        params = _home_params(ctx)
+        params, problem, _defect, terr = _home_stamp(ctx)
+        if params is None:
+            if terr is not None:
+                ctx.errors[self.key] = terr
+            return di.Result(self, di.UNKNOWN, error=terr,
+                             detail=problem + " — drill-downs NOT checked")
         payload, err = _get_json(ctx, "aggregate", params)
         if payload is None:
             ctx.errors[self.key] = err
@@ -1052,7 +1165,13 @@ class CrossSurfaceAgreementInvariant:
             f"{abs(gap):,}. A journalist reading both gets two answers")
 
         # (1)+(2) both figures must be periods the API actually produces.
-        payload, err = _get_json(ctx, "aggregate", _home_params(ctx))
+        stamp, problem, _defect, terr = _home_stamp(ctx)
+        if stamp is None:
+            if terr is not None:
+                ctx.errors["home_vs_press"] = terr
+            return di._out(di.UNKNOWN, problem
+                           + " — whether the gap reconciles is NOT checked")
+        payload, err = _get_json(ctx, "aggregate", stamp)
         if payload is None:
             ctx.errors["home_vs_press"] = err
             return di._out(di.UNKNOWN, _why_unreachable(err)
