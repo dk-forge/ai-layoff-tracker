@@ -1,457 +1,65 @@
 {
-  "candidates_needing_adjudication": [
-    {
-      "filer": "EnerSys",
-      "filing_date": "2025-07-22",
-      "id": "sec-205-0001289308-25-000025",
-      "new_tracker_event_ids": [
-        149625
-      ],
-      "stated_job_count": 575,
-      "tracker_event_ids": [
-        149625
-      ]
-    },
-    {
-      "filer": "GREEN DOT CORP",
-      "filing_date": "2025-09-03",
-      "id": "sec-205-0001386278-25-000069",
-      "new_tracker_event_ids": [
-        149755
-      ],
-      "stated_job_count": 240,
-      "tracker_event_ids": [
-        149755
-      ]
-    },
-    {
-      "filer": "SPRUCE POWER HOLDING CORP",
-      "filing_date": "2025-09-24",
-      "id": "sec-205-0001628280-25-042593",
-      "new_tracker_event_ids": [
-        149756
-      ],
-      "stated_job_count": 40,
-      "tracker_event_ids": [
-        149756
-      ]
-    },
-    {
-      "filer": "KALA BIO, Inc.",
-      "filing_date": "2025-09-29",
-      "id": "sec-205-0001104659-25-094125",
-      "new_tracker_event_ids": [
-        149633
-      ],
-      "stated_job_count": 19,
-      "tracker_event_ids": [
-        149633
-      ]
-    },
-    {
-      "filer": "Bolt Biotherapeutics, Inc.",
-      "filing_date": "2025-10-02",
-      "id": "sec-205-0001193125-25-228293",
-      "new_tracker_event_ids": [
-        149632
-      ],
-      "stated_job_count": 20,
-      "tracker_event_ids": [
-        149632
-      ]
-    },
-    {
-      "filer": "Cardlytics, Inc.",
-      "filing_date": "2025-10-02",
-      "id": "sec-205-0001666071-25-000135",
-      "new_tracker_event_ids": [
-        149634
-      ],
-      "stated_job_count": 90,
-      "tracker_event_ids": [
-        149634
-      ]
-    },
-    {
-      "filer": "MOLSON COORS BEVERAGE CO  (TAP, TAP-A)",
-      "filing_date": "2025-10-20",
-      "id": "sec-205-0001104659-25-100648",
-      "new_tracker_event_ids": [
-        149635
-      ],
-      "stated_job_count": 400,
-      "tracker_event_ids": [
-        149635
-      ]
-    },
-    {
-      "filer": "TScan Therapeutics, Inc.",
-      "filing_date": "2025-11-03",
-      "id": "sec-205-0001193125-25-261612",
-      "new_tracker_event_ids": [
-        149600
-      ],
-      "stated_job_count": 66,
-      "tracker_event_ids": [
-        149600
-      ]
-    },
-    {
-      "filer": "HORMEL FOODS CORP /DE/",
-      "filing_date": "2025-11-04",
-      "id": "sec-205-0000048465-25-000053",
-      "new_tracker_event_ids": [
-        149597
-      ],
-      "stated_job_count": 250,
-      "tracker_event_ids": [
-        29581,
-        149597
-      ]
-    },
-    {
-      "filer": "Xperi Inc.",
-      "filing_date": "2025-11-05",
-      "id": "sec-205-0001193125-25-266980",
-      "new_tracker_event_ids": [
-        149598
-      ],
-      "stated_job_count": 250,
-      "tracker_event_ids": [
-        149598
-      ]
-    },
-    {
-      "filer": "Kezar Life Sciences, Inc.",
-      "filing_date": "2025-11-07",
-      "id": "sec-205-0001628280-25-050671",
-      "new_tracker_event_ids": [
-        149595
-      ],
-      "stated_job_count": 31,
-      "tracker_event_ids": [
-        149595
-      ]
-    },
-    {
-      "filer": "HYSTER-YALE, INC.",
-      "filing_date": "2025-11-19",
-      "id": "sec-205-0001173514-25-000133",
-      "new_tracker_event_ids": [
-        149596
-      ],
-      "stated_job_count": 575,
-      "tracker_event_ids": [
-        108571,
-        149251,
-        149596
-      ]
-    },
-    {
-      "filer": "NEWELL BRANDS INC.",
-      "filing_date": "2025-12-01",
-      "id": "sec-205-0001193125-25-303185",
-      "new_tracker_event_ids": [
-        149613
-      ],
-      "stated_job_count": 900,
-      "tracker_event_ids": [
-        149613
-      ]
-    },
-    {
-      "filer": "Domtar CORP",
-      "filing_date": "2025-12-08",
-      "id": "sec-205-0001193125-25-311445",
-      "new_tracker_event_ids": [
-        149611
-      ],
-      "stated_job_count": 350,
-      "tracker_event_ids": [
-        149611
-      ]
-    },
-    {
-      "filer": "Elanco Animal Health Inc",
-      "filing_date": "2025-12-09",
-      "id": "sec-205-0001104659-25-119486",
-      "new_tracker_event_ids": [
-        149612
-      ],
-      "stated_job_count": 300,
-      "tracker_event_ids": [
-        149612
-      ]
-    },
-    {
-      "filer": "DOW INC.",
-      "filing_date": "2026-01-29",
-      "id": "sec-205-0001751788-26-000009",
-      "new_tracker_event_ids": [
-        149592,
-        149616
-      ],
-      "stated_job_count": 4500,
-      "tracker_event_ids": [
-        34668,
-        34670,
-        34673,
-        109191,
-        149592,
-        149616
-      ]
-    },
-    {
-      "filer": "GOODYEAR TIRE & RUBBER CO /OH/",
-      "filing_date": "2026-03-20",
-      "id": "sec-205-0001628280-26-020222",
-      "new_tracker_event_ids": [
-        149624
-      ],
-      "stated_job_count": 600,
-      "tracker_event_ids": [
-        105846,
-        108601,
-        149624
-      ]
-    },
-    {
-      "filer": "EnerSys",
-      "filing_date": "2026-03-25",
-      "id": "sec-205-0001289308-26-000009",
-      "new_tracker_event_ids": [
-        149625
-      ],
-      "stated_job_count": 474,
-      "tracker_event_ids": [
-        149625
-      ]
-    },
-    {
-      "filer": "GoPro, Inc.",
-      "filing_date": "2026-04-07",
-      "id": "sec-205-0001628280-26-024066",
-      "new_tracker_event_ids": [
-        149629
-      ],
-      "stated_job_count": 145,
-      "tracker_event_ids": [
-        149629
-      ]
-    },
-    {
-      "filer": "Vertex, Inc.",
-      "filing_date": "2026-04-28",
-      "id": "sec-205-0001104659-26-050407",
-      "new_tracker_event_ids": [
-        149630
-      ],
-      "stated_job_count": 170,
-      "tracker_event_ids": [
-        149630
-      ]
-    },
-    {
-      "filer": "reAlpha Tech Corp.",
-      "filing_date": "2026-05-06",
-      "id": "sec-205-0001213900-26-052921",
-      "new_tracker_event_ids": [
-        149640
-      ],
-      "stated_job_count": 21,
-      "tracker_event_ids": [
-        149640
-      ]
-    },
-    {
-      "filer": "Koppers Holdings Inc.",
-      "filing_date": "2026-05-08",
-      "id": "sec-205-0001315257-26-000036",
-      "new_tracker_event_ids": [
-        149641
-      ],
-      "stated_job_count": 85,
-      "tracker_event_ids": [
-        108304,
-        149641
-      ]
-    },
-    {
-      "filer": "AUTOLIV INC",
-      "filing_date": "2026-05-11",
-      "id": "sec-205-0001193125-26-216107",
-      "new_tracker_event_ids": [
-        149638
-      ],
-      "stated_job_count": 2200,
-      "tracker_event_ids": [
-        149638
-      ]
-    },
-    {
-      "filer": "SOBR Safe, Inc.",
-      "filing_date": "2026-05-13",
-      "id": "sec-205-0001477932-26-003057",
-      "new_tracker_event_ids": [
-        149637
-      ],
-      "stated_job_count": 11,
-      "tracker_event_ids": [
-        149637
-      ]
-    }
-  ],
+  "candidates_needing_adjudication": [],
   "lost_since_adjudication": [],
-  "matched": 24,
+  "matched": 52,
   "matched_floor": 20,
   "matched_ids": [
     "sec-205-0001751788-25-000139",
     "sec-205-0001396814-25-000093",
     "sec-205-0000950170-25-096257",
+    "sec-205-0001289308-25-000025",
+    "sec-205-0001193125-25-163439",
     "sec-205-0001140361-25-026946",
+    "sec-205-0001655210-25-000149",
+    "sec-205-0000950170-25-104347",
     "sec-205-0000051434-25-000059",
+    "sec-205-0001531177-25-000007",
+    "sec-205-0001386278-25-000069",
     "sec-205-0001193125-25-195066",
+    "sec-205-0001628280-25-042593",
     "sec-205-0000829224-25-000067",
+    "sec-205-0001104659-25-094125",
+    "sec-205-0001193125-25-228293",
+    "sec-205-0001666071-25-000135",
+    "sec-205-0001104659-25-100648",
     "sec-205-0001193125-25-245102",
     "sec-205-0001364954-25-000112",
     "sec-205-0001306830-25-000203",
+    "sec-205-0001193125-25-261612",
+    "sec-205-0000048465-25-000053",
+    "sec-205-0001193125-25-266980",
+    "sec-205-0001628280-25-050671",
+    "sec-205-0001173514-25-000133",
+    "sec-205-0001193125-25-303185",
     "sec-205-0001193125-25-307535",
+    "sec-205-0001193125-25-311445",
+    "sec-205-0001104659-25-119486",
     "sec-205-0001193125-25-318445",
     "sec-205-0001705110-26-000005",
     "sec-205-0000769397-26-000006",
     "sec-205-0001104659-26-007986",
+    "sec-205-0002055592-26-000008",
     "sec-205-0001193125-26-048738",
     "sec-205-0001650372-26-000021",
+    "sec-205-0001628280-26-020222",
+    "sec-205-0001289308-26-000009",
+    "sec-205-0001628280-26-024066",
     "sec-205-0001193125-26-154873",
+    "sec-205-0001104659-26-050407",
     "sec-205-0001679788-26-000049",
     "sec-205-0001544522-26-000088",
+    "sec-205-0001213900-26-052921",
+    "sec-205-0001315257-26-000036",
+    "sec-205-0001193125-26-216107",
     "sec-205-0001794515-26-000033",
+    "sec-205-0001477932-26-003057",
     "sec-205-0001490281-26-000013",
     "sec-205-0001628280-26-039805",
     "sec-205-0001193125-26-278582"
   ],
-  "measured_at": "2026-08-10T16:30:56Z",
-  "missed": 33,
+  "measured_at": "2026-08-12T23:44:31Z",
+  "missed": 5,
   "missed_events": [
-    {
-      "filer": "EnerSys",
-      "filing_date": "2025-07-22",
-      "id": "sec-205-0001289308-25-000025",
-      "stated_job_count": 575,
-      "tracker_event_ids": [
-        149625
-      ]
-    },
-    {
-      "filer": "Cibus, Inc.",
-      "filing_date": "2025-07-23",
-      "id": "sec-205-0001193125-25-163439",
-      "stated_job_count": 34,
-      "tracker_event_ids": []
-    },
-    {
-      "filer": "BEYOND MEAT, INC.",
-      "filing_date": "2025-08-06",
-      "id": "sec-205-0001655210-25-000149",
-      "stated_job_count": 44,
-      "tracker_event_ids": []
-    },
-    {
-      "filer": "ALLURION TECHNOLOGIES, INC.  (ALUR, ALUR-WT)",
-      "filing_date": "2025-08-07",
-      "id": "sec-205-0000950170-25-104347",
-      "stated_job_count": 70,
-      "tracker_event_ids": []
-    },
-    {
-      "filer": "Sight Sciences, Inc.",
-      "filing_date": "2025-08-27",
-      "id": "sec-205-0001531177-25-000007",
-      "stated_job_count": 43,
-      "tracker_event_ids": []
-    },
-    {
-      "filer": "GREEN DOT CORP",
-      "filing_date": "2025-09-03",
-      "id": "sec-205-0001386278-25-000069",
-      "stated_job_count": 240,
-      "tracker_event_ids": [
-        149755
-      ]
-    },
-    {
-      "filer": "SPRUCE POWER HOLDING CORP",
-      "filing_date": "2025-09-24",
-      "id": "sec-205-0001628280-25-042593",
-      "stated_job_count": 40,
-      "tracker_event_ids": [
-        149756
-      ]
-    },
-    {
-      "filer": "KALA BIO, Inc.",
-      "filing_date": "2025-09-29",
-      "id": "sec-205-0001104659-25-094125",
-      "stated_job_count": 19,
-      "tracker_event_ids": [
-        149633
-      ]
-    },
-    {
-      "filer": "Bolt Biotherapeutics, Inc.",
-      "filing_date": "2025-10-02",
-      "id": "sec-205-0001193125-25-228293",
-      "stated_job_count": 20,
-      "tracker_event_ids": [
-        149632
-      ]
-    },
-    {
-      "filer": "Cardlytics, Inc.",
-      "filing_date": "2025-10-02",
-      "id": "sec-205-0001666071-25-000135",
-      "stated_job_count": 90,
-      "tracker_event_ids": [
-        149634
-      ]
-    },
-    {
-      "filer": "MOLSON COORS BEVERAGE CO  (TAP, TAP-A)",
-      "filing_date": "2025-10-20",
-      "id": "sec-205-0001104659-25-100648",
-      "stated_job_count": 400,
-      "tracker_event_ids": [
-        149635
-      ]
-    },
-    {
-      "filer": "TScan Therapeutics, Inc.",
-      "filing_date": "2025-11-03",
-      "id": "sec-205-0001193125-25-261612",
-      "stated_job_count": 66,
-      "tracker_event_ids": [
-        149600
-      ]
-    },
-    {
-      "filer": "HORMEL FOODS CORP /DE/",
-      "filing_date": "2025-11-04",
-      "id": "sec-205-0000048465-25-000053",
-      "stated_job_count": 250,
-      "tracker_event_ids": [
-        29581,
-        149597
-      ]
-    },
-    {
-      "filer": "Xperi Inc.",
-      "filing_date": "2025-11-05",
-      "id": "sec-205-0001193125-25-266980",
-      "stated_job_count": 250,
-      "tracker_event_ids": [
-        149598
-      ]
-    },
     {
       "filer": "CODEXIS, INC.",
       "filing_date": "2025-11-06",
@@ -460,59 +68,12 @@
       "tracker_event_ids": []
     },
     {
-      "filer": "Kezar Life Sciences, Inc.",
-      "filing_date": "2025-11-07",
-      "id": "sec-205-0001628280-25-050671",
-      "stated_job_count": 31,
-      "tracker_event_ids": [
-        149595
-      ]
-    },
-    {
-      "filer": "HYSTER-YALE, INC.",
-      "filing_date": "2025-11-19",
-      "id": "sec-205-0001173514-25-000133",
-      "stated_job_count": 575,
-      "tracker_event_ids": [
-        108571,
-        149251,
-        149596
-      ]
-    },
-    {
       "filer": "HP INC",
       "filing_date": "2025-11-25",
       "id": "sec-205-0000047217-25-000068",
       "stated_job_count": 4000,
       "tracker_event_ids": [
         35397
-      ]
-    },
-    {
-      "filer": "NEWELL BRANDS INC.",
-      "filing_date": "2025-12-01",
-      "id": "sec-205-0001193125-25-303185",
-      "stated_job_count": 900,
-      "tracker_event_ids": [
-        149613
-      ]
-    },
-    {
-      "filer": "Domtar CORP",
-      "filing_date": "2025-12-08",
-      "id": "sec-205-0001193125-25-311445",
-      "stated_job_count": 350,
-      "tracker_event_ids": [
-        149611
-      ]
-    },
-    {
-      "filer": "Elanco Animal Health Inc",
-      "filing_date": "2025-12-09",
-      "id": "sec-205-0001104659-25-119486",
-      "stated_job_count": 300,
-      "tracker_event_ids": [
-        149612
       ]
     },
     {
@@ -540,93 +101,11 @@
       ]
     },
     {
-      "filer": "Gemini Space Station, Inc.",
-      "filing_date": "2026-02-05",
-      "id": "sec-205-0002055592-26-000008",
-      "stated_job_count": 200,
-      "tracker_event_ids": []
-    },
-    {
       "filer": "PLAYSTUDIOS, Inc.  (MYPS, MYPSW)",
       "filing_date": "2026-03-16",
       "id": "sec-205-0001823878-26-000018",
       "stated_job_count": 177,
       "tracker_event_ids": []
-    },
-    {
-      "filer": "GOODYEAR TIRE & RUBBER CO /OH/",
-      "filing_date": "2026-03-20",
-      "id": "sec-205-0001628280-26-020222",
-      "stated_job_count": 600,
-      "tracker_event_ids": [
-        105846,
-        108601,
-        149624
-      ]
-    },
-    {
-      "filer": "EnerSys",
-      "filing_date": "2026-03-25",
-      "id": "sec-205-0001289308-26-000009",
-      "stated_job_count": 474,
-      "tracker_event_ids": [
-        149625
-      ]
-    },
-    {
-      "filer": "GoPro, Inc.",
-      "filing_date": "2026-04-07",
-      "id": "sec-205-0001628280-26-024066",
-      "stated_job_count": 145,
-      "tracker_event_ids": [
-        149629
-      ]
-    },
-    {
-      "filer": "Vertex, Inc.",
-      "filing_date": "2026-04-28",
-      "id": "sec-205-0001104659-26-050407",
-      "stated_job_count": 170,
-      "tracker_event_ids": [
-        149630
-      ]
-    },
-    {
-      "filer": "reAlpha Tech Corp.",
-      "filing_date": "2026-05-06",
-      "id": "sec-205-0001213900-26-052921",
-      "stated_job_count": 21,
-      "tracker_event_ids": [
-        149640
-      ]
-    },
-    {
-      "filer": "Koppers Holdings Inc.",
-      "filing_date": "2026-05-08",
-      "id": "sec-205-0001315257-26-000036",
-      "stated_job_count": 85,
-      "tracker_event_ids": [
-        108304,
-        149641
-      ]
-    },
-    {
-      "filer": "AUTOLIV INC",
-      "filing_date": "2026-05-11",
-      "id": "sec-205-0001193125-26-216107",
-      "stated_job_count": 2200,
-      "tracker_event_ids": [
-        149638
-      ]
-    },
-    {
-      "filer": "SOBR Safe, Inc.",
-      "filing_date": "2026-05-13",
-      "id": "sec-205-0001477932-26-003057",
-      "stated_job_count": 11,
-      "tracker_event_ids": [
-        149637
-      ]
     }
   ],
   "note": "Recall of the frozen SEC Item 2.05 gold set against the live API. Written by recall-precision.yml. Committed on purpose: the data being measured changes without a commit. Do not hand-edit this file to clear a failing floor.",
