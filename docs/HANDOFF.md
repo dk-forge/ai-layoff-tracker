@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** FREE
-- **HOLDER:** —
-- **SINCE:** 2026-08-04
-- **WORKING ON:** —
+- **STATUS:** HELD
+- **HOLDER:** local
+- **SINCE:** 2026-08-12
+- **WORKING ON:** 2.20.12 - the FAQPage JSON-LD total and the cite line were on two date bases under one wording; labelling both
 
 **Left FREE on purpose by the session behind PR #3.** That session was told not
 to push to main, and the baton only gates anything when it is ON main: a claim

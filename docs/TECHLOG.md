@@ -1,5 +1,71 @@
 # Tech Log
 
+## 2026-08-12 - the seventh place was the structured data, and it is the one a search engine quotes without the page (2.20.12)
+
+`ab4dea1` found this and deliberately left it for its own measurement, because
+it changes published structured data. Measured first, changed second.
+
+**The two figures, live, before the change:**
+
+| Figure | Basis | 2026 |
+|---|---|---|
+| FAQ copy + FAQPage JSON-LD (`alt_live_numbers`) | effective, `YEAR(layoff_date)` | **479,410** jobs / 2,700 events |
+| Cite line, a few pixels below (`to_date_jobs` - `to_date_announced_jobs`) | filing, the page default | **445,869** jobs |
+
+**33,541 apart, 7.5 percent.** Both are worded "so far in 2026 ... worldwide",
+and both are right. `/aggregate?years=2026&date_basis=effective` returns
+`963,795 - 484,385 = 479,410` and `date_basis=notice` returns
+`930,254 - 484,385 = 445,869`, which is what proves the diagnosis rather than
+merely fitting it: the FAQ is the effective-basis to-date total and the cite
+line is the filing-basis one, the same question over two different windows.
+
+`page-tracker.php`'s own comment said the cite line had been changed to AGREE
+with `alt_live_numbers()`. That was true when it was written and stopped being
+true at 2.20.4, when the default basis moved and took the cite line's rows with
+it. A comment asserting a check is unnecessary is how a defect gets a release
+to itself.
+
+**The decision: keep the basis, name it, in both places.** Converging
+`alt_live_numbers()` onto the page default was the other option and was not
+taken, for three reasons.
+
+* The question the FAQ asks is "how many layoffs have there been in 2026 so
+  far", and the plain reading of that is cuts that have happened, not notices
+  that were filed. That is an effective-date question. It is the same reasoning
+  that kept `to_date_*` on the effective basis in 2.20.11 rather than moving it
+  with the default.
+* The same figures are the press page's and the report page's documented floor
+  for the same window, and 2.20.11 pinned those pages' receipt links to
+  `date_basis=effective` for exactly that reason. Moving this one alone would
+  put the structured data on a third footing rather than a shared one.
+* `alt_live_numbers()` has no `WP_REST_Request` to take a basis from. It is an
+  hour-long transient rendered into the head. "Follow the page default" means
+  following a constant that has already moved once, silently changing a
+  published, search-quoted number with no label to explain the move.
+
+So the FAQ answer now says **"counted by effective date"** about its own figure
+and **"counted by filing date ... not meant to match"** about the page's, in
+strings byte-identical to `BASIS_COPY.effective.headline`, `$alt_hero_basis`,
+and the at-a-glance board's footnote wording for the same situation. The cite
+line already named its own basis; its comment now records the difference
+instead of denying it.
+
+**The test derives the label from the SQL, so it does not pin the decision.**
+`test_date_basis_default.py` section 4b reads the column `alt_live_numbers()`
+windows its year on, maps it to the words the rest of the page uses for that
+basis, and requires the answer to contain them. Switch that query to the page
+basis tomorrow and the section still passes, but only if the copy switches with
+it, and a fourth assertion then flips and forbids the "not meant to match"
+sentence that would have become false. Three of its five were red on `ab4dea1`;
+the two that were not are named in the section header as regression bars.
+
+**Noted, not fixed:** the SERP meta description is built from these same
+figures and rounds down to the nearest 10,000, which makes it a floor against
+the FAQ's effective-basis number but not a proven floor against the hero's
+filed-basis one (10,685 of slack on 2026-08-12, and nothing enforces it). It
+still reads `alt_live_numbers()` rather than querying for itself, which is what
+the new test holds.
+
 ## 2026-08-12 - the sixth place was the chart, and it bucketed on a date its own filter never used (2.20.11)
 
 `28e255d` (2.20.4) moved the default date basis from the effective date to the

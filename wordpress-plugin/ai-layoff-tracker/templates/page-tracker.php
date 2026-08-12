@@ -1116,6 +1116,18 @@ $alt_hero_basis  = 'counted by filing date';
                      disagreed with the FAQPage JSON-LD this same page emits from
                      alt_live_numbers() (that query has always clamped at today).
 
+                     THAT SENTENCE IS NO LONGER TRUE OF THE BASIS, and saying so
+                     is the point of this paragraph. Both figures clamp at today,
+                     but since 2.20.4 this line's ROWS are selected on the filing
+                     basis and alt_live_numbers()' rows are selected on the
+                     effective one, so the two are the same question over two
+                     different windows. Measured live on 2026-08-12: 445,869 here
+                     against 479,410 in the JSON-LD, 33,541 apart. 2.20.12 chose
+                     to keep them apart and label them rather than converge them
+                     (reasons in alt_live_numbers()), so this line names its basis
+                     below and the FAQ answer names the other one. Do not restore
+                     a comment claiming these two agree.
+
                      IT NOW SAYS WHICH OF THE PAGE'S TOTALS IT IS. "N verified job
                      cuts recorded for 2026 so far" named no geography, no basis,
                      and a period that reads like the hero's. Three live totals on

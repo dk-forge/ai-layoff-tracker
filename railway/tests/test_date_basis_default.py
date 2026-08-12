@@ -368,6 +368,185 @@ class EveryTotalSaysWhichQuestionItAnswers(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# 4b. The FOURTH total, the one inside the structured data.
+#
+# Section 4 pinned the three totals a reader can see. There is a fourth that a
+# reader mostly cannot: alt_live_numbers() feeds alt_faq_items(), which is
+# rendered as visible FAQ copy AND emitted as FAQPage JSON-LD, and it is
+# hardcoded YEAR(layoff_date) while the page around it defaults to the filing
+# basis. Live on 2026-08-12 that was 479,410 in the JSON-LD against 445,869 in
+# the cite line a few pixels below, 33,541 apart, both worded "so far in 2026
+# ... worldwide". Structured data is quoted with none of the page around it, so
+# an unlabelled basis there is worse than an unlabelled basis on screen.
+#
+# 2.20.12 kept the effective basis (reasons in alt_live_numbers()) and labelled
+# it. These tests do NOT pin that choice: they pin the invariant that survives
+# either choice, which is that the words and the SQL agree. The label is
+# DERIVED from the column the query actually windows on, so switching
+# alt_live_numbers() to the page basis passes here only if the copy switches
+# with it. Source checks, because the query needs a database and the FAQ needs
+# WordPress; comments are stripped first, since a comment describing this is
+# exactly what was wrong before.
+#
+# Three of these five were confirmed red on the pre-change tree (ab4dea1), run
+# as a file. The other two are REGRESSION BARS, named here rather than left to
+# look like proof of this change:
+#
+#   * test_the_basis_words_are_the_pages_own_words. Vacuous before the copy
+#     named a basis at all. It holds the wording against a later edit that
+#     paraphrases one label and reintroduces two names for one basis.
+#   * test_the_meta_description_rides_the_same_numbers. The description already
+#     read alt_live_numbers(). This stops it growing its own query, which would
+#     give the SERP snippet a third basis that nothing on the page labels.
+# --------------------------------------------------------------------------
+
+PLUGIN_PHP = (PLUGIN / "ai-layoff-tracker.php").read_text()
+PLUGIN_NC = strip_php_comments(PLUGIN_PHP)
+
+
+def _plugin_fn(name):
+    """Body of one top-level `function <name>(` in the plugin file, brace-matched."""
+    needle = "function %s(" % name
+    start = PLUGIN_NC.find(needle)
+    assert start != -1, "ai-layoff-tracker.php has no `%s`" % needle
+    i = PLUGIN_NC.index("{", start)
+    depth, j = 0, i
+    while j < len(PLUGIN_NC):
+        if PLUGIN_NC[j] == "{":
+            depth += 1
+        elif PLUGIN_NC[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return PLUGIN_NC[start:j + 1]
+        j += 1
+    raise AssertionError("unbalanced braces extracting %s" % name)
+
+
+def _js_basis_headline(basis):
+    m = re.search(r"%s:\s*\{[^}]*?headline:\s*'([^']+)'" % basis, JS_NC, re.S)
+    assert m, "BASIS_COPY.%s.headline is gone" % basis
+    return m.group(1)
+
+
+class TheStructuredDataTotalNamesItsOwnBasis(unittest.TestCase):
+
+    # The one place this file writes the mapping down: a date column, and the
+    # words the rest of the page uses for the basis that column IS. Both
+    # strings are read out of layoffs.js rather than typed here, so this cannot
+    # become a constant compared with itself.
+    def _label_for_column(self, col):
+        return {
+            "layoff_date": _js_basis_headline("effective"),
+            "COALESCE(announcement_date, layoff_date)": _js_basis_headline("notice"),
+        }.get(" ".join(col.split()))
+
+    def _faq_basis_column(self):
+        """The column alt_live_numbers() windows its year on."""
+        body = _plugin_fn("alt_live_numbers")
+        m = re.search(r"AND YEAR\(([^)]+(?:\([^)]*\))?[^)]*)\)\s*=\s*%d", body)
+        self.assertIsNotNone(
+            m, "alt_live_numbers() no longer windows on YEAR(<column>); if it now takes "
+               "a basis from somewhere else, teach this test where, because the FAQ copy "
+               "names a basis in words and the two have to be checked against each other")
+        return m.group(1).strip()
+
+    def _year_answer(self):
+        """The 'How many layoffs ... so far?' entry of alt_faq_items()."""
+        body = _plugin_fn("alt_faq_items")
+        i = body.find("How many layoffs have there been in")
+        self.assertNotEqual(i, -1, "the year question is gone from the FAQ")
+        j = body.find("array('", i)
+        return body[i:j if j != -1 else len(body)]
+
+    def test_the_answer_names_the_basis_its_own_query_counts_on(self):
+        """This is the whole defect. The number went out inside FAQPage JSON-LD
+        with no basis on it, next to a differently-based number that did have
+        one, under identical wording."""
+        col = self._faq_basis_column()
+        label = self._label_for_column(col)
+        self.assertIsNotNone(
+            label, "alt_live_numbers() windows on %r, which is neither basis the page "
+                   "has words for. Add the wording to BASIS_COPY before publishing a "
+                   "third basis in structured data." % col)
+        self.assertIn(
+            label, self._year_answer(),
+            "the FAQ answer is counted on %r but never says so. It says %r, and it "
+            "ships as FAQPage JSON-LD, where a search engine quotes it with none of "
+            "the page around it." % (label, self._year_answer()[:400]))
+
+    def test_the_answer_says_the_page_answers_a_different_question(self):
+        """Required only while the two bases actually differ. If the FAQ is ever
+        moved onto the page's own basis, this flips and demands the copy stop
+        claiming a difference that no longer exists."""
+        faq_label = self._label_for_column(self._faq_basis_column())
+        page = re.search(r"\$alt_hero_basis\s*=\s*'([^']+)'", TPL_NC)
+        self.assertTrue(page, "the server no longer names a default basis")
+        page_label = page.group(1)
+        answer = self._year_answer()
+        if faq_label == page_label:
+            self.assertNotIn(
+                "not meant to match", answer,
+                "the FAQ and the page now count the same way, so the copy telling the "
+                "reader they answer different questions is false: %r" % answer[:400])
+            return
+        self.assertIn(
+            page_label, answer,
+            "the FAQ figure (%s) and the page's own totals (%s) answer different "
+            "questions inches apart. The answer must name the page's basis too, or "
+            "the reader is left to assume the numbers should agree: %r"
+            % (faq_label, page_label, answer[:400]))
+        self.assertIn(
+            "not meant to match", answer,
+            "naming both bases is not enough: the answer has to say plainly that the "
+            "two totals are not meant to match, the way the at-a-glance board's "
+            "footnote does for the same situation: %r" % answer[:400])
+
+    def test_the_basis_words_are_the_pages_own_words(self):
+        """Two labels for one basis is the same defect one step later. The FAQ
+        writes its own copy (no JS rewrites JSON-LD), so the strings have to be
+        the ones the hero and the cite line render."""
+        answer = self._year_answer()
+        for basis in ("notice", "effective"):
+            head = _js_basis_headline(basis)
+            if head.lower() in answer.lower():
+                self.assertIn(head, answer,
+                              "the FAQ names the %s basis in different words than the "
+                              "rest of the page: %r is not %r" % (basis, answer[:400], head))
+
+    def test_the_meta_description_rides_the_same_numbers(self):
+        """The SERP description is built from alt_live_numbers() too, so it
+        inherits whatever basis that function is on. If a later change gives the
+        description its own query, it gets its own basis and its own drift."""
+        desc = _plugin_fn("alt_tracker_meta_description")
+        self.assertIn("alt_live_numbers()", desc,
+                      "the meta description no longer reads the same figures as the FAQ")
+        self.assertNotRegex(desc, r"\$wpdb->(get_row|get_var|prepare)",
+                            "the meta description grew its own query; it would then "
+                            "publish a basis nothing on the page labels")
+
+    def test_the_citeline_comment_does_not_claim_the_two_agree(self):
+        """A prose check, deliberately, and the only one here. The reason this
+        defect survived a whole release is that page-tracker.php's own comment
+        said the cite line had been changed to agree with alt_live_numbers(),
+        which stopped being true the moment the default basis moved. The next
+        person to read that comment must not be told the check is unnecessary."""
+        block = TRACKER_TPL[TRACKER_TPL.index('id="alt-citeline-total"') - 3000:
+                            TRACKER_TPL.index('id="alt-citeline-total"')]
+        block = block[block.rindex("<?php /*"):]
+        self.assertIn(
+            "alt_live_numbers", block,
+            "the cite line's comment no longer mentions the other total on this page")
+        self.assertRegex(
+            block, r"(?i)effective",
+            "the cite line's comment names the other total but not the basis that "
+            "total is counted on, which is the fact that went stale: %s" % block[:800])
+        self.assertRegex(
+            block, r"(?is)(no longer true|different basis|different window|not meant to match)",
+            "the cite line's comment must record that the FAQ total is computed on a "
+            "different basis, not imply the two agree: %s" % block[:800])
+
+
+# --------------------------------------------------------------------------
 # 5. The compressed reconciliation. Both implementations, run.
 # --------------------------------------------------------------------------
 

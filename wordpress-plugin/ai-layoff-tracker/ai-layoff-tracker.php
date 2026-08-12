@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.11
+ * Version: 2.20.12
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.11');
+define('ALT_VERSION', '2.20.12');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1415,6 +1415,45 @@ function alt_live_numbers() {
         // verified totals), and future-dated effective dates (WARN files ahead)
         // don't count toward "so far". Keeps this answer consistent with the
         // press page's documented-floor figure for the same window.
+        //
+        // THE BASIS THIS ANSWER IS COUNTED ON, AND WHY IT IS NOT THE PAGE'S.
+        //
+        // YEAR(layoff_date) is the EFFECTIVE basis and it is deliberate. The
+        // tracker page this FAQ is printed on defaults to the FILING basis
+        // (date_basis=notice) since 2.20.4, so these are two answers to two
+        // different questions sitting inches apart. Measured live on
+        // 2026-08-12, before this comment existed: this query published
+        // 479,410 verified job cuts for 2026 inside FAQPage JSON-LD while the
+        // cite line a few pixels below published 445,869 for the same year and
+        // the same geography. 33,541 apart, 7.5 percent, both worded "so far
+        // in 2026 ... worldwide", and the structured-data one is the one a
+        // search engine quotes with none of the page around it.
+        //
+        // Two ways to close that. This is the one taken: KEEP the basis, NAME
+        // it, in both places.
+        //
+        //  * The question is "how many layoffs have there been in <year> so
+        //    far", and the plain reading of that is cuts that have happened,
+        //    not notices that were filed. That is an effective-date question.
+        //    Same reasoning that kept to_date_* on this basis in 2.20.11
+        //    instead of moving it along with the default.
+        //  * These figures are also the press page's and the report page's
+        //    documented floor for the same window, and 2.20.11 pinned those
+        //    surfaces' receipt links to date_basis=effective for exactly that
+        //    reason. Moving this one alone would put the structured data on a
+        //    third footing rather than a shared one.
+        //  * This function has no WP_REST_Request to take a basis from. It is
+        //    an hour-long transient rendered into the head. "Follow the page
+        //    default" would mean following a constant that has already moved
+        //    once, silently changing a published, search-quoted number with no
+        //    label to explain the move. A basis written down here changes only
+        //    when somebody edits here.
+        //
+        // So the SQL stays and alt_faq_items() states the basis in the answer
+        // text, in the same words the hero and the cite line use, and says the
+        // page's own totals answer the other question.
+        // railway/tests/test_date_basis_default.py section 4b derives the label
+        // from THIS column, so the words cannot outlive a change to the SQL.
         $row = $wpdb->get_row($wpdb->prepare(
             "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                     COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
@@ -1458,8 +1497,18 @@ function alt_faq_items() {
     return array(
         array('What is the AI Layoff Tracker?',
             'A free, continuously updated layoff tracker covering verified job cuts worldwide across all industries and causes. It flags which layoffs companies explicitly attribute to AI or automation. Every entry links to a primary source: a SEC 8-K filing, a US state WARN notice, or a named news outlet with the exact quote.'),
+        // The basis wording here is not decoration. This answer is the one that
+        // ships as FAQPage JSON-LD, and a search engine quotes it with none of
+        // the page around it, so it has to carry its own basis the way the
+        // hero, the cite line and the at-a-glance board carry theirs. Both
+        // phrases are byte-identical to the ones the rest of the page writes
+        // ("counted by effective date" is BASIS_COPY.effective.headline in
+        // layoffs.js; "counted by filing date" is $alt_hero_basis in
+        // page-tracker.php), and "not meant to match" is the board footnote's
+        // wording for the same situation. See alt_live_numbers() for why this
+        // figure stayed on the effective basis and what the gap measured.
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
-            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. Totals update daily as new filings and reports are verified.'),
+            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide, counted by effective date: the day each cut takes effect, with anything dated later than today left out. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. The totals on the tracker page itself are counted by filing date by default, which is a different question and a different number for the same year, so the two are not meant to match; the date basis switch on the page moves between them. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
             'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
         array('What sources do you use?',
