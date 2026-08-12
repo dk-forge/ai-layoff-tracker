@@ -64,7 +64,11 @@ class CallerQueriesAreSentTests(unittest.TestCase):
     def _pull(self, **kwargs):
         from sources import newsapi
         sent = []
-        with mock.patch.object(newsapi.requests, "get", _fake_get(sent)):
+        # create=True: another test module may have registered its own bare
+        # `requests` stub in sys.modules first, and a stub without a .get
+        # attribute makes a plain patch.object raise rather than fake.
+        with mock.patch.object(newsapi.requests, "get", _fake_get(sent),
+                               create=True):
             newsapi.pull_news_articles(**kwargs)
         return sent, newsapi
 

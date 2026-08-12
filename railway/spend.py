@@ -200,20 +200,37 @@ JOB_RUN_CEILINGS_USD = {
     "hi-warn-import":          0.015,  # daily    COUNTED few new notices
     "hi-warn-dryrun":          0.015,  # manual   same probe, dry
     "foreign-filings":         0.020,  # dormant  cron commented out
-    # MEASURED 2026-08-12: a live EFTS count put one month at 271 candidate
-    # documents and the measured price at $0.000310 per candidate, i.e. ~$0.084
-    # for a full month window -- and most windows are deep history the seen-URL
-    # pre-check drops before anything is charged, so a typical run costs far
-    # less. 0.200 is NOT a new throttle: it is the global RUN_CEILING_USD this
-    # job has always silently got, written down. It is here because
-    # `harvest()` only collects ledger lines for jobs named in this table, so
-    # while the sweep was absent its spend could not enter spend_jobs.json at
-    # all -- see backfill._summary.
-    "edgar-history-sweep":     0.200,  # daily    one month window per run
     "news-catchup":            0.150,  # weekly   MODELLED ~113 x $0.0011
     "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
 }
+
+# PAID JOBS THE LEDGER MUST COLLECT THAT THE CEILING TABLE DOES NOT NAME.
+#
+# `harvest()` used `set(JOB_RUN_CEILINGS_USD)` as its list of workflows worth
+# reading logs for, which quietly made two different questions one question:
+# "does this job have a NAMED ceiling" and "does this job SPEND". Those came
+# apart on `edgar-history-sweep`, a daily paid job that has never been in the
+# table -- so its cost could not enter railway/spend_jobs.json however loudly
+# backfill.py printed it, and it lived permanently inside the UNATTRIBUTED
+# REMAINDER that unattributed_report() prints.
+#
+# WHY IT IS NOT SIMPLY GIVEN A NAMED CEILING (2026-08-12). Because writing one
+# down is a budget statement, and the arithmetic does not currently close. The
+# sweep's effective ceiling today is the $0.200 global default; at DAILY
+# cadence that is $6.00/month, and the named table's worst case is already
+# $6.60/month beside a MEASURED ~$5.1/month ingest inside a $10 allowance.
+# Adding it at $0.200 makes `test_spend_ledger.
+# NamedCeilingsAreArithmeticNotHope` red, correctly. Its MEASURED cost is
+# lower -- $0.1061 for a full 309-candidate month, run 31570100147, i.e.
+# ~$3/month at daily cadence -- and that does not close the ladder either.
+#
+# Naming a ceiling would therefore mean either asserting $6/month the budget
+# does not have, or throttling a live collector. Both are the owner's call,
+# not this module's. So the job is harvested (it is measured, and the
+# measurement is the input to that decision) and left un-named (no throttle is
+# imposed by a session that was not authorised to impose one).
+LEDGER_ONLY_JOBS = frozenset({"edgar-history-sweep"})
 
 # The committed per-job ledger. One entry per (job, run): what it cost, how
 # many items it touched, what it stored or changed. Jobs only PRINT their
@@ -843,7 +860,7 @@ def harvest(days: int = 2) -> int:
 
     since = (datetime.datetime.now(datetime.timezone.utc)
              - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
-    wanted = set(JOB_RUN_CEILINGS_USD)
+    wanted = set(JOB_RUN_CEILINGS_USD) | set(LEDGER_ONLY_JOBS)
     found: list[dict] = []
     scanned = 0
     try:

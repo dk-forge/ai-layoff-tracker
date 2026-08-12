@@ -126,6 +126,20 @@ def month_windows(start, end):
 
 
 def run():
+    # A CONTRADICTORY ENVIRONMENT IS AN ERROR, NOT A PREFERENCE.
+    #
+    # BACKFILL_ROTATE used to win silently over BACKFILL_START/END, and on
+    # 2026-08-12 a workflow expression set both: run 31570100147 was dispatched
+    # for 2025-07..2025-12, printed that range in its own log, and swept the
+    # rotation's 2026-02 instead. $0.1061 went to a month nobody had asked for
+    # and the only evidence was one line of backfill's own output disagreeing
+    # with the notice three lines above it. An explicit range is the more
+    # specific instruction and a human typed it, so it wins -- loudly.
+    if os.environ.get("BACKFILL_ROTATE") and os.environ.get("BACKFILL_START"):
+        print("::warning::backfill: BACKFILL_ROTATE and BACKFILL_START are BOTH "
+              "set. Honouring the explicit range and ignoring the rotation -- an "
+              "explicit range is what a human typed. Fix the caller.")
+        os.environ.pop("BACKFILL_ROTATE", None)
     if os.environ.get("BACKFILL_ROTATE"):
         anchor = int(os.environ.get("BACKFILL_ANCHOR_YEAR") or 2015)
         start, end = rotating_window(anchor)
