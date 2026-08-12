@@ -66,6 +66,105 @@ filed-basis one (10,685 of slack on 2026-08-12, and nothing enforces it). It
 still reads `alt_live_numbers()` rather than querying for itself, which is what
 the new test holds.
 
+## 2026-08-12 - the 44px floor stopped at the edge of the filter bar (2.20.13)
+
+2.20.10 gave every control INSIDE the filter bar one shape and a 44px height
+under 768px, and it listed what it had not touched. This is that list,
+measured rather than repeated. Taken off the LIVE page at 375px from a
+reader's view (bare URL, browser User-Agent, no cache buster), **632 of this
+plugin's 882 laid-out interactive targets were under 44x44**, and six groups
+sat under 6px from their neighbour:
+
+| control | measured | nearest neighbour |
+|---|---|---|
+| jobless-claims checkbox | 13.0 x 13.0 | |
+| per-tile `(i)` disclosure (18) | 15.0 x 15.0 | |
+| corrections-log `#` anchor (152) | 8.4 x 16.0 | |
+| source link on a card (149) | 114.6 x 15.0 | **2.0px** from "archived" |
+| "archived" beside it (21) | 48.7 x 15.0 | |
+| citeline links (CSV/JSON/API) | 95.8 x 20.0 | **0.0px**, separated by a "·" |
+| card headline link (7) | 305.0 x 21.6 | |
+| map scope switch | 53.8 x 24.0 | 0.0px, segmented by design |
+| "Details" on a result card (25) | 64.4 x 24.9 | |
+| chart icon buttons (61) | 26.0 x 26.0 | 6.0px |
+| "Show all N" under a bar list | 285.0 x 26.0 | |
+| conversation-range buttons | 87.4 x 26.0 | 4.0px |
+| theme switch | 71.2 x 26.5 | 3.9px |
+| active-filter chip / clear | 105.7 x 27.6 | |
+| region tabs (10) | 78.7 x 29.0 | 5.9px |
+| small buttons | 97.5 x 29.6 | |
+| per-page select | 62.0 x 30.0 | |
+| signal-board cells (9) | 71.5 x 32.0 | 4.0px |
+| pagination (5) | 32.5 x 32.2 | 3.9px |
+| hero buttons | 152.8 x 36.8 | 8.0px |
+| bar-list rows (144) | 285.0 x 41.5 | 4.5px |
+
+**Size is half of it.** Two 44px targets 2px apart still take the wrong tap.
+Every container in the list carries a gap of at least 8px on a phone now, and
+the adjacency half is asserted separately from the size half.
+
+**44px is the wrong answer for a word inside a paragraph, so it is not the
+answer applied.** "open log" cannot be 44px tall without opening a 44px hole
+in the sentence around it, and WCAG says so itself: 2.5.5 and 2.5.8 both carry
+an exception for a target "in a sentence or its size is otherwise constrained
+by the line-height of non-target text". Those 220-odd links get a hit area
+that grows under text that does not move. On a `display: inline` box vertical
+padding hit-tests and does **not** enter the line-box calculation, so
+`padding: 10px 3px; margin: 0 -3px` turns a 15px link into a ~35px target and
+moves not one pixel of the copy. The guard asserts the paragraph's rendered
+height is unchanged at the same time it asserts the hit area grew, because a
+"fix" that inflated the line would be a worse page than the defect.
+
+The rule for those is structural, not a list of names: an anchor inside a
+`<p>`, an `<li>`, a `<td>` or a chart subtitle IS a word in a line of text
+whatever it is called. A hand-kept list of classes would have covered the ones
+somebody remembered. An anchor styled as a BUTTON is excluded, and that is not
+hypothetical: without the exclusion the two hero actions lost their 16px sides
+and arrived 2px apart.
+
+Everything is scoped to `<=767px`. At a desk these are hit with a pointer, the
+page is denser by design, and 2.5.8's 24px AA floor was already met.
+`test_tap_targets.py` asserts the scope, and asserts a region tab is still
+under 44px at 1280 so the phone floor cannot leak to the desk.
+
+**The en dash, and the reason nothing caught it.** The date-range button
+rendered `Jul 13, 2026 – Aug 11, 2026`. docs/STYLE.md bans en and em dashes in
+reader copy and `style_check.py` carries `BANNED_CHARS`, and it reported zero
+findings the whole time. That is not a bug in the scorer. style_check reads
+PROSE: `looks_like_copy()` needs twelve characters and three real words before
+a segment is scored, and it is right to, because reading grade and sentence
+length are meaningless on a fragment. **A separator literal is three
+characters, so it was never eligible to be checked.** Seventeen strings were
+hiding in that gap across four files: four quarter labels, six range
+separators and seven em-dash "no value" placeholders.
+
+`railway/tests/test_ui_copy_punctuation.py` closes it as a second layer rather
+than by widening the first. It uses style_check's own target list and its own
+comment stripping (one definition of "which files hold copy a reader sees",
+and comments are still not copy: both codebases quote the REPLACED string in
+their rationale, so a checker that read comments would fail after a correct fix
+and pass before one), and drops only the length filter. It adds one file
+style_check does not carry, `includes/api.php`, which holds no prose at all and
+did hold `week_range` building "Aug 3 – Aug 9" for every public API consumer.
+style_check.py and docs/STYLE.md are untouched: they are byte-identical with
+the sibling tracker and SHA-pinned, and this gap did not need them changed.
+
+Deliberately left: `sources/warn_new_states.py` normalises `" - "` to `" – "`
+in EMPLOYER NAMES. That is stored data, it is inside the dedup hash, and
+changing it needs `/bulk-purge` and a full re-import. It is a value, not copy.
+
+`railway/tests/test_tap_targets.py` is nine tests against the shipped
+stylesheet, the real template with PHP stripped, and the markup layoffs.js
+actually builds (re-derived from the builder with comments stripped, so the
+fixture cannot drift into measuring markup the page does not ship). Run
+against the pre-fix tree it reports **60 controls below 44x44, 30 links under a
+30px hit area, and 26 neighbouring pairs under 8px apart**. Geometry is read
+from `getBoundingClientRect` and text from `innerText`, never `textContent`: a
+closed `<details>` in current Chrome still has a box and still has
+`textContent` for words no reader can read.
+
+No number, no filter, no threshold and no data changed.
+
 ## 2026-08-12 - the sixth place was the chart, and it bucketed on a date its own filter never used (2.20.11)
 
 `28e255d` (2.20.4) moved the default date basis from the effective date to the

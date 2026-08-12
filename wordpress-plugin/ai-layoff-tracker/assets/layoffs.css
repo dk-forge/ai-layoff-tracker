@@ -3623,3 +3623,245 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
 @media (prefers-reduced-motion: reduce) {
     .alt-load-spin { animation: none; border-top-color: var(--alt-border); }
 }
+
+
+/* ===========================================================================
+   TAP TARGETS OUTSIDE THE FILTER BAR.
+
+   2.20.10 gave every control IN the filter bar one shape and a 44px height
+   under 768px (--alt-ctl-h). It did not touch anything else, and it said so.
+   Measured on the live page at 375px, from a reader's view (bare URL, browser
+   User-Agent, no cache buster), 632 of this plugin's 882 laid-out interactive
+   targets were under 44x44. The worst of them, with the distance to the
+   nearest other target on the same line or column:
+
+     per-tile (i) disclosure          15.0 x 15.0
+     jobless-claims checkbox          13.0 x 13.0
+     chart icon buttons (4 kinds)     26.0 x 26.0    6.0px apart
+     "Details" on a result card       64.4 x 24.9
+     map scope switch                 53.8 x 24.0    0.0px (segmented)
+     "Show all N" under a bar list   285.0 x 26.0
+     conversation-range buttons       87.4 x 26.0    4.0px apart
+     theme switch                     71.2 x 26.5    3.9px apart
+     active-filter chip / clear      105.7 x 27.6
+     region tabs                      78.7 x 29.0    5.9px apart
+     small buttons (.alt-btn-sm)      97.5 x 29.6
+     per-page select                  62.0 x 30.0
+     signal-board cells               71.5 x 32.0    4.0px apart
+     pagination                       32.5 x 32.2    3.9px apart
+     hero buttons                    152.8 x 36.8
+     bar-list rows                   285.0 x 41.5    4.5px apart
+     source link on a card           114.6 x 15.0    2.0px from "archived"
+     corrections-log "#" anchor        8.4 x 16.0
+
+   TWO TREATMENTS, BECAUSE 44px IS NOT RIGHT FOR EVERYTHING.
+
+   1. A control with a box of its own gets a 44px box. That is WCAG 2.5.5, and
+      it is the same number and the same reasoning the filter bar already
+      uses, so the page has one floor rather than two.
+
+   2. A LINK INSIDE A SENTENCE does not. "open log" cannot be 44px tall
+      without opening a 44px hole in the paragraph around it, and WCAG says so
+      itself: both 2.5.5 and 2.5.8 carry an explicit exception for a target
+      "in a sentence or its size is otherwise constrained by the line-height
+      of non-target text". So the TEXT does not move and the HIT AREA grows
+      underneath it. On a `display: inline` box, vertical padding paints and
+      hit-tests but does not enter the line-box calculation, so
+      `padding: 10px 3px; margin: 0 -3px` turns a 15px link into a ~35px tap
+      target and moves not one pixel of the paragraph. Inflating the type
+      instead would be a worse page for every reader, sighted or not.
+
+   Runs of links that are their own line, rather than words inside a sentence,
+   are treated as controls (case 1) and laid out with a real gap, because the
+   ones that measured 0.0px apart were separated only by a "·".
+
+   ADJACENCY IS HALF THE DEFECT. Two 44px targets 2px apart still take the
+   wrong tap. Every container below carries a gap of at least 8px on a phone.
+
+   Scoped to <=767px on purpose. At a desk these are hit with a pointer, the
+   page is denser by design, and 2.5.8's 24px AA floor is already met. The
+   guard (railway/tests/test_tap_targets.py) asserts the same 375px scope.
+   =========================================================================== */
+@media (max-width: 767px) {
+
+    /* --- 1. Controls with a box of their own -------------------------- */
+    .alt-tab,
+    .alt-theme-b,
+    .alt-expand, .alt-chart-dl, .alt-chart-share, .alt-chart-embed,
+    .alt-page-btn,
+    .alt-page-size select,
+    .alt-sb-cell,
+    .alt-barrow,
+    .alt-bar-more,
+    .alt-card-more,
+    .alt-conv-btn,
+    .alt-map-scope,
+    .alt-af-chip,
+    .alt-af-clear,
+    .alt-btn,
+    .alt-cards-empty-clear,
+    .alt-load-retry,
+    .alt-narrative-copy,
+    #alt-digest-email {
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+    /* Square icon buttons need the other axis too. */
+    .alt-expand, .alt-chart-dl, .alt-chart-share, .alt-chart-embed,
+    .alt-page-btn {
+        min-width: 44px;
+    }
+    /* A button whose height is now driven by min-height must centre its own
+       label, or a 12px word sits at the top of a 44px box. */
+    .alt-tab, .alt-theme-b, .alt-page-btn, .alt-card-more, .alt-conv-btn,
+    .alt-map-scope, .alt-af-chip, .alt-af-clear, .alt-bar-more, .alt-btn,
+    .alt-cards-empty-clear, .alt-load-retry {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .alt-bar-more { display: flex; }
+
+    /* --- 2. Adjacency ------------------------------------------------- */
+    .alt-tabs { gap: 10px; }
+    .alt-chart-btns { gap: 8px; }
+    .alt-page-nums { gap: 8px; }
+    .alt-pager { gap: 8px 12px; }
+    .alt-sb { gap: 8px; }
+    .alt-theme { gap: 8px; }
+    .alt-conv-range { gap: 8px; }
+    .alt-af-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .alt-barlist, .alt-mini .alt-barlist { gap: 10px; }
+    /* The map scope switch is segmented: its halves SHARE an edge by design,
+       the way the date-basis switch does. Splitting them would say they are
+       two controls when they are one. The edge stays; the halves get the
+       height, and 54px and 76px of width are wide enough that a thumb landing
+       on the wrong side of a shared border is landing on the wrong word, not
+       on a 2px seam. */
+
+    /* --- 3. Link runs that are their own line ------------------------- */
+    /* "Cite this tracker · CSV · JSON · API" measured 0.0px between targets:
+       the only thing between two links was the separator glyph. As a flex
+       row the separators become their own items and the gap is real. */
+    .alt-citeline-links,
+    .alt-lead-links,
+    .alt-provenance,
+    .alt-card-src {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+    }
+    /* Written with the wrapper in the selector on purpose: these have to beat
+       the generic in-a-sentence rule in section 4, which reaches every anchor
+       inside a <p> or an <li> and would otherwise pad these too. */
+    .alt-tracker-wrap .alt-citeline-links > a,
+    .alt-tracker-wrap .alt-lead-links > a,
+    .alt-tracker-wrap .alt-provenance > a,
+    .alt-tracker-wrap .alt-browse-list a,
+    .alt-tracker-wrap .alt-card-src > a,
+    .alt-tracker-wrap .alt-archived > a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0;
+        margin: 0;
+    }
+    /* "CSV", "JSON" and "API" are three and four characters wide. Height
+       alone leaves them 25 to 43px across, so the other axis is stated too. */
+    .alt-tracker-wrap .alt-citeline-links > a,
+    .alt-tracker-wrap .alt-lead-links > a,
+    .alt-tracker-wrap .alt-provenance > a {
+        min-width: 44px;
+    }
+    .alt-browse-list { gap: 8px; }
+    .alt-archived {
+        display: inline-flex;
+        align-items: center;
+        gap: 0 8px;
+    }
+    /* The card foot holds two targets that both just grew. Without this the
+       headline's hit box and the source link's arrive 2px apart. */
+    .alt-card-foot { margin-top: 16px; row-gap: 8px; }
+
+    /* --- 4. Links inside a sentence ----------------------------------- */
+    /* The text does not move. See the header of this section for why this is
+       the right answer here and 44px is not.
+
+       Structural, not a list of names. An anchor inside a paragraph, a list
+       item, a table cell or a chart subtitle IS a word in a line of text,
+       whatever it is called, and the page has 220-odd of them across the FAQ,
+       the methodology, the corrections log and every card's source line. A
+       hand-kept list of classes would have covered the ones somebody
+       remembered. The link RUNS in section 3 are lifted back out by
+       specificity there, and an anchor styled as a BUTTON is excluded here:
+       it is not a word in a sentence, it has its own padding, and this rule
+       would have taken it away. That is not hypothetical, it happened: the
+       two hero actions lost their 16px sides and arrived 2px apart. */
+    .alt-tracker-wrap p a:not(.alt-btn),
+    .alt-tracker-wrap li a:not(.alt-btn),
+    .alt-tracker-wrap td a:not(.alt-btn),
+    .alt-tracker-wrap dd a:not(.alt-btn),
+    .alt-tracker-wrap .alt-chart-sub a:not(.alt-btn),
+    .alt-why-quality a,
+    .alt-hero-asof-more,
+    .alt-log-anchor,
+    .alt-card-detail a,
+    .alt-detail a {
+        padding: 10px 3px;
+        margin: 0 -3px;
+    }
+    /* The corrections-log anchor is one character wide. Padding alone leaves
+       it 14px across, so it gets width from the same rule that leaves the
+       line alone. */
+    .alt-log-anchor {
+        padding: 10px 10px;
+        margin: 0 -6px;
+    }
+
+    /* --- 5. The two targets a box cannot reach ------------------------ */
+    /* The per-tile (i) is a 15px circle by design: it sits inside a tile
+       caption and a 44px disc there would be a second headline. It keeps its
+       size and gains an invisible 44x44 hit area centred on it. Nothing in
+       the layout moves, because the pseudo-element is absolutely positioned
+       and therefore out of flow. */
+    .alt-stat-i > summary { position: relative; }
+    .alt-stat-i > summary::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
+    }
+    /* The jobless-claims checkbox is 13px and is drawn by the browser. The
+       LABEL is the target: it already wraps the box and its own sentence, so
+       giving the label the height gives the checkbox a 44px row to be hit
+       in. */
+    .alt-claims-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+    }
+
+    /* --- 6. A card headline is a link the width of the card ----------- */
+    /* 305 x 21.6. Full-width already, so it needs height and nothing else,
+       and it gets it the way a sentence link does: the hit box grows, the
+       headline stays where the reader saw it. */
+    .alt-card-h {
+        display: block;
+        padding: 12px 0;
+        margin: -12px 0;
+    }
+
+    /* --- 7. Every other disclosure on the page ------------------------ */
+    /* The FAQ, the methodology sections and the corrections log are all
+       <details>. Their summaries measured 39 to 43px: a control a reader is
+       expected to open, one pixel short of the floor. The per-tile (i) is
+       excluded because section 5 gives it a hit area instead of a size. */
+    details > summary { min-height: 44px; box-sizing: border-box; }
+    .alt-stat-i > summary { min-height: 0; }
+}

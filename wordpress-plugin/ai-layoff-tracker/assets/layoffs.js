@@ -578,7 +578,7 @@
                 var item = health[name] || {};
                 var tr = document.createElement('tr');
                 var label = item.status === 'ok' ? 'Healthy' : (item.status === 'running' ? 'Running' : 'Degraded');
-                [name, label, fmt(item.entries), item.checked_at ? new Date(item.checked_at).toLocaleString() : '—'].forEach(function (value) {
+                [name, label, fmt(item.entries), item.checked_at ? new Date(item.checked_at).toLocaleString() : 'not yet checked'].forEach(function (value) {
                     var td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
                 });
                 tr.className = item.status === 'ok' ? 'alt-source-ok' : (item.status === 'running' ? 'alt-source-running' : 'alt-source-degraded');
@@ -1702,7 +1702,7 @@
         if (months.length) parts.push(months.map(function (m) { return MONTHS[parseInt(m, 10) - 1]; }).join(' & '));
         if (quarters.length) parts.push(quarters.map(function (q) { return 'Q' + q; }).join(' & '));
         if (years.length) parts.push(years.slice().sort().join(' & '));
-        if (from || to) parts.push((from ? fmtDate(from) : '…') + ' – ' + (to ? fmtDate(to) : 'now'));
+        if (from || to) parts.push((from ? fmtDate(from) : 'the start') + ' to ' + (to ? fmtDate(to) : 'now'));
         return parts.length ? 'in ' + parts.join(' ') : 'all time';
     }
 
@@ -1854,13 +1854,13 @@
         if (!label) return;
         var from = readControl('alt-f-from'); var to = readControl('alt-f-to');
         if (from || to) {
-            label.textContent = (from ? fmtDate(from) : 'Start') + ' – ' + (to ? fmtDate(to) : 'now');
+            label.textContent = (from ? fmtDate(from) : 'Start') + ' to ' + (to ? fmtDate(to) : 'now');
             return;
         }
         var years = (readControl('alt-f-years') || []).slice().sort();
         if (years.length) {
             var a = years[0], b = years[years.length - 1];
-            label.textContent = 'Jan 1' + (a === b ? '' : ', ' + a) + ' – Dec 31, ' + b;
+            label.textContent = 'Jan 1' + (a === b ? '' : ', ' + a) + ' to Dec 31, ' + b;
             return;
         }
         label.textContent = 'All time';
@@ -2777,7 +2777,7 @@
         series = fillMonths(series);
         var range = document.getElementById('alt-trend-range');
         if (range) range.textContent = (series.length
-            ? monthLabel(series[0].month) + ' – ' + monthLabel(series[series.length - 1].month) : '');
+            ? monthLabel(series[0].month) + ' to ' + monthLabel(series[series.length - 1].month) : '');
         // The future-dated caveat lives inside the card's (i) disclosure when
         // the template provides one, so the visible caption stays two plain
         // sentences; without that span it stays on the range line as before.
@@ -3675,7 +3675,7 @@
             var loc = row.state ? ' <span class="alt-state">' + escapeHtml(row.state) + '</span>' : '';
             html += '<tr><td class="alt-muted">' + (i + 1) + '</td><td>' + escapeHtml(row.company_name) + loc
                 + (row.ai_explicit ? ' <span class="alt-ai-yes" title="Explicitly AI-attributed">AI</span>' : '')
-                + '</td><td class="alt-num">' + fmt(row.job_count) + '</td><td>' + escapeHtml(row.layoff_date || '—') + '</td></tr>';
+                + '</td><td class="alt-num">' + fmt(row.job_count) + '</td><td>' + escapeHtml(row.layoff_date || 'not recorded') + '</td></tr>';
         });
         box.innerHTML = html + '</tbody></table>';
     }
@@ -3952,7 +3952,7 @@
         if (!TOTAL) { el.textContent = 'No layoffs match the current filters.'; return; }
         var start = (PAGE - 1) * PER_PAGE + 1;
         var end = Math.min(TOTAL, PAGE * PER_PAGE);
-        el.textContent = 'Showing ' + fmt(start) + '–' + fmt(end) + ' of ' + fmt(TOTAL) + ' layoffs';
+        el.textContent = 'Showing ' + fmt(start) + ' to ' + fmt(end) + ' of ' + fmt(TOTAL) + ' layoffs';
     }
 
     // The params the results list asks for. Kept in one place so the bootstrap
@@ -4170,7 +4170,7 @@
                 : 'View the state’s official WARN list (where this notice was filed) ↗';
             srcRows.push(srcRow('Primary source', wl.primary
                 ? '<a href="' + escapeHtml(wl.primary) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(warnText) + '</a>'
-                : escapeHtml(row.source_name || '—')));
+                : escapeHtml(row.source_name || 'not recorded')));
             // Exact notice + a distinct state list → offer both: the specific
             // record and the official index it sits in.
             if (wl.list) {
@@ -4195,7 +4195,7 @@
             var url = safeUrl(row.source_url);
             srcRows.push(srcRow('Primary source', url
                 ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>'
-                : escapeHtml(row.source_name || '—')));
+                : escapeHtml(row.source_name || 'not recorded')));
         }
         // Every row now carries an explicit Archived-copy row: the permanent
         // Wayback link, or the honest "waiting to be crawled" note. Never a gap.
@@ -4912,8 +4912,8 @@
             if (tbody) tbody.innerHTML = matches.slice().reverse().map(function (row) {
                 var tags = (row.reason_tags || []).map(function (t) { return '<span class="alt-tag">' + escapeHtml(REASON_LABELS[t] || t) + '</span>'; }).join(' ');
                 var url = safeUrl(row.source_url);
-                var source = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(row.source_name || 'source') + '</a>' : escapeHtml(row.source_name || '—');
-                return '<tr><td>' + escapeHtml(row.layoff_date || '—') + '</td><td class="alt-num">' + fmt(row.job_count) + '</td><td>' + tags + '</td><td>' + verificationBadge(row.verification_level) + '</td><td>' + source + '</td></tr>';
+                var source = url ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(row.source_name || 'source') + '</a>' : escapeHtml(row.source_name || 'not recorded');
+                return '<tr><td>' + escapeHtml(row.layoff_date || 'not recorded') + '</td><td class="alt-num">' + fmt(row.job_count) + '</td><td>' + tags + '</td><td>' + verificationBadge(row.verification_level) + '</td><td>' + source + '</td></tr>';
             }).join('');
         }).catch(function () { var s = document.getElementById('alt-company-summary'); if (s) s.textContent = 'Could not load company data.'; });
     }

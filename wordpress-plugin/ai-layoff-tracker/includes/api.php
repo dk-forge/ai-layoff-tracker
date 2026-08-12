@@ -1110,7 +1110,7 @@ function alt_api_stats() {
         'year_entries'  => 0,
         'year_jobs'     => 0,
         // Labels that name the actual period and roll over automatically
-        'week_range'    => date('M j', $monday_ts) . ' – ' . date('M j', $sunday_ts),
+        'week_range'    => date('M j', $monday_ts) . ' to ' . date('M j', $sunday_ts),
         'month_label'   => current_time('F Y'),
         'year_label'    => current_time('Y'),
         'coverage_start'   => '',   // earliest layoff date on record, e.g. "Jan 2024"

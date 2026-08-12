@@ -563,10 +563,10 @@ $alt_hero_basis  = 'counted by filing date';
             <div class="alt-filter" data-dd="Quarters" data-empty="All quarters">
                 <label for="alt-f-quarters">Quarters</label>
                 <select id="alt-f-quarters" multiple>
-                    <option value="1">Q1 (Jan–Mar)</option>
-                    <option value="2">Q2 (Apr–Jun)</option>
-                    <option value="3">Q3 (Jul–Sep)</option>
-                    <option value="4">Q4 (Oct–Dec)</option>
+                    <option value="1">Q1 (Jan to Mar)</option>
+                    <option value="2">Q2 (Apr to Jun)</option>
+                    <option value="3">Q3 (Jul to Sep)</option>
+                    <option value="4">Q4 (Oct to Dec)</option>
                 </select>
             </div>
             <div class="alt-filter" data-dd="Months" data-empty="All months">

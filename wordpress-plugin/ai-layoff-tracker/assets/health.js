@@ -9,7 +9,7 @@
   // this is used most. Defence in depth: status and detail come from our own
   // collectors, but the ledger is written by a keyed endpoint and this file
   // paints whatever it is handed.
-  const esc = v => String(v ?? '—').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const esc = v => String(v ?? 'not recorded').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = v => v ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(v)) + ' UTC' : 'Not yet reported';
   // A failed/running collection did not produce a count. Showing "0 found"
   // would incorrectly turn an unavailable query into evidence of zero news.
@@ -162,7 +162,7 @@
     if (latest) {
       const eventDelta = first ? Number(latest.canonical_events || 0) - Number(first.canonical_events || 0) : 0;
       const reportDelta = first ? Number(latest.source_reports || 0) - Number(first.source_reports || 0) : 0;
-      $('alt-health-release-report').innerHTML = `<p><b>Current public release:</b> ${esc(latest.plugin_version || '—')} · dataset revision ${Number(latest.dataset_revision || 0).toLocaleString()} · released ${esc(fmt(latest.released_at))}.</p><p><b>Ledger window:</b> ${first ? `${esc(fmt(first.released_at))} to ${esc(fmt(latest.released_at))}` : 'latest snapshot only'} · net canonical events ${eventDelta >= 0 ? '+' : ''}${eventDelta.toLocaleString()} · net retained reports ${reportDelta >= 0 ? '+' : ''}${reportDelta.toLocaleString()}. This is net change, not gross additions.</p><p><b>Disclosed actions, rolling 30 days:</b> ${Number(changes.corrected || 0).toLocaleString()} corrected · ${Number(changes.removed || 0).toLocaleString()} removed · ${Number(changes.merged || 0).toLocaleString()} merged · ${Number(changes.reclassified || 0).toLocaleString()} reclassified · ${Number(changes.enriched || 0).toLocaleString()} enriched.</p><p><b>Coverage status now:</b> ${degraded ? `${degraded} source${degraded === 1 ? ' is' : 's are'} visibly degraded; see Collector operations above.` : 'No source is currently marked degraded.'}</p>`;
+      $('alt-health-release-report').innerHTML = `<p><b>Current public release:</b> ${esc(latest.plugin_version || 'not recorded')} · dataset revision ${Number(latest.dataset_revision || 0).toLocaleString()} · released ${esc(fmt(latest.released_at))}.</p><p><b>Ledger window:</b> ${first ? `${esc(fmt(first.released_at))} to ${esc(fmt(latest.released_at))}` : 'latest snapshot only'} · net canonical events ${eventDelta >= 0 ? '+' : ''}${eventDelta.toLocaleString()} · net retained reports ${reportDelta >= 0 ? '+' : ''}${reportDelta.toLocaleString()}. This is net change, not gross additions.</p><p><b>Disclosed actions, rolling 30 days:</b> ${Number(changes.corrected || 0).toLocaleString()} corrected · ${Number(changes.removed || 0).toLocaleString()} removed · ${Number(changes.merged || 0).toLocaleString()} merged · ${Number(changes.reclassified || 0).toLocaleString()} reclassified · ${Number(changes.enriched || 0).toLocaleString()} enriched.</p><p><b>Coverage status now:</b> ${degraded ? `${degraded} source${degraded === 1 ? ' is' : 's are'} visibly degraded; see Collector operations above.` : 'No source is currently marked degraded.'}</p>`;
     } else {
       $('alt-health-release-report').textContent = 'No retained release snapshots are available yet.';
     }
