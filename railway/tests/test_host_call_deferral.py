@@ -30,6 +30,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -67,10 +68,27 @@ class _Case(unittest.TestCase):
         self.ledger = Path(self._tmp.name) / "deferral_ledger.json"
         self.output = Path(self._tmp.name) / "response.json"
         self._real_send = http_retry._send
+        self._runs = 0
         self.addCleanup(self._tmp.cleanup)
         self.addCleanup(lambda: setattr(http_retry, "_send", self._real_send))
+        # Each run_call is a SEPARATE workflow run, and must look like one. On
+        # a runner these tests inherit the job's own GITHUB_RUN_ID, which made
+        # three calls in one process share a run key: the ledger correctly
+        # treated calls two and three as the rejected-push replay of call one,
+        # the streak stayed at 1, and the escalation tests passed locally and
+        # failed in CI. Give every call its own run id instead of unsetting the
+        # variable, so the idempotence path stays exercised rather than skipped.
+        patch = mock.patch.dict("os.environ", {"GITHUB_RUN_ID": "0",
+                                               "GITHUB_RUN_ATTEMPT": "1"})
+        patch.start()
+        self.addCleanup(patch.stop)
 
-    def run_call(self, *responses, job="test-job", extra=()):
+    def run_call(self, *responses, job="test-job", extra=(), same_run=False):
+        import os
+
+        if not same_run:
+            self._runs += 1
+        os.environ["GITHUB_RUN_ID"] = str(self._runs)
         host = _Host(*responses)
         http_retry._send = host
         code = host_call.main([
@@ -166,6 +184,14 @@ class DeferralsEscalate(_Case):
         self.run_call(504, job="a")
         code, _ = self.run_call(504, job="b")
         self.assertEqual(code, 0, "job b has deferred once, not three times")
+
+    def test_one_run_calling_twice_is_one_deferral(self):
+        """The end-to-end shape of the idempotence below: the commit loop can
+        re-run host_call after resetting onto main, and that must not count."""
+        self.run_call(504)
+        code, _ = self.run_call(504, same_run=True)  # the SAME run, recorded again
+        self.assertEqual(code, 0)
+        self.assertEqual(deferral_ledger.pending(self.ledger_doc())[0]["consecutive"], 1)
 
     def test_replaying_the_same_run_does_not_double_count(self):
         """The commit loop re-derives on a rejected push. Re-recording the same

@@ -83,6 +83,18 @@ stale response file, 403/404 exit non-zero and are never retried, a body with
 clears the streak, jobs are counted separately, a re-record after a rejected
 push does not double-count, a healthy run creates no ledger file, and
 `ops_status` names the deferred job rather than saying nothing.
+
+**And the test suite caught the deferral logic with its own trousers down.** The
+first push went green locally and red on Actions:
+`AssertionError: 0 == 0 : three in a row is a job hiding behind the outage
+story`. On a runner the tests inherit the job's `GITHUB_RUN_ID`, so three
+`host_call` invocations in one process shared a run key, and the ledger
+CORRECTLY read calls two and three as the rejected-push replay of call one — the
+idempotence working exactly as designed, on a test that was pretending to be
+three separate days. Fixed by giving each simulated run its own id rather than
+unsetting the variable, which keeps the replay path exercised instead of
+skipping it, plus an explicit test that two calls inside ONE run are one
+deferral. A guard whose result depends on which machine ran it is not a guard.
 ## 2026-08-12 - the filter bar "gets lost": every control boundary was under 2:1 (2.20.10)
 
 The owner's report was three words. The measurement, taken off the live page in
