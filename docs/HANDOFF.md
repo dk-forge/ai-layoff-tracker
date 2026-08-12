@@ -6,10 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **STATUS:** HELD
-- **HOLDER:** local
+- **STATUS:** FREE
+- **HOLDER:** —
 - **SINCE:** 2026-08-12
-- **WORKING ON:** 2.20.12 - the FAQPage JSON-LD total and the cite line were on two date bases under one wording; labelling both
+- **WORKING ON:** — (last: #30, 2.20.12, deployed and verified live)
 
 **Left FREE on purpose by the session behind PR #3.** That session was told not
 to push to main, and the baton only gates anything when it is ON main: a claim
@@ -122,6 +122,38 @@ entry in the log below has an UNVERIFIED line. That is not hedging; it is the
 only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
+
+## #30 - the seventh basis, in the one place a reader cannot see it (2026-08-12, 2.20.12)
+
+Picked up the item `ab4dea1` found and deliberately left for its own
+measurement: `alt_live_numbers()` is hardcoded `YEAR(layoff_date)` and feeds the
+FAQ copy, the **FAQPage JSON-LD** and the SERP meta description, while the cite
+line beside it has been on the filing basis since 2.20.4. **Measured live before
+touching anything: 479,410 in the structured data against 445,869 in the cite
+line, 33,541 apart (7.5%), both worded "so far in 2026 ... worldwide."** Both
+reconcile exactly against `/aggregate` on their respective bases, which is what
+made the diagnosis provable rather than plausible.
+
+**Kept the effective basis and labelled both, rather than converging them.**
+Reasons are in the TECHLOG entry and in the code; the short version is that the
+FAQ asks when cuts happened, the same figures are the press and report pages'
+documented floor, and this function has no request to take a basis from. The
+new test section derives its expected wording from the column the query
+actually windows on, so it pins the SQL-to-words agreement and NOT the
+decision: a later session may move the query onto the page basis and the tests
+still pass, provided the copy moves with it.
+
+Deploy green on the commit SHA; `reader_freshness.py` PASS on 2.20.12; the
+labels confirmed live in both the rendered FAQ and the JSON-LD.
+
+**What is still open in this area, unchanged by this session:** the
+at-a-glance board's cell `hrefs` carry only `from`/`to`, so a click lands on a
+filing-basis view showing a different number than the cell (needs the
+`.alt-nfilter` handler in `layoffs.js` to carry the basis, or JS and no-JS
+diverge), and `data_integrity.py`'s `HEADLINES`/`INVARIANTS` send no
+`date_basis` while their comments claim they use the page's. Also noted, not
+fixed: the SERP description rounds down to a floor against the FAQ's number but
+nothing enforces it as a floor against the hero's.
 
 ## #29 - an outside review, checked line by line, and the incident that is set to erase itself (2026-08-10)
 
