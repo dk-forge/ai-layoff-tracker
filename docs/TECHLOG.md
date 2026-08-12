@@ -1,5 +1,94 @@
 # Tech Log
 
+## 2026-08-11 - the named per-run ceiling was a label; the monthly cap was a report
+
+`ops_status.py` printed, under ACTION NEEDED:
+
+    ai-evidence-sweep spent $0.020 in one run, past its $0.015 named ceiling
+    - the per-job brake is not holding
+
+It was right, and the reason is worse than an off-by-a-few-calls overshoot.
+
+**What $0.015/run actually WAS.** `JOB_RUN_CEILINGS_USD` in `railway/spend.py`
+names a per-run ceiling for each paid job. The only route from that table to the
+brake was `apply_job_ceiling()`, which runs inside `spend.py --degrade` and
+writes `ALT_RUN_CEILING_USD` into **`$GITHUB_ENV` for the steps that follow**.
+`RUN_CEILING_USD` then read that variable **once, at import**. So the named
+number bound only where a separate workflow step had run, succeeded, and been
+able to write that file. Everywhere else - a manual dispatch, a local run, a
+guard step whose `$GITHUB_ENV` write failed (that failure is caught and printed,
+and the job then spends as normal), the Railway cron - the job silently got the
+**$0.20 global default: 13x ai-evidence-sweep's named $0.015**. The table was a
+declared expectation that `ops_status` reported against, and the enforcing code
+in the job's own process had never heard of it.
+
+**Second leak, inside the job that was named.** `ai_evidence_sweep.py` checked
+`paid_reads_enabled()` once per EVENT, and each event costs up to two model
+calls per candidate text - measured ~25 calls per event (357 calls for 14
+events on 2026-08-04). So even where the ceiling did bind, the last event
+overshot it by a whole event's worth of calls. Measured overshoot on 2026-08-07:
+$0.0196 against $0.015. That is the entire gap.
+
+**The fix.** `effective_run_ceiling_usd()` resolves the ceiling IN THE JOB'S
+PROCESS on every check: explicit `ALT_RUN_CEILING_USD` override first (an
+operator override must never be silently re-tightened), then the named table
+entry, then the global default - which is how `railway-cron`, deliberately
+absent from the table, keeps free ingest untouched. `apply_job_ceiling()` still
+exports the number for visibility; it is no longer the enforcement path. The
+sweep now checks the budget per candidate text, not per event.
+
+**A truncated run is not a clean run.** A job stopped by its ceiling used to
+exit 0 with a ledger entry shaped exactly like a job that had finished, so a
+throttled run and a run with nothing to do were indistinguishable and the $/row
+it reported was computed over an amount of work nobody could name.
+`spend.note_truncated()` records the first cause, and every `record_job_run()`
+entry now carries `complete` (always written, both ways - an absent field is an
+old entry, which is UNKNOWN, not a pass) and `truncated` (the reason), plus a
+`::warning::` in the log. The sweep additionally distinguishes **"we asked and
+the employer did not name AI"** (`''`, a verdict, printed as `keep-untagged`)
+from **"we never asked"** (`None`, budget) - collapsing the second into the
+first would publish a finding about a row nobody read.
+
+**The monthly cap is now a stop.** $10/month reached a job only through
+`ALT_PAID_READS`, written by that same `--degrade` step: same three holes, and
+it cannot cover a process the step does not precede, which is the Railway cron -
+the largest single consumer ($0.92 of the $1.46 the ledger names over 08-03..
+08-11). `spend.month_gate()` is now consulted by `paid_reads_enabled()`, which
+every paid call site in this repo already calls. One place knows month-to-date
+against the allowance.
+
+Two properties of that gate, both deliberate:
+
+* **It reads, it never arms.** `month_delta()` writes a fresh baseline when it
+  finds none and returns `0.0` as a persisted figure. On an ephemeral runner
+  that write is discarded - so a lost or not-yet-committed `spend_month.json`
+  would have made every job of the day read "$0.00 spent this month", a
+  confident zero derived from no evidence. `month_to_date_usd()` reads the
+  committed snapshot only; no baseline means UNKNOWN.
+* **UNKNOWN does not halt.** Taking the free 95% of the pipeline down because a
+  bookkeeping file could not be read is the self-inflicted outage the module
+  docstring already describes. Under UNKNOWN the per-run ceiling enforces, and
+  the fact that the month was not measured is printed and recorded.
+
+**On the second ACTION NEEDED line, honestly.** `the measured burn ($0.43/day,
+~$13/month) is above the $10.00/month allowance` is computed from the last six
+committed balance readings, and that window straddles the 2026-08-07 extraction
+model swap (`google/gemini-2.5-flash-lite`, 0.388x the incumbent's cost). Daily
+account deltas: 0.72, 0.88, 0.71, 0.65 through 08-07, then 0.26, 0.26, 0.25,
+0.34. The post-swap ACCOUNT burn is ~$0.28/day (~$8.3/month) and the account is
+shared with the sibling tracker; THIS repo's own ledger names ~$0.165/day
+(~$4.95/month) post-swap. The recurring baseline is under the cap. The overage
+in that line is a window artifact, not a standing overage - and month-to-date on
+the key could not be measured from this session (no `OPENROUTER_API_KEY` here),
+so August MTD is UNKNOWN, not "fine".
+
+Tests: `railway/tests/test_spend_ceilings_bind.py` (red before this change on
+all three properties). One pre-existing test-env leak surfaced and was fixed:
+`_LedgerSandbox._stash` restored a variable only when it had been set
+beforehand, so `apply_job_ceiling`'s own write of `ALT_RUN_CEILING_USD` leaked
+into every later test - harmless while the ceiling was frozen at import,
+a failing unrelated retry test once it went live.
+
 ## 2026-08-11 - the basis default lived in five places, and the fifth was the checker
 
 `figures_agree_with_api` had been red since 2.20.4, reporting four home-page
