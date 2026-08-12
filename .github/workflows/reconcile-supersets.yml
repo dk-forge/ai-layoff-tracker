@@ -4,6 +4,23 @@ name: Superset dedup reconciliation
 # subset of the same event's most-complete row (superset_of), so one real layoff
 # is counted once instead of double-summed. DEFAULT DRY-RUN: reports
 # jobs_before / jobs_excluded / jobs_after without writing. Pass apply=1 to write.
+#
+# WHY THIS NO LONGER SHELLS OUT TO `curl --fail-with-body` (2026-08-11).
+# /reconcile-supersets is a route on Bluehost. When the host 5xx'd for six
+# minutes on 2026-07-31 this job died red, the red run fired `ci_alert.py`, and
+# the alerter then had to reach `/alert` — on the same host that was down. One
+# outage manufacturing red runs which manufacture alerts which also fail.
+# `railway/host_call.py` resolves the call to three outcomes instead of two: a
+# host that never answered DEFERS (exit 0, counted in the committed ledger,
+# shown in `ops_status [4d]`, red on the THIRD in a row), while a real refusal —
+# wrong key, missing route, or a 2xx body reporting a failed batch — still exits
+# non-zero on the first occurrence, exactly as `--fail-with-body` did.
+#
+# SAFE TO DEFER, and this is the reason: the marking is a CLEAN-SLATE RECOMPUTE
+# (resets every mark to 0, then re-marks from the current rows). Running it
+# tomorrow is identical to running it today; a skipped day leaves the previous
+# day's marks in place, which is exactly what a red run left too — with an email
+# nobody could send attached.
 
 on:
   # Runs DAILY after the day's ingests so fresh news+WARN overlaps are deduped
@@ -26,12 +43,25 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
 jobs:
   reconcile:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      # No `pip install`: host_call.py, http_retry.py and deferral_ledger.py are
+      # stdlib-only, so the path that has to work when the host is misbehaving
+      # cannot be broken by dependency resolution.
       - name: Reconcile supersets
+        id: call
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
         run: |
           # Scheduled runs ALWAYS apply (self-maintaining dedup); manual runs use
           # the input and default to a safe dry-run report.
@@ -39,11 +69,20 @@ jobs:
           DETAIL="${{ github.event.inputs.detail }}"
           PROBE="${{ github.event.inputs.probe }}"
           if [ "${{ github.event_name }}" = "schedule" ]; then APPLY=1; fi
-          curl -sS --fail-with-body -X POST -o response.json \
-            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY&detail=$DETAIL" \
-            --data-urlencode "probe=$PROBE" \
-            -H "X-Layoff-API-Key: ${{ secrets.WP_API_KEY }}" \
-            -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+          python3 railway/host_call.py \
+            --job reconcile-supersets \
+            --url "https://asktherecruiter.com/blog/wp-json/layoffs/v1/reconcile-supersets?apply=$APPLY&detail=$DETAIL" \
+            --form "probe=$PROBE" \
+            --api-key-env WP_API_KEY \
+            --envelope deferral_envelope.json \
+            --output response.json
+
+      # Gated on the host having ANSWERED. A deferred call writes no response
+      # file on purpose, so an ungated parse would turn a quiet deferral back
+      # into a red run for the wrong reason.
+      - name: Report what changed
+        if: ${{ steps.call.outputs.outcome == 'ok' }}
+        run: |
           # A detail=1 body is one enormous JSON line, and the Actions log
           # uploader silently DROPS a line that big — the run goes green and
           # prints nothing. Print the summary, then a bounded per-company
@@ -74,3 +113,11 @@ jobs:
           for c in changed:
               print(f"  {c['id']}\t{c['company_key']}\t{c['layoff_date']}\t{c['state']}\t{c['source_type']}\t{c['job_count']}\twas={c['was']}\tnow={c['now']}")
           PY
+
+      # Costs nothing on a healthy run: a successful call against a job with no
+      # open deferral touches no file, so there is no diff and no push.
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: reconcile-supersets

@@ -1,5 +1,88 @@
 # Tech Log
 
+## 2026-08-11 - the alerter learned to hold; the jobs that talk to the same host had not
+
+`ops_status [4]` showed two workflows RED with no defect in either:
+
+    RED  Superset dedup reconciliation
+         curl: (22) The requested URL returned error: 504
+    RED  Announcement lifecycle review candidates
+         curl: (22) The requested URL returned error: 502
+
+Both are calls to routes on Bluehost. `curl --fail-with-body` resolves a host
+call to two states — got it, or dead — so a few minutes of 5xx killed the run.
+And a red run fires `ci_alert.py`, which POSTs to `/alert`, **a route on the
+host that is down**. That is the 2026-07-31 amplification loop from the other
+end: an outage manufactures red runs which manufacture alerts which also fail.
+The alerter was fixed that night by HOLDING an undeliverable alert and exiting
+0. The callers were never given the same treatment, and had been quietly wearing
+the outage as a defect ever since.
+
+**A host call now has three outcomes, not two.** `railway/host_call.py` (stdlib
+only; these workflows do no `pip install`) resolves every call to:
+
+* **ok** — exit 0, write the body, run the workflow's own parse step;
+* **DEFERRED** — the host was never reached at all (transport error, or a
+  transient status that survived every in-run retry). Exit 0. Nothing read,
+  nothing written, nothing claimed;
+* **failure** — a real answer we do not accept: 401/403, 404, any non-transient
+  status, or a **2xx body reporting its own failed batch**. Non-zero on the
+  first occurrence, unchanged. `--fail-with-body` existed so a refusal could
+  never read as a success; that is preserved exactly, and softening it was never
+  on the table.
+
+The retry lives in `railway/http_retry.py` as `call_with_retry` /
+`post_with_retry`, beside the `get_with_retry` it mirrors — that module exists
+precisely because a retry that lived in one file got re-derived by the next scan
+and drifted, and a second copy for the write side would have been that bug
+again. `import requests` there is now optional, so the module loads on a runner
+with no third-party packages at all.
+
+**The hard part is that a deferral nobody counts is a silently green job** —
+the exact failure family this week has been about (a queue nobody drained, a
+badge with no JS behind it, a coverage guard satisfiable by typing strings). So:
+
+* every deferral is written to `railway/deferral_ledger.json`, **committed**,
+  for the same reason `alert_outbox.json` is: the state is about the WordPress
+  host, so it cannot live on the WordPress host, and a runner's disk does not
+  outlive the job;
+* it is visible in **`ops_status [4d] DEFERRED HOST CALLS`**, next to `[4b]`;
+* and it **escalates**. The count is per job and consecutive; the **third in a
+  row exits non-zero** and goes red like any other broken job. These jobs run
+  daily, so `x3` means the host answered every other job for three days and not
+  this one. That is not an outage, that is a job hiding behind one.
+* A healthy run writes **nothing at all** — no file, no commit, no push — the
+  same rule that makes `alert-drain.yml` free when the outbox is empty. `git log`
+  on the ledger is a list of outages, not a heartbeat.
+
+**Both converted jobs are safe to defer, and that was checked rather than
+assumed.** The superset reconciler is a clean-slate recompute (resets every mark
+to 0, then re-marks from current rows), so tomorrow's run is identical to
+today's. The lifecycle review is read-only — it never calls `/merge-events` and
+writes no row, cursor or file — so a run that never happened leaves the system
+byte-identical. In both cases the only cost of a deferral is a day's delay,
+which is exactly what the red run cost too, with an undeliverable email attached.
+
+**Deliberately NOT converted:** every other workflow that touches the host.
+Conversion is per job and requires showing that re-running tomorrow equals
+running today; a job that is not idempotent should keep failing loudly, and
+RUNBOOK now states that bar. Nothing in `wordpress-plugin/` was touched, and
+`ci_alert.py` keeps its own stdlib transient set — folding it into `http_retry`
+would put a shared import in the one path whose whole promise is that nothing
+else can break it.
+
+**Tests that fail on the old code** (`railway/tests/test_host_call_deferral.py`):
+`ModuleNotFoundError: No module named 'deferral_ledger'` for the behavioural
+half, and against the pre-conversion workflows,
+`AssertionError: "outputs.outcome == 'ok'" not found in 'name: Superset dedup
+reconciliation…'` — a parse step that runs after a deferral would turn the quiet
+deferral straight back into a red run. Pinned: a 504 defers and exits 0, a
+transport error defers, a blip-then-answer is a pass, a deferred call leaves no
+stale response file, 403/404 exit non-zero and are never retried, a body with
+`failed: 3` exits non-zero, the third consecutive deferral goes red, a success
+clears the streak, jobs are counted separately, a re-record after a rejected
+push does not double-count, a healthy run creates no ledger file, and
+`ops_status` names the deferred job rather than saying nothing.
 ## 2026-08-12 - the filter bar "gets lost": every control boundary was under 2:1 (2.20.10)
 
 The owner's report was three words. The measurement, taken off the live page in

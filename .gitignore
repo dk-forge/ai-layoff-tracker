@@ -25,3 +25,7 @@ ai-layoff-tracker.zip
 # scratchpad dir so a stray copy can never be committed by accident.
 scratchpad/
 .worktrees/
+
+# Written by railway/host_call.py so the deferral-ledger commit loop can
+# re-derive its record after resetting onto main. Per-run, never committed.
+deferral_envelope.json

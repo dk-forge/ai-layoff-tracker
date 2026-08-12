@@ -2,6 +2,24 @@ name: Announcement lifecycle review candidates
 
 # A read-only editorial lead report. It never calls /merge-events and never
 # changes counts, sources, event IDs or publication status.
+#
+# WHY THIS NO LONGER SHELLS OUT TO `curl --fail-with-body` (2026-08-11).
+# The candidates route lives on Bluehost, so a few minutes of 502 killed this
+# run, the red run fired `ci_alert.py`, and the alerter had to reach `/alert` on
+# the same host to report it. `railway/host_call.py` gives the call its missing
+# third outcome: unreachable DEFERS (exit 0, counted in the committed ledger,
+# visible in `ops_status [4d]`, red on the THIRD in a row), while a real answer
+# we do not accept still exits non-zero immediately.
+#
+# SAFE TO DEFER: this job reads and reports. It writes nothing — no row, no
+# merge, no cursor, no file — so a run that never happened leaves the system
+# byte-identical, and tomorrow's run reports on the same (or fresher) candidates.
+# The only cost of a deferral is that a human does not see today's leads today,
+# which is precisely what the red run cost too.
+#
+# STILL LOUD, unchanged: a response whose `total_returned` disagrees with the
+# candidates it returned is the host answering with something wrong, and that
+# exits non-zero on the first occurrence.
 on:
   schedule:
     - cron: '15 17 * * *'
@@ -11,28 +29,48 @@ concurrency:
   group: announcement-lifecycle-review
   cancel-in-progress: false
 
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
 jobs:
   report:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Summarize source-preserving lifecycle candidates
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      # No `pip install`: host_call.py and its two imports are stdlib-only.
+      - name: Fetch source-preserving lifecycle candidates
+        id: call
         run: |
-          response="$(curl --fail-with-body -sS --connect-timeout 20 --max-time 90 \
-            -H 'User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
-            'https://asktherecruiter.com/blog/wp-json/layoffs/v1/announcement-lifecycle-candidates?per_page=100')"
-          printf '%s\n' "$response"
-          python3 - "$response" <<'PY'
+          python3 railway/host_call.py \
+            --job announcement-lifecycle-review \
+            --method GET \
+            --url 'https://asktherecruiter.com/blog/wp-json/layoffs/v1/announcement-lifecycle-candidates?per_page=100' \
+            --envelope deferral_envelope.json \
+            --output response.json
+
+      # Gated on the host having ANSWERED. A deferred call writes no response
+      # file on purpose, so an ungated parse would turn a quiet deferral back
+      # into a red run for the wrong reason.
+      - name: Summarize source-preserving lifecycle candidates
+        if: ${{ steps.call.outputs.outcome == 'ok' }}
+        run: |
+          cat response.json
+          echo
+          python3 - <<'PY'
           import json
           import os
-          import sys
 
           try:
-              result = json.loads(sys.argv[1])
+              with open('response.json', encoding='utf-8') as fh:
+                  result = json.load(fh)
               total = result['total_returned']
               items = result['items']
               methodology = result['methodology']
-          except (json.JSONDecodeError, KeyError, TypeError) as exc:
+          except (json.JSONDecodeError, KeyError, TypeError, OSError) as exc:
               raise SystemExit(f"Unexpected lifecycle-review response: {exc}")
           if not isinstance(total, int) or not isinstance(items, list):
               raise SystemExit("Unexpected lifecycle-review progress types")
@@ -46,3 +84,11 @@ jobs:
               summary.write(f"- Screen: {methodology['deterministic_screen']}\n")
               summary.write(f"- Safeguard: {methodology['source_safeguard']}\n")
           PY
+
+      # Costs nothing on a healthy run: a successful call against a job with no
+      # open deferral touches no file, so there is no diff and no push.
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: announcement-lifecycle-review

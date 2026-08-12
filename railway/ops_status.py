@@ -283,6 +283,53 @@ def _report_held_alerts():
     return lines
 
 
+#: Read straight off disk for the same reason as the outbox above: this file
+#: promises no dependencies and no side effects.
+_DEFERRAL_LEDGER = Path(__file__).resolve().parent / "deferral_ledger.json"
+
+#: Mirrors deferral_ledger.ESCALATE_AFTER, duplicated for that same reason.
+_DEFERRAL_ESCALATE_AFTER = 3
+
+
+def _deferral_doc():
+    import json
+
+    try:
+        doc = json.loads(_DEFERRAL_LEDGER.read_text())
+    except (OSError, ValueError):
+        return {"entries": []}
+    return doc if isinstance(doc, dict) else {"entries": []}
+
+
+def _open_deferrals():
+    return [e for e in _deferral_doc().get("entries", [])
+            if e.get("state") == "pending"]
+
+
+def _deferrals_need_a_human():
+    """One deferral is an outage and the design working. Three in a row is a job
+    hiding behind the outage story, and needs a person."""
+    return any(e.get("consecutive", 0) >= _DEFERRAL_ESCALATE_AFTER
+               for e in _open_deferrals())
+
+
+def _report_deferrals():
+    open_ = _open_deferrals()
+    if not open_:
+        return ["none — every host call got an answer"]
+    lines = [f"{len(open_)} job(s) deferred; the next scheduled run retries"]
+    for e in open_[:4]:
+        lines.append(f"  {e.get('job')}  x{e.get('consecutive', 0)}  since "
+                     f"{e.get('first_deferred_at')}  "
+                     f"{str(e.get('last_reason', ''))[:52]}")
+    if len(open_) > 4:
+        lines.append(f"  ... and {len(open_) - 4} more")
+    if _deferrals_need_a_human():
+        lines.append(f"  {_DEFERRAL_ESCALATE_AFTER}+ in a row is NOT the host having a "
+                     "bad night. -> RUNBOOK 'a job is DEFERRING'.")
+    return lines
+
+
 def _report_run_cost():
     """[2a] What the models are costing, and what that money bought.
 
@@ -791,6 +838,22 @@ def main():
     print("\n[4c] DIGEST SUBSCRIBERS  (keyed /subscriber-stats; counts only, no addresses)")
     for line in subscriber_lines():
         print(f"    {line}")
+
+    # 4d. Did anything decline to run at all because the host was unreachable?
+    #
+    # [4] shows red workflows. Until 2026-08-11 a host outage PUT them there:
+    # `curl --fail-with-body` against a 504 is a dead run, so a six-minute
+    # Bluehost window left "Superset dedup reconciliation" and "Announcement
+    # lifecycle review candidates" red with no defect in either, and the red
+    # runs fired an alerter that had to reach the same down host to say so.
+    # Those calls now DEFER and exit 0 — which is only honest if the deferral is
+    # visible somewhere, because a deferral nobody counts is a silently green
+    # job. This is that somewhere. PASS / DEFERRED / FAIL are three states.
+    print("\n[4d] DEFERRED HOST CALLS  (never reached the host — NOT a pass)")
+    for line in _report_deferrals():
+        print(f"    {line}")
+    if _deferrals_need_a_human():
+        issues.append("a job has deferred 3+ times in a row")
 
     # 5+6. Surfaces to keep current
     print("\n[5] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")

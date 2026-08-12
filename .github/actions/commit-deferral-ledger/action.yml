@@ -1,0 +1,58 @@
+name: Commit the deferral ledger
+description: >
+  Record a deferred (or newly recovered) host call in railway/deferral_ledger.json.
+  Free on a healthy run: nothing changed, nothing committed, no push.
+
+# WHY A COMPOSITE ACTION AND NOT TWENTY LINES OF BASH IN EACH WORKFLOW.
+# `railway/http_retry.py` exists because a retry that lived in one file was
+# re-derived by the next scan and drifted. Push-with-re-derive is the same kind
+# of thing: subtle, easy to copy slightly wrong, and wrong in a way that is
+# invisible until a race happens. One definition.
+
+inputs:
+  job:
+    description: 'Ledger key — must match the --job passed to host_call.py'
+    required: true
+  envelope:
+    description: 'Path host_call.py wrote its record to (untracked; survives a reset)'
+    required: false
+    default: 'deferral_envelope.json'
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -uo pipefail
+        cd "$GITHUB_WORKSPACE"
+        git config user.name  'ai-layoff-tracker-bot'
+        git config user.email 'bot@users.noreply.github.com'
+
+        for attempt in 1 2 3 4 5; do
+          git add railway/deferral_ledger.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "The deferral ledger is unchanged — nothing to record."
+            exit 0
+          fi
+          git commit -q -m "defer: ${{ inputs.job }} $(date -u +%Y-%m-%dT%H:%MZ)"
+          if git push origin HEAD:main; then
+            echo "Recorded on attempt $attempt."
+            exit 0
+          fi
+          # Re-derive rather than replay a JSON diff: reset onto main and record
+          # the envelope again. `record_deferral` is idempotent in the run key,
+          # so a race costs a retry and never an inflated streak.
+          echo "Push rejected (attempt $attempt) — re-deriving on current main."
+          git fetch origin main
+          git reset --hard origin/main
+          if [ -f "${{ inputs.envelope }}" ]; then
+            python3 railway/deferral_ledger.py record --envelope "${{ inputs.envelope }}" || true
+          fi
+          sleep $((attempt * 5))
+        done
+
+        # The one loud case: the call deferred AND the deferral could not be
+        # written down. A deferral nobody counts is a silently green job, which
+        # is the whole defect this change exists to close.
+        echo "::error::Could not record the deferral ledger after 5 attempts."
+        exit 1

@@ -15,8 +15,10 @@ its actual failing assertion** `[4]`, and lists the 4 surfaces. Exit 0 = healthy
 verified; exit 2 = a human is needed — either a source broke (→ RUNBOOK "a data
 source broke"), **a data-integrity check is FAILING** (→ RUNBOOK "a data-integrity
 check is failing", and do that one FIRST: a stale source is data we have not
-gathered, a failing invariant is a wrong number already published), **or a workflow
-is red**. Exit 3 = something could not be checked from this environment, so that
+gathered, a failing invariant is a wrong number already published), **a workflow
+is red, or a job has DEFERRED three times running** (`[4d]` — a call the host
+never answered exits 0 and is counted, but three in a row is not an outage; →
+RUNBOOK "a job is DEFERRING"). Exit 3 = something could not be checked from this environment, so that
 part is **UNKNOWN, not clear** — never treat a run that could not check as a pass.
 Section `[4]` needs the `gh` CLI; without it (or without auth) it prints UNKNOWN
 and exits 3 rather than implying green.

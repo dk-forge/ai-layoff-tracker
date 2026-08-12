@@ -75,6 +75,61 @@ read the diagnostics (they log the raw API status) before trusting live output.
 
 ## "X is broken" playbooks
 
+**A job is DEFERRING (and what three in a row means)**
+`ops_status.py` section `[4d]` listed a job as deferred, or a workflow run
+printed `DEFERRED: <job> could not reach the host`.
+
+**What it means.** The job never got an answer from the WordPress host — a
+transport error, or a transient status (502/503/504 and friends) that survived
+every in-run retry. Nothing was read and nothing was written. The run exits 0
+because a host that never answered is not a job that failed: `/alert` is a route
+on that same host, so a red run here fires an alerter that cannot deliver, which
+is how one six-minute Bluehost window on 2026-07-31 manufactured red runs in the
+sibling tracker and four failed alerts on top of them.
+
+**It is not a pass either.** That is what section `[4d]` is for. The deferral is
+counted in `railway/deferral_ledger.json` (committed, because state about the
+host cannot live on the host), and the count is per job and consecutive.
+
+| What you see | What to do |
+|---|---|
+| One job, `x1` | Nothing. Check `[1]` in the same run — if the live tracker was unreachable too, the host had a bad few minutes and the next scheduled run picks it up. |
+| Several jobs, `x1`, same window | A host outage. The sibling repo's `host-watch.yml` opens one issue on a sustained one. Still nothing to do here. |
+| One job, `x3` or more | **A human is needed.** The run went red on the third and mailed you. |
+
+**Three in a row is not an outage.** These jobs run daily, so `x3` means the
+host was reachable by every other job for three days and this one still never
+got an answer. Look for a cause that is specific to this job, in this order:
+
+1. **Is the route still there?** `curl -sS -o /dev/null -w '%{http_code}\n'` the
+   URL in the workflow. A 404 would be a FAILURE, not a deferral, so a 404 in
+   your hand means the URL never resolved at all in the run — check the host
+   part of it, and whether egress from the runner is the actual problem.
+2. **Is it a timeout rather than an outage?** A job whose response grew past
+   `--timeout` (default 90s) defers forever while every other job is fine. Raise
+   the timeout in the workflow, or bound the response (`per_page`, `detail=`).
+3. **Is the host rate-limiting or ModSecurity-blocking this specific call?**
+   Reproduce with the exact `User-Agent` (`AiLayoffTracker/1.0 (+…)`), which
+   `host_call.py` always sends.
+
+**Once fixed**, just let it run — the next successful call clears the streak and
+commits the resolution. To clear it by hand:
+`python3 railway/deferral_ledger.py record --job <job> --state success`.
+`python3 railway/deferral_ledger.py status` prints the same thing `[4d]` does,
+and exits 2 when something has hit three.
+
+**What a deferral never covers.** A real answer from the host is still a red run
+on the FIRST occurrence: a wrong key (401/403), a missing route (404), any
+non-transient status, and a 2xx body that reports its own failed batch. None of
+those gets better by waiting, and softening them was never the point.
+
+**Converting another workflow to defer** is per job and is not automatic. The
+bar is: re-running it tomorrow must be equivalent to running it today. The two
+converted so far clear it for different reasons — `reconcile-supersets` is a
+clean-slate recompute (resets every mark, then re-marks), and
+`announcement-lifecycle-review` writes nothing at all. A job that appends,
+advances a cursor, or spends money on work it would have to redo does NOT clear
+it, and should keep failing loudly.
 **The month's budget is spent - what happens now**
 `ops_status.py [2a]` shows month-to-date at or past the stop line, or a job log
 carries `::warning::spend: the $10.00 monthly cap is spent`.
