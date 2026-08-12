@@ -360,11 +360,27 @@ class EveryTotalSaysWhichQuestionItAnswers(unittest.TestCase):
     def test_the_board_footnote_follows_the_toggle(self):
         """On the effective basis the board and the headline agree, so the
         "different questions" wording would then be false. The JS carries both
-        and picks by DATE_BASIS."""
-        nar = strip_js_comments(jsrun.extract("updateNarrative"))
-        self.assertIn("DATE_BASIS === 'effective'", nar,
+        and picks by DATE_BASIS.
+
+        The two sentences moved out of updateNarrative() into boardBasisNote()
+        in 2.20.12, which is what let renderBasisCopy() rewrite the line without
+        refetching four periods. Carrying both and picking by DATE_BASIS is the
+        invariant, not which function holds the literal, so this now reads the
+        helper AND holds the wiring that made the move worth doing: the paint
+        calls it, and the single basis writer calls it too."""
+        note = strip_js_comments(jsrun.extract("boardBasisNote"))
+        self.assertIn("DATE_BASIS === 'effective'", note,
                       "the board footnote does not vary with the active basis")
-        self.assertIn("the same basis as the headline figure above", nar)
+        self.assertIn("the same basis as the headline figure above", note)
+        self.assertIn("counts by filing date", note,
+                      "the board footnote has lost the wording for the filed basis")
+        nar = strip_js_comments(jsrun.extract("updateNarrative"))
+        self.assertIn("boardBasisNote()", nar,
+                      "the board no longer paints its basis line from the one helper")
+        self.assertIn("boardBasisNote()", strip_js_comments(jsrun.extract("renderBasisCopy")),
+                      "a basis switch no longer rewrites the board's basis line, so the "
+                      "board can sit saying the two totals are not meant to match at the "
+                      "moment they do")
 
 
 # --------------------------------------------------------------------------

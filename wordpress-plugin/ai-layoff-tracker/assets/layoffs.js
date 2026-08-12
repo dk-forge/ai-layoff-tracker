@@ -855,6 +855,30 @@
     };
     function basisCopy() { return BASIS_COPY[DATE_BASIS] || BASIS_COPY.notice; }
 
+    /*
+      THE SIGNAL BOARD'S BASIS LINE, in one place because two places drift.
+
+      The board is a THIRD total and it says so. Its columns are fixed periods,
+      it follows the region tabs only, and it counts on the EFFECTIVE date and
+      always has. That was harmless while the headline did too and is not
+      harmless now that the headline defaults to the filing basis: two correct
+      totals sitting inches apart on different bases, with neither saying so.
+      So this line names the basis and, when the headline is on the other one,
+      says in plain words that the two answer different questions.
+
+      It is a function rather than a literal inside updateNarrative() because a
+      basis change has to rewrite it and must not have to refetch four periods
+      to do it. renderBasisCopy() swaps this sentence in place; updateNarrative()
+      paints it on a full repaint. One sentence, two callers, no copy of it.
+      page-tracker.php ships the notice-basis half server-rendered, marked with
+      the same alt-sb-foot-basis class, and this is what replaces it.
+    */
+    function boardBasisNote() {
+        return DATE_BASIS === 'effective'
+            ? 'Every row counts verified events on the day each cut takes effect, the same basis as the headline figure above.'
+            : 'Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.';
+    }
+
     // One writer for the basis state: the closure variable, the segmented
     // switch's visual and aria state, and every caption that names the basis.
     // Three callers (URL restore, the toggle click, init) used to do parts of
@@ -883,6 +907,16 @@
         document.querySelectorAll('.alt-datebasis-opt').forEach(function (x) {
             var key = x.getAttribute('data-basis') === 'notice' ? 'notice' : 'effective';
             x.setAttribute('title', BASIS_COPY[key].toggleTitle);
+        });
+        // The board's footnote is a caption that names the basis too, and it
+        // was the one caption a basis change did not reach: refreshAll() does
+        // not repaint the board, so switching to the effective basis left the
+        // board saying the two totals "are not meant to match" at the exact
+        // moment they did. Swapped in place, with no refetch: the board's four
+        // period queries do not depend on the page's basis, only this sentence
+        // does. Server-rendered first paint carries the same class.
+        document.querySelectorAll('.alt-sb-foot-basis').forEach(function (x) {
+            x.textContent = boardBasisNote();
         });
     }
     function currentParams() {
@@ -5034,12 +5068,24 @@
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var b = function (v) { return '<b>' + v + '</b>'; };
             var cols = { today: 'Today', week: 'This week', month: 'This month', ytd: y + ' YTD' };
+            // EVERY CELL LINK NAMES THE BASIS THE CELL WAS COUNTED ON. P sends
+            // no date_basis, so the server counts these four periods on its own
+            // default column, layoff_date, the effective date. The page they
+            // link into defaults to the filing basis (DATE_BASIS), so a link
+            // naming only the period recounted the same days on a different
+            // column and showed a different number than the one just tapped.
+            // Byte-identical to $alt_sb_meta in page-tracker.php, including the
+            // fallback: read the basis off the period's own params so a future
+            // board that names one carries that instead. P itself is NOT
+            // touched - it must stay byte-identical to alt_signal_board_periods()
+            // or bootParamsMatch rejects the inlined board.
             var meta = {};
             KEYS.forEach(function (k) {
                 var p = P[k];
+                var mb = p.date_basis || 'effective';
                 meta[k] = p.years
-                    ? { href: '?years=' + p.years, data: ' data-years="' + p.years + '"' }
-                    : { href: '?from=' + p.from + '&amp;to=' + p.to, data: ' data-from="' + p.from + '" data-to="' + p.to + '"' };
+                    ? { href: '?years=' + p.years + '&amp;date_basis=' + mb, data: ' data-years="' + p.years + '" data-date-basis="' + mb + '"' }
+                    : { href: '?from=' + p.from + '&amp;to=' + p.to + '&amp;date_basis=' + mb, data: ' data-from="' + p.from + '" data-to="' + p.to + '" data-date-basis="' + mb + '"' };
             });
             // "Today and this month identical" (the 1st of the month) survives
             // as equal-column styling, never as duplicate columns.
@@ -5105,13 +5151,10 @@
               different questions and are not meant to match.
             */
             var foot = '<ul class="alt-sb-foot">'
-                + '<li>' + (DATE_BASIS === 'effective'
-                    ? 'Every row counts verified events on the day each cut takes effect, the same basis as the headline figure above.'
-                    : 'Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.')
-                + '</li>'
+                + '<li class="alt-sb-foot-basis">' + boardBasisNote() + '</li>'
                 + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
                 + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
-                + '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
+                + '<li>Tap any number to filter the page to that period, counted the same way this board counts it. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
                 + '</ul>';
             // Post-sized rewrite for the copy button: X counts any URL as 23
             // characters, and the weekly detail degrades in steps (with
@@ -5170,6 +5213,33 @@
                     writeControl('alt-f-years', [a.getAttribute('data-years')]);
                     writeControl('alt-f-from', '');
                     writeControl('alt-f-to', '');
+                }
+                /*
+                  THE TAP CARRIES THE BASIS, OR THE TWO PATHS DIVERGE.
+
+                  The href on this cell names date_basis, so a reader with no JS
+                  (or one who opens the cell in a new tab) lands on a view
+                  counted the way the board counted it. This handler
+                  preventDefault()s that href, so without the same three lines
+                  the JS path would filter the period and leave DATE_BASIS on
+                  the page default, and the same cell would produce two
+                  different numbers depending on whether JS ran.
+
+                  Through setDateBasis(), not by assigning DATE_BASIS: it is the
+                  single writer for the closure state, the segmented switch's
+                  visual and aria state, and every caption that names the basis,
+                  including the board footnote below. currentParams() then writes
+                  date_basis into the request AND, through syncUrlFromFilters(),
+                  into the address bar, so the URL this tap produces is the href
+                  it suppressed.
+
+                  Basis is not a filter and does not narrow anything, so a cell
+                  that carries no data-date-basis (the largest-event company
+                  fallback) leaves the reader's basis exactly as it was.
+                */
+                var cellBasis = a.getAttribute('data-date-basis');
+                if ((cellBasis === 'notice' || cellBasis === 'effective') && cellBasis !== DATE_BASIS) {
+                    setDateBasis(cellBasis);
                 }
                 updateRangeLabel();
                 updateDropdownSummaries();

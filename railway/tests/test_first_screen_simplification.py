@@ -454,9 +454,17 @@ class BoardTests(unittest.TestCase):
 
     def test_the_footnote_is_four_clauses_not_one_sentence(self):
         for src, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
-            foot = src[at(src, "alt-sb-foot"):]
+            # Anchor on the opening tag, not on the class name: layoffs.js
+            # names `.alt-sb-foot-basis` earlier, in renderBasisCopy, and a
+            # bare-substring anchor started the slice there and swept in an
+            # unrelated list.
+            foot = src[at(src, '<ul class="alt-sb-foot">'):]
             foot = foot[: foot.index("</ul>")]
-            self.assertEqual(4, foot.count("<li>"),
+            # `<li`, not `<li>`: the basis clause carries a class now
+            # (alt-sb-foot-basis, so renderBasisCopy can rewrite that one
+            # sentence in place on a basis switch). The bar being held here is
+            # four separate clauses, not four attribute-free tags.
+            self.assertEqual(4, foot.count("<li"),
                              "%s no longer splits the footnote" % where)
         self.assertNotIn("Verified events, counted the day each cut takes effect; the AI row",
                          TEMPLATE)

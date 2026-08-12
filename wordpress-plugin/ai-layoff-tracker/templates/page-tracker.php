@@ -265,13 +265,34 @@ $alt_hero_basis  = 'counted by filing date';
             && (int) ($alt_tt['jobs'] ?? 0) === (int) ($alt_mt['jobs'] ?? -1)
             && (int) ($alt_tt['entries'] ?? 0) === (int) ($alt_mt['entries'] ?? -1)
             && (string) ($alt_tl['company_name'] ?? '') === (string) ($alt_ml['company_name'] ?? '');
+        // EVERY CELL LINK NAMES THE BASIS THE CELL WAS COUNTED ON, for the same
+        // reason the report page's receipt links do (page-report.php, 2.20.11).
+        // The board's period queries send no date_basis, so the server counts
+        // them on its own default column, layoff_date, the EFFECTIVE date. That
+        // is deliberate and the footnote below says so. Since 2.20.4 the tracker
+        // this cell links INTO defaults to the filing basis, so a link naming
+        // only the period opened a view that recounted the same days on a
+        // different column and published a different number than the one the
+        // reader had just clicked. The link is a receipt or it is nothing.
+        //
+        // Read off the board's own params rather than hardcoded, so a future
+        // board that does name a basis carries that one instead. The params
+        // themselves are NOT touched: they must stay byte-identical to P in
+        // layoffs.js (bootParamsMatch/takeBoot) or the inlined board is rejected
+        // and repainted with four live fetches.
+        //
+        // No new bootstrap suppression: date_basis sits in $alt_boot_url_filters
+        // above, but so do from/to AND years, so every href here already
+        // suppressed the inline payload before this param joined it.
         $alt_sb_meta = array();
         foreach ($alt_cols as $alt_ck => $alt_cl) {
             $alt_bp = $alt_board[$alt_ck]['params'];
+            $alt_sb_basis = isset($alt_bp['date_basis']) ? (string) $alt_bp['date_basis'] : 'effective';
             $alt_sb_meta[$alt_ck] = isset($alt_bp['years'])
-                ? array('href' => '?years=' . rawurlencode($alt_bp['years']), 'data' => ' data-years="' . esc_attr($alt_bp['years']) . '"')
-                : array('href' => '?from=' . rawurlencode($alt_bp['from']) . '&amp;to=' . rawurlencode($alt_bp['to']),
-                        'data' => ' data-from="' . esc_attr($alt_bp['from']) . '" data-to="' . esc_attr($alt_bp['to']) . '"');
+                ? array('href' => '?years=' . rawurlencode($alt_bp['years']) . '&amp;date_basis=' . rawurlencode($alt_sb_basis),
+                        'data' => ' data-years="' . esc_attr($alt_bp['years']) . '" data-date-basis="' . esc_attr($alt_sb_basis) . '"')
+                : array('href' => '?from=' . rawurlencode($alt_bp['from']) . '&amp;to=' . rawurlencode($alt_bp['to']) . '&amp;date_basis=' . rawurlencode($alt_sb_basis),
+                        'data' => ' data-from="' . esc_attr($alt_bp['from']) . '" data-to="' . esc_attr($alt_bp['to']) . '" data-date-basis="' . esc_attr($alt_sb_basis) . '"');
         }
         $alt_sb_head = '<div class="alt-sb-row alt-sb-headrow" role="row"><span class="alt-sb-label" role="columnheader"><span class="screen-reader-text">Measure</span></span>';
         foreach ($alt_cols as $alt_ck => $alt_cl) {
@@ -348,10 +369,17 @@ $alt_hero_basis  = 'counted by filing date';
             // wording. layoffs.js swaps it for the matching-basis wording the
             // moment a reader toggles to the effective basis. See the comment
             // on the same footnote in updateNarrative().
-            . '<li>Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
+            // The class is how renderBasisCopy() finds this line again: a
+            // reader who switches the basis after load gets this one sentence
+            // rewritten in place, with no board refetch. See there.
+            . '<li class="alt-sb-foot-basis">Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
             . '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
             . '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
-            . '<li>Tap any number to filter the page to that period. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
+            // "and counted the same way" is not decoration: the tap now carries
+            // the board's basis into the page, so the filtered view reproduces
+            // the number that was tapped instead of recounting it by filing
+            // date. The copy says what the link does.
+            . '<li>Tap any number to filter the page to that period, counted the same way this board counts it. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
             . '</ul>';
         $alt_board_html = '<div class="alt-narrative-head"><span>Verified layoffs worldwide · <b>' . esc_html(date_i18n('M j')) . '</b></span>'
             . '<button type="button" class="alt-btn alt-btn-sm alt-narrative-copy" title="Copy a post-sized version of this summary (fits in one X/Twitter post)">Copy as post</button></div>'

@@ -1,5 +1,108 @@
 # Tech Log
 
+## 2026-08-12 - the board's cells linked to a page that recounted them, and the tap and the link had to learn the same thing (2.20.14)
+
+The entry below listed the at-a-glance board's cell links as found and not
+fixed. This is that fix, and the reason it was deferred rather than folded in:
+the board renders twice and only one of the two renders is a link.
+
+**What a reader got.** The board (Today / This week / This month / YTD) counts
+on the EFFECTIVE date. That is deliberate, it is disclosed in the board's own
+footnote, and `test_date_basis_default.py::test_the_board_says_it_answers_a_
+different_question` pins it. Its cell hrefs carried `from`/`to` and nothing
+else, and since 2.20.4 the tracker they link into DEFAULTS to the filing basis.
+So the cell was a number and the link was a different number. Measured live on
+the origin at 2026-08-11, cell first, landing view second:
+
+| Cell | Board shows | The link opened | Gap |
+|---|---:|---:|---:|
+| Today, workers | 1,366 | 1,363 | -3 |
+| This week, workers | 14,162 | 13,071 | -1,091 |
+| This month, workers | 37,781 | 35,352 | -2,429 |
+| YTD, workers | 479,037 | 460,660 | **-18,377** |
+| YTD, verified layoffs | 2,699 | 2,667 | -32 |
+
+Nothing on the landing page accounted for the change. This is the same defect
+class as the report and press pages' receipt links (fixed in 2.20.11): a figure
+that links to the rows behind it, opening a view that counts a different way.
+
+**Both paths, or the same cell means two things.** The href is what a reader
+without JS follows, and what a middle-click, an "open in new tab" and a crawler
+follow. The `.alt-nfilter` click handler `preventDefault()`s that href and
+applies the cell's `data-*` attributes to the page's own controls instead. Fix
+only the href and the JS path keeps the old wrong number. Fix only the handler
+and every no-JS reader keeps it. So: `$alt_sb_meta` (page-tracker.php) and its
+byte-identical twin in `updateNarrative()` both name `date_basis` in the href
+and in a new `data-date-basis`, and the handler reads it and goes through
+`setDateBasis()`.
+
+**Through `setDateBasis()`, and validated.** `setDateBasis` is the single writer
+for the closure state, the segmented switch's visual and aria state and every
+caption that names the basis; assigning `DATE_BASIS` directly would leave the
+switch showing one basis beside numbers counted on the other, which is the
+defect family this whole line of work exists to remove. The attribute is markup
+and markup is data, so anything that is not `notice` or `effective` is ignored
+rather than applied: `currentParams()` writes `DATE_BASIS` straight into the API
+request AND into the address bar, and `alt_db_date_col()` falls through to
+`layoff_date` on an unrecognised value, so an unvalidated attribute would
+publish a URL whose basis param named something the page had not done.
+
+**The basis is READ OFF the board's params, not hardcoded.** `effective` is the
+fallback because the params name no basis and the server's own default column is
+`layoff_date`. A board that ever does name one carries that one into its links,
+or this fix becomes the next version of the same bug.
+
+**The params were NOT touched, and that was the thing to get wrong.**
+`alt_signal_board_periods()` and `P` in layoffs.js must stay byte-identical or
+`bootParamsMatch`/`takeBoot` reject the server-inlined board and every first
+paint silently becomes four extra REST calls. Adding `date_basis` to the period
+params would have produced correct links and paid for them on every page load.
+The basis rides on the link.
+
+**No new bootstrap suppression.** `date_basis` is one of
+`$alt_boot_url_filters`, so a href carrying it skips the inlined first paint.
+That costs nothing here and the test says why rather than leaving it to be
+re-derived: `from`, `to` AND `years` are in that list too, so every board href
+already suppressed the bootstrap before this param joined it. The `years=`
+branch is checked as well, even though all four periods are `from`/`to` shaped
+today, because a basis added to one branch of a two-branch builder comes back
+the day the other branch is used again.
+
+**One thing found while wiring it, and fixed here because this change caused
+it.** `refreshAll()` does not repaint the board, so a basis switch never
+reached the board's footnote: switching to the effective basis left it saying
+the two totals "are not meant to match" at the exact moment they did. Harmless
+while only the toggle could switch the basis, and not harmless once a cell tap
+does. The two sentences moved out of `updateNarrative()` into `boardBasisNote()`
+and `renderBasisCopy()` (already "every caption that names the basis") swaps
+that one line in place, with no refetch: the board's four period queries do not
+depend on the page's basis, only the sentence does. The server render marks the
+same line with `alt-sb-foot-basis`. `test_the_board_footnote_follows_the_toggle`
+now reads the helper and additionally holds both call sites, since carrying both
+wordings and picking by `DATE_BASIS` is the invariant, not which function holds
+the literal.
+
+The footnote's fourth clause also changed, because it described the old
+behaviour accurately: "Tap any number to filter the page to that period" is now
+"...to that period, counted the same way this board counts it".
+
+`test_board_link_basis.py` is new. Both renderers are RUN, not read: the PHP
+meta builder is lifted out of the template and executed under php with the
+escapers stubbed, and the JS meta builder and the onclick body are lifted out of
+layoffs.js and executed in node with the real `setDateBasis` and
+`currentParams`. One test compares the two renderers' output character for
+character; another takes the cell's own `data-*`, clicks it, and compares the
+resulting `currentParams()` against the href that click suppressed. 8 of its 15
+tests fail on the pre-change tree; the other 7 are named in the file as
+regression bars.
+
+**Rebased onto 2.20.13.** This was measured and written against `ab4dea1` and
+landed after two other sessions' entries below, so the numbers in the table
+above are the 2026-08-11 origin reads, not post-2.20.13 ones; the defect and
+the code paths are unchanged by either. `alt_live_numbers()`, which the entry
+below listed beside this one, was fixed in 2.20.12. **Still open from that
+list:** `data_integrity.py`'s `HEADLINES`/`INVARIANTS`, `recall_precision`, and
+the CSV export's missing `announcement_date` column.
 ## 2026-08-12 - the seventh place was the structured data, and it is the one a search engine quotes without the page (2.20.12)
 
 `ab4dea1` found this and deliberately left it for its own measurement, because
