@@ -393,6 +393,36 @@ def _quote(s):
     return "> " + " ".join((s or "").split())
 
 
+def own_flags(row):
+    """The row's OWN discrepancies, minus the one every row in a contested entry carries."""
+    return [f for f in row["flags"] if "different tracker rows" not in f]
+
+
+def contested_summary(rows):
+    """Per-ROW attribution for an entry where several rows contest one filing.
+
+    The flags of two rows must never be pooled into one sentence. On 2026-08-12
+    the Dow entry's summary line read "we hold 138, the filing states 4500;
+    SOURCE is 'news'; the URL we cite is not an EDGAR archive path" — every word
+    true of row 149592 and none of it true of row 149616, which held the 4,500
+    and cited the gold accession. The detail block said so; the line above it,
+    which is what a reader scans 29 times, described the entry by its worst row
+    and the event was rejected as a miss we do not hold. A row with nothing
+    against it is stated as such, by id, and is never summarised away.
+    """
+    parts = []
+    for row in rows:
+        eid = row.get("tracker_event_id")
+        own = own_flags(row)
+        if own:
+            parts.append(f"row {eid}: " + "; ".join(f.split(":")[0] for f in own))
+        else:
+            parts.append(f"row {eid}: NO discrepancy — count, dates, name and "
+                         "accession all line up")
+    return (f"**{len(rows)} rows contest this filing, at most one is it** — "
+            + " | ".join(parts))
+
+
 def tier(entry):
     """A description of HOW MUCH there is to check, never of what to conclude.
 
@@ -400,6 +430,8 @@ def tier(entry):
     every fact lines up is fast to verify and may still be wrong; an entry where
     two rows contest one filing is slow to verify and may still be right.
     """
+    if len(entry["rows"]) > 1:
+        return contested_summary(entry["rows"])
     if entry["weight"] >= HARD:
         return ("**two things may be conflated** — " +
                 "; ".join(f for r in entry["rows"] for f in r["flags"]

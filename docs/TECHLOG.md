@@ -801,6 +801,128 @@ may move it.
 `matched_floor` inside the canonical measurement, which only a re-measure may
 do. Left alone deliberately; it pre-dates this change and is not caused by it.
 
+
+## 2026-08-12 - the Dow rejection was right about row 149592 and wrong about the event: we hold the 4,500, and the sheet's index line is why nobody saw it (docs + railway, no data change, no deploy)
+
+**Nothing here changes a row, the gold set, `recall_adjudications.json` or the
+published figure. It stays 52/57 = 91.2% until a person decides otherwise.** The
+one thing this entry asks for is a re-adjudication, and the command is at the
+bottom for the owner to run or not.
+
+Two questions came out of that rejection. Both are answered, and the answers go
+in opposite directions.
+
+### The 138 is not a mangled 4,500. It is a real 138.
+
+Row 149592 (row id 176859) cites a Google News redirect; the archived original
+is `apdnoticies.com`, 2026-08-02, and it is about the Diputació de Tarragona:
+
+> The ordinary July plenary session of the Diputació de Tarragona has approved
+> an institutional declaration to defend the jobs at Dow Tarragona and support
+> the Tarragona petrochemical complex being recognized by the European Union as
+> a Critical Chemical Site.
+
+> The agreement comes after the staff reduction announced by the multinational
+> in June and highlights a paradox in the territory's main chemical hub.
+
+**The article never states 4,500, or any number other than 138** (its only other
+figures are 1.6 million euros of council credit). So this is not the
+first-number rule mis-firing on a "138 roles, part of a 4,500 person reduction"
+sentence — there is no such sentence to mis-read. `_count_in_text` and the
+first-number rule are untouched, there is no blast radius to measure, and
+nothing here argues for loosening either. The 138 is independently corroborated:
+ERM factsheet 300507 records **Dow Chemical (Spain), 138** for the same cut,
+alongside 605 in the Netherlands and 110 in Germany. A 4,500-role global plan
+and a 138-job Tarragona site record are both true, and the tracker holds both.
+
+### The 4,500 was never lost. It is stored, it is 8-K sourced, and it was in the sheet.
+
+Classified the way the talent gap map classifies: **not** never-fetched, **not**
+fetched-then-rejected, **not** extracted-then-dropped. Event **149616** (row id
+176883) is live on `/query` right now — `Dow Inc.`, **4,500**, announced and
+effective 2026-01-29, `source_type: 8K`, citing
+`.../000175178826000009/dow-20260126.htm`, the gold set's own accession, with
+the filing's own sentence as its excerpt. The collector did its job. The loss is
+at the **adjudication** step, and it is a sheet-design defect, not a judgment
+one.
+
+The Dow block in the sheet said the right thing. Under "Our row 176883 (event
+149616)" it printed *count matches the filing exactly*, *announcement date is
+the filing date*, *we cite the gold set's own filing, accession for accession*.
+But the 29-line index table above it — the part a reader scans — said:
+
+    28 | DOW INC. | 2026-01-29 | 4,500 | 149592, 149616 | two things may be
+    conflated - COUNT differs by -4362: we hold 138, the filing states 4500;
+    SOURCE is 'news', not the 8-K; the URL we cite is not an EDGAR archive path
+
+Every clause is true of 149592 and false of 149616, and no row id appears in the
+line. `tier()` pooled the flags of every proposed row into one sentence and then
+truncated it at 180 characters, so an entry was described by its worst row and
+the clean row was summarised out of existence. The rejection reason recorded on
+the event — "we hold 138 jobs against a 4,500 job event, sourced from news
+rather than the 8-K, citing a non-EDGAR URL" — is that index line, clause for
+clause.
+
+**Blast radius: exactly two of the 29 entries had more than one proposed row,
+and in both the second row was the clean one.** EnerSys survived it (the accept
+correctly named 149911, and the entry's own text carried the fix). Dow did not.
+Two for two on the shape; one for two on the outcome.
+
+### The fix is to the sheet, not to the gate
+
+`recall_adjudication_pack.tier()` now attributes per ROW where several rows
+contest one filing: every proposed row is named by id, and a row with no
+discrepancy of its own is stated as such rather than absorbed. The Dow line
+becomes
+
+    **2 rows contest this filing, at most one is it** - row 149592: COUNT
+    differs by -4362; SOURCE is 'news', not the 8-K; the URL we cite is not an
+    EDGAR archive path; we hold no announcement_date | row 149616: NO
+    discrepancy - count, dates, name and accession all line up
+
+`railway/tests/test_recall_adjudication_pack_summary.py` pins it against the
+real Dow pair: every contesting row named by id, nothing said about one row
+leaking onto the other, order-independent, and single-row entries unchanged.
+Three of the five fail on the old code. The gate itself is not touched — a
+machine still cannot write `matched`, and this entry does not write one.
+
+The committed sheet is **deliberately not rebuilt here**. It is a build artefact
+of a completed adjudication, its own header says to rebuild before deciding, and
+regenerating it re-fetches live rows and live EDGAR, which would move an
+artefact for no reason in a PR about a summary line.
+
+### Recoverable, and what it would take
+
+Fully, with no import and no correction: the row exists at the exact stated
+count. **Nothing needs `/bulk-purge`** — no job count changes. What it takes is
+a person re-deciding, which is two commands and moves the figure to 53/57 =
+93.0%:
+
+```
+python3 railway/recall_adjudicate.py --revert sec-205-0001751788-26-000009 \
+    --reviewed-by 'Dakotta' \
+    --reason 'the reject described row 149592 only; re-deciding on 149616'
+python3 railway/recall_adjudicate.py --accept sec-205-0001751788-26-000009 \
+    --reviewed-by 'Dakotta' --event-ids 149616 \
+    --reason 'event 149616 holds the filing exact 4,500, announced 2026-01-29, source_type 8K, citing accession 0001751788-26-000009. Row 149592 is a separate 138-job Tarragona cut and is NOT this event.'
+```
+
+Named on 149616 alone, not on both: 149592 is a different event and belongs in
+`rejected_candidate_event_ids`, where it already is. **This session did not run
+either command.** The manifest's `match_notes` also still says "None represents
+the 4,500-role global plan", which was true when it was written and is not true
+now; whoever re-adjudicates should correct that sentence in the same pass.
+
+**One observation, not acted on:** ERM event 34673 (Dow Chemical, Spain, 138,
+2026-06-03) and news event 149592 (Dow, Spain, 138, effective 2026-08-01) look
+like the same Tarragona cut held twice at two dates. That is a supersets
+question, not a recall one, and it is left for the reconciler.
+
+Four surfaces unchanged: no collector added, removed or blocked, no row written,
+no deploy.
+
+---
+
 ## 2026-08-12 - company-watchlist: measurement only. It grows, it reports green, it has produced one row, and every run we can price was cut off before it finished (no code change, no deploy)
 
 `ops_status.py` reads `company-watchlist  6 runs  $0.0301/run  0 rows  bought 0`.
