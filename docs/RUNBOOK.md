@@ -310,6 +310,22 @@ being served.
    Compare that `ver=` against `/wp-json/layoffs/v1/status`, which is
    deliberately no-store and therefore the origin's own answer.
 
+   **And read the build stamp, which is the half a version number cannot tell
+   you.** The page carries `<!-- alt-build ver=X build=Y -->`, emitted by
+   `alt_template()` from a hash of the plugin's own files at render time, and
+   `/status` reports the same hash for the bytes on disk now:
+   ```bash
+   grep -o 'alt-build ver=[0-9.]* build=[0-9a-f]*' /tmp/p.html
+   curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+     'https://asktherecruiter.com/blog/wp-json/layoffs/v1/status'
+   ```
+   Same version, different build, is the **2.20.21 shape**: a page rendered
+   while FTPS was still uploading, so the file carrying `ALT_VERSION` had landed
+   and a template had not, and the page cache stored the result. That page is
+   at the ORIGIN (WP Super Cache), which is the one layer a deploy can purge:
+   bump the version and let `alt_flush_caches_on_deploy()` fire. Confirm with
+   the `--resolve` command in step 2 before assuming which layer holds it.
+
 2. **Establish which layer is stale.** There are three, and they fail
    differently:
 

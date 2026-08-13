@@ -704,6 +704,12 @@ function alt_api_status_get() {
     $last = (int) get_option('alt_last_write', 0);
     $resp = rest_ensure_response(array(
         'version'        => ALT_VERSION,                         // running plugin version (cache-immune deploy probe)
+        // The bytes on disk right now, by the same function that stamps a
+        // rendered page. This response is no-store, so it is the ORIGIN's
+        // answer, and a reader's page whose stamp differs from it is a page a
+        // cache is holding from a different build. '' means the stamp could not
+        // be computed, which is UNKNOWN and not a value to compare.
+        'build_stamp'    => alt_build_stamp(),
         'pipeline_phase' => $ph['phase'],                        // live | refreshing | cleaning
         'pipeline_since' => $ph['at'] ? gmdate('c', $ph['at']) : '',
         'last_updated'   => $last ? gmdate('c', $last) : '',

@@ -199,6 +199,19 @@ python3 railway/reader_freshness.py     # bare URL, browser UA, no cache buster
 ```
 It is `ops_status.py` section `[1b]` and a required step of the deploy workflow.
 A mismatch it cannot date resolves to UNKNOWN, never to a pass.
+**And a version number is not the content.** That check compared version to
+version until 2.20.31, so it passed a page that carried the NEW version string
+around the OLD body: on 2.20.21 an FTPS upload landed `ai-layoff-tracker.php`
+before `page-tracker.php`, the reader check's own bare-URL request cached that
+render, and readers had it for 25 minutes with everything green. Every plugin
+surface now emits `<!-- alt-build ver=X build=Y -->`, a hash of the plugin's own
+files taken at render time (`includes/build-stamp.php`), and `/status` reports
+the same hash cache-immune. PASS needs both to agree; same version with a
+different build is a FAULT, not a pass. The deploy's wait polls `/status` FIRST
+and does not touch the bare URL until the origin is coherent, so the check
+cannot be the request that caches a raced page. Don't "fix" a stamp mismatch by
+widening the window (240s, sized from the 470s measured on 2026-08-05 scaled to
+today's `s-maxage=60`) - it means a mid-upload render is sitting in a cache.
 **Waiting on a deploy?** Match the **commit SHA**, never "the latest run". A
 `gh run list -L 1` right after a push returns the run for the PREVIOUS commit
 (yours is still queueing), so a wait loop exits instantly and you verify the old
