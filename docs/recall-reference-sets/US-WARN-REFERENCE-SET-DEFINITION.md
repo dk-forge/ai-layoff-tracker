@@ -170,12 +170,44 @@ triple.**
 - The **same employer in a different state is a different event.** State is in
   the dedup hash and in the notice.
 
-Normalisation for the collapse is deliberately minimal — case-fold, collapse
-whitespace, strip a trailing corporate suffix — and it is **applied to the
-state's published name only**. It does not use `warn_import._clean_company`,
-because that function is part of the thing being measured: if the reference set
-normalised employer names the way our importer does, a defect in that function
-would cancel itself out and score as a match.
+Normalisation for the collapse is **applied to the state's published name
+only**. It does not use `warn_import._clean_company` or
+`warn_import._strip_site_address`, because those functions are part of the thing
+being measured: if the reference set normalised employer names the way our
+importer does, a defect in that function would cancel itself out and score as a
+match.
+
+> **AMENDMENT, 2026-08-13, before any frame was built and before any tracker
+> query.** The first draft of this section said the normalisation would be
+> "case-fold, collapse whitespace, strip a trailing corporate suffix". Inspecting
+> the four publications showed that is not enough to make the unit work, and a
+> unit that does not work is worse than a slightly less minimal one:
+>
+> - California writes the **site into the employer cell** — `Blue Shield of
+>   California - Oakland`, `Blue Shield of California - Town Center, Building B`,
+>   `Blue shield of California - Long Beach`, all notified on the same day.
+> - Texas does the same with a street — `Stearns Lending, LLC - Corporate Dr.`
+> - Florida **glues the full street address on** — `Railcrew Xpress 1718-1 North
+>   McDuff AvenueJACKSONVILLE, FL, 32254`.
+>
+> Under the minimal rule none of those collapse, and a ten-site notice would have
+> entered the frame as ten events. So the collapse key is: unescape entities,
+> case-fold, collapse whitespace, **cut at a street-address or city/ST/ZIP
+> pattern**, **cut a trailing ` - <site qualifier>` or ` (<site>)`**, drop
+> corporate suffixes, then take **the first four remaining tokens**.
+>
+> Four tokens, not one or two, because the risk runs one way: over-collapsing
+> shrinks the denominator and lets one held row excuse several missed ones, which
+> **inflates recall**. Four is short enough to unify a site list and long enough
+> that two different employers rarely share it. Every component row of every
+> collapsed event is written into the manifest so a reviewer can check the
+> collapse itself rather than trust it.
+>
+> The address-cutting regex resembles `warn_import._strip_site_address` in intent.
+> It is independently written and lives in `railway/warn_reference_set.py`, and —
+> this is the part that matters — **it is used only for the collapse key. The
+> aliases that are actually queried are derived from the state's full published
+> name.** So if our importer's own cleaning is broken, this set still sees it.
 
 **Consequence for the number, stated up front.** This unit makes recall a
 question about *notified corporate actions*, not about *published table rows*.
