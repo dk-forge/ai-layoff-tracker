@@ -155,6 +155,28 @@ def collapse_key_name(raw):
     return " ".join(toks[:COLLAPSE_TOKENS])
 
 
+def _cut_at(name, *patterns):
+    """Cut the name at the first address-ish match, KEEPING THE HEAD.
+
+    It has to be a cut and not a substitution, and this is not a nicety. The
+    first version of `aliases_for` used `_CITY_ST_ZIP.sub("", name)`, whose
+    leading `[A-Za-z .'-]+` is greedy: on Florida's glued
+    `Essendant 2405 Commerce Park Dr ORLANDO, FL, 32819` it matched
+    `Essendant ORLANDO, FL, 32819` and deleted the employer along with the
+    address. The alias list came back EMPTY for 14 events, so no query was sent
+    for them at all — and the first measurement run scored all 14 as misses.
+    A query that was never sent is UNKNOWN, never a miss. `measure()` now also
+    refuses to score an event with no alias, so the two guards are independent.
+    """
+    for rx in patterns:
+        m = rx.search(name)
+        if m and m.start() > 0:
+            head = name[:m.start()].strip(" ,;-([")
+            if len(head) >= 3 and re.search(r"[A-Za-z]{3}", head):
+                name = head
+    return name
+
+
 def aliases_for(raw):
     """Query aliases: the cleaned full name and its leading 2 and 3 tokens.
 
@@ -162,9 +184,11 @@ def aliases_for(raw):
     the site tail, and an alias list that only ever queried a truncated name
     would be measuring our storage of a name this set invented.
     """
-    name = clean_published_name(raw)
-    name = _PARENS.sub("", _CITY_ST_ZIP.sub("", _ADDRESS.sub("", name))).strip(" ,;-")
+    cleaned = clean_published_name(raw)
+    name = _PARENS.sub("", _cut_at(cleaned, _ADDRESS, _CITY_ST_ZIP)).strip(" ,;-")
     toks = [t for t in re.sub(r"[^A-Za-z0-9]+", " ", name).split() if t]
+    if not toks:                               # never return [] — see _cut_at
+        toks = [t for t in re.sub(r"[^A-Za-z0-9]+", " ", cleaned).split() if t]
     out, seen = [], set()
     for cand in (" ".join(toks), " ".join(toks[:3]), " ".join(toks[:2])):
         key = cand.lower()
@@ -172,6 +196,40 @@ def aliases_for(raw):
             seen.add(key)
             out.append(cand)
     return out
+
+
+def query_terms_for(raw):
+    """LITERAL leading substrings of the published name, for the API's filter.
+
+    THIS IS NOT THE MATCHING RULE. It is how candidate rows are RETRIEVED, and
+    the two have to be different objects because `/query?company=` is a substring
+    LIKE against the stored name while `name_matches` is a token comparison.
+
+    The first measurement run conflated them and it cost seven points. Aliases
+    are punctuation-stripped (`Mattel Inc`, `Raley s`, `Frito Lay`,
+    `Albertsons 4286`, `Saks Company LLC`), and none of those is a substring of
+    what is actually stored (`Mattel, Inc.`, `Raley's`, `Frito-Lay, Inc`,
+    `Albertsons #4286`, `Saks & Company LLC`). Every employer whose name carries
+    a comma, an apostrophe, a hyphen, an ampersand or a `#` was therefore
+    UNFINDABLE BY CONSTRUCTION: the query returned nothing and the event scored
+    as a miss while the row sat in the table. Eleven of sixteen misses were that.
+
+    So a query term is a leading run of the published name with its punctuation
+    intact, at 1, 2 and 3 tokens plus the whole head. The match test that runs
+    afterwards is unchanged.
+    """
+    name = _PARENS.sub("", _cut_at(clean_published_name(raw), _ADDRESS, _CITY_ST_ZIP))
+    parts = name.split()
+    out, seen = [], set()
+    for n in (1, 2, 3, len(parts)):
+        if not 0 < n <= len(parts):
+            continue
+        term = " ".join(parts[:n]).strip(" ,;:-&/")
+        key = term.lower()
+        if len(term) >= 2 and key not in seen:
+            seen.add(key)
+            out.append(term)
+    return out or [clean_published_name(raw)[:60]]
 
 
 def size_band(jobs):
@@ -407,6 +465,7 @@ def build_events(rows):
                 "stated_job_count": 0,
                 "component_rows": [],
                 "employer_aliases": aliases_for(name),
+                "query_terms": query_terms_for(name),
                 "official_source_url": row["source_url"],
             }
         ev["stated_job_count"] += row["job_count"]
@@ -573,12 +632,29 @@ def _utc_now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _api(path):
-    req = urllib.request.Request(API + path,
-                                 headers={"User-Agent": API_UA,
-                                          "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=45) as r:
-        return json.loads(r.read())
+def _api(path, attempts=4):
+    """One read-only GET, retried on a transient fault.
+
+    Bluehost under /blog returns 503/504 in short bursts (2026-07-31: two
+    outages of 6 and 7 minutes). Without a retry a burst turns a run of events
+    into UNKNOWN — the first full run lost ten consecutive Texas events that
+    way. UNKNOWN is the correct verdict for a query that could not complete, and
+    it is still the verdict here if every attempt fails; the retry just stops a
+    six-minute host wobble from deleting a tenth of the sample.
+    """
+    last = None
+    for attempt in range(attempts):
+        req = urllib.request.Request(API + path,
+                                     headers={"User-Agent": API_UA,
+                                              "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=45) as r:
+                return json.loads(r.read())
+        except Exception as exc:                                   # noqa: BLE001
+            last = exc
+            if attempt < attempts - 1:
+                time.sleep(3 * (attempt + 1))
+    raise last
 
 
 def candidates_for(event, rows):
@@ -662,9 +738,22 @@ def measure(manifest=None):
                          ("large_census", "large_event_census")):
         for ev in manifest[key]:
             rows, failed = {}, None
-            for alias in ev["employer_aliases"]:
-                q = urllib.parse.urlencode({"company": alias, "per_page": 100,
-                                            "cb": _cachebust()})
+            if not ev.get("employer_aliases") or not ev.get("query_terms"):
+                # No alias means no query was sent. That is UNKNOWN, and the one
+                # thing it must never be is a miss — see _cut_at.
+                unreachable.append({"id": ev["reference_row_id"], "stratum": stratum,
+                                    "why": "no alias could be derived, so no query "
+                                           "was sent — UNKNOWN, not a miss"})
+                continue
+            for alias in ev["query_terms"]:
+                # state + the match window are pushed into the QUERY as well as
+                # tested afterwards, so a very common leading token ('Amazon',
+                # 'Sodexo' — 93 stored rows) cannot push the one row we need past
+                # the page cap. The match test below is unchanged by this.
+                q = urllib.parse.urlencode({"company": alias, "state": ev["state"],
+                                            "from": ev["match_window"][0],
+                                            "to": ev["match_window"][1],
+                                            "per_page": 200, "cb": _cachebust()})
                 try:
                     payload = _api("query?" + q) or {}
                 except Exception as exc:                       # noqa: BLE001
@@ -694,8 +783,10 @@ def measure(manifest=None):
         "note": ("Recall of the frozen US WARN reference set against the live API. "
                  "The numerator is EDITOR-CONFIRMED ONLY; machine_* figures are an "
                  "upper bound and must never be quoted as recall. This file is "
-                 "separate from railway/recall_measurement.json on purpose — the "
-                 "published SEC figure is not this set's business."),
+                 "separate from the SEC Item 2.05 set's own measurement file on "
+                 "purpose — that published figure is not this set's business, and "
+                 "tests/test_warn_reference_set.py asserts no module here can "
+                 "reach it."),
         "reference_set_id": manifest["reference_set_id"],
         "definition_document": manifest["definition_document"],
         "measured_at": _utc_now(),

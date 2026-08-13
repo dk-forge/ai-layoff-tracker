@@ -16,7 +16,7 @@
     "to": "2026-06-30",
     "date_field": "published notice date; TN publishes a posting date and the window is counted on it \u2014 \u00a73"
   },
-  "assembled_at": "2026-08-13T06:02:43Z",
+  "assembled_at": "2026-08-13T06:27:43Z",
   "assembled_by": "Claude Code session, single actor. NOT through the three-actor review chain docs/RECALL_BENCHMARK_PROTOCOL.md requires before a recall number may be posted to /benchmarks/recall, and therefore NOT posted there.",
   "sources": {
     "CA": {
@@ -179,6 +179,12 @@
         "1045 San Diego",
         "1045 San"
       ],
+      "query_terms": [
+        "(1045)",
+        "(1045) San",
+        "(1045) San Diego",
+        "(1045) San Diego LGBT Community Center"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -216,6 +222,11 @@
       "employer_aliases": [
         "Quanex Homeshield LLC",
         "Quanex Homeshield"
+      ],
+      "query_terms": [
+        "Quanex",
+        "Quanex Homeshield",
+        "Quanex Homeshield LLC"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -267,6 +278,12 @@
         "Decra Roofing Systems",
         "Decra Roofing"
       ],
+      "query_terms": [
+        "Decra",
+        "Decra Roofing",
+        "Decra Roofing Systems",
+        "Decra Roofing Systems, Inc."
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 2,
@@ -306,6 +323,12 @@
         "Bausch Health US",
         "Bausch Health"
       ],
+      "query_terms": [
+        "Bausch",
+        "Bausch Health",
+        "Bausch Health US",
+        "Bausch Health US, LLC"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -343,6 +366,10 @@
       "employer_aliases": [
         "Enloe Health"
       ],
+      "query_terms": [
+        "Enloe",
+        "Enloe Health"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -378,6 +405,9 @@
         }
       ],
       "employer_aliases": [
+        "Essendant"
+      ],
+      "query_terms": [
         "Essendant"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -419,6 +449,12 @@
         "Palo Verde Healthcare",
         "Palo Verde"
       ],
+      "query_terms": [
+        "Palo",
+        "Palo Verde",
+        "Palo Verde Healthcare",
+        "Palo Verde Healthcare District"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -456,6 +492,11 @@
       "employer_aliases": [
         "SAP America Inc",
         "SAP America"
+      ],
+      "query_terms": [
+        "SAP",
+        "SAP America",
+        "SAP America, Inc."
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -496,6 +537,12 @@
         "Centene Management Company",
         "Centene Management"
       ],
+      "query_terms": [
+        "Centene",
+        "Centene Management",
+        "Centene Management Company",
+        "Centene Management Company, LLC"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -531,6 +578,10 @@
         }
       ],
       "employer_aliases": [
+        "Amazon SFO12"
+      ],
+      "query_terms": [
+        "Amazon",
         "Amazon SFO12"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -571,6 +622,11 @@
         "Educational Testing Service",
         "Educational Testing"
       ],
+      "query_terms": [
+        "Educational",
+        "Educational Testing",
+        "Educational Testing Service"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 1,
@@ -607,6 +663,10 @@
       ],
       "employer_aliases": [
         "Mattel Inc"
+      ],
+      "query_terms": [
+        "Mattel",
+        "Mattel, Inc."
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -645,6 +705,11 @@
       "employer_aliases": [
         "Terzo Enterprises Incorporated",
         "Terzo Enterprises"
+      ],
+      "query_terms": [
+        "Terzo",
+        "Terzo Enterprises",
+        "Terzo Enterprises Incorporated"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -695,6 +760,11 @@
         "Wabash National LP",
         "Wabash National"
       ],
+      "query_terms": [
+        "Wabash",
+        "Wabash National",
+        "Wabash National LP"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "M",
       "published_rows": 2,
@@ -730,6 +800,9 @@
         }
       ],
       "employer_aliases": [
+        "Autodesk"
+      ],
+      "query_terms": [
         "Autodesk"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -771,6 +844,12 @@
         "First Brands Group",
         "First Brands"
       ],
+      "query_terms": [
+        "First",
+        "First Brands",
+        "First Brands Group",
+        "First Brands Group, LLC"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -807,6 +886,9 @@
       ],
       "employer_aliases": [
         "Raley s"
+      ],
+      "query_terms": [
+        "Raley's"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -846,6 +928,11 @@
         "KBR Services LLC",
         "KBR Services"
       ],
+      "query_terms": [
+        "KBR",
+        "KBR Services",
+        "KBR Services LLC"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 1,
@@ -884,6 +971,12 @@
         "MAG Brand Group LLC",
         "MAG Brand Group",
         "MAG Brand"
+      ],
+      "query_terms": [
+        "MAG",
+        "MAG Brand",
+        "MAG Brand Group",
+        "MAG Brand Group, LLC"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -946,6 +1039,12 @@
         "Wellpath and CFMG",
         "Wellpath and"
       ],
+      "query_terms": [
+        "Wellpath",
+        "Wellpath and",
+        "Wellpath and CFMG",
+        "Wellpath and CFMG - South Placer Jail"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 3,
@@ -985,6 +1084,12 @@
         "YMCA Juan Pacifico",
         "YMCA Juan"
       ],
+      "query_terms": [
+        "YMCA",
+        "YMCA Juan",
+        "YMCA Juan Pacifico",
+        "YMCA Juan Pacifico Ontiveros Elementary School"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -1020,6 +1125,9 @@
         }
       ],
       "employer_aliases": [
+        "Geodis"
+      ],
+      "query_terms": [
         "Geodis"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -1061,6 +1169,11 @@
         "Boys Girls Club",
         "Boys Girls"
       ],
+      "query_terms": [
+        "Boys",
+        "Boys & Girls",
+        "Boys & Girls Club at the LA Harbor - Narbonne High School"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -1099,6 +1212,12 @@
         "Tricor Industrial Inc DBA Astrolite Alloys",
         "Tricor Industrial Inc",
         "Tricor Industrial"
+      ],
+      "query_terms": [
+        "Tricor",
+        "Tricor Industrial",
+        "Tricor Industrial, Inc",
+        "Tricor Industrial, Inc DBA Astrolite Alloys"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "S",
@@ -1214,6 +1333,10 @@
       "employer_aliases": [
         "Vine Hospitality"
       ],
+      "query_terms": [
+        "Vine",
+        "Vine Hospitality"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "M",
       "published_rows": 8,
@@ -1253,6 +1376,11 @@
         "International Business Machines",
         "International Business"
       ],
+      "query_terms": [
+        "International",
+        "International Business",
+        "International Business Machines-Coppell"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
       "published_rows": 1,
@@ -1290,6 +1418,10 @@
       "employer_aliases": [
         "Intel Corporation"
       ],
+      "query_terms": [
+        "Intel",
+        "Intel Corporation"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -1325,6 +1457,10 @@
         }
       ],
       "employer_aliases": [
+        "SM Cargo"
+      ],
+      "query_terms": [
+        "SM",
         "SM Cargo"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
@@ -1366,6 +1502,12 @@
         "Equus Workforce Solutions",
         "Equus Workforce"
       ],
+      "query_terms": [
+        "Equus",
+        "Equus Workforce",
+        "Equus Workforce Solutions",
+        "Equus Workforce Solutions Stephenville"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
       "published_rows": 1,
@@ -1404,6 +1546,12 @@
         "Equus Workforce Solutions Camp Wisdom",
         "Equus Workforce Solutions",
         "Equus Workforce"
+      ],
+      "query_terms": [
+        "Equus",
+        "Equus Workforce",
+        "Equus Workforce Solutions-Camp",
+        "Equus Workforce Solutions-Camp Wisdom"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -1444,6 +1592,12 @@
         "Planned Parenthood Gulf",
         "Planned Parenthood"
       ],
+      "query_terms": [
+        "Planned",
+        "Planned Parenthood",
+        "Planned Parenthood Gulf",
+        "Planned Parenthood Gulf Coast"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -1483,6 +1637,12 @@
         "Southwest Key Programs",
         "Southwest Key"
       ],
+      "query_terms": [
+        "Southwest",
+        "Southwest Key",
+        "Southwest Key Programs",
+        "Southwest Key Programs, Inc. La Esperanza)"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
       "published_rows": 1,
@@ -1520,6 +1680,11 @@
       "employer_aliases": [
         "Condair Operations LLC",
         "Condair Operations"
+      ],
+      "query_terms": [
+        "Condair",
+        "Condair Operations",
+        "Condair Operations, LLC"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -1560,6 +1725,12 @@
         "Cottonwood Creek Healthcare",
         "Cottonwood Creek"
       ],
+      "query_terms": [
+        "Cottonwood",
+        "Cottonwood Creek",
+        "Cottonwood Creek Healthcare",
+        "Cottonwood Creek Healthcare Community"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
       "published_rows": 1,
@@ -1598,6 +1769,12 @@
         "Holiday Inn Club Vacations Incorporated The Villages Resort",
         "Holiday Inn Club",
         "Holiday Inn"
+      ],
+      "query_terms": [
+        "Holiday",
+        "Holiday Inn",
+        "Holiday Inn Club",
+        "Holiday Inn Club Vacations Incorporated-The Villages Resort"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -1693,6 +1870,12 @@
         "Southwest Key Programs",
         "Southwest Key"
       ],
+      "query_terms": [
+        "Southwest",
+        "Southwest Key",
+        "Southwest Key Programs-Casa",
+        "Southwest Key Programs-Casa Canutillo"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
       "published_rows": 6,
@@ -1731,6 +1914,12 @@
         "Meadow Burke LLC d b a Leviat",
         "Meadow Burke LLC",
         "Meadow Burke"
+      ],
+      "query_terms": [
+        "Meadow",
+        "Meadow Burke",
+        "Meadow Burke, LLC",
+        "Meadow Burke, LLC d/b/a Leviat"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -1780,6 +1969,10 @@
       "employer_aliases": [
         "Job1 USA"
       ],
+      "query_terms": [
+        "Job1",
+        "Job1 USA"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
       "published_rows": 2,
@@ -1818,6 +2011,11 @@
         "Wells Fargo Co",
         "Wells Fargo"
       ],
+      "query_terms": [
+        "Wells",
+        "Wells Fargo",
+        "Wells Fargo & Co."
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -1855,6 +2053,11 @@
       "employer_aliases": [
         "Apogee Architectural Metals",
         "Apogee Architectural"
+      ],
+      "query_terms": [
+        "Apogee",
+        "Apogee Architectural",
+        "Apogee Architectural Metals"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -1895,6 +2098,12 @@
         "Wood Group USA",
         "Wood Group"
       ],
+      "query_terms": [
+        "Wood",
+        "Wood Group",
+        "Wood Group USA",
+        "Wood Group USA Inc."
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -1934,6 +2143,12 @@
         "Yang Ming America",
         "Yang Ming"
       ],
+      "query_terms": [
+        "Yang",
+        "Yang Ming",
+        "Yang Ming (America)",
+        "Yang Ming (America) Corporation Updated"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -1970,6 +2185,10 @@
       ],
       "employer_aliases": [
         "Telvista Inc"
+      ],
+      "query_terms": [
+        "Telvista",
+        "Telvista, Inc."
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
@@ -2010,6 +2229,12 @@
         "Tyson Foods Inc",
         "Tyson Foods"
       ],
+      "query_terms": [
+        "Tyson",
+        "Tyson Foods",
+        "Tyson Foods, Inc",
+        "Tyson Foods, Inc (Amarillo B-Shift Operations) Updated"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
       "published_rows": 1,
@@ -2047,6 +2272,10 @@
       "employer_aliases": [
         "Compass Connections"
       ],
+      "query_terms": [
+        "Compass",
+        "Compass Connections"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -2082,6 +2311,10 @@
         }
       ],
       "employer_aliases": [
+        "HGS Solutions"
+      ],
+      "query_terms": [
+        "HGS",
         "HGS Solutions"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
@@ -2123,6 +2356,12 @@
         "Stockyards Hotel and",
         "Stockyards Hotel"
       ],
+      "query_terms": [
+        "Stockyards",
+        "Stockyards Hotel",
+        "Stockyards Hotel and",
+        "Stockyards Hotel and H3 Ranch"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -2159,6 +2398,10 @@
       ],
       "employer_aliases": [
         "Albertsons 4286"
+      ],
+      "query_terms": [
+        "Albertsons",
+        "Albertsons #4286"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -2198,6 +2441,11 @@
         "DSV Contract Logistics",
         "DSV Contract"
       ],
+      "query_terms": [
+        "DSV",
+        "DSV Contract",
+        "DSV Contract Logistics"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "M",
       "published_rows": 1,
@@ -2236,6 +2484,12 @@
         "National Safety Apparel LLC",
         "National Safety Apparel",
         "National Safety"
+      ],
+      "query_terms": [
+        "National",
+        "National Safety",
+        "National Safety Apparel",
+        "National Safety Apparel, LLC"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "S",
@@ -2283,9 +2537,15 @@
         }
       ],
       "employer_aliases": [
-        "QB Intermediate Holdings LLC Quality Built LLC Foresite Technology Solutions LLC f k a QB Technology Co LLC SMC Systems LLC d b a SkyeTec SkyeTec Engineering Services LLC and DuctTesters Inc Suite 410",
+        "QB Intermediate Holdings LLC Quality Built LLC Foresite Technology Solutions LLC f k a QB Technology Co LLC SMC Systems LLC d b a SkyeTec SkyeTec Engineering Services LLC and DuctTesters Inc",
         "QB Intermediate Holdings",
         "QB Intermediate"
+      ],
+      "query_terms": [
+        "QB",
+        "QB Intermediate",
+        "QB Intermediate Holdings",
+        "QB Intermediate Holdings, LLC, Quality Built, LLC, Foresite Technology Solutions, LLC (f/k/a QB Technology Co., LLC), SMC Systems LLC (d/b/a SkyeTec), SkyeTec Engineering Services, LLC, and DuctTesters, Inc."
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
@@ -2321,7 +2581,17 @@
           "source_locator": "year=2025 page=1 row 77"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Carroll Fulmer Logistics Corporation",
+        "Carroll Fulmer Logistics",
+        "Carroll Fulmer"
+      ],
+      "query_terms": [
+        "Carroll",
+        "Carroll Fulmer",
+        "Carroll Fulmer Logistics",
+        "Carroll Fulmer Logistics Corporation"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "M",
       "published_rows": 1,
@@ -2357,9 +2627,15 @@
         }
       ],
       "employer_aliases": [
-        "Pasa Services Inc d b",
+        "Pasa Services Inc d b a Flamingo Graphics",
         "Pasa Services Inc",
         "Pasa Services"
+      ],
+      "query_terms": [
+        "Pasa",
+        "Pasa Services",
+        "Pasa Services, Inc.",
+        "Pasa Services, Inc. d/b/a Flamingo Graphics"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
@@ -2396,8 +2672,15 @@
         }
       ],
       "employer_aliases": [
+        "Tata Consultancy Services Ltd",
         "Tata Consultancy Services",
         "Tata Consultancy"
+      ],
+      "query_terms": [
+        "Tata",
+        "Tata Consultancy",
+        "Tata Consultancy Services",
+        "Tata Consultancy Services, Ltd"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
@@ -2433,7 +2716,12 @@
           "source_locator": "year=2025 page=1 row 60"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Essendant"
+      ],
+      "query_terms": [
+        "Essendant"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
       "published_rows": 1,
@@ -2468,7 +2756,17 @@
           "source_locator": "year=2025 page=1 row 51"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Spirit Airlines Miami International Airport located at",
+        "Spirit Airlines Miami",
+        "Spirit Airlines"
+      ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines Miami",
+        "Spirit Airlines Miami International Airport located at"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
       "published_rows": 1,
@@ -2514,7 +2812,13 @@
           "source_locator": "year=2025 page=1 row 47"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "ID Logistics"
+      ],
+      "query_terms": [
+        "ID",
+        "ID Logistics"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "M",
       "published_rows": 2,
@@ -2550,7 +2854,13 @@
         }
       ],
       "employer_aliases": [
+        "Reworld Projects LLC",
         "Reworld Projects"
+      ],
+      "query_terms": [
+        "Reworld",
+        "Reworld Projects",
+        "Reworld Projects, LLC"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
@@ -2586,7 +2896,13 @@
           "source_locator": "year=2025 page=1 row 34"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Eulen Aviation"
+      ],
+      "query_terms": [
+        "Eulen",
+        "Eulen Aviation"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "M",
       "published_rows": 1,
@@ -2633,7 +2949,12 @@
         }
       ],
       "employer_aliases": [
+        "Frito Lay Inc",
         "Frito Lay"
+      ],
+      "query_terms": [
+        "Frito-Lay",
+        "Frito-Lay, Inc"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "L",
@@ -2669,7 +2990,12 @@
           "source_locator": "year=2025 page=1 row 18"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Hudson"
+      ],
+      "query_terms": [
+        "Hudson"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "M",
       "published_rows": 1,
@@ -2705,7 +3031,15 @@
         }
       ],
       "employer_aliases": [
-        "Sodexo"
+        "Sodexo Inc and Affiliates Miami Jewish Health",
+        "Sodexo Inc and",
+        "Sodexo Inc"
+      ],
+      "query_terms": [
+        "Sodexo",
+        "Sodexo, Inc",
+        "Sodexo, Inc and",
+        "Sodexo, Inc and Affiliates Miami Jewish Health"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "M",
@@ -2785,7 +3119,13 @@
           "source_locator": "year=2025 page=1 row 5"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Railcrew Xpress"
+      ],
+      "query_terms": [
+        "Railcrew",
+        "Railcrew Xpress"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "S",
       "published_rows": 5,
@@ -2820,7 +3160,15 @@
           "source_locator": "year=2026 page=2 row 92"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "SMBC MANUBANK Bradenton",
+        "SMBC MANUBANK"
+      ],
+      "query_terms": [
+        "SMBC",
+        "SMBC MANUBANK",
+        "SMBC MANUBANK Bradenton"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "S",
       "published_rows": 1,
@@ -2855,7 +3203,17 @@
           "source_locator": "year=2026 page=2 row 88"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "SMBC MANUBANK Marco Island",
+        "SMBC MANUBANK Marco",
+        "SMBC MANUBANK"
+      ],
+      "query_terms": [
+        "SMBC",
+        "SMBC MANUBANK",
+        "SMBC MANUBANK Marco",
+        "SMBC MANUBANK Marco Island"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "S",
       "published_rows": 1,
@@ -2891,7 +3249,13 @@
         }
       ],
       "employer_aliases": [
+        "Host International Inc",
         "Host International"
+      ],
+      "query_terms": [
+        "Host",
+        "Host International",
+        "Host International, Inc."
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "S",
@@ -2928,7 +3292,13 @@
         }
       ],
       "employer_aliases": [
-        "Saks"
+        "Saks Company LLC",
+        "Saks Company"
+      ],
+      "query_terms": [
+        "Saks",
+        "Saks & Company",
+        "Saks & Company LLC"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "S",
@@ -2965,9 +3335,15 @@
         }
       ],
       "employer_aliases": [
-        "Liberty Dental Plan Corporation Martin Luther King Jr Blvd Suite 100",
+        "Liberty Dental Plan Corporation",
         "Liberty Dental Plan",
         "Liberty Dental"
+      ],
+      "query_terms": [
+        "Liberty",
+        "Liberty Dental",
+        "Liberty Dental Plan",
+        "Liberty Dental Plan Corporation"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "M",
@@ -3004,7 +3380,10 @@
         }
       ],
       "employer_aliases": [
-        "TTEC South"
+        "TTEC"
+      ],
+      "query_terms": [
+        "TTEC"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "S",
@@ -3041,7 +3420,11 @@
         }
       ],
       "employer_aliases": [
-        "Parsec"
+        "Parsec LLC"
+      ],
+      "query_terms": [
+        "Parsec",
+        "Parsec, LLC"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "M",
@@ -3078,7 +3461,11 @@
         }
       ],
       "employer_aliases": [
-        "Trulieve"
+        "Trulieve Inc"
+      ],
+      "query_terms": [
+        "Trulieve",
+        "Trulieve, Inc."
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "S",
@@ -3115,7 +3502,13 @@
         }
       ],
       "employer_aliases": [
+        "HCL America Inc",
         "HCL America"
+      ],
+      "query_terms": [
+        "HCL",
+        "HCL America",
+        "HCL America, Inc"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "M",
@@ -3152,7 +3545,10 @@
         }
       ],
       "employer_aliases": [
-        "Amazon TMB8"
+        "Amazon"
+      ],
+      "query_terms": [
+        "Amazon"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=2",
       "size_band": "L",
@@ -3189,9 +3585,15 @@
         }
       ],
       "employer_aliases": [
-        "Msgr Bryan Walsh Children",
+        "Msgr Bryan Walsh Children s Village",
         "Msgr Bryan Walsh",
         "Msgr Bryan"
+      ],
+      "query_terms": [
+        "Msgr.",
+        "Msgr. Bryan",
+        "Msgr. Bryan Walsh",
+        "Msgr. Bryan Walsh Children\u2019s Village"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "S",
@@ -3232,6 +3634,12 @@
         "Spirit Airlines Miami",
         "Spirit Airlines"
       ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines Miami",
+        "Spirit Airlines Miami International Airport"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "M",
       "published_rows": 1,
@@ -3271,6 +3679,12 @@
         "BlueCross BlueShield of",
         "BlueCross BlueShield"
       ],
+      "query_terms": [
+        "BlueCross",
+        "BlueCross BlueShield",
+        "BlueCross BlueShield of",
+        "BlueCross BlueShield of Tennessee, Inc."
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/BlueCross-BlueShield-TDLWD-WARN-Letter.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -3308,6 +3722,11 @@
       "employer_aliases": [
         "GEODIS Logistics LLC",
         "GEODIS Logistics"
+      ],
+      "query_terms": [
+        "GEODIS",
+        "GEODIS Logistics",
+        "GEODIS Logistics, LLC"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/GEODIS-Logistics-TDLWD-WARN-Letter.pdf",
       "size_band": "S",
@@ -3347,6 +3766,11 @@
         "FedEx Supply Chain",
         "FedEx Supply"
       ],
+      "query_terms": [
+        "FedEx",
+        "FedEx Supply",
+        "FedEx Supply Chain"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/FedEx-Supply-Chain-TDLWD-WARN-Letter.pdf",
       "size_band": "L",
       "published_rows": 1,
@@ -3385,6 +3809,11 @@
         "DoubleTree by Memphis",
         "DoubleTree by"
       ],
+      "query_terms": [
+        "DoubleTree",
+        "DoubleTree by",
+        "DoubleTree by Memphis"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/DoubleTree-by-Hilton-Memphis-TDLWD-WARN-Letter.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -3420,6 +3849,10 @@
         }
       ],
       "employer_aliases": [
+        "OP Mobility"
+      ],
+      "query_terms": [
+        "OP",
         "OP Mobility"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports/OPMobilityTDLWDWARNLETTER.pdf",
@@ -3460,6 +3893,11 @@
         "Crescent Park Corporation",
         "Crescent Park"
       ],
+      "query_terms": [
+        "Crescent",
+        "Crescent Park",
+        "Crescent Park Corporation"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/Crescent-Park-Corporation-TDLWD-WARN-Letter.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -3495,6 +3933,10 @@
         }
       ],
       "employer_aliases": [
+        "HD Supply"
+      ],
+      "query_terms": [
+        "HD",
         "HD Supply"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/HD-Supply-TDLWD-WARN-Letter.pdf",
@@ -3536,6 +3978,11 @@
         "GM Ultium Cells",
         "GM Ultium"
       ],
+      "query_terms": [
+        "GM",
+        "GM - Ultium",
+        "GM - Ultium Cells Facility"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/GM-Ultium-Cells-Facility-TDLWD-WARN-Letter.pdf",
       "size_band": "L",
       "published_rows": 1,
@@ -3575,6 +4022,12 @@
         "Creative Dining Services",
         "Creative Dining"
       ],
+      "query_terms": [
+        "Creative",
+        "Creative Dining",
+        "Creative Dining Services",
+        "Creative Dining Services, Inc."
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/majorpublications/reports-02/Creative-Dining-Services-TDLWD-WARN-Letter.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -3612,6 +4065,11 @@
       "employer_aliases": [
         "Edgewell Personal Care",
         "Edgewell Personal"
+      ],
+      "query_terms": [
+        "Edgewell",
+        "Edgewell Personal",
+        "Edgewell Personal Care"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/warn/Edgewell-Personal-Care-WARN-Letter.pdf",
       "size_band": "M",
@@ -3652,6 +4110,12 @@
         "Kroger Fulfillment Network",
         "Kroger Fulfillment"
       ],
+      "query_terms": [
+        "Kroger",
+        "Kroger Fulfillment",
+        "Kroger Fulfillment Network",
+        "Kroger Fulfillment Network LLC"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/warn/Kroger-Fulfillment-Network-WARN-Letter.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -3691,6 +4155,12 @@
         "Archer Daniels Midland",
         "Archer Daniels"
       ],
+      "query_terms": [
+        "Archer",
+        "Archer Daniels",
+        "Archer Daniels Midland",
+        "Archer Daniels Midland Company"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/archive/documents/warn/Archer-Daniels-Midland-TDLWD-WARN-Letter.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -3726,6 +4196,10 @@
         }
       ],
       "employer_aliases": [
+        "Linamar Shelbyville"
+      ],
+      "query_terms": [
+        "Linamar",
         "Linamar Shelbyville"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Linamar-Shelbyville.pdf",
@@ -3767,6 +4241,12 @@
         "Smoky Mountain Logistics",
         "Smoky Mountain"
       ],
+      "query_terms": [
+        "Smoky",
+        "Smoky Mountain",
+        "Smoky Mountain Logistics",
+        "Smoky Mountain Logistics, LLC"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Smoky-Mountain-Logistics-LLC.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -3802,6 +4282,10 @@
         }
       ],
       "employer_aliases": [
+        "DLH Solutions"
+      ],
+      "query_terms": [
+        "DLH",
         "DLH Solutions"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/DLH-Solutions.pdf",
@@ -3843,6 +4327,12 @@
         "Premiere Building Maintenance",
         "Premiere Building"
       ],
+      "query_terms": [
+        "Premiere",
+        "Premiere Building",
+        "Premiere Building Maintenance",
+        "Premiere Building Maintenance Corporation"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Premiere-Building-Maintenance.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -3881,6 +4371,11 @@
         "Liberty Dental Plan",
         "Liberty Dental"
       ],
+      "query_terms": [
+        "Liberty",
+        "Liberty Dental",
+        "Liberty Dental Plan"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Liberty-Dental-Plan.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -3918,6 +4413,11 @@
       "employer_aliases": [
         "McKay Books Inc",
         "McKay Books"
+      ],
+      "query_terms": [
+        "McKay",
+        "McKay Books",
+        "McKay Books, Inc."
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/McKay-Books.pdf",
       "size_band": "S",
@@ -3958,6 +4458,12 @@
         "First Brands Group",
         "First Brands"
       ],
+      "query_terms": [
+        "First",
+        "First Brands",
+        "First Brands Group",
+        "First Brands Group, LLC"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/First-Brands-Group.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -3993,6 +4499,10 @@
         }
       ],
       "employer_aliases": [
+        "IKEA Memphis"
+      ],
+      "query_terms": [
+        "IKEA",
         "IKEA Memphis"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/IKEA-Memphis.pdf",
@@ -4033,6 +4543,11 @@
         "Blount Memorial Hospital",
         "Blount Memorial"
       ],
+      "query_terms": [
+        "Blount",
+        "Blount Memorial",
+        "Blount Memorial Hospital"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Blount-Memorial-Hospital.pdf",
       "size_band": "S",
       "published_rows": 1,
@@ -4070,6 +4585,11 @@
       "employer_aliases": [
         "Durham School Services",
         "Durham School"
+      ],
+      "query_terms": [
+        "Durham",
+        "Durham School",
+        "Durham School Services"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Durham-School-Services.pdf",
       "size_band": "S",
@@ -4110,6 +4630,12 @@
         "Pave It Forward",
         "Pave It"
       ],
+      "query_terms": [
+        "Pave",
+        "Pave It",
+        "Pave It Forward",
+        "Pave It Forward Logistics"
+      ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Pave-It-Forward-Logistics.pdf",
       "size_band": "M",
       "published_rows": 1,
@@ -4145,6 +4671,9 @@
         }
       ],
       "employer_aliases": [
+        "Adient"
+      ],
+      "query_terms": [
         "Adient"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Adient.pdf",
@@ -4185,6 +4714,12 @@
         "Fayette County Public Schools",
         "Fayette County Public",
         "Fayette County"
+      ],
+      "query_terms": [
+        "Fayette",
+        "Fayette County",
+        "Fayette County Public",
+        "Fayette County Public Schools"
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/Fayette-County-Public-Schools.pdf",
       "size_band": "S",
@@ -4281,6 +4816,12 @@
         "Republic National Distributing Company",
         "Republic National Distributing",
         "Republic National"
+      ],
+      "query_terms": [
+        "Republic",
+        "Republic National",
+        "Republic National Distributing",
+        "Republic National Distributing Company"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -4385,6 +4926,10 @@
       "employer_aliases": [
         "Intel Corporation"
       ],
+      "query_terms": [
+        "Intel",
+        "Intel Corporation"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 7,
@@ -4434,6 +4979,12 @@
         "Dreyer s Grand Ice Cream",
         "Dreyer s Grand",
         "Dreyer s"
+      ],
+      "query_terms": [
+        "Dreyer's",
+        "Dreyer's Grand",
+        "Dreyer's Grand Ice",
+        "Dreyer's Grand Ice Cream"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -4503,6 +5054,9 @@
         }
       ],
       "employer_aliases": [
+        "Amazon"
+      ],
+      "query_terms": [
         "Amazon"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -4599,6 +5153,12 @@
         "Manna Beverages MBV",
         "Manna Beverages"
       ],
+      "query_terms": [
+        "Manna",
+        "Manna Beverages",
+        "Manna Beverages MBV-CA",
+        "Manna Beverages MBV-CA LLC - 1226"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 6,
@@ -4637,6 +5197,11 @@
         "Jet Propulsion Laboratory",
         "Jet Propulsion"
       ],
+      "query_terms": [
+        "Jet",
+        "Jet Propulsion",
+        "Jet Propulsion Laboratory"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 1,
@@ -4674,6 +5239,11 @@
       "employer_aliases": [
         "Ojai Valley Inn",
         "Ojai Valley"
+      ],
+      "query_terms": [
+        "Ojai",
+        "Ojai Valley",
+        "Ojai Valley Inn"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -4908,6 +5478,9 @@
         }
       ],
       "employer_aliases": [
+        "Amazon"
+      ],
+      "query_terms": [
         "Amazon"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -5389,6 +5962,12 @@
         "Fresno Economic Opportunities",
         "Fresno Economic"
       ],
+      "query_terms": [
+        "Fresno",
+        "Fresno Economic",
+        "Fresno Economic Opportunities",
+        "Fresno Economic Opportunities Commission"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 41,
@@ -5656,6 +6235,10 @@
       ],
       "employer_aliases": [
         "Amazon MAB1"
+      ],
+      "query_terms": [
+        "Amazon",
+        "Amazon - MAB1"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -5980,6 +6563,9 @@
       "employer_aliases": [
         "Amazon"
       ],
+      "query_terms": [
+        "Amazon"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 27,
@@ -6029,6 +6615,12 @@
         "Del Monte Foods Corporation II Inc Modesto",
         "Del Monte Foods",
         "Del Monte"
+      ],
+      "query_terms": [
+        "Del",
+        "Del Monte",
+        "Del Monte Foods",
+        "Del Monte Foods Corporation II Inc - Modesto"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -6100,6 +6692,11 @@
       "employer_aliases": [
         "Oracle America Inc",
         "Oracle America"
+      ],
+      "query_terms": [
+        "Oracle",
+        "Oracle America",
+        "Oracle America, Inc."
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -6182,6 +6779,10 @@
       "employer_aliases": [
         "LinkedIn Corporation"
       ],
+      "query_terms": [
+        "LinkedIn",
+        "LinkedIn Corporation"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 5,
@@ -6217,6 +6818,9 @@
         }
       ],
       "employer_aliases": [
+        "TeamOne"
+      ],
+      "query_terms": [
         "TeamOne"
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
@@ -6288,6 +6892,10 @@
       ],
       "employer_aliases": [
         "Intuit Inc"
+      ],
+      "query_terms": [
+        "Intuit",
+        "Intuit Inc."
       ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
@@ -6382,6 +6990,11 @@
         "Meta Platforms Inc",
         "Meta Platforms"
       ],
+      "query_terms": [
+        "Meta",
+        "Meta Platforms",
+        "Meta Platforms, Inc."
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 6,
@@ -6420,6 +7033,11 @@
         "KBR Services LLC",
         "KBR Services"
       ],
+      "query_terms": [
+        "KBR",
+        "KBR Services",
+        "KBR Services LLC"
+      ],
       "official_source_url": "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn-report-for-7-1-25-to-6-30-26.pdf",
       "size_band": "L",
       "published_rows": 1,
@@ -6455,6 +7073,10 @@
         }
       ],
       "employer_aliases": [
+        "Chevron Corporation"
+      ],
+      "query_terms": [
+        "Chevron",
         "Chevron Corporation"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
@@ -6562,6 +7184,12 @@
         "Southwest Key Programs",
         "Southwest Key"
       ],
+      "query_terms": [
+        "Southwest",
+        "Southwest Key",
+        "Southwest Key Programs",
+        "Southwest Key Programs, Inc."
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
       "published_rows": 7,
@@ -6601,6 +7229,12 @@
         "FedEx Supply Chain",
         "FedEx Supply"
       ],
+      "query_terms": [
+        "FedEx",
+        "FedEx Supply",
+        "FedEx Supply Chain",
+        "FedEx Supply Chain Logistics & Electrronics, Inc."
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
       "published_rows": 1,
@@ -6639,6 +7273,12 @@
         "Tyson Foods Inc Amarillo B Shift Operations",
         "Tyson Foods Inc",
         "Tyson Foods"
+      ],
+      "query_terms": [
+        "Tyson",
+        "Tyson Foods",
+        "Tyson Foods, Inc.",
+        "Tyson Foods, Inc. (Amarillo B-Shift Operations"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
@@ -6700,6 +7340,12 @@
         "First Brands Group LLC",
         "First Brands Group",
         "First Brands"
+      ],
+      "query_terms": [
+        "First",
+        "First Brands",
+        "First Brands Group",
+        "First Brands Group, LLC"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
@@ -6784,6 +7430,12 @@
         "Republic National Distributing",
         "Republic National"
       ],
+      "query_terms": [
+        "Republic",
+        "Republic National",
+        "Republic National Distributing",
+        "Republic National Distributing Company, LLC (Reyes Holdings, L.L.C) Austin"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
       "published_rows": 5,
@@ -6823,6 +7475,12 @@
         "Laurel Ridge Treatment",
         "Laurel Ridge"
       ],
+      "query_terms": [
+        "Laurel",
+        "Laurel Ridge",
+        "Laurel Ridge Treatment",
+        "Laurel Ridge Treatment Center"
+      ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
       "published_rows": 1,
@@ -6861,6 +7519,12 @@
         "Spirit Airlines IAH May 2026",
         "Spirit Airlines IAH",
         "Spirit Airlines"
+      ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines (IAH)",
+        "Spirit Airlines (IAH) May 2026"
       ],
       "official_source_url": "https://data.texas.gov/resource/8w53-c4f6.json",
       "size_band": "L",
@@ -6918,7 +7582,17 @@
           "source_locator": "year=2025 page=1 row 23"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Kroger Fulfillment Network LLC Kroger Tampa Fulfillment Center",
+        "Kroger Fulfillment Network",
+        "Kroger Fulfillment"
+      ],
+      "query_terms": [
+        "Kroger",
+        "Kroger Fulfillment",
+        "Kroger Fulfillment Network",
+        "Kroger Fulfillment Network LLC Kroger Tampa Fulfillment Center"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2025&page=1",
       "size_band": "L",
       "published_rows": 3,
@@ -6975,7 +7649,17 @@
           "source_locator": "year=2026 page=1 row 100"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Republic National Distributing Company",
+        "Republic National Distributing",
+        "Republic National"
+      ],
+      "query_terms": [
+        "Republic",
+        "Republic National",
+        "Republic National Distributing",
+        "Republic National Distributing Company"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "L",
       "published_rows": 3,
@@ -7014,6 +7698,12 @@
         "Spirit Airlines Fort Lauderdale Hollywood International Airport",
         "Spirit Airlines Fort",
         "Spirit Airlines"
+      ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines Fort",
+        "Spirit Airlines Fort Lauderdale-Hollywood International Airport"
       ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "L",
@@ -7054,6 +7744,12 @@
         "Spirit Airlines MCO",
         "Spirit Airlines"
       ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines MCO",
+        "Spirit Airlines MCO Infight & Operations Center"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "L",
       "published_rows": 1,
@@ -7093,6 +7789,12 @@
         "Spirit Airlines Orlando",
         "Spirit Airlines"
       ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines Orlando",
+        "Spirit Airlines Orlando International Airport"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "L",
       "published_rows": 1,
@@ -7127,7 +7829,17 @@
           "source_locator": "year=2026 page=1 row 92"
         }
       ],
-      "employer_aliases": [],
+      "employer_aliases": [
+        "Spirit Airlines Spirit Support Center",
+        "Spirit Airlines Spirit",
+        "Spirit Airlines"
+      ],
+      "query_terms": [
+        "Spirit",
+        "Spirit Airlines",
+        "Spirit Airlines Spirit",
+        "Spirit Airlines Spirit Support Center"
+      ],
       "official_source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026&page=1",
       "size_band": "L",
       "published_rows": 1,
@@ -7166,6 +7878,12 @@
         "NIKE Retail Services Inc",
         "NIKE Retail Services",
         "NIKE Retail"
+      ],
+      "query_terms": [
+        "NIKE",
+        "NIKE Retail",
+        "NIKE Retail Services",
+        "NIKE Retail Services, Inc."
       ],
       "official_source_url": "https://www.tn.gov/content/dam/tn/workforce/documents/warn/NIKE-Retail-Services.pdf",
       "size_band": "L",
