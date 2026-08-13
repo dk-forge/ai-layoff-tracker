@@ -9,14 +9,21 @@ into or conflated with the tracker's verified layoff counts. Weekly is plenty
 FRED pull never overwrites the good cached payload.
 
 Env: WP_SITE_URL, WP_API_KEY. No LLM, no cost.
+
+SAFE TO DEFER: the whole payload is rebuilt from FRED on every run and the
+endpoint replaces the cached document wholesale, so tomorrow's run is not a
+resumption of today's, it IS today's run with fresher numbers.
 """
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import requests
 
+import host_call
 from sources.claims import build_claims_payload
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "claims-import"
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
@@ -33,13 +40,16 @@ def main():
         print(f"claims payload empty (errors={payload.get('errors')}); leaving cache intact")
         return 1
     try:
-        r = requests.post(f"{SITE}/wp-json/layoffs/v1/claims-ingest",
-                          json=payload, headers={"X-Layoff-API-Key": KEY, **UA}, timeout=60)
-    except requests.RequestException as exc:
-        print(f"claims-ingest POST failed: {exc}")
-        return 1
-    print(f"claims-ingest -> HTTP {r.status_code}: {r.text[:300]}")
-    r.raise_for_status()
+        result = host_call.post_json(f"{SITE}/wp-json/layoffs/v1/claims-ingest",
+                                     payload,
+                                     headers={"X-Layoff-API-Key": KEY, **UA},
+                                     timeout=60)
+    except host_call.Deferred as exc:
+        # Nothing was sent, so the cached payload is untouched and identical
+        # work happens on the next schedule.
+        return host_call.defer(JOB, str(exc))
+    print(f"claims-ingest -> {str(result)[:300]}")
+    host_call.clear(JOB)
     return 0
 
 

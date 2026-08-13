@@ -12,6 +12,9 @@ on:
         required: false
         default: '5'
 
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
 jobs:
   reclassify:
     runs-on: ubuntu-latest
@@ -67,3 +70,13 @@ jobs:
           done
           echo "::error::still failing after 3 attempts"
           exit 1
+
+      # A deferral nobody counts is a silently green job, which is the exact
+      # failure family this repo keeps digging out of. Free on a healthy run: a
+      # job with no open deferral touches no file, so there is no diff, no
+      # commit and no push.
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: reclassify-legacy-ai

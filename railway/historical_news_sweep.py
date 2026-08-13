@@ -7,6 +7,7 @@ from datetime import date, timedelta
 import requests
 
 import gdelt_backfill
+import http_retry
 
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 WINDOW_DAYS = 7
@@ -14,7 +15,12 @@ WINDOW_DAYS = 7
 #: Bluehost 504s that outlive these retries are an OUTAGE, and the outage
 #: already has an owner: the sibling repo's host-watch opens one issue per
 #: sustained outage. This script's job is only to not lose data over it.
-TRANSIENT = {500, 502, 503, 504}
+#:
+#: Aliased to the ONE definition since 2026-08-12. This module used to carry
+#: {500, 502, 503, 504} of its own, which silently disagreed with http_retry
+#: about 408, 429 and the Cloudflare 52x family — the precise way a re-derived
+#: retry drifts. Kept as a module attribute because the tests stub it.
+TRANSIENT = http_retry.TRANSIENT
 
 
 def _api(path, method="GET", payload=None, attempts=3, sleep=None):

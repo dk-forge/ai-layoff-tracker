@@ -18,6 +18,10 @@ gates, exact quotes only, blank fields only, never inferred):
    article that yields exact quotes becomes the evidence source and its own
    URL is recorded inside the evidence string. Quotes are never assembled
    across sources.
+
+SAFE TO DEFER: the queue is server-side, the batch rotates daily, and nothing
+is written until the single POST at the end. A row this run never reached is
+still queued tomorrow, so a run the host never answered costs one rotation.
 """
 import os
 import re
@@ -27,6 +31,7 @@ from datetime import date, datetime, time as dt_time, timedelta
 
 import requests
 
+import host_call
 from extractor import extract_context_evidence
 import spend
 from reclassify_legacy_ai import UA, clean_html
@@ -34,6 +39,9 @@ from safe_fetch import BlockedURL, safe_get
 from source_registry import discovery_terms
 from sources import gdelt_bq
 from sources.gdelt import _domain, _is_trusted
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "enrich-context"
 
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
@@ -265,22 +273,18 @@ def main():
     report_health("running", detail="Re-reading source evidence")
     try:
         params = query_params(BATCH, MODE)
-        response = requests.get(
+        payload = host_call.get_json(
             f"{SITE}/wp-json/layoffs/v1/query",
             params=params,
             headers={"User-Agent": UA}, timeout=60,
         )
-        response.raise_for_status()
-        payload = response.json()
         page = rotating_page(payload.get("total", 0), BATCH)
         if page != 1:
             params["page"] = page
-            response = requests.get(
+            payload = host_call.get_json(
                 f"{SITE}/wp-json/layoffs/v1/query", params=params,
                 headers={"User-Agent": UA}, timeout=60,
             )
-            response.raise_for_status()
-            payload = response.json()
         rows = payload.get("data", [])
         updates, unreadable, checked = [], 0, 0
         recovered = {"wayback": 0, "alternate": 0}
@@ -305,12 +309,10 @@ def main():
                 print(f"unreadable id {row.get('id')}: {exc}")
         updated = 0
         if updates:
-            posted = requests.post(
-                f"{SITE}/wp-json/layoffs/v1/enrich-context", json={"items": updates},
+            result = host_call.post_json(
+                f"{SITE}/wp-json/layoffs/v1/enrich-context", {"items": updates},
                 headers={"X-Layoff-API-Key": KEY, "User-Agent": UA}, timeout=60,
             )
-            posted.raise_for_status()
-            result = posted.json()
             updated = len(result.get("updated", []))
             print(f"enriched={updated} rejected={len(result.get('rejected', []))}")
         detail = (
@@ -321,7 +323,11 @@ def main():
         report_health("ok", updated, detail)
         print(f"{detail} queued={len(updates)}")
         spend.record_job_run(items=checked, changed=updated)
+        host_call.clear(JOB)
         return 0
+    except host_call.Deferred as exc:
+        # Nothing was written; the same rotation is retried on the next run.
+        return host_call.defer(JOB, str(exc))
     except Exception as exc:
         report_health("degraded", detail=str(exc))
         raise

@@ -137,13 +137,17 @@ def _send(method, url, data=None, headers=None, timeout=90):
 
 
 def call_with_retry(url, *, method="POST", data=None, headers=None, timeout=90,
-                    backoff=DEFAULT_BACKOFF, sleep=time.sleep):
+                    backoff=DEFAULT_BACKOFF, sleep=None):
     """One host call, resolved to OK / DEFERRED / FAILURE.
 
     Transient statuses and transport errors are retried across `backoff`; a
     non-transient status is returned immediately, because retrying a settled
     "no" only makes the run longer and the answer is the same.
     """
+    # Resolved at CALL time, not as a default argument, so a test can stub
+    # `time.sleep` on this module rather than wait out fifteen real seconds
+    # per case — the same reason historical_news_sweep does it.
+    sleep = sleep or (lambda seconds: time.sleep(seconds))
     sent_headers = dict(DEFAULT_UA)
     sent_headers.update(headers or {})
 
@@ -203,3 +207,14 @@ def urlencode_form(pairs):
     """Body + header for a form POST, the `curl --data-urlencode` equivalent."""
     return (urllib.parse.urlencode(list(pairs)).encode("utf-8"),
             {"Content-Type": "application/x-www-form-urlencoded"})
+
+
+def json_body(payload):
+    """Body + header for a JSON POST, the `requests(json=...)` equivalent.
+
+    Here rather than in each caller for the same reason as everything above it:
+    the Python workers POST JSON, and each one encoding its own body is how the
+    Content-Type quietly drifts off one of them.
+    """
+    return (json.dumps(payload).encode("utf-8"),
+            {"Content-Type": "application/json"})

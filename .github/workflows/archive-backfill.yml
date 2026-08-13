@@ -60,6 +60,9 @@ concurrency:
   group: archive-backfill
   cancel-in-progress: false
 
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
 jobs:
   backfill:
     runs-on: ubuntu-latest
@@ -111,3 +114,13 @@ jobs:
           set -o pipefail
           cd railway
           python archive_backfill.py | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # A deferral nobody counts is a silently green job, which is the exact
+      # failure family this repo keeps digging out of. Free on a healthy run: a
+      # job with no open deferral touches no file, so there is no diff, no
+      # commit and no push.
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: archive-backfill

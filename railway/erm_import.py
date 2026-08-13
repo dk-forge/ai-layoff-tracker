@@ -24,6 +24,18 @@ Usage:
   ERM_MODE=daily   (default) — last 14 days, for the daily cron
   ERM_MODE=full    — entire history >= 2015-01-01 (initial backfill)
 Requires WP_SITE_URL + WP_API_KEY in the environment (same as warn_import).
+
+TOLERANCE, AND ITS LIMIT. This is a data-changing bulk import, so the house
+rule stands: any failed batch is loud. What changed on 2026-08-12 is only what
+counts as a failed batch. A transient 5xx that clears on retry never was one,
+and the retry now comes from the shared `http_retry` definition. Beyond that:
+
+  * some batches landed and some never reached the host -> LOUD. A partly
+    applied import is exactly the state the fail-loud rule protects.
+  * NOTHING landed and nothing was refused, because the host answered no batch
+    at all -> DEFERRED. There is no partial state to be loud about, and the
+    same CSV window is re-imported on the next run (`dedup_hash` is the
+    Eurofound factsheet id, so a re-import is an upsert, not a duplicate).
 """
 import csv
 import hashlib
@@ -34,7 +46,12 @@ from datetime import date, timedelta
 
 import requests
 
-from source_health import report_source_health
+import host_call
+import http_retry
+from source_health import publish_source_health, report_source_health
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "erm-import"
 
 CSV_URL = "https://apps.eurofound.europa.eu/restructuring-events/factsheetscsv"
 DETAIL_URL = "https://apps.eurofound.europa.eu/restructuring-events/detail/{id}"
@@ -73,7 +90,11 @@ def fetch_events():
     if mode != "full":
         params = {"date-from": (date.today() - timedelta(days=14)).isoformat(),
                   "date-to": date.today().isoformat()}
-    resp = requests.get(CSV_URL, params=params, headers=UA, timeout=120)
+    # Eurofound, not our host — a blip here is not the deploy collision, but it
+    # kills the run just as dead, and the retry definition is already shared.
+    resp = http_retry.get_with_retry(CSV_URL, params=params, headers=UA, timeout=120)
+    if resp is None:
+        raise RuntimeError(f"Eurofound ERM CSV never answered: {CSV_URL}")
     resp.raise_for_status()
     resp.encoding = "utf-8"  # server omits charset; requests then guesses latin-1
     rows = list(csv.DictReader(io.StringIO(resp.text)))
@@ -136,32 +157,58 @@ def run():
     key = os.environ.get("WP_API_KEY", "")
     if not site or not key:
         raise RuntimeError("WP_SITE_URL / WP_API_KEY missing")
-    if not report_source_health("eurofound_erm", "running", 0, "daily Eurofound ERM import in progress"):
+    # Before the CSV is even fetched, so nothing can be half-imported. A host
+    # that never answered defers; a host that refused the write still raises.
+    note = publish_source_health("eurofound_erm", "running", 0,
+                                 "daily Eurofound ERM import in progress")
+    if note == http_retry.DEFERRED:
+        raise host_call.Deferred("the source-health ledger would not accept the "
+                                 "'running' note; nothing was imported")
+    if note != http_retry.OK:
         raise RuntimeError("Could not publish Eurofound ERM running health status")
     try:
         entries = [e for e in (to_entry(r) for r in fetch_events()) if e]
         print(f"ERM: {len(entries)} job-loss events >= {MIN_DATE} "
               f"({sum(e['job_count'] for e in entries):,} jobs)")
 
-        failed = 0
+        failed = landed = never_asked = 0
         for i in range(0, len(entries), BATCH):
             batch = entries[i:i + BATCH]
-            resp = requests.post(
-                f"{site}/wp-json/layoffs/v1/bulk",
-                json={"entries": batch},
-                headers={**UA, "X-Layoff-API-Key": key, "Content-Type": "application/json"},
-                timeout=180)
-            if resp.status_code != 200:
+            number = i // BATCH + 1
+            try:
+                result = host_call.post_json(
+                    f"{site}/wp-json/layoffs/v1/bulk", {"entries": batch},
+                    headers={**UA, "X-Layoff-API-Key": key}, timeout=180)
+            except host_call.Deferred as exc:
+                never_asked += 1
+                print(f"batch {number} NEVER REACHED THE HOST: {exc}")
+                continue
+            except RuntimeError as exc:
                 failed += 1
-                print(f"batch {i // BATCH + 1} FAILED: {resp.status_code} {resp.text[:300]}")
-            else:
-                print(f"batch {i // BATCH + 1}: {resp.json()}")
+                print(f"batch {number} FAILED: {exc}")
+                continue
+            landed += 1
+            print(f"batch {number}: {result}")
         if failed:  # data jobs fail loudly (house rule)
             raise RuntimeError(f"Eurofound ERM import had {failed} failed batch(es)")
+        if never_asked and landed:
+            # Partly applied. Loud, on purpose: this is precisely the state the
+            # fail-loud rule exists for, and it does not get better by waiting.
+            raise RuntimeError(
+                f"Eurofound ERM import applied {landed} batch(es) but {never_asked} "
+                f"never reached the host — the import is incomplete")
+        if never_asked:
+            raise host_call.Deferred(
+                f"no /bulk batch reached the host ({never_asked} attempted)")
         detail = f"{len(entries)} source-linked ERM announcement event(s) imported"
         if not report_source_health("eurofound_erm", "ok", len(entries), detail):
             print("::warning::ERM import completed but the health-ledger write failed (data is fine)")
+        host_call.clear(JOB)
         return entries
+    except host_call.Deferred:
+        # Nothing was applied, so there is nothing to call degraded: the
+        # collector is fine and the host did not answer. The ledger holds it.
+        raise
     except Exception as exc:
         # A failed source attempt is a material coverage condition, not an
         # empty successful pull. Preserve the failure in the public health
@@ -171,8 +218,12 @@ def run():
 
 
 def main():
-    run()
+    try:
+        run()
+    except host_call.Deferred as exc:
+        return host_call.defer(JOB, str(exc))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
