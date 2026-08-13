@@ -80,6 +80,19 @@ jobs:
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # DO NOT RAISE THIS TO ANSWER archive_recheck_cadence. Checked
+          # 2026-08-13, when that invariant went red projecting a 15.8d cycle
+          # and named this file. This job was not the constraint: on 4 of the 5
+          # preceding days it drained the due pool and stopped on an EMPTY
+          # batch, never on the limit and never on the deadline (08-13: 14
+          # candidates, 5 minutes; 08-11: 1,230, 38 minutes; only 08-10 reached
+          # 2,000). More per run, or more runs per day, would have been handed
+          # zero extra URLs. The ceiling is the SERVER's re-check gate,
+          # ALT_ARCHIVE_RECHECK_DAYS in db.php, which had put ~96% of the pool
+          # on a 7-day eligibility clock while the invariant demanded a 7-day
+          # cycle. That gate went 7 -> 4; this limit did not move.
+          # railway/tests/test_archive_promise.py pins the ceiling arithmetic.
+          #
           # SIZED FROM THE CYCLE, 2026-08-06. The re-check promise is kept only
           # if the whole due pool is re-attempted inside a week, so the limit is
           # pool / promise, not a round number. Measured live that day: 3,782

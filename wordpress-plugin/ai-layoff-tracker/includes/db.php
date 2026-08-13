@@ -2666,14 +2666,44 @@ if (!defined('ALT_ARCHIVE_MAX_ATTEMPTS')) define('ALT_ARCHIVE_MAX_ATTEMPTS', 5);
 // alt_archive_next_check_date() (the "next check by <date>" the listing pages
 // print beside a row with no Wayback snapshot yet). One definition, so the
 // sentence a reader sees and the schedule the cron keeps cannot drift apart.
-// RETRY_HOURS spaces 'pending' retries; RECHECK_DAYS is the weekly re-check of
-// 'unavailable' URLs (never given up). DAILY_RUN_UTC is when archive-backfill
+// RETRY_HOURS spaces 'pending' retries; RECHECK_DAYS is the eligibility gate on
+// re-checking 'unavailable' URLs (never given up). It is the CEILING on
+// re-check throughput, so it is set BELOW the weekly sentence the pages print,
+// not equal to it — see the note on the constant itself. DAILY_RUN_UTC is when archive-backfill
 // actually runs and MUST match the cron in .github/workflows/archive-backfill.yml
 // ('25 5 * * *'); railway/tests/test_archive_promise.py pins that equality, and
 // data_integrity's archive_recheck_cadence invariant fails CI when the live
 // data shows the cadence is not being kept.
 if (!defined('ALT_ARCHIVE_RETRY_HOURS')) define('ALT_ARCHIVE_RETRY_HOURS', 72);
-if (!defined('ALT_ARCHIVE_RECHECK_DAYS')) define('ALT_ARCHIVE_RECHECK_DAYS', 7);
+// 7 -> 4 on 2026-08-13. THE GATE IS THE THROUGHPUT, NOT THE WORKFLOW.
+// The re-check invariant went red projecting a 15.8d cycle, and the obvious
+// reading was that archive-backfill.yml needed a bigger batch or a faster
+// cron. It needed neither: on 4 of the 5 preceding days the run drained the
+// due pool and stopped on an EMPTY batch, not on its limit and not on its
+// deadline (08-13: 14 candidates, 5 minutes, against a 2,000 limit and a
+// 5,400s deadline). Handing out more per run, or running more often, would
+// have handed out zero extra URLs on those days.
+// What actually changed is the pool's COMPOSITION. Between 08-09 and 08-13
+// 'pending' fell 3,698 -> 195 while 'unavailable' rose 0 -> 3,381, as URLs
+// crossed ALT_ARCHIVE_MAX_ATTEMPTS. So 96% of the pool moved off the 72h
+// retry gate and onto this one, and this one WAS the promise itself: a pool
+// re-checked every 7 days cycles in 7 days, which is exactly the cycle the
+// invariant demands. Ceiling 3,381/7 + 195/3 = 548/day against a required
+// 3,529/7 = 504/day: 8% of headroom, and only for a perfectly de-synchronised
+// pool. This one was created in a four-day lump, so the 48h measurement window
+// samples the troughs (224/day on 08-13; 1,615/day on 08-12) and the check
+// flips. No value of ARCHIVE_BACKFILL_LIMIT reaches over that ceiling.
+// At 4 the ceiling is 3,381/4 + 195/3 = 910/day, a 3.9d cycle and a 4.9d worst
+// age against the 8d projected bound - margin that absorbs a missed run and
+// the bunching, instead of sitting on the bound. The published sentence is
+// unchanged and still true: "we re-check weekly" is a FLOOR, and the cron now
+// keeps it early rather than exactly. Cost is free availability calls only
+// (~845/day, ~31 min of the daily run); ARCHIVE_SPN_MAX is untouched, because
+// Save Page Now is rate-limited and the availability pass is what stamps
+// checked_at and moves the cadence.
+// railway/tests/test_archive_promise.py pins the ceiling arithmetic, so a
+// later session cannot answer this red by raising the batch size again.
+if (!defined('ALT_ARCHIVE_RECHECK_DAYS')) define('ALT_ARCHIVE_RECHECK_DAYS', 4);
 if (!defined('ALT_ARCHIVE_DAILY_RUN_UTC')) define('ALT_ARCHIVE_DAILY_RUN_UTC', '05:25');
 // The window /archive-coverage measures real re-check throughput over. 48h, not
 // 24h, on purpose: the cron is daily, so a 24h window straddles the run and a
