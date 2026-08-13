@@ -23,6 +23,7 @@ and _StripTests proves the stripper actually strips, on text built to catch
 exactly that mistake. The behavioural checks go further and execute the real
 layoffs.js in node through jsrun.
 """
+import html
 import json
 import os
 import re
@@ -59,6 +60,35 @@ SECONDARY = {
     "ai-quotes": TPL / "page-ai-quotes.php",
     "publisher-tools": TPL / "page-publisher.php",
 }
+
+# The six pages that head themselves: slug under the tracker parent -> template.
+# /ai-tracker-health/ belongs with them here (it also supplies its own <h1>) and
+# is absent from SECONDARY above, which is scoped to the public five.
+HEADED = dict(SECONDARY, **{"ai-tracker-health": TPL / "page-health.php"})
+
+PLUGIN_MAIN = PLUGIN / "ai-layoff-tracker.php"
+
+
+def plain(s):
+    """A display string with its HTML entities and typography normalised away.
+
+    WordPress texturises what it prints: an ASCII apostrophe leaves the server
+    as &#8217; and a raw & as &#038;, in the <title> and in the <h1> alike. The
+    question these tests ask is whether the two say the same thing, not how the
+    texturiser spelled it, so both sides are read through here.
+    """
+    t = html.unescape(str(s))
+    for curly, flat in (("’", "'"), ("‘", "'"),
+                        ("“", '"'), ("”", '"')):
+        t = t.replace(curly, flat)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def template_h1(path):
+    """The sole <h1> of a template, as text, read the way the plugin reads it."""
+    m = re.search(r"<h1[^>]*>(.*?)</h1>", read(path), re.S | re.I)
+    assert m, "%s renders no <h1>" % path.name
+    return plain(m.group(1))
 
 
 def strip_block_comments(text):
@@ -442,6 +472,163 @@ echo json_encode(alt_drop_theme_post_title(
         self.assertIn("body:has(.alt-wrap h1) .entry-title", read(CSS))
 
 
+class PostTitleFollowsTheHeadingTests(unittest.TestCase):
+    """A page's name has one author. Nothing here may hold a second copy of it.
+
+    Dropping the theme's <h1> (2.20.25) fixed the body and nothing else: the
+    WordPress post title still drives the browser tab, the og:title and the
+    editor, and four of the six pages had one name in the database and a
+    different one in the template. "Press & Media" against "Press kit and
+    soundbites", "Methodology & Sources" against "Methodology & sources".
+
+    They drifted because both were typed: once into alt_ensure_*_page_once()
+    and once into the template. So the fix is not a third typed copy, and this
+    class exists to make a third copy impossible. alt_template_heading() is
+    EXECUTED against the real templates, and the plugin is read for any typed
+    title that could disagree with one.
+    """
+
+    # Every creator that names one of the six, and the template it must read.
+    CREATORS = {
+        "alt_ensure_tracker_health_page_once": "page-health.php",
+        "alt_ensure_sources_page_once": "page-sources.php",
+        "alt_ensure_ai_quotes_page_once": "page-ai-quotes.php",
+        "alt_ensure_methodology_page_once": "page-methodology.php",
+        "alt_ensure_publisher_page_once": "page-publisher.php",
+        "alt_ensure_press_page_once": "page-press.php",
+    }
+
+    def setUp(self):
+        if not _php():
+            self.skipTest("php not installed")
+        self.src = SHORTCODES.read_text()
+        self.main = read(PLUGIN_MAIN)
+
+    def _php_fns(self, *names):
+        out = ""
+        for name in names:
+            needle = "function %s(" % name
+            self.assertIn(needle, self.src,
+                          "%s() is gone from includes/shortcodes.php, so nothing "
+                          "derives a page title from the heading it renders" % name)
+            body = self.src[self.src.index(needle):]
+            out += body[:body.index("\n}\n") + 3]
+        return out
+
+    def _run(self, expr, fns=("alt_template_heading",)):
+        shim = ("define('ALT_PLUGIN_DIR', %s);\n" % json.dumps(str(PLUGIN) + "/")
+                + self._php_fns(*fns) + "\necho json_encode(%s);\n" % expr)
+        proc = subprocess.run([_php(), "-r", shim],
+                              capture_output=True, text=True, timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def test_the_reader_returns_each_templates_own_heading(self):
+        # The load-bearing claim: what the migration writes into wp_posts is
+        # the string the page renders, character for character.
+        for slug, path in HEADED.items():
+            with self.subTest(page=slug):
+                got = self._run("alt_template_heading(%s)" % json.dumps(path.name))
+                self.assertEqual(
+                    plain(got), template_h1(path),
+                    "alt_template_heading(%r) read %r but /%s/ heads itself %r, "
+                    "so the post title it writes would be a third wording"
+                    % (path.name, got, slug, template_h1(path)))
+                self.assertNotEqual(got.strip(), "",
+                                    "/%s/ yields no readable heading, so its post "
+                                    "title would never be corrected" % slug)
+
+    def test_the_map_covers_exactly_the_pages_that_head_themselves(self):
+        # A page listed here whose template has no <h1> would be renamed to
+        # nothing; one that heads itself and is missing keeps a stale tab.
+        got = self._run("array_map(function ($p) { return $p[0]; }, alt_secondary_pages())",
+                        fns=("alt_secondary_pages",))
+        self.assertEqual(
+            {k.rsplit("/", 1)[1]: v for k, v in got.items()},
+            {slug: path.name for slug, path in HEADED.items()})
+        for path in got:
+            self.assertTrue(path.startswith("ai-layoff-tracker/"),
+                            "%r is not under the tracker parent, so the sync "
+                            "reaches a page it does not own" % path)
+
+    def test_the_reader_refuses_a_heading_it_cannot_read_plainly(self):
+        # A half-uploaded template mid-deploy, or a heading that becomes a PHP
+        # expression, must yield '' and be retried - never a guessed title.
+        for bad in ("<h1><?php echo $x; ?></h1>", "<h1>A <em>b</em></h1>",
+                    "<h1>unterminated", "no heading at all"):
+            with self.subTest(src=bad):
+                self.assertEqual(self._run_on_text(bad), "")
+
+    def _run_on_text(self, text):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            tpl = Path(d) / "templates"
+            tpl.mkdir()
+            (tpl / "probe.php").write_text(text)
+            shim = ("define('ALT_PLUGIN_DIR', %s);\n" % json.dumps(str(d) + "/")
+                    + self._php_fns("alt_template_heading")
+                    + "\necho json_encode(alt_template_heading('probe.php'));\n")
+            proc = subprocess.run([_php(), "-r", shim], capture_output=True,
+                                  text=True, timeout=30)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            return json.loads(proc.stdout)
+
+    def test_no_creator_types_a_title_of_its_own(self):
+        for fn, template in self.CREATORS.items():
+            with self.subTest(creator=fn):
+                body = self.main[self.main.index("function %s(" % fn):]
+                body = body[:body.index("\n}\n")]
+                self.assertIn("alt_secondary_page_title('%s')" % template, body,
+                              "%s does not read its title from %s, so the tab and "
+                              "the heading can disagree again" % (fn, template))
+                self.assertNotRegex(
+                    body, r"'post_title'\s*=>\s*['\"]",
+                    "%s types a page name next to the template that already "
+                    "renders one: %r" % (fn, body))
+
+    def test_none_of_the_replaced_names_survives_anywhere_in_the_plugin(self):
+        # The four wordings the database was carrying. A leftover copy in any
+        # PHP file is a name that can come back.
+        stale = ("Press & Media", "Methodology & Sources",
+                 "Embed the Layoff Tracker", "AI layoffs, in their own words")
+        for path in sorted(PLUGIN.rglob("*.php")):
+            body = read(path)
+            for name in stale:
+                if name == "AI layoffs, in their own words" and path.name == "page-press.php":
+                    continue  # a link LABEL on the press page, not a page name
+                self.assertNotIn(
+                    name, body,
+                    "%s still carries the replaced page name %r" % (path.name, name))
+
+    def test_the_sync_writes_the_title_and_nothing_else(self):
+        body = self.main[self.main.index("function alt_sync_secondary_page_titles("):]
+        body = body[:body.index("\nadd_action")]
+        upd = body[body.index("wp_update_post("):]
+        upd = upd[:upd.index("));") + 3]
+        self.assertEqual(
+            set(re.findall(r"'([A-Za-z_]+)'\s*=>", upd)), {"ID", "post_title", "post_name"},
+            "the title sync passes fields it has no business changing: %r" % upd)
+        self.assertIn("$page->post_name", upd,
+                      "the sync lets WordPress re-derive post_name, which would "
+                      "change the URL of an indexed page")
+        self.assertIn("has_shortcode(", body,
+                      "the sync claims a page by slug alone, so a page the owner "
+                      "repurposed at that path would be renamed")
+        self.assertIn("OBJECT, 'page'", body,
+                      "the lookup is not pinned to post_type page")
+        self.assertIn("get_option('alt_page_titles_synced') === ALT_VERSION", body)
+        self.assertIn("if ($all_verified) update_option(", body,
+                      "the done-flag is set before every page verified, which is "
+                      "the one-shot-on-version-bump defect an FTP deploy races")
+
+    def test_no_heading_carries_a_dash_a_tab_cannot_show_plainly(self):
+        for slug, path in HEADED.items():
+            with self.subTest(page=slug):
+                h = template_h1(path)
+                self.assertNotIn("—", h)
+                self.assertNotIn("–", h)
+
+
 class RenderedPageHeadingTests(unittest.TestCase):
     """Asserted against the page a reader is served, not against a template.
 
@@ -524,6 +711,36 @@ class RenderedPageHeadingTests(unittest.TestCase):
                 got = self._headings(page)
                 self.assertTrue(got and got[0],
                                 "%s heads itself with nothing" % page)
+
+    def _title(self, page):
+        m = re.search(r"<title[^>]*>(.*?)</title>", self._fetch(page), re.S | re.I)
+        self.assertIsNotNone(m, "%s serves no <title>" % page)
+        return plain(m.group(1))
+
+    def test_the_browser_tab_says_what_the_heading_says(self):
+        """The one check that reads the post title, which lives in the database.
+
+        Nothing in this checkout can assert what wp_posts holds. The <title> a
+        reader is served is built from it, so this is where the migration is
+        proved: the tab and the heading are the same words, or the page is
+        published under two names again.
+
+        The site name follows a separator and is not this repository's to know,
+        so only the opening of the title is asserted.
+        """
+        for page in self.PAGES:
+            with self.subTest(page=page):
+                heading, title = self._headings(page)[0], self._title(page)
+                self.assertTrue(
+                    title.startswith(plain(heading)),
+                    "%s is headed %r and its browser tab says %r. The tab, the "
+                    "og:title and the WordPress editor all read the post title, "
+                    "so the page is published under two names." % (page, heading, title))
+                rest = title[len(plain(heading)):]
+                self.assertRegex(
+                    rest, r"^(\s*[-|·]\s*\S.*)?$",
+                    "%s appends %r to its own name, which is neither a separator "
+                    "nor a site name" % (page, rest))
 
 
 class BarRowTooltipTests(unittest.TestCase):

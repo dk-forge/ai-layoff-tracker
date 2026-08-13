@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.25
+ * Version: 2.20.26
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.25');
+define('ALT_VERSION', '2.20.26');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -562,12 +562,24 @@ function alt_ensure_contact_page_once() {
 }
 add_action('init', 'alt_ensure_contact_page_once');
 
+/**
+ * The name of a secondary page, read from the template that heads it. Returns
+ * '' when the template cannot be read plainly (see alt_template_heading), and
+ * every caller below treats '' as "retry on the next request" rather than
+ * naming a page from a guess.
+ */
+function alt_secondary_page_title($template) {
+    return function_exists('alt_template_heading') ? alt_template_heading($template) : '';
+}
+
 function alt_ensure_tracker_health_page_once() {
     if (get_page_by_path('ai-layoff-tracker/ai-tracker-health')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned health page
+    $title = alt_secondary_page_title('page-health.php');
+    if ($title === '') return; // retry later; never create a page named by a guess
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => 'AI Tracker Health',
+        'post_parent' => (int) $parent->ID, 'post_title' => $title,
         'post_name' => 'ai-tracker-health', 'post_content' => '[alt_tracker_health]'));
 }
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
@@ -594,8 +606,10 @@ function alt_ensure_sources_page_once() {
     if (get_page_by_path('ai-layoff-tracker/sources')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned sources page
+    $title = alt_secondary_page_title('page-sources.php');
+    if ($title === '') return; // retry later; never create a page named by a guess
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => 'Data Sources',
+        'post_parent' => (int) $parent->ID, 'post_title' => $title,
         'post_name' => 'sources', 'post_content' => '[alt_sources]'));
 }
 add_action('init', 'alt_ensure_sources_page_once', 20);
@@ -604,8 +618,10 @@ function alt_ensure_ai_quotes_page_once() {
     if (get_page_by_path('ai-layoff-tracker/ai-quotes')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return;
+    $title = alt_secondary_page_title('page-ai-quotes.php');
+    if ($title === '') return; // retry later; never create a page named by a guess
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => "AI layoffs, in their own words",
+        'post_parent' => (int) $parent->ID, 'post_title' => $title,
         'post_name' => 'ai-quotes', 'post_content' => '[alt_ai_quotes]'));
 }
 add_action('init', 'alt_ensure_ai_quotes_page_once', 20);
@@ -614,8 +630,10 @@ function alt_ensure_methodology_page_once() {
     if (get_page_by_path('ai-layoff-tracker/methodology')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return;
+    $title = alt_secondary_page_title('page-methodology.php');
+    if ($title === '') return; // retry later; never create a page named by a guess
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => 'Methodology & Sources',
+        'post_parent' => (int) $parent->ID, 'post_title' => $title,
         'post_name' => 'methodology', 'post_content' => '[alt_methodology]'));
 }
 add_action('init', 'alt_ensure_methodology_page_once', 20);
@@ -624,8 +642,10 @@ function alt_ensure_publisher_page_once() {
     if (get_page_by_path('ai-layoff-tracker/publisher-tools')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned page
+    $title = alt_secondary_page_title('page-publisher.php');
+    if ($title === '') return; // retry later; never create a page named by a guess
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => 'Embed the Layoff Tracker',
+        'post_parent' => (int) $parent->ID, 'post_title' => $title,
         'post_name' => 'publisher-tools', 'post_content' => '[alt_publisher_tools]'));
 }
 add_action('init', 'alt_ensure_publisher_page_once', 20);
@@ -634,11 +654,76 @@ function alt_ensure_press_page_once() {
     if (get_page_by_path('ai-layoff-tracker/press')) return;
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned page
+    $title = alt_secondary_page_title('page-press.php');
+    if ($title === '') return; // retry later; never create a page named by a guess
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
-        'post_parent' => (int) $parent->ID, 'post_title' => 'Press & Media',
+        'post_parent' => (int) $parent->ID, 'post_title' => $title,
         'post_name' => 'press', 'post_content' => '[alt_press_media]'));
 }
 add_action('init', 'alt_ensure_press_page_once', 20);
+
+/**
+ * BRING THE SIX EXISTING POST TITLES TO THE HEADINGS THEY ALREADY RENDER.
+ *
+ * The creators above only name a page they create. These six pages exist, so
+ * nothing above ever touches their titles, and four of them were carrying the
+ * name they were born with while the template heading had moved on.
+ *
+ * SHAPE. Verify-then-fix, retried until the database agrees, exactly the shape
+ * alt_ensure_contact_page_once() has for the same reason: an FTP deploy bypasses
+ * every WordPress hook, and a one-shot fired on a version bump can land while
+ * the templates are still uploading. The done-flag stores ALT_VERSION and is
+ * only written once EVERY page verified, so a request that ran mid-upload leaves
+ * the flag unset and the next one tries again. A deploy that changes a heading
+ * re-runs it, because the plugin version is bumped on every deploy.
+ *
+ * NARROW, AND IDEMPOTENT BY CONSTRUCTION. It keys on the exact page path, on
+ * post_type 'page' (get_page_by_path's default), so no layoffs CPT entry is
+ * reachable from here and no loose match exists to widen. The slug alone is not
+ * ownership: the page must also still contain the shortcode that renders it, so
+ * a page the owner repurposed at that path is left alone. It writes post_title
+ * and nothing else, passing the existing post_name back so the URL can never be
+ * re-derived from the new title. And it writes only when the two differ, so the
+ * second run, and every run after it, changes nothing.
+ *
+ * COMPARED DECODED, on both sides. WordPress stores one of these titles with a
+ * literal &amp; and another with a raw & (measured 2026-08-13 through the REST
+ * API: "Methodology &amp; Sources" against "Press &#038; Media"), and which one
+ * a write produces depends on whether kses filters are attached to the request
+ * doing the writing. Comparing the encoded forms would therefore rewrite the
+ * same title on every single request forever. Decoding both sides converges
+ * after one write whichever way the encoding lands.
+ */
+function alt_sync_secondary_page_titles() {
+    if (get_option('alt_page_titles_synced') === ALT_VERSION) return;
+    if (!function_exists('alt_secondary_pages') || !function_exists('alt_template_heading')) return;
+
+    $plain = function ($s) {
+        return trim(preg_replace('/\s+/u', ' ', html_entity_decode((string) $s, ENT_QUOTES, 'UTF-8')));
+    };
+    $all_verified = true;
+
+    foreach (alt_secondary_pages() as $path => $spec) {
+        list($template, $shortcode) = $spec;
+        $heading = alt_template_heading($template);
+        $page = get_page_by_path($path, OBJECT, 'page');
+        if ($heading === '' || !$page) { $all_verified = false; continue; }
+        // Ownership is the shortcode, never the slug on its own.
+        if (!has_shortcode((string) $page->post_content, $shortcode)) { $all_verified = false; continue; }
+        if ($plain($page->post_title) === $plain($heading)) continue; // already agrees
+
+        wp_update_post(array(
+            'ID'         => (int) $page->ID,
+            'post_title' => $heading,
+            'post_name'  => $page->post_name,
+        ));
+        $fresh = get_post((int) $page->ID);
+        if (!$fresh || $plain($fresh->post_title) !== $plain($heading)) $all_verified = false;
+    }
+
+    if ($all_verified) update_option('alt_page_titles_synced', ALT_VERSION, false);
+}
+add_action('init', 'alt_sync_secondary_page_titles', 22);
 
 // The health page is an operations surface for maintainers, deliberately
 // unlinked from the public pages (2026-07-19) and kept out of search.

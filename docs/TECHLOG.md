@@ -1,5 +1,77 @@
 # Tech Log
 
+## 2026-08-13 - the tab and the heading now say the same thing (2.20.26)
+
+The four wording mismatches 2.20.25 left "for the owner to rule on" (table at
+the end of that entry) are harmonised. The post title now follows the page's own
+heading on all six secondary pages.
+
+**Why this is not a template edit.** These titles live in `wp_posts` on the live
+site, so the change had to reach a database an FTP deploy cannot touch. The
+precedent is `alt_ensure_contact_page_once()`, and so is its lesson: an FTP
+deploy bypasses every WordPress hook, and a one-shot fired on a version bump can
+land while the templates are still uploading. So `alt_sync_secondary_page_titles()`
+is verify-then-fix on `init`, and its done-flag (`alt_page_titles_synced`, holding
+ALT_VERSION) is written only after EVERY page verified. A request that ran
+mid-upload leaves the flag unset and the next request tries again.
+
+**One author for each name, and it is the template.** The titles had been typed
+into the `alt_ensure_*_page_once()` creators and the headings typed again into
+the templates. Two copies of one string is why they drifted the moment the press
+page was renamed on 2026-08-13 and its post title was not. So
+`alt_template_heading()` READS the `<h1>` out of the template, the creators call
+it instead of naming a page themselves, and the sync compares against it. The
+reader refuses to guess: nested markup, a PHP expression or a half-uploaded file
+yields `''`, and every caller treats `''` as "not yet" rather than as a title.
+`PostTitleFollowsTheHeadingTests` executes it against the real templates and
+fails on any creator that types a `post_title` of its own.
+
+**Narrow by construction.** Keyed on the exact page path under the tracker
+parent and on post_type `page`, so no `layoffs` CPT row is reachable and there
+is no loose match to widen. The slug alone is not ownership: the page must still
+contain the shortcode that renders it. It writes `post_title` and passes the
+existing `post_name` back, so an indexed URL can never be re-derived from a new
+title. It writes only when the two differ, so the second run changes nothing.
+
+**Compared decoded, on both sides, and that is load bearing.** Measured through
+the REST API before the change: `/methodology/` held its ampersand as a literal
+`&amp;` and `/press/` held a raw `&` (rendered `&#038;` by wptexturize). Which
+one a write produces depends on whether kses filters are attached to the request
+doing the writing, so comparing the ENCODED forms would have rewritten the same
+title on every request forever. Decoding both sides converges after one write.
+
+**A `?>` inside a `//` comment ends PHP mode.** The first draft of
+`alt_template_heading()` explained its own guard by quoting a closing PHP tag in
+a line comment, which would have terminated the file there and dumped the rest of
+`shortcodes.php` as HTML on every request. Caught by the test shim refusing to
+parse. The guard is a block comment now, and the literal is built as `'?' . '>'`.
+
+**What else reads these titles, established before changing them.** The `<title>`
+element and `og:title` (Rank Math renders both as `%title% - AskTheRecruiter.com`
+with no per-page override), the WordPress editor, and nothing else that was
+found: `page-sitemap.xml` carries URLs only, no JSON-LD breadcrumb is emitted on
+any of the six, no nav menu links them, and every internal link between the
+plugin's own pages uses a hardcoded label rather than a rendered title. Checked
+by fetching all six plus the dashboard and reading every anchor pointing at them.
+
+**One pre-existing label mismatch, NOT introduced here and not fixed here.**
+`page-press.php` links to the quotes page as "AI layoffs, in their own words",
+which was that page's old post title and is not its heading either before or
+after this change. It is UI copy, so it is the owner's call.
+
+**SEO.** These pages are indexed and a `<title>` change is a real event. Four
+titles change; `/sources/` and `/ai-tracker-health/` do not, and
+`/ai-tracker-health/` is noindex anyway. Two are case-only
+(`Methodology & Sources` to `Methodology & sources`, `Embed the Layoff Tracker`
+to `Embed the layoff tracker`) and carry no keyword change. Two are real
+rewordings: `Press & Media` becomes `Press kit and soundbites`, which drops the
+word "media" and gains "kit" and "soundbites", and `AI layoffs, in their own
+words` becomes `AI layoffs, in the employer's own words`, which keeps every term
+and adds "employer". Whether any of the four carries meaningful search traffic
+today is **UNKNOWN from this repository** - Search Console is not reachable from
+here and no analytics feed is checked in. No URL, canonical or slug changes, so
+nothing needs a redirect.
+
 ## 2026-08-13 - the second h1 that was hidden but never removed (2.20.25)
 
 Six secondary pages (/press/, /sources/, /methodology/, /ai-tracker-health/,

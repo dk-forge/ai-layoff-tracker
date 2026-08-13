@@ -201,6 +201,66 @@ function alt_drop_theme_post_title($block_content, $block) {
 add_filter('render_block', 'alt_drop_theme_post_title', 10, 2);
 
 /**
+ * THE PAGE'S NAME HAS EXACTLY ONE AUTHOR, AND IT IS THE TEMPLATE.
+ *
+ * Dropping the theme's <h1> (above) fixed what a reader sees in the body and
+ * nothing else. The WordPress post title still drives the browser tab, the
+ * og:title, the editor and any listing built from it, and on four of the six
+ * pages it said something different from the heading the page renders:
+ *
+ *     /press/            "Press & Media"            vs "Press kit and soundbites"
+ *     /methodology/      "Methodology & Sources"    vs "Methodology & sources"
+ *     /publisher-tools/  "Embed the Layoff Tracker" vs "Embed the layoff tracker"
+ *     /ai-quotes/        "AI layoffs, in their own words"
+ *                                 vs "AI layoffs, in the employer's own words"
+ *
+ * The titles were typed once into the alt_ensure_*_page_once() creators and the
+ * headings typed again into the templates, so the two drifted the moment either
+ * was edited - which is exactly what happened on 2026-08-13, when the press
+ * page was renamed to the name every link to it uses and its post title was not.
+ *
+ * So the heading is READ OUT OF THE TEMPLATE that renders it. The creators and
+ * the title sync both call alt_template_heading(); neither carries a copy of
+ * the string. There is one author for each of these six names and it is the
+ * <h1> in the file next to this one.
+ *
+ * The reader REFUSES to guess. It takes the first <h1> in the file and returns
+ * '' unless the text inside it is plain: no nested markup, no PHP. A template
+ * that grows a dynamic heading, or one that is half uploaded when a hook fires
+ * mid-deploy, yields nothing, and every caller treats nothing as "not yet"
+ * rather than as a title.
+ */
+function alt_secondary_pages() {
+    // page path (under the tracker parent) => template, the shortcode that page
+    // must contain for this plugin to consider the page its own.
+    return array(
+        'ai-layoff-tracker/methodology'       => array('page-methodology.php', 'alt_methodology'),
+        'ai-layoff-tracker/sources'           => array('page-sources.php', 'alt_sources'),
+        'ai-layoff-tracker/press'             => array('page-press.php', 'alt_press_media'),
+        'ai-layoff-tracker/ai-quotes'         => array('page-ai-quotes.php', 'alt_ai_quotes'),
+        'ai-layoff-tracker/publisher-tools'   => array('page-publisher.php', 'alt_publisher_tools'),
+        'ai-layoff-tracker/ai-tracker-health' => array('page-health.php', 'alt_tracker_health'),
+    );
+}
+
+function alt_template_heading($file) {
+    $path = ALT_PLUGIN_DIR . 'templates/' . $file;
+    if (!is_readable($path)) return '';
+    $src = file_get_contents($path);
+    if ($src === false || $src === '') return '';
+    if (!preg_match('#<h1[^>]*>(.*?)</h1>#si', $src, $m)) return '';
+    $inner = $m[1];
+    /* A '<' inside catches both nested markup and an opening PHP tag; a closing
+       PHP tag catches a heading that steps back out to HTML. Either means the
+       rendered text is not this string, so there is nothing here to copy.
+       (Written as a block comment on purpose: a closing PHP tag inside a //
+       comment ends PHP mode, in this file as much as in any other.) */
+    if (strpos($inner, '<') !== false || strpos($inner, '?' . '>') !== false) return '';
+    $text = html_entity_decode($inner, ENT_QUOTES, 'UTF-8');
+    return trim(preg_replace('/\s+/u', ' ', $text));
+}
+
+/**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article
  * headings, overlaps the hero on phones, and adds nothing a data dashboard
