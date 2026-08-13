@@ -261,6 +261,27 @@ function alt_template_heading($file) {
 }
 
 /**
+ * The label to use when one of our pages links to another.
+ *
+ * WHY THIS EXISTS. The heading, the post title and every link to a page were
+ * three separate strings, so renaming one moved one. On 2026-08-13 the press
+ * page was renamed and its tab kept the old wording until a sync was built;
+ * five links to /ai-quotes/ still said "AI, in their own words" and "AI
+ * layoffs, in their own words" while the page itself was headed "AI layoffs,
+ * in the employer's own words". A reader following a link landed on a page
+ * that appeared to be something else.
+ *
+ * So a link asks the destination what it calls itself. `$fallback` is not
+ * decoration: alt_template_heading() returns '' for a heading it cannot read
+ * verbatim (nested markup, a PHP expression, a half-uploaded file), and a link
+ * with an empty label is worse than a stale one.
+ */
+function alt_page_link_label($file, $fallback) {
+    $h = alt_template_heading($file);
+    return $h !== '' ? $h : $fallback;
+}
+
+/**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article
  * headings, overlaps the hero on phones, and adds nothing a data dashboard

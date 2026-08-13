@@ -1260,3 +1260,59 @@ class PressDateFormatTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LinkLabelsFollowTheHeadingTests(unittest.TestCase):
+    """A link says what the page it opens calls itself.
+
+    The heading, the post title and every link to a page were three separate
+    strings. Renaming one moved one: on 2026-08-13 /ai-quotes/ was headed "AI
+    layoffs, in the employer's own words" while five links to it still said
+    "AI, in their own words" or "AI layoffs, in their own words". A reader
+    following a link landed on a page that appeared to be something else.
+    """
+
+    STALE = ("AI layoffs, in their own words", "AI, in their own words")
+
+    def test_no_template_hardcodes_the_old_quotes_label(self):
+        for path in list(SECONDARY.values()) + [TPL / "page-tracker.php",
+                                                TPL / "page-report.php"]:
+            body = read(path)
+            for stale in self.STALE:
+                self.assertNotIn(">%s<" % stale, body,
+                                 "%s labels the quotes page %r, which is not "
+                                 "what that page calls itself"
+                                 % (path.name, stale))
+
+    def test_no_template_hardcodes_the_current_heading_either(self):
+        """The rule is about NAMING the page, not about linking to it.
+
+        A descriptive link is fine and must stay fine: page-tracker.php says
+        "See the verbatim quotes and their sources", which is a sentence about
+        what you get, not a claim about what the page is called. What may not
+        be hand-typed is the page's NAME, in either its old or its current
+        wording, because that is the string that drifts when the heading moves.
+        """
+        heading = "AI layoffs, in the employer's own words"
+        for path in list(SECONDARY.values()) + [TPL / "page-tracker.php",
+                                                TPL / "page-report.php"]:
+            if path.name == "page-ai-quotes.php":
+                continue  # the page itself; its <h1> is the definition
+            body = read(path)
+            self.assertNotIn(">%s<" % heading, body,
+                             "%s types the quotes page's name by hand. It "
+                             "matches today and will not the next time that "
+                             "heading is edited; use alt_page_link_label()"
+                             % path.name)
+
+    def test_the_helper_falls_back_rather_than_rendering_an_empty_link(self):
+        # alt_template_heading() returns '' for a heading it cannot read
+        # verbatim. A link with no text is worse than a stale one, so the
+        # fallback is not decoration and must stay wired.
+        src = read(SHORTCODES)
+        self.assertIn("function alt_page_link_label(", src)
+        i = src.index("function alt_page_link_label(")
+        body = src[i:src.index("\n}", i)]
+        self.assertIn("$fallback", body,
+                      "alt_page_link_label ignores its fallback, so an "
+                      "unreadable heading renders a link with no text")

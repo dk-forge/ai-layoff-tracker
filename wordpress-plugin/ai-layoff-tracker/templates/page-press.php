@@ -601,7 +601,7 @@ if (!is_array($alt_ps)) {
   <p><b>One-line description:</b> "The AI Layoff Tracker by AskTheRecruiter.com, a source-linked database of layoffs worldwide, flagging the ones companies blame on AI."</p>
   <ul>
     <li><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">Methodology</a>: how every number is built, counted, and corrected.</li>
-    <li><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI layoffs, in their own words</a>: every employer AI attribution, verbatim, with its source.</li>
+    <li><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>"><?php echo esc_html(alt_page_link_label('page-ai-quotes.php', 'AI layoffs, in the employer\'s own words')); ?></a>: every employer AI attribution, verbatim, with its source.</li>
     <li><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a>: the full list of collectors and what each one covers.</li>
   </ul>
   <h3 id="alt-dataset">Get the full dataset</h3>

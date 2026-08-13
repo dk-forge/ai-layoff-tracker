@@ -1228,7 +1228,7 @@ $alt_hero_basis  = 'counted by filing date';
             <?php endif; ?>
             <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
         </p>
-        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>"><?php echo esc_html(alt_page_link_label('page-ai-quotes.php', 'AI layoffs, in the employer\'s own words')); ?></a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
         <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     </section>
 
