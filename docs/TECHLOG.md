@@ -1180,6 +1180,220 @@ to update.
 
 ---
 
+## 2026-08-13 - the United Kingdom is measured, and the first thing it measured was that it cannot be measured the American way (railway + docs, no deploy)
+
+**Nothing in this entry moves the US figure. It is still 52 of 57 = 91.2%
+[81.1%, 96.2%]. The UK figure is REPORTED and NOT GUARDED, because nobody has
+adjudicated it: `MATCHED_FLOOR` is `None` and `judge()` returns UNKNOWN.**
+
+### The definition was written before the number, and it starts with a negative
+
+`docs/recall-reference-sets/UK-REFERENCE-SET-DEFINITION.md` was committed before
+any UK figure existed. The US set is possible because four properties hold at
+once: a mandatory disclosure of a workforce reduction, carrying a headcount,
+published, and full-text searchable by anyone. In the UK the first two hold and
+the last two do not.
+
+- **Form HR1** under s193 TULRCA is the UK's WARN notice and is in scope the
+  closest analogue to Item 2.05 there is. It is published **as monthly
+  aggregates only**. Employer-level release was refused under FOIA **s43(2)**
+  (FOI 142), and a request for merely the DATE one named company filed one was
+  refused **neither-confirm-nor-deny** under s31(3)/s43(3) (FOI22/23-021) on the
+  general ground that "companies would be less likely to submit HR1 forms if
+  they thought the process would not be confidential". NISRA says no individual
+  business can be identified from the NI statistics. Scotland has no register.
+  And FOI21/22-181 records that the Insolvency Service **never received an HR1
+  from P&O Ferries** for the 2022 dismissals, so a perfect HR1 feed would have
+  missed the decade's most notorious UK mass redundancy.
+- **The FCA National Storage Mechanism** is the only complete index of UK
+  regulated information, it does cover MAR Article 17 inside information, and it
+  does search document text. Its `robots.txt` carries `User-agent: ClaudeBot /
+  Disallow: /`. A pipeline named `AiLayoffTracker/1.0` would formally fall under
+  the wildcard; renaming the agent to get round a block aimed at the agent is
+  not a reading of robots.txt this project will make, so the NSM was not
+  enumerated and its search was never probed.
+- **LSE** has a keyless news search that is headline-only (`q=redundancy`
+  returns zero, because RNS headlines say "Restructuring") and its date-bounded
+  view is issuer-scoped by design. **The Gazette** is fully usable and states no
+  headcounts. **BBC** forbids dataset creation in robots.txt; **Guardian**
+  disallows `/search`; both are domains we already collect, so a press frame
+  built on them would have been weakly independent even where it was permitted.
+
+**So there is no UK equivalent of EDGAR full-text search, and the UK set is a
+different event type. That is the headline result and it is a real one.**
+
+### What was built instead, and the one number that needed no permission
+
+The frame is the **official report of the UK Parliament**, via the open Hansard
+search API: primary, free, keyless, date-bounded, full-text, permitted, and not
+a corpus we collect from. Two fixed terms, swept complete over the window.
+Parliament is the FRAME; the citation is the employer's own announcement or a
+named news organisation's own report, re-read at the publisher. That is weaker
+than the US construction, where the reference document and the citation are the
+same filing, and it is labelled as weaker.
+
+Before any of that, one comparison needed no enumeration at all. Against the
+Insolvency Service's own published aggregate for 2024-07..2026-06:
+
+    HR1 forms received             9,044
+    potential redundancies       606,470
+    tracker UK events held            40
+    tracker UK jobs held          66,832
+
+**11.0% of the notified jobs and 0.4% of the notifications**, and the jobs
+figure is generous because several of the 40 are global programmes counted in
+full. It is a coverage bound, not recall - no per-event matching, no interval,
+and an HR1 is per establishment where ours is per event - but it is computed
+entirely from an official source, it is independent of everything we do, and it
+bounds the claim before any sampling argument starts.
+
+The UK row counts explain the shape. 2018: 149. 2019: 146. 2020: 247. 2021: 8.
+2022: 1. 2023: 21. 2024: 18. 2025: 22. 2026: 15. Coverage collapses after 2020:
+the pre-2021 volume is European Restructuring Monitor data, ERM stopped covering
+the United Kingdom, and nothing replaced it. Since then the UK is the general
+worldwide news layer only, at roughly twenty events a year.
+
+### The window is twenty-four months, and the reason is a defect in the frame
+
+It started as twelve, matching the US set exactly. The first verification pass
+sent that choice back: of the first 34 candidates, **14 were dropped solely
+because the announcement predated the window** - Tata Port Talbot, British Steel
+Scunthorpe, Petroineos Grangemouth, Edinburgh, Lancaster. **Parliament debates a
+redundancy programme months after the employer announces it.** A frame that lags,
+sampled over a window as short as the lag, throws most of what it finds away.
+
+So the window widened to twenty-four months and **the earlier twelve months were
+re-enumerated from scratch through the same two terms**. That is the whole
+difference between a method correction and a results-driven one: the extra
+events did not come from the drop pile of a window that had already been
+sampled, which would have kept only the events Parliament happened to discuss
+late. The cost is that the UK window is no longer the US window, so the two
+figures cover overlapping but different periods and must not be differenced.
+
+### The set, and the drops that shaped it
+
+**32 reference events**, every one re-read at its original publisher, from **87
+candidates** the frame produced. **53 were dropped and 2 were collapsed as the
+same announcement reached twice; every drop carries its reason in
+`dropped_candidates`.** The tally: `outside_window` 20, `no_absolute_count` 14,
+`unverified` 13, `derived_count` 3, `percent_only` 2, `contested_between_verifiers` 1. The reasons, and the bias each
+introduces:
+
+- **`outside_window` (the largest class).** The frame's lag, already discussed.
+  After widening it is genuinely out: Tata Port Talbot (Jan 2024), P&O Ferries
+  (2022), Cammell Laird (1984), Caversham Park (2016), Alstom Derby (Nov 2023).
+- **`no_absolute_count`.** Welsh National Opera ("one third of the chorus"),
+  Petrofac ("thousands at risk"), Ithaca Energy (a consultation that withheld a
+  figure), the University of Kent, the University of York, Leigh Academies.
+  **This is the same bar `extractor.py` applies**, so including them would score
+  a documented design decision as a miss - but it biases the set toward
+  employers who publish a number, and those are disproportionately the ones our
+  pipeline can also read.
+- **`unverified`.** NatWest, Arts Council England, Dewhirst, Swansea, Queen Mary,
+  the Elliot Foundation, University of Leicester, Network Rail. Several of these
+  are probably real events; they are out because **no page a verifier could
+  actually load stated a count**. BBC, Guardian, Reuters, Sky, ITV, Energy
+  Voice, Times Higher and several local mastheads returned 403 or timed out. That
+  is a bias in the set's favour on precision and against it on coverage, and it
+  is not symmetric across sectors.
+- **`percent_only` / `derived_count` / `retained_or_total_only`.** Hunting ("a
+  third of EMEA"), Historic Houses (41% of member businesses), Fulcrum-shaped
+  cases, the University of Edinburgh (the famous "up to 1,800" is UCU's
+  arithmetic on a savings target, never an employer-stated count).
+- **Two editorial drops, made after reading the verifiers' own caveats and
+  before any measurement.** *Petroineos* - two verifiers read the same Grangemouth
+  event differently, one as an absolute 400 and one as "a net reduction of
+  approximately 400 roles", and a row two readings disagree about does not belong
+  in a denominator. *EnerMech* - the count sentence came from search-index text
+  because the publisher returned 403; corroboration elsewhere is not the same as
+  having read the citation. Both are recorded as drops rather than quietly
+  removed.
+
+### The number, and why there are two of them
+
+**Editor-confirmed recall: 0 of 32.** Wilson 95% [0.0%, 10.7%]. That is not a
+measurement of the pipeline; it is a measurement of the gate. `measure()` counts
+only `match_decision: "matched"`, nothing has been adjudicated, and a machine
+must not promote its own recall. The US set sat in exactly this state on
+2026-08-12 with 29 events waiting.
+
+**Machine-proposed upper bound: 7 of 32 = 21.9%**, Wilson 95% [11.0%, 38.8%].
+Seven events have at least one tracker row satisfying alias+window, and all
+seven are in `docs/recall-reference-sets/uk-adjudication-queue.md` for a human.
+It is an UPPER bound because the loose rule over-proposes: on the US set it
+scored 31 where the editor scored 24. The queue already shows why - **Ford**
+proposes nine rows, six of which are a California law firm called Ford, Walker,
+Haggerty & Behar and two of which are Eurofound's record of the European
+programme rather than the 800 UK jobs. **Cardiff University** proposes a row of
+exactly 400 dated one day after the announcement, which looks like the real
+thing and still is not counted until somebody says so.
+
+Both figures are reported and **neither is guarded**: `MATCHED_FLOOR` is `None`,
+so `judge()` returns UNKNOWN rather than PASS. A floor set by the same run that
+produced the number is a rubber stamp. Arming it is a human decision and should
+happen in the same pass that adjudicates the seven.
+
+### Where the misses died, which is worth more than the percentage
+
+`railway/uk_recall_probe.py` classifies each unmatched event by the stage that
+dropped it. It makes **no model call**, so the model half of the last stage is
+UNKNOWN until somebody authorises the spend, and it reports UNKNOWN rather than
+guessing.
+
+    stored, and the strict join reaches it          7   proposed for adjudication
+    stored, and the strict join CANNOT reach it     1   a naming failure
+    nothing stored under any UK name in the window 24   discovery stage UNKNOWN
+                                                   --
+                                                   32
+
+**8 of 32 = 25.0% [13.3%, 42.1%] of the set is already in the database in some
+form.** That is the ceiling an adjudication pass could reach without collecting
+anything new, and an editor will reduce it.
+
+**The one naming failure is instructive out of all proportion to its size.** The
+reference set says *University of Dundee*; we store *Dundee University*, 632
+jobs, on 2025-03-11 - the identical count on the identical day. `name_matches`
+is a token PREFIX test, so it cannot join them, and calling that a collection
+failure would be a lie about where the event died. **The prefix rule is still
+right**: the loose probe that found Dundee also returned Wells Fargo, Wellpath,
+Chartwells and a Finnish wellbeing services county for "Well-Safe Solutions",
+nine US WARN notices for "University of East Anglia", and the Ritz-Carlton Bal
+Harbour for "Harbour Energy". Constraining the loose probe to United Kingdom
+rows took it from 14 apparent hits to 8 real ones. Nothing it finds is counted
+and nothing is written back to the manifest - both would be the machine
+promoting its own recall through a side door.
+
+**The 24 with nothing stored are NOT classified as `no_source`, and that
+distinction is the honest part.** GDELT's public endpoint answered the probe's
+thirty-odd queries with HTTP 429, so `UK_PROBE_SKIP_GDELT=1` ran the tracker
+half alone and every unstored event resolves to UNKNOWN. Which of *no source*,
+*walked but never read* and *fetched then dropped* applies to those 24 is
+**unmeasured**, not settled. Re-running the discovery half on a quieter day is
+the obvious next step and it costs nothing.
+
+Sector-wise the 24 read as one clear pattern even without that split: hospices
+(St Catherine's, Nottinghamshire, The Kirkwood, Ashgate), individual
+universities (Durham, Brunel, De Montfort, Essex, Strathclyde, Nottingham),
+Aberdeen and Fife energy contractors (Altrad, KAEFER, Well-Safe, Belmar,
+Haventus), and two rounds at one refinery. These are events covered by local and
+trade press - the Central Fife Times, the Inverness Courier, ArtsProfessional,
+The Chemical Engineer - which is exactly the coverage the trusted-domain list
+does not carry. That is a hypothesis the discovery half would confirm or refute,
+and it is written here as a hypothesis.
+
+### What is NOT in this change
+
+- **No floor.** `MATCHED_FLOOR = None`, and `judge()` returns UNKNOWN. Arming it
+  is a human decision.
+- **No wiring into `ops_status.py` or `data_integrity.py`.** An invariant that
+  can only say UNKNOWN would turn every session's start-up check amber for a
+  measurement nobody has adjudicated. It goes in when the floor does.
+- **Nothing published.** `publication_status` says
+  `internal_regression_reference_not_published_to_benchmarks_recall`, and
+  `tests/test_recall_uk_goldset.py` asserts it.
+- **No model spend.** $0.00. The probe is stdlib and the frame, the API and
+  GDELT are all keyless and free.
+
 ## 2026-08-12 - the 29 recovered gold events, prepared for a human and not decided (railway + docs, no deploy)
 
 **Nothing in this entry moves the published recall figure. It is still 24 of 57

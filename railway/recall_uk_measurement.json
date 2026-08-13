@@ -1,0 +1,377 @@
+{
+  "candidates_needing_adjudication": [
+    {
+      "announcement_date": "2024-11-20",
+      "employer": "Ford Motor Company",
+      "id": "uk-han-ford-motor-company-2024-11-20",
+      "new_tracker_event_ids": [
+        2815,
+        2816,
+        2818,
+        2819,
+        2820,
+        2821,
+        35993,
+        35996,
+        43684
+      ],
+      "stated_job_count": 800,
+      "tracker_event_ids": [
+        2815,
+        2816,
+        2818,
+        2819,
+        2820,
+        2821,
+        35993,
+        35996,
+        43684
+      ]
+    },
+    {
+      "announcement_date": "2025-01-28",
+      "employer": "Cardiff University",
+      "id": "uk-han-cardiff-university-2025-01-28",
+      "new_tracker_event_ids": [
+        34620,
+        43591
+      ],
+      "stated_job_count": 400,
+      "tracker_event_ids": [
+        34620,
+        43591
+      ]
+    },
+    {
+      "announcement_date": "2025-03-27",
+      "employer": "British Steel",
+      "id": "uk-han-british-steel-2025-03-27",
+      "new_tracker_event_ids": [
+        43612
+      ],
+      "stated_job_count": 2700,
+      "tracker_event_ids": [
+        43612
+      ]
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "Bilfinger",
+      "id": "uk-han-bilfinger-2025-06-06",
+      "new_tracker_event_ids": [
+        111810
+      ],
+      "stated_job_count": 10,
+      "tracker_event_ids": [
+        111810
+      ]
+    },
+    {
+      "announcement_date": "2025-07-17",
+      "employer": "Jaguar Land Rover",
+      "id": "uk-han-jaguar-land-rover-2025-07-17",
+      "new_tracker_event_ids": [
+        43697
+      ],
+      "stated_job_count": 500,
+      "tracker_event_ids": [
+        43697
+      ]
+    },
+    {
+      "announcement_date": "2025-09-25",
+      "employer": "STV Group plc",
+      "id": "uk-han-stv-group-plc-2025-09-25",
+      "new_tracker_event_ids": [
+        43815
+      ],
+      "stated_job_count": 60,
+      "tracker_event_ids": [
+        43815
+      ]
+    },
+    {
+      "announcement_date": "2025-11-18",
+      "employer": "ExxonMobil Chemical Limited (Fife Ethylene Plant, Mossmorran)",
+      "id": "uk-han-exxonmobil-chemical-limited-fife-ethylen-2025-11-18",
+      "new_tracker_event_ids": [
+        35339,
+        35347,
+        35349,
+        43818
+      ],
+      "stated_job_count": 179,
+      "tracker_event_ids": [
+        35339,
+        35347,
+        35349,
+        43818
+      ]
+    }
+  ],
+  "country_basis": "any",
+  "lost_since_adjudication": [],
+  "matched": 0,
+  "matched_floor": null,
+  "matched_ids": [],
+  "measured_at": "2026-08-13T02:18:16Z",
+  "missed": 32,
+  "missed_events": [
+    {
+      "announcement_date": "2024-09-03",
+      "employer": "Mitsubishi Electric",
+      "id": "uk-han-mitsubishi-electric-2024-09-03",
+      "stated_job_count": 436,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2024-09-05",
+      "employer": "St Catherine's Hospice",
+      "id": "uk-han-st-catherine-s-hospice-2024-09-05",
+      "stated_job_count": 40,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2024-11-13",
+      "employer": "Post Office Ltd",
+      "id": "uk-han-post-office-ltd-2024-11-13",
+      "stated_job_count": 1000,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2024-11-20",
+      "employer": "Ford Motor Company",
+      "id": "uk-han-ford-motor-company-2024-11-20",
+      "stated_job_count": 800,
+      "tracker_event_ids": [
+        2815,
+        2816,
+        2818,
+        2819,
+        2820,
+        2821,
+        35993,
+        35996,
+        43684
+      ]
+    },
+    {
+      "announcement_date": "2024-11-20",
+      "employer": "University of East Anglia",
+      "id": "uk-han-university-of-east-anglia-2024-11-20",
+      "stated_job_count": 170,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-01-15",
+      "employer": "Nottinghamshire Hospice",
+      "id": "uk-han-nottinghamshire-hospice-2025-01-15",
+      "stated_job_count": 17,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-01-28",
+      "employer": "Cardiff University",
+      "id": "uk-han-cardiff-university-2025-01-28",
+      "stated_job_count": 400,
+      "tracker_event_ids": [
+        34620,
+        43591
+      ]
+    },
+    {
+      "announcement_date": "2025-01-28",
+      "employer": "Durham University",
+      "id": "uk-han-durham-university-2025-01-28",
+      "stated_job_count": 200,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-03-03",
+      "employer": "Brunel University of London",
+      "id": "uk-han-brunel-university-of-london-2025-03-03",
+      "stated_job_count": 423,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-03-11",
+      "employer": "University of Dundee",
+      "id": "uk-han-university-of-dundee-2025-03-11",
+      "stated_job_count": 632,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-03-11",
+      "employer": "Well-Safe Solutions",
+      "id": "uk-han-well-safe-solutions-2025-03-11",
+      "stated_job_count": 45,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-03-27",
+      "employer": "British Steel",
+      "id": "uk-han-british-steel-2025-03-27",
+      "stated_job_count": 2700,
+      "tracker_event_ids": [
+        43612
+      ]
+    },
+    {
+      "announcement_date": "2025-04-16",
+      "employer": "Belmar Engineering Services",
+      "id": "uk-han-belmar-engineering-services-2025-04-16",
+      "stated_job_count": 48,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-05-19",
+      "employer": "Arts University Bournemouth",
+      "id": "uk-han-arts-university-bournemouth-2025-05-19",
+      "stated_job_count": 75,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-05-21",
+      "employer": "De Montfort University",
+      "id": "uk-han-de-montfort-university-2025-05-21",
+      "stated_job_count": 80,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-05-22",
+      "employer": "The Kirkwood",
+      "id": "uk-han-the-kirkwood-2025-05-22",
+      "stated_job_count": 19,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "Altrad",
+      "id": "uk-han-altrad-2025-06-06",
+      "stated_job_count": 98,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "Bilfinger",
+      "id": "uk-han-bilfinger-2025-06-06",
+      "stated_job_count": 10,
+      "tracker_event_ids": [
+        111810
+      ]
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "KAEFER",
+      "id": "uk-han-kaefer-2025-06-06",
+      "stated_job_count": 55,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-06-20",
+      "employer": "Lancaster University",
+      "id": "uk-han-lancaster-university-2025-06-20",
+      "stated_job_count": 400,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-07-17",
+      "employer": "Jaguar Land Rover",
+      "id": "uk-han-jaguar-land-rover-2025-07-17",
+      "stated_job_count": 500,
+      "tracker_event_ids": [
+        43697
+      ]
+    },
+    {
+      "announcement_date": "2025-07-21",
+      "employer": "Prax Lindsey Oil Refinery",
+      "id": "uk-han-prax-lindsey-oil-refinery-2025-07-21",
+      "stated_job_count": 420,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-09-08",
+      "employer": "Reach plc",
+      "id": "uk-han-reach-plc-2025-09-08",
+      "stated_job_count": 321,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-09-25",
+      "employer": "STV Group plc",
+      "id": "uk-han-stv-group-plc-2025-09-25",
+      "stated_job_count": 60,
+      "tracker_event_ids": [
+        43815
+      ]
+    },
+    {
+      "announcement_date": "2025-09-30",
+      "employer": "Prax Lindsey Oil Refinery",
+      "id": "uk-han-prax-lindsey-oil-refinery-2025-09-30",
+      "stated_job_count": 125,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-10-17",
+      "employer": "Haventus",
+      "id": "uk-han-haventus-2025-10-17",
+      "stated_job_count": 17,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-10-21",
+      "employer": "Ashgate Hospice",
+      "id": "uk-han-ashgate-hospice-2025-10-21",
+      "stated_job_count": 52,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-11-18",
+      "employer": "ExxonMobil Chemical Limited (Fife Ethylene Plant, Mossmorran)",
+      "id": "uk-han-exxonmobil-chemical-limited-fife-ethylen-2025-11-18",
+      "stated_job_count": 179,
+      "tracker_event_ids": [
+        35339,
+        35347,
+        35349,
+        43818
+      ]
+    },
+    {
+      "announcement_date": "2025-12-01",
+      "employer": "Harbour Energy",
+      "id": "uk-han-harbour-energy-2025-12-01",
+      "stated_job_count": 100,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-12-02",
+      "employer": "University of Essex",
+      "id": "uk-han-university-of-essex-2025-12-02",
+      "stated_job_count": 400,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2025-12-10",
+      "employer": "University of Strathclyde",
+      "id": "uk-han-university-of-strathclyde-2025-12-10",
+      "stated_job_count": 70,
+      "tracker_event_ids": []
+    },
+    {
+      "announcement_date": "2026-05-13",
+      "employer": "University of Nottingham",
+      "id": "uk-han-university-of-nottingham-2026-05-13",
+      "stated_job_count": 609,
+      "tracker_event_ids": []
+    }
+  ],
+  "note": "Recall of the frozen UK reference set against the live API. Committed on purpose: the data being measured changes without a commit. Do not hand-edit this file to clear a failing floor.",
+  "reference_events": 32,
+  "reference_set_id": "uk-hansard-2024-07_2026-06",
+  "reference_set_path": "docs/recall-reference-sets/uk-hansard-2024-07_2026-06.goldset.json",
+  "unreachable": 0,
+  "unreachable_events": []
+}

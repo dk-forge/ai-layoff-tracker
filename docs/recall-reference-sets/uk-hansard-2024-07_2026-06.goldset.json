@@ -1,0 +1,1790 @@
+{
+ "manifest_version": 1,
+ "reference_set_id": "uk-hansard-2024-07_2026-06",
+ "publication_status": "internal_regression_reference_not_published_to_benchmarks_recall",
+ "reference_basis": "parliamentary_record_frame_verified_at_original_publisher",
+ "country": "United Kingdom",
+ "scope": "UK employers named in the official report of the UK Parliament (Hansard) in connection with redundancies during the window, whose redundancy programme is confirmed by an ORIGINAL PUBLISHER stating an absolute count of jobs, roles or posts to be cut.",
+ "period": {
+  "from": "2024-07-01",
+  "to": "2026-06-30",
+  "date_field": "announcement date at the original publisher"
+ },
+ "assembled_at": "2026-08-12",
+ "assembled_by": "Claude Code session, single actor. This manifest has NOT been through the three-actor transcription/matching/publication review chain that docs/RECALL_BENCHMARK_PROTOCOL.md requires before a recall number may be posted to /benchmarks/recall, and it is therefore NOT published there. NO EVENT HAS BEEN ADJUDICATED.",
+ "how_it_was_assembled": [
+  "1. FRAME. The official report of the UK Parliament, via the open Hansard search API (hansard-api.parliament.uk), one calendar month per request across 2024-07-01..2026-06-30. TWO fixed terms make up the frame and both were swept COMPLETE over all twelve months: 'redundancies' and 'redundancy'. 218 distinct contributions. The frame was fixed before any tracker query and the tracker was never consulted to choose it.",
+  "1b. ENUMERATION CONTROL, PARTIAL AND SAID SO. Two independent phrase queries, \"job losses\" and \"job cuts\", were run over the 2025-07..2026-06 half to test whether the frame's vocabulary was missing employers the first two terms did not reach — the same role the '\"exit or disposal activities\"' control plays in the US set. The Hansard endpoint degraded (25s responses, then read timeouts) and the control reached 2025-11 before it was abandoned. IT IS THEREFORE INCOMPLETE, and the enumeration is NOT claimed to be exhaustive for the window. Whatever the completed portion added is in the frame; what the abandoned portion would have added is UNKNOWN, not zero.",
+  "2. WHY THIS FRAME. The UK has no public employer-level equivalent of SEC Form 8-K item 2.05. Its statutory instrument (Form HR1) is published only as monthly aggregates and employer-level release has been refused under FOIA s43; the only complete index of UK regulatory announcements asks agents like this one not to read it; and the two national outlets that could anchor a press frame forbid it in robots/terms. UK-REFERENCE-SET-DEFINITION.md carries the evidence for each.",
+  "3. CANDIDATE EXTRACTION. Inside every contribution, sentences carrying a redundancy token were kept, and maximal capitalised spans inside those sentences were taken as employer candidates. Spans made entirely of parliamentary, political or geographic furniture were dropped by a fixed stoplist. 410 candidate spans.",
+  "4. CURATION. A single editor kept the spans that name an identifiable EMPLOYER or a named site of one, and dropped places, parties, people, unions and policy names. This step is judgement and is disclosed as such.",
+  "5. VERIFICATION AT THE ORIGINAL PUBLISHER. Every surviving candidate was re-checked against the employer's own announcement where one exists, otherwise against a named news organisation's own report. A candidate enters the set only when the original publisher states an ABSOLUTE count in the window. Percentages, retained headcounts, pre-cut totals, derived counts and vague quantities are dropped, which is the same rule extractor.py applies and the same rule the US set used. Every drop is recorded in dropped_candidates with its reason.",
+  "6. RE-MEASUREMENT CONTRACT. NOTHING IS ADJUDICATED. Every event is not_matched, so the editor-confirmed numerator is zero by construction. Rows that satisfy the alias/window rule are reported as candidates needing adjudication and are never counted. A machine must not promote its own recall."
+ ],
+ "why_this_is_independent": "The frame is the official report of the UK Parliament. It is not a layoff aggregator, not a commercial data service, not a competitor listing, and it is not a corpus this tracker collects from in any form. No row was selected by searching this tracker and the selection rule was fixed before any tracker query. It is NOT independent of the wider news ecosystem: verification cites news organisations, some of which this tracker also reads. Verification is not enumeration, and the US set has the same property with respect to EDGAR.",
+ "known_biases": [
+  "OVER-REPRESENTS what is politically salient: constituency employers, universities, refineries, steel, shipyards, hospices, councils and the NHS. An MP raises a redundancy programme when it is in the constituency or in the party brief.",
+  "UNDER-REPRESENTS London finance, professional services and technology, and foreign multinationals cutting UK white-collar roles, which rarely reach the floor of either House.",
+  "The direction of the net bias on recall is NOT known and is not asserted. Politically salient events are more widely reported, which should push measured recall UP; regional and sectoral events are often covered only by local press outside our trusted-domain list, which should push it DOWN.",
+  "Parliamentary recess months are thin: August 2025 returned zero contributions for the primary term, so the frame is not uniform across the window.",
+  "The curation step in stage 4 is human judgement, not a rule a machine can reproduce byte for byte. The full mechanical candidate list is retained so the step is auditable."
+ ],
+ "matching_rule": {
+  "window_days_before_announcement": 90,
+  "window_days_after_announcement": 270,
+  "country_basis": "any (job location OR employer HQ), the basis the reader's own country filter uses",
+  "company_match": "token-prefix on the normalised company name after dropping corporate suffixes — imported from recall_goldset, one definition",
+  "unreachable_policy": "An event whose query could not be completed is UNKNOWN, never a miss.",
+  "numerator": "events whose match_decision is 'matched'. Nothing is matched yet."
+ },
+ "reference_events": [
+  {
+   "reference_row_id": "uk-han-mitsubishi-electric-2024-09-03",
+   "employer": "Mitsubishi Electric",
+   "employer_aliases": [
+    "Mitsubishi Electric",
+    "Mitsubishi Electric Air Conditioning Systems Europe"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2024-09-03",
+   "stated_job_count": 436,
+   "count_evidence": "staff were told of 436 pending redundancies on Tuesday",
+   "official_source_url": "https://www.coolingpost.com/uk-news/mitsubishi-electric-announces-400-redundancies/",
+   "publisher": "Cooling Post",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-06-05",
+    "2025-05-31"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Heat pump / air conditioning factory at Livingston, West Lothian, Scotland. Article published 4 September 2024 and dates the staff briefing to 'Tuesday', i.e. 3 September 2024. Other outlets carried 440 and 443 for the same event; 436 is the figure stated in the sentence actually read."
+  },
+  {
+   "reference_row_id": "uk-han-st-catherine-s-hospice-2024-09-05",
+   "employer": "St Catherine's Hospice",
+   "employer_aliases": [
+    "St Catherine",
+    "St Catherines",
+    "St Catherine's Hospice"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2024-09-05",
+   "stated_job_count": 40,
+   "count_evidence": "We have carried out consultations with our staff over the Summer following an escalation in running costs and after the loss of over 40 roles, we've changed our service delivery so we can continue to best support people with life-limiting or terminal illnesses.",
+   "official_source_url": "https://www.stch.org.uk/news-blog/changes-to-our-hospice-services/",
+   "publisher": "St Catherine's Hospice",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-06-07",
+    "2025-06-02"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Hospice serving West Sussex and East Surrey, based at Pease Pottage; a hospice is an employer, and the count is attributed to the charity, not the site. Two editor re-checks: (1) the figure read at the employer's own page is 'over 40 roles', taken as its lower bound 40 under the range rule rather than as a vague count; (2) the employer page dates the announcement only as 'In September we announced our hospice needs to save £1.5 million', so the day 2024-09-05 is not read at a source and only the month September 2024 is verified. Any day in that month is inside the window, so the include/drop decision does not turn on it. BBC, Nursing Times and Sussex Express reports of the same event were all unreadable (BBC host blocked, the other two 403), so no news-organisation page was used."
+  },
+  {
+   "reference_row_id": "uk-han-post-office-ltd-2024-11-13",
+   "employer": "Post Office Ltd",
+   "employer_aliases": [
+    "Post Office"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2024-11-13",
+   "stated_job_count": 1000,
+   "count_evidence": "115 branches and more than 1,000 jobs are at risk as part of plans to boost pay for postmasters",
+   "official_source_url": "https://www.timeout.com/uk/news/115-post-office-branches-across-the-uk-could-close-full-list-of-post-offices-at-risk-111424",
+   "publisher": "Time Out UK",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-08-15",
+    "2025-08-10"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Announcement is the 13 Nov 2024 Transformation Plan / 'New Deal for Postmasters'; article published 14 Nov 2024. Post Office's own corporate blog and strategic-review page state the plan and the GBP 250m postmaster figure but give NO job number, so the count is taken from a named news organisation. 'more than 1,000' recorded as its lower bound, 1,000; it refers to staff in the 115 directly-owned (Crown) branches. The Hansard hint date 2025-02-27 does not match the announcement date. BBC, Sky, Guardian and Surrey Live versions were unreachable (404/403/paywall-redirect)."
+  },
+  {
+   "reference_row_id": "uk-han-ford-motor-company-2024-11-20",
+   "employer": "Ford Motor Company",
+   "employer_aliases": [
+    "Ford",
+    "Ford Motor Company"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2024-11-20",
+   "stated_job_count": 800,
+   "count_evidence": "Ford has announced it will be cutting 800 jobs in the UK over the next three years as part of a major restructuring plan.",
+   "official_source_url": "https://www.heartsstandard.co.uk/news/24738637.ford-cut-800-jobs-uk-amid-restructuring-plan/",
+   "publisher": "Hearts Standard (Newsquest)",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-08-22",
+    "2025-08-17"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "The UK figure of 800 is stated absolutely and separately from the wider 4,000 European reduction, so this passes the not_uk test. Affected sites reported as Dunton (Essex) R&D and Daventry parts distribution among others; Dagenham and Halewood plants said to be protected. The carrying title is a Newsquest local running PA copy - an editor may prefer to swap in a larger masthead's own report of the same announcement."
+  },
+  {
+   "reference_row_id": "uk-han-university-of-east-anglia-2024-11-20",
+   "employer": "University of East Anglia",
+   "employer_aliases": [
+    "University of East Anglia",
+    "UEA"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2024-11-20",
+   "stated_job_count": 170,
+   "count_evidence": "Fresh job cuts at the University of East Anglia are set to result in 170 staff members leaving, with compulsory redundancies a possibility, amid an ongoing financial crisis across the UK higher education sector.",
+   "official_source_url": "https://www.timeshighereducation.com/news/deeply-sorry-uea-says-170-staff-face-compulsory-redundancy",
+   "publisher": "Times Higher Education",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-08-22",
+    "2025-08-17"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Announced by the Vice-Chancellor on 20 November 2024; university said it needed to save a further £11m. Figure is the university's own, reported by THE."
+  },
+  {
+   "reference_row_id": "uk-han-nottinghamshire-hospice-2025-01-15",
+   "employer": "Nottinghamshire Hospice",
+   "employer_aliases": [
+    "Nottinghamshire Hospice"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-01-15",
+   "stated_job_count": 17,
+   "count_evidence": "The current proposals impact 17 members of staff, around 17% of the total workforce.",
+   "official_source_url": "https://www.nottshospice.org/press-release-difficult-decisions-over-proposed-job-losses/",
+   "publisher": "Nottinghamshire Hospice",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-10-17",
+    "2025-10-12"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "The hospice's own press release, dated 15 January 2025, so the announcement predates the 2025-02-25 Commons mention. Absolute count (17) and percentage (17%) coincide numerically, which is a coincidence worth an editor's glance but the absolute figure is stated in its own right."
+  },
+  {
+   "reference_row_id": "uk-han-cardiff-university-2025-01-28",
+   "employer": "Cardiff University",
+   "employer_aliases": [
+    "Cardiff University"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-01-28",
+   "stated_job_count": 400,
+   "count_evidence": "a proposed reduction of 400 (FTE) academic staff and the possibility of School and subject closures",
+   "official_source_url": "https://nation.cymru/news/cardiff-university-confirms-huge-job-cuts-and-school-closure-programme/",
+   "publisher": "Nation.Cymru",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-10-30",
+    "2025-10-25"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Cardiff University's own 'Securing our Academic Future' announcement of 28 January 2025, quoted in Nation.Cymru's report; the university's own page at cardiff.ac.uk returns HTTP 403 to this agent, so a named news organisation's report is cited instead. The target was later reduced to 138 FTE (May 2025) - the reference set should carry the announcement figure of 400."
+  },
+  {
+   "reference_row_id": "uk-han-durham-university-2025-01-28",
+   "employer": "Durham University",
+   "employer_aliases": [
+    "Durham University"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-01-28",
+   "stated_job_count": 200,
+   "count_evidence": "In total, the university estimates that this will result in the loss of around 200 professional services staff this year",
+   "official_source_url": "https://www.timeshighereducation.com/news/durham-expects-200-jobs-go-it-seeks-save-ps20-million",
+   "publisher": "Times Higher Education",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-10-30",
+    "2025-10-25"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Stage one of a GBP 20m cost reduction over two academic years; the 200 is the university's own estimate for professional services staff in 2024/25, to be sought via voluntary severance with compulsory measures not ruled out. Announcement date taken as the THE report date (28 Jan 2025); ITV reported it 29 Jan 2025."
+  },
+  {
+   "reference_row_id": "uk-han-brunel-university-of-london-2025-03-03",
+   "employer": "Brunel University of London",
+   "employer_aliases": [
+    "Brunel University"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-03-03",
+   "stated_job_count": 423,
+   "count_evidence": "The dispute arose over university management's plans to make 423 job cuts by 31 March, 282 of which are compulsory redundancies.",
+   "official_source_url": "https://www.nwlondoner.co.uk/news/03032025-mass-staff-cuts-trigger-strike-action-at-brunel-university-of-london",
+   "publisher": "The NW Londoner",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-12-03",
+    "2025-11-28"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "423 total planned job cuts by 31 March 2025, of which 282 compulsory. Stated in the outlet's own reporting (not a quoted union claim), though the dispute figures originate with the UCU dispute. Announcement date recorded as the report date - management's plan was set out earlier and no dated employer statement was readable (Research Professional News returned 403). Same article separately reports 120 academics and 571 professional services staff placed at risk, a larger 'at risk' pool than the cut figure; editor may want to re-check which figure the reference set wants."
+  },
+  {
+   "reference_row_id": "uk-han-university-of-dundee-2025-03-11",
+   "employer": "University of Dundee",
+   "employer_aliases": [
+    "University of Dundee"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-03-11",
+   "stated_job_count": 632,
+   "count_evidence": "Staffing reductions will be made in every school and directorate of the University, amounting to 632 full-time equivalent posts – 197 academic roles, 119 school-based professional services posts in schools, and 316 directorate roles-based professional services roles.",
+   "official_source_url": "https://www.dundee.ac.uk/stories/university-sets-out-proposals-towards-sustainable-future",
+   "publisher": "University of Dundee",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-12-11",
+    "2025-12-06"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "The university's own announcement, published 2025-03-11, to address a forecast £35m deficit. Note this employer has multiple in-window events: a later programme of about 190 further posts was announced in June 2026 and earlier voluntary severance rounds ran from August 2024. The 632 figure is the large announcement matching the parliamentary frame; an editor should ensure the 190 event is not double-counted if it is captured separately."
+  },
+  {
+   "reference_row_id": "uk-han-well-safe-solutions-2025-03-11",
+   "employer": "Well-Safe Solutions",
+   "employer_aliases": [
+    "Well-Safe",
+    "Well-Safe Solutions"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-03-11",
+   "stated_job_count": 45,
+   "count_evidence": "The company, which operates in the North Sea, has announced that up to 45 onshore positions are at risk, while there will also be job losses from its Well-Safe Guardian decommissioning rig, although specific figures for the rig have not been disclosed.",
+   "official_source_url": "https://aberdeenbusinessnews.co.uk/well-safe-confirm-job-cuts-amid-industry-challenges/",
+   "publisher": "Aberdeen Business News",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-12-11",
+    "2025-12-06"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Aberdeen-headquartered well decommissioning specialist; onshore roles in Aberdeen (Altens). 'up to 45' counted as 45 per the count rules. An additional, unquantified number of rig-based roles on the Well-Safe Guardian is excluded because no figure was disclosed. Energy Voice and the Press and Journal carry the same figure but both returned 403 to an automated fetch, so the count sentence above is the one actually read at a publisher page."
+  },
+  {
+   "reference_row_id": "uk-han-british-steel-2025-03-27",
+   "employer": "British Steel",
+   "employer_aliases": [
+    "British Steel"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-03-27",
+   "stated_job_count": 2700,
+   "count_evidence": "BRITISH STEEL today announced plans to close its two blast furnaces in Scunthorpe, UK, with the loss of around 2,700 jobs.",
+   "official_source_url": "https://www.thechemicalengineer.com/news/british-steel-to-close-scunthorpe-blast-furnaces-after-rejecting-500m-government-rescue-package/",
+   "publisher": "The Chemical Engineer (IChemE)",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2024-12-27",
+    "2025-12-22"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Scunthorpe is a place, not an employer; attributed to British Steel, which operates the steelworks. British Steel's own release of 27 Mar 2025 announcing the consultation was read and contains NO headcount, so a named news organisation's same-day report is cited. Corroborated at Fox Business ('with the potential loss of up to 2,700 jobs'). Some outlets frame it as a 2,000-2,700 range; the majority and the same-day trade report state around/up to 2,700, which is the figure taken. The consultation was later ended after government intervention."
+  },
+  {
+   "reference_row_id": "uk-han-belmar-engineering-services-2025-04-16",
+   "employer": "Belmar Engineering Services",
+   "employer_aliases": [
+    "Belmar Engineering",
+    "Belmar"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-04-16",
+   "stated_job_count": 48,
+   "count_evidence": "Aberdeen firm Belmar Engineering has gone into liquidation with the immediate loss of all 48 employees.",
+   "official_source_url": "https://dailybusinessgroup.co.uk/2025/04/belmar-engineering-collapses-with-48-job-losses/",
+   "publisher": "Daily Business",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-01-16",
+    "2026-01-11"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Aberdeen, Scotland. Liquidation announced by the appointed liquidator (Michael Reid, MHA); no employer press release exists, so a named news organisation's own report is cited. Energy Voice, Press and Journal and Manufacturing Management carry the same 48 figure but returned 403."
+  },
+  {
+   "reference_row_id": "uk-han-arts-university-bournemouth-2025-05-19",
+   "employer": "Arts University Bournemouth",
+   "employer_aliases": [
+    "Arts University Bournemouth",
+    "AUB"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-05-19",
+   "stated_job_count": 75,
+   "count_evidence": "The university is looking to make 75 potential redundancies across its academic, technical and professional services teams.",
+   "official_source_url": "https://www.artsprofessional.co.uk/news/art-university-bournemouth-confirms-plans-to-axe-75-roles",
+   "publisher": "ArtsProfessional",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-02-18",
+    "2026-02-13"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "AUB briefed staff on 75 full-time roles across academic, technical services and professional services. The Hansard hint (2025-04-02) predates this announcement; an earlier February 2025 report said compulsory redundancies were 'an option' but gave no count. JUDGEMENT CALL for an editor: some later coverage cites 93 staff proposed for redundancy (with 195 put at risk); I recorded the 75 figure because that is the sentence I read at the publisher."
+  },
+  {
+   "reference_row_id": "uk-han-de-montfort-university-2025-05-21",
+   "employer": "De Montfort University",
+   "employer_aliases": [
+    "De Montfort University",
+    "DMU"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-05-21",
+   "stated_job_count": 80,
+   "count_evidence": "Announcing plans to cut academic and professional service posts at the Leicester-based university in an email to staff, DMU's vice-chancellor Katie Normington said the institution was embarking on consultation \"aimed at saving around £8 million which could result in up to 80 roles being made redundant\".",
+   "official_source_url": "https://www.timeshighereducation.com/news/de-montfort-university-cut-80-posts-save-ps8-million",
+   "publisher": "Times Higher Education",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-02-20",
+    "2026-02-15"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "\"Up to 80\" counts as 80 per the rules. The number comes from the vice-chancellor's own email to staff, quoted directly in Times Higher Education's own report; DMU published no standalone press release found. THE's page is partially paywalled but the count sentence sits in the free portion and was read directly. Announcement date taken as THE's publication date, 2025-05-21; the staff email may be a day or two earlier."
+  },
+  {
+   "reference_row_id": "uk-han-the-kirkwood-2025-05-22",
+   "employer": "The Kirkwood",
+   "employer_aliases": [
+    "The Kirkwood",
+    "Kirkwood Hospice"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-05-22",
+   "stated_job_count": 19,
+   "count_evidence": "19 employees from across the charity have sadly been made redundant",
+   "official_source_url": "https://www.thekirkwood.org.uk/news/the-kirkwood-announces-service-and-workforce-changes-amid-hospice-funding-c",
+   "publisher": "The Kirkwood",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-02-21",
+    "2026-02-16"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Hospice charity in Huddersfield, West Yorkshire. The employer's own statement carries the count. Date is a minor judgement call: the charity's page carries 21 May 2025 while ITV News Calendar and Huddersfield Hub reported it on 22 May 2025; 22 May recorded, either date is inside the window."
+  },
+  {
+   "reference_row_id": "uk-han-altrad-2025-06-06",
+   "employer": "Altrad",
+   "employer_aliases": [
+    "Altrad"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-06-06",
+   "stated_job_count": 98,
+   "count_evidence": "Contractor Altrad, which provides operational support for the ethylene plant, has announced at least 98 redundancies",
+   "official_source_url": "https://www.centralfifetimes.com/news/25219422.mossmorran-plant-central-fife-sees-160-redundancies/",
+   "publisher": "Central Fife Times",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-03-08",
+    "2026-03-03"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Attributed to Altrad as the employer, not to the Mossmorran / Fife Ethylene Plant site. 'at least 98' taken at its lower bound, 98, per the range rule. The article carries no year in its dateline; it says 'Just yesterday (Thursday, June 5)', and 5 June fell on a Thursday in 2025, which fixes publication at 2025-06-06 and matches the June 2025 Mossmorran contractor cuts."
+  },
+  {
+   "reference_row_id": "uk-han-bilfinger-2025-06-06",
+   "employer": "Bilfinger",
+   "employer_aliases": [
+    "Bilfinger"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-06-06",
+   "stated_job_count": 10,
+   "count_evidence": "Bilfinger has issued 10 redundancy notices",
+   "official_source_url": "https://www.centralfifetimes.com/news/25219422.mossmorran-plant-central-fife-sees-160-redundancies/",
+   "publisher": "Central Fife Times",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-03-08",
+    "2026-03-03"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "One input span resolved to TWO distinct employers; this object is Bilfinger, the next is KAEFER. The earlier pass could only see search-result text because three publishers returned 403; this pass read both counts in the body of the Central Fife Times article, so neither is unverified. Contractor at Mossmorran, Fife; jobs are in the UK."
+  },
+  {
+   "reference_row_id": "uk-han-kaefer-2025-06-06",
+   "employer": "KAEFER",
+   "employer_aliases": [
+    "KAEFER",
+    "Kaefer"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-06-06",
+   "stated_job_count": 55,
+   "count_evidence": "Kaefer is cutting 55 jobs",
+   "official_source_url": "https://www.centralfifetimes.com/news/25219422.mossmorran-plant-central-fife-sees-160-redundancies/",
+   "publisher": "Central Fife Times",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-03-08",
+    "2026-03-03"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Second of the two employers in the 'Bilfinger and KAEFER' span. Contractor at Mossmorran, Fife; jobs are in the UK. Same article and same 2025-06-06 date reasoning as the Altrad and Bilfinger objects."
+  },
+  {
+   "reference_row_id": "uk-han-lancaster-university-2025-06-20",
+   "employer": "Lancaster University",
+   "employer_aliases": [
+    "Lancaster University"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-06-20",
+   "stated_job_count": 400,
+   "count_evidence": "The university has informed staff of plans to cut 400 full-time equivalent (FTE) positions by July 2026, with academics the first to go.",
+   "official_source_url": "https://www.timeshighereducation.com/news/lancaster-university-cut-one-five-academic-jobs",
+   "publisher": "Times Higher Education",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-03-22",
+    "2026-03-17"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Announcement figure taken, per instruction, rather than the later September 2025 restatement (417 FTE). Lancaster's own staff-portal announcement page rendered without content on fetch, so a named news organisation's report of the same day is cited."
+  },
+  {
+   "reference_row_id": "uk-han-jaguar-land-rover-2025-07-17",
+   "employer": "Jaguar Land Rover",
+   "employer_aliases": [
+    "Jaguar Land Rover",
+    "JLR"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-07-17",
+   "stated_job_count": 500,
+   "count_evidence": "JLR says it'll offer 1.5 percent of its workforce a 'voluntary redundancy package' to eligible employees, with the expectation that no more than 500 individuals will accept.",
+   "official_source_url": "https://www.motor1.com/news/766218/jaguar-land-rover-cuts-500-jobs-2025/",
+   "publisher": "Motor1",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-04-18",
+    "2026-04-13"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Voluntary redundancy scheme for UK management roles, capped at 500 (~1.5% of UK workforce), announced alongside Q1 retail sales down 15.1%. ITV News Central published the same figure the same day under the headline 'Jaguar Land Rover to cut up to 500 UK jobs' (https://www.itv.com/news/central/2025-07-17/jaguar-land-rover-to-cut-up-to-500-uk-jobs) but the page would not load for verbatim capture. 'Up to 500' counted as 500 per the count rules."
+  },
+  {
+   "reference_row_id": "uk-han-prax-lindsey-oil-refinery-2025-07-21",
+   "employer": "Prax Lindsey Oil Refinery",
+   "employer_aliases": [
+    "Prax Lindsey",
+    "Prax"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-07-21",
+   "stated_job_count": 420,
+   "count_evidence": "One of only five major refineries left in the country, the site is now headed for closure, putting an estimated 420 jobs at risk across the workforce – a figure closer to 1,000 if contract workers and the supply chain is included.",
+   "official_source_url": "https://fueloilnews.co.uk/2025/07/prax-lindsey-refinery-set-to-close-with-no-buyer-found/",
+   "publisher": "Fuel Oil News",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-04-22",
+    "2026-04-17"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "EDITOR RE-CHECK: the span is a place name, not an employer; resolved to the Prax Lindsey Oil Refinery at Immingham, whose special managers announced on 2025-07-21 that no buyer had been found and the site would wind down. The 420 figure is both the site headcount and the number stated as at risk because the whole site closes. Later, separate rounds were reported (about 125 redundancy notices issued 2025-09-29, more than 70 further in 2026) - do not double-count."
+  },
+  {
+   "reference_row_id": "uk-han-reach-plc-2025-09-08",
+   "employer": "Reach plc",
+   "employer_aliases": [
+    "Reach"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-09-08",
+   "stated_job_count": 321,
+   "count_evidence": "The proposals include making 321 editorial redundancies and creating 135 new roles.",
+   "official_source_url": "https://pressgazette.co.uk/news/reach-to-cut-editorial-headcount-by-186-in-biggest-reorganisation-yet/",
+   "publisher": "Press Gazette",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-06-10",
+    "2026-06-05"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Three figures circulate for this one announcement: 321 redundancies proposed (used here), 135 new roles created, and a NET reduction of 186. The same report states 'More than 600 journalists across Reach nationals and regionals have been told their jobs are at risk' - that is an at-risk pool, not the cut. Covers UK and Ireland titles, so a small share of the 321 is in the Republic of Ireland."
+  },
+  {
+   "reference_row_id": "uk-han-stv-group-plc-2025-09-25",
+   "employer": "STV Group plc",
+   "employer_aliases": [
+    "STV"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-09-25",
+   "stated_job_count": 60,
+   "count_evidence": "STV has announced it is cutting around 60 jobs as part of cost-saving measures following a drop in advertising revenue and a deterioration in the content commissioning market.",
+   "official_source_url": "https://news.stv.tv/scotland/stv-to-cut-60-jobs-and-plans-one-news-programme-for-scotland",
+   "publisher": "STV News",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-06-27",
+    "2026-06-22"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Announced alongside STV Group's interim half-year results on 2025-09-25, so the number is the employer's own. Cited to STV News, which is the employer's own newsroom reporting on its parent - treated as an employer statement for that reason. The same announcement described the cuts as 10% of the workforce and later reporting put 28 roles specifically in newsrooms, including the closure of STV North in Aberdeen, which is what the Hansard sentence refers to."
+  },
+  {
+   "reference_row_id": "uk-han-prax-lindsey-oil-refinery-2025-09-30",
+   "employer": "Prax Lindsey Oil Refinery",
+   "employer_aliases": [
+    "Prax Lindsey Oil Refinery",
+    "Prax"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-09-30",
+   "stated_job_count": 125,
+   "count_evidence": "125 Prax Lindsey Oil Refinery employees have been informed that their positions will be made redundant at the end of October.",
+   "official_source_url": "https://hellorayo.co.uk/mfr/uk/news/redundancies-announced-lindsey-oil-refinery",
+   "publisher": "Rayo (Bauer Media) reporting the Insolvency Service statement",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-07-02",
+    "2026-06-27"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "The company is in liquidation, so the redundancies were made by the Official Receiver via FTI Consulting; the quoted sentence is the Insolvency Service's own statement, which is the closest thing to an employer statement here. ITV News Calendar published the same story under the headline '125 redundancies announced at Lindsey oil refinery' on 2025-09-30 (https://www.itv.com/news/calendar/2025-09-30/redundancies-made-at-linsey-oil-refinery-as-bids-considered-for-the-site) but that URL timed out on fetch twice, so the Rayo copy is cited as the source actually read. 255 employees were retained; the 125 is stated directly, not derived."
+  },
+  {
+   "reference_row_id": "uk-han-haventus-2025-10-17",
+   "employer": "Haventus",
+   "employer_aliases": [
+    "Haventus",
+    "Ardersier"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-10-17",
+   "stated_job_count": 17,
+   "count_evidence": "we are proposing a reduction of up to 17 roles",
+   "official_source_url": "https://www.inverness-courier.co.uk/news/exclusive-ardersier-owners-haventus-plan-to-shed-17-jobs-in-416916/",
+   "publisher": "Inverness Courier",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-07-19",
+    "2026-07-14"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "EDITOR RE-CHECK - CONTEXT MISMATCH. The Hansard sentence is about 1,500 jobs that COULD HAVE BEEN CREATED at Ardersier (the Ming Yang investment the UK Government declined to block in March 2026), not about redundancies. It is not evidence of a layoff. However, Ardersier Port's owner Haventus did separately announce a reduction of up to 17 roles on 2025-10-17, which meets all three inclusion tests on its own. If the reference set requires the Hansard sentence itself to describe the layoff, drop this row."
+  },
+  {
+   "reference_row_id": "uk-han-ashgate-hospice-2025-10-21",
+   "employer": "Ashgate Hospice",
+   "employer_aliases": [
+    "Ashgate Hospice",
+    "Ashgate"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-10-21",
+   "stated_job_count": 52,
+   "count_evidence": "In total, 52 roles from the workforce of 378 staff are at risk of redundancy, with the impact being felt across the hospice's therapy, counselling and wider support teams including marketing and communications and HR.",
+   "official_source_url": "https://ashgatehospice.org.uk/2025/10/21/ashgate-hospice-urges-the-community-to-act-now-for-ashgate-as-it-announces-proposals-to-drastically-reduce-bed-numbers-care-services-and-staff-to-save-2-6-million-due-to-unfair-nhs/",
+   "publisher": "Ashgate Hospice",
+   "citation_type": "employer_statement",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-07-23",
+    "2026-07-18"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "52 is the figure announced on 21 October 2025. Later reporting says voluntary redundancies and staff suggestions reduced the at-risk number to 34, with 33 employees ultimately affected; the announced figure is used here per the count rules."
+  },
+  {
+   "reference_row_id": "uk-han-exxonmobil-chemical-limited-fife-ethylen-2025-11-18",
+   "employer": "ExxonMobil Chemical Limited (Fife Ethylene Plant, Mossmorran)",
+   "employer_aliases": [
+    "ExxonMobil",
+    "Exxon"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-11-18",
+   "stated_job_count": 179,
+   "count_evidence": "The company said the closure will affect 179 directly employed workers and around 250 contractors and will also bring six four-year apprenticeships to an early end.",
+   "official_source_url": "https://www.thechemicalengineer.com/news/exxonmobil-to-close-fife-ethylene-plant-within-months-putting-over-400-jobs-at-risk",
+   "publisher": "The Chemical Engineer",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-08-20",
+    "2026-08-15"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "JUDGEMENT CALL for an editor: headlines carried the vague 'over 400 jobs at risk'; the only firm absolute figure attributed to the company is 179 directly employed workers (the ~250 contractors figure is hedged with 'around'). Announcement made 18 November 2025 (Hansard mention same day; The Chemical Engineer report published 19 November 2025). Plant permanently ceased production 2 February 2026; up to 50 roles offered relocation to Fawley."
+  },
+  {
+   "reference_row_id": "uk-han-harbour-energy-2025-12-01",
+   "employer": "Harbour Energy",
+   "employer_aliases": [
+    "Harbour Energy",
+    "Harbour"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-12-01",
+   "stated_job_count": 100,
+   "count_evidence": "It confirmed that around 100 offshore jobs out of around 700 are at risk as part of this review.",
+   "official_source_url": "https://news.stv.tv/scotland/harbour-energy-to-cut-around-100-offshore-jobs-from-the-north-sea",
+   "publisher": "STV News",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-09-02",
+    "2026-08-28"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "Harbour's larger 250-post Aberdeen onshore cut was announced in May 2025, BEFORE the window; this record is the separate offshore round whose consultation opened 1 December 2025. Company quote from Scott Barr, MD of Harbour's UK business unit, appears in the same report."
+  },
+  {
+   "reference_row_id": "uk-han-university-of-essex-2025-12-02",
+   "employer": "University of Essex",
+   "employer_aliases": [
+    "Essex"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-12-02",
+   "stated_job_count": 400,
+   "count_evidence": "The decision comes alongside plans to cut approximately 400 staff positions – 200 academic roles this year and 200 professional service posts over the next two years",
+   "official_source_url": "https://www.gazette-news.co.uk/news/25667640.essex-university-announce-closure-southend-campus/",
+   "publisher": "Gazette (Colchester)",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-09-03",
+    "2026-08-29"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "The university's own statement of 2025-12-02 (https://www.essex.ac.uk/news/2025/12/02/steps-towards-a-sustainable-future) gives only the two components - 'around 200' academic posts and 'approximately 200' professional service roles - so the 400 total would be a derived count from the employer alone. Cited instead to the Gazette, which states 400 explicitly. Announced together with the closure of the Southend campus by summer 2026."
+  },
+  {
+   "reference_row_id": "uk-han-university-of-strathclyde-2025-12-10",
+   "employer": "University of Strathclyde",
+   "employer_aliases": [
+    "University of Strathclyde",
+    "Strathclyde"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2025-12-10",
+   "stated_job_count": 70,
+   "count_evidence": "The University of Strathclyde is to cut around 70 jobs as part of £35m savings the institution is looking to make over the next two years.",
+   "official_source_url": "https://news.stv.tv/west-central/strathclyde-university-to-cut-70-jobs-as-part-of-35m-cost-savings",
+   "publisher": "STV News",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2025-09-11",
+    "2026-09-06"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "The Hansard sentence gives only the £35m savings target, which on its own would be no_absolute_count; the 70-job figure comes from the university's own December 2025 announcement as reported by STV. The university has said no voluntary severance scheme is open and no compulsory redundancies are planned, so the mechanism is still in dispute (UCU balloted for strike action)."
+  },
+  {
+   "reference_row_id": "uk-han-university-of-nottingham-2026-05-13",
+   "employer": "University of Nottingham",
+   "employer_aliases": [
+    "University of Nottingham",
+    "Nottingham"
+   ],
+   "excluded_name_prefixes": [],
+   "announcement_date": "2026-05-13",
+   "stated_job_count": 609,
+   "count_evidence": "The university currently employs 7,363 full-time equivalent (FTE) staff and is proposing to reduce that number by 609 FTE roles over the next three years - equivalent to around 8% of its workforce.",
+   "official_source_url": "https://www.thebusinessdesk.com/eastmidlands/news/2110423-university-of-nottingham-proposes-restructure-affecting-nearly-2700-staff",
+   "publisher": "TheBusinessDesk.com",
+   "citation_type": "primary_report",
+   "hansard_first_mention": null,
+   "match_window": [
+    "2026-02-12",
+    "2027-02-07"
+   ],
+   "match_decision": "not_matched",
+   "match_notes": "NOT adjudicated. No editor has looked at this event yet, so it cannot count in the numerator. Any tracker row that satisfies alias+window is reported for adjudication and is not counted.",
+   "rejected_candidate_event_ids": [],
+   "verifier_notes": "JUDGEMENT CALL for an editor: the 350 figure the MP cited belongs to 'Future Nottingham' Phase 1, professional services, launched April 2025 and therefore OUTSIDE the window. The in-window announcement for this employer is the Phase 2 academic restructure formally proposed on 13 May 2026 (609 FTE over three years, 2,697 staff placed at risk). If the reference set must match the Hansard-cited event rather than the employer, this row should be dropped as outside_window instead."
+  }
+ ],
+ "dropped_candidates": [
+  {
+   "span": "Grangemouth",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Both Grangemouth redundancy programmes were announced before 2025-07-01: Petroineos announced the refinery closure with 400 job losses in September 2024, and INEOS announced the end of its UK chemicals (synthetic ethanol) operation on 2025-01-13.",
+   "employer": "INEOS / Petroineos Grangemouth",
+   "employer_aliases": [
+    "INEOS",
+    "Petroineos"
+   ],
+   "announcement_date": "2025-01-13",
+   "stated_job_count": 0,
+   "count_evidence": "This still results in a net job loss of 80 roles at Grangemouth, with a further impact of more than 500 indirect roles in the wider economy.",
+   "official_source_url": "https://www.ineos.com/sites/grangemouth/news/chemicals-coming-to-an-end-in-the-uk/",
+   "citation_type": "employer_statement",
+   "publisher": "INEOS",
+   "uk_jobs": true,
+   "notes": "Span is a town, not an employer. Even if the window were met, the INEOS figure (net job loss of 80) is a NET number and would fail the derived_count rule; the 400 refinery figure belongs to Petroineos and dates to September 2024."
+  },
+  {
+   "span": "De Montfort University and Leicester University",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "The span names two separate employers and neither resolves cleanly: De Montfort University's consultation on 'up to 80 roles' was announced 2025-05-21 (outside the window), and for the University of Leicester's November 2025 programme the only stated figure ('around 150 jobs at risk') comes from the UCU trade union, with the university itself declining to state numbers publicly.",
+   "employer": "De Montfort University; University of Leicester",
+   "employer_aliases": [
+    "De Montfort",
+    "Leicester"
+   ],
+   "announcement_date": "2025-05-21",
+   "stated_job_count": 0,
+   "count_evidence": "",
+   "official_source_url": "https://www.timeshighereducation.com/news/de-montfort-university-cut-80-posts-save-ps8-million",
+   "citation_type": "primary_report",
+   "publisher": "Times Higher Education",
+   "uk_jobs": true,
+   "notes": "EDITOR RE-CHECK: the University of Leicester's ~150-role programme (formal consultation confirmed early November 2025) IS inside the window and may deserve its own entry if a non-union original publisher stating the count can be verified. The THE article on De Montfort is paywalled; only the free lede was read."
+  },
+  {
+   "span": "Altrad",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Altrad's Mossmorran redundancies (at least 98 roles, alongside Kaefer's 55 and Bilfinger's 10) were announced in early June 2025, before the 2025-07-01 window opens.",
+   "employer": "Altrad",
+   "employer_aliases": [
+    "Altrad"
+   ],
+   "announcement_date": "2025-06-06",
+   "stated_job_count": 98,
+   "count_evidence": "at least 98 redundancies",
+   "official_source_url": "https://www.centralfifetimes.com/news/25219422.mossmorran-plant-central-fife-sees-160-redundancies/",
+   "citation_type": "primary_report",
+   "publisher": "Central Fife Times",
+   "uk_jobs": true,
+   "notes": "Altrad is a French-headquartered group; the affected jobs are UK contractor roles at ExxonMobil's Mossmorran plant in Fife. 'At least 98' is a floor, not a firm figure, so this would need a second look on the count even inside the window."
+  },
+  {
+   "span": "Alstom",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Alstom's Derby Litchurch Lane redundancy warning, putting about 1,300 jobs at risk, was announced in mid-November 2023, well before the window; the MP's phrase 'under the previous Government' confirms he was describing a pre-July-2024 event.",
+   "employer": "Alstom",
+   "employer_aliases": [
+    "Alstom"
+   ],
+   "announcement_date": "2023-11-16",
+   "stated_job_count": 1300,
+   "count_evidence": "Alstom plan for \"significant reduction in activity\" at Derby putting 1,300 jobs at risk",
+   "official_source_url": "https://news.railbusinessdaily.com/alstom-plan-to-end-production-of-rolling-stock-at-derby-putting-1300-jobs-at-risk/",
+   "citation_type": "primary_report",
+   "publisher": "RailBusinessDaily",
+   "uk_jobs": true,
+   "notes": "No Alstom UK redundancy announcement was found inside 2025-07-01 to 2026-06-30. The 1,300 figure itself is a composite (about 550 permanent plus 780 temporary staff), so it would also need scrutiny on the derived_count rule."
+  },
+  {
+   "span": "Ithaca",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Ithaca Energy announced an onshore reorganisation and redundancy consultation on 2025-03-26 following its combination with Eni's UK assets, but explicitly declined to say how many roles were affected, and no original publisher states an absolute figure for any later round either.",
+   "employer": "Ithaca Energy",
+   "employer_aliases": [
+    "Ithaca Energy",
+    "Ithaca"
+   ],
+   "announcement_date": "2025-03-26",
+   "stated_job_count": 0,
+   "count_evidence": "",
+   "official_source_url": "https://www.energyvoice.com/oilandgas/566813/ithaca-energy-announces-inevitable-redundancies/",
+   "citation_type": "primary_report",
+   "publisher": "Energy Voice",
+   "uk_jobs": true,
+   "notes": "Fails on two counts: the only located announcement is 2025-03-26 (outside the window) and no absolute number was ever published. The 2026-06-10 Hansard sentence lists nine North Sea employers generically and attaches no figure to Ithaca."
+  },
+  {
+   "span": "Network Rail",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "The 870 figure traces only to the parliamentary question itself and to TSSA union material; the nearest original publisher, Railnews (2026-01-16), reports 'Up to 2,000 jobs are reported to be at risk at Network Rail' and states in the same article that Network Rail had yet to confirm any reductions.",
+   "employer": "Network Rail",
+   "employer_aliases": [
+    "Network Rail"
+   ],
+   "announcement_date": "2026-01-16",
+   "stated_job_count": 0,
+   "count_evidence": "",
+   "official_source_url": "https://www.railnews.co.uk/news/2026/01/16-network-rail-job-cuts-expected.html",
+   "citation_type": "primary_report",
+   "publisher": "Railnews",
+   "uk_jobs": true,
+   "notes": "EDITOR RE-CHECK: this is very likely a real in-window event (line managers reportedly began contacting affected staff from 2026-01-20) but the two published figures disagree by more than 2x (870 vs up to 2,000) and neither is an employer-confirmed count. New Civil Engineer and Rail Magazine both have coverage but return HTTP 403 to automated fetching, so a human should read those directly before this is written off."
+  },
+  {
+   "span": "Child Maintenance Service",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "The Hansard item is a written question about how the Child Maintenance Service treats other people's redundancy payments when calculating maintenance liabilities; it is not a redundancy announcement by the CMS, and no CMS redundancy programme exists to verify.",
+   "employer": "Child Maintenance Service",
+   "employer_aliases": [
+    "Child Maintenance Service"
+   ],
+   "announcement_date": "",
+   "stated_job_count": 0,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "False-positive span: the word 'redundancy' appears in the sense of redundancy PAY, not job cuts. The CMS is a DWP delivery function, not an employer that announced layoffs."
+  },
+  {
+   "span": "INEOS",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The Grangemouth refinery closure with 400 job losses was announced by Petroineos in September 2024, and INEOS' own Grangemouth chemicals announcement ('Chemicals coming to an end in the UK', a net loss of 80 roles) is dated 13 January 2025; both predate 2025-07-01 and no in-window INEOS UK redundancy announcement with an absolute count could be found.",
+   "employer": "INEOS",
+   "employer_aliases": [
+    "INEOS",
+    "Petroineos"
+   ],
+   "announcement_date": "2025-01-13",
+   "stated_job_count": null,
+   "count_evidence": "This still results in a net job loss of 80 roles at Grangemouth, with a further impact of more than 500 indirect roles in the wider economy.",
+   "official_source_url": "https://www.ineos.com/sites/grangemouth/news/chemicals-coming-to-an-end-in-the-uk/",
+   "citation_type": "employer_statement",
+   "publisher": "INEOS",
+   "uk_jobs": true,
+   "notes": "The only INEOS-published figure is a NET job loss (80), which would also fail the derived/net-count rule even if it were in window. The MP's 'more than 100 INEOS chemical employees' figure has no original-publisher counterpart."
+  },
+  {
+   "span": "Lancaster University",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Lancaster University told staff of plans to cut 400 FTE roles on 20 June 2025, eleven days before the window opens; the later revision to 417 FTE was a restatement of the same June programme.",
+   "employer": "Lancaster University",
+   "employer_aliases": [
+    "Lancaster University"
+   ],
+   "announcement_date": "2025-06-20",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.researchprofessionalnews.com/rr-news-uk-universities-2025-6-lancaster-says-400-jobs-could-go-in-30m-cost-cutting-programme/",
+   "citation_type": "primary_report",
+   "publisher": "Research Professional News",
+   "uk_jobs": true,
+   "notes": "Editor may wish to re-check whether the September 2025 figure of 417 FTE counts as a fresh in-window announcement; on the reading that it is the same programme restated, this is outside the window."
+  },
+  {
+   "span": "Caversham Park",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The MP's own sentence dates the redundancies and the closure of Caversham Park (BBC Monitoring's former site) to 2016-17, roughly nine years before the window.",
+   "employer": "BBC Monitoring",
+   "employer_aliases": [
+    "BBC"
+   ],
+   "announcement_date": "2016-01-01",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Caversham Park is a BBC site, not an employer; the reference is historical context in a debate about the BBC World Service, not a new redundancy programme. Not researched further given the plainly out-of-window date in the quoted sentence."
+  },
+  {
+   "span": "Tata",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Tata Steel's UK restructuring, consulting on up to 2,800 job losses centred on Port Talbot, was announced on 19-22 January 2024; the peer is describing the deal negotiated over that 2024 announcement, not a new one.",
+   "employer": "Tata Steel UK",
+   "employer_aliases": [
+    "Tata Steel",
+    "Tata"
+   ],
+   "announcement_date": "2024-01-19",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://research.senedd.wales/research-articles/the-best-plan-for-steel-or-the-cheapest-tata-announces-next-steps-and-consults-on-up-to-2-800-job-losses/",
+   "citation_type": "primary_report",
+   "publisher": "Senedd Research",
+   "uk_jobs": true,
+   "notes": "The Hansard sentence mentions only a voluntary redundancy package, with no count at all."
+  },
+  {
+   "span": "Bilfinger and KAEFER",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The Mossmorran contractor redundancies described (Altrad at least 98, Bilfinger 10, Kaefer 55) were reported in June 2025, before the window opens on 2025-07-01.",
+   "employer": "Bilfinger UK",
+   "employer_aliases": [
+    "Bilfinger",
+    "KAEFER"
+   ],
+   "announcement_date": "2025-06-01",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.unitetheunion.org/news-events/news/2025/june/job-loss-threat-for-hundreds-of-skilled-contractors-at-grangemouth-and-mossmorran",
+   "citation_type": "primary_report",
+   "publisher": "Unite the Union",
+   "uk_jobs": true,
+   "notes": "The span names two separate employers, which would need splitting even if in window. The only figures found originate with Unite (a union, not the employer or an independent news organisation) and were not confirmed by Bilfinger or KAEFER themselves. Unite's page returned HTTP 403 to direct fetch; the numbers come from search-result text and secondary trade coverage, so treat them as unconfirmed."
+  },
+  {
+   "span": "University of Edinburgh",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Edinburgh's only stated absolute figure, up to 1,800 job losses against £140m of cuts, was announced by the university in February 2025; the in-window move towards compulsory redundancies has no stated number, with the local UCU branch saying management still cannot say how many jobs it is cutting.",
+   "employer": "University of Edinburgh",
+   "employer_aliases": [
+    "University of Edinburgh"
+   ],
+   "announcement_date": "2025-02-18",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.ucu.org.uk/article/14418/New-strike-ballot-at-Edinburgh-University-in-dispute-over-cuts-and-job-losses",
+   "citation_type": "primary_report",
+   "publisher": "University and College Union",
+   "uk_jobs": true,
+   "notes": "Fails on two grounds: the 1,800 figure is out of window, and the in-window compulsory-redundancy plan the MP refers to carries no absolute count."
+  },
+  {
+   "span": "Scunthorpe",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "British Steel announced its Scunthorpe blast furnace closure consultation, putting up to 2,700 jobs at risk, on 27 March 2025, before the window opens.",
+   "employer": "British Steel",
+   "employer_aliases": [
+    "British Steel"
+   ],
+   "announcement_date": "2025-03-27",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.itv.com/news/calendar/2025-03-27/2700-jobs-at-risk-at-british-steel-plant",
+   "citation_type": "primary_report",
+   "publisher": "ITV News",
+   "uk_jobs": true,
+   "notes": "The span is a town, not an employer; the MP mentions Scunthorpe steelworkers only as a comparison to Grangemouth."
+  },
+  {
+   "span": "Petrofac",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Petrofac's parent applied to appoint administrators on 27 October 2025 and coverage refers only to 'thousands of North Sea jobs at risk' and to around 2,000 Aberdeen staff employed (later largely transferred to CB&I under a 24 December 2025 deal); no original publisher states an absolute number of Petrofac redundancies.",
+   "employer": "Petrofac",
+   "employer_aliases": [
+    "Petrofac"
+   ],
+   "announcement_date": "2025-10-27",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.pressandjournal.co.uk/fp/business/local/6880145/north-sea-jobs-at-risk-petrofac-administration/",
+   "citation_type": "primary_report",
+   "publisher": "The Press and Journal",
+   "uk_jobs": true,
+   "notes": "The 2,000 and 3,000 figures found are pre-cut headcounts or jobs saved by the CB&I transfer, which would also fail the retained_or_total_only rule."
+  },
+  {
+   "span": "Platform4",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "Platform4 is the Network Rail property subsidiary receiving TUPE transfers, not an employer that announced redundancies; the 870 figure is a union-sourced count of Network Rail staff 'at risk' and no original publisher reports a Platform4 redundancy programme or a confirmed Network Rail redundancy count.",
+   "employer": "Platform4",
+   "employer_aliases": [
+    "Platform4",
+    "Network Rail"
+   ],
+   "announcement_date": "2026-01-15",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.newcivilengineer.com/latest/network-rail-braces-for-widespread-layoffs-amid-budgetary-pressures-15-01-2026/",
+   "citation_type": "primary_report",
+   "publisher": "New Civil Engineer",
+   "uk_jobs": true,
+   "notes": "The MP's own wording is 'reportedly at risk'. If an editor wants to keep this, it should be re-cut as a Network Rail candidate and the 870 confirmed against a Network Rail statement rather than RMT briefing."
+  },
+  {
+   "span": "Torbay",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Torbay and South Devon NHS Foundation Trust's own 28 April 2026 statement on its voluntary redundancy scheme says 'There is no obligation for anyone to apply and we are not setting targets for numbers of people to leave', and no original publisher states an absolute number of posts to go.",
+   "employer": "Torbay and South Devon NHS Foundation Trust",
+   "employer_aliases": [
+    "Torbay and South Devon NHS Foundation Trust",
+    "Torbay Hospital"
+   ],
+   "announcement_date": "2026-04-20",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.torbayandsouthdevon.nhs.uk/about-us/news-and-publications/news/2026/04/voluntary-redundancy-scheme-31742/",
+   "citation_type": "employer_statement",
+   "publisher": "Torbay and South Devon NHS Foundation Trust",
+   "uk_jobs": true,
+   "notes": "The only numbers published are the £33.7m 2025/26 income-expenditure gap and the scheme window (20 April to 10 May 2026). The MP's '300 voluntary redundancies' has no original-publisher counterpart."
+  },
+  {
+   "span": "O Ferries",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The P&O Ferries mass dismissal of 786 seafarers took place on 17 March 2022, more than three years before the window opens; the Hansard mentions are debate on legislation closing the resulting legal loophole, not a new redundancy announcement.",
+   "employer": "P&O Ferries",
+   "employer_aliases": [
+    "P&O Ferries",
+    "DP World"
+   ],
+   "announcement_date": "2022-03-17",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://commonslibrary.parliament.uk/research-briefings/cbp-9529/",
+   "citation_type": "primary_report",
+   "publisher": "House of Commons Library",
+   "uk_jobs": true,
+   "notes": "Span is a Hansard tokenisation artefact of 'P&O Ferries'. No in-window announcement found."
+  },
+  {
+   "span": "Belmar Engineering",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Belmar Engineering Services entered liquidation with the loss of all 48 employees, announced 16 April 2025, before the window opens on 2025-07-01.",
+   "employer": "Belmar Engineering Services Limited",
+   "employer_aliases": [
+    "Belmar Engineering"
+   ],
+   "announcement_date": "2025-04-16",
+   "stated_job_count": 48,
+   "count_evidence": "Aberdeen firm Belmar Engineering has gone into liquidation with the immediate loss of all 48 employees.",
+   "official_source_url": "https://www.pressandjournal.co.uk/fp/business/local/6734870/aberdeens-belmar-engineering-enters-liquidation-with-48-job-losses/",
+   "citation_type": "primary_report",
+   "publisher": "The Press and Journal",
+   "uk_jobs": true,
+   "notes": "Otherwise a clean event (Aberdeen, absolute count of 48, liquidator MHA appointed). Only the date disqualifies it; the MP described it in October 2025 as having happened 'this year'."
+  },
+  {
+   "span": "Kirkwood",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The Kirkwood hospice announced its service and workforce changes, including 19 redundancies, in May 2025 (ITV News Calendar report dated 2025-05-22), before the window opens.",
+   "employer": "The Kirkwood",
+   "employer_aliases": [
+    "The Kirkwood",
+    "Kirkwood Hospice"
+   ],
+   "announcement_date": "2025-05-22",
+   "stated_job_count": 19,
+   "count_evidence": "A hospice has made 19 staff redundant in a bid to cut its annual costs by £1.7m.",
+   "official_source_url": "https://www.itv.com/news/calendar/2025-05-22/charity-says-ni-rise-partly-to-blame-as-hospice-staff-laid-off",
+   "citation_type": "primary_report",
+   "publisher": "ITV News Calendar",
+   "uk_jobs": true,
+   "notes": "Kirklees, West Yorkshire charity hospice; count is firm and the employer published its own statement too, but the announcement predates the window by six weeks."
+  },
+  {
+   "span": "Cammell Laird",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The Hansard debate concerns the 1984 Cammell Laird shipyard occupation and the imprisonment of 37 workers, not a current redundancy announcement.",
+   "employer": "Cammell Laird",
+   "employer_aliases": [
+    "Cammell Laird"
+   ],
+   "announcement_date": "1984-01-01",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": null,
+   "citation_type": null,
+   "publisher": null,
+   "uk_jobs": true,
+   "notes": "Historical injustice debate; the '37' in the quoted sentences is the number of imprisoned workers, not a redundancy count. Announcement date is nominal (1984, exact day not established)."
+  },
+  {
+   "span": "Wedgwood",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Fiskars Group proposed redundancies at the Barlaston factory on 5 February 2026 but did not disclose how many Staffordshire roles would go; the only figure given, a net reduction of around 310 roles, is group-wide and global, not UK.",
+   "employer": "Wedgwood",
+   "employer_aliases": [
+    "Wedgwood",
+    "Fiskars"
+   ],
+   "announcement_date": "2026-02-05",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://www.manufacturingmanagement.co.uk/content/news/wedgwood-redundancies-proposed-amid-staffordshire-pottery-cuts",
+   "citation_type": "primary_report",
+   "publisher": "Manufacturing Management",
+   "uk_jobs": true,
+   "notes": "In window and a genuine UK redundancy consultation (30-day consultation, GMB responding), but no UK-specific absolute count was published. Worth re-checking after the consultation concluded, if a figure was later confirmed."
+  },
+  {
+   "span": "Chevron",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Chevron announced on 2 July 2025 that it will close its Aberdeen office between December 2025 and December 2026 but described the site only as housing a 'small specialist team' and gave no number of jobs affected.",
+   "employer": "Chevron",
+   "employer_aliases": [
+    "Chevron"
+   ],
+   "announcement_date": "2025-07-02",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://www.scottishfinancialnews.com/articles/energy-giant-chevron-announces-aberdeen-exit",
+   "citation_type": "primary_report",
+   "publisher": "Scottish Financial News",
+   "uk_jobs": true,
+   "notes": "The only figure in circulation is Chevron's global target of cutting up to 20% of its workforce, which is a percentage and not UK-specific. In window but uncountable."
+  },
+  {
+   "span": "Well-Safe",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "Well-Safe Solutions confirmed its redundancy consultation, up to 45 onshore roles, in March 2025 (Rigzone report dated 12 March 2025), before the window opens.",
+   "employer": "Well-Safe Solutions",
+   "employer_aliases": [
+    "Well-Safe Solutions",
+    "Well-Safe"
+   ],
+   "announcement_date": "2025-03-12",
+   "stated_job_count": 45,
+   "count_evidence": "Well-Safe Solutions has said that up to 45 onshore positions are at risk and there will also be job losses from its Well-Safe Guardian decommissioning rig, although no figures have been confirmed.",
+   "official_source_url": "https://www.energyvoice.com/oilandgas/decommissioning/567926/aberdeens-well-safe-cuts-up-to-45-north-sea-jobs/",
+   "citation_type": "primary_report",
+   "publisher": "Energy Voice",
+   "uk_jobs": true,
+   "notes": "The MP's June 2026 list groups Well-Safe with several other North Sea employers; the only Well-Safe redundancy programme found is the March 2025 one. No in-window Well-Safe announcement located."
+  },
+  {
+   "span": "Churchill Cleaning",
+   "decision": "drop",
+   "drop_reason": "derived_count",
+   "drop_detail": "The only figure published is that cutting 'over 1,000 hours of cleaning a week' 'equates to more than 40 members of staff' - an arithmetic derivation, and hedged; the 130 figure is the pre-cut total of outsourced Parliament cleaners, not the number being cut.",
+   "employer": "Churchill Contract Services",
+   "employer_aliases": [
+    "Churchill",
+    "Churchill Contract Services"
+   ],
+   "announcement_date": "2026-06-23",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://www.gmb.org.uk/news/outsourced-parliament-cleaners-face-job-losses,-with-roles-cut-by-a-third",
+   "citation_type": "primary_report",
+   "publisher": "GMB Union",
+   "uk_jobs": true,
+   "notes": "Second disqualifier an editor should note: the only source stating the numbers is the GMB union, not the employer and not a news organisation reporting independently. Employer made no public statement with a figure that could be found. In window (GMB release 23 June 2026, two days before the Hansard mention)."
+  },
+  {
+   "span": "Warton",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No redundancy programme was announced at BAE Systems Warton in the window; the Hansard line is conditional (\"we risk the possibility of job losses\") and searches surface only the historic February 2022 BAE Military Air restructure affecting Warton/Preston.",
+   "employer": "BAE Systems (Warton)",
+   "employer_aliases": [
+    "BAE Systems"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": null,
+   "citation_type": null,
+   "publisher": null,
+   "uk_jobs": true,
+   "notes": "Site is real and UK, but the MP was describing a risk contingent on future Typhoon orders, not an announced programme."
+  },
+  {
+   "span": "Marks and Spencer",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The Hansard sentence refers to a supplier contract that ended in 1999, roughly 26 years before the window; it is not an M&S redundancy announcement at all.",
+   "employer": "Marks and Spencer",
+   "employer_aliases": [
+    "Marks and Spencer",
+    "M&S"
+   ],
+   "announcement_date": "1999-01-01",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": null,
+   "citation_type": null,
+   "publisher": null,
+   "uk_jobs": true,
+   "notes": "Date shown is the year the MP cited; the job losses were at a Northern Ireland supplier, not at M&S. Also vague (\"hundreds\")."
+  },
+  {
+   "span": "St Catherine’s",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "St Catherine's Hospice announced its £1.5m cost reduction and loss of \"in excess of 40 roles\" in September 2024 (board approval early 2024), before the 2025-07-01 window opens.",
+   "employer": "St Catherine's Hospice",
+   "employer_aliases": [
+    "St Catherine's Hospice"
+   ],
+   "announcement_date": "2024-09-05",
+   "stated_job_count": null,
+   "count_evidence": "In total, and after formal consultation with our staff teams, we expect to lose in excess of 40 roles from all our staff including nurses.",
+   "official_source_url": "https://www.stch.org.uk/news-blog/we-announce-1-5-million-cost-reductions/",
+   "citation_type": "employer_statement",
+   "publisher": "St Catherine's Hospice",
+   "uk_jobs": true,
+   "notes": "The hospice's own post carries no visible date; the 5 September 2024 date comes from contemporaneous Sussex Express / BBC coverage and Hospice UK's case study (\"After consultation, 40 roles were removed\", timed to early 2024 board approval). No fresh 2025 announcement about mothballing rooms was found, so the MP was citing the 2024 event. Editor should re-check the exact 2024 date if this is ever re-scoped."
+  },
+  {
+   "span": "Mossmorran",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The contractor redundancies at Mossmorran were announced in early June 2025 (Altrad at least 98, Bilfinger 10, Kaefer 55), before the window opens on 2025-07-01.",
+   "employer": "Mossmorran (Fife Ethylene Plant contractors)",
+   "employer_aliases": [
+    "Altrad",
+    "Kaefer"
+   ],
+   "announcement_date": "2025-06-05",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://www.centralfifetimes.com/news/25219422.mossmorran-plant-central-fife-sees-160-redundancies/",
+   "citation_type": "primary_report",
+   "publisher": "Central Fife Times",
+   "uk_jobs": true,
+   "notes": "Doubly disqualified: the span is a site, not an employer, and the three contractors' figures would have to be summed (derived_count) to give a Mossmorran total."
+  },
+  {
+   "span": "Hunting",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Hunting's March 2025 EMEA restructure was reported as putting its existing UK headcount at risk (98 staff at Badentoy, 45 at Fordoun) without an announced number of cuts, and the August 2025 escalation was reported only as \"a third of Europe jobs\", a percentage.",
+   "employer": "Hunting plc",
+   "employer_aliases": [
+    "Hunting"
+   ],
+   "announcement_date": "2025-08-28",
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://news.stv.tv/north/almost-100-jobs-in-aberdeen-at-risk-as-global-energy-firm-hunting-announces-restructure",
+   "citation_type": "primary_report",
+   "publisher": "STV News",
+   "uk_jobs": true,
+   "notes": "The only absolute figures found are pre-cut site headcounts (retained_or_total_only in effect) plus a percentage. The March 2025 announcement also predates the window. The Bloomberg report of the August escalation is paywalled and was not opened."
+  },
+  {
+   "span": "Xodus and EnerMech",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "The count sentence was taken from search-index text, not read at the publisher's page: energyvoice.com returned 403 and the syndicated copy sits behind a paywall that was not bypassed. Corroboration elsewhere is not the same as having read the citation.",
+   "employer": "EnerMech",
+   "employer_aliases": [
+    "EnerMech"
+   ],
+   "announcement_date": "2026-06-04",
+   "stated_job_count": 40,
+   "count_evidence": "Aberdeen-headquartered EnerMech announced it will cut 40 jobs from its Granite City workforce as a result of \"a challenging market environment\".",
+   "official_source_url": "https://www.energyvoice.com/oilandgas/north-sea/598700/enermech-to-cut-40-jobs-amid-market-disruption/",
+   "citation_type": "primary_report",
+   "publisher": "Energy Voice",
+   "uk_jobs": true,
+   "notes": "JUDGEMENT CALL - editor must re-check. (a) The span conflates two employers; Xodus confirmed Aberdeen job cuts in July 2025 but no original publisher states an absolute count for Xodus, so only EnerMech is carried here. (b) energyvoice.com returned HTTP 403 to a direct fetch and the Crane & Transport Briefing version is behind a Zephr paywall (not bypassed), so the count sentence above is as returned by search indexing of the Energy Voice report rather than read off the page; the 40 figure is corroborated independently by the Press and Journal and by First Minister John Swinney's public response. (c) Announcement date 4-5 June 2026, just inside the window and just before the 10 June Hansard mention.",
+   "dropped_by": "editor_after_verification"
+  },
+  {
+   "span": "Historic Houses",
+   "decision": "drop",
+   "drop_reason": "percent_only",
+   "drop_detail": "The Hansard claim is that \"41% are making redundancies or putting a freeze on hiring\" across Historic Houses' membership - a percentage of member businesses, with no absolute count of roles.",
+   "employer": "Historic Houses",
+   "employer_aliases": [
+    "Historic Houses"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": null,
+   "citation_type": null,
+   "publisher": null,
+   "uk_jobs": true,
+   "notes": "Historic Houses is a membership association, not the employer making the cuts; the figure is survey data about its members and conflates redundancies with hiring freezes."
+  },
+  {
+   "span": "INEOS",
+   "decision": "drop",
+   "drop_reason": "contested_between_verifiers",
+   "drop_detail": "One verifier read the 2024-09-12 Grangemouth figure as an absolute 400; a second read the 2024-09-16 confirmation as 'a net reduction of approximately 400 roles' with no gross stated, which the count rules reject as derived. Two readings of the same event disagree, so it leaves the denominator rather than being resolved by whichever verifier ran last.",
+   "employer": "Petroineos",
+   "employer_aliases": [
+    "Petroineos",
+    "Petroineos Fuels"
+   ],
+   "announcement_date": "2024-09-12",
+   "stated_job_count": 400,
+   "count_evidence": "GRANGEMOUTH refinery in Scotland will cease refinery operations in the second quarter of 2025 with the loss of 400 jobs.",
+   "official_source_url": "https://www.thechemicalengineer.com/news/grangemouth-refining-to-stop-next-year-with-400-jobs-lost/",
+   "citation_type": "primary_report",
+   "publisher": "The Chemical Engineer (IChemE)",
+   "uk_jobs": true,
+   "notes": "The span reads INEOS but the employer operating Grangemouth refinery is Petroineos, the INEOS/PetroChina joint venture; attributed to Petroineos. Petroineos' own media pages were unreachable (404), so a named trade news organisation's own report of the 12 Sep 2024 announcement is cited. The separate INEOS chemicals release of 13 Jan 2025 flagged in the hint was NOT used: it states only a NET 80, which is a derived_count under the rules.",
+   "dropped_by": "editor_after_verification"
+  },
+  {
+   "span": "University of Edinburgh",
+   "decision": "drop",
+   "drop_reason": "derived_count",
+   "drop_detail": "The University of Edinburgh announced on 2025-02-25 a savings target of around GBP 140 million; it did not state an absolute number of posts to be cut. The 'up to 1,800' figure is the UCU union's own estimate derived from that savings figure, not the employer's count. Times Higher Education's report of 25 Feb 2025 (https://www.timeshighereducation.com/news/devastating-jobs-line-edinburgh-cuts-ps140-million), read in full, contains no absolute job figure from either the university or the union; STV News attributes the 1,800 explicitly to UCU.",
+   "employer": "University of Edinburgh",
+   "employer_aliases": [
+    "University of Edinburgh"
+   ],
+   "announcement_date": "2025-02-25",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.timeshighereducation.com/news/devastating-jobs-line-edinburgh-cuts-ps140-million",
+   "citation_type": "primary_report",
+   "publisher": "Times Higher Education",
+   "uk_jobs": true,
+   "notes": "Judgement call for an editor: the 1,800 figure is widely repeated in the press but always as a union estimate off a money target, never as an employer-stated headcount, so it is derived rather than announced."
+  },
+  {
+   "span": "Petrofac",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Re-checked across the widened window 2024-07-01..2026-06-30 and no publisher states an absolute number of jobs or roles to be cut. Every figure found is a pre-cut headcount or a vague quantity: roughly 2,000 staff in Aberdeen and about 3,000 in the UK, described as 'at risk' or 'putting thousands of jobs at risk' when Petrofac Ltd moved to appoint administrators in late October 2025. Termination notices were reported as being issued from November 2025 but with no number attached, and the December 2025 CB&I acquisition of Asset Solutions was reported as transferring about 3,000 employees, which is a transferred-headcount figure and not a cut.",
+   "employer": "Petrofac",
+   "employer_aliases": [
+    "Petrofac"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": null,
+   "citation_type": null,
+   "publisher": null,
+   "uk_jobs": true,
+   "notes": "Widening the window did not change the outcome; the hint's finding still holds over the longer span. If an editor wants to re-check, the place to look is any administrators' progress report giving a redundancy number, which would be a primary document rather than the news coverage searched here."
+  },
+  {
+   "span": "Hunting",
+   "decision": "drop",
+   "drop_reason": "percent_only",
+   "drop_detail": "The only quantification of the cut itself is a percentage: Hunting stated it is reducing headcount across its EMEA operating segment by about a third by mid-2026. The absolute numbers published are pre-cut site headcounts, not cuts. STV News (19 March 2025) was read directly and states 'Hunting currently employs 98 staff at its operating base in the Badentoy area' and 'also employs 45 staff at its Fordoun site in Aberdeenshire', both current headcount, and then explicitly says 'It is currently unknown how many jobs are at risk.' The August 2025 wind-down of the Fordoun OCTG threading and pipe storage yard was likewise announced without a headcount reduction figure. Deriving a number from 98 plus 45, or from a third of an EMEA total, would be derived_count.",
+   "employer": "Hunting plc",
+   "employer_aliases": [
+    "Hunting"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": null,
+   "official_source_url": "https://news.stv.tv/north/almost-100-jobs-in-aberdeen-at-risk-as-global-energy-firm-hunting-announces-restructure",
+   "citation_type": null,
+   "publisher": "STV News",
+   "uk_jobs": true,
+   "notes": "The 'almost 100 jobs at risk' headline is the 98-staff site headcount restated, not a stated number of cuts; the body of the same article says the number at risk is unknown. Dropped over the full widened window, not just the original 12 months."
+  },
+  {
+   "span": "Alstom",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The 1,300-jobs-at-risk announcement for Alstom's Derby Litchurch Lane plant was made on 2023-11-15, before the window opens on 2024-07-01. The follow-up demobilisation notice was April 2024, also outside the window, and no fresh absolute count for Derby was announced within 2024-07-01..2026-06-30 (the July 2024 government order deal secured work at the site instead).",
+   "employer": "Alstom",
+   "employer_aliases": [
+    "Alstom"
+   ],
+   "announcement_date": "2023-11-15",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Widened window does not rescue this candidate; the announcement predates it by roughly eight months. An editor could re-check whether any 2025/2026 Alstom UK announcement carries its own absolute count, but nothing surfaced."
+  },
+  {
+   "span": "Grangemouth",
+   "decision": "drop",
+   "drop_reason": "derived_count",
+   "drop_detail": "Petroineos's 2024-09-16 confirmation (inside the widened window) states only a NET reduction of approximately 400 roles, with no gross number of redundancies stated. The other figures available are a pre-cut total (475 employees on site) and a ratio (a terminal needs about one-fifth of the current workforce), both of which are excluded by the count rules.",
+   "employer": "Petroineos",
+   "employer_aliases": [
+    "Petroineos"
+   ],
+   "announcement_date": "2024-09-16",
+   "stated_job_count": null,
+   "count_evidence": "a net reduction of approximately 400 roles over the next two years",
+   "official_source_url": "https://www.rigzone.com/news/petroineos_confirms_intention_to_cease_refinery_operations_at_grangemouth-16-sep-2024-178113-article/",
+   "citation_type": "employer_statement",
+   "publisher": "Rigzone",
+   "uk_jobs": true,
+   "notes": "Attributed to the employer Petroineos, not to the Grangemouth site. The original November 2023 closure-intention announcement is outside the window in any case. Unite separately put 500 workers in jeopardy, which is a union at-risk headcount, not an employer-stated cut."
+  },
+  {
+   "span": "Leicester University",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No publisher page stating the count could be read: bbc.co.uk/bbc.com are not fetchable from this environment, leicester.news returned HTTP 403, and the Yahoo syndication returned 404. Only search-result snippets were available, which the rules treat as unverified.",
+   "employer": "University of Leicester",
+   "employer_aliases": [
+    "University of Leicester"
+   ],
+   "announcement_date": "2025-10",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Even setting readability aside, the circulating figure is weak: 'around 150 jobs at risk in the initial phase' is a UCU (union) at-risk estimate, and the university's own '163 colleagues' is the scope of a redundancy review rather than a stated number of posts to be cut. An editor with BBC access should re-check whether the university itself ever stated an absolute cut figure."
+  },
+  {
+   "span": "Ithaca",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "Ithaca Energy announced an onshore restructuring and redundancy consultation following its combination with Eni's UK business (March 2025, inside the widened window) but did not disclose how many roles would go; reporting states the company has not confirmed which offices are affected or how many workers would be let go.",
+   "employer": "Ithaca Energy",
+   "employer_aliases": [
+    "Ithaca Energy"
+   ],
+   "announcement_date": "2025-03",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Widening the window did not change the outcome: the same consultation is the only event and it carries no absolute number. Energy Voice's report returned HTTP 403, so no page was read; the drop stands on the absence of any count regardless."
+  },
+  {
+   "span": "Tata Steel",
+   "decision": "drop",
+   "drop_reason": "outside_window",
+   "drop_detail": "The only Tata Steel UK announcement carrying an absolute count is the 2,800 job cuts announced 19 January 2024, before the 2024-07-01 window start. No further Tata Steel UK announcement with an absolute count was found inside 2024-07-01..2026-06-30.",
+   "employer": "Tata Steel UK",
+   "employer_aliases": [
+    "Tata Steel"
+   ],
+   "announcement_date": "2024-01-19",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Hint confirmed: the well-known 2,800 figure is January 2024 and is outside the window."
+  },
+  {
+   "span": "Swansea University",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No in-window Swansea University announcement with an absolute count could be read at a publisher's page. The 189 voluntary redundancies figure dates to April 2024 (outside window). A later announcement (29 January 2026, reportedly ~55 posts of 204 roles) exists but the ITV News page timed out on repeated fetches, so the count sentence could not be read.",
+   "employer": "Swansea University",
+   "employer_aliases": [
+    "Swansea University"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Editor may wish to re-check the 2026-01-29 Swansea proposals; search snippets phrase it as 'it's thought 55 jobs could be lost', which would likely fail the firm-figure test anyway."
+  },
+  {
+   "span": "NatWest",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No NatWest UK job-cut announcement with an absolute count dated inside the window could be found and read at a publisher's page. The 1,600 figure relates to the closure of NatWest's Polish operations announced June 2024 (outside window and not UK jobs); the 550-role branch figure is from 2020.",
+   "employer": "NatWest Group",
+   "employer_aliases": [
+    "NatWest"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "The 2024-10-23 Commons mention appears to concern branch closures rather than a numbered redundancy announcement."
+  },
+  {
+   "span": "Welsh National Opera",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "WNO's 2024 proposals were expressed as proportions and contract terms - cutting around one third of the chorus and a pay cut of at least 15 per cent. The only numbers available (full-time chorus falling from 30 to 20 singers, roughly 10 vacant orchestra seats removed) are before-and-after headcounts requiring arithmetic, and no original publisher states an absolute number of posts to be cut.",
+   "employer": "Welsh National Opera",
+   "employer_aliases": [
+    "Welsh National Opera",
+    "WNO"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Also fails on retained_or_total_only grounds for the 30-to-20 chorus figure. Reporting refers vaguely to 'a number of redundancies in other parts of the company' with no figure."
+  },
+  {
+   "span": "Arts Council England",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No announcement by Arts Council England of redundancies among its own staff, with an absolute count, could be found or read at a publisher's page inside the window. Search results for the 2024-12-10 period concern organisations affected by ACE funding decisions (English National Opera, RSC and others), not ACE's own workforce.",
+   "employer": "Arts Council England",
+   "employer_aliases": [
+    "Arts Council England"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "The Commons mention appears to be about ACE as a funder rather than as an employer making cuts."
+  },
+  {
+   "span": "Dewhirst",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No Dewhirst redundancy or closure announcement dated inside the window could be found at any publisher. Searches surface only the historic Sunderland and Peterlee factory closures (2000-2003) and subsequent site redevelopment; nothing in 2025.",
+   "employer": "Dewhirst",
+   "employer_aliases": [
+    "Dewhirst",
+    "Dewhirst Group"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "The 2025-02-27 Commons mention is most likely a historical reference to the north-east England garment industry rather than a current event."
+  },
+  {
+   "span": "The University of Kent",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "The January 2025 announcement is a GBP 19.5m savings target and a voluntary redundancy scheme with no headcount. Read at Times Higher Education (24 Jan 2025) and KentOnline (27 Jan 2025) - neither states a number of posts. The only absolute figure found ('almost 60 jobs', KentOnline 6 Jun 2024) predates the announcement window event and is itself vague; a '100 positions' figure is a named academic's personal estimate, not an announcement.",
+   "employer": "University of Kent",
+   "employer_aliases": [
+    "University of Kent"
+   ],
+   "announcement_date": "2025-01-27",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.kentonline.co.uk/medway/news/university-staff-offered-voluntary-redundancy-as-part-of-cos-319273/",
+   "citation_type": "primary_report",
+   "publisher": "KentOnline",
+   "uk_jobs": true,
+   "notes": "Savings target only."
+  },
+  {
+   "span": "St Wilfrid’s Hospice",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "The March 2025 workforce reduction - the event matching the Hansard hint - was announced without a number: the hospice said only 'This will inevitably require removing some roles though redundancies and reduction in hours' (Ashdown Radio, 21 Mar 2025). A later, separate Care at Home closure (Feb/Mar 2026) does carry counts, but every page carrying them (Third Sector, Sussex Express, the hospice's own stwhospice.org blog, BBC) returned 403 or 404, so the count sentence could not be read at a publisher.",
+   "employer": "St Wilfrid's Hospice (Eastbourne)",
+   "employer_aliases": [
+    "St Wilfrid's Hospice"
+   ],
+   "announcement_date": "2025-03-21",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.ashdownradio.com/news/the-guide/st-wilfrids-hospice-to-reduce-workforce/",
+   "citation_type": "primary_report",
+   "publisher": "Ashdown Radio",
+   "uk_jobs": true,
+   "notes": "Editor may wish to re-check the 2026 Care at Home closure (reported as ~9.7 FTE permanent roles held by 15 staff, plus 16 bank staff) if a readable publisher page can be obtained - it falls inside the window but I could not read it, and it is a different event from the one raised in Parliament."
+  },
+  {
+   "span": "Queen Mary University of London",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No absolute count could be read at any original publisher inside the window. Times Higher Education's QMUL piece is dated March 2024 (outside the window) and explicitly says 'It has not set a target for the number of staff it needs to take part.' The Stage's 2025 piece is paywalled with no figure visible. The circulating figures (59 proposed redundancies, 240 jobs) come from the QMUL UCU branch's own website and X account, not from a news organisation's own reporting.",
+   "employer": "Queen Mary University of London",
+   "employer_aliases": [
+    "Queen Mary University of London"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Union-sourced counts exist but no named news organisation published one in its own reporting that I could read."
+  },
+  {
+   "span": "University of York",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "The in-window York announcements carry no absolute cut figure: the February 2025 Vice-Chancellor announcement sought a further GBP 15m through 'additional savings in staff costs', voluntary severance 'in specific areas' and flexible retirement, with no headcount. The '272 staff' figure is staff who had ALREADY left under the April 2024 scheme (retained/historic, not a planned cut); 'up to 700' comes from May 2024, before the window; UCU's 300-700 is a union estimate range with no announced target. A '434 jobs' figure appears only as a parenthetical entry in a Times Higher Education list of UCU-tracked cuts (4 Mar 2025), not as a count sentence tied to a dated York announcement.",
+   "employer": "University of York",
+   "employer_aliases": [
+    "University of York"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.timeshighereducation.com/news/university-bailouts-needed-5000-jobs-axed-ucu-tells-labour",
+   "citation_type": "primary_report",
+   "publisher": "Times Higher Education",
+   "uk_jobs": true,
+   "notes": "JUDGEMENT CALL: if the reference set accepts a UCU-tracked figure published in a THE list, York would enter at 434. I dropped it because there is no announcement sentence and no announcement date behind that number."
+  },
+  {
+   "span": "Leigh Academies Trust",
+   "decision": "drop",
+   "drop_reason": "no_absolute_count",
+   "drop_detail": "West Kent Radio (21 Apr 2025) reports only that 'The boss of an Academy Trust that runs two secondary schools in Tonbridge has warned it could make teachers redundant.' No number of roles is given anywhere in the report, and no other publisher report of a Leigh Academies Trust redundancy count could be found.",
+   "employer": "Leigh Academies Trust",
+   "employer_aliases": [
+    "Leigh Academies Trust"
+   ],
+   "announcement_date": "2025-04-21",
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "https://www.westkentradio.co.uk/news/west-kent-news/funding-cuts/",
+   "citation_type": "primary_report",
+   "publisher": "West Kent Radio",
+   "uk_jobs": true,
+   "notes": "A warning that redundancies may be needed, not an announced number."
+  },
+  {
+   "span": "Elliot Foundation",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "No original publisher report of a redundancy announcement at The Elliot Foundation Academies Trust could be located at all - searches across education trade press (Schools Week, Tes) and general news returned only the trust's own recruitment pages and directory listings. Nothing to read, so nothing to verify.",
+   "employer": "The Elliot Foundation Academies Trust",
+   "employer_aliases": [
+    "Elliot Foundation"
+   ],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Likely raised in Parliament as an example of academy trusts warning about employer National Insurance costs rather than as a counted redundancy event."
+  },
+  {
+   "span": "Forth Valley",
+   "decision": "drop",
+   "drop_reason": "unverified",
+   "drop_detail": "The employer could not be resolved. NHS Forth Valley: no 2025 job-cut announcement with a count found at any publisher. Forth Valley College: the in-window story is the possible closure of the Alloa campus with jobs described only as 'at risk' and no number; the one absolute count found (13 members of staff) belongs to a 2023 consultation, outside the window. Per the packet instruction, dropped as unverified.",
+   "employer": null,
+   "employer_aliases": [],
+   "announcement_date": null,
+   "stated_job_count": null,
+   "count_evidence": "",
+   "official_source_url": "",
+   "citation_type": "primary_report",
+   "publisher": "",
+   "uk_jobs": true,
+   "notes": "Ambiguous span - could be NHS Forth Valley, Forth Valley College, or Forth Valley Royal Hospital (a site, not an employer)."
+  }
+ ],
+ "collapsed_duplicate_candidates": [
+  {
+   "span": "Stirling Observer",
+   "collapsed_into": "Reach",
+   "employer": "Reach plc",
+   "announcement_date": "2025-09-08",
+   "stated_job_count": 321,
+   "official_source_url": "https://pressgazette.co.uk/news/reach-to-cut-editorial-headcount-by-186-in-biggest-reorganisation-yet/"
+  },
+  {
+   "span": "University of Essex",
+   "collapsed_into": "Essex University",
+   "employer": "University of Essex",
+   "announcement_date": "2025-12-03",
+   "stated_job_count": 400,
+   "official_source_url": "https://www.gazette-news.co.uk/news/25667640.essex-university-announce-closure-southend-campus/"
+  }
+ ]
+}

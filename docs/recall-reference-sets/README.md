@@ -89,6 +89,48 @@ Two rules about it:
    [30%, 55%] describes one source family over one window. It is a floor to
    detect loss, not a coverage claim.
 
+## United Kingdom (2025-07 → 2026-06)
+
+`UK-REFERENCE-SET-DEFINITION.md` is the **definition, written and committed
+before any UK number existed**, and it should be read before the manifest. It
+records what was tested and what each route actually returns, because the
+headline UK finding is a negative one and negatives rot fast if only their
+conclusion is kept:
+
+- **HR1**, the UK's statutory advance notification of collective redundancies,
+  is the closest analogue to Item 2.05 in scope and is **published as monthly
+  aggregates only**. Employer-level release has been refused under FOIA
+  s43(2)/s43(3), including a neither-confirm-nor-deny for a single named
+  company. Northern Ireland and Scotland are not loopholes.
+- **The FCA National Storage Mechanism** is the only complete index of UK
+  regulatory announcements, it does support free text over document content,
+  and its `robots.txt` carries `User-agent: ClaudeBot / Disallow: /`. It was
+  not enumerated and its search API was not probed.
+- **The Gazette** is fully usable and carries no headcounts. **LSE** has no
+  free-text search over announcement bodies. **BBC** and **Guardian** forbid the
+  enumeration in robots/terms and are both domains we already collect.
+
+So there is **no UK equivalent of EDGAR full-text search**, and the UK set is
+therefore a **different event type from the US set**, enumerated from a
+different kind of frame. That is stated rather than disguised.
+
+Two rules, the same two the SEC set carries:
+
+1. **It is never posted to `/benchmarks/recall`.** Internal regression
+   reference, one author, `publication_status` says so and the test asserts it.
+2. **Its number is not "our UK recall".** It describes one frame over one
+   twelve-month window, with the biases the manifest lists.
+
+`railway/recall_uk_goldset.py` measures it and **imports** the interval, the
+prefix matcher and the alias/window rule from `recall_goldset.py` — one
+definition, so a second copy of the Xperi/Experian bug cannot appear. It ships
+with **no floor armed**, which judges to UNKNOWN rather than PASS: a floor set
+by the same run that produced the number is a rubber stamp, not a tripwire.
+
+`railway/uk_recall_probe.py` answers the question worth more than the
+percentage — *which stage dropped this event* — and makes no model call, so the
+model half of the last stage is UNKNOWN until someone authorises the spend.
+
 ## Corroborated news set (2026-08)
 
 `news-corroborated-2026-08.goldset.json` is a **third kind of file** again, and

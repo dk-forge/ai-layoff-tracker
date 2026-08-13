@@ -1,0 +1,275 @@
+{
+  "events": [
+    {
+      "announcement_date": "2024-09-03",
+      "employer": "Mitsubishi Electric",
+      "id": "uk-han-mitsubishi-electric-2024-09-03",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2024-09-05",
+      "employer": "St Catherine's Hospice",
+      "id": "uk-han-st-catherine-s-hospice-2024-09-05",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2024-11-13",
+      "employer": "Post Office Ltd",
+      "id": "uk-han-post-office-ltd-2024-11-13",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2024-11-20",
+      "employer": "Ford Motor Company",
+      "id": "uk-han-ford-motor-company-2024-11-20",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        2815,
+        2816,
+        2818,
+        2819,
+        2820,
+        2821,
+        35993,
+        35996,
+        43684
+      ]
+    },
+    {
+      "announcement_date": "2024-11-20",
+      "employer": "University of East Anglia",
+      "id": "uk-han-university-of-east-anglia-2024-11-20",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-01-15",
+      "employer": "Nottinghamshire Hospice",
+      "id": "uk-han-nottinghamshire-hospice-2025-01-15",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-01-28",
+      "employer": "Cardiff University",
+      "id": "uk-han-cardiff-university-2025-01-28",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        34620,
+        43591
+      ]
+    },
+    {
+      "announcement_date": "2025-01-28",
+      "employer": "Durham University",
+      "id": "uk-han-durham-university-2025-01-28",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-03-03",
+      "employer": "Brunel University of London",
+      "id": "uk-han-brunel-university-of-london-2025-03-03",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-03-11",
+      "employer": "University of Dundee",
+      "id": "uk-han-university-of-dundee-2025-03-11",
+      "loose_name_candidates": [
+        {
+          "company": "Dundee University",
+          "event_id": 43771,
+          "job_count": 300,
+          "layoff_date": "2025-09-05",
+          "source": "bbc.com"
+        },
+        {
+          "company": "Dundee University",
+          "event_id": 43541,
+          "job_count": 632,
+          "layoff_date": "2025-03-11",
+          "source": "bbc.com"
+        }
+      ],
+      "stage": "stored_unmatched",
+      "why": "a row exists inside the match window under a name the strict prefix rule cannot join. NOT counted, and not written back \u2014 an editor decides"
+    },
+    {
+      "announcement_date": "2025-03-11",
+      "employer": "Well-Safe Solutions",
+      "id": "uk-han-well-safe-solutions-2025-03-11",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-03-27",
+      "employer": "British Steel",
+      "id": "uk-han-british-steel-2025-03-27",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        43612
+      ]
+    },
+    {
+      "announcement_date": "2025-04-16",
+      "employer": "Belmar Engineering Services",
+      "id": "uk-han-belmar-engineering-services-2025-04-16",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-05-19",
+      "employer": "Arts University Bournemouth",
+      "id": "uk-han-arts-university-bournemouth-2025-05-19",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-05-21",
+      "employer": "De Montfort University",
+      "id": "uk-han-de-montfort-university-2025-05-21",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-05-22",
+      "employer": "The Kirkwood",
+      "id": "uk-han-the-kirkwood-2025-05-22",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "Altrad",
+      "id": "uk-han-altrad-2025-06-06",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "Bilfinger",
+      "id": "uk-han-bilfinger-2025-06-06",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        111810
+      ]
+    },
+    {
+      "announcement_date": "2025-06-06",
+      "employer": "KAEFER",
+      "id": "uk-han-kaefer-2025-06-06",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-06-20",
+      "employer": "Lancaster University",
+      "id": "uk-han-lancaster-university-2025-06-20",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-07-17",
+      "employer": "Jaguar Land Rover",
+      "id": "uk-han-jaguar-land-rover-2025-07-17",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        43697
+      ]
+    },
+    {
+      "announcement_date": "2025-07-21",
+      "employer": "Prax Lindsey Oil Refinery",
+      "id": "uk-han-prax-lindsey-oil-refinery-2025-07-21",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-09-08",
+      "employer": "Reach plc",
+      "id": "uk-han-reach-plc-2025-09-08",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-09-25",
+      "employer": "STV Group plc",
+      "id": "uk-han-stv-group-plc-2025-09-25",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        43815
+      ]
+    },
+    {
+      "announcement_date": "2025-09-30",
+      "employer": "Prax Lindsey Oil Refinery",
+      "id": "uk-han-prax-lindsey-oil-refinery-2025-09-30",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-10-17",
+      "employer": "Haventus",
+      "id": "uk-han-haventus-2025-10-17",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-10-21",
+      "employer": "Ashgate Hospice",
+      "id": "uk-han-ashgate-hospice-2025-10-21",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-11-18",
+      "employer": "ExxonMobil Chemical Limited (Fife Ethylene Plant, Mossmorran)",
+      "id": "uk-han-exxonmobil-chemical-limited-fife-ethylen-2025-11-18",
+      "stage": "stored_unmatched",
+      "tracker_rows": [
+        35339,
+        35347,
+        35349,
+        43818
+      ]
+    },
+    {
+      "announcement_date": "2025-12-01",
+      "employer": "Harbour Energy",
+      "id": "uk-han-harbour-energy-2025-12-01",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-12-02",
+      "employer": "University of Essex",
+      "id": "uk-han-university-of-essex-2025-12-02",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2025-12-10",
+      "employer": "University of Strathclyde",
+      "id": "uk-han-university-of-strathclyde-2025-12-10",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    },
+    {
+      "announcement_date": "2026-05-13",
+      "employer": "University of Nottingham",
+      "id": "uk-han-university-of-nottingham-2026-05-13",
+      "stage": "unknown",
+      "why": "nothing is stored under any name in the window, and the discovery half was not run (UK_PROBE_SKIP_GDELT). Which of no_source / walked_not_read / extracted_dropped applies is UNMEASURED, not no_source"
+    }
+  ],
+  "probed_at": "2026-08-13T02:26:47Z",
+  "tally": {
+    "stored_unmatched": 8,
+    "unknown": 24
+  }
+}
