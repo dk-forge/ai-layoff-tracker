@@ -2117,7 +2117,108 @@
                 ? 'Layoffs by country <span class="alt-chart-sub">Other countries you could pivot to · tap to filter</span>'
                 : 'Layoffs by country <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span>';
         }
+        // Every render changes how much a card has to say, so the fit is
+        // re-decided from the rendered page rather than remembered.
+        scheduleCardFit();
     }
+
+    /* ======================================================================
+       DEAD SPACE INSIDE A CARD, DECIDED BY MEASUREMENT, NOT BY A CARD LIST.
+
+       The owner reported the same defect three times about three different
+       cards. Each was true and each was fixable on its own, and fixing them
+       one at a time guarantees a fourth report. So this is the rule instead
+       of the cases.
+
+       The CSS above does the part CSS can do: a bar list is elastic, so a
+       card with more rows than fit absorbs whatever height its grid row
+       gives it and turns it into visible rows. What CSS cannot see is
+       whether a card has anything left to absorb with. Two kinds do not: a
+       card whose content is a fixed-height canvas, and a card whose list is
+       genuinely shorter than its box. Those were being stretched to a row
+       height they could never reach, which is the band.
+
+       This pass measures both from geometry and shrinks only the cards that
+       cannot fill. It never adds a row, never relaxes a threshold and never
+       touches a number; the only thing it changes is whether a card is
+       stretched.
+
+       WHY IT MEASURES FROM A RESET STATE. The decision depends on the card's
+       height, and the class changes the card's height, so reading the
+       already-classed page could oscillate: shrink, which un-clips the list,
+       which says "fills now", which re-stretches. Clearing every class first
+       and measuring the stretched layout makes each pass a pure function of
+       the page, so it lands on the same answer however many times it runs.
+       ====================================================================== */
+
+    // Above this, empty space inside a card is a band rather than spacing.
+    // The largest deliberate gap on these cards is ~20px (a note's margin), and
+    // one bar row plus its gap is ~46px, so 40px is past the first and inside
+    // the second: a card is only shrunk when it is wasting more than the row
+    // it could have shown. Mirrored by railway/card_space_audit.py, which
+    // audits the same property from outside with a wider limit.
+    var CARD_BAND_PX = 40;
+
+    var cardFitPending = 0;
+
+    function scheduleCardFit() {
+        if (cardFitPending) return;
+        cardFitPending = 1;
+        // Next frame, so the render that asked for it has been laid out.
+        // setTimeout rather than a bare requestAnimationFrame reference: rAF
+        // throws if it is called detached from window in some browsers.
+        setTimeout(function () {
+            cardFitPending = 0;
+            try { fitCardHeights(); } catch (e) { }
+        }, 0);
+    }
+
+    function fitCardHeights() {
+        var cards = document.querySelectorAll('.alt-chart-grid > .alt-chart-card');
+        if (!cards.length) return;
+        // Reset, so the measurement below reads the stretched layout every time.
+        Array.prototype.forEach.call(cards, function (card) {
+            card.classList.remove('alt-card-cannot-fill');
+        });
+        Array.prototype.forEach.call(cards, function (card) {
+            var cs = getComputedStyle(card);
+            if (cs.display === 'none' || !card.getClientRects().length) return;
+            // A card the reader has expanded owns the full row and is sized by
+            // its own content; there is nothing beside it to be stretched to.
+            if (card.classList.contains('alt-expanded')) return;
+
+            // Anything still clipped inside the card is height the card could
+            // still put to use, so it is not a candidate however empty it looks.
+            var slack = 0;
+            var scroller = card.querySelector('.alt-barlist');
+            if (scroller) slack = scroller.scrollHeight - scroller.clientHeight;
+            if (slack > 1) return;
+
+            var rect = card.getBoundingClientRect();
+            var floor = rect.bottom - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth);
+            var reach = rect.top + parseFloat(cs.paddingTop) + parseFloat(cs.borderTopWidth);
+            Array.prototype.forEach.call(card.children, function (kid) {
+                var ks = getComputedStyle(kid);
+                if (kid.hidden || ks.display === 'none') return;
+                if (ks.position === 'absolute' || ks.position === 'fixed') return;
+                var kr = kid.getBoundingClientRect();
+                if (kr.height > 0 && kr.bottom > reach) reach = kr.bottom;
+            });
+            if (floor - reach > CARD_BAND_PX) card.classList.add('alt-card-cannot-fill');
+        });
+    }
+
+    // The answer is width-dependent: at 375px the grid is one column, no card
+    // is stretched and none of this applies. Re-decided when the width changes,
+    // debounced so a drag does not thrash layout.
+    var cardFitResize = 0;
+    window.addEventListener('resize', function () {
+        clearTimeout(cardFitResize);
+        cardFitResize = setTimeout(scheduleCardFit, 150);
+    });
+    // Server-rendered cards in the grid ("Browse the record: top places") are
+    // never handed to renderCharts, and fonts landing late change what fits.
+    window.addEventListener('load', scheduleCardFit);
 
     function selectedList(id) {
         var v = readControl(id);

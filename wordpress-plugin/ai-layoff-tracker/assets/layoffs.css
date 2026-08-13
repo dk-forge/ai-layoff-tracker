@@ -1267,9 +1267,42 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-mini.alt-expanded { grid-column: 1 / -1; }
 .alt-mini.alt-expanded .alt-chart-box { height: 320px; }
 .alt-mini .alt-barlist { gap: 5px; }
-/* Compact cards show every row inside a short scroll box, so all items are
-   reachable without expanding (expanding removes the cap, see .alt-expanded). */
-.alt-mini:not(.alt-expanded) .alt-barlist { max-height: 320px; overflow-y: auto; padding-right: 12px; }
+/* Compact cards show every row inside a scroll box, so all items are reachable
+   without expanding (expanding gives it more room, see .alt-expanded).
+
+   THE BOX IS ELASTIC, NOT 320px. This used to be a flat `max-height: 320px`,
+   which is about seven rows, and a card in a grid row is as tall as the
+   TALLEST card in that row. The row heights here are set by the cards with the
+   longest basis notes, not by the lists, so a list that had 1,111px of real
+   rows to show stopped at 320 and left the rest of its card blank: measured
+   live at 1280px on 2026-08-13, "Largest single job cuts" wasted 238px,
+   "Repeat layoffs" 210px, "Jobless claims by US state" 317px. Seven employers
+   where the card had room for thirteen, and an eighth and ninth employer is
+   information a reader came for.
+
+   The rows were ALREADY RENDERED AND ALREADY PAID FOR. renderBarList draws up
+   to BARLIST_LIMIT (24) rows out of the aggregate payload and the box merely
+   clipped them, so showing more costs no extra query, no extra byte, and no
+   change to any number, threshold or row order. Nothing here invents a row.
+
+   How the three declarations divide the work:
+     flex-basis 320px  the card's NATURAL height is what it always was, so a
+                       row that was not stretching does not suddenly grow (this
+                       is why the 375px page height is unchanged);
+     flex-grow  1      every pixel the grid row adds beyond that goes to the
+                       list, as more visible rows, instead of to white space;
+     max-height        max-content, so a list SHORTER than the box never pads
+                       itself out to fill one. A card with four real sources
+                       keeps four rows and gets shrunk by fitCardHeights()
+                       instead. Padding a list is the one thing this must not
+                       do.
+   Long names still ellipsize inside the row exactly as before; none of this
+   touches .alt-barrow-name. */
+.alt-chart-card:has(.alt-barlist) { display: flex; flex-direction: column; }
+.alt-mini:not(.alt-expanded) .alt-barlist {
+    flex: 1 1 320px; min-height: 0; max-height: max-content;
+    overflow-y: auto; padding-right: 12px;
+}
 .alt-mini .alt-barrow { padding: 5px 7px; }
 .alt-mini .alt-barrow-top { margin-bottom: 4px; }
 .alt-mini .alt-barrow-name { font-size: 13px; }
@@ -2589,7 +2622,16 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-sb-disclaimer b { color: var(--alt-ink); }
 
 /* Press: data-backed soundbites */
-.alt-soundbites { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 12px 0 6px; }
+/* align-items: start. A SOUNDBITE HAS NOTHING TO STRETCH WITH.
+   These cards pin their actions to the bottom (margin: auto 0 0 below), so a
+   grid row as tall as its longest quote opened a band of white between the
+   quote and the Copy button on every shorter card in that row: measured at
+   1280px on 2026-08-13, 18 of the 32 soundbites had one, the worst 167.5px on
+   a 422px card, roughly half the card blank. The quote is the card's only
+   content and it cannot be lengthened, so the honest fix is to stop stretching
+   rather than to fill. Each card is now its own height. At 375px the grid is
+   one column and nothing stretched, which is why the phone never showed this. */
+.alt-soundbites { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 12px 0 6px; align-items: start; }
 .alt-soundbite { margin: 0; border: 1px solid var(--alt-grid); border-left: 4px solid var(--op-green, var(--alt-accent)); border-radius: 10px; padding: 12px 14px; background: var(--alt-surface-2); display: flex; flex-direction: column; }
 .alt-sb-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted); }
 .alt-sb-text { margin: 6px 0 10px; font-size: 15px; line-height: 1.5; color: var(--alt-ink); border: 0; padding: 0; font-style: normal; }
@@ -2982,6 +3024,18 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    a scrollable list from leaving blank space above its own scrollbar.
    --------------------------------------------------------------------------- */
 .alt-chart-card .alt-barlist { align-content: start; }
+
+/* A CARD THAT CANNOT FILL ITS ROW STOPS BEING STRETCHED TO IT.
+   Set by fitCardHeights() in layoffs.js, which measures the rendered page
+   rather than naming cards, so this covers the ones nobody has complained
+   about yet. Two shapes qualify and neither can be fixed by filling: a card
+   whose only content is a fixed-height canvas ("Cumulative AI-attributed
+   cuts", 277px of white at 1280px on 2026-08-13), and a card whose list is
+   genuinely short ("By data source" has four data sources and there is no
+   fifth to invent, 175px of white). Shrinking the card moves the emptiness
+   out of the card and into the gutter between rows, where it reads as layout
+   instead of as a broken card. */
+.alt-chart-grid > .alt-chart-card.alt-card-cannot-fill { align-self: start; }
 
 /* Static (server-rendered) bar rows that navigate instead of filtering:
    same component, link semantics. */

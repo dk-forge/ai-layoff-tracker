@@ -1,5 +1,60 @@
 # Tech Log
 
+## 2026-08-13 - a card fills its row or stops being stretched to it (2.20.30)
+
+The owner reported the same defect three times about three different cards:
+"Largest single job cuts" with a band of white under its last row, then "Repeat
+layoffs" and "Browse the record: top places", then a soundbite on the press page
+with roughly half the card blank. His ask was not the cards. It was "ensure all
+get formatted automatically all the time".
+
+**Measured first, because "it was addressed" was not true.** `railway/card_space_audit.py`
+renders a surface in real Chrome and reports, per card, the largest single
+vertical gap inside it. Live at 1280px on 2.20.28: seven of sixteen tracker
+cards over the 64px band limit (Jobless claims 317px, Cumulative AI-attributed
+cuts 277px, Largest single job cuts 238px, Repeat layoffs 210px, By data source
+175px, Layoffs by country 154px, Browse the record 111px) and eighteen of
+thirty-two press soundbites, worst 167px on a 422px card. At 375px, both pages
+were clean: worst gap 19.2px. **The defect is multi-column only**, because a
+grid row is as tall as its tallest card and every shorter card is stretched to
+match. The phone was never affected and must not be made longer to fix a
+desktop problem.
+
+**Two causes, opposite treatments, and the audit told them apart.** The metric
+records WHERE the gap is. "Below last child" with a still-clipped list is a
+list clamped under what its card can show. "Before .alt-sb-actions" is a card
+whose footer is pinned to a bottom its content never reaches. A check that only
+looked below the last child would have scored every soundbite as perfect.
+
+**The lists were starved by a number, not by the payload.** `.alt-mini
+.alt-barlist` had a flat `max-height: 320px`, about seven rows, while
+renderBarList had already drawn up to BARLIST_LIMIT (24) rows into the DOM out
+of the aggregate response. The card had 238px of room and 1,111px of real rows
+and the box clipped them. The list is now `flex: 1 1 320px; max-height:
+max-content`: the 320px basis keeps every card's natural height exactly what it
+was, flex-grow turns a row's spare height into visible rows, and max-content
+stops a SHORT list from padding itself out to fill a box. **No query, no payload
+byte, no threshold and no row order changed.** Nothing here invents a row.
+
+**What cannot fill stops being stretched.** Two shapes have nothing to absorb
+with: a card whose content is a fixed-height canvas, and a card whose list is
+genuinely short (By data source has four data sources and there is no fifth to
+invent). `fitCardHeights()` measures the rendered page and shrinks those, so the
+emptiness moves out of the card and into the gutter, where it reads as layout
+rather than as a broken card. It measures from a reset state on every pass, so
+the decision is a pure function of the page and cannot oscillate between
+"shrink" and "fills now". Soundbites need no measurement at all: a quote cannot
+be lengthened, so `.alt-soundbites` simply stops stretching (`align-items:
+start`).
+
+**The rule is the deliverable, not the seven cards.** `tests/test_card_space.py`
+asserts a property of ANY card, on rendered geometry in headless Chrome, so a
+card added next month is covered the day it ships and nobody has to edit a list
+of names. It runs the real `fitCardHeights` lifted out of layoffs.js against a
+real DOM, holds the ellipsis contract at the same time (a name cut with no
+visible marker reads as a complete company name), pins that 375px is unchanged,
+and proves it can fail by putting the old declarations back.
+
 ## 2026-08-13 - the tab and the heading now say the same thing (2.20.26)
 
 The four wording mismatches 2.20.25 left "for the owner to rule on" (table at
