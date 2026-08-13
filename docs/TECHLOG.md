@@ -1,5 +1,75 @@
 # Tech Log
 
+## 2026-08-12 - the best number we have was quoted for sixteen days after its denominator moved, and no guard in the system was allowed to notice
+
+**Symptom, and it is not a bug in any code.** The coverage figure against the
+independent US national survey — the most quotable number this project has, and
+the one a journalist tests first — was being quoted all week at a value last
+computed on **2026-07-27**. The comparator side of that ratio was re-verified by
+the local weekly claim check on **2026-08-10**, and it had moved. The headline
+percentage was hand-written prose. Nothing recomputed it, nothing flagged it,
+and nothing anywhere in the system was capable of doing either.
+
+**Why it had no guard, when every other headline figure does.** Half the ratio
+is competitor data. Under the standing rule no competitor name and no competitor
+figure may enter the repo, a commit, a workflow log, Actions output or any public
+page; the owner reconfirmed that today. So the denominator lives only in the
+local-only, gitignored `scratchpad/bm-live.html`, and every mechanism this repo
+normally reaches for — a `data_integrity` invariant, a cron workflow, a stored
+baseline — is disqualified, because all of them either store the figure or print
+what they found. The number was unguarded for a real reason, which is exactly why
+it stayed unguarded.
+
+**What was actually exposed, stated precisely.** Not the numerator. Our own side
+is recomputed daily by the owner's local refresher, and the US all-time figure
+additionally has a live invariant (`us_all_time`, `country_basis=any`) in
+`data_integrity.py`. The exposure was entirely (a) the denominator's age and
+(b) quoted percentages standing on a denominator that had since moved. Both are
+**dates**, and a date is not a figure and names nobody. That is the opening the
+fix goes through.
+
+**Fix: `railway/benchmark_freshness.py`.** Stdlib only, no network, no keys.
+`read_stamps()` is the only function that ever sees the benchmark's text and it
+returns `datetime.date` objects and integers; every printed line is assembled
+from that structure, so no name, figure, URL or sentence has a path to stdout, a
+log or a diff. That is a property of the shape, not of anyone's care while
+editing. It grades two ages: the **oldest** comparator-side verification
+(`DUE` at 8 days, `STALE` at 15 — one and two missed Mondays of the local weekly
+check, its real cadence), and the count of hand-written ratio claims stamped
+earlier than the last denominator re-check. It is wired into `ops_status.py [6]`,
+which until now printed two sentences telling a human to go and look.
+
+Run against the real file on the day it landed it returned **STALE**, naming the
+2026-07-27 stamp among three superseded claims — the defect above, caught
+mechanically, with nothing identifying in the output.
+
+**The honest ceiling, said plainly.** This does not recompute the ratio and
+cannot tell whether the comparison is *correct*. The refresh stays manual,
+because the data may not leave the machine. All it does is make an unrefreshed
+comparison visibly unrefreshed instead of silently assumed. That is a smaller
+claim than "the coverage number is monitored" and it is the true one. Calling it
+monitoring would have made it the dozenth thing here that looks like a guard and
+watches nothing.
+
+**And the guard on the guard.** A staleness checker that reads the one file
+holding the names is permanently one edit from carrying them into a log, quietly,
+in an ops line nobody reads closely, on a machine where the reviewer's copy of
+the file does not exist. `tests/test_benchmark_freshness.py` parses a fixture
+stuffed with **invented** names, figures and a URL and asserts none of them reach
+any rendered line or the parsed structure's repr. Confirmed RED against a
+one-line injected leak and green with it removed. The fixture's names are
+fictional on purpose: a test that had to contain the real ones would be the leak
+it exists to prevent.
+
+**Also found, not fixed here** (hand-maintained prose, the owner's to correct):
+in the local file the US row's *label* for the comparator figure still shows the
+superseded prior-month value while the ratio computed beside it already uses the
+2026-08-10 re-check, so the visible denominator and the denominator in the maths
+are two different numbers. Same family as `b0707d0`, where a merged line hid a
+figure that had been held all along.
+
+---
+
 ## 2026-08-12 - the headcount that is not in the 8-K: the EX-99.1 exhibit, and it is 7 of 57, not 2 (no plugin change)
 
 **What was missing.** Two of the four remaining SEC Item 2.05 gold-set misses
