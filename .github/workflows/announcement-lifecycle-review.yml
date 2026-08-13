@@ -35,7 +35,18 @@ permissions:
 jobs:
   report:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 5 -> 12, MEASURED 2026-08-13: median 0.2 min, max 0.3 over the last 15
+    # successful runs. The runtime was never the reason. THE DEFERRAL PATH WAS.
+    # host_call.py resolves an unreachable host across three attempts at
+    # `--timeout 90` with 3s + 12s of backoff, so the worst-case DEFERRAL takes
+    # 285s of wall clock before it writes the ledger and exits 0 — and 285s plus
+    # checkout does not fit inside 300s. A sustained outage, the one case this
+    # job defers for, would therefore have been killed by the ceiling first,
+    # reported as `cancelled`, and picked up by ci_alert.py's self-timeout
+    # annotation as a DEFECT. That is the outage-looks-like-a-defect failure the
+    # deferral exists to prevent, arriving through the timeout instead.
+    # 12 = ~2.5x the 4.75-min deferral worst case, ~40x the measured runtime.
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v5
         with:
