@@ -403,9 +403,26 @@ $alt_hero_basis  = 'counted by filing date';
       columns ARE fixed periods, and a date range over a Today column is not a
       narrower question, it is a different one.
 
-      The board is also collapsed by default. It is a summary of what the reader
-      is about to scroll through, not the thing they came for, and open it cost
-      roughly 300px of the first screen on a phone.
+      THE BOARD IS OPEN ON FIRST PAINT, and it used to be collapsed. The
+      argument for the collapse was "roughly 300px of the first screen on a
+      phone". Measured on the live page rather than estimated, that is not what
+      it costs, because the board does not sit on the first screen at all: at
+      375x812 its summary starts 999px down, already below the fold, and the
+      hero and the headline figure sit above it at 282px and do not move by a
+      pixel when it opens. What opening it actually costs is scroll depth to
+      the controls below it: the date presets move from 1068 to 1782 and the
+      stat tiles from 2798 to 3512 (714px) on a phone, and from 776 to 1154 and
+      1354 to 1732 (378px) at 1280x900. Nothing above it moves at either width.
+
+      Shipping it open in the SERVED markup, and not by script, is the same
+      rule the filter panel landed on: the no-JS render has to agree with the
+      one a reader gets, so the `open` attribute is here rather than in an
+      onload handler. A reader who collapses it is remembered for the session
+      only (sessionStorage, in initSignalBoard) because a collapse is a "not
+      right now" and not a preference, and a deep link that names a region
+      forces it open again: the region tabs are the one control that scopes
+      this board, so the view that arrived by naming one is never the view we
+      hide it from.
     */
     ?>
     <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
@@ -421,7 +438,7 @@ $alt_hero_basis  = 'counted by filing date';
         <button type="button" class="alt-tab alt-tab-aus" data-tab="aus">🇦🇺 Australia</button>
     </div>
 
-    <details class="alt-narrative-wrap" id="alt-narrative-wrap">
+    <details class="alt-narrative-wrap" id="alt-narrative-wrap" open>
         <summary class="alt-narrative-summary">At a glance: today, this week, this month, this year</summary>
         <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
     </details>

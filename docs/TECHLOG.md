@@ -1,5 +1,101 @@
 # Tech Log
 
+## 2026-08-13 - the at-a-glance board comes back out of the collapse, and the 300px it "cost" was never on the first screen (2.20.20)
+
+The owner quoted the board back in full and asked why he was not seeing it. He
+was not: since **7ac96b0 (2.19.272, 2026-08-05)** it has lived inside a CLOSED
+`<details>`. That commit moved it from a plain `<div class="alt-narrative">`
+into `<details class="alt-narrative-wrap">` with the summary line he quoted,
+and the justification recorded in the template was "open it cost roughly 300px
+of the first screen on a phone."
+
+**That figure was an estimate and it was measuring the wrong thing.** Taken off
+the live page in headless Chrome at two widths, closed then forced open:
+
+| | 375x812 | 1280x900 |
+|---|---|---|
+| board summary starts at | 999px (below an 812px fold) | 725px |
+| hero figure, open or closed | 282px | 303px |
+| date presets | 1068 -> 1782 | 776 -> 1154 |
+| stat tiles | 2798 -> 3512 | 1354 -> 1732 |
+| cost | **+714px** | **+378px** |
+
+The board sits BELOW the hero, so nothing above it moves at either width, and
+on a phone the whole element is already past the fold before it opens. The cost
+is scroll depth to the controls beneath it, not a hero pushed off the screen.
+714px is real and it is worth reporting, but it is not what "300px of the first
+screen" claimed, and the thing being protected was a screen the board was never
+on.
+
+It ships open the way the filter panel does (2.20.10): the `open` attribute is
+in the TEMPLATE so the no-JS render and the crawler's render agree with the
+reader's, and `initSignalBoard()` in layoffs.js only does the three things
+markup cannot. It honours a collapse for the rest of the session
+(`sessionStorage`, key `alt-board-open`, because a collapse is a "not right
+now" and not a preference), it re-opens on a deep link that names a region (the
+region tabs are the ONE control that scopes this board, so the view that
+arrived by naming one is never the view it is hidden from, and an in-page
+anchor like `#alt-metric-definitions` gets no such say), and it records a
+change the reader actually made. The `toggle` event is queued rather than
+dispatched synchronously, so the listener is attached on the next task: attach
+it before the assignment and the boot writes back a "preference" nobody
+expressed. `test_a_reader_collapse_is_recorded_and_only_after_boot` is that
+exact bug, written down.
+
+`railway/tests/test_signal_board_default.py` is 15 tests and every one was run
+against the pre-fix tree first, where **13 fail**. The two that pass there are
+`test_the_six_date_presets_are_present_and_in_order` and
+`test_the_presets_still_sit_below_the_board`: both describe properties the old
+tree already had and this change had to preserve, so they are regression bars
+and not evidence. The two headline failures, quoted:
+
+    the at-a-glance board ships CLOSED: <details class="alt-narrative-wrap"
+    id="alt-narrative-wrap">. A reader has to click before the four columns
+    exist, and a crawler never does.
+
+    0 not greater than 200 : at 375px the at-a-glance board has 0 readable
+    characters. A reader sees the summary line and none of the four columns.
+
+That second one is measured on `innerText` from the rendered ancestor, and the
+same probe records why: on the pre-fix markup `#alt-narrative` is **707px tall
+with 707px of box and zero readable characters**, because a closed `<details>`
+in current Chrome uses `content-visibility: hidden` and keeps both its layout
+box and its `textContent`. A guard written against either would have passed on
+the defect. `test_closing_it_again_is_caught` asserts all three numbers so the
+distinction cannot quietly rot.
+
+The rendered fixture needs a board body, and the body is PHP-generated, so
+stripping PHP would leave `.alt-narrative` empty and
+`.alt-narrative-wrap:has(> .alt-narrative:empty) { display: none }` would hide
+the element the test is measuring. `railway/tests/fixtures/signal_board_body.html`
+is the body asktherecruiter.com actually served on 2026-08-13, captured
+verbatim, wrapped in the real `<details>` sliced out of the template.
+
+**Two questions asked in the same breath, answered from git rather than from
+memory.** The owner also asked what happened to "Yesterday / the last 7 days /
+the last month / the last quarter / this YTD, for USA and global", and to the
+journalist soundbites.
+
+* **The date presets were never removed and were never called those things.**
+  `git log -S "Yesterday" --all` returns **nothing, in any file, ever**. The
+  row is live right now, one line, immediately below the board:
+  **Today / Last 7 days / Last 30 days / Last quarter / Year to date / All
+  time**, added in 2.20.4 and restyled in 2.20.10. "USA and global" is the
+  region tab strip above the board. This is a labelling question, not a
+  missing feature, and it is worth saying plainly that the page carries TWO
+  period views that are easy to conflate: the presets scope the whole page by
+  the selected date basis, while the board's own four columns are fixed
+  effective-date windows cut at today which the presets and dropdowns
+  deliberately do not touch.
+* **The soundbites are live at `/ai-layoff-tracker/press/`** and always have
+  been (2.19.61, expanded to a grouped library in 2.19.65): "Soundbite
+  library", the press statements block and the copy buttons all render there
+  today. The tracker links it twice, both times as **"Press & media"**, once
+  in the lead-links row and once in the provenance footer. Nothing named
+  "soundbite" appears anywhere on the tracker page. The **"Copy as post"**
+  button the owner's paste shows is a different control and it lives inside
+  the board, which is why it disappeared with it on 2026-08-05 and comes back
+  with it now. Discoverability, not a rebuild.
 ## 2026-08-12 - the best number we have was quoted for sixteen days after its denominator moved, and no guard in the system was allowed to notice
 
 **Symptom, and it is not a bug in any code.** The coverage figure against the

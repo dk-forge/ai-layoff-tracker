@@ -5344,6 +5344,55 @@
         }
     }
 
+    /* THE AT-A-GLANCE BOARD IS VISIBLE UNLESS THE READER HID IT.
+
+       It shipped collapsed on the argument that it cost roughly 300px of the
+       first screen on a phone. Measured on the live page rather than estimated,
+       that is not what it cost: at 375x812 the board's summary starts 999px
+       down, below the fold, and the hero and headline figure sit above it and
+       do not move when it opens. What it costs is scroll depth to the controls
+       BELOW it (714px on a phone, 378px at 1280), and the owner would rather
+       pay that than click to see the summary of the page he came to read.
+
+       The `open` attribute lives in the template, not here, so a reader with
+       no JS gets the same board as everyone else. This function only does the
+       three things markup cannot: honour a collapse for the rest of the
+       session, re-open on a deep link that names a region, and record a change
+       the reader made.
+
+       sessionStorage, not localStorage, for the same reason as the filter
+       panel: a collapse is a "not right now", and carrying it across weeks
+       means a reader who tidied the page once meets a hidden board later with
+       no memory of hiding it. */
+    var BOARD_PANEL_PREF = 'alt-board-open';
+
+    function readBoardPref() {
+        try { return sessionStorage.getItem(BOARD_PANEL_PREF); }
+        catch (e) { return null; }
+    }
+
+    function writeBoardPref(open) {
+        try { sessionStorage.setItem(BOARD_PANEL_PREF, open ? '1' : '0'); }
+        catch (e) { /* private mode: the default stands, which is open */ }
+    }
+
+    function initSignalBoard() {
+        var wrap = document.getElementById('alt-narrative-wrap');
+        if (!wrap) return;
+        // The region tabs are the ONE control that scopes this board, so a URL
+        // that names a region is a link to a board reading, and a collapse
+        // remembered from earlier in the session must not swallow it. Every
+        // other filter on the page leaves the board alone and gets no say.
+        var deepLinkedRegion = !!REGION_TABS[(location.hash || '').replace('#', '')];
+        wrap.open = deepLinkedRegion || readBoardPref() !== '0';
+        // `toggle` is queued rather than dispatched synchronously, so a
+        // listener attached here would receive the assignment above and write
+        // back a "preference" the reader never expressed. Attach next task.
+        setTimeout(function () {
+            wrap.addEventListener('toggle', function () { writeBoardPref(wrap.open); });
+        }, 0);
+    }
+
     /* ------------------------------------------------------------------ */
     /* Toolbar chrome: search, sort, Filters panel, quick views            */
     /* ------------------------------------------------------------------ */
@@ -5944,6 +5993,7 @@
             initTracker();            // builds the server-side table (reads restored filters)
             initChrome();             // search / sort / quick views / expanders
             initTabs();               // region tabs + signal board (respects saved filters)
+            initSignalBoard();        // the board is open unless collapsed this session
             initHeroActions();        // hero "Search the record" focus + anchors inside <details>
             renderRegionDefs();       // on-page region → country documentation
             updateWorkedExample();    // live H1 figure in the methodology example
