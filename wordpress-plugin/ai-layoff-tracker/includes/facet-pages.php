@@ -524,7 +524,7 @@ function alt_facet_heading($data) {
 }
 
 function alt_facet_title($data) {
-    return alt_facet_heading($data) . ': source-linked record of every event we hold';
+    return alt_facet_heading($data) . ': source-linked record of every entry we hold';
 }
 
 /**
@@ -533,7 +533,7 @@ function alt_facet_title($data) {
  */
 function alt_facet_description($data) {
     $bits = number_format((int) $data['entries']) . ' recorded layoff '
-          . ($data['entries'] === 1 ? 'event' : 'events') . ' '
+          . ($data['entries'] === 1 ? 'entry' : 'entries') . ' '
           . ($data['dim'] === 'industry'
               ? 'in the ' . $data['display'] . ' sector'
               : 'in ' . alt_facet_phrase($data['dim'], $data['display']));
@@ -638,7 +638,7 @@ function alt_facet_dataset_schema() {
         '@context'    => 'https://schema.org',
         '@type'       => 'Dataset',
         '@id'         => $data['url'] . '#dataset',
-        'name'        => alt_facet_heading($data) . ': recorded events',
+        'name'        => alt_facet_heading($data) . ': recorded entries',
         'description' => alt_facet_description($data),
         'url'         => $data['url'],
         'isPartOf'    => array('@id' => home_url('/ai-layoff-tracker/') . '#dataset'),

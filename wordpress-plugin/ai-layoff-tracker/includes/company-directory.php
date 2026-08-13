@@ -254,7 +254,7 @@ function alt_company_directory_data($slug) {
 function alt_company_directory_description($data) {
     $name = $data['company']['display_name'];
     $count = count($data['events']);
-    $bits = $count . ' recorded layoff ' . ($count === 1 ? 'event' : 'events') . ' for ' . $name;
+    $bits = $count . ' recorded layoff ' . ($count === 1 ? 'entry' : 'entries') . ' for ' . $name;
     if ($data['first_date'] !== '' && $data['last_date'] !== '') {
         $from = substr($data['first_date'], 0, 4);
         $to = substr($data['last_date'], 0, 4);
@@ -365,9 +365,9 @@ add_filter('rank_math/frontend/robots', function ($robots) { $data = alt_company
 function alt_company_directory_canonical($canonical) { $data = alt_company_directory_current(); return $data ? ($data['indexable'] ? $data['url'] : false) : $canonical; }
 add_filter('wpseo_canonical', 'alt_company_directory_canonical');
 add_filter('rank_math/frontend/canonical', 'alt_company_directory_canonical');
-function alt_company_directory_title($parts) { $data = alt_company_directory_current(); if ($data) $parts['title'] = $data['company']['display_name'] . ' layoffs: source-linked event history'; return $parts; }
+function alt_company_directory_title($parts) { $data = alt_company_directory_current(); if ($data) $parts['title'] = $data['company']['display_name'] . ' layoffs: source-linked entry history'; return $parts; }
 add_filter('document_title_parts', 'alt_company_directory_title', 5);
-function alt_company_directory_seo_title($title) { $data = alt_company_directory_current(); return $data ? $data['company']['display_name'] . ' layoffs: source-linked event history' : $title; }
+function alt_company_directory_seo_title($title) { $data = alt_company_directory_current(); return $data ? $data['company']['display_name'] . ' layoffs: source-linked entry history' : $title; }
 add_filter('wpseo_title', 'alt_company_directory_seo_title', 5);
 add_filter('rank_math/frontend/title', 'alt_company_directory_seo_title', 5);
 

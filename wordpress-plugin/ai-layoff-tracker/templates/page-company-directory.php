@@ -31,7 +31,7 @@ $alt_verif = array(
     <h1><?php echo esc_html($alt_name); ?> layoffs</h1>
 
     <p class="alt-company-summary">
-        This page lists <?php echo (int) $alt_count; ?> recorded layoff event<?php echo $alt_count === 1 ? '' : 's'; ?>
+        This page lists <?php echo (int) $alt_count; ?> recorded layoff entr<?php echo $alt_count === 1 ? 'y' : 'ies'; ?>
         <?php if ($alt_dir['first_date'] !== '' && $alt_dir['last_date'] !== '') :
             $alt_from = substr($alt_dir['first_date'], 0, 4);
             $alt_to = substr($alt_dir['last_date'], 0, 4);
@@ -43,23 +43,23 @@ $alt_verif = array(
     <?php if (!$alt_dir['indexable']) : ?>
         <p class="alt-directory-notice">This record is published for direct research and citation, and is
         kept out of search results: with
-        <?php echo (int) $alt_count; ?> recorded event<?php echo $alt_count === 1 ? '' : 's'; ?> it repeats what the
+        <?php echo (int) $alt_count; ?> recorded entr<?php echo $alt_count === 1 ? 'y' : 'ies'; ?> it repeats what the
         individual entry below already says. Pages reach search results at
-        <?php echo (int) alt_company_directory_indexable_floor(); ?> or more source-linked events.</p>
+        <?php echo (int) alt_company_directory_indexable_floor(); ?> or more source-linked entries.</p>
     <?php endif; ?>
 
     <?php if (!empty($alt_dir['truncated'])) : ?>
         <p class="alt-directory-notice">Showing the <?php echo (int) $alt_count; ?> most recent of
-        <?php echo number_format((int) $alt_dir['total_known']); ?> recorded events for this employer.
+        <?php echo number_format((int) $alt_dir['total_known']); ?> recorded entries for this employer.
         <a href="<?php echo esc_url($alt_dir['tracker_url']); ?>">See all of them in the tracker</a>.</p>
     <?php endif; ?>
 
     <p class="alt-company-directory-total">
         <strong><?php echo number_format((int) $alt_dir['total_jobs']); ?></strong> jobs across the recorded
-        layoff events, each linked to a source
+        entries, each linked to a source
         <?php if ((int) $alt_dir['ai_events'] > 0) : ?>
             <br><strong><?php echo (int) $alt_dir['ai_events']; ?></strong>
-            of these <?php echo $alt_dir['ai_events'] === 1 ? 'is an event the employer' : 'are events the employer'; ?>
+            of these <?php echo $alt_dir['ai_events'] === 1 ? 'is an entry the employer' : 'are entries the employer'; ?>
             attributed to AI in its own words
         <?php endif; ?>
     </p>

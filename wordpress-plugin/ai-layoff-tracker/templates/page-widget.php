@@ -39,7 +39,7 @@ $alt_widget_config = array(
     <h1 id="alt-widget-title"><?php echo esc_html($alt_widget_label); ?> · <?php echo (int) $alt_widget_year; ?></h1>
     <p class="alt-widget-value" id="alt-widget-value" aria-live="polite">Loading…</p>
     <p class="alt-widget-label" id="alt-widget-label">Source-linked job cuts</p>
-    <p class="alt-widget-note">Source-linked events only; coverage varies by source and location.</p>
+    <p class="alt-widget-note">Source-linked entries only; coverage varies by source and location.</p>
     <a class="alt-widget-link" id="alt-widget-link" href="<?php echo esc_url($alt_widget_tracker_url); ?>" target="_blank" rel="noopener">View sources &amp; filters <span aria-hidden="true">↗</span></a>
 </main>
 <?php // Hex flags, for the same reason page-chart-embed.php now has them: this is

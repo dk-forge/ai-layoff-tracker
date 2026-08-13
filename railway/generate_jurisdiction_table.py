@@ -182,7 +182,7 @@ def render():
             "factsheets, daily, history back to {y}.".format(y=since),
             "A restructuring announcement curated by Eurofound&rsquo;s "
             "national correspondents.",
-            "ERM&rsquo;s own inclusion floor: {t}. Smaller events are absent "
+            "ERM&rsquo;s own inclusion floor: {t}. Smaller layoffs are absent "
             "by design.".format(t=thr),
         ),
         (

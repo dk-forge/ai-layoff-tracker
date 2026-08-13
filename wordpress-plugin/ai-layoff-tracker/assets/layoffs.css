@@ -3197,6 +3197,16 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 .alt-narrative-wrap:has(> .alt-narrative:empty) { display: none; }
 @media (prefers-reduced-motion: reduce) { .alt-narrative-wrap > summary::before { transition: none; } }
 
+/* WHAT A ROW IS, UNDER THE BOARD THAT COUNTS THEM. Deliberately a sibling of
+   the disclosure and never a child, whichever way the board's `open` default
+   is currently set: a definition behind a click is a definition nobody reads,
+   and that default has been both ways in one week. No display rule may hide
+   it, which is why there is no :empty guard and no media query here. */
+.alt-board-def {
+    margin: 6px 2px 12px; font-size: 12.5px; line-height: 1.5;
+    color: var(--alt-muted-ink, var(--alt-ink));
+}
+
 /* ONE BUTTON IN FRONT OF ELEVEN DROPDOWNS. Ships hidden; layoffs.js unhides it
    and collapses the panel, so a no-JS reader keeps every control. */
 .alt-filterbar-toggle-row { margin: 0 0 12px; }

@@ -474,7 +474,7 @@ class BoardTests(unittest.TestCase):
         # which is right (a week sits inside a month) and reads like a bug.
         for src, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
             self.assertIn("alt-sb-ev-repeat", src, "%s does not mark the repeat" % where)
-            self.assertIn("same event", src, "%s marks it with no word for a reader" % where)
+            self.assertIn("same entry", src, "%s marks it with no word for a reader" % where)
         self.assertIn(".alt-sb-again", CSS)
 
     def test_the_repeat_marker_is_computed_not_hardcoded_to_two_columns(self):

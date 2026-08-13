@@ -84,7 +84,7 @@ class NoInterpolationTests(unittest.TestCase):
     def test_the_gap_count_is_published(self):
         body = _draw_trajectory_body()
         self.assertIn("var gaps = keys.filter(", body)
-        self.assertIn("months have no event we can source", body)
+        self.assertIn("months have no entry we can source", body)
 
     def test_a_lone_month_is_still_drawn(self):
         # A one-month run emits "M x y L x y" so the round cap renders a dot;

@@ -41,7 +41,7 @@ function alt_quarterly_report_table($rows, $label) {
   <header class="alt-report-hero">
     <p class="alt-eyebrow">AskTheRecruiter · query-backed research snapshot</p>
     <h1><?php echo esc_html($report['title']); ?></h1>
-    <p>Events dated <?php echo esc_html($period['from']); ?> to <?php echo esc_html($period['to']); ?>. Published <?php echo esc_html($report['generated_at']); ?> · dataset revision <?php echo (int) $report['dataset_revision']; ?>.</p>
+    <p>Entries dated <?php echo esc_html($period['from']); ?> to <?php echo esc_html($period['to']); ?>. Published <?php echo esc_html($report['generated_at']); ?> · dataset revision <?php echo (int) $report['dataset_revision']; ?>.</p>
   </header>
   <?php if ($live_revision !== (int) $report['dataset_revision']): ?>
     <p class="alt-report-alert"><b>Data revision notice:</b> the live tracker is now revision <?php echo $live_revision; ?>. This page preserves the original report snapshot; use the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">live tracker</a> for current records.</p>
@@ -50,15 +50,15 @@ function alt_quarterly_report_table($rows, $label) {
     <p class="alt-report-alert"><b>Coverage notice:</b> <?php echo esc_html(implode(', ', $degraded)); ?> was degraded when this snapshot was generated. That is a visible coverage gap, not a zero result.</p>
   <?php endif; ?>
   <section aria-labelledby="alt-report-headline"><h2 id="alt-report-headline">Quarter at a glance</h2><div class="alt-report-metrics">
-    <article><strong><?php echo number_format_i18n((int) ($vt['jobs'] ?? 0)); ?></strong><span>Verified job cuts</span><small><?php echo number_format_i18n((int) ($vt['entries'] ?? 0)); ?> source-linked events</small></article>
-    <article><strong><?php echo number_format_i18n((int) ($ait['ai_primary_jobs'] ?? 0)); ?></strong><span>AI-attributed cuts (employer's own words)</span><small><?php echo number_format_i18n((int) ($ait['ai_primary_entries'] ?? 0)); ?> source-confirmed events</small></article>
+    <article><strong><?php echo number_format_i18n((int) ($vt['jobs'] ?? 0)); ?></strong><span>Verified job cuts</span><small><?php echo number_format_i18n((int) ($vt['entries'] ?? 0)); ?> source-linked entries</small></article>
+    <article><strong><?php echo number_format_i18n((int) ($ait['ai_primary_jobs'] ?? 0)); ?></strong><span>AI-attributed cuts (employer's own words)</span><small><?php echo number_format_i18n((int) ($ait['ai_primary_entries'] ?? 0)); ?> source-confirmed entries</small></article>
     <article><strong><?php echo number_format_i18n((int) ($at['announced_jobs'] ?? 0)); ?></strong><span>Announcement-stage plans</span><small><?php echo number_format_i18n((int) ($at['announced_entries'] ?? 0)); ?> separate source-linked plans</small></article>
   </div></section>
-  <p class="alt-report-note">Verified and announcement-stage figures are separate and must not be added together. The AI-attributed figure is a source-confirmed subset of verified events, not an estimate of all AI-related cuts.</p>
+  <p class="alt-report-note">Verified and announcement-stage figures are separate and must not be added together. The AI-attributed figure is a source-confirmed subset of verified entries, not an estimate of all AI-related cuts.</p>
   <section class="alt-report-grid" aria-label="Quarterly breakdowns">
     <div><h2>Largest verified industries</h2><?php alt_quarterly_report_table($verified['top_industries'] ?? array(), 'Industry'); ?></div>
     <div><h2>Largest verified job-location countries</h2><?php alt_quarterly_report_table($verified['top_countries'] ?? array(), 'Country'); ?></div>
-    <div><h2>Reasons cited in verified events</h2><?php alt_quarterly_report_table($verified['reasons'] ?? array(), 'Reason'); ?></div>
+    <div><h2>Reasons cited in verified entries</h2><?php alt_quarterly_report_table($verified['reasons'] ?? array(), 'Reason'); ?></div>
   </section>
   <section><h2>Coverage and revision record</h2>
     <p>This is a frozen, server-generated snapshot of the public aggregate queries recorded below. It is not a layoff census, forecast, causal analysis, or claim of national completeness.</p>

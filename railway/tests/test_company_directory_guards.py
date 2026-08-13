@@ -122,7 +122,7 @@ class ThinContentFloorTests(unittest.TestCase):
         # The health page publicly claimed "three or more" while the gate was
         # two (audit 2026-07-28, item 3).
         self.assertNotIn("three or more source-linked", HEALTH_TEMPLATE)
-        self.assertIn("two or more such events", HEALTH_TEMPLATE)
+        self.assertIn("two or more such entries", HEALTH_TEMPLATE)
 
 
 class CoverageTests(unittest.TestCase):
