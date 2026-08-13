@@ -1,5 +1,197 @@
 # Tech Log
 
+## 2026-08-12 — can Item 2.05 be read without a model? Measured: 43/57 at 100% precision (measurement only, nothing wired)
+
+**A MEASUREMENT, NOT A FEATURE.** `railway/sec_205_deterministic_probe.py` is
+new, dry-run, manual, wired to nothing, and calls no model. No row was written,
+no ingest path changed, and no gold-set filing was fetched into the corpus —
+that would be teaching to the test and would burn the set.
+
+**READ THIS FIRST — THE BASELINE MOVED AFTER THIS WORK WAS MEASURED.** Every
+parser number below was taken against a published recall of 24/57 = 42.1%.
+Later the same day the owner adjudicated the 29 recovered events — 28 accepted,
+Dow Inc rejected — and the published figure moved to **52/57 = 91.2%**. The
+parser measurements are unaffected: they are properties of the 57 filings and
+of the parser, not of what the tracker held. Two things in this entry ARE
+affected and are corrected in place below, each marked **[CORRECTED]**: the
+framing of the question, and the employer-keyed pre-check, whose right/wrong
+split was scored against the pre-adjudication labels and inverts under the new
+ones.
+
+**The question. [CORRECTED]** SEC Item 2.05 gold-set recall was 24/57 when this
+was measured; it is now 52/57. The 2026-08-01 entry
+below established the 33 misses are not judgment failures: replayed through the
+real pipeline, 29 were accepted and 28 recovered the exact stated headcount —
+and the owner has since adjudicated those 29, accepting 28. That closure is
+what took recall to 52/57, so the gap this entry set out to close is now
+largely closed, and the question the parser answers is no longer "how do we
+cheaply recover 33 misses" but "what is the cheapest reliable way to read this
+form at all", which the measurements below still answer.
+They were simply never fetched. Closing that costs model calls — unless this one
+form can be read without a model at all. An Item 2.05 is unusually structured:
+fixed heading, employer in the EDGAR header, date in the filing metadata, count
+stated verbatim in the text, which is exactly why `_count_in_text` can verify it
+literally.
+
+**The parser.** Deterministic. It anchors on the Item 2.05 heading in the
+primary document, takes the section to the next item heading, and accepts a
+figure only where it sits beside a headcount noun. A range is ONE count and it
+is the LOWER bound — not a rule invented here, it is what `extractor.py`'s
+prompt already says, with the upper carried in `job_count_max`. Two or more
+distinct stated headcounts and it REFUSES. `_count_in_text` and
+`_percent_only_mention` are IMPORTED from `extractor.py`, never re-implemented;
+`format_interval` is imported from `recall_goldset.py`. A second copy of a rule
+drifting from the first is a failure mode this repo keeps writing entries about
+(`recall_precision.py` already carries a smaller `_count_in_text` that disagrees
+about the year trap).
+
+**The confusion matrix, all 57 reference events:**
+
+| outcome | n |
+|---|---:|
+| resolved and CORRECT | **43** |
+| resolved and WRONG | **0** |
+| correctly REFUSED (a derived count the pipeline must not invent) | 1 |
+| count lives only in the EX-99.1 exhibit | 8 |
+| unresolved, genuinely needs a model | 5 |
+| UNKNOWN | 0 |
+
+* **Recall, deterministic path alone: 43/57 = 75.4%** (Wilson 95% CI
+  [62.9%, 84.8%]).
+* **Precision: 43/43 = 100%** (Wilson 95% CI [91.8%, 100.0%]) — a WIDE interval
+  at n=43, not a certainty.
+* On the 33 known misses alone: 27 correct, 0 wrong, 1 rightly refused
+  (81.8%, CI [65.6%, 91.4%]).
+
+**Wabash National is scored CORRECT.** Its 270 is the sum of four separately
+stated components ("3 salaried and 53 hourly" + "21 salaried and 193 hourly").
+The parser sees two distinct stated headcounts and declines. It reaches the
+right answer by a general rule — ambiguity refuses — rather than by a special
+case, and a parser that "helpfully" summed them would have reintroduced the hole
+that once published Intuit as 17 jobs.
+
+**THE CASES IT GETS WRONG, NAMED, because these are the ones that bite later.**
+Zero on the final parser is not the same as zero risk, and two of the three
+below are only zero because a rule was added AFTER seeing this set. Read them as
+the failure modes, not as history:
+
+1. **HP Inc., 2025-11-25 — parsed 6,000, stated 4,000.** "workforce reductions
+   of approximately 4,000 – 6,000 employees": only the upper bound sits beside
+   the noun, so a naive adjacency parser reads the ceiling as the count. Fixed
+   by the range rule, which is production's documented rule, but it is the
+   single most dangerous shape this form takes — a confidently wrong number
+   50% too high, carrying a gold verification level.
+2. **GitLab, 2026-06-02 — parsed 2021 for a 350-person cut.** This one is NOT
+   fixed, and it is the most important result in the entry. The count is only in
+   the EX-99.1 press release, so the section anchor is gone; run over the
+   exhibit body the parser hits "GitLab Inc.'s **2021 Employee** Stock Purchase
+   Plan", and `_count_in_text`'s year trap lets 2021 through precisely because
+   a headcount noun IS adjacent. The real figure, "350 team members", uses a
+   noun the parser does not carry. **Structure is the entire hypothesis:** the
+   same parser scores 43/43 inside the item section and 5 right / 1 wrong of 6
+   resolved once outside it (International Paper and Celanese it at least
+   refuses, 3,300 vs 1,100 and 11,000 vs 160). Do not run this parser on
+   unstructured text.
+3. **Hormel, 2025-11-04 — missed 250** ("approximately 250 corporate and sales
+   roles") until the qualifier between figure and noun was widened to three
+   words. Widened further and "December 31, 2025, with most of the related
+   employee departures" starts handing 2025 to the guard. The window between
+   "too tight to read English" and "feeding the year trap" is about two words
+   wide.
+
+**What genuinely needs a model (5):** Dow 800 and EnerSys 474 (the Item 2.05
+body is a cross-reference — "See disclosure under Item 2.06"); Goodyear 600
+(600 gross / 200 new / 400 net in one sentence — refusing is defensible, the
+gold answer is the gross); GoPro 145 (145 cut "of the Company's ending first
+quarter headcount of 631"); Sangamo 51 (51 vs 77). Every one is an ambiguity a
+reader resolves from meaning, which is what a model is for.
+
+**THE COST FIGURES, MEASURED, NOT ESTIMATED.** From `railway/spend_jobs.json`,
+`railway-cron` lifetime: $0.9212 over 4,577 calls and 2,973 candidate items =
+**$0.000310 per candidate read**. A live EFTS count of one representative month
+(2026-03, the full production keyword list, both forms, the real page cap):
+**271 distinct candidate documents, of which 15 carry Item 2.05.**
+
+| approach | model spend, 12 missing months | recall on this set | precision |
+|---|---:|---|---|
+| model as before | ~3,250 candidates × $0.00031 ≈ **$1.01** | 29/33 accepted on replay | 28/29 exact |
+| deterministic alone | **$0.00** | 43/57 | 43/43 |
+| deterministic + model on the residue | ≈ **$0.95** | 43 free + the residue | — |
+
+**So the cheap path is not a cost lever, and saying otherwise would have been
+the optimistic answer.** Item 2.05 filings are 15 of 271 documents a month's
+sweep reads — 5.5%. Removing all of them from the model's queue saves about six
+cents of a one-dollar bill. The entire twelve-month gap costs about a dollar to
+sweep with the model, against a **$18/month allowance** and
+`edgar-history-sweep`'s **$0.150 per-run ceiling** (one month's sweep = $0.084,
+**56% of one run**). *[CORRECTED: measured when the allowance was $10 and that
+job had no named ceiling; both changed the same day — see the $18 entry below.]*
+
+**THE SECOND LEVER IS WORSE THAN NEUTRAL, AND THIS IS THE FINDING TO KEEP.**
+"We already hold this employer, skip it before extracting" was measured against
+live `/query`, two ways:
+
+| pre-check | skips | of which WRONG |
+|---|---:|---:|
+| employer + filing year | 49/57 | **25** |
+| employer + within 45 days of the filing | 48/57 | **25** |
+
+A skip is only right when the gold set adjudicated the filing as an event we
+already hold. It is right 24 times and wrong 25.
+
+**[CORRECTED] That 24/25 split is scored against the PRE-ADJUDICATION labels
+and no longer holds.** The skip counts themselves — 49/57 and 48/57 — are
+properties of live `/query` and stand. What moved is the scoring: with the
+adjudication, 52 of the 57 are `matched` and only **5** are `not_matched`
+(Codexis, HP Inc, Wabash National, Dow Inc, PLAYSTUDIOS). A skip is wrong only
+on a `not_matched` event, so of the 49 skips **at most 5 can now be wrong** —
+the split inverts from 24-right/25-wrong to at least 44-right/at-most-5-wrong.
+**The recommendation below is therefore WITHDRAWN pending re-measurement**: it
+was a conclusion about a 49% error rate, and the error rate it was drawn from
+was an artefact of events we had not yet adjudicated rather than events we do
+not hold. This entry does not re-derive it, because the exact per-event skip
+list was not retained and re-deriving it means another live pass.
+
+The original recommendation, kept for the record and NOT currently supported:
+"The employers in the miss list
+are exactly the employers we already carry — EnerSys appears twice in this set
+with two different cuts — so an employer-keyed pre-check would discard the very
+events the sweep exists to recover, and would do it silently and for free. **Do
+not build the pre-check on employer and date.** If one is ever built it must key
+on the EVENT (employer + count + date), and the count is the part we do not have
+before extraction — except, on this one form, from the deterministic parser,
+free."
+
+The EnerSys observation in particular is now known to have been a row-mapping
+error, corrected by the adjudication: the July 2025 event takes row 149911 and
+the co-proposed 149625 belongs to a March 2026 event 246 days away. **The
+event-keyed design is still the right one on first principles** — an employer
+can and does cut twice — but this set no longer provides the evidence that the
+employer-keyed version is actively harmful.
+
+**Recommendation: keep the model, and treat the deterministic parser as a
+precision instrument rather than a saving.** It earns its place three ways that
+have nothing to do with dollars: it resolves 43 of 57 with zero wrong answers
+and no key, no model and no OpenRouter balance; it runs regardless of the
+per-run spend ceiling, so an Item 2.05 filing can never be one of the
+candidates deferred unread; and it produces the count that would make an
+event-keyed pre-check safe. It stays dormant until someone decides that is worth
+wiring, and this entry is the read.
+
+**Not shipped, deliberately:** no ingest change, no keyword change, no floor
+move. `recall_goldset.MATCHED_FLOOR` does not move on the strength of a replay —
+same reasoning as the 2026-08-01 entry. *[CORRECTED: that remains this entry's
+position, but the floor DOES now need to move on the strength of the
+adjudication, which is a human decision and not a replay. At 52 confirmed, the
+floor of 20 fails `test_the_floor_leaves_headroom_but_is_not_a_rubber_stamp`
+(20 is not above 52 × 0.6 = 31.2) and Tests is red on main from `c39fec7`
+onward. This entry does not move it; it is flagged here so the next reader does
+not mistake the red for something this measurement caused.]* Four surfaces unchanged: no collector
+was added, removed or blocked, so Sources, Health and the benchmark have nothing
+to update.
+
+---
+
 ## 2026-08-12 - the 29 recovered gold events, prepared for a human and not decided (railway + docs, no deploy)
 
 **Nothing in this entry moves the published recall figure. It is still 24 of 57
