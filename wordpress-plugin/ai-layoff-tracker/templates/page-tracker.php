@@ -337,7 +337,7 @@ $alt_hero_basis  = 'counted by filing date';
         // showing the same employer says "same event" under the number. Nothing
         // about the underlying values changes.
         $alt_lseen = array();
-        $alt_board_html .= '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest event</span>';
+        $alt_board_html .= '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest entry</span>';
         foreach ($alt_cols as $alt_ck => $alt_cl) {
             $alt_ld = $alt_board[$alt_ck]['leader'];
             $alt_lv = $alt_lvals[$alt_ck];
@@ -348,9 +348,9 @@ $alt_hero_basis  = 'counted by filing date';
                 $alt_lrep = isset($alt_lseen[$alt_lname]) ? ' alt-sb-ev-repeat' : '';
                 $alt_lseen[$alt_lname] = true;
                 $alt_lbody = '<b>' . esc_html($alt_lname) . '</b><span>' . esc_html(number_format($alt_lv)) . '</span>'
-                    . ($alt_lrep ? '<i class="alt-sb-again">same event</i>' : '');
+                    . ($alt_lrep ? '<i class="alt-sb-again">same entry</i>' : '');
                 $alt_board_html .= !empty($alt_ld['permalink'])
-                    ? '<a class="alt-sb-cell alt-sb-ev' . $eq . $alt_lrep . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this event&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
+                    ? '<a class="alt-sb-cell alt-sb-ev' . $eq . $alt_lrep . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this entry&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
                     : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . $alt_lrep . '" role="cell" href="#" data-company="' . esc_attr($alt_lname) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
             } else {
                 $alt_board_html .= '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell">none</span>';
@@ -372,9 +372,9 @@ $alt_hero_basis  = 'counted by filing date';
             // The class is how renderBasisCopy() finds this line again: a
             // reader who switches the basis after load gets this one sentence
             // rewritten in place, with no board refetch. See there.
-            . '<li class="alt-sb-foot-basis">Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
+            . '<li class="alt-sb-foot-basis">Every row counts verified entries on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
             . '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
-            . '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
+            . '<li>Columns overlap, so they do not add up: this week sits inside this month, and one entry can lead both.</li>'
             // "and counted the same way" is not decoration: the tap now carries
             // the board's basis into the page, so the filtered view reproduces
             // the number that was tapped instead of recounting it by filing
@@ -442,6 +442,33 @@ $alt_hero_basis  = 'counted by filing date';
         <summary class="alt-narrative-summary">At a glance: today, this week, this month, this year</summary>
         <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
     </details>
+    <?php /* THE DEFINITION LINE, AND IT IS OUTSIDE THE DISCLOSURE ON PURPOSE.
+
+             The board's rows are Workers and Verified layoffs, and the owner
+             could not tell from the page which of the two a number was. This
+             says it, in the two shortest sentences that carry it, at the
+             place a first-time reader meets the number.
+
+             It sits AFTER </details>, not inside it, and that placement is
+             deliberately independent of whether the board ships open. A
+             CLOSED <details> still has a box and still carries textContent
+             for text nobody can read; innerText on a subtree that is not
+             rendered falls back to textContent too, so a caveat in there
+             would pass every check in this repo and reach no reader. This
+             codebase has already shipped three of those. The board's default
+             has been both in one week, and this line must not follow it. It
+             is also
+             literal HTML rather than a string PHP builds, so the fixture in
+             test_reader_copy_says_entries.py renders the real line rather
+             than a copy of it, and the test reads its innerText off the
+             rendered parent.
+
+             "Entry" and not "event": one real-world layoff can produce a WARN
+             notice, a news report and a filing, which is what the dedup and
+             superset machinery reconciles. `entries` is also what the API
+             field has always been called, so the code, the copy and the docs
+             now give one name to one thing. */ ?>
+    <p class="alt-board-def" id="alt-board-def">An entry is one layoff reported by one employer. Workers counts people.</p>
     <?php
     // The WARN coverage claim comes from alt_warn_states_phrase(), the one
     // helper that owns it. It used to be count(alt_state_warn_urls()) rendered
@@ -990,7 +1017,7 @@ $alt_hero_basis  = 'counted by filing date';
             </div>
             <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
         </div>
-        <div class="alt-grid-h"><h2>Who is cutting, and why</h2><p>Industries, stated reasons, the biggest single events and repeat cutters, plus which data source each figure came from.</p></div>
+        <div class="alt-grid-h"><h2>Who is cutting, and why</h2><p>Industries, stated reasons, the biggest single layoffs and repeat cutters, plus which data source each figure came from.</p></div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head">
                 <div class="alt-chart-h">By industry <span class="alt-chart-sub"><span class="alt-ai-key"></span> AI share · tap to filter</span></div>
@@ -1072,11 +1099,11 @@ $alt_hero_basis  = 'counted by filing date';
         }
         if ($alt_places) : $alt_pmax = max(1, (int) $alt_places[0]['events']); ?>
         <div class="alt-mini alt-chart-card" id="alt-places-card">
-            <div class="alt-chart-head"><div class="alt-chart-h">Browse the record: top places <span class="alt-chart-sub">source-linked events over the whole record · each row opens that place's permanent record page · whole record, not affected by the filters above</span></div></div>
+            <div class="alt-chart-head"><div class="alt-chart-h">Browse the record: top places <span class="alt-chart-sub">source-linked entries over the whole record · each row opens that place's permanent record page · whole record, not affected by the filters above</span></div></div>
             <div class="alt-barlist alt-barlist-static">
                 <?php foreach ($alt_places as $alt_pf) : $alt_pw = max(2, (int) round(100 * (int) $alt_pf['events'] / $alt_pmax)); ?>
                 <a class="alt-barrow alt-barrow-link" href="<?php echo esc_url($alt_pf['url']); ?>">
-                    <span class="alt-barrow-top"><span class="alt-barrow-name"><?php echo esc_html($alt_pf['display']); ?><?php echo $alt_pf['dim'] === 'state' ? ' (US state)' : ''; ?></span><span class="alt-barrow-val"><?php echo esc_html(number_format((int) $alt_pf['events'])); ?> events</span></span>
+                    <span class="alt-barrow-top"><span class="alt-barrow-name"><?php echo esc_html($alt_pf['display']); ?><?php echo $alt_pf['dim'] === 'state' ? ' (US state)' : ''; ?></span><span class="alt-barrow-val"><?php echo esc_html(number_format((int) $alt_pf['events'])); ?> entries</span></span>
                     <span class="alt-bartrack"><span class="alt-barfill" style="width:<?php echo (int) $alt_pw; ?>%"></span></span>
                 </a>
                 <?php endforeach; ?>
@@ -1212,7 +1239,7 @@ $alt_hero_basis  = 'counted by filing date';
     <details class="alt-methodology" id="alt-data-sources">
         <summary>Where do we get this data? Every source, by country</summary>
         <div class="alt-method-body">
-            <p>We collect official government filings and notices directly: SEC EDGAR, including Item 2.05 exit-cost filings, WARN notices from <?php echo esc_html($alt_warn_phrase); ?>, and Eurofound ERM for the EU. We also monitor press-release wires and reviewed company investor-relations feeds. And <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News. We work from an allowlist and never crawl those outlets directly. Every published event links to its source. A handful of US states publish no usable WARN register: Arkansas, Wyoming, New Hampshire, Missouri, Hawaii and Oklahoma. For those states we also show the official monthly unemployment rate from the US Bureau of Labor Statistics, sourced and dated. It is a clearly separate context metric, and we never mix it into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
+            <p>We collect official government filings and notices directly: SEC EDGAR, including Item 2.05 exit-cost filings, WARN notices from <?php echo esc_html($alt_warn_phrase); ?>, and Eurofound ERM for the EU. We also monitor press-release wires and reviewed company investor-relations feeds. And <?php echo number_format((int) $alt_scan_outlets); ?> reviewed news outlets across <?php echo number_format((int) $alt_scan_countries); ?> countries surface coverage through GDELT's 65-language index and Google News. We work from an allowlist and never crawl those outlets directly. Every published entry links to its source. A handful of US states publish no usable WARN register: Arkansas, Wyoming, New Hampshire, Missouri, Hawaii and Oklahoma. For those states we also show the official monthly unemployment rate from the US Bureau of Labor Statistics, sourced and dated. It is a clearly separate context metric, and we never mix it into the layoff counts. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">See the full source directory</a>.</p>
             <?php
             // Rendered from the committed weekly measurement (data/recall-measurement.json,
             // written by recall_precision.py), never typed: when capture improves the page
@@ -1232,7 +1259,7 @@ $alt_hero_basis  = 'counted by filing date';
             claim to hold every filing.<?php if (isset($alt_rm['precision_ok'])) : ?> Where a count is published, it is
             accurate: <?php echo (int) $alt_rm['precision_ok']; ?> of <?php echo (int) $alt_rm['precision_checked']; ?> checked figures appear verbatim in the cited
             source.<?php endif; ?> That measurement covers one source family over one year. It
-            says nothing about private employers, non-US events, or the WARN and
+            says nothing about private employers, non-US layoffs, or the WARN and
             news routes, which we count separately. We re-measure it weekly
             against the same frozen filing list, so this paragraph updates as
             capture improves.</p>
@@ -1274,11 +1301,11 @@ $alt_hero_basis  = 'counted by filing date';
     <details class="alt-methodology" open>
         <summary>Why our numbers differ from other trackers</summary>
         <div class="alt-method-body">
-            <p><b>Every tracker measures a different thing, so the numbers should differ.</b> We count <em>verified events</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below the headline announcement estimates, and the gap is fully explainable, here is exactly why, and why we treat it as a feature, not a shortfall.</p>
+            <p><b>Every tracker measures a different thing, so the numbers should differ.</b> We count <em>verified entries</em>: cuts with a filing or named-outlet source behind them, each one clickable. The big announcement trackers count <em>corporate intentions</em>. Neither is wrong; they answer different questions. Our total sits below the headline announcement estimates, and the gap is fully explainable, here is exactly why, and why we treat it as a feature, not a shortfall.</p>
 
             <p><b>1 &middot; They book multi-year plans on day one; we count cuts as they happen.</b> When a company announces "20,000 cuts over two years," the announcement trackers record all 20,000 that day. We add each cut as its WARN notice or SEC filing actually appears. Over a year that is a large, permanent gap, their figure is a forecast, ours is an execution ledger.</p>
 
-            <p><b>2 &middot; They include separations that name no event.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs, including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000 to 300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
+            <p><b>2 &middot; They include separations that name no employer.</b> Announcement totals fold in voluntary buyouts, deferred resignations, and attrition programs, including large federal-workforce reductions that file no WARN notice and name no company. In 2025 that was roughly <b>250,000 to 300,000 jobs</b> of the announcement total alone. There is no document or named source to link, so we do not claim it.</p>
 
             <p><b>3 &middot; They count cuts no outlet ever named.</b> Announcement surveys aggregate press mentions and estimates we cannot reproduce. We only publish what traces to a source, so an unsourced cut never enters our total.</p>
 
@@ -1321,11 +1348,11 @@ $alt_hero_basis  = 'counted by filing date';
 
             <p><b>Where each kind of tracker fits:</b></p>
             <ul class="alt-method-list">
-                <li><b>Announcement surveys</b>, monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Typically published as press releases; no per-event public database.</li>
+                <li><b>Announcement surveys</b>, monthly totals of <em>announced</em> US cuts from press reports and company statements, including estimates and multi-year plans. Typically published as press releases; no per-layoff public database.</li>
                 <li><b>Editorial newsroom trackers</b>, selected major announcements with newsroom verification. No downloadable dataset; selective by design.</li>
                 <li><b>Sector trackers</b>, technology-focused trackers built from announcements and crowdsourced reports. Their scope matches our <em>Technology</em> filter, not our all-industry total.</li>
                 <li><b>Official statistics</b>, <a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">US BLS JOLTS</a>, <a href="https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/redundancies" target="_blank" rel="noopener">UK ONS</a>, <a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a> count <em>all</em> separations economy-wide (millions/month) with no company detail. A different universe entirely.</li>
-                <li><b>This tracker</b>, verified events in the headline, announcement-stage figures in a separate labeled tier, corrections logged openly, data and code public. When our number differs, the difference is definitional, and both definitions are stated here so either can be cited correctly.</li>
+                <li><b>This tracker</b>, verified entries in the headline, announcement-stage figures in a separate labeled tier, corrections logged openly, data and code public. When our number differs, the difference is definitional, and both definitions are stated here so either can be cited correctly.</li>
             </ul>
         </div>
     </details>
@@ -1334,8 +1361,8 @@ $alt_hero_basis  = 'counted by filing date';
         <summary>Known gaps &amp; why the country count changes</summary>
         <div class="alt-method-body">
             <p>The full directory of every pipeline, the SEC, all state WARN registries with live links, Eurofound ERM, and the news index, lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>. The disclosures below cover what is <em>not</em> yet included.</p>
-            <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As events occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable events exist, not a padded list.</p>
-            <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE. We maintain them as official-source research candidates. We will name one as live only after a stable public interface, tests and source-health monitoring exist for it. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Events too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
+            <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As layoffs occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable layoffs exist, not a padded list.</p>
+            <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE. We maintain them as official-source research candidates. We will name one as live only after a stable public interface, tests and source-health monitoring exist for it. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Layoffs too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
         </div>
     </details>
 
@@ -1384,8 +1411,8 @@ $alt_hero_basis  = 'counted by filing date';
                 <?php endforeach; ?>
                 <li id="log-2026-07-15-s1"><b>2026-07-15: Florida test rows removed, 87,600 jobs.</b> Florida's official WARN export contains internal test entries, which are fictitious notices sharing one WARN number and using non-existent zip codes. Eight such rows were removed, the largest a fake 78,788-worker "AT&amp;T" notice that briefly ranked as our biggest entry. Our importer now skips test-named rows, and each removed row is permanently blocked from re-import. <a class="alt-log-anchor" href="#log-2026-07-15-s1" aria-label="Link to this correction">#</a></li>
                 <li id="log-2026-07-15-s2"><b>2026-07-15: Country assigned to 88 news and SEC entries.</b> These rows had no country recorded, which hid them from the regional views and country charts, though they were always in the worldwide totals. Each was resolved from its own source article. The largest were Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay, so "Multiple countries") and BBC (2,000, United Kingdom). <a class="alt-log-anchor" href="#log-2026-07-15-s2" aria-label="Link to this correction">#</a></li>
-                <li id="log-2026-07-15-s3"><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure, but only 2 RI employees are affected. The per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the event. <a class="alt-log-anchor" href="#log-2026-07-15-s3" aria-label="Link to this correction">#</a></li>
-                <li id="log-2026-07-15-s4"><b>2026-07-15: Ten non-events removed.</b> These were SEC-filing extraction mistakes. Some were severance dollar figures and job-cut percentages misread as headcounts. Some were WARN Act boilerplate clauses from acquisition agreements. Three were duplicate rows of one Meta story carrying wrong dates. <a class="alt-log-anchor" href="#log-2026-07-15-s4" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s3"><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure, but only 2 RI employees are affected. The per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the layoff. <a class="alt-log-anchor" href="#log-2026-07-15-s3" aria-label="Link to this correction">#</a></li>
+                <li id="log-2026-07-15-s4"><b>2026-07-15: Ten non-layoffs removed.</b> These were SEC-filing extraction mistakes. Some were severance dollar figures and job-cut percentages misread as headcounts. Some were WARN Act boilerplate clauses from acquisition agreements. Three were duplicate rows of one Meta story carrying wrong dates. <a class="alt-log-anchor" href="#log-2026-07-15-s4" aria-label="Link to this correction">#</a></li>
             </ul>
             <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and they get priority.</p>
         </div>
@@ -1422,7 +1449,7 @@ $alt_hero_basis  = 'counted by filing date';
     ?>
     <section class="alt-browse" aria-labelledby="alt-browse-title">
         <h2 id="alt-browse-title" class="alt-browse-title">Browse the record</h2>
-        <p class="alt-browse-intro">Every page below lists the source-linked layoff events behind its own figure. Counts are events, not jobs.</p>
+        <p class="alt-browse-intro">Every page below lists the source-linked entries behind its own figure. Counts are entries, not jobs.</p>
         <?php foreach ($alt_browse_labels as $alt_dim => $alt_label) :
             if (empty($alt_browse_groups[$alt_dim])) continue; ?>
             <div class="alt-browse-group">

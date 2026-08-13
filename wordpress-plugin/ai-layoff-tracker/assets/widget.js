@@ -13,7 +13,7 @@
       const verified = Math.max(0, Number(totals.jobs || 0) - announced);
       const entries = Math.max(0, Number(totals.entries || 0) - Number(totals.announced_entries || 0));
       value.textContent = verified.toLocaleString('en-US');
-      label.textContent = entries.toLocaleString('en-US') + ' verified source-linked event' + (entries === 1 ? '' : 's');
+      label.textContent = entries.toLocaleString('en-US') + ' verified source-linked entr' + (entries === 1 ? 'y' : 'ies');
     })
     .catch(() => {
       value.textContent = 'Unavailable';

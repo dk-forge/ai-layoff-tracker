@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.20
+ * Version: 2.20.21
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.20');
+define('ALT_VERSION', '2.20.21');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1549,16 +1549,16 @@ function alt_faq_items() {
         // wording for the same situation. See alt_live_numbers() for why this
         // figure stayed on the effective basis and what the gap measured.
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
-            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff events totaling ' . $f($n['jobs']) . ' job cuts worldwide, counted by effective date: the day each cut takes effect, with anything dated later than today left out. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. The totals on the tracker page itself are counted by filing date by default, which is a different question and a different number for the same year, so the two are not meant to match; the date basis switch on the page moves between them. Totals update daily as new filings and reports are verified.'),
+            'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff entries totaling ' . $f($n['jobs']) . ' job cuts worldwide, counted by effective date: the day each cut takes effect, with anything dated later than today left out. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. The totals on the tracker page itself are counted by filing date by default, which is a different question and a different number for the same year, so the two are not meant to match; the date basis switch on the page moves between them. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' events in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' entries in total.'),
         array('What sources do you use?',
             'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . alt_warn_states_phrase() . ' (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
         array('How is this different from other layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
         array('Why is our number different from other layoff trackers?',
-            'Three reasons, and all of them point toward a number you can check. First, we require a document behind every row, so a cut with no filing and no named report never enters the total. Second, we are deliberately conservative and land within about 10 percent of independent WARN trackers, so our figure is a floor you can trust rather than a high estimate. Third, we never inflate a total by counting a company-wide headcount on every state filing: when one notice lists a nationwide figure, we count only the jobs in that state, so one event is never summed several times. A tracker reporting several times higher is usually doing exactly that.'),
+            'Three reasons, and all of them point toward a number you can check. First, we require a document behind every row, so a cut with no filing and no named report never enters the total. Second, we are deliberately conservative and land within about 10 percent of independent WARN trackers, so our figure is a floor you can trust rather than a high estimate. Third, we never inflate a total by counting a company-wide headcount on every state filing: when one notice lists a nationwide figure, we count only the jobs in that state, so one layoff is never summed several times. A tracker reporting several times higher is usually doing exactly that.'),
         array('What if a source only says "up to" a number?',
             'We record the figure the source states and keep its qualifying words with the entry, because inventing a lower number would be a guess and dropping the entry would hide a real cut. So a report of "up to 600 roles" is stored as 600 with that wording retained, which makes it a ceiling rather than a measured total. This is the one place our figures can read high, so we name it rather than bury it. Where a source gives a true range ("400 to 500"), we take the lower bound and keep the upper bound in the data as well.'),
         array('How do you check your own accuracy?',

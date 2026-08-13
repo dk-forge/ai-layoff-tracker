@@ -34,7 +34,7 @@ $alt_bd_titles = array(
     <h1><?php echo esc_html(alt_facet_heading($alt_f)); ?></h1>
 
     <p class="alt-facet-summary">
-        This page lists every layoff event we hold
+        This page lists every layoff entry we hold
         <?php echo $alt_f['dim'] === 'industry'
             ? 'for the ' . esc_html($alt_f['display']) . ' sector'
             : 'for ' . esc_html(alt_facet_phrase($alt_f['dim'], $alt_f['display'])); ?>
@@ -46,9 +46,9 @@ $alt_bd_titles = array(
     <?php if (!$alt_f['indexable']) : ?>
         <p class="alt-directory-notice">We publish this record for direct research and citation, and it is
         kept out of search results. With <?php echo number_format((int) $alt_f['entries']); ?> recorded
-        event<?php echo $alt_f['entries'] === 1 ? '' : 's'; ?>, it repeats what the individual entries and
+        entr<?php echo $alt_f['entries'] === 1 ? 'y' : 'ies'; ?>, it repeats what the individual entries and
         company pages already say. Pages reach search results at
-        <?php echo (int) alt_facet_indexable_floor(); ?> or more source-linked events.</p>
+        <?php echo (int) alt_facet_indexable_floor(); ?> or more source-linked entries.</p>
     <?php endif; ?>
 
     <?php // One block per statistic, not <br>-separated lines. The figure is set
@@ -56,7 +56,7 @@ $alt_bd_titles = array(
           // line-height for the whole run and a label that wraps leaves its tail
           // stranded on a line of its own, reading as a separate item. ?>
     <div class="alt-facet-total">
-        <p><strong><?php echo number_format((int) $alt_f['entries']); ?></strong> recorded events</p>
+        <p><strong><?php echo number_format((int) $alt_f['entries']); ?></strong> recorded entries</p>
         <?php if ((int) $alt_f['jobs'] > 0) : ?>
             <p><strong><?php echo number_format((int) $alt_f['jobs']); ?></strong> jobs across
             <?php echo number_format((int) $alt_f['companies']); ?>
@@ -64,7 +64,7 @@ $alt_bd_titles = array(
         <?php endif; ?>
         <?php if ((int) $alt_f['ai_entries'] > 0) : ?>
             <p><strong><?php echo number_format((int) $alt_f['ai_entries']); ?></strong>
-            <?php echo $alt_f['ai_entries'] === 1 ? 'event the employer' : 'events the employer'; ?>
+            <?php echo $alt_f['ai_entries'] === 1 ? 'entry the employer' : 'entries the employer'; ?>
             attributed to AI in its own words</p>
         <?php endif; ?>
         <?php if ($alt_f['min_date'] !== '' && $alt_f['max_date'] !== '') : ?>
@@ -85,7 +85,7 @@ $alt_bd_titles = array(
             Counted by where the jobs were located. State is recorded from US WARN
             notices, so this covers United States records only.
         <?php else : ?>
-            Counted by the industry recorded against each event, normalised to a fixed
+            Counted by the industry recorded against each entry, normalised to a fixed
             list of <?php echo (int) count(alt_facet_catalogue()['industry']); ?> sectors.
         <?php endif; ?>
         Rollup records and the per-site notices they absorb are counted once.
@@ -124,10 +124,10 @@ $alt_bd_titles = array(
         </ul>
     <?php endif; ?>
 
-    <h2>Recorded events</h2>
+    <h2>Recorded entries</h2>
     <?php if ((int) $alt_f['entries'] > (int) $alt_f['shown']) : ?>
         <p class="alt-directory-notice">Showing the <?php echo number_format((int) $alt_f['shown']); ?> most
-        recent of <?php echo number_format((int) $alt_f['entries']); ?> recorded events.
+        recent of <?php echo number_format((int) $alt_f['entries']); ?> recorded entries.
         <a href="<?php echo esc_url($alt_f['tracker_url']); ?>">See all of them in the tracker</a>.</p>
     <?php endif; ?>
 
@@ -230,7 +230,7 @@ $alt_bd_titles = array(
         <?php foreach ($alt_siblings as $alt_sib) :
             if ($alt_sib['value'] === $alt_f['value']) continue; ?>
             <li><a href="<?php echo esc_url($alt_sib['url']); ?>"><?php echo esc_html($alt_sib['display']); ?></a>
-                <span class="alt-facet-links-val"><?php echo number_format((int) $alt_sib['events']); ?> events</span></li>
+                <span class="alt-facet-links-val"><?php echo number_format((int) $alt_sib['events']); ?> entries</span></li>
         <?php endforeach; ?>
         </ul>
     <?php endif; ?>

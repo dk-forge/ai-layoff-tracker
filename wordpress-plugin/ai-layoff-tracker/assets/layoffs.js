@@ -875,8 +875,8 @@
     */
     function boardBasisNote() {
         return DATE_BASIS === 'effective'
-            ? 'Every row counts verified events on the day each cut takes effect, the same basis as the headline figure above.'
-            : 'Every row counts verified events on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.';
+            ? 'Every row counts verified entries on the day each cut takes effect, the same basis as the headline figure above.'
+            : 'Every row counts verified entries on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.';
     }
 
     // One writer for the basis state: the closure variable, the segmented
@@ -2267,7 +2267,7 @@
     function reasonsBasisNote() {
         var txt = 'Slices are verified job cuts, the same basis as the Verified job cuts tile.';
         txt += ' Reason tags overlap, so they are not a breakdown of the total.'
-            + ' One event can carry several tags, and an event whose source states no reason carries none.'
+            + ' One entry can carry several tags, and an entry whose source states no reason carries none.'
             + ' The slices are not meant to sum to the headline.';
         txt += ' These tags are read from the stored source text and are a different measure from the AI tiles,'
             + ' which are counted from the AI attribution flags. Tapping a slice filters the page to that tag.';
@@ -3106,7 +3106,7 @@
         var describe = 'Verified job cuts by month, ' + startLabel + ' to ' + endLabel + '. '
             + (firstRow ? fmt(verified(firstRow)) + ' in ' + startLabel + '. ' : '')
             + (lastRow ? fmt(verified(lastRow)) + ' in ' + endLabel + '. ' : '')
-            + (gaps ? gaps + ' of these ' + n + ' months have no recorded event and are not drawn.' : '');
+            + (gaps ? gaps + ' of these ' + n + ' months have no recorded entry and are not drawn.' : '');
 
         var lines = '<path d="' + pathFor(verified) + '" class="alt-tj-line" stroke="' + SEQ_BLUE
             + '" vector-effect="non-scaling-stroke"/>';
@@ -3147,9 +3147,9 @@
             + '</span><span>' + escapeHtml(endLabel) + '</span></p>'
             + '<p class="alt-tj-note">' + escapeHtml(
                 (gaps
-                    ? gaps + ' of these ' + fmt(n) + ' months have no event we can source, so the line breaks '
+                    ? gaps + ' of these ' + fmt(n) + ' months have no entry we can source, so the line breaks '
                         + 'there rather than being drawn as zero. '
-                    : 'Every one of these ' + fmt(n) + ' months has at least one sourced event. ')
+                    : 'Every one of these ' + fmt(n) + ' months has at least one sourced entry. ')
                 /*
                   THE AXIS IS ZERO-BASED AND THE PEAK IS NAMED, which is one
                   decision rather than two. Over the full record one month
@@ -5120,7 +5120,7 @@
             // showing the same employer is marked "same event". Server parity:
             // the identical rule runs in page-tracker.php.
             var lseen = {};
-            var lRow = '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest event</span>'
+            var lRow = '<div class="alt-sb-row alt-sb-r-largest" role="row"><span class="alt-sb-label" role="rowheader">Largest entry</span>'
                 + KEYS.map(function (k) {
                     var ld = D[k].l, v = (ld || {}).job_count || 0, e = eqCls(k);
                     if (!(v > 0)) return '<span class="alt-sb-cell alt-sb-zero' + e + '" role="cell">none</span>';
@@ -5128,9 +5128,9 @@
                     var rep = Object.prototype.hasOwnProperty.call(lseen, name) ? ' alt-sb-ev-repeat' : '';
                     lseen[name] = true;
                     var body = '<b>' + escapeHtml(name) + '</b><span>' + fmt(v) + '</span>'
-                        + (rep ? '<i class="alt-sb-again">same event</i>' : '');
+                        + (rep ? '<i class="alt-sb-again">same entry</i>' : '');
                     return ld.permalink
-                        ? '<a class="alt-sb-cell alt-sb-ev' + e + rep + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this event&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
+                        ? '<a class="alt-sb-cell alt-sb-ev' + e + rep + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this entry&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
                         : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + rep + '" role="cell" href="#" data-company="' + escapeHtml(name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
                 }).join('') + '</div>';
             // The footnote was one sentence doing four jobs, so a reader after
@@ -5153,7 +5153,7 @@
             var foot = '<ul class="alt-sb-foot">'
                 + '<li class="alt-sb-foot-basis">' + boardBasisNote() + '</li>'
                 + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
-                + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one event can lead both.</li>'
+                + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one entry can lead both.</li>'
                 + '<li>Tap any number to filter the page to that period, counted the same way this board counts it. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
                 + '</ul>';
             // Post-sized rewrite for the copy button: X counts any URL as 23
