@@ -1719,7 +1719,7 @@
         // reads as noise (a year filter trivially spans Jan 1–Dec 31).
         var note = document.getElementById('alt-range-note');
         if (note) {
-            note.textContent = (t.entries && t.min_date) ? '' : 'no layoffs match the current filters';
+            note.textContent = (t.entries && t.min_date) ? '' : 'no entries match the current filters';
         }
     }
 
@@ -2081,7 +2081,7 @@
             rolesSub.innerHTML = (small ? '<span class="alt-sample-warn">⚠ Small sample, illustrative only.</span> ' : '')
                 + 'Each bar is verified job cuts for that team, the same basis as the Verified job cuts tile; the <span class="alt-ai-key"></span> orange part'
                 + ' and 🤖 number are the AI-attributed share. Built from only the <b>' + fmt(rke)
-                + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> records whose source named which teams were cut'
+                + ' of ' + fmt((agg.totals && agg.totals.entries) || 0) + '</b> entries whose source named which teams were cut'
                 + '; a non-representative sample of where cuts land, <b>not</b> a breakdown of the total. Tap a role to filter the page.';
         }
         // Keep the raw source_type as the row value (the `sources` param accepts
@@ -3936,7 +3936,7 @@
         list.setAttribute('aria-busy', 'false');
         if (!ROWS.length) {
             list.innerHTML = '<li class="alt-cards-empty">'
-                + '<p class="alt-cards-empty-h">No layoffs match the current filters</p>'
+                + '<p class="alt-cards-empty-h">No entries match the current filters</p>'
                 + '<p class="alt-cards-empty-p">We would rather show you nothing than guess.</p>'
                 + '<button type="button" class="alt-cards-empty-clear">Reset all filters</button>'
                 + '</li>';
@@ -3987,10 +3987,15 @@
         var el = document.getElementById('alt-table-count');
         if (!el) return;
         el.classList.toggle('alt-count-empty', !TOTAL);
-        if (!TOTAL) { el.textContent = 'No layoffs match the current filters.'; return; }
+        if (!TOTAL) { el.textContent = 'No entries match the current filters.'; return; }
         var start = (PAGE - 1) * PER_PAGE + 1;
         var end = Math.min(TOTAL, PAGE * PER_PAGE);
-        el.textContent = 'Showing ' + fmt(start) + ' to ' + fmt(end) + ' of ' + fmt(TOTAL) + ' layoffs';
+        // "of 3,538 entries", not "layoffs". This line counts ROWS, and a
+        // reader seeing "3,538 layoffs" beside a Workers figure in the hundreds
+        // of thousands reads it as people. The 2.20.22 rename moved 86 strings
+        // and missed this one because it is built in JS at render time rather
+        // than sitting in a template.
+        el.textContent = 'Showing ' + fmt(start) + ' to ' + fmt(end) + ' of ' + fmt(TOTAL) + ' entries';
     }
 
     // The params the results list asks for. Kept in one place so the bootstrap
