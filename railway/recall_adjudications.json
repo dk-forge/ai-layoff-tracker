@@ -1,0 +1,515 @@
+{
+ "note": "Append-only record of every human adjudication of the SEC Item 2.05 gold set, and of every reversal. Written ONLY by railway/recall_adjudicate.py. `manifest_before` is the snapshot --revert restores; do not hand-edit this file, and do not hand-edit match_decision in the manifest -- `--verify` fails on a matched event that has no entry here, and the test suite runs it.",
+ "reference_set_id": "sec-item-205-us-2025-07_2026-06",
+ "decisions": [
+  {
+   "entry_id": "sec-205-0001193125-25-163439@2026-08-12T23:40:14Z",
+   "reference_row_id": "sec-205-0001193125-25-163439",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:14Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149909
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Cibus row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001655210-25-000149@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001655210-25-000149",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149919
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Beyond Meat row in the tracker at any date (a q= search returns only Bed Bath & Beyond).",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001531177-25-000007@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001531177-25-000007",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149918
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Sight Sciences row. The company= filter returns only 'Insight Behavioral' / 'Insights Training', different employers.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001386278-25-000069@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001386278-25-000069",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149755
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Only Green Dot row is a 2020 event.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001628280-25-042593@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001628280-25-042593",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149756
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Spruce Power row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001193125-25-228293@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001193125-25-228293",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149632
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Bolt Biotherapeutics rows exist but are 2024 events, outside the window.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001666071-25-000135@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001666071-25-000135",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149634
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Cardlytics row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001193125-25-266980@2026-08-12T23:40:38Z",
+   "reference_row_id": "sec-205-0001193125-25-266980",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:38Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149598
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Xperi row. The company= filter returns only Experian, a different employer.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0002055592-26-000008@2026-08-12T23:40:53Z",
+   "reference_row_id": "sec-205-0002055592-26-000008",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:53Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149908
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Gemini Space Station row. The company= filter returns only Capgemini, a different employer.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001628280-26-024066@2026-08-12T23:40:53Z",
+   "reference_row_id": "sec-205-0001628280-26-024066",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:53Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149629
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "GoPro rows exist but stop at 2018.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001104659-26-050407@2026-08-12T23:40:53Z",
+   "reference_row_id": "sec-205-0001104659-26-050407",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:53Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149630
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No row for Vertex, Inc. The similarly named rows are Vertex Pharmaceuticals and Vertex Aerospace, different employers.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001315257-26-000036@2026-08-12T23:40:53Z",
+   "reference_row_id": "sec-205-0001315257-26-000036",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:53Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149641
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "The filing concerns Stickney, Illinois. The only in-window Koppers row is SC WARN 66 dated 2026-04-21, a different site and before the announcement.",
+    "rejected_candidate_event_ids": [
+     108304
+    ]
+   }
+  },
+  {
+   "entry_id": "sec-205-0001193125-26-216107@2026-08-12T23:40:53Z",
+   "reference_row_id": "sec-205-0001193125-26-216107",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:53Z",
+   "reason": "Count matches the filing exactly and the row cites the filing own accession; no discrepancy to resolve.",
+   "tracker_event_ids": [
+    149638
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Autoliv rows exist but the newest dated one is 2019; nothing represents the 2,200-employee Turkiye closure.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0000950170-25-104347@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0000950170-25-104347",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149917
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Allurion row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001104659-25-100648@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0001104659-25-100648",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149635
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Molson Coors rows exist (2020, 2025-01) but none represents the October 2025 400-position Americas restructuring.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001193125-25-261612@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0001193125-25-261612",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149600
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No TScan row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0000048465-25-000053@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0000048465-25-000053",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149597
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "The only in-window Hormel row is GA WARN 135 dated 2025-08-25, ten weeks BEFORE the announcement and a plant action, not the 250 corporate/sales roles.",
+    "rejected_candidate_event_ids": [
+     29581
+    ]
+   }
+  },
+  {
+   "entry_id": "sec-205-0001193125-25-303185@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0001193125-25-303185",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149613
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Newell rows exist but stop at 2024-03.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001104659-25-119486@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0001104659-25-119486",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149612
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Elanco rows exist (2020, 2024) but none represents the December 2025 plan.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001213900-26-052921@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0001213900-26-052921",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149640
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No reAlpha row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001628280-25-050671@2026-08-12T23:40:54Z",
+   "reference_row_id": "sec-205-0001628280-25-050671",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:40:54Z",
+   "reason": "Same company, date and filing; the only note is a name-prefix or date-format difference, not a difference of fact.",
+   "tracker_event_ids": [
+    149595
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No Kezar row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001104659-25-094125@2026-08-12T23:41:08Z",
+   "reference_row_id": "sec-205-0001104659-25-094125",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:08Z",
+   "reason": "The cited accession is the 8-K/A of the same announcement, which the gold set own collapsed_duplicate_filings already records as one event filed twice.",
+   "tracker_event_ids": [
+    149633
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No KALA BIO row. The company= filter returns only Estonian/Lithuanian fish processors.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001173514-25-000133@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001173514-25-000133",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "We hold no announcement_date so only the effective date can be compared; company, filing and count all agree.",
+   "tracker_event_ids": [
+    149596
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "ambiguous_not_matched",
+    "match_notes": "IL WARN events 149251 (90) + 108571 (76) dated 2026-03-31 could be execution of the global 575 plan announced 2025-11-19, but the filing names no site, so the same-underlying-event test cannot be met. Resolved in the conservative direction, as the CA WARN protocol does.",
+    "rejected_candidate_event_ids": [
+     149251,
+     108571
+    ]
+   }
+  },
+  {
+   "entry_id": "sec-205-0001193125-25-311445@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001193125-25-311445",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "Announcement date sits six days before the filing date, which is ordinary for this basis and not a different event.",
+   "tracker_event_ids": [
+    149611
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Domtar rows stop at 2020; the 2025-09-25 'Resolute Forest Products US Inc. / Domtar' row is a different, earlier event.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001477932-26-003057@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001477932-26-003057",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "Announcement date sits six days before the filing date, which is ordinary for this basis and not a different event.",
+   "tracker_event_ids": [
+    149637
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No SOBR Safe row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001289308-26-000009@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001289308-26-000009",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "Row 149625 matches this filing on company, date and its stated 474; the separate proposal of this row against the July 2025 event is refused there.",
+   "tracker_event_ids": [
+    149625
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Only EnerSys row is the undated ERM Bulgaria record; nothing represents the Tijuana closure.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001628280-26-020222@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001628280-26-020222",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "The filing states 600 gross and 400 net in the same sentence, so both figures are true and this is the same event; the count difference is a separate correction, not a failure to find it.",
+   "tracker_event_ids": [
+    149624
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Goodyear rows exist, but the in-window ones are an Ohio WARN (85) and a later 2026-07-21 8-K (1,750). Neither is the March 2026 EMEA 600-position plan.",
+    "rejected_candidate_event_ids": [
+     108601,
+     105846
+    ]
+   }
+  },
+  {
+   "entry_id": "sec-205-0001751788-26-000009@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001751788-26-000009",
+   "decision": "reject",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "We hold 138 jobs against a 4,500 job event, sourced from news rather than the 8-K and citing a non-EDGAR URL. A 138 job row is not this event; counting it would inflate recall with a row we do not have.",
+   "tracker_event_ids": [
+    149592,
+    149616
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "The in-window Dow rows are separate European site records (ERM 138/605/110, June 2026) and a different employer (Dow Jones). None represents the 4,500-role global plan.",
+    "rejected_candidate_event_ids": [
+     109191,
+     34673,
+     34670,
+     34668
+    ]
+   }
+  },
+  {
+   "entry_id": "sec-205-0001289308-25-000025@2026-08-12T23:41:09Z",
+   "reference_row_id": "sec-205-0001289308-25-000025",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-12T23:41:09Z",
+   "reason": "Row 149911 holds exactly the 575 this filing states. The co-proposed row 149625 belongs to the March 2026 event 246 days away and is not this one.",
+   "tracker_event_ids": [
+    149911
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Only EnerSys row is an undated ERM record for Bulgaria (400). Nothing represents the 575-employee July 2025 plan.",
+    "rejected_candidate_event_ids": []
+   }
+  }
+ ]
+}

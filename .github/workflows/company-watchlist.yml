@@ -22,6 +22,22 @@ on:
         description: 'Set to 1 to log candidates without posting'
         required: false
         default: ''
+      news_budget:
+        description: 'Company-targeted NewsAPI requests this run may send (default 40). The key allows 100/day for the WHOLE tracker.'
+        required: false
+        default: ''
+      # WHY THIS IS A DISPATCH INPUT AND NOT AN EDIT TO THE NAMED TABLE.
+      # `spend.JOB_RUN_CEILINGS_USD['company-watchlist']` is $0.030, and since
+      # 2026-08-11 that ceiling genuinely binds mid-run rather than being a
+      # label a report compared against. Every priced run of this job has
+      # stopped on it. Raising it in the table would raise it for every
+      # scheduled run forever; putting it here raises it for ONE dispatch, and
+      # `spend.effective_run_ceiling_usd()` already gives an explicit
+      # ALT_RUN_CEILING_USD precedence over the table. Blank = $0.030.
+      run_ceiling_usd:
+        description: 'Per-run spend ceiling in USD for THIS dispatch only. Blank = the named $0.030.'
+        required: false
+        default: ''
 
 jobs:
   watchlist:
@@ -69,4 +85,16 @@ jobs:
           WATCHLIST_BATCH: ${{ github.event.inputs.batch || '150' }}  # 60 -> 150 (2026-07-28): per-company checks are free API reads; 60/day meant a 157-day rotation over the 9,397-company universe
           WATCHLIST_DRY_RUN: ${{ github.event.inputs.dry_run }}
           WATCHLIST_DEADLINE_SECONDS: '1500'
-        run: python company_watchlist.py
+          WATCHLIST_NEWS_BUDGET: ${{ github.event.inputs.news_budget }}
+          ALT_RUN_CEILING_USD: ${{ github.event.inputs.run_ceiling_usd }}
+        run: |
+          # A blank input must be ABSENT, not empty: company_watchlist.py reads
+          # WATCHLIST_NEWS_BUDGET through int(... or 0) and the spend module
+          # should never see an unparseable ceiling at all.
+          for v in WATCHLIST_NEWS_BUDGET ALT_RUN_CEILING_USD; do
+            [ -n "${!v}" ] || unset "$v"
+          done
+          if [ -n "${ALT_RUN_CEILING_USD:-}" ]; then
+            echo "::notice::per-run ceiling overridden to \$${ALT_RUN_CEILING_USD} for THIS dispatch only (named ceiling \$0.030); the schedule is unchanged"
+          fi
+          python company_watchlist.py

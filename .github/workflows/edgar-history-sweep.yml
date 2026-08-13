@@ -43,6 +43,52 @@ on:
         description: 'Oldest year the sweep walks'
         required: false
         default: '2015'
+      # A ONE-DISPATCH escape from the date-as-cursor rotation.
+      #
+      # The rotation is the right default and stays the default: it is
+      # stateless, self-completing and (since 2026-08-01) reaches the recent
+      # past. What it cannot do is sweep a NAMED month on demand, because
+      # `now.toordinal()` IS the cursor -- so twelve dispatches on one day all
+      # sweep the identical month and buy nothing, and a month that has never
+      # been searched has to wait its turn however urgent the gap is.
+      #
+      # Setting BOTH start and end runs backfill.py in its long-standing
+      # explicit-range mode (BACKFILL_ROTATE unset), which walks every calendar
+      # month in the range. Scheduled runs never set them, so the schedule is
+      # byte-identical to before.
+      start:
+        description: 'Explicit range START (YYYY-MM-DD). Set with `end` to sweep named months instead of the rotation.'
+        required: false
+        default: ''
+      end:
+        description: 'Explicit range END (YYYY-MM-DD). Ignored unless `start` is also set.'
+        required: false
+        default: ''
+      max_calls:
+        description: 'Cap on MODEL CALLS (BACKFILL_MAX_CALLS, default 400). A multi-month range needs more than one month''s worth.'
+        required: false
+        default: ''
+      # WHY A CEILING INPUT RATHER THAN AN EDIT TO THE NAMED TABLE.
+      # `spend.effective_run_ceiling_usd()` resolves an explicit
+      # ALT_RUN_CEILING_USD first, then JOB_RUN_CEILINGS_USD, then the global
+      # default -- and since 2026-08-11 that genuinely binds mid-run. A run
+      # that needs more than this job's NAMED ceiling therefore needs an
+      # override, and it belongs HERE, on one dispatch, not in the table: a raised
+      # ceiling edited into the table is a raised ceiling for every scheduled
+      # run afterwards, which is how a one-off authorisation quietly becomes
+      # the budget.
+      #
+      # Since 2026-08-12 this job DOES have an entry in JOB_RUN_CEILINGS_USD:
+      # $0.150, sized from measurement (three authorised runs, $0.0907-$0.1115
+      # per month-window) once the allowance went to $18 and the ladder could
+      # absorb it. It was previously harvested-but-un-named via LEDGER_ONLY_JOBS,
+      # under the $0.200 global default. So blank now falls through to the
+      # NAMED $0.150, which is a tightening of what it used to run under, and a
+      # multi-month range dispatch is the case that most often needs an override.
+      run_ceiling_usd:
+        description: 'Per-run spend ceiling in USD for THIS dispatch only. Blank = the named $0.150 ceiling.'
+        required: false
+        default: ''
 
 # Kept from the hourly sprint and still worth having: a manual dispatch beside
 # the scheduled run would race the same window and double-spend LLM calls on the
@@ -90,13 +136,47 @@ jobs:
         working-directory: railway
         run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
 
-      - name: Run EDGAR rotating history sweep
+      - name: Run EDGAR history sweep
         working-directory: railway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
           EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
-          BACKFILL_ROTATE: '1'
+          # Rotation unless BOTH range bounds were dispatched.
+          #
+          # This is deliberately 'range'/'rotate' and NOT `cond && '' || '1'`.
+          # GitHub's `&&`/`||` return the OPERAND, not a boolean, so
+          # `true && '' || '1'` evaluates the empty string as falsy and yields
+          # '1' — the rotation, on exactly the dispatch that asked for a range.
+          # Measured: run 31570100147 was dispatched with
+          # start=2025-07-01 end=2025-12-31, printed the range in its own
+          # notice, and swept 2026-02 (the rotation's month) for $0.1061.
+          BACKFILL_MODE: ${{ (github.event.inputs.start != '' && github.event.inputs.end != '') && 'range' || 'rotate' }}
           BACKFILL_ANCHOR_YEAR: ${{ github.event.inputs.anchor_year || '2015' }}
-        run: python backfill.py
+          BACKFILL_START: ${{ github.event.inputs.start }}
+          BACKFILL_END: ${{ github.event.inputs.end }}
+          BACKFILL_MAX_CALLS: ${{ github.event.inputs.max_calls }}
+          ALT_RUN_CEILING_USD: ${{ github.event.inputs.run_ceiling_usd }}
+        run: |
+          # Blank inputs must be ABSENT, not empty. backfill.py reads
+          # BACKFILL_MAX_CALLS with `os.environ.get(...) is None` to mean
+          # "default 400", and spend.effective_run_ceiling_usd() falls through
+          # an unparseable ALT_RUN_CEILING_USD but should never see one at all.
+          for v in BACKFILL_START BACKFILL_END BACKFILL_MAX_CALLS \
+                   ALT_RUN_CEILING_USD; do
+            [ -n "${!v}" ] || unset "$v"
+          done
+          if [ "$BACKFILL_MODE" = "rotate" ]; then
+            export BACKFILL_ROTATE=1
+            unset BACKFILL_START BACKFILL_END
+          else
+            unset BACKFILL_ROTATE
+          fi
+          if [ -n "${ALT_RUN_CEILING_USD:-}" ]; then
+            echo "::notice::per-run ceiling overridden to \$${ALT_RUN_CEILING_USD} for THIS dispatch only (named ceiling \$0.150); the schedule is unchanged"
+          fi
+          if [ -n "${BACKFILL_START:-}" ]; then
+            echo "::notice::explicit range ${BACKFILL_START}..${BACKFILL_END} - the date-keyed rotation is bypassed for this dispatch only"
+          fi
+          python backfill.py

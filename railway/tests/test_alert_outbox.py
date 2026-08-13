@@ -15,7 +15,10 @@ This file pins the three properties that fix cost:
 
 No network anywhere. Offline, no keys.
 """
+import contextlib
+import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -26,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import alert_drain
 import alert_outbox
 import ci_alert
+import gh_fallback
 
 
 def _held(key="tests:main:abc", scope="tests:main"):
@@ -177,6 +181,69 @@ class TheQueueDoesNotBecomeItsOwnProblem(unittest.TestCase):
             path = Path(tmp) / "alert_outbox.json"
             path.write_text("{not json")
             self.assertEqual(alert_outbox.load(path)["entries"], [])
+
+
+class TheLogSaysWhatTheRunDoes(unittest.TestCase):
+    """A drain that goes red must not have just said it was green.
+
+    The host_down branch printed "This run is NOT failing" BEFORE attempting
+    the host-independent fallback, and on the one path where that fallback also
+    fails the run returns 1 — a red `Alert drain`, which ci-alert.yml turns into
+    an email. The log is the only place a session can tell "the host was down
+    and we kept the alert" from "the alerter is broken", so a green claim on a
+    red run is not cosmetic. The behaviour is correct and is not what changed.
+    """
+
+    def _drain(self, fallback_ok):
+        """(exit code, printed log) for a stuck queue against a down host."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "alert_outbox.json"
+            doc = alert_outbox.empty()
+            for _ in range(alert_outbox.FAIL_LOUD_ATTEMPTS):
+                alert_outbox.enqueue(doc, key="k", kind="alert", scope="s",
+                                     payload={"subject": "CI RED: Tests"},
+                                     reason="HTTP 504 from /alert")
+            alert_outbox.save(doc, path)
+            buf = io.StringIO()
+            orig_post, orig_open = ci_alert.post_alert, gh_fallback.open_or_update
+            ci_alert.post_alert = lambda *a, **k: (False, "HTTP 504", True)
+            gh_fallback.open_or_update = lambda *a, **k: (
+                fallback_ok, "issue #1 updated" if fallback_ok else "no GH_TOKEN")
+            try:
+                with contextlib.redirect_stdout(buf):
+                    out = alert_drain.main(["--outbox", str(path),
+                                            "--site", "https://x.invalid"])
+            finally:
+                ci_alert.post_alert = orig_post
+                gh_fallback.open_or_update = orig_open
+            return out, buf.getvalue()
+
+    def setUp(self):
+        self._key = os.environ.get("WP_API_KEY")
+        os.environ["WP_API_KEY"] = "k"
+
+    def tearDown(self):
+        if self._key is None:
+            os.environ.pop("WP_API_KEY", None)
+        else:
+            os.environ["WP_API_KEY"] = self._key
+
+    def test_a_held_queue_is_green_and_says_so(self):
+        code, log = self._drain(fallback_ok=True)
+        self.assertEqual(code, 0)
+        self.assertIn("This run is NOT failing", log)
+
+    def test_the_red_path_does_not_claim_the_run_is_green(self):
+        code, log = self._drain(fallback_ok=False)
+        self.assertEqual(code, 1, "nothing can reach the owner; red is correct")
+        self.assertNotIn("This run is NOT failing", log)
+        self.assertIn("THIS RUN IS FAILING", log)
+
+    def test_the_documented_exit_codes_cover_the_red_path(self):
+        # The docstring listed two causes for exit 1 and this was not one of
+        # them, so the only written account of when this job goes red was
+        # missing the case that actually fires during an outage.
+        self.assertIn("fallback could not be used", alert_drain.__doc__)
 
 
 class TheWorkflowsThatCarryThis(unittest.TestCase):

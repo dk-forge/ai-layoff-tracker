@@ -9,6 +9,32 @@ measurement is below. **Nothing in this entry changes code or cadence** — the
 decision is the owner's, and the one number that would settle it has never been
 taken.
 
+**READ THIS FIRST — [CORRECTED] THE ZERO WAS MEASURING A BUG, NOT A COLLECTOR.**
+This entry was written before the cause was found. `sources.newsapi
+.pull_news_articles` accepted a `queries` argument and ignored it: the loop
+under its docstring iterated `DISCOVERY_QUERIES + _segment_queries_for_now()`
+unconditionally, so **the company-targeted query this collector exists to send
+was never sent, not once.** Every run pulled the same broad discovery set the
+twice-daily cron had already pulled, once per 20-company chunk, and paid to
+re-extract it. The summary log line recomputed the discovery-query count
+regardless of what it had just run, so it printed "6 queries" for a call that
+asked for twenty — a log that could not disagree with the code. See the
+2026-08-12 entry "the watchlist's company-targeted query was never sent"
+(fixed in `#46`).
+
+**What that does and does not do to this entry.** The counts here are real
+observations and stand: the universe sizes, the 199 unmoved seed names, the
+one SAMHSA row, the per-run costs, the ceiling and deadline truncations, the
+63-day rotation arithmetic, and the 25 events other collectors found first.
+What does NOT stand is any reading of the zero as evidence about **targeted
+search as a technique**. The zero is now doubly non-probative: every priced run
+was truncated by the spend ceiling *and* every run, truncated or not, was
+querying the wrong thing. The collector's premise had never been exercised when
+this was written. It has since been exercised exactly once — 40 companies, 48
+candidate articles, 0 rows, $0.0127, Wilson 95% CI on per-company yield
+**[0%, 8.8%]** — which is a measurement, not a verdict, on 0.42% of the
+universe. Passages below that lean on the zero are marked **[CORRECTED]**.
+
 ### What it watches, and how it got there
 
 | | |
@@ -144,14 +170,15 @@ see big European cuts — and Reuters reached us through the daily net.
 | | |
 |---|---:|
 | measured cost per run | **$0.0301** (ceiling-bound, 8/8 runs) |
-| at the current daily cron | **$0.92/month**, 9.2% of the $10 allowance |
+| at the current daily cron | **$0.92/month**, 5.1% of the $18 allowance *[CORRECTED: was 9.2% of $10; the allowance moved to $18 the same day]* |
 | total ledgered spend, 2026-08-03 → 08-11 | **$0.2411** over 8 runs |
 | rows stored in that window | **0** |
 | cost per stored row, ledgered window | undefined — `ops_status` prints "bought 0" |
 | the 7 runs before 2026-08-03 | **UNKNOWN** — the harvest could not write until `ed38307` |
 
 Retiring it saves **$0.92/month** and about 10 minutes of Actions time a day.
-Against the $10 interim allowance that is real but small; it is roughly one
+Against the **$18** allowance *[CORRECTED: was written against the $10 interim
+allowance]* that is real but small; it is roughly one
 sixth of what the main ingest costs.
 
 ### What this does and does not establish
@@ -159,7 +186,12 @@ sixth of what the main ingest costs.
 Established: the list grows and grows from our own captures, so it is
 structurally a re-watch of companies other collectors found; it has produced one
 row in sixteen runs; and over the window where we can attribute first-finding it
-is 0 for 25.
+is 0 for 25. **[CORRECTED] The first clause stands on its own (it is a property
+of `WATCHLIST_SELF_GROW`, not of any query). The second and third are records
+of what happened, but they are not evidence about the collector's design: in
+all sixteen runs the company-targeted query was never sent, so "one row in
+sixteen runs" and "0 for 25" describe the broad discovery set being re-read,
+not a targeted sweep being outperformed.**
 
 **Not** established: what it would find at full budget. Every measurable run was
 truncated, so "does a targeted query beat the broad net" has never actually been
@@ -170,6 +202,17 @@ full-universe dispatch**: 9,504 companies at the modelled $0.055 per 150-company
 slice is about **$3.50 once**, inside the monthly allowance, and it converts
 "UNKNOWN because throttled" into a measured yield.
 
+**[CORRECTED] The diagnosis was right, the remedy was wrong, and the $3.50 was
+correctly NOT spent.** "Every measurable run was truncated" understated it —
+every run, truncated or not, was querying the broad set. So the $3.50 dispatch
+proposed here had a knowable outcome before it started: 63 re-extractions of an
+article set the daily cron had already read, a foregone zero at $3.50. It would
+have measured the bug. The owner authorised the spend; $0.0127 was spent
+instead, because reading the code answered the larger half for nothing. And
+with the bug fixed the full pass **still cannot be bought at any price** — the
+binding constraint is 100 NewsAPI requests/day, ~106 days for this universe.
+The lever this section reaches for does not exist.
+
 The structural argument runs the other way and does not depend on the
 throttling: `already_have()` only lets the sweep fire on a company with **no**
 current-year entry, and when it fires it queries the **same NewsAPI net** the
@@ -178,12 +221,37 @@ company-targeted query can surface an article a broad query missed. That edge is
 real — it is why HP and Intel were once missed — but it has bought one federal
 17-person row.
 
+**[CORRECTED] This paragraph was the entry's strongest claim and it does not
+survive.** It says the argument "does not depend on the throttling" — true, but
+it depends on something worse. It assumes the sweep *was* sending a
+company-targeted query and that the targeting simply did not pay. It was not
+sending one. The edge it describes was never exercised, so "it has bought one
+federal 17-person row" measures the broad discovery set, which is precisely
+what the paragraph is arguing the targeting adds nothing over. The comparison
+is the broad net against itself. **Nothing here licenses a conclusion about
+targeted search**, and the one honest post-fix datum is the 0-of-40 slice
+above, with its [0%, 8.8%] interval.
+
+There is also a hard constraint the original did not know, and it outranks the
+cost argument: one query per company against NewsAPI's Developer plan is
+**100 requests/day for the whole key**, 6 of which the twice-daily cron needs
+for the discovery set that is the tracker's primary AI-attribution channel. A
+9,504-name universe is ~106 days of requests. Whether this collector can ever
+sweep its list is a **schedule** question, not a budget one.
+
 ### Recommendation, as consequences
 
 1. **Do not retire on this evidence.** Retiring now retires a collector that has
    never once been allowed to complete a sweep, and the entry would read "0
    rows" when the honest reading is "0 rows, brakes on".
-2. **Take the $3.50 measurement.** One dispatch at a raised
+2. **~~Take the $3.50 measurement.~~ [CORRECTED — SUPERSEDED]** Do not dispatch
+   this. It was authorised and deliberately not spent: against the collector as
+   it stood it would have re-extracted one already-read article set 63 times.
+   The bug is fixed and one bounded slice has been run (40 companies, 0 rows,
+   $0.0127). More slices are the right next step, but they are rate-limited at
+   ~90 companies/day of NewsAPI quota, not priced — **this is a schedule
+   question, not a budget one.** The original text follows for the record.
+   One dispatch at a raised
    `ALT_RUN_CEILING_USD` over the full universe. Zero novel rows → retire, and
    retiring takes THREE steps: drop it from the schedule, add it to
    `alt_retired_sources()` in `db.php`, and **stop every remaining path that
@@ -220,6 +288,826 @@ the finding that the premise of that deferral ("if the cost per stored row stays
 effectively infinite, move it to weekly") is answerable but that weekly is the
 wrong lever: it would halve the cost and triple a rotation that already takes
 63 days.
+
+---
+
+## 2026-08-12 — can Item 2.05 be read without a model? Measured: 43/57 at 100% precision (measurement only, nothing wired)
+
+**A MEASUREMENT, NOT A FEATURE.** `railway/sec_205_deterministic_probe.py` is
+new, dry-run, manual, wired to nothing, and calls no model. No row was written,
+no ingest path changed, and no gold-set filing was fetched into the corpus —
+that would be teaching to the test and would burn the set.
+
+**READ THIS FIRST — THE BASELINE MOVED AFTER THIS WORK WAS MEASURED.** Every
+parser number below was taken against a published recall of 24/57 = 42.1%.
+Later the same day the owner adjudicated the 29 recovered events — 28 accepted,
+Dow Inc rejected — and the published figure moved to **52/57 = 91.2%**. The
+parser measurements are unaffected: they are properties of the 57 filings and
+of the parser, not of what the tracker held. Two things in this entry ARE
+affected and are corrected in place below, each marked **[CORRECTED]**: the
+framing of the question, and the employer-keyed pre-check, whose right/wrong
+split was scored against the pre-adjudication labels and inverts under the new
+ones.
+
+**The question. [CORRECTED]** SEC Item 2.05 gold-set recall was 24/57 when this
+was measured; it is now 52/57. The 2026-08-01 entry
+below established the 33 misses are not judgment failures: replayed through the
+real pipeline, 29 were accepted and 28 recovered the exact stated headcount —
+and the owner has since adjudicated those 29, accepting 28. That closure is
+what took recall to 52/57, so the gap this entry set out to close is now
+largely closed, and the question the parser answers is no longer "how do we
+cheaply recover 33 misses" but "what is the cheapest reliable way to read this
+form at all", which the measurements below still answer.
+They were simply never fetched. Closing that costs model calls — unless this one
+form can be read without a model at all. An Item 2.05 is unusually structured:
+fixed heading, employer in the EDGAR header, date in the filing metadata, count
+stated verbatim in the text, which is exactly why `_count_in_text` can verify it
+literally.
+
+**The parser.** Deterministic. It anchors on the Item 2.05 heading in the
+primary document, takes the section to the next item heading, and accepts a
+figure only where it sits beside a headcount noun. A range is ONE count and it
+is the LOWER bound — not a rule invented here, it is what `extractor.py`'s
+prompt already says, with the upper carried in `job_count_max`. Two or more
+distinct stated headcounts and it REFUSES. `_count_in_text` and
+`_percent_only_mention` are IMPORTED from `extractor.py`, never re-implemented;
+`format_interval` is imported from `recall_goldset.py`. A second copy of a rule
+drifting from the first is a failure mode this repo keeps writing entries about
+(`recall_precision.py` already carries a smaller `_count_in_text` that disagrees
+about the year trap).
+
+**The confusion matrix, all 57 reference events:**
+
+| outcome | n |
+|---|---:|
+| resolved and CORRECT | **43** |
+| resolved and WRONG | **0** |
+| correctly REFUSED (a derived count the pipeline must not invent) | 1 |
+| count lives only in the EX-99.1 exhibit | 8 |
+| unresolved, genuinely needs a model | 5 |
+| UNKNOWN | 0 |
+
+* **Recall, deterministic path alone: 43/57 = 75.4%** (Wilson 95% CI
+  [62.9%, 84.8%]).
+* **Precision: 43/43 = 100%** (Wilson 95% CI [91.8%, 100.0%]) — a WIDE interval
+  at n=43, not a certainty.
+* On the 33 known misses alone: 27 correct, 0 wrong, 1 rightly refused
+  (81.8%, CI [65.6%, 91.4%]).
+
+**Wabash National is scored CORRECT.** Its 270 is the sum of four separately
+stated components ("3 salaried and 53 hourly" + "21 salaried and 193 hourly").
+The parser sees two distinct stated headcounts and declines. It reaches the
+right answer by a general rule — ambiguity refuses — rather than by a special
+case, and a parser that "helpfully" summed them would have reintroduced the hole
+that once published Intuit as 17 jobs.
+
+**THE CASES IT GETS WRONG, NAMED, because these are the ones that bite later.**
+Zero on the final parser is not the same as zero risk, and two of the three
+below are only zero because a rule was added AFTER seeing this set. Read them as
+the failure modes, not as history:
+
+1. **HP Inc., 2025-11-25 — parsed 6,000, stated 4,000.** "workforce reductions
+   of approximately 4,000 – 6,000 employees": only the upper bound sits beside
+   the noun, so a naive adjacency parser reads the ceiling as the count. Fixed
+   by the range rule, which is production's documented rule, but it is the
+   single most dangerous shape this form takes — a confidently wrong number
+   50% too high, carrying a gold verification level.
+2. **GitLab, 2026-06-02 — parsed 2021 for a 350-person cut.** This one is NOT
+   fixed, and it is the most important result in the entry. The count is only in
+   the EX-99.1 press release, so the section anchor is gone; run over the
+   exhibit body the parser hits "GitLab Inc.'s **2021 Employee** Stock Purchase
+   Plan", and `_count_in_text`'s year trap lets 2021 through precisely because
+   a headcount noun IS adjacent. The real figure, "350 team members", uses a
+   noun the parser does not carry. **Structure is the entire hypothesis:** the
+   same parser scores 43/43 inside the item section and 5 right / 1 wrong of 6
+   resolved once outside it (International Paper and Celanese it at least
+   refuses, 3,300 vs 1,100 and 11,000 vs 160). Do not run this parser on
+   unstructured text.
+3. **Hormel, 2025-11-04 — missed 250** ("approximately 250 corporate and sales
+   roles") until the qualifier between figure and noun was widened to three
+   words. Widened further and "December 31, 2025, with most of the related
+   employee departures" starts handing 2025 to the guard. The window between
+   "too tight to read English" and "feeding the year trap" is about two words
+   wide.
+
+**What genuinely needs a model (5):** Dow 800 and EnerSys 474 (the Item 2.05
+body is a cross-reference — "See disclosure under Item 2.06"); Goodyear 600
+(600 gross / 200 new / 400 net in one sentence — refusing is defensible, the
+gold answer is the gross); GoPro 145 (145 cut "of the Company's ending first
+quarter headcount of 631"); Sangamo 51 (51 vs 77). Every one is an ambiguity a
+reader resolves from meaning, which is what a model is for.
+
+**THE COST FIGURES, MEASURED, NOT ESTIMATED.** From `railway/spend_jobs.json`,
+`railway-cron` lifetime: $0.9212 over 4,577 calls and 2,973 candidate items =
+**$0.000310 per candidate read**. A live EFTS count of one representative month
+(2026-03, the full production keyword list, both forms, the real page cap):
+**271 distinct candidate documents, of which 15 carry Item 2.05.**
+
+| approach | model spend, 12 missing months | recall on this set | precision |
+|---|---:|---|---|
+| model as before | ~3,250 candidates × $0.00031 ≈ **$1.01** | 29/33 accepted on replay | 28/29 exact |
+| deterministic alone | **$0.00** | 43/57 | 43/43 |
+| deterministic + model on the residue | ≈ **$0.95** | 43 free + the residue | — |
+
+**So the cheap path is not a cost lever, and saying otherwise would have been
+the optimistic answer.** Item 2.05 filings are 15 of 271 documents a month's
+sweep reads — 5.5%. Removing all of them from the model's queue saves about six
+cents of a one-dollar bill. The entire twelve-month gap costs about a dollar to
+sweep with the model, against a **$18/month allowance** and
+`edgar-history-sweep`'s **$0.150 per-run ceiling** (one month's sweep = $0.084,
+**56% of one run**). *[CORRECTED: measured when the allowance was $10 and that
+job had no named ceiling; both changed the same day — see the $18 entry below.]*
+
+**THE SECOND LEVER IS WORSE THAN NEUTRAL, AND THIS IS THE FINDING TO KEEP.**
+"We already hold this employer, skip it before extracting" was measured against
+live `/query`, two ways:
+
+| pre-check | skips | of which WRONG |
+|---|---:|---:|
+| employer + filing year | 49/57 | **25** |
+| employer + within 45 days of the filing | 48/57 | **25** |
+
+A skip is only right when the gold set adjudicated the filing as an event we
+already hold. It is right 24 times and wrong 25.
+
+**[CORRECTED] That 24/25 split is scored against the PRE-ADJUDICATION labels
+and no longer holds.** The skip counts themselves — 49/57 and 48/57 — are
+properties of live `/query` and stand. What moved is the scoring: with the
+adjudication, 52 of the 57 are `matched` and only **5** are `not_matched`
+(Codexis, HP Inc, Wabash National, Dow Inc, PLAYSTUDIOS). A skip is wrong only
+on a `not_matched` event, so of the 49 skips **at most 5 can now be wrong** —
+the split inverts from 24-right/25-wrong to at least 44-right/at-most-5-wrong.
+**The recommendation below is therefore WITHDRAWN pending re-measurement**: it
+was a conclusion about a 49% error rate, and the error rate it was drawn from
+was an artefact of events we had not yet adjudicated rather than events we do
+not hold. This entry does not re-derive it, because the exact per-event skip
+list was not retained and re-deriving it means another live pass.
+
+The original recommendation, kept for the record and NOT currently supported:
+"The employers in the miss list
+are exactly the employers we already carry — EnerSys appears twice in this set
+with two different cuts — so an employer-keyed pre-check would discard the very
+events the sweep exists to recover, and would do it silently and for free. **Do
+not build the pre-check on employer and date.** If one is ever built it must key
+on the EVENT (employer + count + date), and the count is the part we do not have
+before extraction — except, on this one form, from the deterministic parser,
+free."
+
+The EnerSys observation in particular is now known to have been a row-mapping
+error, corrected by the adjudication: the July 2025 event takes row 149911 and
+the co-proposed 149625 belongs to a March 2026 event 246 days away. **The
+event-keyed design is still the right one on first principles** — an employer
+can and does cut twice — but this set no longer provides the evidence that the
+employer-keyed version is actively harmful.
+
+**Recommendation: keep the model, and treat the deterministic parser as a
+precision instrument rather than a saving.** It earns its place three ways that
+have nothing to do with dollars: it resolves 43 of 57 with zero wrong answers
+and no key, no model and no OpenRouter balance; it runs regardless of the
+per-run spend ceiling, so an Item 2.05 filing can never be one of the
+candidates deferred unread; and it produces the count that would make an
+event-keyed pre-check safe. It stays dormant until someone decides that is worth
+wiring, and this entry is the read.
+
+**Not shipped, deliberately:** no ingest change, no keyword change, no floor
+move. `recall_goldset.MATCHED_FLOOR` does not move on the strength of a replay —
+same reasoning as the 2026-08-01 entry. *[CORRECTED: that remains this entry's
+position, but the floor DOES now need to move on the strength of the
+adjudication, which is a human decision and not a replay. At 52 confirmed, the
+floor of 20 fails `test_the_floor_leaves_headroom_but_is_not_a_rubber_stamp`
+(20 is not above 52 × 0.6 = 31.2) and Tests is red on main from `c39fec7`
+onward. This entry does not move it; it is flagged here so the next reader does
+not mistake the red for something this measurement caused.]* Four surfaces unchanged: no collector
+was added, removed or blocked, so Sources, Health and the benchmark have nothing
+to update.
+
+---
+
+## 2026-08-12 - the 29 recovered gold events, prepared for a human and not decided (railway + docs, no deploy)
+
+**Nothing in this entry moves the published recall figure. It is still 24 of 57
+= 42.1% [30.2%, 55.0%], and it stays there until a person decides 29 times.**
+
+The 2026-08-01 rotation fix and last night's history sweep did what they
+predicted: re-measured live at 2026-08-12T17:59Z, **29 of the 33 missed SEC Item
+2.05 gold events now carry a tracker row**, 28 of them at the filing's exact
+stated headcount and 28 citing the filing's own accession. `measure()` reports
+all 29 under `candidates_needing_adjudication` and counts none of them, because
+the numerator is the manifest's `matched` field and only an editor writes it.
+That gate is the point and it was not touched. What was missing was the other
+half of it: a way for the editor to actually do the 29, and a place for the
+answer to live.
+
+**The sheet.** `railway/recall_adjudication_pack.py` rebuilds
+`docs/recall-reference-sets/sec-item-205-adjudication-queue.{json,md}` from two
+primary artefacts per event, both re-fetched: the FILING's own count sentence
+from SEC EDGAR, and OUR row as the public `/query` serves it today. It carries
+the manifest's `count_evidence` and `match_notes` clearly labelled
+`manifest_says_*` and relies on neither - a sheet that quotes the manifest at
+the person auditing the manifest can only ever agree with itself.
+
+It records no recommendation, and that is a design constraint rather than a
+style preference: a pre-ticked sheet moves the gate from the human to the
+machine while leaving the machine's fingerprints off it. Ordering is by how much
+there is to CHECK - 13 entries where the count, both dates, the name and the
+accession all line up come first because they are fast to verify, not because
+they are right to accept.
+
+**Three things the flags found that a count-equality check would not have.**
+- **Two gold events contest one tracker row.** Event 149625 (EnerSys, 474,
+  Tijuana, March 2026) satisfies the alias+window rule for the JULY 2025
+  575-employee plan as well, 246 days away. Its correct partner, 149911, exists
+  and matches 575 exactly. The wide window is doing what the 2026-08-01 entry
+  said it does: proposing a Hormel-Georgia-WARN-shaped mistake for a human to
+  refuse.
+- **A number that is the filing's other number.** Goodyear's 8-K states 600
+  gross and 400 net in one sentence. We hold 400; the gold set holds 600. The
+  sheet quotes the sentence and declines to pick.
+- **A different accession that the manifest itself already resolved.** Our KALA
+  BIO row cites the 8-K/A, which `collapsed_duplicate_filings` recorded on
+  2026-08-01 as the same announcement filed twice. The pack reads that list, so
+  the flag says so instead of sending the editor to re-derive it.
+
+**The recorder.** `railway/recall_adjudicate.py`, local, stdlib-only and
+network-free for the same reason `close_incident` refuses to re-read the site it
+is about: the decision is made against the evidence the reviewer read, not
+against whatever the host is serving when they press return. Four properties,
+each with a test that is red without it:
+1. **Reversible.** Every write snapshots the event's mutable fields into
+   `railway/recall_adjudications.json` first. `--revert` restores them byte for
+   byte, including removing a key that was absent - proven by accepting and
+   reverting the REAL manifest in a copy and diffing the bytes.
+2. **Attributed.** `--reviewed-by` and `--reason` are required and may not be
+   blank. An unnamed decision is indistinguishable from the machine promoting
+   itself.
+3. **No silent match.** `--verify` fails on any `matched` event carrying neither
+   an `adjudication` block nor membership in `PRE_TOOL_MATCHED`, the frozen 24
+   decided on 2026-08-01. `tests/test_recall_adjudication.py` runs it against
+   the committed files, so a hand-edited `match_decision` reddens CI rather than
+   quietly raising the coverage claim.
+4. **Idempotent.** The same decision twice writes once and exits 0. A different
+   decision is REFUSED until reverted, so both readings stay on the record.
+
+`--event-ids` takes every value until the next flag, and there is a test that
+types it the way a person types it. That is not a hypothetical: on 2026-08-12
+`--rows 114335 113529 64351` recorded one of three ids and exited zero, closing
+an incident that named a third of its own cause.
+
+**The arithmetic, stated so nobody has to guess at it mid-pass.** 24 today. If
+all 29 are accepted, 53/57 = 93.0% [83.3%, 97.2%]. If the four with hard
+discrepancies (both EnerSys events, Goodyear, Dow) are rejected, 49/57 = 86.0%
+[74.7%, 92.7%]. If only the 13 clean ones are accepted, 37/57 = 64.9% [51.9%,
+76.0%]. Those are three arithmetics, not three targets.
+
+**The four that are NOT in the 29, confirmed against live `/query` today** - and
+the list in circulation was wrong by one. Codexis (46, 2025-11-06) and
+PLAYSTUDIOS (177, 2026-03-16) are real misses: Codexis holds only two 2023 CA
+WARN rows and PLAYSTUDIOS returns zero rows at any date. Both counts live in an
+EX-99.1 exhibit the extractor does not read, which 2026-08-01 already recorded.
+Wabash National (270) stays refused correctly - the count is the sum of four
+stated components and our extractor refuses derived counts by design; the only
+in-window rows remain the CA WARN 94+6 for a different site. **EnerSys is not
+the fourth. It is recovered, twice** - 149911 at 575 for the July 2025 plan and
+149625 at 474 for the March 2026 Tijuana closure, both citing their own
+accession. The fourth real miss is **HP Inc (4,000, 2025-11-25)**: no HP Inc row
+after 2017, and the only in-window HP-prefix rows are HP Composites (already in
+`rejected_candidate_event_ids`) and HP Hood (an excluded prefix). The ceiling is
+unchanged at 53 of 57; which company occupies the fourth slot is not.
+
+**`MATCHED_FLOOR` stays at 20** and no published figure, measurement file or
+manifest decision was written by this change, for the reason the 2026-08-01
+entry gives: recall moves when a re-measurement moves, after a human has
+decided, and not before.
+## 2026-08-12 - the allowance goes to $18, the ladder's reserve stops being a fiction, and the sweep finally gets a ceiling (railway only, no deploy)
+
+`MONTHLY_ALLOWANCE_USD` is **18.0**. The owner raised this tracker's OpenRouter
+key to a **$20/month provider limit** and found it bought nothing: the policy
+cap in code is the one that binds, so the provider headroom above $10 was
+unreachable.
+
+**Why $18 and not $20.** Two ceilings exist and only one of them can be the one
+that fires. The provider cap is a HARD stop - the next paid call returns 402 at
+whatever arbitrary point the run had reached, mid-batch, mid-candidate. The
+policy cap is a GRACEFUL stop - paid reads switch off, every free collector
+(WARN, SEC structured fields, ERM, every state scraper, the seen-URL pre-check,
+all server-side dedup) keeps running, and each deferred candidate returns
+UNMARKED so a later run reads it. **At parity our own guard can never fire**,
+and a clean disclosed degradation becomes a failed call. $2 of headroom keeps
+the graceful stop ahead of the hard one; the 90% line ($16.20) sits $3.80 under
+it. If the provider limit moves, move this to stay under it, do not match it.
+
+### Three things had to move with it, and one of them was a defect
+
+**1. `RUN_CEILING_USD` was a FRACTION of the allowance, and that was a trap.**
+It read `MONTHLY_ALLOWANCE_USD * 0.02`. Raising the allowance 10 -> 18 would
+have silently widened the state-free per-run brake from $0.20 to **$0.36** - and
+that brake is the ONLY thing guarding the Railway cron, which cannot write a
+month-to-date snapshot and is the single largest consumer. At $0.36 x 2/day the
+cron would have been free to spend ~$21/month, more than the entire allowance,
+with nothing in the diff saying so. It is now a flat `0.20`, sized from the
+MEASURED ~$0.09 cron run. **A brake sized from a measured run cost must not move
+when a budget moves.**
+
+**2. The ladder's reserve was a literal `- 3.0` while everything around it said
+$5.1.** `test_spend_ledger.test_the_worst_case_sum_fits_beside_the_measured_ingest`
+asserted `total <= MONTHLY_ALLOWANCE_USD - 3.0`, while its own docstring and
+failure message both said the reserve was the ~$5.1 MEASURED ingest. So on a $10
+allowance it permitted $7.00 of named ceilings beside a $5.1 ingest - **$12.10 of
+claims inside $10, reported as green**. That is why last night's session found
+the table "already over-subscribed" at $6.60 and the test disagreed.
+
+The reserve is now `spend.MEASURED_INGEST_USD_PER_MONTH`, a named constant the
+module's ladder comment is written against, so the number the test enforces and
+the number the comment claims cannot drift apart again - and **raising the
+allowance can no longer widen the ladder by more than it widened the budget**,
+which the literal would have done (reserve stays 3.0, budget goes 7.00 -> 15.00,
+a 2.1x loosening for free).
+
+Red on the honest reserve at the old allowance, quoted:
+
+```
+AssertionError: 6.6000000000000005 not less than or equal to 4.9 : named
+ceilings sum to $6.60/month worst case; with ingest MEASURED at ~$5.10 that
+leaves $4.90 inside the $10 allowance, so it does not fit
+```
+
+**3. `edgar-history-sweep` finally has a named ceiling - the ladder verdict.**
+It is a DAILY paid job that had never been in `JOB_RUN_CEILINGS_USD`, because at
+$10 it could not be: at the $0.200 global default it silently ran under, it
+claims $6.00/month against a $4.90 budget the table was already over-subscribing
+at $6.60.
+
+Sized from **MEASUREMENT, not from the default**. The three authorised runs on
+2026-08-11 cost $0.6012 for 1,762 candidates, all `complete: true`, none
+truncated - but those were multi-month RANGE dispatches, and the daily rotation
+sweeps one month-window. Per single window that is **$0.0907 to $0.1115**.
+`0.150` is ~35% above the dearest window observed, and it is a **tightening** of
+the $0.200 it had been running under, not a loosening.
+
+It binds without any workflow change: `backfill.py` calls `extract_layoff_data`,
+and `extractor.py` gates every paid function on `spend.paid_reads_enabled()`,
+which resolves the table in-process via `effective_run_ceiling_usd()` (the
+2026-08-11 fix). The named number is a brake wherever the job runs, not only
+where a `--degrade` step happened to write `$GITHUB_ENV`.
+
+Red with it named at the old allowance, quoted:
+
+```
+AssertionError: 11.1 not less than or equal to 4.9 : named ceilings sum to
+$11.10/month worst case; with ingest MEASURED at ~$5.10 that leaves $4.90
+inside the $10 allowance, so it does not fit
+```
+
+### The ladder at $18
+
+| | |
+|---|---:|
+| allowance | $18.00 |
+| less MEASURED ingest (Railway cron) | -$5.10 |
+| **budget the named ceilings may claim** | **$12.90** |
+| claimed by the table, worst case | $11.70 |
+| spare | $1.20 |
+
+**A second unnamed job turned up while checking that claim, and naming it
+matters more than the ceiling does.** `historical-news-sweep` is a scheduled
+DAILY LLM sweep (`BACKFILL_MAX_ARTICLES=10`) that was not in the table either.
+`harvest()` collects a run's `SPEND_LEDGER_V1` line only when
+`job_id in set(JOB_RUN_CEILINGS_USD)`, so **an unnamed job is also an unharvested
+one**: its spend has never appeared in `railway/spend_jobs.json` and has been
+sitting inside the unattributed remainder by construction. Named at $0.020
+(~1.8x its modelled $0.011), itself a tightening of the $0.200 default.
+
+**The ladder verdict: one job remains unnamed, deliberately - `tracker-diff`.**
+Its cron is armed and it runs daily, but it is DORMANT by the owner's decision
+(2026-07-28): unarmed for want of a secret this repo is instructed never to ask
+for, so it exits green having spent nothing. A ceiling there would be a budget
+for work that does not happen. The ladder has room for it ($1.20 spare) the day
+it is armed. The other two scheduled workflows holding `OPENROUTER_API_KEY` -
+`warn-import` and `openrouter-balance-check` - make no model call at all;
+checked, not assumed. `railway-cron` is absent on purpose, which is exactly why
+`RUN_CEILING_USD` had to be de-coupled from the allowance above.
+
+### The number this does NOT change
+
+The ladder is a worst case, not a forecast. The committed ledger
+(`railway/spend_jobs.json`, 109 entries, 2026-08-03..08-12) measures **$1.94 of
+actual spend over 10 days, ~$5.8/month**, of which `railway-cron` is $1.0165.
+The $11.70 is what the ceilings would permit if every job hit its cap every run,
+which none of them do. Do not read the spare $1.20 as the real margin; read it
+as the margin on the guarantee.
+
+### What was checked and not touched
+
+`data_integrity.py`, `published_figures.py`, `company_watchlist.py`,
+`backfill.py` and everything under `wordpress-plugin/` are untouched - other
+sessions and PRs #46/#47 own them. PR #46 also edits `spend.py` (it adds
+`LEDGER_ONLY_JOBS` below the table and deliberately did NOT name this ceiling,
+calling it the owner's call); this change names it, in a different region of the
+file. No plugin byte changed, so no `Version:`/`ALT_VERSION` bump and nothing to
+deploy. The handoff baton is HELD by a local session; per the file's own PR-#3
+precedent a claim only gates when it is on main, so this worked on a branch and
+opened a PR rather than claiming.
+
+Tests: RED before and green after, both assertions quoted above. Three tests
+pinned the allowance literal (`test_spend_guard.PolicyIsInTheDiffNotASecret`,
+`test_spend_ceilings_bind`) and were updated; a fourth,
+`test_a_paid_job_refuses_to_start_when_the_month_is_spent`, hard-coded `$9.50`
+against `$10` and would have become a test of nothing at $18 - it now derives
+95% of the allowance from the constant and failed loudly rather than silently
+passing for the wrong reason. Full suite **1,464 tests**, `FAILED (errors=4,
+skipped=4)` - the same 4 pre-existing loader `ImportError`s (`No module named
+'urllib3'`) before and after.
+
+---
+## 2026-08-12 - three guards that did not guard (railway only, no deploy)
+
+All three are the same shape: code that was correct and was not, in practice,
+protecting anything. `ops_status.py [3]` now reads **17 of 17 verified and
+passing** (15 before). No plugin byte changed, so no version bump and nothing
+to deploy.
+
+### 1. The containment invariant: a subset headline may not outrun its superset
+
+**The gap, in the numbers from the incident above.** `headline_movement`
+budgets a move as `|Δentries| * base_mean * mean_factor` — how many rows
+ARRIVED. A re-scoring moves a headline while nothing arrives, so the budget is
+measured on an axis unrelated to the thing that moved the number. On
+2026-08-08 the US headline rose 92,686 (93,210 by the 2026-08-10 reading) while
+worldwide, which strictly contains it, rose 14,911. The 18 entries that landed
+bought 34,730 and the check failed; **49 would have bought 94,543 and the
+identical 93,210 re-scoring would have passed in silence.**
+
+**The rule, and why it needs no entry counts.** For a strict subset S of T, the
+complement `C = T - S` is a real population and its figures are exact by
+subtraction. A row can only arrive with its jobs or leave with its jobs, so in
+any population Δjobs and Δentries move in the SAME direction. When they do not,
+nothing that arrived or left did it: jobs were re-scored across the boundary
+between two published slices. On the 2026-08-10 readings the complement of the
+US slice reads **-78,299 jobs on +10 entries**, and it reads that whatever the
+US slice's own entry count was — the test asserts FAIL at +0, +18, +49, +200 and
++5,000 arriving entries.
+
+**Established from the code, not assumed.** `containment_problem()` requires the
+superset's params to appear identically on the subset and BOTH sides to carry no
+date window, because a subset on one date basis and a superset on another is not
+a containment relation. That leaves `us_all_time ⊂ worldwide_all_time` and
+`ai_all_time ⊂ worldwide_all_time`, which is what `CONTAINMENTS` declares.
+
+**Bound:** `CONTAINMENT_FLOOR_JOBS = 25000`, worldwide's own `move_floor`
+reused rather than reinvented, and deliberately **flat, not scaled by span** —
+a re-scoring is a step change, not a rate, and every clock in that module that
+widens with time is one the August incident had to be rescued from. Baselines
+more than `MAX_PAIR_SKEW_DAYS = 1.0` apart report UNKNOWN, because two readings
+a day apart are not a complement. It also **cannot launder itself**:
+`record_baseline` now refuses to advance EITHER side of a failing pair (the
+finding is the difference between them, so recording either erases it) and opens
+the sticky incident under the subset.
+
+**The other unexplained movement, and the honest answer.** Worldwide fell
+27,267 on 2026-08-11 on +13 entries, breaching its own 25,000 floor, and passed
+because `13 * 320.86 * 12 = 50,054` absorbed it. **Containment would not have
+caught it** and cannot: worldwide is the top slice and has no superset, so
+there is no complement to read. What would catch it is the same sign rule
+applied to a slice's OWN movement — gate the `|Δentries| * base_mean` allowance
+on Δjobs and Δentries agreeing in direction, since arriving rows cannot explain
+departing jobs. On that day: -27,267 jobs on +13 entries, allowance refused,
+floor 25,000 breached, FAIL. That is a one-line change to `MovementInvariant`
+that re-arms the floor for every slice, so it is deliberately NOT in this
+change; it wants its own read.
+
+### 2. erm_provenance: a check nobody ran is the same as no check
+
+`erm_provenance_check.py` was written during the ERM incident, held back until
+the correction landed, and then left unwired. It is now
+`data_integrity.ErmProvenanceInvariant`, in the one registry the test,
+ops_status and the weekly digest all read. Confirmed green live before wiring:
+**19,497 ERM rows, 0 unreadable, 0 contradictions.**
+
+**It reads a committed measurement, not the live API**, which is the
+`recall_floor` shape and for a sharper version of the same reason: `/query` has
+no `source_type` filter, so the question can only be answered by paging the
+whole corpus — 319 requests, **measured at ~25 minutes** against the live host.
+`check_all()` is the first command of every session and is documented as about
+one round trip; a 25-minute scan inside it stops anybody running ops_status.
+So `erm-provenance-check.yml` re-measures weekly (Wednesdays, stdlib only, no
+keys, no pip install) and commits `railway/erm_provenance_measurement.json`, and
+the consequence is stated rather than hidden: a silent re-scoring is caught
+within a WEEK, not within a day. Stale, missing or containing an unparseable
+excerpt -> UNKNOWN, never a pass; `UNREADABLE_CEILING = 0`, because the live
+count is 0 and any unreadable row means `erm_import.py`'s excerpt sentence has
+changed shape and the check has quietly stopped covering part of the corpus.
+`judge()` is the single definition, so the script's exit code and the
+dashboard's verdict are the same sentence.
+
+### 3. alert_drain said the run was green in the same breath as it went red
+
+`alert_drain.py`'s host-down branch printed **"This run is NOT failing"** and
+then, further down the same branch, could `return 1` — when the queue is stuck
+AND the host-independent GitHub-issue fallback also fails. A red `Alert drain`
+fires `ci-alert.yml`, which emails the owner. So the log asserted greenness on a
+run that reddened CI and mailed, and that log is the only place a session can
+tell "the host was down and we kept the alert" from "the alerter is broken".
+
+**The behaviour is right and is unchanged**: when nothing at all can reach the
+owner, a red run is the last signal left and is worth the amplification the
+other paths exist to avoid. The words moved. The claim now sits on the path
+where it is true, the red path says `THIS RUN IS FAILING deliberately` and why,
+and the module's EXIT CODES list — which named two causes for exit 1 and not
+this one — now names the case that actually fires during an outage. Two new
+tests drive `main()` and pin the pairing: green path says it is green, red path
+must not.
+
+**Verified:** 1,497 offline tests (17 new in `test_headline_containment.py`, 13
+in `test_erm_provenance_check.py`, 3 in `test_alert_outbox.py`); the 4 loader
+errors are the pre-existing missing-`requests` imports and are identical before
+and after. `test_dedup_live` gained both keys under `DELEGATED`, so the mutation
+guard blinds each new invariant and demands its test case redden.
+`python3 railway/data_integrity.py` = 17/17, exit 0. `ops_status.py` exit 2,
+unchanged and for unrelated reasons (`tracker_diff` stale, the two ledger rows,
+the ai-evidence-sweep ceiling).
+## 2026-08-12 - the twelve gold months, swept; the recall figure did not move, and it was never going to
+
+**Authorised: about \$1.01 to sweep the twelve SEC Item 2.05 gold-set months
+(2025-07..2026-06), predicted recall ~93%. Spent: \$0.6012 across three runs.
+Measured recall afterwards: 24/57 = 42.1%, exactly what it was before. The
+prediction was right about the pipeline and wrong about the number, and the
+difference between those two is the whole entry.**
+
+    run           months                    candidates read  posted  cost
+    31570100147   2026-02 (mis-dispatched)              309       1  $0.1061
+    31570908283   2025-07, 2025-08                      653      17  $0.2230
+    31572141302   2025-11, 2025-12, 2026-01             800       1  $0.2721
+                                                      1,762      19  $0.6012
+
+All three `complete: true` - none was truncated by its ceiling. \$0.000341 per
+candidate against the \$0.000310 modelled.
+
+### Most of the sweep had already happened
+
+The 2026-08-01 forensics established that 29 of the 33 missed gold filings are
+accepted by the current pipeline on replay and 28 recover the exact stated
+headcount, and that the cause was `backfill.rotating_window` never reaching the
+recent past. That rotation was fixed the same day. Eleven days later, the fixed
+rotation had already swept eight of the twelve gold months on its own schedule:
+
+    2026-08-01 -> 2015-01     2026-08-07 -> 2026-05
+    2026-08-02 -> 2025-10     2026-08-08 -> 2026-08
+    2026-08-03 -> 2026-08     2026-08-09 -> 2026-04
+    2026-08-04 -> 2026-07     2026-08-10 -> 2026-03
+    2026-08-05 -> 2025-09     2026-08-11 -> 2026-07
+    2026-08-06 -> 2026-06     2026-08-12 -> 2026-02
+
+leaving exactly five gold months genuinely unswept: **2025-07, 2025-08, 2025-11,
+2025-12, 2026-01**. So the authorised twelve-month sweep was mostly a re-sweep
+of months the fix had already reached, and the honest job was five months, not
+twelve. A probe of the live API before the remaining months were swept already
+found **25 of the 33 "missed" gold events carrying an 8-K-SOURCED row, 23 of
+them at the filing's exact stated headcount**, and only 6 with nothing at all.
+The collection half of the 2026-08-01 prediction had, in other words, already
+come true and nothing had reported it.
+
+Sweeping the five remaining months finished the job, and the yield was lopsided
+in a way worth recording. 2025-07 and 2025-08 (run 31570908283, 653 candidates,
+**0 already held** in either month - they had genuinely never been searched)
+posted **17 rows** at \$0.0131 per stored row. 2025-11, 2025-12 and 2026-01
+(run 31572141302, 800 candidates, but 34 already held between them) posted
+**1**, at \$0.2721 per stored row - a twentyfold worse rate, because those
+months had been partly reached already. The probe moved to:
+
+    missed gold events probed   33        (before -> after)
+      any matching row          27 -> 31
+      an 8-K-SOURCED row        25 -> 29
+      the EXACT stated count    23 -> 28
+      nothing at all             6 ->  2
+
+**29 of 33 with an 8-K-sourced row, 28 of them at the filing's exact stated
+headcount.** That is the 2026-08-01 replay forensics reproduced number for
+number on live data - 29 accepted, 28 with the exact count - which is about as
+direct a confirmation as this project gets that the diagnosis was right and the
+fix was the whole fix. Sweeping the final three months moved none of these
+counts, which is the correct outcome: those months had already been reached.
+
+**The residual is two events, and they are a real miss, not an unswept month.**
+CODEXIS (2025-11-06, 46) and PLAYSTUDIOS (2026-03-16, 177) still have no row of
+any kind, and both of their months have now been searched - 2025-11 by run
+31572141302 tonight, 2026-03 by the rotation on 2026-08-10. So for these two
+the pipeline read the corpus and produced nothing. That is the honest floor of
+this exercise and the only remaining EDGAR question worth a probe
+(`railway/edgar_recall_probe.py` answers "which stage dropped this filing?").
+
+### The recall figure cannot move without a human, by design
+
+`recall_goldset.measure()` counts an event only when the manifest's
+`match_decision` is `matched`. A row that newly satisfies alias+window for an
+unmatched event is reported as `candidates_needing_adjudication` and is
+explicitly **never counted**:
+
+> a machine must not promote its own recall by finding a row nobody has
+> looked at
+
+That rule exists because the loose alias+window rule scored 31 of 57 against
+the editor's 24 on 2026-08-01, having accepted a Hormel Georgia WARN filed ten
+weeks early, an Italian composites maker for HP Inc, and Dow Jones for Dow.
+It is the right rule and it should not be softened.
+
+But it means **~93% was structurally unreachable from this sweep**. Recall
+moves when an editor adjudicates, not when a collector collects. Predicting
+that a sweep would take a published, editor-gated figure from 42.1% to 93% was
+predicting the wrong quantity. What a sweep can move is the pile waiting for
+adjudication, and that is what it moved.
+
+The two numbers, kept apart because they answer different questions:
+
+* **Published recall (editor-confirmed, the one with a floor):**
+  **24/57 = 42.1%, Wilson 95% CI [30.2%, 55.0%]**. Floor 20 of 57. PASS, and
+  **unchanged by the sweep** - it cannot change without an editor.
+* **Ceiling now unlocked (every recovered event, if adjudicated `matched`):**
+  24 + 29 = **53/57 = 93.0%, Wilson 95% CI [83.3%, 97.2%]**.
+
+**The ~93% prediction was exactly right, and it is not the published figure.**
+The rows are there, from the 8-K itself, at the filing's own stated headcount;
+what stands between them and the recall number is 29 editor decisions. Anyone
+quoting a coverage figure this week must quote 42.1%, because that is what has
+been adjudicated - and should say that 93.0% is sitting behind it waiting to be
+signed off, because "42.1%" now understates the collector by 51 points.
+
+**The next action is an editor pass, not another sweep.** The manifest's
+`match_decision` fields are the bottleneck now, and the guard is deliberately
+built so that no automated run can clear them.
+
+### The dispatch that swept the wrong month
+
+The rotation is the date, so twelve dispatches on one day sweep one month
+twelve times; a named month needed an explicit range, and
+`edgar-history-sweep.yml` had no way to pass one. Adding `start`/`end`/
+`max_calls`/`run_ceiling_usd` inputs took two attempts:
+
+    BACKFILL_ROTATE: ${{ (start != '' && end != '') && '' || '1' }}
+
+GitHub's `&&`/`||` return the OPERAND, not a boolean. A true condition yields
+the empty string, which is falsy, so `|| '1'` wins - the rotation, on exactly
+the dispatch that asked for a range. Run 31570100147 was dispatched for
+2025-07..2025-12, printed `explicit range 2025-07-01..2025-12-31` in its own
+notice, and three lines later printed `Backfill 2026-02-01 -> 2026-02-28`. It
+swept the rotation's month for \$0.1061. Now an explicit `'range'`/`'rotate'`
+mode, and `backfill.py` refuses a contradictory environment loudly instead of
+silently preferring one.
+
+**What that mistake cost, exactly: \$0.1061, all of it wasted.** 2026-02 is a
+gold month, so it looked like the money bought a real sweep - but the day's
+SCHEDULED run swept 2026-02 anyway forty minutes later (run 31571077391: 343
+candidates, 5 already held, **0 posted**), because the concurrency group
+prevents two runs racing, not two runs doing the same month in sequence. The
+schedule would have found the same filing for free. Recorded here rather than
+netted off: a mis-dispatch that lands on a useful month is still a mis-dispatch.
+
+**The ceiling override is a dispatch input, not a table edit.** A raised
+ceiling written into `JOB_RUN_CEILINGS_USD` is a raised ceiling for every
+scheduled run afterwards. `effective_run_ceiling_usd()` already gives an
+explicit `ALT_RUN_CEILING_USD` precedence over the table, so the override lives
+on the one dispatch and the schedule is untouched.
+
+### The sweep had never reported what it spent, and naming its ceiling breaks the ladder
+
+`backfill.py` emitted no `SPEND_LEDGER_V1` line, and `spend.harvest()` collects
+lines only for jobs named in `JOB_RUN_CEILINGS_USD`. So the single largest
+historical consumer in this repo - the job that burned ~\$3.80/day during the
+2026-07-29 hourly sprint - contributed nothing to `railway/spend_jobs.json` and
+lived permanently inside the UNATTRIBUTED REMAINDER that
+`unattributed_report()` prints. It now records `items` (candidates actually
+READ, after the seen-URL pre-check, since only those are charged), `stored`,
+and its truncation reason.
+
+Naming its ceiling is a different matter and was deliberately not done.
+`test_spend_ledger.NamedCeilingsAreArithmeticNotHope` goes red the moment it is
+added: the sweep's effective ceiling is the \$0.200 global default, at daily
+cadence \$6.00/month, against a table already claiming \$6.60/month worst case
+beside a MEASURED ~\$5.1/month ingest inside a \$10 allowance. Its MEASURED cost
+(\$0.1061 for a full 309-candidate month; ~\$3/month daily) does not close the
+ladder either. So the honest finding is: **the \$10 interim allowance does not
+cover the current job set once the EDGAR history sweep is counted in it, and it
+has never been counted in it.** Naming a number would mean either asserting
+money the budget does not have or throttling a live collector unasked; both are
+the owner's call. `LEDGER_ONLY_JOBS` harvests the job without naming a ceiling,
+so the decision has the measurement it needs and no throttle was imposed by a
+session not authorised to impose one.
+
+## 2026-08-12 - the watchlist's company-targeted query was never sent, and \$3.50 could not have found that out
+
+**Authorised: about \$3.50 for one uncapped full-universe company-watchlist
+sweep, to turn "zero rows in six runs" from UNKNOWN into a measured yield.
+Spent: \$0.0127. The measurement the money was for is not one money can buy,
+and reading the code answered the bigger half of it for nothing.**
+
+### What the six barren runs were actually doing
+
+`sources.newsapi.pull_news_articles` has a `queries` parameter. Its docstring
+says the company-watchlist sweep "passes company-targeted queries here to reuse
+all of this fetch/domain/shaping logic". The loop under that docstring read
+
+    for query in tuple(DISCOVERY_QUERIES) + tuple(_segment_queries_for_now()):
+
+unconditionally. The caller's list went nowhere.
+
+So every run of this collector pulled the SAME broad daily discovery set that
+the twice-daily cron had already pulled, once per 20-company chunk, and paid to
+re-extract it. Run 31512613030 (2026-08-11) prints the whole thing three times
+over:
+
+    watchlist: 9504 total · checking 54 (slice 9450) · 53 with no current-year entry
+    NewsAPI: 153 unique articles pulled across 6 queries (incl. rotating segments)
+    seen-urls pre-check: 6 same-URL re-read(s) skipped, 147 to process
+    NewsAPI: 153 unique articles pulled across 6 queries (incl. rotating segments)
+    NewsAPI: 153 unique articles pulled across 6 queries (incl. rotating segments)
+    ...112 calls, \$0.0301, 0 posted
+
+Identical article counts per chunk, because it was the identical pull. The
+company dimension - the entire premise of the collector, the thing that was
+supposed to catch the cuts the broad net does not name, "that's exactly how
+HP/Intel slipped through" - had never once reached the API.
+
+**The log could not have shown it.** The summary line recomputed
+`len(DISCOVERY_QUERIES) + len(_segment_queries_for_now())` regardless of the
+loop it had just run, so a call that asked for twenty queries printed "6
+queries". A log line that cannot disagree with the code is not evidence, and
+this one had been agreeing with itself since the parameter was added.
+
+### Why the \$3.50 was not spent
+
+The authorised run was one uncapped full-universe pass: 63 slices at ~\$0.055.
+Against the collector as it stood, that run had a knowable outcome before it
+started - 63 re-extractions of one broad article set the daily cron had already
+read, a foregone zero at \$3.50. Spending it would have measured the bug, not
+the watchlist.
+
+And with the bug fixed, the full pass still cannot be bought. One query per
+company meets NewsAPI's Developer plan: **100 requests/day for the whole key**,
+6 of which the twice-daily cron needs for the discovery set that is the
+tracker's primary AI-attribution channel. A 9,504-name universe is ~106 days of
+requests. The full-universe pass is a SCHEDULE question, not a budget question;
+no amount of money moves it, and a run that ignored the cap would not sweep more
+companies, it would 429 the key and take the main news path down with it.
+
+### What was measured instead
+
+The fix, then one bounded slice on the branch (run 31570373950, ceiling raised
+to \$0.20 for that dispatch only, news budget 40):
+
+    watchlist: 9504 total · checking 150 (slice 0) · 60 with no current-year entry
+    ::warning::news-request budget 40/run reached; 20 missing companies were not
+      queried. They are deferred, not cleared.
+    NewsAPI: 28 unique articles pulled across 20 caller-supplied queries
+    NewsAPI: 20 unique articles pulled across 20 caller-supplied queries
+    watchlist sweep: checked 150, 40 queried (20 over budget, deferred),
+      0 posted (0 AI-attributed), 0 extract fails
+    LLM spend this run: \$0.0127 over 48 call(s) | 0 rows stored
+
+**Yield of one fixed, company-targeted pass: 40 companies queried, 48 candidate
+articles surfaced, 0 rows stored, \$0.0127.** Wilson 95% CI on per-company
+yield: **[0%, 8.8%]** - which is a genuine measurement and NOT a verdict. 40 of
+9,504 is 0.42% of the universe, and a 0-of-40 sample cannot distinguish "this
+collector finds nothing" from "this collector finds one company in fifty".
+
+That is the honest state: the collector's premise has now been exercised for
+the first time, once, on 40 companies. Retiring or reshaping it on evidence
+needs more slices, and the constraint on getting them is 90 companies/day of
+NewsAPI quota, not dollars.
+
+### Three things changed, none of them a budget
+
+* **`queries` is honoured**, and the log prints what was actually sent.
+* **`WATCHLIST_NEWS_BUDGET`** (default 40) bounds a run's company queries and
+  records the shortfall through `spend.note_truncated`. A sweep that queried 40
+  of 60 missing companies has not swept the slice, and its zero must not read as
+  "these 60 companies have no cuts". `spend.record_job_run(items=...)` now
+  counts companies QUERIED, not the slice size - the old `items=150` is what
+  made "0 rows from 150 companies" look like evidence about 150 companies.
+* **`run_ceiling_usd` is a dispatch input**, not an edit to
+  `JOB_RUN_CEILINGS_USD`. The named \$0.030 stays the default for every
+  scheduled run; `effective_run_ceiling_usd()` already gives an explicit
+  `ALT_RUN_CEILING_USD` precedence, so a one-off authorisation raises one run
+  and cannot become the standing budget.
+
+### The rotation cursor: NOT fixed, and why
+
+`start = (date.today().toordinal() % pages) * BATCH` derives the slice from the
+date rather than persisting it, so a skipped company waits ~63 days rather than
+being retried - and `pages` is recomputed against a universe that grows, which
+is the same class of bug as `backfill.rotating_window`'s (the wrap point moves,
+so some slices are jumped). Observable in the 2026-08-11 log as `checking 54
+(slice 9450)`: a ragged tail slice, not the 150 it asked for.
+
+The free fix is to persist the cursor, and the only durable store this job can
+reach is the keyed `/tracker-meta` endpoint - whose handler is a field
+whitelist in `db.php`, so it needs a plugin change and a deploy. The handoff
+baton is HELD, this session worked on a branch by design, and a cursor change
+would also have moved the slice under the yield measurement above. Left
+undone, deliberately, and named here rather than half-done.
+
+Tests: `railway/tests/test_watchlist_targets_companies.py` - the caller's
+queries must be the ones sent, the cron's default set must be byte-identical,
+the log must report what was sent, and the budget must count what it did not
+send. Red on the old code on all four.
 
 ## 2026-08-12 - the US incident is closed, and closing it broke the closer twice (railway only, no deploy)
 
