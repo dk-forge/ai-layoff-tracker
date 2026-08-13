@@ -5758,20 +5758,53 @@ function alt_tracker_bootstrap_payload() {
 }
 
 /**
- * The signal board's period scopes (Today / This week / This month / YTD),
- * all stage=verified so the four columns AND their largest-event picks share
- * one basis — the same rule the narrative strip has always applied (an
- * announced 50K plan must not headline a 9K verified week). Site timezone,
- * like every dateline on the page.
+ * The signal board's period scopes, all stage=verified so the columns AND
+ * their largest-entry picks share one basis — the same rule the narrative
+ * strip has always applied (an announced 50K plan must not headline a 9K
+ * verified week). Site timezone, like every dateline on the page.
+ *
+ * $now is injectable so the windows can be RUN against a chosen clock in a
+ * test (year rollover, quarter rollover) instead of being reasoned about.
  */
-function alt_signal_board_periods() {
-    $now  = (int) current_time('timestamp');
+function alt_signal_board_periods($now = null) {
+    if ($now === null) $now = (int) current_time('timestamp');
+    $now  = (int) $now;
     $iso  = function ($ts) { return date('Y-m-d', $ts); };
-    $year = (string) current_time('Y');
+    $y    = (int) date('Y', $now);
+    $mo   = (int) date('n', $now);      // 1..12
+    // Month 0 is December of the year before, and month 0 day 0 is the last
+    // day of the month before that: mktime normalises, so no branch is needed
+    // for January and none can be forgotten.
+    $pm_from = mktime(0, 0, 0, $mo - 1, 1, $y);
+    $pm_to   = mktime(0, 0, 0, $mo, 0, $y);
+    $q       = (int) floor(($mo - 1) / 3);   // 0..3, the quarter we are inside
+    $pq_from = mktime(0, 0, 0, $q * 3 - 2, 1, $y);
+    $pq_to   = mktime(0, 0, 0, $q * 3 + 1, 0, $y);
     return array(
         'today' => array('from' => $iso($now), 'to' => $iso($now), 'stage' => 'verified'),
         'week'  => array('from' => $iso($now - 6 * 86400), 'to' => $iso($now), 'stage' => 'verified'),
         'month' => array('from' => date('Y-m-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
+        /*
+          THE TWO COMPLETED PERIODS, AND WHY THEY ARE SAFE TO SPAN IN FULL.
+
+          Every other column here is cut at today, and the YTD note below says
+          why: rows are dated by EFFECTIVE date, WARN notices are filed weeks
+          ahead, so a window that runs past today carries cuts that have not
+          happened (33,939 of them in the uncut 2026 year on 2026-08-04).
+
+          A COMPLETED month and a COMPLETED quarter do not have that problem.
+          Both end before today, so there is no future inside them to carry,
+          and that is exactly why they are worth having: they are the only two
+          columns on this board that are a whole period rather than a partial
+          one, which is what a reader comparing periods actually wants and what
+          a journalist can quote without a caveat.
+
+          They overlap the columns beside them (in April the completed month is
+          March and the completed quarter is Q1, which contains it) and the
+          board's footnote already says the columns overlap and do not add up.
+        */
+        'pmonth'   => array('from' => $iso($pm_from), 'to' => $iso($pm_to), 'stage' => 'verified'),
+        'pquarter' => array('from' => $iso($pq_from), 'to' => $iso($pq_to), 'stage' => 'verified'),
         /*
           A REAL YEAR-TO-DATE. This column is labelled "<year> YTD" and used to
           be scoped `years=<year>`, the whole calendar year. Because rows are
@@ -5782,5 +5815,50 @@ function alt_signal_board_periods() {
           bootstrap is rejected and the board silently refetches.
         */
         'ytd'   => array('from' => date('Y-01-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
+    );
+}
+
+/**
+ * The board's column labels, DERIVED FROM THE WINDOWS THEMSELVES.
+ *
+ * Two rules are being held here at once.
+ *
+ * 1. NOTHING IS WRITTEN DOWN. A literal "July 2026" in a template is correct
+ *    until 1 September and then silently wrong, with no check anywhere that
+ *    could notice — the same class of defect as a stale figure with no guard.
+ *    Every label below is computed, and computed from the period's own from/to
+ *    rather than from a second reading of the clock, so a label cannot
+ *    disagree with the window it sits above even in the seconds around
+ *    midnight on New Year's Eve.
+ *
+ * 2. A LABEL NAMES ITS PERIOD RATHER THAN ITS DISTANCE. The date presets below
+ *    this board are ROLLING windows and already say "Last 30 days" and "Last
+ *    quarter". Calling a completed calendar quarter "Last quarter" would put
+ *    two different meanings behind one phrase on one page, which is the exact
+ *    ambiguity the 2.20.22 entries rename removed. So the completed periods
+ *    are named: "July 2026", "Q2 2026". For the same reason the CURRENT month
+ *    is "August 2026" and not "This month" — one column naming its period and
+ *    the one beside it not naming its period is the same ambiguity, smaller.
+ *
+ *    Today and This week keep their words. They are relative on purpose, they
+ *    are unambiguous (there is no rolling preset that could mean something
+ *    else by them), and "13 August 2026" over a single day would read as a
+ *    dateline rather than as a column.
+ *
+ * The front end computes the identical set in boardColumnLabels() (layoffs.js)
+ * off the identical windows; test_signal_board_periods.py runs both.
+ */
+function alt_signal_board_labels($periods = null) {
+    if ($periods === null) $periods = alt_signal_board_periods();
+    $ts = function ($iso) { return strtotime($iso . ' 12:00:00'); };
+    $mf = function ($iso) use ($ts) { return date('F Y', $ts($iso)); };
+    $pq = $ts($periods['pquarter']['from']);
+    return array(
+        'today'    => 'Today',
+        'week'     => 'This week',
+        'month'    => $mf($periods['month']['from']),
+        'pmonth'   => $mf($periods['pmonth']['from']),
+        'pquarter' => 'Q' . (intdiv((int) date('n', $pq) - 1, 3) + 1) . ' ' . date('Y', $pq),
+        'ytd'      => date('Y', $ts($periods['ytd']['from'])) . ' YTD',
     );
 }

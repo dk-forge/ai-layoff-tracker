@@ -160,6 +160,10 @@
         explicitly_denied: 'AI explicitly denied', unknown: 'AI classification pending'
     };
     var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Full names, for the board's period columns. A column header is a label a
+    // journalist quotes ("July 2026"), not a dateline, so it is not abbreviated.
+    var MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
 
     // A WARN link is either the EXACT notice (states like VT publish per-notice
     // pages) or the state's official WARN list page (the notice is a row in
@@ -5011,14 +5015,68 @@
         updateNarrative();
     }
 
+    // THE BOARD'S SIX WINDOWS, off one clock, byte-identical to
+    // alt_signal_board_periods() in db.php (bootParamsMatch/takeBoot rejects
+    // the server-inlined board on any difference, and the first paint silently
+    // becomes six fetches).
+    //
+    // The two completed periods are whole periods rather than to-date ones,
+    // and they are the only columns here that can be: rows are dated by
+    // EFFECTIVE date and WARN notices are filed weeks ahead, so every window
+    // touching the future would carry cuts that have not happened. A completed
+    // month and a completed quarter end before today, so they cannot. The long
+    // form of that reasoning is on alt_signal_board_periods().
+    //
+    // new Date(y, m - 1, 1) and new Date(y, m, 0) normalise across the year
+    // boundary on their own, so January needs no branch and none can be
+    // forgotten in one of the two renderers.
+    function boardWindows(now) {
+        var iso = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+        var y = now.getFullYear(), m = now.getMonth();
+        var q = Math.floor(m / 3);
+        return {
+            today:    [iso(now), iso(now)],
+            week:     [iso(new Date(now.getTime() - 6 * 86400000)), iso(now)],
+            month:    [y + '-' + pad2(m + 1) + '-01', iso(now)],
+            pmonth:   [iso(new Date(y, m - 1, 1)), iso(new Date(y, m, 0))],
+            pquarter: [iso(new Date(y, q * 3 - 3, 1)), iso(new Date(y, q * 3, 0))],
+            ytd:      [y + '-01-01', iso(now)]
+        };
+    }
+
+    // THE COLUMN LABELS, DERIVED FROM THE WINDOWS THEMSELVES, so a label
+    // cannot disagree with the window it sits above and none of them can go
+    // stale on the first of a month. The twin is alt_signal_board_labels() in
+    // db.php, which carries the full reasoning: the completed periods NAME
+    // themselves ("July 2026", "Q2 2026") because the date presets below this
+    // board already say "Last month" and "Last quarter" about ROLLING windows,
+    // and one phrase meaning two things on one page is the ambiguity the
+    // entries rename removed. The current month is named for the same reason.
+    // Today and This week stay relative: unambiguous, and a date over a single
+    // day reads as a dateline rather than as a column.
+    function boardColumnLabels(w) {
+        var part = function (iso) { return iso.split('-').map(Number); };
+        var mf = function (iso) { var p = part(iso); return MONTHS_FULL[p[1] - 1] + ' ' + p[0]; };
+        var pq = part(w.pquarter[0]);
+        return {
+            today:    'Today',
+            week:     'This week',
+            month:    mf(w.month[0]),
+            pmonth:   mf(w.pmonth[0]),
+            pquarter: 'Q' + (Math.floor((pq[1] - 1) / 3) + 1) + ' ' + pq[0],
+            ytd:      part(w.ytd[0])[0] + ' YTD'
+        };
+    }
+
     // THE SIGNAL BOARD (evolves the narrative strip; same container, same
     // aggregate plumbing, same click-to-filter machinery, Copy as post kept).
     // Rows: Workers / Verified layoffs / Explicitly AI-attributed / Largest
-    // event. Columns: Today / This week / This month / YTD. Heat is scaled
-    // WITHIN each row; every numeric cell filters the page through the
-    // existing filter+URL machinery, and Largest-event cells open the entry
-    // permalink instead (falling back to the company filter when the row has
-    // no permalink page).
+    // entry. Columns: Today / This week / the current month / the last
+    // completed month / the last completed quarter / YTD, the middle three
+    // named by the period they cover. Heat is scaled WITHIN each row; every
+    // numeric cell filters the page through the existing filter+URL machinery,
+    // and Largest-entry cells open the entry permalink instead (falling back
+    // to the company filter when the row has no permalink page).
     function updateNarrative() {
         var el = document.getElementById('alt-narrative');
         if (!el) return;
@@ -5026,22 +5084,23 @@
         var now = new Date();
         var y = now.getFullYear();
         var base = tab.countries.length ? { country: tab.countries.join(',') } : {};
-        var iso = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
-        var d7 = new Date(now.getTime() - 6 * 86400000);
+        var W = boardWindows(now);
         // Everything is stage=verified so the period totals AND each period's
-        // largest-event pick share one basis (an announced 50K plan must not
+        // largest-entry pick share one basis (an announced 50K plan must not
         // headline a 9K verified week). include=leaders keeps each call to the
         // totals block plus one leaders query — the same cache keys the
         // server-rendered board warmed (alt_signal_board_periods in db.php).
+        // Byte-identical to alt_signal_board_periods() in db.php, key order
+        // included: this IS the board's column order.
         var P = {
-            today: Object.assign({ from: iso(now), to: iso(now), stage: 'verified', include: 'leaders' }, base),
-            week:  Object.assign({ from: iso(d7), to: iso(now), stage: 'verified', include: 'leaders' }, base),
-            month: Object.assign({ from: y + '-' + pad2(now.getMonth() + 1) + '-01', to: iso(now), stage: 'verified', include: 'leaders' }, base),
-            // Byte-identical to alt_signal_board_periods()['ytd'] in db.php.
-            // A real to-date window, not the whole calendar year: see there.
-            ytd:   Object.assign({ from: y + '-01-01', to: iso(now), stage: 'verified', include: 'leaders' }, base)
+            today:    Object.assign({ from: W.today[0], to: W.today[1], stage: 'verified', include: 'leaders' }, base),
+            week:     Object.assign({ from: W.week[0], to: W.week[1], stage: 'verified', include: 'leaders' }, base),
+            month:    Object.assign({ from: W.month[0], to: W.month[1], stage: 'verified', include: 'leaders' }, base),
+            pmonth:   Object.assign({ from: W.pmonth[0], to: W.pmonth[1], stage: 'verified', include: 'leaders' }, base),
+            pquarter: Object.assign({ from: W.pquarter[0], to: W.pquarter[1], stage: 'verified', include: 'leaders' }, base),
+            ytd:      Object.assign({ from: W.ytd[0], to: W.ytd[1], stage: 'verified', include: 'leaders' }, base)
         };
-        var KEYS = ['today', 'week', 'month', 'ytd'];
+        var KEYS = ['today', 'week', 'month', 'pmonth', 'pquarter', 'ytd'];
         // Server-inlined board: consumed at most once, and only when every
         // period's params match what this repaint was about to request (the
         // takeBoot rule — a site-timezone date rolling past the browser's
@@ -5067,7 +5126,7 @@
             });
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var b = function (v) { return '<b>' + v + '</b>'; };
-            var cols = { today: 'Today', week: 'This week', month: 'This month', ytd: y + ' YTD' };
+            var cols = boardColumnLabels(W);
             // EVERY CELL LINK NAMES THE BASIS THE CELL WAS COUNTED ON. P sends
             // no date_basis, so the server counts these four periods on its own
             // default column, layoff_date, the effective date. The page they
@@ -5153,7 +5212,7 @@
             var foot = '<ul class="alt-sb-foot">'
                 + '<li class="alt-sb-foot-basis">' + boardBasisNote() + '</li>'
                 + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
-                + '<li>Columns overlap, so they do not add up: this week sits inside this month, and one entry can lead both.</li>'
+                + '<li>Columns overlap, so they do not add up: this week sits inside this month, and a completed month can sit inside a completed quarter. One entry can lead more than one column.</li>'
                 + '<li>Tap any number to filter the page to that period, counted the same way this board counts it. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
                 + '</ul>';
             // Post-sized rewrite for the copy button: X counts any URL as 23

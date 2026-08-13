@@ -1,5 +1,85 @@
 # Tech Log
 
+## 2026-08-13 - two completed periods on the board, and the six columns that would not fit a phone (2.20.23)
+
+The owner asked for two more columns on the at-a-glance board: the last
+**completed** calendar month and the last **completed** calendar quarter. Both
+shipped, plus the largest-entry cells he could not read.
+
+**Why the labels name their period.** The date presets below the board are
+ROLLING windows and already say "Last 30 days" and "Last quarter". A completed
+calendar quarter labelled "Last quarter" would put two meanings behind one
+phrase on one page, which is the ambiguity the 2.20.22 entries rename had just
+removed. So the columns are `Today | This week | August 2026 | July 2026 |
+Q2 2026 | 2026 YTD`. The CURRENT month is named for the same reason: one column
+naming its period beside one that does not is the same defect, smaller. Today
+and This week keep their words, because they are unambiguous and a date over a
+single day reads as a dateline rather than as a column heading.
+
+**Every label is COMPUTED, and computed from the window itself.** A literal
+"July 2026" in the template is correct until 1 September and silently wrong
+afterwards, with nothing in CI or on the page able to notice. `alt_signal_board_labels()`
+(db.php) and `boardColumnLabels()` (layoffs.js) take the period map and derive
+each label from that period's own `from`, so a label cannot disagree with the
+window above which it sits, not even at midnight on 31 December.
+`test_signal_board_periods.py` injects four clocks (mid-quarter, first day of a
+quarter, first day of a year, a leap February) and asserts every label and every
+window moves, in BOTH renderers, and that the two agree byte for byte
+(`bootParamsMatch`/`takeBoot` rejects the inlined board on any difference).
+
+**Why a completed period may span in full.** Every other column is cut at today
+because rows are dated by EFFECTIVE date and WARN notices are filed weeks ahead:
+the uncut 2026 year carried 33,939 cuts that had not happened (2026-08-04). A
+completed month and a completed quarter end before today and cannot carry a
+future. That is most of why they are worth having: they are the only two columns
+on the board that are a whole period rather than a partial one.
+
+**SIX COLUMNS DO NOT FIT A 375px PHONE, and the measurement is the point.**
+With the obvious `repeat(6, minmax(0, 1fr))` each track came out **46px**,
+"483,788" is 48px, and the three biggest figures in the Workers row ran into
+each other and read as one string. Throughout that, `page.scrollWidth ===
+page.clientWidth` was perfectly true and nothing bled, which is the same
+equality that held over the tracker rendering in 219px of a 375px phone. It
+proves nothing. So every period track now has a **floor** (104px desktop, 84px
+at <=620px) and the board is its **own scroll container** with the row label
+`position: sticky; left: 0`. Measured after: 375px viewport, board 318px of it
+(**84.8% usable share**), `scrollWidth` 544 vs `clientWidth` 318 (the board
+scrolls, the page does not, `page_bleeds` false), all six columns reachable, the
+label still pinned at the far edge. 1280px: 86.8% share, 156px per column,
+nothing scrolls. `justify-self: start` on the mobile label is load-bearing: a
+sticky item can only travel inside its own containing block, and a label
+stretched across all six tracks already filled it, so the pin measured false
+until the item was shrunk to its text.
+
+**The largest-entry cells: what the failure actually was.** Not overflow, not
+clipping, not the number squeezed out. The name was one `white-space: nowrap`
+line with `text-overflow: ellipsis`, and in a 74px column that painted "Les
+Antoniennes de Marie" as **"Les Anto..."**. Seven characters of a company name.
+The ellipsis worked exactly as written and left nothing to read.
+
+A two-line `-webkit-line-clamp` was built first and **measured out**: it cuts at
+two lines but only paints its ellipsis when the cut falls mid-line, so "Gruppo
+Manifatturiero Lombardo S.p.A." came back as "Gruppo Manifatturiero" with no
+marker of any kind and read as a complete name. (Blockification makes it worse
+still: inside a flex cell the computed display of `-webkit-box` is `flow-root`.)
+A board cell quietly renaming an employer is not a formatting problem. So the
+name is **not truncated at all**: it wraps, `overflow-wrap: anywhere` so no
+spelling can overflow a column, and the cell grows downward. The count is its
+own element below the name, outside anything that clips, and the test reads
+every rendered number back out of its own cell at both widths. A reader losing
+"1,100" is worse than losing the tail of a company name, and now neither goes.
+
+**Also in this deploy.** The tracker linked the press kit twice as "Press &
+media" while the word "soundbite" appeared nowhere on the page, so the soundbite
+library live at `/ai-layoff-tracker/press/` since 2.19.61 was unfindable. Every
+link to that page now reads **"Press kit and soundbites"** (all six occurrences
+across six templates, because `test_secondary_surface_consistency` exists to
+stop the press page having two names). The board's `<summary>` and its overlap
+footnote were updated to cover the new columns, and
+`fixtures/signal_board_body.html` was refreshed: the captured body was still
+saying "Largest event" and "verified events", so the old column test had been
+asserting against a body the site stopped serving at 2.20.22.
+
 ## 2026-08-13 - the twelve jobs that could not survive our own deploy
 
 `Extract affected-role categories` failed on main at 22:54 with `503 Server

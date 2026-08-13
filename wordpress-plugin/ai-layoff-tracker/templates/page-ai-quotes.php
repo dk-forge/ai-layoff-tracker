@@ -74,7 +74,7 @@ $src_label = function ($t) {
        block. "How the AI tag works" is the exact title of a section on the
        METHODOLOGY page, so that is where a link carrying that label has to go;
        the anchor takes the reader to the section rather than the top. */ ?>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>#m-ai">How the AI tag works</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a></p>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>#m-ai">How the AI tag works</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a></p>
 
   <div class="alt-qw-summary">
     <b><?php echo number_format($alt_total); ?></b> AI attributions<?php echo $alt_total > $LIMIT ? ' (showing the ' . $LIMIT . ' most recent)' : ''; ?> · <b><?php echo number_format($alt_jobs); ?></b> jobs · <?php echo $alt_year ? esc_html($alt_year) : 'all-time'; ?> · each with the employer's quote and its source.

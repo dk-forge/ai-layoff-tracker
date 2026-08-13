@@ -255,8 +255,23 @@ $alt_hero_basis  = 'counted by filing date';
     // tiles.
     $alt_board = ($alt_boot && !empty($alt_boot['board']) && is_array($alt_boot['board'])) ? $alt_boot['board'] : null;
     $alt_board_html = '';
-    if ($alt_board && count($alt_board) === 4) {
-        $alt_cols = array('today' => 'Today', 'week' => 'This week', 'month' => 'This month', 'ytd' => current_time('Y') . ' YTD');
+    // Both guarded, for the reason in CLAUDE.md: an FTPS deploy races mid
+    // upload, so this template can be live for a few seconds against the
+    // PREVIOUS db.php. A missing label helper must cost the server-rendered
+    // board (layoffs.js repaints it a moment later), never a fatal.
+    $alt_board_periods = (function_exists('alt_signal_board_periods')
+                          && function_exists('alt_signal_board_labels'))
+        ? alt_signal_board_periods() : array();
+    if ($alt_board && count($alt_board) === count($alt_board_periods) && $alt_board_periods) {
+        // COMPUTED, NEVER WRITTEN DOWN, and computed from the same windows the
+        // cells were counted over. A literal month name in this template is
+        // right today and wrong on the first of next month with nothing on the
+        // page or in CI able to notice. See alt_signal_board_labels() in db.php
+        // for why the completed periods name themselves instead of saying
+        // "last month" (the date presets below already use that phrase for a
+        // ROLLING window, and one phrase meaning two things on one page is the
+        // ambiguity the entries rename removed).
+        $alt_cols = alt_signal_board_labels($alt_board_periods);
         // "Today and this month identical" survives as equal-column styling,
         // never as duplicate columns: both cells carry one linking class.
         $alt_tt = $alt_board['today']['totals']; $alt_mt = $alt_board['month']['totals'];
@@ -374,7 +389,7 @@ $alt_hero_basis  = 'counted by filing date';
             // rewritten in place, with no board refetch. See there.
             . '<li class="alt-sb-foot-basis">Every row counts verified entries on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
             . '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
-            . '<li>Columns overlap, so they do not add up: this week sits inside this month, and one entry can lead both.</li>'
+            . '<li>Columns overlap, so they do not add up: this week sits inside this month, and a completed month can sit inside a completed quarter. One entry can lead more than one column.</li>'
             // "and counted the same way" is not decoration: the tap now carries
             // the board's basis into the page, so the filtered view reproduces
             // the number that was tapped instead of recounting it by filing
@@ -439,7 +454,7 @@ $alt_hero_basis  = 'counted by filing date';
     </div>
 
     <details class="alt-narrative-wrap" id="alt-narrative-wrap" open>
-        <summary class="alt-narrative-summary">At a glance: today, this week, this month, this year</summary>
+        <summary class="alt-narrative-summary">At a glance: today, this week, this month, the last completed month and quarter, and this year</summary>
         <div class="alt-narrative" id="alt-narrative"><?php echo $alt_board_html; // phpcs:ignore -- built above from escaped parts ?></div>
     </details>
     <?php /* THE DEFINITION LINE, AND IT IS OUTSIDE THE DISCLOSURE ON PURPOSE.
@@ -1213,7 +1228,7 @@ $alt_hero_basis  = 'counted by filing date';
             <?php endif; ?>
             <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
         </p>
-        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>">AI, in their own words</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
         <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     </section>
 
@@ -1481,6 +1496,6 @@ $alt_hero_basis  = 'counted by filing date';
         <span>Tracker release <b>v<?php echo esc_html(ALT_VERSION); ?></b></span>
         <span id="alt-provenance-quality" aria-live="polite">Dataset status loading…</span>
         <a class="alt-method-link" href="#alt-metric-definitions">Methodology</a>
-        <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press &amp; media</a>
+        <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a>
     </footer>
 </div>
