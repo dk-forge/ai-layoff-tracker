@@ -671,12 +671,25 @@ def candidates_for(event, rows):
     reviewer rejected a correct Dow row because the summary described a
     co-proposed one. Nothing in this function or in the sheet it feeds ever
     describes more than one row at a time.
+
+    A row the editor has already REJECTED for this event is not proposed again.
+    Without this the sheet asks the same question every re-measure, with no mark
+    on it saying the reviewer already answered — an answered question that comes
+    back reads as a new one, and the answer that lands is the second one, given
+    by someone who no longer remembers the first. recall_goldset.measure has
+    filtered the SEC set this way since it was written; this is the same rule.
+    NB: `rejected_candidate_event_ids` holds tracker ROW ids on this set (it is
+    what `warn_adjudicate.py --row-ids` records), so the test is on row["id"],
+    not row["event_id"].
     """
     lo, hi = (date.fromisoformat(x) for x in event["match_window"])
     comp_counts = {c["job_count"] for c in event["component_rows"]}
     comp_counts.add(event["stated_job_count"])
+    rejected = set(event.get("rejected_candidate_event_ids") or [])
     out = []
     for row in rows:
+        if row.get("id") in rejected:
+            continue
         name = row.get("company_name") or ""
         if not any(name_matches(a, name) for a in event["employer_aliases"]):
             continue

@@ -115,10 +115,17 @@ class AQueryThatWasNeverSentIsNotAMiss(unittest.TestCase):
         self.assertIn("no query was sent", out["unreachable_events"][0]["why"])
 
 
-def _measure_offline(manifest):
-    """Run measure() with the network stubbed out and nothing written to disk."""
+def _measure_offline(manifest, rows=None):
+    """Run measure() with the network stubbed out and nothing written to disk.
+
+    With no `rows`, any query at all is an assertion failure — that is what the
+    never-sent-query guard needs. With `rows`, the stub serves them to every
+    query, so the test exercises the real filtering in candidates_for.
+    """
     original_api, original_path = W._api, W.WARN_MEASUREMENT_PATH
-    W._api = lambda *a, **k: (_ for _ in ()).throw(AssertionError("no query may be sent"))
+    W._api = ((lambda *a, **k: {"data": list(rows)}) if rows is not None else
+              (lambda *a, **k: (_ for _ in ()).throw(
+                  AssertionError("no query may be sent"))))
     W.WARN_MEASUREMENT_PATH = Path(__file__).resolve().parent / "_throwaway_measurement.json"
     try:
         return W.measure(manifest=manifest)
@@ -126,6 +133,72 @@ def _measure_offline(manifest):
         W._api, W.WARN_MEASUREMENT_PATH = original_api, original_path
         Path(__file__).resolve().parent.joinpath(
             "_throwaway_measurement.json").unlink(missing_ok=True)
+
+
+class AnAnsweredQuestionIsNotAskedAgain(unittest.TestCase):
+    """A rejected row must not come back on the next sheet.
+
+    recall_goldset.measure has filtered already-rejected candidates since it was
+    written; this set did not, so every re-measure re-proposed rows the editor
+    had already turned down, and the sheet carried no mark saying so. The
+    reviewer is asked the same question by someone who cannot remember their
+    answer, and the answer that lands is the second one.
+    """
+
+    EVENT = {
+        "reference_row_id": "us-warn-test-1", "state": "CA",
+        "employer_published": "Acme, Inc.", "employer_aliases": ["Acme"],
+        "query_terms": ["Acme"], "notice_date": "2025-08-01",
+        "stated_job_count": 60, "size_band": "S",
+        "match_window": ["2025-07-01", "2025-12-01"],
+        "component_rows": [{"job_count": 60}],
+        "rejected_candidate_event_ids": [],
+    }
+    ROWS = [
+        {"id": 111, "event_id": 900, "company_name": "Acme, Inc.", "state": "CA",
+         "layoff_date": "2025-08-15", "job_count": 60, "source_type": "warn"},
+        {"id": 222, "event_id": 901, "company_name": "Acme, Inc.", "state": "CA",
+         "layoff_date": "2025-09-15", "job_count": 60, "source_type": "warn"},
+    ]
+
+    def test_a_rejected_row_is_not_proposed_again(self):
+        both = W.candidates_for(dict(self.EVENT), self.ROWS)
+        self.assertEqual([c["tracker_row_id"] for c in both], [111, 222])
+
+        after = W.candidates_for({**self.EVENT, "rejected_candidate_event_ids": [111]},
+                                 self.ROWS)
+        self.assertEqual([c["tracker_row_id"] for c in after], [222],
+                         "row 111 was rejected by an editor and came back anyway")
+
+    def test_the_field_is_read_as_row_ids_not_event_ids(self):
+        # warn_adjudicate.py --row-ids writes tracker ROW ids into this field.
+        # Reading it as event ids would filter the wrong row, or none at all.
+        by_event_id = W.candidates_for(
+            {**self.EVENT, "rejected_candidate_event_ids": [900]}, self.ROWS)
+        self.assertEqual([c["tracker_row_id"] for c in by_event_id], [111, 222],
+                         "an event id in this field must match nothing — the field "
+                         "holds row ids on this set")
+
+    def test_measure_does_not_re_propose_a_rejected_row(self):
+        manifest = {"reference_set_id": "test", "definition_document": "test",
+                    "frame_sizes": {s: 1 for s in W.STATES}, "large_event_census": [],
+                    "reference_events": [{**self.EVENT,
+                                          "rejected_candidate_event_ids": [111]}]}
+        out = _measure_offline(manifest, rows=self.ROWS)
+        proposed = out["results"]["primary"][0]["candidates"]
+        self.assertEqual([c["tracker_row_id"] for c in proposed], [222])
+
+    def test_an_event_whose_every_candidate_was_rejected_proposes_nothing(self):
+        manifest = {"reference_set_id": "test", "definition_document": "test",
+                    "frame_sizes": {s: 1 for s in W.STATES}, "large_event_census": [],
+                    "reference_events": [{**self.EVENT,
+                                          "rejected_candidate_event_ids": [111, 222]}]}
+        out = _measure_offline(manifest, rows=self.ROWS)
+        result = out["results"]["primary"][0]
+        self.assertEqual(result["candidates"], [])
+        # An event with nothing left to propose is 'none', not a silent 'loose'.
+        self.assertEqual(result["machine_tier"], "none")
+        self.assertEqual(result["match_decision"], "not_matched")
 
 
 class TheCollapseUnitIsTheOneTheDefinitionStates(unittest.TestCase):
