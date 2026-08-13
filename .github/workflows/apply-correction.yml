@@ -36,6 +36,19 @@ on:
 jobs:
   correct:
     runs-on: ubuntu-latest
+    # This was the ONE workflow in this repo carrying no ceiling, so it inherited
+    # GitHub's 6-hour default while holding WP_API_KEY.
+    #
+    # MEASURED 2026-08-13: UNKNOWN, honestly. There have only ever been two runs
+    # (2026-08-11 and 2026-08-12), both 0.3 min, and two points are not a
+    # distribution. So this is sized generously rather than tightly: `ids` takes
+    # a comma-separated LIST and the script calls the host once per id, so a
+    # sign-off covering many rows legitimately runs far longer than either
+    # observed run, and a ceiling fitted to n=2 would redden the first real
+    # bulk correction. 30 = ~100x what has been seen, ~12x tighter than the
+    # default, and short enough that a hung run cannot sit on a live key all
+    # night. Re-derive it once there are ten runs to read.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
