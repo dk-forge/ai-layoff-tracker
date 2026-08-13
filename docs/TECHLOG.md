@@ -1,5 +1,111 @@
 # Tech Log
 
+## 2026-08-12 - the headcount that is not in the 8-K: the EX-99.1 exhibit, and it is 7 of 57, not 2 (no plugin change)
+
+**What was missing.** Two of the four remaining SEC Item 2.05 gold-set misses
+share one cause, recorded on 2026-08-01 and left unfixed: **Codexis
+(46, 2025-11-06)** and **PLAYSTUDIOS (177, 2026-03-16)** state their headcount
+nowhere in the stripped primary document. It lives in the EX-99.1 press release
+filed in the same accession. The collector read only the primary document, so
+`extractor._count_in_text` correctly refused a number it could not see and the
+filing died at the last step, having been reached, fetched and read.
+
+**Fixed.** `sources/edgar.fetch_document_window(doc_url)` returns `(text, url)`:
+the primary document, or its EX-99.1 when the primary states no headcount at
+all. Both pull paths use it, and the returned URL is the document the text came
+from, because a row must cite the document whose sentence it quotes.
+
+**The gate is the whole design.** Fetching every exhibit of every filing would
+multiply this collector's bytes and its **paid** extraction candidates for the
+sake of a minority of filings: the two exhibits here are 92KB and 367KB against
+37KB and 33KB primaries, and the cron already hits its per-run spend ceiling. So
+the exhibit is read only when the primary document states no headcount at all -
+one index request plus one document request, on the filings that need it and on
+nothing else. `_headcount_index()` decides that, and it decides nothing else: it
+never publishes a number and it is not a second `_count_in_text`.
+
+**The anchor is where this would have failed silently.** Neither exhibit
+contains a single phrase from `KEYWORDS` - "In November 2025, Codexis
+eliminated 46 positions"; "Eliminating 177 positions" - so the keyword-centred
+window falls through to `text[:RAW_TEXT_LIMIT]` and the counts, at offsets
+**3,766** and **7,582** of the stripped text, are truncated away before the
+extractor sees them. That is the EnerSys failure mode of 2026-08-01 exactly, one
+document further along: a real count discarded as though a model invented it.
+The exhibit window is therefore anchored on the headcount. Measured after the
+fix, against live EDGAR: both counts land at offset **500** of a 3,000-character
+window, inside `extractor.RAW_TEXT_LIMIT` by construction.
+
+**How often this pays, which is the question that decides its value.** Swept all
+57 frozen filings against live EDGAR (no model, no writes):
+
+| where the stated count is | filings |
+|---|---:|
+| in the primary document's keyword window | 47 |
+| **only in an exhibit** | **7** |
+| in the primary document but outside the window | 1 (Dow, 800) |
+| verbatim nowhere | 2 (Wabash 270, GitLab 350) |
+
+**7 of 57 - 12.3%, not two events.** Sarepta 500, International Paper 1,100,
+Starbucks 900, Celanese 160, Atlassian 1,600, Codexis 46, PLAYSTUDIOS 177. Five
+of the seven are matched today through WARN, ERM or news, which is why this
+looked like a two-event problem: the SEC path was blind to all seven and other
+collectors covered five. On this rate the path pays roughly one filing in eight,
+continuously, not once.
+
+**Wabash still misses, on purpose.** Its 270 is the sum of "3 salaried and 53
+hourly" + "21 salaried and 193 hourly" and is stated nowhere. The gate does not
+even open for it - the primary window states headcounts - and `_count_in_text`
+was not touched. `tests/test_edgar_exhibit_fallback.WabashStillMissesTests`
+fails if either fact changes. Loosening the derived-count rule is what once
+published Intuit as 17 jobs.
+
+**HP Inc is not a collection miss and never was.** Its primary document states
+"approximately 4,000 - 6,000 employees" inside the keyword window, and the
+tracker **already holds the row**: event `4953`, company_name `HP`, 4,000 jobs,
+effective 2025-11-26, `source_type: news`. The measurement cannot see it. The
+manifest's aliases are `["HP Inc", "HP "]`, and `recall_goldset.measure()` uses
+each alias verbatim as the live API's `company=` **substring** filter, so the
+row is never fetched:
+
+| `company=` | rows returned | event 4953 among them |
+|---|---:|---|
+| `HP Inc` | 3 | no |
+| `HP ` (trailing space) | 18 | no - `LIKE '%HP %'` cannot match a name that IS `HP` |
+| `HP` | 60 | **yes** |
+
+The trailing space was added to keep HP Hood and HP Composites out, but
+exclusion is the `excluded_name_prefixes` list's job and the prefix rule
+`name_matches` accepts `HP` for **both** aliases already. So the alias set is
+too narrow for the fetch and wide enough for the rule, and the row is invisible
+to the measurement rather than absent from the tracker. The manifest's
+`match_notes` - "No HP Inc row after 2017" - is false as of today.
+
+**Not fixed here, on purpose.** Adding `HP` to the aliases is a manifest edit,
+and this branch does not touch the manifest, the measurement, the adjudications
+or `MATCHED_FLOOR`. Checked against the live API, that one-word edit yields
+exactly one fresh candidate (4953): HP Hood is blocked by `hp hood`, HP
+Composites is already in `rejected_candidate_event_ids`, and Hewlett Packard
+Enterprise does not match the `hp` token prefix. It would move HP into
+`candidates_needing_adjudication`, never to `matched` - a machine must not
+promote its own recall.
+
+**The published figure is untouched by this branch.** 53 of 57 (93.0%) stands.
+Nothing here posts a row: the fix changes what the collector WILL read on the
+next sweep of those months, and recall moves when a re-measurement moves and an
+editor adjudicates, not before. If both exhibit misses were later ingested and
+accepted, the arithmetic would be **55 of 57 (96.5%)**; with HP as well, **56 of
+57 (98.2%)**. Those are arithmetic, not predictions and not targets.
+
+**Guards** (`railway/tests/test_edgar_exhibit_fallback.py`, 12 assertions, all
+red before this change): the exhibit-only count survives to
+`extractor.RAW_TEXT_LIMIT`; the window is anchored on the count and not on the
+document head; the index is **not** fetched when the primary states a headcount;
+an unreachable exhibit leaves the primary untouched; the EX-99.1 row is read out
+of the filing index and the XBRL rows are not; Wabash's 270 stays unverifiable
+while its four components stay verbatim.
+
+---
+
 ## 2026-08-12 - the site published 24 of 57 for two days while the repo said 52: two writers, one of which wrote one of two files that must agree (2.20.18)
 
 **Symptom.** `railway/recall_measurement.json` read `matched: 52` of 57
