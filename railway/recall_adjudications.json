@@ -551,6 +551,59 @@
      34668
     ]
    }
+  },
+  {
+   "entry_id": "sec-205-0001193125-25-269716@2026-08-13T06:07:09Z",
+   "reference_row_id": "sec-205-0001193125-25-269716",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-13T06:07:09Z",
+   "reason": "Tracker event 149951 (row 177218) IS this filing. We hold CODEXIS, INC., 46 jobs, effective 2025-11-06 (the filing date), source_type 8K, verification gold, and the row cites this gold accession's own EX-99.1, d80118dex991.htm. Its stored excerpt is the exhibit's own sentence, which I re-read from EDGAR today: 'In November 2025, Codexis eliminated 46 positions, or approximately 24% of its workforce.' Count matches the manifest's stated 46 exactly (delta 0). The only flag on the row is that we hold no announcement_date, so only the effective basis can be compared; it is the filing date itself. The pre-existing Codexis rows (events 5973 and 5974, CA WARN, 28 and 31 jobs, effective 2023-09-30) are a different year and are not this event, which is what the old match_notes recorded. The row was ingested by the 2025-11 EDGAR sweep dispatched today, after PR #54 taught the collector to read EX-99.1 when the primary document states no headcount.",
+   "tracker_event_ids": [
+    149951
+   ],
+   "evidence_pack_built_at": "2026-08-13T06:06:41Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "Codexis rows exist but are 2023 events.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0001823878-26-000018@2026-08-13T06:07:21Z",
+   "reference_row_id": "sec-205-0001823878-26-000018",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-13T06:07:21Z",
+   "reason": "Tracker event 149954 (row 177221) IS this filing. We hold PLAYSTUDIOS, Inc., 177 jobs, effective 2026-03-16 (the filing date), source_type 8K, verification gold, and the row cites this gold accession's own EX-99.1, myps-03162026xex991.htm. Its stored excerpt is the exhibit's own sentence, which I re-read from EDGAR today: the Reinvention plan 'includes: Closing 4 of its 9 studios, Eliminating 177 positions, Consolidating products and development teams...'. Count matches the manifest's stated 177 exactly (delta 0). The only flag on the row is that we hold no announcement_date, so only the effective basis can be compared; it is the filing date itself. This is the tracker's ONLY PLAYSTUDIOS row at any date, so there is no second candidate to conflate it with; the old match_notes ('No PLAYSTUDIOS row in the tracker at any date') was true until the 2026-03 EDGAR sweep dispatched today, run after PR #54 taught the collector to read EX-99.1 when the primary document states no headcount.",
+   "tracker_event_ids": [
+    149954
+   ],
+   "evidence_pack_built_at": "2026-08-13T06:06:41Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "No PLAYSTUDIOS row in the tracker at any date.",
+    "rejected_candidate_event_ids": []
+   }
+  },
+  {
+   "entry_id": "sec-205-0000047217-25-000068@2026-08-13T06:07:34Z",
+   "reference_row_id": "sec-205-0000047217-25-000068",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-13T06:07:34Z",
+   "reason": "Tracker event 4953 (row 31078) IS this event, and it was never absent - it was unfetchable. We hold company_name 'HP', 4,000 jobs, effective 2025-11-26, one day after the 2025-11-25 filing and inside the match window. The 8-K's own sentence, re-read from EDGAR today, is 'Of the 650 million dollars, HP expects to incur approximately 400 million dollars in labor costs related to workforce reductions of approximately 4,000 - 6,000 employees by the end of fiscal 2028', and the manifest's stated count is that range's lower bound per extractor.py's range rule, so our 4,000 matches with delta 0. STATED PLAINLY, NOT GLOSSED: this row's source_type is 'news' (timesofindia.indiatimes.com), verification bronze, and its URL is not an EDGAR archive path, so accepting it is NOT a claim that our SEC collector captured this filing. The gold set asks whether the tracker holds the EVENT, and 23 of the 24 originally matched events were likewise held through collectors other than the 8-K path. Nothing else in window can be confused with it: HP Hood is blocked by the 'hp hood' prefix, HP Composites (event 35397, ERM, 100 jobs, 2025-09-05) is blocked by the newly correct 'hp composites' prefix and also remains in rejected_candidate_event_ids, and Hewlett Packard Enterprise does not match the 'hp' token prefix. The old match_notes, 'No HP Inc row after 2017', was false: both prior aliases are used verbatim as the API's company= substring filter and LIKE '%HP %' cannot match a name that IS 'HP' - measured live today, company='HP Inc' returns 3 rows and company='HP ' returns 18, neither holding it, while company='HP' returns 60 and does.",
+   "tracker_event_ids": [
+    4953
+   ],
+   "evidence_pack_built_at": "2026-08-13T06:06:41Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "CORRECTED 2026-08-12: the previous note, 'No HP Inc row after 2017', was false and was an artefact of these aliases, not a finding about the data. Each alias is used verbatim as the live API's company= SUBSTRING filter, and 'HP ' with a trailing space cannot match a company whose stored name IS 'HP': measured live, company='HP Inc' returns 3 rows and company='HP ' returns 18, neither containing the row, while company='HP' returns 60 and does. Alias 'HP' added; exclusion is excluded_name_prefixes' job and the prefix rule name_matches already accepted the bare 'HP' token for both existing aliases. 'hp composites' added there too, because 'hpc' never blocked 'HP Composites' (its tokens are ['hp', 'composites'], so the 'hpc' token prefix cannot match it) - it was held out only by rejected_candidate_event_ids, where it also remains. Verified live: the added alias yields exactly one fresh candidate, tracker event 4953.",
+    "rejected_candidate_event_ids": [
+     35397
+    ]
+   }
   }
  ]
 }

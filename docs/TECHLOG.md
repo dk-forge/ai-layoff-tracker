@@ -1,5 +1,75 @@
 # Tech Log
 
+## 2026-08-13 - the three that were reachable: 56 of 57, and one of them was never a coverage gap
+
+**Published: 56 of 57 = 98.2%** (Wilson 95% CI [90.7%, 99.7%], width 9.0%), up
+from 53 of 57 = 93.0%. Three events moved, for two different reasons, and the
+difference between those reasons matters more than the number.
+
+**HP was a MEASUREMENT defect, not a collection miss.** The tracker has held
+this event since November: event `4953`, company_name `HP`, 4,000 jobs,
+effective 2025-11-26. The manifest's aliases were `["HP Inc", "HP "]` and
+`recall_goldset.measure()` uses each alias verbatim as the live API's `company=`
+**substring** filter, so `LIKE '%HP %'` could not match a company whose stored
+name IS `HP`. Measured live today:
+
+| `company=` | rows returned | event 4953 among them |
+|---|---:|---|
+| `HP Inc` | 3 | no |
+| `HP ` | 18 | no |
+| `HP` | 60 | **yes** |
+
+Alias `HP` added. It yields **exactly one** fresh candidate (4953), verified
+against the live API: HP Hood is blocked by the `hp hood` prefix and Hewlett
+Packard Enterprise does not match the `hp` token prefix.
+
+**And `hpc` never blocked `HP Composites`.** The 2026-08-12 note said exclusion
+was `excluded_name_prefixes`' job. It was not doing that job: `name_matches`
+compares TOKEN prefixes, `HP Composites` tokenises to `['hp', 'composites']`,
+and the single token `hpc` cannot match it. It was held out only by
+`rejected_candidate_event_ids`, which suppresses a CANDIDATE but does not stop a
+row satisfying alias+window - so with HP matched, a different company's ERM row
+would have kept the event looking present if 4953 ever vanished, which is the
+exact false-positive the floor exists to catch. `hp composites` added to the
+prefixes; the rejected id stays too.
+
+**Codexis and PLAYSTUDIOS were real ingest, from the PR #54 fallback.** Two
+narrow one-month dispatches of the EDGAR history sweep, `2025-11-01..2025-11-30`
+and `2026-03-01..2026-03-31`, the first month-windows read since
+`fetch_document_window()` learned to reach EX-99.1. Both landed citing the gold
+accession's own exhibit, count delta 0, and quoting the sentence the collector
+could not previously see:
+
+* Codexis - event `149951`, 46 jobs, `d80118dex991.htm`: "In November 2025,
+  Codexis eliminated 46 positions, or approximately 24% of its workforce."
+* PLAYSTUDIOS - event `149954`, 177 jobs, `myps-03162026xex991.htm`:
+  "Eliminating 177 positions".
+
+**The HP row is `source_type: news`, and the reason on the record says so.**
+It is a Times of India report, verification `bronze`, and its URL is not an
+EDGAR path. Accepting it is NOT a claim that the SEC collector captured the
+filing; the gold set asks whether the tracker holds the EVENT, and 23 of the 24
+originally matched events were also held through other collectors. Glossing
+that would have made 98.2% read as an SEC-path figure it is not.
+
+**Cost.** $0.2254 total: $0.1362 for the 2025-11 window (400 calls, truncated at
+`BACKFILL_MAX_CALLS`, 3 rows stored) and $0.0892 for 2026-03 (265 calls,
+complete, 2 rows). Both inside the $0.150 named per-run ceiling. Month-to-date
+went $5.2918 -> ~$5.5161 of the $18.00 allowance, measured by the runs' own
+spend guard.
+
+**Floor: 49 -> 52.** Four events of headroom below the 56 confirmed, which is
+the rule at every value this floor has taken. The guard test requires it above
+`confirmed * 0.6` (33.6) and below 56.
+
+**Wabash still misses, and that is the check that it is still a measurement.**
+Its 270 is the sum of four stated components, `_count_in_text` refuses a derived
+count, and no 8-K row appeared for it in either sweep. The only in-window Wabash
+rows remain the two CA WARN notices (events 1466/1467, a different site) already
+in `rejected_candidate_event_ids`. It is now the ONLY miss in the set.
+
+---
+
 ## 2026-08-13 - the at-a-glance board comes back out of the collapse, and the 300px it "cost" was never on the first screen (2.20.20)
 
 The owner quoted the board back in full and asked why he was not seeing it. He
