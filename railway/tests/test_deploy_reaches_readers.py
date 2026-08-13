@@ -616,6 +616,26 @@ class TheCheckDoesNotFillTheCacheItIsMeasuring(unittest.TestCase):
         self.assertTrue(any("::warning::" in line and "not byte-identical" in line
                             for line in said), said)
 
+    def test_an_origin_with_no_stamp_degrades_loudly_to_the_version(self):
+        """A running build older than the stamp has nothing to compare a body
+        against. Degrade to the version-only wait and SAY that it is the check
+        which passed 2.20.21, rather than failing a deploy for it."""
+        said = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        real_gate = reader_freshness.ORIGIN_GATE_S
+        reader_freshness.ORIGIN_GATE_S = 0
+        reader_freshness.origin_build = lambda *a, **k: ("2.20.32", None)
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            "2.20.32", None, {})
+        try:
+            delay = reader_freshness.wait_for("2.20.32", expected_build="checkout-build",
+                                              timeout=60, interval=0, log=said.append)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+            reader_freshness.ORIGIN_GATE_S = real_gate
+        self.assertIsNotNone(delay)
+        self.assertTrue(any("::warning::" in line and "2.20.21" in line for line in said), said)
+
     def test_an_origin_that_never_reports_the_version_is_not_adopted(self):
         """Adoption is for a build difference, never for a deploy that did not
         land. A version that never arrives still fails, and the bare URL is

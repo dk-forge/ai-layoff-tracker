@@ -414,6 +414,17 @@ def wait_for(expected, expected_build=None, timeout=600, interval=15, log=print)
                     f"{expected}/{expected_build} before touching the reader's URL")
             except Exception as exc:              # noqa: BLE001
                 log(f"    /status unreachable ({exc}); retrying")
+            if time.monotonic() > gate_until and seen[0] == expected and not seen[1]:
+                # The running build predates the stamp, or could not compute one.
+                # There is nothing to compare a body against, so this degrades to
+                # the version-only wait it was before - loudly, because that is
+                # the weaker check this change exists to replace.
+                log(f"::warning::The origin is running {expected} but reports no build "
+                    f"stamp, so the reader's BODY cannot be checked, only its version. "
+                    f"That is the state that passed 2.20.21. Expected "
+                    f"{expected_build} from this checkout.")
+                expected_build = None
+                break
             if time.monotonic() > gate_until and seen[0] == expected and seen[1]:
                 log(f"::warning::The origin is running {expected} but reports build "
                     f"{seen[1]}, and this checkout computes {expected_build}. The plugin "
