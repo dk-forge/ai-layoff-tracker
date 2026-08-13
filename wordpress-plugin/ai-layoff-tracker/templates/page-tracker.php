@@ -318,19 +318,16 @@ $alt_hero_basis  = 'counted by filing date';
             && (string) ($alt_tl['company_name'] ?? '') === (string) ($alt_ml['company_name'] ?? '');
         // EVERY CELL LINK NAMES THE BASIS THE CELL WAS COUNTED ON, for the same
         // reason the report page's receipt links do (page-report.php, 2.20.11).
-        // The board's period queries send no date_basis, so the server counts
-        // them on its own default column, layoff_date, the EFFECTIVE date. That
-        // is deliberate and the footnote below says so. Since 2.20.4 the tracker
-        // this cell links INTO defaults to the filing basis, so a link naming
-        // only the period opened a view that recounted the same days on a
-        // different column and published a different number than the one the
-        // reader had just clicked. The link is a receipt or it is nothing.
+        // The board's period queries now send date_basis=notice, the page's own
+        // default, so a cell links into a view that recounts the period exactly
+        // the way the cell counted it. The link is a receipt or it is nothing.
         //
-        // Read off the board's own params rather than hardcoded, so a future
-        // board that does name a basis carries that one instead. The params
-        // themselves are NOT touched: they must stay byte-identical to P in
-        // layoffs.js (bootParamsMatch/takeBoot) or the inlined board is rejected
-        // and repainted with four live fetches.
+        // Read off the board's own params rather than hardcoded. That was
+        // written as a fallback when the board named no basis, and it is the
+        // reason this survived the basis moving underneath it without a single
+        // edit here: a value read is a value that stays true. The params must
+        // stay byte-identical to P in layoffs.js (bootParamsMatch/takeBoot) or
+        // the inlined board is rejected and repainted with six live fetches.
         //
         // No new bootstrap suppression: date_basis sits in $alt_boot_url_filters
         // above, but so do from/to AND years, so every href here already
@@ -371,7 +368,21 @@ $alt_hero_basis  = 'counted by filing date';
         $alt_board_html .= '<div class="alt-sb" role="table" aria-label="Verified layoffs by period">' . $alt_sb_head;
         $alt_board_html .= $alt_sb_numrow('alt-sb-r-workers', 'Workers', 'jobs');
         $alt_board_html .= $alt_sb_numrow('alt-sb-r-events', 'Verified layoffs', 'entries');
+        // THE TWO AI ROWS, AND WHY THE SECOND LABEL CARRIES A CLAUSE. The
+        // strict measure is the tightest of the four AI figures we hold, and
+        // read alone it invites "is that really all?". The broad lens is the
+        // honest wider answer and was invisible on this board. Two AI rows
+        // adjacent is also exactly where a reader adds them, and CLAUDE.md
+        // forbids blending or summing the AI measures, so the second label
+        // states the containment on the row itself rather than leaving it
+        // entirely to the footnote. Checked live before it was written: on
+        // 2026-08-13 an ai=1 slice reports ai_broad_jobs equal to its own jobs
+        // (42,253) and an ai_broad=1 slice reports ai_jobs 42,253 inside
+        // 53,253, so strict is a genuine subset. The ANNOUNCED tier is
+        // deliberately not a third AI row: announced-versus-verified is what
+        // the Workers and Verified layoffs rows already carry.
         $alt_board_html .= $alt_sb_numrow('alt-sb-r-ai', 'Explicitly AI-attributed', 'ai_jobs');
+        $alt_board_html .= $alt_sb_numrow('alt-sb-r-aibroad', 'AI-linked, broad lens (includes the above)', 'ai_broad_jobs');
         // Largest event: links to the entry's permalink (the citable unit),
         // falling back to the company click-filter when no permalink exists.
         $alt_lmax = 0; $alt_lvals = array();
@@ -415,16 +426,17 @@ $alt_hero_basis  = 'counted by filing date';
         // it explains. The "less ▪▪▪ more" heat legend is gone: it rendered as
         // stray words beside the columns and it was never a control.
         $alt_board_html .= '<ul class="alt-sb-foot">'
-            // The server render is the DEFAULT view, and the default basis is
-            // now the filing date, so this is the "two different questions"
-            // wording. layoffs.js swaps it for the matching-basis wording the
-            // moment a reader toggles to the effective basis. See the comment
-            // on the same footnote in updateNarrative().
+            // The server render is the DEFAULT view and the board now counts
+            // on the page's default basis, so this is the "they agree"
+            // wording. layoffs.js swaps it for the "different questions"
+            // wording the moment a reader toggles the page to the effective
+            // basis, which moves the headline and not the board. See the
+            // comment on boardBasisNote() in layoffs.js.
             // The class is how renderBasisCopy() finds this line again: a
             // reader who switches the basis after load gets this one sentence
             // rewritten in place, with no board refetch. See there.
-            . '<li class="alt-sb-foot-basis">Every row counts verified entries on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.</li>'
-            . '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
+            . '<li class="alt-sb-foot-basis">Every row counts verified entries by filing date, the same basis as the headline figure above.</li>'
+            . '<li>Explicitly AI-attributed counts cuts where the employer named AI, in words we hold. The broad lens contains every one of those cuts and adds looser links, so the smaller figure sits inside the larger one and the two are never added together.</li>'
             . '<li>Columns overlap, so they do not add up: this week sits inside this month, and a completed month can sit inside a completed quarter. One entry can lead more than one column.</li>'
             // "and counted the same way" is not decoration: the tap now carries
             // the board's basis into the page, so the filtered view reproduces

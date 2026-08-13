@@ -862,13 +862,19 @@
     /*
       THE SIGNAL BOARD'S BASIS LINE, in one place because two places drift.
 
-      The board is a THIRD total and it says so. Its columns are fixed periods,
-      it follows the region tabs only, and it counts on the EFFECTIVE date and
-      always has. That was harmless while the headline did too and is not
-      harmless now that the headline defaults to the filing basis: two correct
-      totals sitting inches apart on different bases, with neither saying so.
-      So this line names the basis and, when the headline is on the other one,
-      says in plain words that the two answer different questions.
+      The board's columns are fixed periods and it follows the region tabs
+      only. It used to also count on the EFFECTIVE date while the headline
+      counted by filing date, which is two correct totals inches apart
+      answering two questions, and the footnote saying so was not enough: the
+      owner of the page could not reconcile them. The board now counts by
+      FILING date, the page default, so by default this line says they agree.
+
+      The inversion still matters. A reader who toggles the page to the
+      effective basis moves the headline and not the board (the six period
+      queries are pinned to the page default so a toggle costs no refetch), and
+      the line then says in plain words that the two answer different
+      questions. The confusing case used to be the default; now it is the one a
+      reader chose.
 
       It is a function rather than a literal inside updateNarrative() because a
       basis change has to rewrite it and must not have to refetch four periods
@@ -879,8 +885,8 @@
     */
     function boardBasisNote() {
         return DATE_BASIS === 'effective'
-            ? 'Every row counts verified entries on the day each cut takes effect, the same basis as the headline figure above.'
-            : 'Every row counts verified entries on the day each cut takes effect. The headline figure above counts by filing date, so the two answer different questions and are not meant to match.';
+            ? 'Every row counts verified entries by filing date, the day the cut was announced or filed. The headline figure above is set to count by effective date, so the two answer different questions and are not meant to match.'
+            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.';
     }
 
     // One writer for the basis state: the closure variable, the segmented
@@ -5145,11 +5151,14 @@
     // becomes six fetches).
     //
     // The two completed periods are whole periods rather than to-date ones,
-    // and they are the only columns here that can be: rows are dated by
-    // EFFECTIVE date and WARN notices are filed weeks ahead, so every window
-    // touching the future would carry cuts that have not happened. A completed
-    // month and a completed quarter end before today, so they cannot. The long
-    // form of that reasoning is on alt_signal_board_periods().
+    // and they are the only columns here that can be: a window touching the
+    // future carries cuts that have not happened. The filing basis this board
+    // now counts on halves that future and does not remove it, because a row
+    // with no evidenced announcement date is dated by its effective date and
+    // WARN notices are filed weeks ahead. So every other column stays cut at
+    // today. A completed month and a completed quarter end before today, so
+    // they cannot carry one either way. The long form of that reasoning, with
+    // the measured figures, is on alt_signal_board_periods().
     //
     // new Date(y, m - 1, 1) and new Date(y, m, 0) normalise across the year
     // boundary on their own, so January needs no branch and none can be
@@ -5216,13 +5225,21 @@
         // server-rendered board warmed (alt_signal_board_periods in db.php).
         // Byte-identical to alt_signal_board_periods() in db.php, key order
         // included: this IS the board's column order.
+        //
+        // date_basis: 'notice' is the FILING basis, the page's own default
+        // since 2.20.4. The board used to send no basis at all and the server
+        // counted it on layoff_date, so the headline and the board answered
+        // two questions on one screen. It is pinned to the page DEFAULT rather
+        // than wired to DATE_BASIS: the six period queries would then refetch
+        // on every toggle, and the footnote below already inverts to say so
+        // for the reader who deliberately switches.
         var P = {
-            today:    Object.assign({ from: W.today[0], to: W.today[1], stage: 'verified', include: 'leaders' }, base),
-            week:     Object.assign({ from: W.week[0], to: W.week[1], stage: 'verified', include: 'leaders' }, base),
-            month:    Object.assign({ from: W.month[0], to: W.month[1], stage: 'verified', include: 'leaders' }, base),
-            pmonth:   Object.assign({ from: W.pmonth[0], to: W.pmonth[1], stage: 'verified', include: 'leaders' }, base),
-            pquarter: Object.assign({ from: W.pquarter[0], to: W.pquarter[1], stage: 'verified', include: 'leaders' }, base),
-            ytd:      Object.assign({ from: W.ytd[0], to: W.ytd[1], stage: 'verified', include: 'leaders' }, base)
+            today:    Object.assign({ from: W.today[0], to: W.today[1], stage: 'verified', date_basis: 'notice', include: 'leaders' }, base),
+            week:     Object.assign({ from: W.week[0], to: W.week[1], stage: 'verified', date_basis: 'notice', include: 'leaders' }, base),
+            month:    Object.assign({ from: W.month[0], to: W.month[1], stage: 'verified', date_basis: 'notice', include: 'leaders' }, base),
+            pmonth:   Object.assign({ from: W.pmonth[0], to: W.pmonth[1], stage: 'verified', date_basis: 'notice', include: 'leaders' }, base),
+            pquarter: Object.assign({ from: W.pquarter[0], to: W.pquarter[1], stage: 'verified', date_basis: 'notice', include: 'leaders' }, base),
+            ytd:      Object.assign({ from: W.ytd[0], to: W.ytd[1], stage: 'verified', date_basis: 'notice', include: 'leaders' }, base)
         };
         var KEYS = ['today', 'week', 'month', 'pmonth', 'pquarter', 'ytd'];
         // Server-inlined board: consumed at most once, and only when every
@@ -5251,17 +5268,15 @@
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var b = function (v) { return '<b>' + v + '</b>'; };
             var cols = boardColumnLabels(W);
-            // EVERY CELL LINK NAMES THE BASIS THE CELL WAS COUNTED ON. P sends
-            // no date_basis, so the server counts these four periods on its own
-            // default column, layoff_date, the effective date. The page they
-            // link into defaults to the filing basis (DATE_BASIS), so a link
-            // naming only the period recounted the same days on a different
-            // column and showed a different number than the one just tapped.
-            // Byte-identical to $alt_sb_meta in page-tracker.php, including the
-            // fallback: read the basis off the period's own params so a future
-            // board that names one carries that instead. P itself is NOT
-            // touched - it must stay byte-identical to alt_signal_board_periods()
-            // or bootParamsMatch rejects the inlined board.
+            // EVERY CELL LINK NAMES THE BASIS THE CELL WAS COUNTED ON. P now
+            // sends date_basis: 'notice', so this reads 'notice' off the
+            // period and the link reproduces the number that was tapped
+            // instead of recounting it. The fallback below stays: it is what
+            // made this survive the basis moving under it, which is the whole
+            // argument for reading a value rather than asserting one.
+            // Byte-identical to $alt_sb_meta in page-tracker.php. P itself
+            // must stay byte-identical to alt_signal_board_periods() or
+            // bootParamsMatch rejects the inlined board.
             var meta = {};
             KEYS.forEach(function (k) {
                 var p = P[k];
@@ -5335,7 +5350,7 @@
             */
             var foot = '<ul class="alt-sb-foot">'
                 + '<li class="alt-sb-foot-basis">' + boardBasisNote() + '</li>'
-                + '<li>The AI row counts cuts where the employer named AI, in words we hold.</li>'
+                + '<li>Explicitly AI-attributed counts cuts where the employer named AI, in words we hold. The broad lens contains every one of those cuts and adds looser links, so the smaller figure sits inside the larger one and the two are never added together.</li>'
                 + '<li>Columns overlap, so they do not add up: this week sits inside this month, and a completed month can sit inside a completed quarter. One entry can lead more than one column.</li>'
                 + '<li>Tap any number to filter the page to that period, counted the same way this board counts it. This board follows the region tabs above; the date and dropdown filters below do not change it.</li>'
                 + '</ul>';
@@ -5374,7 +5389,23 @@
                 '<div class="alt-sb" role="table" aria-label="Verified layoffs by period">' + head +
                 numRow('alt-sb-r-workers', 'Workers', 'jobs') +
                 numRow('alt-sb-r-events', 'Verified layoffs', 'entries') +
+                // THE TWO AI ROWS, AND WHY THE SECOND LABEL CARRIES A CLAUSE.
+                // The strict measure is the tightest of the four AI figures we
+                // hold, and read alone it invites "is that really all?". The
+                // broad lens is the honest wider answer. Two AI rows sitting
+                // adjacent is also exactly where a reader adds them, and
+                // CLAUDE.md forbids blending or summing the AI measures, so
+                // the second label states the containment on the row itself
+                // rather than leaving it entirely to the footnote below.
+                // Verified live before it was written: on 2026-08-13 filtering
+                // to ai=1 returns ai_broad_jobs equal to its own jobs (42,253)
+                // and filtering to ai_broad=1 returns ai_jobs 42,253 inside
+                // 53,253, so strict really is a subset and not an overlap.
+                // The ANNOUNCED tier is deliberately not a third AI row: the
+                // announced/verified split is what Workers and Verified
+                // layoffs already carry, and three AI rows is unreadable.
                 numRow('alt-sb-r-ai', 'Explicitly AI-attributed', 'ai_jobs') +
+                numRow('alt-sb-r-aibroad', 'AI-linked, broad lens (includes the above)', 'ai_broad_jobs') +
                 lRow + '</div>' + foot;
             var copyBtn = el.querySelector('.alt-narrative-copy');
             if (copyBtn) copyBtn.addEventListener('click', function () {

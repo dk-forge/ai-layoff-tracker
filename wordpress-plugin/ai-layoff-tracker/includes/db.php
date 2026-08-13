@@ -5795,6 +5795,29 @@ function alt_tracker_bootstrap_payload() {
  *
  * $now is injectable so the windows can be RUN against a chosen clock in a
  * test (year rollover, quarter rollover) instead of being reasoned about.
+ *
+ * ONE PAGE, ONE BASIS. Every period below names date_basis=notice, the FILING
+ * basis, which is the page's own default since 2.20.4. It used to name none,
+ * so the server counted these columns on its default column, layoff_date, the
+ * EFFECTIVE date. Both totals were correct and the footnote disclosed the
+ * split, and the person who commissioned the page still could not reconcile
+ * the headline with the board sitting under it. A footnote is not enough when
+ * two numbers on one screen answer two questions and only one of them is
+ * labelled.
+ *
+ * THE HAZARD DOES NOT GO AWAY WITH THE BASIS, so the "cut at today" treatment
+ * below STAYS. `notice` resolves to COALESCE(announcement_date, layoff_date),
+ * and a row with no evidenced announcement date falls back to its effective
+ * date, which for a WARN notice is filed weeks ahead. Measured live on
+ * 2026-08-13, verified rows dated AFTER today: 37,902 jobs on the effective
+ * basis, 21,712 still there on the filing basis, and only 8 of those carry a
+ * genuine future announcement_date. So the filing basis halves the future a
+ * full-year window would publish and does not remove it. A year-to-date column
+ * ending on 31 December would still be a year-to-date column carrying cuts
+ * that have not happened.
+ *
+ * P in layoffs.js carries the identical key, or bootParamsMatch/takeBoot
+ * rejects the server-inlined board and the first paint becomes six fetches.
  */
 function alt_signal_board_periods($now = null) {
     if ($now === null) $now = (int) current_time('timestamp');
@@ -5811,16 +5834,19 @@ function alt_signal_board_periods($now = null) {
     $pq_from = mktime(0, 0, 0, $q * 3 - 2, 1, $y);
     $pq_to   = mktime(0, 0, 0, $q * 3 + 1, 0, $y);
     return array(
-        'today' => array('from' => $iso($now), 'to' => $iso($now), 'stage' => 'verified'),
-        'week'  => array('from' => $iso($now - 6 * 86400), 'to' => $iso($now), 'stage' => 'verified'),
-        'month' => array('from' => date('Y-m-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
+        'today' => array('from' => $iso($now), 'to' => $iso($now), 'stage' => 'verified', 'date_basis' => 'notice'),
+        'week'  => array('from' => $iso($now - 6 * 86400), 'to' => $iso($now), 'stage' => 'verified', 'date_basis' => 'notice'),
+        'month' => array('from' => date('Y-m-01', $now), 'to' => $iso($now), 'stage' => 'verified', 'date_basis' => 'notice'),
         /*
           THE TWO COMPLETED PERIODS, AND WHY THEY ARE SAFE TO SPAN IN FULL.
 
           Every other column here is cut at today, and the YTD note below says
-          why: rows are dated by EFFECTIVE date, WARN notices are filed weeks
-          ahead, so a window that runs past today carries cuts that have not
-          happened (33,939 of them in the uncut 2026 year on 2026-08-04).
+          why: a window that runs past today carries cuts that have not
+          happened. On the effective basis that was 33,939 jobs in the uncut
+          2026 year on 2026-08-04; on the filing basis this board now uses it
+          is smaller and it is still there (21,712 on 2026-08-13), because a
+          row with no evidenced announcement date is dated by its effective
+          date and WARN notices are filed weeks ahead.
 
           A COMPLETED month and a COMPLETED quarter do not have that problem.
           Both end before today, so there is no future inside them to carry,
@@ -5833,18 +5859,22 @@ function alt_signal_board_periods($now = null) {
           March and the completed quarter is Q1, which contains it) and the
           board's footnote already says the columns overlap and do not add up.
         */
-        'pmonth'   => array('from' => $iso($pm_from), 'to' => $iso($pm_to), 'stage' => 'verified'),
-        'pquarter' => array('from' => $iso($pq_from), 'to' => $iso($pq_to), 'stage' => 'verified'),
+        'pmonth'   => array('from' => $iso($pm_from), 'to' => $iso($pm_to), 'stage' => 'verified', 'date_basis' => 'notice'),
+        'pquarter' => array('from' => $iso($pq_from), 'to' => $iso($pq_to), 'stage' => 'verified', 'date_basis' => 'notice'),
         /*
           A REAL YEAR-TO-DATE. This column is labelled "<year> YTD" and used to
-          be scoped `years=<year>`, the whole calendar year. Because rows are
-          dated by EFFECTIVE date and WARN notices are filed weeks ahead, that
-          window carried cuts that have not happened: 33,939 of them on
-          2026-08-04. Ending it at today makes the label true. The front end's
-          P.ytd in layoffs.js must stay byte-identical to this or the
-          bootstrap is rejected and the board silently refetches.
+          be scoped `years=<year>`, the whole calendar year. That window
+          carried cuts that have not happened: 33,939 of them on 2026-08-04.
+          Ending it at today makes the label true, and moving the board to the
+          filing basis did NOT make that cut redundant. `notice` is
+          COALESCE(announcement_date, layoff_date), so a WARN row with no
+          evidenced announcement date is still dated by an effective date
+          weeks ahead: 21,712 verified jobs sat after today on 2026-08-13,
+          against 37,902 on the effective basis. Half the future, not none.
+          The front end's P.ytd in layoffs.js must stay byte-identical to this
+          or the bootstrap is rejected and the board silently refetches.
         */
-        'ytd'   => array('from' => date('Y-01-01', $now), 'to' => $iso($now), 'stage' => 'verified'),
+        'ytd'   => array('from' => date('Y-01-01', $now), 'to' => $iso($now), 'stage' => 'verified', 'date_basis' => 'notice'),
     );
 }
 

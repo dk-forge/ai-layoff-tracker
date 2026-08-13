@@ -3358,6 +3358,12 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 .alt-sb-r-workers > .alt-sb-label { border-left-color: var(--alt-navy); }
 .alt-sb-r-events  > .alt-sb-label { border-left-color: var(--alt-blue); }
 .alt-sb-r-ai      > .alt-sb-label { border-left-color: var(--alt-red); }
+/* The broad lens sits directly under the strict one and CONTAINS it, so its
+   tick is the warm neighbour of the strict row's rather than a new hue: the
+   two read as one measure at two widths, which is what stops a reader adding
+   them. The label says the containment in words; colour is never the only
+   channel here, exactly as the heat scale is not. */
+.alt-sb-r-aibroad > .alt-sb-label { border-left-color: var(--alt-gold); }
 .alt-sb-r-largest > .alt-sb-label { border-left-color: var(--alt-ochre); }
 .alt-sb-cell {
     display: flex; flex-direction: column; align-items: flex-end; justify-content: center;

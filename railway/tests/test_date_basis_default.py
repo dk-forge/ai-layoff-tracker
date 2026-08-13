@@ -344,23 +344,50 @@ class EveryTotalSaysWhichQuestionItAnswers(unittest.TestCase):
                       "the cite line does not say that its figure is the part that "
                       "has already taken effect: %s" % line.strip())
 
-    def test_the_board_says_it_answers_a_different_question(self):
-        """The at-a-glance board counts on the EFFECTIVE date and follows the
-        region tabs only. That was harmless while the headline did too. Under
-        the filed default it is a second total on a second basis inches from
-        the first, so the footnote names the difference in words."""
+    def test_the_board_no_longer_answers_a_different_question(self):
+        """THE FOOTNOTE WAS NOT ENOUGH, so the number moved instead.
+
+        The at-a-glance board counted on the EFFECTIVE date and followed the
+        region tabs only. That was harmless while the headline did too, and
+        under the filed default it became a second total on a second basis
+        inches from the first. The answer used to be a footnote naming the
+        difference in words. The person who commissioned the page read the
+        footnote and still could not reconcile the two figures, which is the
+        evidence that disclosure was the wrong instrument: the board now counts
+        on the page's own basis and the server-rendered line says they agree.
+
+        The "different questions" wording is not gone. It moved to the case it
+        is actually true in, the reader who toggles the page to the effective
+        basis, and layoffs.js paints it there (see the test below)."""
         foot = TPL_NC[TPL_NC.index("alt-sb-foot"):]
         foot = foot[:foot.index("</ul>")]
-        self.assertIn("counts by filing date", foot,
-                      "the board footnote does not name the headline's basis")
-        self.assertIn("not meant to match", foot,
-                      "the board footnote does not tell the reader the two totals "
-                      "answer different questions")
+        self.assertIn(
+            "by filing date", foot,
+            "the board footnote does not name the basis it counts on")
+        self.assertIn(
+            "the same basis as the headline figure above", foot,
+            "the served board footnote does not tell the reader that the "
+            "board and the headline now count the same way, which is the "
+            "whole point of moving it")
+        self.assertNotIn(
+            "not meant to match", foot,
+            "the served board still tells a reader the two totals answer "
+            "different questions, which is now false: both count by filing "
+            "date on the default view")
 
     def test_the_board_footnote_follows_the_toggle(self):
-        """On the effective basis the board and the headline agree, so the
-        "different questions" wording would then be false. The JS carries both
-        and picks by DATE_BASIS.
+        """The inversion, after the board moved onto the page's basis.
+
+        It used to be: the board is on the effective basis, so a reader who
+        toggles the page to effective makes the two agree. It is now the other
+        way round. The board is pinned to the page DEFAULT (filing), so the
+        default view agrees and a reader who toggles to the effective basis
+        moves the headline without moving the board. The confusing case used to
+        be the one nobody chose; it is now the one somebody did.
+
+        Pinned rather than wired to DATE_BASIS on purpose: following the toggle
+        would refetch six period queries on every switch, and this line is the
+        only thing about the board that a basis change has to touch.
 
         The two sentences moved out of updateNarrative() into boardBasisNote()
         in 2.20.12, which is what let renderBasisCopy() rewrite the line without
@@ -371,9 +398,30 @@ class EveryTotalSaysWhichQuestionItAnswers(unittest.TestCase):
         note = strip_js_comments(jsrun.extract("boardBasisNote"))
         self.assertIn("DATE_BASIS === 'effective'", note,
                       "the board footnote does not vary with the active basis")
-        self.assertIn("the same basis as the headline figure above", note)
-        self.assertIn("counts by filing date", note,
-                      "the board footnote has lost the wording for the filed basis")
+        # WHICH branch carries which sentence, not merely that both strings are
+        # somewhere in the helper. Before the board moved onto the page's
+        # basis the pairing was the other way round, and a helper holding both
+        # sentences passes a mere "contains" check under either wiring: that is
+        # a test that cannot see the change it is here to hold.
+        eff, _, dflt = note.partition(":")
+        self.assertIn(
+            "not meant to match", eff,
+            "the EFFECTIVE branch of the board footnote does not say the two "
+            "totals answer different questions. That is now the only case "
+            "where they do: the reader moved the headline off the basis the "
+            "board counts on.")
+        self.assertIn(
+            "the same basis as the headline figure above", dflt,
+            "the DEFAULT branch of the board footnote does not say the board "
+            "and the headline agree. They do now, and saying otherwise on the "
+            "served page is the defect inverted rather than fixed.")
+        self.assertNotIn(
+            "the same basis as the headline figure above", eff,
+            "the board footnote claims it matches the headline on the basis "
+            "the reader toggled AWAY from it")
+        self.assertIn("by filing date", note,
+                      "neither branch of the board footnote names the basis "
+                      "the board actually counts on")
         nar = strip_js_comments(jsrun.extract("updateNarrative"))
         self.assertIn("boardBasisNote()", nar,
                       "the board no longer paints its basis line from the one helper")

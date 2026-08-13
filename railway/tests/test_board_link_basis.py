@@ -292,20 +292,40 @@ class TheServerRenderedHrefNamesItsBasis(unittest.TestCase):
 
 class TheParamsThemselvesWereNotTouched(unittest.TestCase):
 
-    def test_the_board_params_do_not_name_a_basis(self):
-        """REGRESSION BAR (green before this change too). The obvious wrong fix
-        is to add date_basis to the period params. It would work, and it would
-        also make P in layoffs.js differ from alt_signal_board_periods(), which
-        makes bootParamsMatch reject the server-inlined board and turns every
-        first paint into four extra REST calls. The basis belongs on the link."""
+    def test_the_board_params_name_the_basis_on_BOTH_sides_or_neither(self):
+        """The board now counts on the page's own basis, so date_basis IS in
+        the period params. The thing that was ever actually at stake is the
+        one asserted here: the two renderers agree.
+
+        This test used to forbid date_basis in the params outright, on the
+        reasoning that adding it would make P differ from
+        alt_signal_board_periods() and make bootParamsMatch reject the inlined
+        board. That reasoning was about DIVERGENCE, not about the key: adding
+        it to one side costs six REST calls per paint, adding it to both costs
+        nothing. So the bar is symmetry, held on both halves and on the value.
+        """
         periods = _brace_block(DB, "function alt_signal_board_periods(")
-        self.assertNotIn("date_basis", periods,
-                         "the board's period params now name a basis; that breaks "
-                         "byte-identity with P in layoffs.js (takeBoot)")
         p_block = _brace_block(JS_NC, "var P = {", "{")
-        self.assertNotIn("date_basis", p_block,
-                         "P now names a basis; that breaks byte-identity with "
-                         "alt_signal_board_periods() (takeBoot)")
+        php_n = len(re.findall(r"'date_basis'\s*=>\s*'notice'", periods))
+        js_n = len(re.findall(r"date_basis:\s*'notice'", p_block))
+        self.assertEqual(
+            php_n, 6,
+            "alt_signal_board_periods() names date_basis=notice on %d of its "
+            "six columns. A board counting two ways is worse than a board "
+            "counting one way that the footnote names." % php_n)
+        self.assertEqual(
+            js_n, php_n,
+            "P in layoffs.js names the basis on %d columns and "
+            "alt_signal_board_periods() on %d. bootParamsMatch compares the "
+            "key set and every value, so the inlined board is rejected and "
+            "every first paint becomes six live REST calls." % (js_n, php_n))
+        for block, where in ((periods, "alt_signal_board_periods()"),
+                             (p_block, "P in layoffs.js")):
+            found = set(re.findall(r"date_basis'?\s*(?:=>|:)\s*'(\w+)'", block))
+            self.assertEqual(
+                found, {"notice"},
+                "%s counts its columns on %r. Every column, one basis, and it "
+                "is the page's." % (where, sorted(found)))
 
     def test_the_cell_links_add_no_new_bootstrap_suppression(self):
         """REGRESSION BAR (green before this change too), and the reason it is

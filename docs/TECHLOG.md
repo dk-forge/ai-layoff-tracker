@@ -1,5 +1,164 @@
 # Tech Log
 
+## 2026-08-13 - one page, one basis, and the broad AI lens is visible (2.20.33)
+
+Two changes to the at-a-glance board, both approved by the owner. They are one
+entry because they were provoked by the same thing: the owner read the board
+and could not reconcile it with the page it sits on.
+
+### The board now counts on the page's own basis
+
+The page has defaulted to the FILING basis (`date_basis=notice`) since 2.20.4.
+The board's six columns counted by EFFECTIVE date. Both totals were correct,
+the board's own footnote disclosed the split in plain words, and the person who
+commissioned the page still read the headline and the board as contradicting
+each other. **A footnote is not enough when two numbers on one screen answer
+two questions and only one of them is labelled**, so the number moved rather
+than the disclosure. `alt_signal_board_periods()` and `P` in layoffs.js both
+name `date_basis => 'notice'` on all six columns.
+
+**Both halves or neither.** Adding the key to one renderer makes
+`bootParamsMatch` reject the server-inlined board and turns every first paint
+into six live REST calls. The old test forbade `date_basis` in the params
+outright; the reasoning it recorded was about DIVERGENCE, not about the key, so
+the bar is now symmetry, asserted on both blocks and on the value.
+
+**Nothing had to change in the cell links, and that is the point.** The href and
+`data-*` builders read the basis OFF the period's own params with an
+`'effective'` fallback, written that way in 2.20.11 as a hypothetical. The basis
+moved underneath them and every link stayed a receipt without an edit.
+
+**THE PRE-DATED WARN HAZARD SURVIVES THE MOVE, so the "cut at today" treatment
+STAYS.** This was the question that decided whether the move could happen at
+all. The hazard was recorded as an effective-date one (rows dated by effective
+date, WARN notices filed weeks ahead, 33,939 future cuts in the uncut 2026 year
+on 2026-08-04), and `notice` is `COALESCE(announcement_date, layoff_date)`, so
+the tempting reading is that a filing-basis board cannot be ahead of itself and
+the cut is now redundant. It is not. A row with no evidenced announcement date
+falls back to its effective date. Measured live on 2026-08-13, verified rows
+dated after today:
+
+| basis | jobs | entries |
+|---|---:|---:|
+| effective | 37,902 | 414 |
+| notice (the board's new basis) | 21,712 | 189 |
+| announcement (strict) | 8 | 1 |
+
+Half the future, not none, and the third row shows why: almost all of what
+remains is the COALESCE fallback rather than genuine future announcements.
+Uncutting any to-date column would publish it. The two completed periods stay
+whole for the same reason as before, unchanged by the basis: they end before
+today and cannot carry a future either way.
+
+**What moved, every cell, world scope, 2026-08-13.** Today is unchanged; July
+2026 is the big mover, and the completed quarter goes UP.
+
+| row | basis | Today | This week | Aug 2026 | July 2026 | Q2 2026 | 2026 YTD |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Workers | effective | 1,324 | 11,265 | 43,628 | 82,254 | 174,891 | 486,327 |
+| Workers | **notice** | 1,324 | 10,328 | 41,996 | **49,196** | **177,993** | 468,747 |
+| Verified layoffs | effective | 6 | 58 | 134 | 355 | 1,292 | 2,717 |
+| Verified layoffs | **notice** | 6 | 49 | 115 | 287 | 1,179 | 2,698 |
+| Explicitly AI-attributed | either | 0 | 0 | 0 | 5,153 | 23,550 | 42,253 |
+| AI-linked, broad | either | 0 | 0 | 0 | 5,153 | 23,550 | 53,253 |
+
+Both AI rows are identical on the two bases at every window, which is worth
+recording: the AI-attributed rows we hold are dated the same way either way.
+One largest-entry pick changes with the basis (July 2026 goes from Aeternum
+Healthcare at 20,000 to Los Angeles Unified at 6,000), which is correct and is
+the visible face of the 33,058-job swing in that column.
+
+**The footnote inverted rather than disappeared.** `boardBasisNote()` still
+carries two sentences and picks by `DATE_BASIS`. The pairing is reversed: the
+default view now says the board and the headline count the same way, and the
+"different questions, not meant to match" wording is kept for the reader who
+toggles the page onto the effective basis, which moves the headline and not the
+board. The board is pinned to the page DEFAULT rather than wired to the toggle,
+because following it would refetch six period queries on every switch. The
+confusing case used to be the one nobody chose; it is now the one somebody did.
+`test_date_basis_default.py` used to check only that both sentences were
+somewhere in the helper, which passes under either wiring: it now asserts WHICH
+branch carries which.
+
+### The broad AI lens is a row
+
+The strict figure read 42,253 for 2026 and it is the tightest of the four AI
+measures we hold. The owner read it and asked whether that was really all. The
+broad measure was in the API, on the methodology page, and nowhere a reader of
+the board looks.
+
+**The containment was CHECKED before the sentence claiming it was written.**
+Against the live API on 2026-08-13, not against the SQL: an `ai=1` slice reports
+`ai_broad_jobs` equal to its own `jobs` (42,253), and an `ai_broad=1` slice
+reports `ai_jobs` 42,253 inside `jobs` 53,253. Strict is a genuine subset, not
+an overlap. `db.php` defines the broad measure as the strict predicate ORed with
+`ai_causation='ai_linked'`, so it holds by construction, and a test now pins
+that definition as the thing the published sentence depends on.
+
+**Labels, because two adjacent AI rows is where a reader adds them.** CLAUDE.md
+requires the AI measures to carry distinguishing labels and never to be summed
+or blended. Distinguishing is not sufficient here: "Explicitly AI-attributed"
+and "AI-linked, broad" tell a reader the measures differ and nothing about how
+they relate, and a reader who cannot tell reaches for the plus sign. The broad
+row is labelled **"AI-linked, broad lens (includes the above)"**, and the
+footnote's AI clause says it in a sentence: the broad lens contains every one of
+those cuts and adds looser links, so the smaller figure sits inside the larger
+one and the two are never added together.
+
+**The board reads 53,253, not the 124,793 the request quoted.** That figure is
+the ALL-STAGES broad total (verified 53,253 + announced 71,540). Every row on
+this board is `stage=verified`, deliberately, so that the period totals and each
+period's largest-entry pick share one basis. Publishing the all-stages figure in
+a verified board would be the 2.20.4 defect in a new place.
+
+**The announced tier was NOT added as a third AI row**, though it was asked
+about. Announced versus verified is the distinction the Workers and Verified
+layoffs rows already carry, and three AI rows on one card is where the board
+stops being readable. A test forbids it rather than a comment discouraging it.
+
+**The fifth row's cost, measured at both widths** on the rendered board rather
+than estimated:
+
+| | 375px before | 375px after | 1280px before | 1280px after |
+|---|---:|---:|---:|---:|
+| board height | 412px | 493px | 239px | 299px |
+| usable width share | 84.8% (318px) | 84.8% (318px) | 86.8% (1111px) | 86.8% (1111px) |
+| scrolls in its own box | yes | yes | no | no |
+| page bleeds | no | no | no | no |
+
++81px on a phone, +60px on a desktop, and nothing about the horizontal answer
+changed: six columns still only fit at 375px as the board's own scroll
+container, and the page still never moves. The longest label on the board is the
+new one, and at 375px the label becomes a full-width row of its own, which is
+exactly where a clause gets clipped away and the containment silently stops
+being stated: the test reads it back as `innerText` off the rendered rowheader
+at both widths.
+
+### Tests
+
+RED before, on the pre-change tree with only the test files applied: 9 failures
+and 1 error. Verbatim:
+
+    AssertionError: Lists differ: ['from', 'stage', 'to'] != ['date_basis',
+        'from', 'stage', 'to'] : the today column's params are {...}. Every
+        column carries exactly from/to/stage/date_basis, or the columns stop
+        being one question asked over six windows.
+    AssertionError: 0 != 6 : alt_signal_board_periods() names date_basis=notice
+        on 0 of its six columns. A board counting two ways is worse than a
+        board counting one way that the footnote names.
+    AssertionError: 'alt-sb-r-aibroad' not found in {'alt-sb-r-workers':
+        'Workers', 'alt-sb-r-events': 'Verified layoffs', 'alt-sb-r-ai':
+        'Explicitly AI-attributed'}
+    AssertionError: 'contains every one of those cuts' not found in ... :
+        page-tracker.php does not tell a reader that the broad lens CONTAINS
+        the strict measure, so the two AI rows read as two independent figures
+    AssertionError: 'the same basis as the headline figure above' not found in
+        ... : the served board footnote does not tell the reader that the board
+        and the headline now count the same way, which is the whole point of
+        moving it
+
+Green after: 95 tests across `test_signal_board_periods.py`,
+`test_board_link_basis.py` and `test_date_basis_default.py`.
 ## 2026-08-13 - the press kit is a button, not the last link on a long page (2.20.32)
 
 The owner, twice in one day: "Can we have a button: Are you press click here, or

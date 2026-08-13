@@ -245,11 +245,23 @@ class TheTwoCompletedPeriods(unittest.TestCase):
     def test_they_are_whole_periods_and_every_other_column_is_still_cut(self):
         """The reason these two are worth adding, stated as an assertion.
 
-        Rows are dated by EFFECTIVE date and WARN notices are filed weeks
-        ahead, so a window running past today carries cuts that have not
-        happened. Every to-date column is therefore cut at today. A COMPLETED
-        month and quarter end before today and cannot carry a future, which is
-        exactly why they can span in full.
+        A window running past today carries cuts that have not happened, so
+        every to-date column is cut at today. A COMPLETED month and quarter end
+        before today and cannot carry a future, which is exactly why they can
+        span in full.
+
+        THE CUT SURVIVED THE BASIS MOVE, and that was the question that decided
+        whether the move could happen at all. The hazard was stated as an
+        effective-date one: rows dated by effective date, WARN notices filed
+        weeks ahead. `notice` is COALESCE(announcement_date, layoff_date), so
+        the obvious reading is that a filing-basis board cannot be ahead of
+        itself and this cut becomes redundant. It is not: a row with no
+        evidenced announcement date falls back to its effective date and is
+        still filed weeks ahead. Measured live on 2026-08-13, verified rows
+        dated after today: 37,902 jobs on the effective basis, 21,712 on the
+        filing basis, of which only 8 carry a real future announcement_date.
+        Half the future, not none. Uncutting any of these columns would
+        publish it.
         """
         p, today = self.board["periods"], "2026-08-13"
         for k in ("today", "week", "month", "ytd"):
@@ -263,17 +275,49 @@ class TheTwoCompletedPeriods(unittest.TestCase):
                 "the %s column is supposed to be a COMPLETED period and it "
                 "reaches today" % k)
 
-    def test_the_new_columns_count_exactly_like_the_old_ones(self):
-        """Same stage, same shape, no basis of their own. The brief's hard
-        constraint: no new counting rule may arrive with a new column."""
+    def test_every_column_counts_on_the_pages_own_basis(self):
+        """ONE PAGE, ONE BASIS.
+
+        These columns used to name no basis, so the server counted them on its
+        default column, layoff_date, the EFFECTIVE date, while the headline
+        figure inches above counted by filing date. Two correct totals
+        answering two questions on one screen, with only a footnote between
+        them, and the owner of the page could not reconcile them.
+
+        The shape rule is unchanged and still asserted: same stage, one key
+        set, no column with a rule of its own. What changed is that the key set
+        now HAS to contain the basis, on every column and on the same value.
+        """
         for k, p in self.board["periods"].items():
-            self.assertEqual(sorted(p), ["from", "stage", "to"],
-                             "the %s column's params grew a key: %r" % (k, p))
+            self.assertEqual(
+                sorted(p), ["date_basis", "from", "stage", "to"],
+                "the %s column's params are %r. Every column carries exactly "
+                "from/to/stage/date_basis, or the columns stop being one "
+                "question asked over six windows." % (k, p))
             self.assertEqual(p["stage"], "verified",
                              "the %s column counts on a different stage" % k)
-            self.assertNotIn("date_basis", p,
-                             "a period naming a basis breaks byte-identity "
-                             "with P in layoffs.js (takeBoot)")
+            self.assertEqual(
+                p["date_basis"], "notice",
+                "the %s column counts on %r, not on the page's own default "
+                "(the filing basis). A board on a second basis is the defect "
+                "this move exists to remove." % (k, p["date_basis"]))
+
+    def test_the_basis_is_the_same_one_the_page_bootstraps_on(self):
+        """Not "a basis": THE page's basis, read off the bootstrap rather than
+        typed here twice. A board pinned to a constant that no longer matches
+        the page default is the same defect wearing the fix's clothes."""
+        src = DB.read_text()
+        boot = src[src.index("$aggregate_params = array("):]
+        boot = boot[:boot.index(");") + 2]
+        m = re.search(r"'date_basis'\s*=>\s*'(\w+)'", boot)
+        self.assertIsNotNone(
+            m, "alt_page_bootstrap() no longer names a date_basis, so the "
+               "board has nothing to be pinned to")
+        for k, p in self.board["periods"].items():
+            self.assertEqual(
+                p.get("date_basis"), m.group(1),
+                "the %s column counts on %r while the page bootstraps on %r"
+                % (k, p.get("date_basis"), m.group(1)))
 
     def test_the_column_order_is_the_one_the_owner_reads(self):
         self.assertEqual(
@@ -477,9 +521,14 @@ PROBE = r"""
                  && nr.bottom <= cr.bottom + 1
       };
     });
+  // Every numeric row, including BOTH AI rows: the fifth row is the one this
+  // change adds and it carries the widest label on the board, so it is the
+  // one most likely to squeeze its own numbers.
   var numbers = Array.prototype.map.call(
     board.querySelectorAll('.alt-sb-r-workers .alt-sb-cell,'
-                         + '.alt-sb-r-events .alt-sb-cell'), function (c) {
+                         + '.alt-sb-r-events .alt-sb-cell,'
+                         + '.alt-sb-r-ai .alt-sb-cell,'
+                         + '.alt-sb-r-aibroad .alt-sb-cell'), function (c) {
       var inner = c.querySelector('b') || c;
       var r = inner.getBoundingClientRect(), cr = c.getBoundingClientRect();
       return {t: txt(inner),
@@ -496,7 +545,20 @@ PROBE = r"""
   var reachable = last.right <= bb.right + 1 && last.left >= bb.left - 1;
   var pinned = lab.left >= bb.left - 1 && lab.left < bb.right;
   board.scrollLeft = 0;
+  // The row labels, read as innerText off the rendered rowheader, and the
+  // board's own painted height. The fifth row's cost is measured, not
+  // estimated: six columns already only fit as a scroll container.
+  var rows = Array.prototype.map.call(
+    board.querySelectorAll('.alt-sb-row[class*="alt-sb-r-"]'), function (r) {
+      var lab = r.querySelector('.alt-sb-label');
+      return {cls: r.className, label: lab ? txt(lab) : '',
+              label_h: lab ? Math.round(lab.getBoundingClientRect().height) : 0};
+    });
+  var footEl = document.querySelector('.alt-sb-foot');
   return {
+    board_h: Math.round(board.getBoundingClientRect().height),
+    rows: rows,
+    foot: footEl ? txt(footEl) : '',
     viewport: de.clientWidth,
     page_bleeds: de.scrollWidth > de.clientWidth + 1,
     usable_share: +(board.clientWidth / de.clientWidth * 100).toFixed(1),
@@ -664,6 +726,62 @@ class RenderedCells(unittest.TestCase):
                     "is worse, because the shortened name reads as the whole "
                     "one." % (width, cell["name"]))
 
+    def test_the_fifth_row_renders_and_says_what_it_contains(self):
+        """Rendered innerText off the rowheader, at both widths. The label is
+        the longest on the board and at 375px it becomes a full-width row of
+        its own, which is exactly where a clause gets clipped away and the
+        containment silently stops being stated."""
+        for width in (375, 1280):
+            got = self.probe(width)
+            classes = [r["cls"] for r in got["rows"]]
+            self.assertEqual(
+                len(got["rows"]), 5,
+                "at %dpx the board rendered %d rows, not five: %r"
+                % (width, len(got["rows"]), [r["label"] for r in got["rows"]]))
+            self.assertTrue(
+                any("alt-sb-r-aibroad" in c for c in classes),
+                "at %dpx there is no broad-lens row on the rendered board: %r"
+                % (width, classes))
+            broad = [r for r in got["rows"] if "alt-sb-r-aibroad" in r["cls"]][0]
+            self.assertIn(
+                "includes the above", broad["label"].casefold(),
+                "at %dpx the broad row's label reads %r. The clause that says "
+                "it contains the strict row is not decoration: without it two "
+                "adjacent AI figures invite being added."
+                % (width, broad["label"]))
+
+    def test_the_fifth_rows_numbers_are_reported_at_both_widths(self):
+        """The board's cost, measured rather than assumed. Six columns already
+        only fit as a scroll container, so a fifth row is the change most
+        likely to have been waved through on a desktop."""
+        # Measure BOTH widths and report BOTH before asserting on either. A
+        # loop that asserts as it goes reports only the first width that
+        # fails, which is the one case where the other number is wanted.
+        seen = [(w, self.probe(w)) for w in (375, 1280)]
+        for width, got in seen:
+            print("\n  %dpx: board %dpx tall, %d rows, %.1f%% of the viewport "
+                  "(%dpx of %d), scrolls=%s, page bleeds=%s"
+                  % (width, got["board_h"], len(got["rows"]),
+                     got["usable_share"], got["board_client_w"], width,
+                     got["board_scrolls"], got["page_bleeds"]))
+        for width, got in seen:
+            self.assertEqual(
+                len(got["numbers"]), 24,
+                "at %dpx the four numeric rows did not render 24 cells "
+                "between them: %d" % (width, len(got["numbers"])))
+
+    def test_the_footnote_containment_sentence_is_readable_as_rendered(self):
+        """innerText from the rendered list, not the markup that built it."""
+        foot = self.probe(375)["foot"].casefold()
+        self.assertIn(
+            "contains every one of those cuts", foot,
+            "the rendered footnote does not carry the containment sentence")
+        self.assertIn("never added together", foot)
+        self.assertIn(
+            "by filing date", foot,
+            "the rendered footnote no longer names the basis the board counts "
+            "on, which is the whole reason the board was moved onto it")
+
     def test_the_completed_periods_are_readable_on_the_rendered_board(self):
         """innerText from the rendered ancestor, which is the only one of the
         three ways of asking that reports what a reader can read."""
@@ -689,6 +807,127 @@ class RenderedCells(unittest.TestCase):
 # 5. What the board still promises. The footnote's claim is the one thing a
 #    new column could quietly falsify.
 # --------------------------------------------------------------------------
+
+class TheTwoAiRows(unittest.TestCase):
+    """THE BROAD LENS, AND THE ONE THING IT MUST NOT INVITE.
+
+    The strict AI figure is the tightest of the four AI measures this tracker
+    holds. On the board it stood alone, which is why the owner read it and
+    asked whether that was really all: the broad lens was in the API and on the
+    methodology page and nowhere a reader looks.
+
+    CLAUDE.md's rule about the AI measures is the constraint that shapes the
+    fix, not a footnote to it: they carry distinguishing labels and are never
+    summed or blended. Two AI rows adjacent on one card is precisely where a
+    reader adds them, so the containment is stated on the row's own label AND
+    in the footnote, and both halves are asserted here.
+
+    THE CONTAINMENT WAS CHECKED BEFORE IT WAS WRITTEN, against the live API on
+    2026-08-13 rather than against the SQL: an `ai=1` slice reports
+    ai_broad_jobs equal to its own jobs (42,253), and an `ai_broad=1` slice
+    reports ai_jobs = 42,253 inside jobs = 53,253. Strict is a subset, not an
+    overlap. The definitions in db.php say the same thing and are pinned below,
+    because a sentence on a page is only true while the SQL under it is.
+    """
+
+    STRICT = "alt-sb-r-ai"
+    BROAD = "alt-sb-r-aibroad"
+
+    def rows(self, src):
+        """(class, label, totals key) for every numeric row, off the source of
+        whichever renderer is being asked."""
+        php = re.findall(
+            r"\$alt_sb_numrow\('([\w-]+)', '((?:[^'\\]|\\.)*)', '(\w+)'\)", src)
+        js = re.findall(
+            r"numRow\('([\w-]+)', '((?:[^'\\]|\\.)*)', '(\w+)'\)", src)
+        return php + js
+
+    def test_the_broad_lens_is_a_row_on_both_renderers(self):
+        for path, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
+            rows = self.rows(path.read_text())
+            keys = [k for _, _, k in rows]
+            self.assertIn(
+                "ai_broad_jobs", keys,
+                "%s draws no broad-lens row, so the board still publishes the "
+                "tightest of the four AI measures as if it were the only one. "
+                "Rows found: %r" % (where, keys))
+            self.assertEqual(
+                keys, ["jobs", "entries", "ai_jobs", "ai_broad_jobs"],
+                "%s draws %r. The broad lens belongs directly under the strict "
+                "row it contains, and the announced tier is deliberately NOT a "
+                "third AI row." % (where, keys))
+
+    def test_the_announced_tier_did_not_become_a_third_ai_row(self):
+        """Refused on purpose. Announced versus verified is what the Workers
+        and Verified layoffs rows already carry, and three AI rows on one card
+        is where the board stops being readable."""
+        for path, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
+            keys = [k for _, _, k in self.rows(path.read_text())]
+            for banned in ("ai_announced_jobs", "ai_verified_jobs",
+                           "ai_primary_jobs"):
+                self.assertNotIn(
+                    banned, keys,
+                    "%s added %s as a third AI row" % (where, banned))
+
+    def test_the_two_ai_labels_state_the_containment_rather_than_implying_it(self):
+        """The rule is that a reader must not be able to add them. Two labels
+        that merely differ ("Explicitly AI-attributed", "AI-linked, broad")
+        distinguish the measures and say nothing about how they relate, and a
+        reader who cannot tell reaches for the plus sign."""
+        for path, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
+            rows = {c: lab for c, lab, _ in self.rows(path.read_text())}
+            self.assertIn(self.BROAD, rows, where)
+            strict, broad = rows[self.STRICT], rows[self.BROAD]
+            self.assertNotEqual(
+                strict, broad,
+                "%s gives the two AI rows the same label" % where)
+            self.assertIn(
+                "includes the above", broad.casefold(),
+                "%s labels the broad row %r, which names the measure and not "
+                "its relationship to the strict row above it. Adjacent AI rows "
+                "that do not say one contains the other get added together."
+                % (where, broad))
+
+    def test_no_board_label_carries_a_dash(self):
+        """House rule. style_check.py needs 12 characters and 3 real words
+        before a string is eligible, so a row label can carry one straight past
+        it: this reads the labels themselves."""
+        for path, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
+            for _, lab, _ in self.rows(path.read_text()):
+                for bad in ("—", "–"):
+                    self.assertNotIn(bad, lab, "%s row label %r" % (where, lab))
+
+    def test_the_footnote_says_the_broad_lens_contains_the_strict_one(self):
+        """One plain sentence, on both renderers, in the footnote a reader
+        actually reaches. "Never added together" is the operative half."""
+        for path, where in ((TEMPLATE, "page-tracker.php"), (JS, "layoffs.js")):
+            src = path.read_text()
+            foot = src[src.index('<ul class="alt-sb-foot">'):]
+            foot = foot[:foot.index("</ul>")]
+            self.assertIn(
+                "contains every one of those cuts", foot,
+                "%s does not tell a reader that the broad lens CONTAINS the "
+                "strict measure, so the two AI rows read as two independent "
+                "figures" % where)
+            self.assertIn(
+                "never added together", foot,
+                "%s does not say the two AI rows are never summed" % where)
+
+    def test_the_containment_is_true_in_the_sql_the_sentence_describes(self):
+        """The sentence is only true while the definitions under it are. The
+        broad measure must be the strict predicate ORed with something, so
+        every strictly attributed row is inside it by construction."""
+        src = DB.read_text()
+        broad = re.findall(
+            r"CASE WHEN ([^T]*?) THEN job_count END\),0\) ai_broad_jobs", src)
+        self.assertTrue(broad, "db.php no longer defines ai_broad_jobs")
+        for expr in broad:
+            self.assertIn(
+                "ai_explicit=1 OR", expr,
+                "ai_broad_jobs is defined as %r, which does not contain the "
+                "strict predicate. The board now tells readers the broad lens "
+                "contains the strict one; this is that claim." % expr.strip())
+
 
 class TheFootnoteIsStillTrue(unittest.TestCase):
 
