@@ -781,7 +781,8 @@ before.
 Also checked by eye rather than by `style_check.py`: that file needs 12
 characters and 3 real words before a string is eligible, so a short button label
 slips past it entirely. There is a test for the dashes instead.
-## 2026-08-13 - the reader check dated the build and never read the body (2.20.31)
+
+## 2026-08-13 - the reader check dated the build and never read the body (2.20.33)
 
 `reader_freshness.py` compared the plugin VERSION a reader is served against the
 version that is deployed. Those are equal on a page that carries the new version
@@ -933,7 +934,7 @@ real DOM, holds the ellipsis contract at the same time (a name cut with no
 visible marker reads as a complete company name), pins that 375px is unchanged,
 and proves it can fail by putting the old declarations back.
 
-## 2026-08-13 - the shrink half named the wrong container (2.20.31)
+## 2026-08-13 - the shrink half named the wrong container (2.20.32)
 
 2.20.30 shipped both halves and only one worked. The live audit re-run after the
 deploy still showed two bands at 1280px: Cumulative AI-attributed cuts at 277px
@@ -1238,7 +1239,7 @@ fail at a gate of 7. A comment on `ARCHIVE_BACKFILL_LIMIT` records that this
 red is not answered by raising it.
 
 
-## 2026-08-13 - Ohio answered, and was still broken (2.20.31)
+## 2026-08-13 - Ohio answered, and was still broken (2.20.32)
 
 Reported as "every documented path to Ohio's and North Carolina's WARN
 listings 404s". Both scrapers were in fact **working**, and the investigation

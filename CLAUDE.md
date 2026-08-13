@@ -200,7 +200,7 @@ python3 railway/reader_freshness.py     # bare URL, browser UA, no cache buster
 It is `ops_status.py` section `[1b]` and a required step of the deploy workflow.
 A mismatch it cannot date resolves to UNKNOWN, never to a pass.
 **And a version number is not the content.** That check compared version to
-version until 2.20.31, so it passed a page that carried the NEW version string
+version until 2.20.33, so it passed a page that carried the NEW version string
 around the OLD body: on 2.20.21 an FTPS upload landed `ai-layoff-tracker.php`
 before `page-tracker.php`, the reader check's own bare-URL request cached that
 render, and readers had it for 25 minutes with everything green. Every plugin
