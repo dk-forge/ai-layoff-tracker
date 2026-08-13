@@ -46,13 +46,20 @@ STATE_WARN_URL = {
     "MT": "https://wsd.dli.mt.gov/wioa/related-links/warn-notice-page",
     "NE": "https://dol.nebraska.gov/ReemploymentServices/LayoffServices/LayoffsAndDownsizingWARN",
     "MN": "https://mn.gov/deed/programs-services/dislocated-worker/employers/warn/",
-    "NC": "https://www.commerce.nc.gov/data-tools-reports/",
+    # The bare /data-tools-reports/ landing page resolved but is not the WARN
+    # list; readers following the row's 'State WARN list' link landed on a
+    # generic index. This is the page fetch_nc actually scrapes (_NC_WARN_BASE).
+    "NC": "https://www.commerce.nc.gov/data-tools-reports/labor-market-data-tools/workforce-warn-reports",
     "ND": "https://www.jobsnd.com/",
     "NV": "https://detr.nv.gov/Page/WARN",
     "NJ": "https://www.nj.gov/labor/employer-services/warn/",
     "NM": "https://www.dws.state.nm.us/Rapid-Response",
     "NY": "https://dol.ny.gov/warn-dashboard",
-    "OH": "https://jfs.ohio.gov/job-services-and-unemployment/job-services/job-programs-and-services/submit-a-warn-notice/current-public-notices-of-layoffs-and-closures-sa/current-public-notices-of-layoffs-and-closures_warn",
+    # JFS retired the /job-services-and-unemployment/... tree; that path is a
+    # hard 404 (verified 2026-08-13), so every OH row without a per-notice
+    # detail URL was publishing a dead 'State WARN list' citation. The scrapers
+    # already moved (warn_custom._OH_WARN_BASE) — this copy had not.
+    "OH": "https://jfs.ohio.gov/job-workforce-services/job-programs-and-services/submit-a-warn-notice/current-public-notices-of-layoffs-and-closures",
     "OK": "https://www.employoklahoma.gov/Participants/s/warnnotices",
     "OR": "https://ccwd.hecc.oregon.gov/Layoff/WARN",
     "PA": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",

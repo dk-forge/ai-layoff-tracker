@@ -337,6 +337,71 @@ throughput the gate permits must actually PASS the invariant end to end. Both
 fail at a gate of 7. A comment on `ARCHIVE_BACKFILL_LIMIT` records that this
 red is not answered by raising it.
 
+
+## 2026-08-13 - Ohio answered, and was still broken
+
+Reported as "every documented path to Ohio's and North Carolina's WARN
+listings 404s". Both scrapers were in fact **working**, and the investigation
+found a worse defect underneath.
+
+**The 404s were two different illusions.** Ohio's JFS pages return **HTTP 404
+to our scraper's User-Agent and 200 to a browser** — a soft block that is
+indistinguishable from a dead page, which is how a hand-probe with curl
+concluded the site was gone. `warn_custom.py` already sends a browser UA, so
+`fetch_oh()` returns 787 notices today. North Carolina's real page
+(`.../labor-market-data-tools/workforce-warn-reports`) was never down; the URL
+that 404s (`/warn-notices`) is not one this repo has ever used.
+
+**What WAS stale was the published citation.** `STATE_WARN_URL` is generated
+into `warn-state-urls.php` and rendered as the "State WARN list" link beside
+every notice. Its OH entry still pointed at the retired
+`/job-services-and-unemployment/...` tree — a hard 404 shipped to readers on
+every OH row lacking a per-notice detail URL. The scrapers had moved; this copy
+had not. NC pointed at a generic `/data-tools-reports/` index. Both repointed;
+a sweep of all 48 found no other genuine 404 (AZ/DE/KS/ME/VT/MA/NV/KY/TX return
+400/401/403/202 to an automated probe and MN redirects to a Radware
+interstitial — bot mitigation, not dead pages; IA/ID/NM/VA silently redirect
+and were left alone).
+
+**The real defect: a scraper can lose 92% of a state and still look healthy.**
+Simulating the reported failure (JFS pages unreachable) made `fetch_oh()` fall
+through to its versionless DAM fallback and return **61 notices instead of
+787**. Non-zero — and the legacy custom tier's only tripwire was `== 0`, gated
+to eight high-volume states. So every guard stayed green while nine tenths of
+Ohio vanished. Every WARN tripwire in the repo asked "did the state return
+anything?"; none asked "did it return as much as it always does".
+
+`WARN_GENERIC_BASELINE` existed to answer that and was **set by no workflow**,
+so even the generic tier ran with an empty floor map and could only ever see a
+hard zero.
+
+**The fix — a floor that cannot follow the data down.**
+`railway/warn_state_baselines.json` is a committed per-tier, per-state
+high-water mark. It ratchets **UP only**, on clean full sweeps: a floor that
+relaxes toward a collapse is the same self-widening clock that let the headline
+guards erase an open incident by waiting. If a state's archive legitimately
+shrinks, a human lowers the number in a reviewed commit. The legacy tier now
+runs `detect_generic_state_drift` (peer-gated, so a nationwide outage is still
+warn_us's job) at `drop_frac=0.5` on top of the existing high-volume zero test,
+which was kept verbatim so no existing alarm was weakened.
+
+`zero_needs_baseline` keeps the low-volume states (CO/ID/LA/NV/MN/MA/KY, whose
+zeros were previously invisible) quiet until a healthy run has earned them a
+floor — naming a state that has never produced is how a real breakage gets
+ignored. **No new source id**, so no health.js label and no Sources-page churn,
+and no new way to strand a retired collector.
+
+**Also hardened:** the OH fallback guessed `{y}/{y}-warn-notice.csv`, which
+only ever resolved for the current year. JFS re-uploads every archive year into
+the *current* year's DAM folder and flips the separator between years
+(`2024_warn_notice.csv`, `2022-warn-notice.csv`). The fallback now covers the
+years the pages did not yield, recovering **707 of 787** with the pages dark
+instead of 61, and issues no extra requests on a healthy run.
+
+**Not conflated with** the five states holding zero WARN rows (OK/AR/WV/NH/WY),
+four of which are the baton holder's open work.
+
+
 ## 2026-08-13 - the twelve jobs that could not survive our own deploy
 
 `Extract affected-role categories` failed on main at 22:54 with `503 Server

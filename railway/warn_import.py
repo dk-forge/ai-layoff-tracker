@@ -14,6 +14,7 @@ Env:
   WP_SITE_URL, WP_API_KEY
 """
 import html as _html
+import json
 import os
 import re
 import sys
@@ -136,6 +137,69 @@ def _sanitize_warn_entries(entries):
     return out
 
 
+BASELINE_LEDGER = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "warn_state_baselines.json")
+
+
+def load_state_baselines(path=BASELINE_LEDGER):
+    """Committed per-tier, per-state high-water marks: {tier: {STATE: count}}.
+
+    Every state WARN scraper re-reads its state's WHOLE archive each run, so a
+    healthy count is near-monotonic and the high-water mark is a sound floor.
+    Without one, drift detection can only see a hard 0 — and the failure that
+    actually happens is a PARTIAL collapse: when Ohio's JFS pages went
+    unreachable, fetch_oh fell back to a single CSV and returned 61 of 787
+    notices. Non-zero, so every tripwire stayed green while 92% of the state
+    silently vanished.
+
+    Missing/malformed -> {}. That is UNKNOWN, not a pass: the caller says so in
+    the run log rather than reporting a clean bill of health it cannot support.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if not isinstance(data, dict):
+            raise ValueError("baseline ledger is not an object")
+        return {str(t): {str(k).upper(): float(v) for k, v in (m or {}).items()
+                         if float(v) > 0}
+                for t, m in data.items() if isinstance(m, dict)}
+    except FileNotFoundError:
+        return {}
+    except Exception as exc:
+        print(f"WARN baseline ledger ignored ({exc}) — per-state floors UNKNOWN "
+              f"this run, so only hard-zero collapse is detectable")
+        return {}
+
+
+def ratchet_state_baselines(ledger, tier, counts, expected):
+    """Raise this tier's high-water marks to match a healthy run. NEVER lowers.
+
+    A floor that follows the data down is not a floor — it is the same
+    self-widening clock that let the headline guards erase an open incident by
+    waiting. If a state's archive legitimately shrinks, a human lowers the
+    number in a reviewed commit; the ledger is committed for exactly that.
+
+    Returns True when anything changed (so the caller only rewrites on change).
+    """
+    tier_map = ledger.setdefault(tier, {})
+    changed = False
+    for st in [s.upper() for s in expected]:
+        n = float(counts.get(st, 0))
+        if n > tier_map.get(st, 0):
+            tier_map[st] = n
+            changed = True
+    return changed
+
+
+def save_state_baselines(ledger, path=BASELINE_LEDGER):
+    """Write the ledger back, sorted and stable so the git diff is readable."""
+    payload = {t: {k: int(v) for k, v in sorted(m.items())}
+               for t, m in sorted(ledger.items())}
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+
+
 def _parse_generic_baselines(raw):
     """Optional per-state numeric floors from WARN_GENERIC_BASELINE.
 
@@ -156,7 +220,8 @@ def _parse_generic_baselines(raw):
 
 
 def detect_generic_state_drift(counts, expected, baselines=None, *,
-                               drop_frac=0.7, peer_min_frac=0.5, peer_min_total=50):
+                               drop_frac=0.7, peer_min_frac=0.5, peer_min_total=50,
+                               zero_needs_baseline=False):
     """Which generic-tier states collapsed THIS run while their peers are healthy.
 
     The generic (open warn-scraper) tier reports one AGGREGATE health status
@@ -193,7 +258,13 @@ def detect_generic_state_drift(counts, expected, baselines=None, *,
         n = counts.get(s, 0)
         floor = baselines.get(s)
         if n == 0:
-            drift.append(s)
+            # zero_needs_baseline: a state that has NEVER produced has no floor,
+            # so its 0 is unproven rather than anomalous. The legacy custom tier
+            # sets this because some of its states legitimately file nothing on a
+            # given run, and naming them every run is how a real breakage gets
+            # ignored. Once a healthy run gives the state a floor, its 0 counts.
+            if floor or not zero_needs_baseline:
+                drift.append(s)
         elif floor and n < floor * (1 - drop_frac):
             drift.append(s)
     return sorted(drift)
@@ -299,6 +370,11 @@ def main():
         if _gs:
             _generic_by_state[_gs] = _generic_by_state.get(_gs, 0) + 1
     _generic_drift = []
+    # Committed high-water floors, shared by BOTH scraper tiers. WARN_GENERIC_BASELINE
+    # still overrides per state (it is how you tune one state without a commit),
+    # but it is set by no workflow, so until now every tier ran with an empty
+    # floor map and could only ever see a hard zero.
+    _baselines = load_state_baselines()
     if len(states) == 1 and str(states[0]).lower() == "all":  # only meaningful on a full sweep
         _counts = ", ".join(f"{st}={_generic_by_state[st]}" for st in sorted(_generic_by_state))
         print("generic WARN per-state counts: " + (_counts or "(none)"))
@@ -341,9 +417,17 @@ def main():
         # uncovered states, which is how a real breakage gets ignored.
         _NOT_GENERIC_TIER = {"HI", "AR", "WY", "NH", "OK"}
         _expected_g = [s for s in _expected_g if s.upper() not in _NOT_GENERIC_TIER]
+        _floors_g = dict(_baselines.get("generic", {}))
+        _floors_g.update(_parse_generic_baselines(os.environ.get("WARN_GENERIC_BASELINE")))
+        if not _floors_g:
+            print("::notice:: generic tier has no per-state floors yet — this run can "
+                  "only detect a hard zero, not a partial collapse (UNKNOWN, not a pass). "
+                  "The ledger seeds itself from this run.")
         _generic_drift = detect_generic_state_drift(
-            _generic_by_state, _expected_g,
-            _parse_generic_baselines(os.environ.get("WARN_GENERIC_BASELINE")))
+            _generic_by_state, _expected_g, _floors_g)
+        if not _generic_drift and ratchet_state_baselines(
+                _baselines, "generic", _generic_by_state, _expected_g):
+            save_state_baselines(_baselines)
         if _generic_drift:
             print(f"::warning:: generic WARN state(s) went dark vs healthy peers — likely "
                   f"open-scraper drift for: {', '.join(_generic_drift)}. Check each state's "
@@ -375,16 +459,44 @@ def main():
     if _legacy_drift:
         print(f"::notice:: legacy custom WARN returned 0 for {', '.join(_legacy_drift)} "
               f"(quiet run or drift; only high-volume states alert)")
+    # A hard 0 is the LOUD failure; the quiet one is a scraper that keeps
+    # answering with a fraction of the state. Ohio's JFS pages went unreachable
+    # and fetch_oh fell through to one CSV: 61 notices instead of 787. Not zero,
+    # not high-volume-exempt, so nothing above this line fires and the health
+    # page stays green while 92% of the state is gone. Per-state floors catch
+    # that. zero_needs_baseline keeps the low-volume states quiet until they
+    # have earned a floor, so this adds no new noise on a fresh ledger.
+    _floors_c = dict(_baselines.get("legacy_custom", {}))
+    _collapse_c = detect_generic_state_drift(
+        _got_by_state, _expected_c, _floors_c,
+        drop_frac=0.5, zero_needs_baseline=True)
+    _real_drift = sorted(set(_real_drift) | set(_collapse_c))
+    if not _floors_c:
+        print("::notice:: legacy custom tier has no per-state floors yet — partial "
+              "collapse is UNDETECTABLE this run (UNKNOWN, not a pass). Seeding from "
+              "this run's counts.")
     if _real_drift:
-        print(f"::warning:: HIGH-VOLUME legacy WARN scraper(s) returned 0 — likely site drift: {', '.join(_real_drift)}")
+        _detail = ", ".join(
+            f"{st}={_got_by_state.get(st, 0)}"
+            + (f" (floor {int(_floors_c[st])})" if st in _floors_c else "")
+            for st in _real_drift)
+        print(f"::warning:: legacy WARN scraper(s) collapsed vs their own history — "
+              f"likely site drift: {_detail}")
         report_source_health("warn_custom_legacy", "degraded", 0,
-                             "High-volume custom WARN returned 0 — likely site drift: " + ", ".join(_real_drift))
+                             "Custom WARN state(s) collapsed vs their own history — "
+                             "likely site drift: " + _detail)
     elif _expected_c:
         # Report OK explicitly. Without this the reporter only ever writes on
         # failure, so a RESOLVED drift stayed red forever (NV sat degraded for
         # 35h after the Bluehost mirror fixed it).
         report_source_health("warn_custom_legacy", "ok", len(customs),
-                             f"{len(_expected_c)} legacy custom scraper(s) checked, no high-volume drift")
+                             f"{len(_expected_c)} legacy custom scraper(s) checked, "
+                             f"no state collapsed against its own history")
+        # Only a clean run may raise the floors, and only upward. Ratcheting on a
+        # drifted run would teach the collapse as the new normal.
+        if _scrape_all_c and ratchet_state_baselines(
+                _baselines, "legacy_custom", _got_by_state, _expected_c):
+            save_state_baselines(_baselines)
     if min_emp:
         customs = [e for e in customs if e["job_count"] >= min_emp]
     if start:

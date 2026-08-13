@@ -227,10 +227,24 @@ def fetch_oh():
             urls += found
         except Exception as exc:
             print(f"    OH: {slug} failed ({exc})")
-    # versionless fallback keeps the current years importable through a
-    # landing-page redesign (pre-2026 pattern; still resolves for {year})
-    for y in (this_year, this_year - 1):
-        urls.append(f"https://dam.assets.ohio.gov/raw/upload/jfs.ohio.gov/{y}/{y}-warn-notice.csv")
+    # Versionless fallback for the years the PAGES did not yield a CSV. The old
+    # form guessed {y}/{y}-warn-notice.csv and so only ever resolved for the
+    # current year: JFS re-uploads every archive year into the CURRENT year's
+    # DAM folder, and the separator flips between years (2024_warn_notice.csv,
+    # 2022-warn-notice.csv). With the pages unreachable that guess recovered 61
+    # of 787 notices while the scraper still reported a healthy non-zero count.
+    # Verified 2026-08-13: this matrix recovers every year but 2023, whose file
+    # is an un-guessable one-off (2023-warn-notice_1_9.csv) reachable only via
+    # its page. Fallbacks are added ONLY for missing years, so a healthy run
+    # (pages up) issues no extra requests beyond the ones that dedup away.
+    got_years = {m.group(1) for m in
+                 (re.search(r"/(20\d\d)[-_]warn[-_]notice", u, re.I) for u in urls) if m}
+    for y in range(_OH_ARCHIVE_START, this_year + 1):
+        if str(y) in got_years:
+            continue
+        for sep in ("-", "_"):
+            urls.append("https://dam.assets.ohio.gov/raw/upload/jfs.ohio.gov/"
+                        f"{this_year}/{y}{sep}warn{sep}notice.csv")
     out, seen = [], set()
     for u in urls:
         # same file relinked under new renderer flags / version segments

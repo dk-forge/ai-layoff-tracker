@@ -75,6 +75,48 @@ read the diagnostics (they log the raw API status) before trusting live output.
 
 ## "X is broken" playbooks
 
+**A WARN state COLLAPSED against its own history**
+The health page shows `warn_custom_legacy` degraded with
+`Custom WARN state(s) collapsed vs their own history`, naming states as
+`OH=61 (floor 787)`.
+
+**What it means.** That state's scraper still answered — it just answered with
+a fraction of the state. This is the failure a `== 0` tripwire cannot see, and
+it is the common one: on 2026-08-13 Ohio's JFS pages became unreachable to the
+scraper and `fetch_oh()` fell through to a single fallback CSV, returning 61 of
+787 notices with every guard green.
+
+**Do this, in order.**
+1. **Open the state's page in a browser first.** A government site that 404s to
+   an automated probe and 200s to a browser is a soft bot-block, not a dead
+   page — Ohio does exactly this. `curl` and a hand-probe will lie to you.
+   Compare with the scraper's own UA:
+   ```bash
+   python3 -c "import urllib.request as u;print(u.urlopen(u.Request('<URL>',headers={'User-Agent':'Mozilla/5.0'})).status)"
+   ```
+2. **Run the one scraper** and count what it returns:
+   ```bash
+   cd railway && python3 -c "from sources.warn_custom import fetch_oh; print(len(fetch_oh()))"
+   ```
+3. **Fix the scraper**, not the floor. If the agency moved its pages, repoint
+   the module's `_XX_WARN_BASE`, and check whether
+   `sources/warn.py::STATE_WARN_URL` needs the same move — that map is
+   generated into the plugin's `warn-state-urls.php` and published as the
+   "State WARN list" link beside every row, so a stale entry there is a **404
+   shipped to readers**, not just an ingest problem. After editing it run
+   `python generate_warn_urls.py` (a parity test enforces this).
+4. **Only then consider the floor.** `railway/warn_state_baselines.json`
+   ratchets UP only and never lowers itself, by design — a floor that relaxes
+   toward a collapse is the self-widening clock that let the headline guards
+   erase an open incident by waiting. If the state's archive genuinely shrank
+   (the agency dropped old years), lower that state's number **in a reviewed
+   commit that says why**. Never lower one to silence an alert you have not
+   explained.
+
+**A first run says the floors are UNKNOWN.** `no per-state floors yet — partial
+collapse is UNDETECTABLE this run` means the ledger has not been seeded for
+that tier. That is UNKNOWN, not a pass; the next clean full sweep seeds it.
+
 **A job is DEFERRING (and what three in a row means)**
 `ops_status.py` section `[4d]` listed a job as deferred, or a workflow run
 printed `DEFERRED: <job> could not reach the host`.
