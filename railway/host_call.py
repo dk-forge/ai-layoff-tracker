@@ -43,12 +43,30 @@ the workflow's own parse step is gated on `outcome == 'ok'`, so each job keeps
 its existing reporting (the superset job's bounded per-company rollup exists
 because the Actions log uploader silently drops an over-long line) untouched.
 
-Stdlib only: these workflows do no `pip install`.
+Stdlib only for the CLI path: those workflows do no `pip install`. The Python
+worker API below (`get_json` / `post_json`) is used by jobs that already install
+`requests`, and only its GET half touches it.
+
+THE SAME THREE OUTCOMES, FOR A PYTHON WORKER
+--------------------------------------------
+The CLI above resolves ONE call made by a workflow. The enrichment and backfill
+workers make many calls interleaved with model work, so they cannot shell out
+per call. They get `get_json` / `post_json`, which raise `Deferred` when the
+host never answered and raise loudly on a settled refusal, plus `defer()` /
+`clear()` — the same ledger bookkeeping `main()` does, factored out rather than
+copied, because `http_retry.py` exists precisely because the last thing worth
+having one of got re-derived by the next scan.
+
+`Extract affected-role categories` died on 2026-08-12 with one 503 from
+`/enrich-roles`, almost certainly WordPress in maintenance mode while an FTPS
+deploy of this very repo landed. A worker that cannot survive its own deploy is
+not fail-loud, it is just loud.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -58,6 +76,112 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import deferral_ledger
 import http_retry
+
+#: Where the composite action `commit-deferral-ledger` looks by default. A
+#: worker that records a deferral the workflow never commits is a silently
+#: green job, so the two defaults must agree.
+DEFAULT_ENVELOPE = "deferral_envelope.json"
+
+
+class Deferred(Exception):
+    """The host never answered — not a pass, not a failure.
+
+    Raised from deep inside a worker and caught at its top level, so the
+    "did we get to ask?" question is answered in one place per job instead of
+    at every call site.
+    """
+
+
+# --------------------------------------------------------------------------
+# The ledger bookkeeping, shared by the CLI and the Python workers.
+# --------------------------------------------------------------------------
+
+def defer(job: str, reason: str, *, ledger=deferral_ledger.LEDGER,
+          envelope: str = DEFAULT_ENVELOPE) -> int:
+    """Record one deferral and return the process exit code.
+
+    0 normally — a host that never answered is not a job that failed — and
+    non-zero on the `ESCALATE_AFTER`th in a row, at which point the job is not
+    waiting out an outage, it is hiding behind one.
+    """
+    doc = deferral_ledger.load(ledger)
+    entry = deferral_ledger.record_deferral(doc, job=job, reason=reason,
+                                            run_url=_run_url(), key=_run_key())
+    deferral_ledger.save(doc, ledger)
+    if envelope:
+        deferral_ledger.write_envelope(envelope, job=job, state="deferred",
+                                       reason=reason, run_url=_run_url(),
+                                       key=_run_key())
+    streak = entry.get("consecutive", 1)
+    _github_output("outcome", "deferred")
+    print(f"DEFERRED: {job} could not reach the host ({reason}).")
+    print("This is NOT a pass. The next scheduled run retries. "
+          f"Consecutive deferrals: {streak}.")
+    if streak >= deferral_ledger.ESCALATE_AFTER:
+        print(f"::error::{job} has now deferred {streak} times in a row. That is "
+              "no longer an outage — the host is answering other jobs. See "
+              "docs/RUNBOOK.md 'a job is DEFERRING'.")
+        return 1
+    print("Exiting 0: a host that never answered is not a job that failed. "
+          "ops_status [4d] shows this until it clears.")
+    return 0
+
+
+def clear(job: str, *, ledger=deferral_ledger.LEDGER,
+          envelope: str = DEFAULT_ENVELOPE) -> None:
+    """Close any open deferral for `job`. Free when there is none: a healthy
+    job touches no file, so `git log` on the ledger stays a list of outages."""
+    doc = deferral_ledger.load(ledger)
+    if not deferral_ledger.record_success(doc, job=job):
+        return
+    deferral_ledger.save(doc, ledger)
+    if envelope:
+        deferral_ledger.write_envelope(envelope, job=job, state="success",
+                                       key=_run_key())
+    print(f"{job}: the host is answering again — deferral cleared.")
+
+
+# --------------------------------------------------------------------------
+# The Python worker API.
+# --------------------------------------------------------------------------
+
+def get_json(url, *, params=None, headers=None, timeout=60):
+    """GET our host, resolved to the same three outcomes.
+
+    `Deferred` when every attempt died transiently; a settled refusal (403, a
+    missing route) raises through `raise_for_status` exactly as it always did.
+    """
+    response = http_retry.get_with_retry(url, params=params, headers=headers,
+                                         timeout=timeout)
+    if response is None:
+        raise Deferred(f"GET {url} never got an answer from the host")
+    response.raise_for_status()
+    return response.json()
+
+
+def post_json(url, payload, *, headers=None, timeout=90):
+    """POST JSON to our host, resolved to the same three outcomes.
+
+    Deliberately NOT softer than `raise_for_status`: a non-transient status, and
+    a 2xx body that reports its own failed rows, both raise. Only "we never got
+    to ask" is new.
+    """
+    data, body_headers = http_retry.json_body(payload)
+    sent = dict(body_headers)
+    sent.update(headers or {})
+    result = http_retry.call_with_retry(url, method="POST", data=data,
+                                        headers=sent, timeout=timeout)
+    if result.outcome == http_retry.DEFERRED:
+        raise Deferred(f"POST {url}: {result.detail}")
+    if result.outcome == http_retry.FAILURE:
+        raise RuntimeError(f"POST {url}: {result.detail}")
+    reason = http_retry.body_reports_failure(result.body)
+    if reason:
+        raise RuntimeError(f"POST {url}: {reason}")
+    try:
+        return json.loads(result.body or "{}")
+    except ValueError:
+        return {}
 
 
 def _github_output(name: str, value: str) -> None:
@@ -148,30 +272,9 @@ def main(argv=None) -> int:
         timeout=args.timeout,
         sleep=(lambda _s: None) if args.no_sleep else time.sleep)
 
-    doc = deferral_ledger.load(args.ledger)
-
     if result.outcome == http_retry.DEFERRED:
-        entry = deferral_ledger.record_deferral(
-            doc, job=args.job, reason=result.detail, run_url=_run_url(),
-            key=_run_key())
-        deferral_ledger.save(doc, args.ledger)
-        if args.envelope:
-            deferral_ledger.write_envelope(
-                args.envelope, job=args.job, state="deferred",
-                reason=result.detail, run_url=_run_url(), key=_run_key())
-        streak = entry.get("consecutive", 1)
-        _github_output("outcome", "deferred")
-        print(f"DEFERRED: {args.job} could not reach the host ({result.detail}).")
-        print("This is NOT a pass. Nothing was read and nothing was written; the")
-        print(f"next scheduled run retries. Consecutive deferrals: {streak}.")
-        if streak >= deferral_ledger.ESCALATE_AFTER:
-            print(f"::error::{args.job} has now deferred {streak} times in a row. "
-                  "That is no longer an outage — the host is answering other "
-                  "jobs. See docs/RUNBOOK.md 'a job is DEFERRING'.")
-            return 1
-        print("Exiting 0: a host that never answered is not a job that failed. "
-              "ops_status [4d] shows this until it clears.")
-        return 0
+        return defer(args.job, result.detail, ledger=args.ledger,
+                     envelope=args.envelope)
 
     if result.outcome == http_retry.FAILURE:
         _github_output("outcome", "failure")
@@ -184,12 +287,7 @@ def main(argv=None) -> int:
         print(f"::error::{args.job}: {reason}")
         return 1
 
-    if deferral_ledger.record_success(doc, job=args.job):
-        deferral_ledger.save(doc, args.ledger)
-        if args.envelope:
-            deferral_ledger.write_envelope(args.envelope, job=args.job,
-                                           state="success", key=_run_key())
-        print(f"{args.job}: the host is answering again — deferral cleared.")
+    clear(args.job, ledger=args.ledger, envelope=args.envelope)
     if out_path:
         out_path.write_text(result.body)
     _github_output("outcome", "ok")

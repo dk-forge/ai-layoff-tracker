@@ -7,6 +7,9 @@ on:
     - cron: '15 6 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
@@ -25,3 +28,13 @@ jobs:
           EVENT_MIGRATE_BATCH: '500'
           EVENT_MIGRATE_MAX_BATCHES: '20'
         run: python canonical_event_migrate.py
+
+      # A deferral nobody counts is a silently green job, which is the exact
+      # failure family this repo keeps digging out of. Free on a healthy run: a
+      # job with no open deferral touches no file, so there is no diff, no
+      # commit and no push.
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: canonical-event-migrate

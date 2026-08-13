@@ -15,6 +15,13 @@ Env: WP_SITE_URL, WP_API_KEY, OPENROUTER_API_KEY.
 Optional: ROLES_BATCH (default 40; largest events first so high-impact rows
 are categorized early). ROLES_DEADLINE_SECONDS (default 900) stops safely
 between rows so a slow model call cannot consume the GitHub Actions limit.
+
+SAFE TO DEFER, and this is why: the queue is server-side and bounded, nothing
+is marked until the single POST at the end, and a row this run never reached is
+simply still queued tomorrow. Running it tomorrow is running it today. On
+2026-08-12 one 503 from `/enrich-roles` killed the run and emailed the owner —
+almost certainly WordPress in maintenance mode while an FTPS deploy of this repo
+landed, i.e. the tracker paging its owner about its own deploy.
 """
 import os
 import sys
@@ -22,9 +29,13 @@ import time
 
 import requests
 
+import host_call
 from extractor import extract_role_categories, CreditsExhaustedError
 import spend
 from reclassify_legacy_ai import UA
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "enrich-roles"
 
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
@@ -59,13 +70,11 @@ def main():
         return 1
     report_health("running", detail="Extracting role categories from stored evidence")
     try:
-        response = requests.get(
+        payload = host_call.get_json(
             f"{SITE}/wp-json/layoffs/v1/query",
             params={"roles_missing": "1", "per_page": BATCH, "page": 1, "sort": "job_count", "dir": "desc"},
             headers={"User-Agent": UA}, timeout=60,
         )
-        response.raise_for_status()
-        payload = response.json()
         rows = payload.get("data", [])
         if not rows:
             report_health("ok", 0, "No rows pending role-category extraction")
@@ -99,12 +108,10 @@ def main():
             time.sleep(0.25)
         updated = marked_unknown = rejected = 0
         if items:
-            posted = requests.post(
-                f"{SITE}/wp-json/layoffs/v1/enrich-roles", json={"items": items},
+            result = host_call.post_json(
+                f"{SITE}/wp-json/layoffs/v1/enrich-roles", {"items": items},
                 headers={"X-Layoff-API-Key": KEY, "User-Agent": UA}, timeout=60,
             )
-            posted.raise_for_status()
-            result = posted.json()
             updated = len(result.get("updated", []))
             marked_unknown = len(result.get("marked_unknown", []))
             rejected = len(result.get("rejected", []))
@@ -115,9 +122,15 @@ def main():
         report_health("ok", updated, detail)
         print(f"{detail} updated={updated}")
         spend.record_job_run(items=checked, changed=updated)
+        host_call.clear(JOB)
         # A run where every attempted row failed at the model must be a
         # visible failure, not a quiet no-op that looks like a clean pass.
         return 1 if checked and model_failures == checked else 0
+    except host_call.Deferred as exc:
+        # The host never answered. Nothing was marked, so the identical queue
+        # is waiting for tomorrow's run; the ledger counts this and the THIRD
+        # in a row goes red like any other broken job.
+        return host_call.defer(JOB, str(exc))
     except CreditsExhaustedError as exc:
         # BILLING, not code: provider out of credits. Distinct, actionable state
         # and exit 0 so it does not page as a code failure every run; the weekly

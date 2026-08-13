@@ -1,5 +1,67 @@
 # Tech Log
 
+## 2026-08-13 - the twelve jobs that could not survive our own deploy
+
+`Extract affected-role categories` failed on main at 22:54 with `503 Server
+Error` from `/enrich-roles` and emailed the owner. The host answered 200
+minutes later, so it was a blip. **The blip was very probably ours:** WordPress
+enters maintenance mode while a plugin update is applied, this repo deploys by
+FTPS on every push to main, and several deploys went out that night. The
+sibling tracker's `place-unplaced` died the same evening with the literal
+string *"Briefly unavailable for scheduled maintenance"*. So the tracker paged
+its owner about its own deploy.
+
+**The verified list.** Twelve files call `raise_for_status()`; only nine were
+actually intolerant. `source_health.py` and `historical_news_sweep.py` were
+already tolerant — and each did it by carrying **its own copy of the transient
+set**, which is precisely the drift `http_retry.py` exists to prevent
+(`historical_news_sweep`'s `{500,502,503,504}` silently disagreed with the
+shared set about 408, 429 and the Cloudflare 52x family). `reason_backfill` had
+a hand-rolled per-page retry but no tolerance anywhere else. All three now
+import the one definition, and a test forbids a fourth copy.
+
+**What was added, and what deliberately was not.** `host_call.py` already
+resolved a workflow's single `curl` to OK / DEFERRED / FAILURE. The Python
+workers make many calls interleaved with model work and cannot shell out per
+call, so the bookkeeping inside `host_call.main()` was **factored out**, not
+copied: `defer()` / `clear()` plus `get_json()` / `post_json()`, which raise
+`Deferred` when the host never answered and raise loudly otherwise. The POST
+side moved from `requests` to the shared stdlib `call_with_retry`, so the
+transient set and the "a settled refusal is never retried" rule have one
+definition on both verbs.
+
+**Each job was judged, not swept.** Six defer outright (queues are server-side
+and re-derived). Two — `archive-backfill`, `canonical-event-migrate` — defer
+only before their first batch lands; after that a host that stops answering is
+the existing batch cap by another name. `reason-backfill` defers only on page
+one of its scan. `erm-import`, the one bulk data import, defers **only when no
+batch reached the host at all**: some landed and some did not is loud, because
+a partly applied import is exactly what the fail-loud rule protects. Full table
+in RUNBOOK "a job is DEFERRING".
+
+**A precondition nobody noticed.** Three jobs published a `running` health note
+first and hard-raised if it failed. That made the health ledger's own
+availability a precondition for the job — the same maintenance window would
+have reddened them before a single row was touched, deferral or not.
+`source_health.require_running_note` now separates "the host never answered"
+(defer) from "the host refused the write" (raise; a wrong key is settled and
+fails identically tomorrow).
+
+**Fail-loud is intact and tested.** Every converted job is asserted twice in
+`railway/tests/test_job_deferrals.py`: a transient 503 defers and exits 0, AND
+a 403 still exits non-zero on the first occurrence with nothing written to the
+ledger. Before the change the first assertion read
+`AssertionError: 1 != 0 : enrich-roles: a 503 from a host that is restarting is
+not a job that failed`.
+
+**On deploy-versus-job collision: nothing was built.** Tolerance beat
+coordination on the merits — see the PR discussion. A concurrency group cannot
+span the FTPS upload (the maintenance window is on Bluehost, minutes after the
+Actions step is green), a deploy that waits for in-flight jobs makes deploys
+slow and can still miss, and a maintenance-mode probe is one more host call
+that the same outage breaks. A collision that defers costs one rotation of a
+queue that is re-derived next run.
+
 ## 2026-08-13 - the three that were reachable: 56 of 57, and one of them was never a coverage gap
 
 **Published: 56 of 57 = 98.2%** (Wilson 95% CI [90.7%, 99.7%], width 9.0%), up

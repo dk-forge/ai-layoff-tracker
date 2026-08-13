@@ -55,7 +55,13 @@ import time
 
 import requests
 
-from source_health import report_source_health
+import host_call
+from source_health import report_source_health, require_running_note
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+#: SAFE TO DEFER before the first batch: candidates are re-derived server-side
+#: every run and a URL not recorded today is simply offered again tomorrow.
+JOB = "archive-backfill"
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -199,15 +205,10 @@ def fetch_candidates():
     unkeepable: a ~4,000-URL pending pool needs ~1,300 re-checks a day and a
     single 500 batch cannot deliver that.
     """
-    try:
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/archive-candidates",
-                         params={"limit": LIMIT},
-                         headers={**UA, "X-Layoff-API-Key": KEY}, timeout=60)
-    except requests.RequestException as exc:
-        raise RuntimeError(f"/archive-candidates unreachable: {exc}")
-    if r.status_code != 200:
-        raise RuntimeError(f"/archive-candidates HTTP {r.status_code}: {r.text[:200]}")
-    payload = r.json()
+    payload = host_call.get_json(f"{SITE}/wp-json/layoffs/v1/archive-candidates",
+                                 params={"limit": LIMIT},
+                                 headers={**UA, "X-Layoff-API-Key": KEY},
+                                 timeout=60)
     return dedupe_urls(payload.get("urls", [])), payload.get("coverage", {})
 
 
@@ -309,7 +310,16 @@ def run():
     # server hands the same URLs back.
     dry_misses = 0
     while len(seen) < LIMIT and not past_deadline():
-        urls, coverage = fetch_candidates()
+        try:
+            urls, coverage = fetch_candidates()
+        except host_call.Deferred:
+            if seen:
+                # Batches already landed; this is the run LIMIT by another
+                # name. Stop here and let the forced flush below persist them.
+                print("::notice::the host stopped answering /archive-candidates; "
+                      "finishing with the batches already collected")
+                break
+            raise
         if coverage_before is None:
             coverage_before = coverage
         urls = [u for u in urls if u not in seen][: LIMIT - len(seen)]
@@ -376,16 +386,29 @@ def main():
         print("WP_SITE_URL and WP_API_KEY are required (or set ARCHIVE_BACKFILL_DRY_RUN=1)")
         return 1
     if not DRY_RUN:
-        if not report_source_health("archive_backfill", "running", 0,
-                                    "capturing permanent Wayback snapshots of source URLs"):
-            raise RuntimeError("Could not publish archive_backfill running health status")
+        # This note is the FIRST thing the job does, before a single candidate
+        # is fetched. It used to hard-raise, which made the health ledger's own
+        # availability a precondition for the job — how a six-minute
+        # maintenance window became a red run and an email. A refusal still
+        # raises; only "the host never answered" defers.
+        code = require_running_note(
+            JOB, "archive_backfill",
+            "capturing permanent Wayback snapshots of source URLs")
+        if code is not None:
+            return code
     try:
         run()
-        return 0
+    except host_call.Deferred as exc:
+        # Not one candidate was handed out, so nothing was checked and nothing
+        # recorded. Health is deliberately NOT marked degraded: the collector
+        # is fine, the host did not answer, and the ledger is where that lives.
+        return host_call.defer(JOB, str(exc))
     except Exception as exc:
         if not DRY_RUN:
             report_source_health("archive_backfill", "degraded", 0, f"archive backfill failed: {exc}")
         raise
+    host_call.clear(JOB)
+    return 0
 
 
 if __name__ == "__main__":

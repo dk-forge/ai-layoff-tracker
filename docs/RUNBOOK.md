@@ -124,12 +124,40 @@ non-transient status, and a 2xx body that reports its own failed batch. None of
 those gets better by waiting, and softening them was never the point.
 
 **Converting another workflow to defer** is per job and is not automatic. The
-bar is: re-running it tomorrow must be equivalent to running it today. The two
-converted so far clear it for different reasons — `reconcile-supersets` is a
-clean-slate recompute (resets every mark, then re-marks), and
-`announcement-lifecycle-review` writes nothing at all. A job that appends,
-advances a cursor, or spends money on work it would have to redo does NOT clear
-it, and should keep failing loudly.
+bar is: re-running it tomorrow must be equivalent to running it today. The first
+two cleared it for different reasons — `reconcile-supersets` is a clean-slate
+recompute (resets every mark, then re-marks), and `announcement-lifecycle-review`
+writes nothing at all. A job that appends, advances a cursor, or spends money on
+work it would have to redo does NOT clear it, and should keep failing loudly.
+
+**The Python workers (converted 2026-08-12).** Those two shell out to
+`host_call.py` per call. The enrichment and backfill workers make many calls
+interleaved with model work, so they use the SAME machinery as a library:
+`host_call.get_json` / `post_json` raise `host_call.Deferred` when the host
+never answered and raise loudly on a settled refusal, and `host_call.defer()` /
+`clear()` do the identical ledger bookkeeping. Their workflows each end with the
+`commit-deferral-ledger` step, and `railway/tests/test_job_deferrals.py` asserts
+that pairing — a worker that records a deferral into a ledger nobody commits is
+the silently green job this whole mechanism exists to prevent.
+
+| Job | Defers when | Stays loud when |
+|---|---|---|
+| `enrich-roles`, `enrich-context`, `reclassify-legacy-ai` | any host call in the run never answered | anything else; the queue is server-side and nothing is marked until the closing POST |
+| `claims-import` | `/claims-ingest` never answered | the endpoint refuses; FRED being empty is a separate, older fail-soft |
+| `employer-domicile-backfill` | any call never answered | `/enrich-context` is a blank-fields-only idempotent fill, so a partial batch is not a state |
+| `survey-reconcile` | any call never answered | each record is an upsert keyed by reference month |
+| `archive-backfill`, `canonical-event-migrate` | the host never answered **before the first batch landed** | after that it is the existing batch cap by another name: stop, say so, resume next run |
+| `reason-backfill` | page one of the SCAN never answered | once `/edit` has written a chunk the run did real work; the rest is reported as `unwritten` |
+| `erm-import` | **no** `/bulk` batch reached the host at all | some batches landed and some did not — a partly applied bulk import is exactly what the fail-loud rule protects |
+
+Three left deliberately alone: `source_health` and `historical_news_sweep` were
+already tolerant (each had re-derived its OWN copy of the transient set; both
+now import `http_retry.TRANSIENT`, and a test forbids a third copy), and a
+telemetry write never decides a job's outcome, so health notes retry but never
+defer. The one exception is a `running` note published as a PRECONDITION — that
+used to hard-raise, which made the health ledger's own availability a
+precondition for the job; `source_health.require_running_note` now defers when
+the host never answered and still raises when it refused the write.
 **The month's budget is spent - what happens now**
 `ops_status.py [2a]` shows month-to-date at or past the stop line, or a job log
 carries `::warning::spend: the $10.00 monthly cap is spent`.

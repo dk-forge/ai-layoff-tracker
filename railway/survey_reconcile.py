@@ -5,6 +5,11 @@ coverage against its monthly published aggregates; it never changes tracker
 events merely to match those aggregates.  It records both the individual
 reference-month comparison and the cumulative year-to-date comparison so a
 reader can distinguish a new discovery shortfall from an inherited gap.
+
+SAFE TO DEFER: every figure is recomputed from the live aggregate on each run
+and each record is an upsert keyed by reference month, so a run the host never
+answered leaves yesterday's record standing and tomorrow's run replaces it with
+a fresher one. It changes no tracker event.
 """
 import html
 import json
@@ -18,6 +23,11 @@ from email.utils import parsedate_to_datetime
 from urllib.parse import urlencode
 
 import requests
+
+import host_call
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "survey-reconcile"
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 # Competitor benchmark data lives in a SECRET, never the repo (standalone-brand
@@ -190,9 +200,8 @@ def reports_for_year(year):
 
 def tracker_total(site, query):
     url = site.rstrip("/") + "/wp-json/layoffs/v1/aggregate?" + urlencode(query)
-    response = requests.get(url, headers=UA, timeout=90)
-    response.raise_for_status()
-    return int(response.json()["totals"]["jobs"]), url
+    payload = host_call.get_json(url, headers=UA, timeout=90)
+    return int(payload["totals"]["jobs"]), url
 
 
 def tracker_comparison_totals(site, reference_month):
@@ -233,9 +242,9 @@ def publish_record(site, payload):
     key = os.environ.get("WP_API_KEY", "")
     if not key:
         raise RuntimeError("WP_API_KEY is required to retain the public reconciliation record")
-    response = requests.post(site.rstrip("/") + "/wp-json/layoffs/v1/benchmarks/survey",
-        json=payload, headers={**UA, "X-Layoff-API-Key": key}, timeout=60)
-    response.raise_for_status()
+    host_call.post_json(site.rstrip("/") + "/wp-json/layoffs/v1/benchmarks/survey",
+                        payload, headers={**UA, "X-Layoff-API-Key": key},
+                        timeout=60)
 
 
 def payload_for_report(site, report, allowed):
@@ -281,6 +290,16 @@ def payload_for_report(site, report, allowed):
 
 
 def main():
+    """Deferral boundary. Each record is an upsert keyed by reference month."""
+    try:
+        code = _run()
+    except host_call.Deferred as exc:
+        return host_call.defer(JOB, str(exc))
+    host_call.clear(JOB)
+    return code
+
+
+def _run():
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     if not site:
         print("WP_SITE_URL is required")

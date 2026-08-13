@@ -76,11 +76,16 @@ class ScanIsUnderTheRunDeadline(unittest.TestCase):
             return FakeResponse({"data": [dict(row, id=params["page"])] * reason_backfill.PAGE_SIZE,
                                  "total": 10 ** 6})
 
-        self._real_requests = reason_backfill.requests
-        reason_backfill.requests = SimpleNamespace(get=fake_get)
+        # The scan reads through the SHARED retry (http_retry.get_with_retry),
+        # not through reason_backfill's own `requests`, since 2026-08-12: this
+        # loop used to carry a private copy of "which statuses are worth
+        # another try". Stub the transport the scan actually uses.
+        self._real_requests = reason_backfill.http_retry.requests
+        reason_backfill.http_retry.requests = SimpleNamespace(
+            get=fake_get, RequestException=Exception)
 
     def tearDown(self):
-        reason_backfill.requests = self._real_requests
+        reason_backfill.http_retry.requests = self._real_requests
 
     def test_scan_stops_when_the_run_deadline_passes(self):
         # Three pages of budget, then the clock is spent.
@@ -103,7 +108,8 @@ class ScanIsUnderTheRunDeadline(unittest.TestCase):
         def fake_get(url, params=None, headers=None, timeout=None):
             return FakeResponse({"data": [], "total": 0})
 
-        reason_backfill.requests = SimpleNamespace(get=fake_get)
+        reason_backfill.http_retry.requests = SimpleNamespace(
+            get=fake_get, RequestException=Exception)
         candidates, pages, truncated = reason_backfill.fetch_candidates(stop=lambda: False)
         self.assertFalse(truncated)
         self.assertEqual(candidates, [])
@@ -115,16 +121,18 @@ class WritesSurviveTheDeadline(unittest.TestCase):
     def setUp(self):
         self.posted = []
 
-        def fake_post(url, json=None, headers=None, timeout=None):
-            ids = [e["id"] for e in json["edits"]]
+        # The /edit write goes through host_call.post_json (stdlib urllib, the
+        # shared three-outcome resolver) since 2026-08-12, so that is the seam.
+        def fake_post(url, payload, headers=None, timeout=None):
+            ids = [e["id"] for e in payload["edits"]]
             self.posted.append(ids)
-            return FakeResponse({"edited": ids, "not_found": [], "rejected": []})
+            return {"edited": ids, "not_found": [], "rejected": []}
 
-        self._real_requests = reason_backfill.requests
-        reason_backfill.requests = SimpleNamespace(post=fake_post)
+        self._real_post = reason_backfill.host_call.post_json
+        reason_backfill.host_call.post_json = fake_post
 
     def tearDown(self):
-        reason_backfill.requests = self._real_requests
+        reason_backfill.host_call.post_json = self._real_post
 
     def test_writes_stop_starting_new_chunks_past_the_deadline(self):
         items = [{"id": i, "reason_tags": ["restructuring"]}

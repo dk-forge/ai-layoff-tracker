@@ -11,6 +11,9 @@ Optional: RECLASSIFY_BATCH (default 5). The scheduled batch is deliberately
 small because each row may require a slow publisher fetch and a model call.
 RECLASSIFY_DEADLINE_SECONDS (default 900) stops safely between rows so an
 unreachable publisher or model cannot consume the GitHub Actions hard limit.
+
+SAFE TO DEFER: the queue is `legacy_unreviewed` rows on the server, a row stays
+queued until it is written, and the batch is re-derived from scratch each run.
 """
 import html
 import os
@@ -20,8 +23,12 @@ import time
 
 import requests
 
+import host_call
 from extractor import classify_ai_evidence
 import spend
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "reclassify-legacy-ai"
 
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -57,25 +64,32 @@ def fetch_text(url):
 
 
 def api_get(path, params=None):
-    response = requests.get(f"{SITE}/wp-json/layoffs/v1/{path}", params=params, headers={"User-Agent": UA}, timeout=60)
-    response.raise_for_status()
-    return response.json()
+    return host_call.get_json(f"{SITE}/wp-json/layoffs/v1/{path}", params=params,
+                              headers={"User-Agent": UA}, timeout=60)
 
 
 def post_updates(items):
-    response = requests.post(
-        f"{SITE}/wp-json/layoffs/v1/reclassify", json={"items": items},
+    return host_call.post_json(
+        f"{SITE}/wp-json/layoffs/v1/reclassify", {"items": items},
         headers={"X-Layoff-API-Key": KEY, "User-Agent": UA}, timeout=60,
     )
-    response.raise_for_status()
-    return response.json()
 
 
 def main():
+    """Deferral boundary. The host never answering is not this job failing."""
+    try:
+        code = _run()
+    except host_call.Deferred as exc:
+        return host_call.defer(JOB, str(exc))
+    host_call.clear(JOB)
+    return code
+
+
+def _run():
     if not (SITE and KEY and os.environ.get("OPENROUTER_API_KEY")):
         print("WP_SITE_URL / WP_API_KEY / OPENROUTER_API_KEY required")
         return 1
-    data = api_get("query", {"ai": "1", "review_status": "legacy_unreviewed", "per_page": BATCH, "page": 1, "sort": "id", "dir": "asc"})
+    data = api_get("query",{"ai": "1", "review_status": "legacy_unreviewed", "per_page": BATCH, "page": 1, "sort": "id", "dir": "asc"})
     rows = data.get("data", [])
     if not rows:
         print("No legacy AI rows pending reclassification")

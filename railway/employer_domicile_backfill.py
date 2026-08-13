@@ -18,6 +18,11 @@ Safety properties, in line with the enrichment endpoint it reuses:
   trail as a curated-registry backfill (not a source-page re-read).
 - Era-guarded entries (`not_before`) are skipped for rows dated before the
   company's current domicile applied, and skipped entirely for undated rows.
+
+SAFE TO DEFER, and the idempotence bullet above is the reason: /enrich-context
+fills blank fields only, the item list is re-derived from the committed registry
+every run, and a partly-applied batch simply means fewer items to derive next
+time. Nothing here is a sequence.
 """
 import json
 import os
@@ -28,6 +33,11 @@ from datetime import date
 from pathlib import Path
 
 import requests
+
+import host_call
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+JOB = "employer-domicile-backfill"
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 REGISTRY_PATH = Path(__file__).parent / "seed_data" / "employer_domicile.json"
@@ -78,9 +88,8 @@ def fetch_rows(site, params, max_rows):
     page = 1
     while len(rows) < max_rows:
         query = {**params, "per_page": PAGE_SIZE, "page": page}
-        response = requests.get(site + "/wp-json/layoffs/v1/query", params=query, headers=UA, timeout=60)
-        response.raise_for_status()
-        payload = response.json()
+        payload = host_call.get_json(site + "/wp-json/layoffs/v1/query",
+                                     params=query, headers=UA, timeout=60)
         data = payload.get("data", [])
         rows.extend(data)
         if len(data) < PAGE_SIZE or page * PAGE_SIZE >= payload.get("total", 0):
@@ -133,17 +142,15 @@ def post_items(site, api_key, items):
     updated, rejected, not_found = [], [], []
     for start in range(0, len(items), POST_BATCH):
         batch = items[start:start + POST_BATCH]
-        response = requests.post(
+        result = host_call.post_json(
             site + "/wp-json/layoffs/v1/enrich-context",
-            json={
+            {
                 "items": batch,
                 "reason": "Curated employer-domicile registry backfill (deterministic public HQ facts for the largest multi-country events)",
             },
             headers={**UA, "X-Layoff-API-Key": api_key},
             timeout=120,
         )
-        response.raise_for_status()
-        result = response.json()
         updated.extend(result.get("updated", []))
         rejected.extend(result.get("rejected", []))
         not_found.extend(result.get("not_found", []))
@@ -151,6 +158,16 @@ def post_items(site, api_key, items):
 
 
 def main():
+    """Deferral boundary. Every write here is an idempotent blank-field fill."""
+    try:
+        code = _run()
+    except host_call.Deferred as exc:
+        return host_call.defer(JOB, str(exc))
+    host_call.clear(JOB)
+    return code
+
+
+def _run():
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     if not site:
         print("WP_SITE_URL is required")

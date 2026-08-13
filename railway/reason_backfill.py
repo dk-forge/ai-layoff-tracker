@@ -64,9 +64,17 @@ from datetime import date
 
 import requests
 
+import host_call
+import http_retry
 from extractor import classify_reason_tags, CreditsExhaustedError
 import spend
-from source_health import report_source_health
+from source_health import report_source_health, require_running_note
+
+#: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
+#: DEFERRABLE ONLY DURING THE SCAN. Once /edit has written a chunk the run did
+#: real work, and the flush already knows how to leave the rest for tomorrow
+#: (the write is idempotent and unwritten rows are re-found next run).
+JOB = "reason-backfill"
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -173,14 +181,19 @@ def fetch_candidates(stop=None):
         # same fragility and hit it on 2026-07-25. Retry the page a few times,
         # then carry on with the pages we have; page 1 failing is a real outage
         # and still raises.
-        response = None
-        for attempt in range(3):
-            response = requests.get(f"{SITE}/wp-json/layoffs/v1/query", params=params, headers=UA, timeout=60)
-            if response.status_code < 500:
+        # The retry itself now comes from http_retry, the ONE definition — this
+        # loop used to hold its own copy of "which statuses are worth another
+        # try", which is exactly the drift that module exists to prevent.
+        response = http_retry.get_with_retry(f"{SITE}/wp-json/layoffs/v1/query",
+                                             params=params, headers=UA, timeout=60)
+        if response is None:
+            if page > 1:
+                print(f"  page {page}: the host stopped answering; continuing with "
+                      f"{len(candidates)} candidate(s) already collected")
                 break
-            if attempt < 2:
-                print(f"  page {page}: HTTP {response.status_code}, retry {attempt + 1}/2")
-                time.sleep(5 * (attempt + 1))
+            # Page one never answered: nothing was scanned, nothing classified,
+            # nothing written. Safe to defer — the identical scan runs tomorrow.
+            raise host_call.Deferred("/query never answered on page 1 of the scan")
         # WP returns 404 for a page past the last row; between our sequential
         # page requests the candidate set shrinks (rows get tagged), so the
         # final page can 404 even though the scan succeeded. End-of-data, not a
@@ -235,15 +248,22 @@ def post_edits(items, stop=None):
                   f"unwritten for the next run")
             break
         chunk = items[start:start + EDIT_BATCH]
-        response = requests.post(
-            f"{SITE}/wp-json/layoffs/v1/edit",
-            json={"reason": EDIT_REASON,
-                  "edits": [{"id": i["id"], "fields": {"reason_tags": i["reason_tags"]}} for i in chunk]},
-            headers={**UA, "X-Layoff-API-Key": KEY},
-            timeout=120,
-        )
-        response.raise_for_status()
-        result = response.json()
+        try:
+            result = host_call.post_json(
+                f"{SITE}/wp-json/layoffs/v1/edit",
+                {"reason": EDIT_REASON,
+                 "edits": [{"id": i["id"], "fields": {"reason_tags": i["reason_tags"]}} for i in chunk]},
+                headers={**UA, "X-Layoff-API-Key": KEY},
+                timeout=120,
+            )
+        except host_call.Deferred as exc:
+            # NOT a deferral of the run: earlier chunks may already be written,
+            # and the flush already has an honest name for "decided but not
+            # written". Same exit as a stalled host hitting the write deadline.
+            unwritten = len(items) - start
+            print(f"  the host stopped answering ({exc}); {unwritten} decided "
+                  f"row(s) left unwritten for the next run")
+            break
         edited.extend(result.get("edited", []))
         not_found.extend(result.get("not_found", []))
         if result.get("rejected"):
@@ -366,12 +386,22 @@ def main():
         print("WP_SITE_URL and WP_API_KEY are required (or set REASON_BACKFILL_DRY_RUN=1)")
         return 1
     if not DRY_RUN:
-        if not report_source_health("reason_backfill", "running", 0,
-                                    "bounded stored-excerpt reason-tag backfill in progress"):
-            raise RuntimeError("Could not publish reason_backfill running health status")
+        # First thing the job does, before anything is scanned or written. A
+        # host that never answered defers; a host that REFUSED the write still
+        # raises, because a wrong key is settled and fails identically tomorrow.
+        code = require_running_note(
+            JOB, "reason_backfill",
+            "bounded stored-excerpt reason-tag backfill in progress")
+        if code is not None:
+            return code
     try:
         run()
+        host_call.clear(JOB)
         return 0
+    except host_call.Deferred as exc:
+        # Raised only from page one of the scan: nothing was read, classified
+        # or written, so this is not a degraded collector.
+        return host_call.defer(JOB, str(exc))
     except CreditsExhaustedError as exc:
         # BILLING, not code: the LLM provider is out of credits. Record a
         # distinct, actionable state and exit 0 so it does not page as a code
