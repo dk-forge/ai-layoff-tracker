@@ -448,7 +448,10 @@ def main(argv=None, manifest_path=None, ledger_path=None, pack_path=None, now=No
                       f"reviewed by {entry['reviewed_by']}")
                 print(f"  reason: {entry['reason']}")
                 print(f"  COMMIT both {MANIFEST_PATH.name} and {LEDGER_PATH.name}. "
-                      f"The published figure moves on the next measurement.")
+                      f"The published figure moves on the next measurement — Monday's "
+                      f"recall-precision.yml, or `python3 railway/recall_goldset.py "
+                      f"--write` now, which also refreshes the plugin's render copy so "
+                      f"the live page does not keep publishing the superseded number.")
                 return 0
 
         if "--revert" in argv:

@@ -3060,7 +3060,8 @@ function alt_wilson_interval($k, $n, $z = 1.959964) {
  * The committed SEC Item 2.05 gold-set measurement, for the tracker page's
  * "how complete is that, measured?" paragraph. Read from
  * data/recall-measurement.json — a render copy of railway/recall_measurement.json
- * written by recall_precision.py (weekly recall-precision.yml) so the page
+ * written by recall_goldset.write_measurement(), the ONE writer of both files
+ * (weekly via recall-precision.yml, and on any re-measure) so the page
  * follows the measurement instead of hardcoding "24 of 57". Returns null when
  * the file is missing or malformed, and the caller renders NOTHING rather than
  * a stale typed number. The figure is a frozen-set regression measurement, not
