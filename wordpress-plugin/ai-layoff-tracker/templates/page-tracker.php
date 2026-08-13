@@ -255,7 +255,13 @@ $alt_hero_basis  = 'counted by filing date';
     // tiles.
     $alt_board = ($alt_boot && !empty($alt_boot['board']) && is_array($alt_boot['board'])) ? $alt_boot['board'] : null;
     $alt_board_html = '';
-    $alt_board_periods = function_exists('alt_signal_board_periods') ? alt_signal_board_periods() : array();
+    // Both guarded, for the reason in CLAUDE.md: an FTPS deploy races mid
+    // upload, so this template can be live for a few seconds against the
+    // PREVIOUS db.php. A missing label helper must cost the server-rendered
+    // board (layoffs.js repaints it a moment later), never a fatal.
+    $alt_board_periods = (function_exists('alt_signal_board_periods')
+                          && function_exists('alt_signal_board_labels'))
+        ? alt_signal_board_periods() : array();
     if ($alt_board && count($alt_board) === count($alt_board_periods) && $alt_board_periods) {
         // COMPUTED, NEVER WRITTEN DOWN, and computed from the same windows the
         // cells were counted over. A literal month name in this template is
