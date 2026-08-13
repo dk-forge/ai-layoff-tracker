@@ -55,6 +55,28 @@ real DOM, holds the ellipsis contract at the same time (a name cut with no
 visible marker reads as a complete company name), pins that 375px is unchanged,
 and proves it can fail by putting the old declarations back.
 
+## 2026-08-13 - the shrink half named the wrong container (2.20.31)
+
+2.20.30 shipped both halves and only one worked. The live audit re-run after the
+deploy still showed two bands at 1280px: Cumulative AI-attributed cuts at 277px
+and By data source at 185px, unchanged. `fitCardHeights()` and its CSS rule both
+said `.alt-chart-grid > .alt-chart-card`, and the tracker's cards are in
+`.alt-minigrid`. The selector matched nothing, the pass was a no-op, and the try
+block around it meant there was not even an error to see.
+
+Both are now unscoped: the CSS is `.alt-chart-card.alt-card-cannot-fill`
+(align-self is inert outside a grid or flex parent, so naming the container buys
+nothing but a way to be wrong), and the JS asks each card's PARENT what it
+computes to rather than matching a class. A container renamed or added later
+cannot silently switch this off again.
+
+**The fixture had agreed with the defect**, which is why the tests were green
+over a page-level no-op. It has been moved onto the real container, and
+`test_the_fixture_uses_the_container_the_template_actually_ships` now fails if
+page-tracker.php ever stops shipping it. The live sweep
+(`railway/card_space_audit.py`) is what caught this, and re-running it after the
+deploy rather than trusting a green run is the reason it was caught in minutes.
+
 ## 2026-08-13 - the tab and the heading now say the same thing (2.20.26)
 
 The four wording mismatches 2.20.25 left "for the owner to rule on" (table at

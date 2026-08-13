@@ -3034,8 +3034,15 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    genuinely short ("By data source" has four data sources and there is no
    fifth to invent, 175px of white). Shrinking the card moves the emptiness
    out of the card and into the gutter between rows, where it reads as layout
-   instead of as a broken card. */
-.alt-chart-grid > .alt-chart-card.alt-card-cannot-fill { align-self: start; }
+   instead of as a broken card.
+
+   Deliberately NOT scoped to a grid class. The first cut of this said
+   `.alt-chart-grid > .alt-chart-card` and did nothing at all on the live page,
+   because these cards actually sit in `.alt-minigrid`; the audit caught it and
+   the two bands survived the deploy. align-self is inert outside a grid or
+   flex parent, so the unscoped selector is both safer and shorter than naming
+   every container the cards are ever placed in. */
+.alt-chart-card.alt-card-cannot-fill { align-self: start; }
 
 /* Static (server-rendered) bar rows that navigate instead of filtering:
    same component, link semantics. */

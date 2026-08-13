@@ -112,7 +112,7 @@ FIXTURE = """<!doctype html>
 <style>%(css)s</style></head>
 <body><div class="alt-wrap alt-tracker-wrap">
 
-<div class="alt-chart-grid">
+<div class="alt-minigrid">
   %(tall)s
   <div class="alt-mini alt-chart-card" id="fills">
     <div class="alt-chart-head"><div class="alt-chart-h">Long list</div></div>
@@ -180,7 +180,10 @@ def _fit_script():
     m = re.search(r"var CARD_BAND_PX = ([0-9.]+);", src)
     if not m:
         raise AssertionError("layoffs.js no longer declares CARD_BAND_PX")
-    return "var CARD_BAND_PX = %s;\n%s" % (m.group(1), jsrun.extract("fitCardHeights", src))
+    return "var CARD_BAND_PX = %s;\n%s\n%s" % (
+        m.group(1),
+        jsrun.extract("laidOutCards", src),
+        jsrun.extract("fitCardHeights", src))
 
 
 def _undo_the_fix(css):
@@ -330,6 +333,19 @@ class NoCardWastesItsOwnHeightTests(_Measured):
             msg="the long-name row is %.1fpx against %.1fpx for a short one, so "
                 "the name wrapped instead of ellipsizing"
                 % (got["rowHeights"][1], got["rowHeights"][0]))
+
+    def test_the_fixture_uses_the_container_the_template_actually_ships(self):
+        # THE BUG THIS EXISTS FOR. The first cut of the fix, and of this
+        # fixture, both said `.alt-chart-grid`. The tracker's cards are in
+        # `.alt-minigrid`, so the fixture agreed with the defect and the tests
+        # above went green against a page-level no-op that only the live audit
+        # caught. A fixture is only evidence while it is the same shape as the
+        # page, so that is asserted rather than assumed.
+        template = (ROOT / "wordpress-plugin/ai-layoff-tracker/templates/page-tracker.php").read_text()
+        self.assertIn(
+            'class="alt-minigrid"', template,
+            "page-tracker.php no longer puts its chart cards in .alt-minigrid, "
+            "so this fixture is measuring a container the reader never gets")
 
     def test_one_column_is_unaffected(self):
         # At 375px the grid is one column, nothing stretches, and none of this

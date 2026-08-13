@@ -2173,8 +2173,26 @@
         }, 0);
     }
 
+    // Which cards this pass is allowed to shrink: any chart card whose PARENT
+    // lays it out, found by asking the parent what it computes to rather than
+    // by naming a container class. The first cut of this asked for
+    // `.alt-chart-grid > .alt-chart-card`, which matched nothing on the live
+    // page - these cards sit in `.alt-minigrid` - and shipped a no-op that
+    // only card_space_audit.py noticed. A card outside a grid or flex parent
+    // is not stretched by anything, so there is nothing for this to fix.
+    function laidOutCards() {
+        var out = [];
+        Array.prototype.forEach.call(document.querySelectorAll('.alt-chart-card'), function (card) {
+            var parent = card.parentElement;
+            if (!parent) return;
+            var d = getComputedStyle(parent).display;
+            if (d.indexOf('grid') !== -1 || d.indexOf('flex') !== -1) out.push(card);
+        });
+        return out;
+    }
+
     function fitCardHeights() {
-        var cards = document.querySelectorAll('.alt-chart-grid > .alt-chart-card');
+        var cards = laidOutCards();
         if (!cards.length) return;
         // Reset, so the measurement below reads the stretched layout every time.
         Array.prototype.forEach.call(cards, function (card) {
