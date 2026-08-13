@@ -154,7 +154,7 @@ day.
 
 | What you see | What it means | What to do |
 |---|---|---|
-| `the $10.00 monthly cap is spent: $9.xx used` | MEASURED month-to-date at the 90% stop line | Nothing is broken. Either wait for the 1st (the balance job takes the new month-start snapshot and paid reads resume by themselves), or take the owner the cut-list in `[2a]` and change `MONTHLY_ALLOWANCE_USD` - **a budget change is the owner's call, never a session's** |
+| `the $18.00 monthly cap is spent: $16.xx used` | MEASURED month-to-date at the 90% stop line | Nothing is broken. Either wait for the 1st (the balance job takes the new month-start snapshot and paid reads resume by themselves), or take the owner the cut-list in `[2a]` and change `MONTHLY_ALLOWANCE_USD` - **a budget change is the owner's call, never a session's**. If the owner does raise it: the key carries a **$20 PROVIDER limit**, and the policy cap must stay strictly under it. At parity our graceful degrade never fires and the provider hard-stops a run mid-call instead. Raise the provider limit first, then this |
 | `month-to-date for 2026-08 is UNKNOWN (no-baseline...)` | No committed month-start for this key here | UNKNOWN, not a pass, and not a fault. The per-run ceiling is what is enforcing. Check the daily `openrouter-balance-check` workflow is green - it is the one job that commits `railway/spend_month.json` |
 | `this run is TRUNCATED, not complete` | The run stopped at its per-run ceiling or its deadline | Expected under throttle. What it did not reach is **deferred, not decided** - do not read its counts as a full pass over the queue |
 | A job spent past its named ceiling in `[2a]` | The brake leaked | This is a defect, not a budget question. The ceiling is resolved by `spend.effective_run_ceiling_usd()`; a job that overshoots is checking it too coarsely (once per item instead of once per model call) |
@@ -733,6 +733,87 @@ far more than collection did.
 - Announcement-vs-effective date basis - a definitional difference, not a gap.
 - Employers who withhold headcounts. In H1 2026 media, only one US event had a
   public number; the rest deliberately withheld. That cell cannot go green.
+
+## Adjudicating the SEC Item 2.05 gold set (the only way recall moves)
+
+`recall_goldset.measure()` counts an event only where the manifest says
+`matched`. When a collector fix makes the tracker acquire a row for a
+not-matched gold event, the run reports it under
+`candidates_needing_adjudication` and does NOT count it - "a machine must not
+promote its own recall". The published figure moves when a person decides, and
+this is how.
+
+**1. Rebuild the evidence, do not trust the last build.**
+```bash
+python3 railway/recall_adjudication_pack.py --write
+```
+Read-only. Re-fetches every proposed row from the public `/query` and every
+filing from SEC EDGAR, and writes
+`docs/recall-reference-sets/sec-item-205-adjudication-queue.{json,md}`. Nothing
+in it is copied from `match_notes` or `count_evidence`: the manifest is the
+thing being audited, so its own strings are quoted for comparison and never
+relied on.
+
+**2. Read the sheet** (`...-adjudication-queue.md`). One block per pending
+event: the filing's own sentence stating the count, our stored row, whether the
+counts and the dates agree, and every flag worth a second look. It is ordered by
+how much there is to CHECK, not by how likely an accept is - the first entries
+are the ones where nothing disagrees, which makes them fast to verify and says
+nothing about whether they are right. There is no recommended answer anywhere in
+it, deliberately.
+
+Two things the sheet will show you that are not errors:
+- **A date that disagrees on one basis only.** `announcement_date` is the filing
+  basis and `layoff_date` is the effective basis. An effective date months after
+  the filing is normal (`Koppers`, `Molson Coors`, `Hormel` all sit on
+  `2025-12-31`/`2026-12-31`) and is not a mismatch of fact.
+- **A count that is the filing's OTHER number.** Goodyear's 8-K states 600 gross
+  and 400 net in one sentence; we hold 400 and the gold set holds 600. The sheet
+  quotes the sentence twice rather than picking.
+
+**3. Record each decision.** One command per event, and it writes the manifest
+and the ledger together:
+```bash
+python3 railway/recall_adjudicate.py --queue          # what is pending
+python3 railway/recall_adjudicate.py --show <ref_id>  # one evidence block, raw
+python3 railway/recall_adjudicate.py --accept <ref_id> \
+    --reviewed-by 'Name' --reason 'what in the filing and the row decided it' \
+    --event-ids 149909
+python3 railway/recall_adjudicate.py --reject <ref_id> \
+    --reviewed-by 'Name' --reason '...' --event-ids 149625
+```
+`--event-ids` takes every value until the next flag, so `--event-ids 149625
+149911` records both. A blank reviewer or a blank reason is REFUSED with nothing
+written. Re-running the same decision writes nothing and exits 0; a DIFFERENT
+decision is refused until you revert.
+
+**4. Changed your mind: revert, never re-edit.**
+```bash
+python3 railway/recall_adjudicate.py --revert <ref_id> \
+    --reviewed-by 'Name' --reason 'why the first reading was wrong'
+```
+Restores the event byte for byte from the ledger's snapshot and appends the
+reversal. It never deletes the decision it reverses; both readings stay on the
+record.
+
+**5. Commit the manifest AND `railway/recall_adjudications.json`**, then
+re-measure:
+```bash
+python3 railway/recall_goldset.py --write
+```
+That is the run that moves the published figure, and only accepted events move
+it.
+
+**Never hand-edit `match_decision`.** `recall_adjudicate.py --verify` fails on
+any `matched` event that carries neither an `adjudication` block nor membership
+in the 24 an editor decided on 2026-08-01, and
+`tests/test_recall_adjudication.py` runs it against the committed files - so a
+hand-promoted event reddens CI instead of quietly raising the coverage claim.
+
+**`MATCHED_FLOOR` is not touched by an adjudication.** It is the tripwire for
+losing events we hold, and moving it in the same breath as raising the numerator
+turns it into a rubber stamp. Raise it, if at all, in a separate change with the
+reasoning in TECHLOG.
 
 ## Research pointers
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)

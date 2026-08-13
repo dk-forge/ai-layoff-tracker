@@ -36,8 +36,14 @@ EXIT CODES
    the queue kept its place. A down host is not a defect in this repository, and
    a red run here would fire the CI alert, which posts to the down host, which
    is precisely the amplification loop this design exists to break.
-1  the host is UP and delivery is still refused (a wrong key, a missing route),
-   or the queue could not be written. Those a human can act on here.
+1  the host is UP and delivery is still refused (a wrong key, a missing route);
+   or the queue could not be written; or WP_SITE_URL/WP_API_KEY are unset; or —
+   the case this list used to omit — the queue is STUCK and the host-independent
+   GitHub-issue fallback could not be used either. That last one is a down host
+   AND a red run on purpose: when nothing at all can reach the owner, a red run
+   is the only signal left, so it is worth the amplification the other paths
+   avoid. Do not "restore" a blanket green here; the amplification rule is about
+   an outage that IS being reported some other way.
 """
 
 from __future__ import annotations
@@ -129,11 +135,24 @@ def main(argv=None) -> int:
 
     stuck = alert_outbox.stuck(outbox)
     if host_down:
-        # Deliberately green. The queue is doing exactly what it was built for.
+        # THE VERDICT IS NOT DECIDED YET, AND THIS LINE USED TO SAY IT WAS.
+        #
+        # It read "This run is NOT failing", printed here, before the fallback
+        # below has been attempted. On the one path where the fallback also
+        # fails this function returns 1 — a red `Alert drain` run, which
+        # ci-alert.yml turns into an email to the owner. So the log asserted the
+        # run was green in the same breath as the run went red, and the log is
+        # the only place a session reads to tell "the host was down and we kept
+        # the alert" from "the alerter is broken".
+        #
+        # The BEHAVIOUR is right and is unchanged: when nothing is able to tell
+        # the owner, a red run is the only signal left. What was wrong was the
+        # sentence, so the claim now sits on the paths where it is true.
         print("::warning::the host is still not answering, so "
-              f"{remaining} alert(s) stay held. This run is NOT failing: the "
-              "outage is not a defect in this repository, and a red run here "
-              "would fire the CI alert, which posts to the down host.")
+              f"{remaining} alert(s) stay held. A down host is not a defect in "
+              "this repository, and a red run here would fire the CI alert, "
+              "which posts to the down host — so holding the queue is not, by "
+              "itself, a failure.")
         if stuck and not args.no_fallback:
             # It has been down long enough that "it will pass" is no longer the
             # honest reading. Say so on the channel that is not on the host.
@@ -146,8 +165,14 @@ def main(argv=None) -> int:
             if not ok:
                 print("::error::alerts are held AND the host-independent "
                       f"fallback could not be used: {fallback_note}. Nothing is "
-                      "currently able to tell the owner about this.")
+                      "currently able to tell the owner about this, so THIS RUN "
+                      "IS FAILING deliberately: a red run is the last signal "
+                      "left, even though the alert it fires posts to the same "
+                      "host that is down. This is NOT the ordinary held-queue "
+                      "case above.")
                 return 1
+        print(f"This run is NOT failing: {remaining} alert(s) kept their place "
+              "and the next drain that reaches the host delivers them.")
         return 0
 
     # The host answered and still refused. That is a wrong key or a missing

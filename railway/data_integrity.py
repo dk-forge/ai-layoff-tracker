@@ -1088,6 +1088,256 @@ class MovementInvariant:
                     f"and the corrections log", observed=observed)
 
 
+# ---------------------------------------------------------------------------
+# CONTAINMENT: a subset headline may not move without its superset moving too
+# ---------------------------------------------------------------------------
+#
+# THE DEFECT THIS EXISTS FOR, and why MovementInvariant could not see it.
+#
+# On 2026-08-08 "United States jobs, all time" rose 92,686 (93,210 by the
+# 2026-08-10 reading) while "Worldwide jobs, all time" — of which the US slice
+# is a strict subset — rose 14,911. The US movement guard judged that move
+# against `allowance = |Δentries| * base_mean * mean_factor`, i.e. against how
+# many rows ARRIVED. Nothing arrived: three already-published ERM rows were
+# re-scored from "Multiple countries" to "United States". The 18 entries that
+# did land bought 34,730 jobs of headroom for a movement they had nothing to do
+# with, and at 49 net new entries the identical re-scoring would have bought
+# 94,543 and passed in silence.
+#
+# So the allowance is measured on the wrong axis. This guard adds one that is
+# measured on the right one, and it needs no entry counts at all.
+#
+# THE RULE. For a strict subset S of a superset T, the COMPLEMENT C = T - S is
+# a real population, and its figures are exact by subtraction. In ANY
+# population a row can only arrive with its jobs or leave with its jobs, so
+#
+#     Δjobs and Δentries always move in the SAME direction.
+#
+# When they do not — C loses jobs while gaining rows, or gains jobs while
+# losing them — no arrival and no departure explains it. Jobs were re-scored
+# across the boundary between two published slices. On 2026-08-10 the
+# complement of the US slice read -78,299 jobs on +10 entries, which is that
+# condition exactly, and it is that condition whatever the US slice's own entry
+# count happened to be.
+#
+# WHY IT NEEDS NO PARTIAL-CYCLE EXEMPTION, unlike MovementInvariant. A row
+# arriving mid-cycle pushes the complement TOWARDS agreement (it adds jobs and
+# a row in the same direction), so a partial cycle can hide this verdict but
+# can never manufacture one. That makes the FAIL true at the instant it is
+# read, which is the same property that keeps Δentries == 0 exempt over there.
+#
+# WHAT IT DOES NOT CATCH, said plainly. It compares two published slices, so it
+# is blind to anything that moves them together — including a move in the
+# TOP-level slice itself, which has no superset. Worldwide fell 27,267 on
+# 2026-08-11 while gaining 13 entries and passed its own guard because those 13
+# entries bought a 50,054 allowance; if the US slice fell with it, this guard
+# sees a contained pair and says nothing. What would catch that is the same
+# sign rule applied to a slice's OWN movement (arriving rows may not explain
+# departing jobs), which is a change to MovementInvariant's allowance clause
+# and belongs in its own commit.
+
+#: Declared pairs, subset first. Structurally verified by
+#: `containment_problem` at run time and pinned by
+#: tests/test_headline_containment.py, so a pair that stops nesting reports
+#: UNKNOWN rather than comparing two populations that are not related.
+CONTAINMENTS = (
+    ("us_all_time", "worldwide_all_time"),
+    ("ai_all_time", "worldwide_all_time"),
+)
+
+#: Jobs the complement may move against its own row direction before this is a
+#: finding. It is worldwide's own `move_floor`, reused rather than reinvented,
+#: because the complement IS worldwide minus one slice. Deliberately FLAT, not
+#: scaled by the elapsed span: a re-scoring is a step change, not a rate, and
+#: every clock in this module that widens with time is one the 2026-08 incident
+#: had to be rescued from. Legitimate causes below it are editorial count
+#: corrections on standing rows, which is what the corrections log is for.
+CONTAINMENT_FLOOR_JOBS = 25000
+
+#: The two baselines of a pair are written by the same daily recorder run, so
+#: they are normally seconds apart. Closing an incident installs a replacement
+#: baseline for one slice alone, which can put a pair a few hours out of step —
+#: real, bounded, and worth judging, since ordinary drift over that gap is a
+#: few thousand jobs against a 25,000 floor. Beyond one recorder cycle the two
+#: readings are not a complement any more and the pair reports UNKNOWN.
+MAX_PAIR_SKEW_DAYS = 1.0
+
+
+def containment_problem(sub, sup):
+    """None if `sub` is structurally a subset of `sup`, else why it is not.
+
+    Two conditions, and the second is the one a future edit is most likely to
+    break:
+
+    1. THE FILTERS NEST. Every param of the superset must appear, identically,
+       on the subset; the subset then carries at least one more. `country` and
+       `ai` are restrictions over the same table, so adding one can only ever
+       remove rows.
+    2. THE BASES AGREE. A subset counted on one date basis and a superset on
+       another is not a containment relation, it is two different populations
+       with a suggestive name. Both sides must be free of a date window — the
+       measured no-op case documented on `Headline.date_windowed` — because a
+       windowed slice's basis is read off the live page and a pair whose two
+       halves could resolve it differently is not comparable.
+    """
+    if sub.date_windowed or sup.date_windowed:
+        return (f"{sub.label} and/or {sup.label} selects rows by date, so the two "
+                f"sides can resolve to different date bases and their difference "
+                f"is not a complement")
+    sub_p, sup_p = dict(sub.params), dict(sup.params)
+    for k, v in sup_p.items():
+        if sub_p.get(k) != v:
+            return (f"{sup.label} filters on {k}={v!r} and {sub.label} does not, "
+                    f"so {sub.label} is not inside it")
+    if set(sub_p) <= set(sup_p):
+        return (f"{sub.label} and {sup.label} carry the same filters, so neither "
+                f"contains the other")
+    return None
+
+
+class ContainmentInvariant:
+    """A subset headline may not move by more than its superset moved.
+
+    WHAT IT ASSERTS, per declared pair, against the same committed baseline
+    MovementInvariant reads: the COMPLEMENT (superset minus subset) did not
+    move its jobs against the direction its own rows moved, by more than
+    CONTAINMENT_FLOOR_JOBS.
+
+    MISSING DATA. No baseline for either side, a baseline too old to bound a
+    movement, the two baselines captured more than MAX_PAIR_SKEW_DAYS apart, a
+    pair that does not structurally nest, or a live read that failed -> UNKNOWN,
+    never a pass.
+
+    IT CANNOT LAUNDER ITSELF. A FAIL names both slices to `record_baseline`,
+    which refuses to advance either of them and opens the sticky incident under
+    the subset — because the difference between the two readings is the finding,
+    and recording either one makes that difference disappear.
+    """
+
+    key = "headline_containment"
+    label = "No subset headline moves without its superset"
+    reads_live_data = True
+
+    def __init__(self, headlines=HEADLINES, pairs=CONTAINMENTS, baseline_path=None,
+                 now=None):
+        by_name = {h.name: h for h in headlines}
+        self.pairs = tuple((by_name[a], by_name[b]) for a, b in pairs
+                           if a in by_name and b in by_name)
+        self.baseline_path = baseline_path or BASELINE_PATH
+        self.now = now
+
+    def run(self, ctx):
+        slices = (load_baseline(self.baseline_path) or {}).get("slices") or {}
+        per = []
+        for sub, sup in self.pairs:
+            out = self._one(ctx, sub, sup, slices)
+            if out["state"] == FAIL:
+                # Neither reading may become tomorrow's normal, and the subset
+                # carries the incident: one finding, one incident.
+                holds = getattr(ctx, "containment_holds", None)
+                if holds is None:
+                    holds = ctx.containment_holds = set()
+                holds.update({sub.name, sup.name})
+                incidents = getattr(ctx, "containment_incidents", None)
+                if incidents is None:
+                    incidents = ctx.containment_incidents = {}
+                incidents[sub.name] = out["detail"]
+            per.append((sub, out))
+        return _roll_up(self, ctx, per)
+
+    def _reading(self, ctx, h):
+        """({jobs, entries}, None) or (None, _out(...)) for one side."""
+        params, problem = _headline_query(ctx, h)
+        if params is None:
+            return None, _out(UNKNOWN, f"{h.label}: {problem}")
+        payload, bad_state, why, err = _fetch_aggregate(ctx, params)
+        if bad_state:
+            ctx.errors[h.name] = err
+            return None, _out(bad_state, f"{h.label}: {why}", pending=_excusable(err))
+        totals = (payload or {}).get("totals") or {}
+        try:
+            return {"jobs": int(totals["jobs"]), "entries": int(totals["entries"])}, None
+        except (KeyError, TypeError, ValueError):
+            return None, _out(UNKNOWN, f"{h.label}: unusable totals {totals!r}")
+
+    def _one(self, ctx, sub, sup, slices):
+        problem = containment_problem(sub, sup)
+        if problem:
+            return _out(UNKNOWN,
+                        f"the declared pair no longer nests ({problem}) — this pair is "
+                        f"NOT being checked, which is not the same as clean")
+
+        now = {}
+        for h in (sub, sup):
+            reading, bad = self._reading(ctx, h)
+            if bad:
+                return bad
+            now[h.name] = reading
+
+        priors, ages = {}, {}
+        for h in (sub, sup):
+            prior = slices.get(h.name)
+            if not isinstance(prior, dict) or "jobs" not in prior or "entries" not in prior:
+                return _out(UNKNOWN,
+                            f"no recorded baseline for {h.label} — containment against "
+                            f"{sup.label if h is sub else sub.label} is UNMEASURED until "
+                            f"data-integrity.yml records one", pending=True)
+            age = _days_since(prior.get("captured_at"), self.now)
+            if age is None:
+                return _out(UNKNOWN,
+                            f"{h.label}'s baseline has no readable capture time: "
+                            f"{prior.get('captured_at')!r}", pending=True)
+            if age > MAX_BASELINE_AGE_DAYS:
+                return _out(UNKNOWN,
+                            f"{h.label}'s baseline is {age:.0f} days old (max "
+                            f"{MAX_BASELINE_AGE_DAYS}) — too stale to bound a movement",
+                            pending=True)
+            priors[h.name], ages[h.name] = prior, age
+
+        skew = abs(ages[sub.name] - ages[sup.name])
+        if skew > MAX_PAIR_SKEW_DAYS:
+            return _out(UNKNOWN,
+                        f"the two baselines were captured {skew:.1f} days apart (max "
+                        f"{MAX_PAIR_SKEW_DAYS}) — their difference is not a complement, so "
+                        f"this pair is UNJUDGED rather than clean", pending=True)
+
+        # The claim itself, before any arithmetic that assumes it.
+        for when, sub_r, sup_r in (("now", now[sub.name], now[sup.name]),
+                                   ("at the baseline", priors[sub.name], priors[sup.name])):
+            if int(sub_r["jobs"]) > int(sup_r["jobs"]) or \
+                    int(sub_r["entries"]) > int(sup_r["entries"]):
+                return _out(FAIL,
+                            f"{sub.label} is larger than {sup.label} {when} "
+                            f"({int(sub_r['jobs']):,} jobs / {int(sub_r['entries']):,} entries "
+                            f"against {int(sup_r['jobs']):,} / {int(sup_r['entries']):,}). It is "
+                            f"published as a strict subset, so either the filter path broke or "
+                            f"the two are not counting the same population")
+
+        d_jobs = ((now[sup.name]["jobs"] - int(priors[sup.name]["jobs"]))
+                  - (now[sub.name]["jobs"] - int(priors[sub.name]["jobs"])))
+        d_entries = ((now[sup.name]["entries"] - int(priors[sup.name]["entries"]))
+                     - (now[sub.name]["entries"] - int(priors[sub.name]["entries"])))
+        shown = (f"{sup.label} minus {sub.label} moved {d_jobs:+,} jobs on "
+                 f"{d_entries:+,} entries")
+
+        if d_jobs == 0:
+            return _out(PASS, f"{shown} — the complement's jobs did not move")
+        same_direction = (d_jobs > 0) == (d_entries > 0) and d_entries != 0
+        if same_direction:
+            return _out(PASS, f"{shown} — jobs and rows moved together, so rows explain it")
+        if abs(d_jobs) <= CONTAINMENT_FLOOR_JOBS:
+            return _out(PASS, f"{shown}, under the {CONTAINMENT_FLOOR_JOBS:,} floor")
+        moved_in = "into" if d_jobs < 0 else "out of"
+        return _out(FAIL,
+                    f"{shown}. A row can only arrive with its jobs or leave with its jobs, so "
+                    f"nothing that arrived or left moved these {abs(d_jobs):,} jobs {moved_in} "
+                    f"{sub.label}: rows that were ALREADY PUBLISHED were re-scored across the "
+                    f"boundary between these two slices. This is true however many entries "
+                    f"arrived, which is why the movement guard's allowance cannot see it. "
+                    f"Check the last reconcile-supersets run, any country/AI relabel job, and "
+                    f"the corrections log")
+
+
 class DenominatorProvenanceInvariant:
     """The Spirit class of bug must stay unwritable, not merely fixed.
 
@@ -1226,6 +1476,63 @@ class RecallFloorInvariant:
         # the dashboard, on the ledger and in the daily workflow's exit code,
         # but the unit suite may skip rather than redden a push on a checkout
         # where the weekly job has not run yet.
+        return Result(self, state, detail=detail,
+                      pending=(state == UNKNOWN and measurement is None))
+
+
+class ErmProvenanceInvariant:
+    """A published ERM row still carries the country it was imported with.
+
+    WHAT IT ASSERTS. That the committed measurement in
+    railway/erm_provenance_measurement.json found zero published ERM rows whose
+    stored `country` disagrees with the country `erm_import.py` wrote into that
+    row's OWN excerpt at import time, and zero rows it could not read. The
+    reasoning, the regex and what the check cannot see live in
+    railway/erm_provenance_check.py's docstring; the bound lives in its
+    `judge()`, so this dashboard, that script's exit code and the tests read one
+    definition.
+
+    WHY THIS IS A CHECK AT ALL. Every other guard here watches a number. This
+    one watches PROVENANCE: it answers "has an already-published row been
+    re-scored since it was imported?" with no history table, no snapshot and no
+    timestamp, because the answer is sitting in the row's own published text.
+    It is the only thing in the repo that could have named the three rows behind
+    the 2026-08 US headline incident on the day, and it was written during that
+    incident and then held back until the correction landed — which made it a
+    check nobody ran, which is the same as no check.
+
+    WHY IT READS A FILE AND NOT THE LIVE API, like RecallFloorInvariant and
+    unlike everything else here: /query has no source_type filter, so the
+    measurement is a 319-request pass over the whole corpus that took ~25
+    minutes on 2026-08-12. ops_status is the first command of every session and
+    a dashboard that is slow stops being run. erm-provenance-check.yml
+    re-measures weekly and commits; the consequence is stated rather than
+    hidden — a silent re-scoring is caught within a week, not within a day.
+
+    MISSING DATA. No measurement file, an unreadable one, one older than
+    erm_provenance_check.MAX_MEASUREMENT_AGE_DAYS, or one with unparseable
+    excerpts in it -> UNKNOWN, never a pass.
+    """
+
+    key = "erm_provenance"
+    label = "ERM rows still carry the country they were imported with"
+    reads_live_data = False        # reads the committed measurement, not the site
+
+    def __init__(self, measurement_path=None):
+        self.measurement_path = measurement_path
+
+    def run(self, ctx):
+        try:
+            import erm_provenance_check
+        except ImportError:                                  # pragma: no cover - path fallback
+            sys.path.insert(0, str(HERE))
+            import erm_provenance_check
+        measurement = erm_provenance_check.load_measurement(self.measurement_path)
+        state, detail = erm_provenance_check.judge(measurement)
+        # Same rule as recall_floor: a measurement that has never been written
+        # is PENDING — still UNKNOWN on the dashboard, in the ledger and in the
+        # daily workflow's exit code, but the unit suite may skip rather than
+        # redden a push on a checkout where the weekly job has not run yet.
         return Result(self, state, detail=detail,
                       pending=(state == UNKNOWN and measurement is None))
 
@@ -1421,14 +1728,16 @@ def _utc_now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _days_since(stamp):
+def _days_since(stamp, now=None):
+    """Age of an ISO stamp in days. `now` is injectable so a test that pins a
+    real historical reading does not rot as the wall clock moves past it."""
     if not stamp:
         return None
     try:
         when = datetime.strptime(str(stamp), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except (TypeError, ValueError):
         return None
-    return max(0.0, (datetime.now(timezone.utc) - when).total_seconds() / 86400.0)
+    return max(0.0, ((now or datetime.now(timezone.utc)) - when).total_seconds() / 86400.0)
 
 
 def load_baseline(path=None):
@@ -1489,12 +1798,23 @@ INVARIANTS = (
     # moving a number the site publishes as fact.
     ConcentrationInvariant(),
     MovementInvariant(),
+    # The movement guard measures a headline's move against how many ROWS
+    # ARRIVED, and a re-scoring moves a headline while nothing arrives. This one
+    # measures the same move against the slice that contains it, and needs no
+    # entry counts at all. See the CONTAINMENT section above for the 2026-08
+    # incident it is written from.
+    ContainmentInvariant(),
     DenominatorProvenanceInvariant(),
     # The six above all ask "is a published number wrong?". This one asks the
     # other half of the question — "is a number MISSING?" — which nothing here
     # could ask before 2026-08-01, because recall_precision.py had no threshold
     # and returned 0 whatever it measured.
     RecallFloorInvariant(),
+    # And this one asks a third question neither of those can: has a row that is
+    # ALREADY published been quietly re-scored since it was imported? It reads
+    # each ERM row's own import-time excerpt back out of the published text, so
+    # it needs no history table and no timestamp.
+    ErmProvenanceInvariant(),
     # The listing surfaces promise "we re-check weekly; next check by <date>"
     # beside every source without a Wayback snapshot. This one fails when the
     # live data shows that promise is not being kept.
@@ -1727,7 +2047,21 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
                        f"was advanced; fix or restore railway/headline_incidents.json"]
     open_before = set(ledger.get("open") or {})
     ledger_changed = False
+    # A containment FAIL is the third thing that stops a baseline advancing, and
+    # it is the only one whose finding lives in the DIFFERENCE between two
+    # slices rather than in either reading. Recording either side erases it, so
+    # both are held; the incident opens under the subset, because one finding
+    # gets one incident.
+    c_holds = getattr(ctx, "containment_holds", None) or set()
+    c_incidents = getattr(ctx, "containment_incidents", None) or {}
     for name, (state, observed, suppressed) in sorted(ctx.observations.items()):
+        if name in c_incidents and observed is not None:
+            if open_incident(ledger, name, labels.get(name, name), c_incidents[name],
+                             slices.get(name), observed):
+                ledger_changed = True
+                notes.append(f"{name}: INCIDENT OPENED by the containment check — it "
+                             f"moved further than the slice that contains it, and that "
+                             f"is true however many rows arrived")
         if state == FAIL and observed is not None:
             detail = (getattr(ctx, "details", {}) or {}).get(name) \
                 or f"{name} FAILED the headline movement check"
@@ -1736,6 +2070,12 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
                 ledger_changed = True
                 notes.append(f"{name}: INCIDENT OPENED — it now reports FAIL until a "
                              f"human closes it, not until the numbers drift back")
+        if name in c_holds:
+            notes.append(f"{name}: CONTAINMENT FAILED on a pair this slice is part of, "
+                         f"baseline deliberately NOT advanced (the finding is the "
+                         f"difference between the two readings; recording either "
+                         f"erases it)")
+            continue
         if name in open_before or name in (ledger.get("open") or {}):
             notes.append(f"{name}: OPEN INCIDENT, baseline NOT advanced. Only "
                          f"`--close-incident {name}` (reviewer + reason + row IDs + an "
