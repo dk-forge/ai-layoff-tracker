@@ -1,5 +1,75 @@
 # Tech Log
 
+## 2026-08-13 - the second h1 that was hidden but never removed (2.20.25)
+
+Six secondary pages (/press/, /sources/, /methodology/, /ai-tracker-health/,
+/publisher-tools/, /ai-quotes/) each ship TWO `<h1>` elements: the block theme
+renders the WordPress post title, and the plugin template renders its own
+heading below it. On four of them the two copies disagree in case or wording,
+because one lives in this repository and one lives in the site database.
+
+**What was already true, and had to be measured before anything was changed.**
+2.20.x fixed this with a stylesheet rule,
+`body:has(.alt-wrap h1) h1.wp-block-post-title{display:none}`. Checked live in a
+real browser on 2026-08-13 that rule fires: computed `display` on the theme's
+copy is `none` on every one of the six, so a READER sees one heading. The
+duplicate was never a visual defect after that commit. It was a MARKUP defect,
+and a stylesheet is the wrong instrument for markup: a consumer that does not
+run CSS sees two `<h1>` elements whose text disagrees, the rule needs `:has()`,
+and a stylesheet that fails to load takes the fix with it.
+
+**So the theme's copy is now dropped at the source**, by a `render_block` filter
+on `core/post-title` scoped to the pages whose template supplies its own
+heading (`alt_drop_theme_post_title`, includes/shortcodes.php). Nothing a reader
+sees changes. The `<title>` element and the WordPress editor are untouched: this
+removes a block from the body, nothing else. The CSS rule stays as a fallback
+for a classic theme printing `.entry-title`, which the filter never reaches.
+
+**The obvious fix was the wrong way round, and the measurement is what showed
+it.** Demoting each template heading to `<h2>` and letting the post title be the
+page's one `<h1>` reads well on paper. In this stylesheet it would stop
+`body:has(.alt-wrap h1)` from matching, un-hide the theme title, and print the
+page's name twice ON SCREEN for the first time. It would also revert, on four
+pages, the rename the owner made by hand the same day (2.20.24, the press page
+headed what every link to it says).
+
+**Three gates on the filter**, because stripping a title from a page that needed
+it is a worse defect than the one being fixed: the block must be
+`core/post-title`, the request must be singular, and the post being rendered must
+BE the queried page, so a post-title inside a query loop keeps its own title. The
+dashboard and /report/ are off the list on purpose: neither renders an `<h1>` of
+its own, so the theme title is the only heading they have.
+
+**Guarded on the RENDERED page, because that is the only place the defect
+exists.** `test_secondary_surface_consistency.py` already owned these pages and
+could not see this: it reads each template in isolation, where exactly one `<h1>`
+is correct. The second one only exists once the theme has wrapped the template,
+and nothing in this checkout can produce that page. `RenderedPageHeadingTests`
+fetches all seven live, the way a reader does (bare URL, browser User-Agent, no
+cache buster), counts the `<h1>` elements and reads their text; when it cannot
+reach the site the result is UNKNOWN, never a pass. `ThemeTitleRemovalTests`
+EXECUTES the PHP filter against stubbed WordPress, so the scope gates are tested
+rather than read.
+
+**Left alone, on purpose.** A single layoff entry page also renders two `<h1>`
+elements, but the first is the SITE NAME and the second is the employer.
+Demoting the employer would leave the page headed "AskTheRecruiter.com", which is
+worse than the duplicate. That is in the theme, not this plugin, and it is
+recorded here rather than fixed.
+
+**For the owner to rule on: four heading/post-title wording mismatches.** Not
+harmonised here, because the copy is his.
+
+| page | WordPress post title (tab + nav) | the page's own heading |
+|---|---|---|
+| /press/ | Press & Media | Press kit and soundbites |
+| /methodology/ | Methodology & Sources | Methodology & sources |
+| /publisher-tools/ | Embed the Layoff Tracker | Embed the layoff tracker |
+| /ai-quotes/ | AI layoffs, in their own words | AI layoffs, in the employer's own words |
+
+/sources/ and /ai-tracker-health/ already agree byte for byte.
+
+
 ## 2026-08-13 - two completed periods on the board, and the six columns that would not fit a phone (2.20.23)
 
 The owner asked for two more columns on the at-a-glance board: the last

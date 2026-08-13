@@ -24,9 +24,14 @@ exactly that mistake. The behavioural checks go further and execute the real
 layoffs.js in node through jsrun.
 """
 import json
+import os
 import re
+import subprocess
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
+from shutil import which
 
 import jsrun
 
@@ -35,6 +40,10 @@ PLUGIN = ROOT / "wordpress-plugin/ai-layoff-tracker"
 CSS = PLUGIN / "assets/layoffs.css"
 JS = PLUGIN / "assets/layoffs.js"
 TPL = PLUGIN / "templates"
+SHORTCODES = PLUGIN / "includes/shortcodes.php"
+
+SITE = "https://asktherecruiter.com/blog/ai-layoff-tracker/"
+UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
 # The secondary surfaces this file owns. The dashboard is deliberately absent:
 # it has its own guards, and it is the one page that renders no <h1> of its own.
@@ -291,6 +300,208 @@ class OneTitlePerPageTests(unittest.TestCase):
         for name, path in SECONDARY.items():
             n = len(re.findall(r"<h1[\s>]", read(path)))
             self.assertEqual(n, 1, "%s renders %d <h1> elements" % (name, n))
+
+
+def _php():
+    for path in ("/opt/homebrew/bin/php", "/usr/bin/php", "/usr/local/bin/php"):
+        if os.path.exists(path):
+            return path
+    return which("php")
+
+
+class ThemeTitleRemovalTests(unittest.TestCase):
+    """The duplicate is removed in PHP, and the real filter is executed here.
+
+    The previous fix was a stylesheet rule hiding the theme's copy. Measured
+    live in a browser on 2026-08-13 it works, so a reader sees one heading on
+    all six pages - but the HTML that leaves the server still carries two <h1>
+    elements whose text disagrees, the rule needs :has(), and a stylesheet that
+    fails to load takes the fix with it. So the block is dropped at the source
+    and the stylesheet rule stays only as a fallback.
+
+    Everything below RUNS alt_drop_theme_post_title(). Nothing here reads its
+    source text, because the defect this guards against is a scope mistake -
+    stripping a title on a page that needed it - and a scope mistake is exactly
+    what source-reading cannot see.
+    """
+
+    SECONDARY_SHORTCODES = {
+        "methodology": "alt_methodology",
+        "sources": "alt_sources",
+        "press": "alt_press_media",
+        "ai-quotes": "alt_ai_quotes",
+        "publisher-tools": "alt_publisher_tools",
+        "ai-tracker-health": "alt_tracker_health",
+    }
+
+    def setUp(self):
+        if not _php():
+            self.skipTest("php not installed")
+        src = SHORTCODES.read_text()
+        self.fns = ""
+        for name in ("alt_own_h1_shortcodes", "alt_page_supplies_its_own_h1",
+                     "alt_drop_theme_post_title"):
+            needle = "function %s(" % name
+            self.assertTrue(needle in src,
+                            "%s() is gone from includes/shortcodes.php, so "
+                            "nothing removes the theme's second <h1> from the "
+                            "HTML that leaves the server" % name)
+            body = src[src.index(needle):]
+            self.fns += body[:body.index("\n}\n") + 3]
+
+    STUBS = """
+function is_singular() { return $GLOBALS['CASE']['singular']; }
+function get_post() {
+    $p = new stdClass();
+    $p->ID = $GLOBALS['CASE']['post_id'];
+    $p->post_content = $GLOBALS['CASE']['content'];
+    return $p;
+}
+function get_queried_object_id() { return $GLOBALS['CASE']['queried_id']; }
+function has_shortcode($content, $tag) {
+    return (bool) preg_match('/\\[' . preg_quote($tag, '/') . '[\\s\\]\\/]/', $content);
+}
+function add_filter() { return true; }
+"""
+
+    def _render(self, content, block="core/post-title", html="<h1>Theme title</h1>",
+                singular=True, post_id=7, queried_id=7):
+        case = {"content": content, "singular": singular,
+                "post_id": post_id, "queried_id": queried_id}
+        shim = self.STUBS + self.fns + """
+$GLOBALS['CASE'] = json_decode(file_get_contents('php://stdin'), true);
+echo json_encode(alt_drop_theme_post_title(
+    $GLOBALS['CASE']['html'], array('blockName' => $GLOBALS['CASE']['block'])));
+"""
+        case["html"], case["block"] = html, block
+        proc = subprocess.run([_php(), "-r", shim], input=json.dumps(case),
+                              capture_output=True, text=True, timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def test_every_page_that_heads_itself_loses_the_themes_copy(self):
+        for page, shortcode in self.SECONDARY_SHORTCODES.items():
+            with self.subTest(page=page):
+                self.assertEqual(
+                    self._render("[%s]" % shortcode), "",
+                    "/%s/ still ships the theme's post title as a second <h1> "
+                    "above its own heading" % page)
+
+    def test_the_dashboard_keeps_the_only_heading_it_has(self):
+        # page-tracker.php renders no <h1> at all and uses the theme title,
+        # styled down to a kicker. Stripping it there leaves the flagship page
+        # with no heading of any level.
+        self.assertEqual(self._render("[alt_tracker]"), "<h1>Theme title</h1>")
+
+    def test_the_report_page_keeps_its_title(self):
+        # /report/ renders exactly one <h1> today, and it is the theme's.
+        self.assertEqual(self._render("[alt_report]"), "<h1>Theme title</h1>")
+
+    def test_an_ordinary_post_is_untouched(self):
+        self.assertEqual(self._render("<p>a blog post</p>"), "<h1>Theme title</h1>")
+
+    def test_a_title_inside_a_query_loop_on_our_page_survives(self):
+        # A core/post-title rendered for some OTHER post - a related-posts or
+        # latest-posts block - is that post's only name in the list.
+        self.assertEqual(
+            self._render("[alt_sources]", post_id=91, queried_id=7),
+            "<h1>Theme title</h1>",
+            "a post-title block for a different post than the queried page was "
+            "stripped, which blanks a row in a listing")
+
+    def test_no_other_block_is_touched(self):
+        for block in ("core/heading", "core/paragraph", "core/post-content"):
+            with self.subTest(block=block):
+                self.assertEqual(
+                    self._render("[alt_sources]", block=block, html="<p>x</p>"),
+                    "<p>x</p>")
+
+    def test_a_non_singular_request_is_left_alone(self):
+        self.assertEqual(self._render("[alt_sources]", singular=False),
+                         "<h1>Theme title</h1>")
+
+    def test_the_list_is_exactly_the_pages_that_head_themselves(self):
+        # A template that grows its own <h1> without joining this list ships the
+        # duplicate back; a shortcode listed here whose template has no <h1>
+        # loses its heading entirely.
+        src = read(SHORTCODES)
+        listed = set(re.findall(r"'(alt_[a-z_]+)'", re.search(
+            r"function alt_own_h1_shortcodes\(\) \{(.*?)\n\}", src, re.S).group(1)))
+        self.assertEqual(listed, set(self.SECONDARY_SHORTCODES.values()))
+        for page, shortcode in self.SECONDARY_SHORTCODES.items():
+            tpl = {"ai-tracker-health": TPL / "page-health.php"}.get(
+                page, SECONDARY.get(page))
+            self.assertEqual(len(re.findall(r"<h1[\s>]", read(tpl))), 1,
+                             "%s is on the strip list but its template does not "
+                             "supply exactly one <h1>" % page)
+
+    def test_the_stylesheet_fallback_is_still_there(self):
+        # Belt and braces: the PHP filter needs a block theme rendering
+        # core/post-title. A classic theme printing .entry-title reaches none of
+        # it, and that is the case the CSS rule still covers.
+        self.assertIn("body:has(.alt-wrap h1) .entry-title", read(CSS))
+
+
+class RenderedPageHeadingTests(unittest.TestCase):
+    """Asserted against the page a reader is served, not against a template.
+
+    A test over these templates already existed and could not see this defect,
+    because a template read in isolation renders one <h1> and is correct. The
+    second one is the theme's, and it only exists once the theme has wrapped the
+    template. Nothing in this checkout can produce that page: it needs
+    WordPress, this theme, and the post titles that live in the site database.
+    So this is the honest check, and it reads the live site.
+
+    It reaches the site the way a reader does - bare URL, browser-ish
+    User-Agent, no cache buster - and when it cannot reach it the result is
+    UNKNOWN, never a pass.
+    """
+
+    # The six that supply their own heading, plus the two the fix deliberately
+    # leaves alone. /report/ renders one <h1> and it is the theme's.
+    PAGES = ("press/", "sources/", "methodology/", "ai-tracker-health/",
+             "publisher-tools/", "ai-quotes/", "report/")
+
+    _cache = {}
+
+    def _fetch(self, page):
+        if page not in self._cache:
+            req = urllib.request.Request(SITE + page, headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=45) as r:
+                self._cache[page] = r.read().decode("utf-8", "replace")
+        return self._cache[page]
+
+    def _headings(self, page):
+        try:
+            html = self._fetch(page)
+        except (urllib.error.URLError, OSError, TimeoutError) as e:
+            self.skipTest("UNKNOWN, NOT passing: could not reach %s (%s)" % (page, e))
+        if "<h1" not in html and "wp-block-post-title" not in html:
+            self.skipTest("UNKNOWN, NOT passing: %s returned no page body" % page)
+        out = []
+        for m in re.finditer(r"<h1\b[^>]*>(.*?)</h1>", html, re.S | re.I):
+            # The text a reader reads, not the markup around it.
+            text = re.sub(r"<[^>]+>", " ", m.group(1))
+            out.append(re.sub(r"\s+", " ", text).strip())
+        return out
+
+    def test_every_page_a_reader_opens_has_exactly_one_h1(self):
+        for page in self.PAGES:
+            with self.subTest(page=page):
+                got = self._headings(page)
+                self.assertEqual(
+                    len(got), 1,
+                    "%s serves %d <h1> elements to a reader: %r. Two of them "
+                    "is the page publishing its own name twice, in two "
+                    "wordings, to anything that does not run our stylesheet."
+                    % (page, len(got), got))
+
+    def test_the_one_heading_is_not_empty(self):
+        for page in self.PAGES:
+            with self.subTest(page=page):
+                got = self._headings(page)
+                self.assertTrue(got and got[0],
+                                "%s heads itself with nothing" % page)
 
 
 class BarRowTooltipTests(unittest.TestCase):

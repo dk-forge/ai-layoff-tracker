@@ -136,6 +136,71 @@ function alt_shortcode_methodology() {
 add_shortcode('alt_methodology', 'alt_shortcode_methodology');
 
 /**
+ * ONE <h1> IN THE HTML THAT LEAVES THE SERVER, not one on the screen.
+ *
+ * Six pages ship two <h1> elements: the block theme renders the WordPress post
+ * title, and the plugin template renders its own heading below it. Since
+ * 2.20.x the stylesheet hides the theme's copy (`body:has(.alt-wrap h1)
+ * h1.wp-block-post-title{display:none}`), and measured live on 2026-08-13 in a
+ * real browser that rule fires: the reader sees ONE heading on all six. So the
+ * duplicate is not a visual defect any more. It is still a MARKUP defect, and
+ * a stylesheet is the wrong place to fix markup:
+ *
+ *   - a consumer that does not run CSS (most feed readers, link unfurlers, the
+ *     crawlers that do not render) sees two <h1> elements whose text disagrees:
+ *     "Press & Media" over "Press kit and soundbites", "Methodology & Sources"
+ *     over "Methodology & sources",
+ *   - the rule depends on :has(), so an older engine shows the page's name
+ *     twice, in two wordings, at the same size,
+ *   - and a stylesheet that fails to load takes the fix with it.
+ *
+ * So the theme's copy is removed at the source, on exactly the pages whose
+ * template supplies a heading of its own. NOTHING A READER SEES CHANGES. The
+ * <title> element and the WordPress editor are untouched: this drops the
+ * core/post-title BLOCK from the body, nothing else.
+ *
+ * WHICH COPY SURVIVES: the template's. It lives in this repository, so it is
+ * reviewable and testable, and the post title lives in a database nothing here
+ * can keep in step. It is also the decision the owner made by hand on
+ * 2026-08-13 (2.20.24), when the press page was renamed to the name every link
+ * to it uses. Demoting the template heading to <h2> instead would un-hide the
+ * theme title (the :has() rule stops matching), print the page's name twice on
+ * screen for the first time, and revert that rename on four pages.
+ *
+ * SCOPE. Three gates, because stripping a title on a page that needed it is a
+ * worse defect than the one being fixed: the block must be core/post-title, the
+ * request must be a singular page, and the post being rendered must BE the
+ * queried page (so a post-title inside a query loop on one of our pages keeps
+ * its own title). The dashboard and /report/ are absent from the list on
+ * purpose: neither renders an <h1> of its own, so the theme title is the only
+ * heading they have.
+ */
+function alt_own_h1_shortcodes() {
+    return array('alt_methodology', 'alt_sources', 'alt_press_media',
+                 'alt_ai_quotes', 'alt_publisher_tools', 'alt_tracker_health');
+}
+
+function alt_page_supplies_its_own_h1($post = null) {
+    if ($post === null) $post = get_post();
+    if (!$post || empty($post->post_content)) return false;
+    foreach (alt_own_h1_shortcodes() as $shortcode) {
+        if (has_shortcode($post->post_content, $shortcode)) return true;
+    }
+    return false;
+}
+
+function alt_drop_theme_post_title($block_content, $block) {
+    if (!is_array($block) || empty($block['blockName'])) return $block_content;
+    if ($block['blockName'] !== 'core/post-title') return $block_content;
+    if (!is_singular()) return $block_content;
+    $post = get_post();
+    if (!$post || (int) $post->ID !== (int) get_queried_object_id()) return $block_content;
+    if (!alt_page_supplies_its_own_h1($post)) return $block_content;
+    return '';
+}
+add_filter('render_block', 'alt_drop_theme_post_title', 10, 2);
+
+/**
  * Suppress the site's Easy Table of Contents on pages this plugin renders.
  * The injected TOC indexes our app sections as if they were article
  * headings, overlaps the hero on phones, and adds nothing a data dashboard
