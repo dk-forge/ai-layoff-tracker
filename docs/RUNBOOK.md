@@ -1026,6 +1026,89 @@ losing events we hold, and moving it in the same breath as raising the numerator
 turns it into a rubber stamp. Raise it, if at all, in a separate change with the
 reasoning in TECHLOG.
 
+## Adjudicating the US WARN reference set
+
+Same gate, same four properties, a different set. `warn_reference_set.measure()`
+counts an event only where the manifest says `matched`, so the 99/100 and the
+33/33 it reports are a MACHINE UPPER BOUND and must never be quoted as recall.
+This is how a person turns some of it into a number.
+
+**The mechanism is shared with the SEC set on purpose.** Both recorders are
+`railway/adjudication_ledger.py` plus a profile; the first WARN recorder had its
+own copy and got three of the four properties wrong (it appended a ledger entry
+on every invocation, it had no `--revert`, and it had no `--verify`). Two
+adjudication tools that drift apart is a worse outcome than one slightly awkward
+one. Fix a property once, in the core, and both sets get it.
+
+**1. Rebuild the evidence, do not trust the last build.**
+```bash
+python3 railway/warn_adjudication_pack.py --write
+```
+Read-only, no key, no model, ~500 public `/query` GETs. Writes
+`docs/recall-reference-sets/us-warn-adjudication-queue.{json,md}`.
+
+**2. Read the sheet.** For each event it puts the state's own notice and our row
+side by side: employer, notice date, published effective date(s), affected
+count, source document, our row id, our count, our date, our `source_type` and
+the URL we cite. Then whether the counts match exactly and **by how much they
+differ if not**, and which **date basis** the row agrees on.
+
+Two things it shows that are NOT errors:
+- **A row date months from the notice date.** WARN publishes a notice date and
+  an effective date; we store the effective one in `layoff_date`. A gap between
+  them is the other basis, not a mismatch, and the sheet names the basis rather
+  than calling either wrong.
+- **A stored employer name shorter than the published one.** Three of the four
+  states glue the site address into the employer cell (`Spirit Airlines Miami
+  International Airport located at 4200 NW 42nd Avenue MIAMI, FL, 33142`). We
+  store `Spirit Airlines`. That is a naming artifact of the state's file.
+
+**Every line of the sheet describes exactly ONE row, named by its id.** An event
+with four candidates gets one index line for the row the rule proposes first,
+carrying only that row's evidence, and the ids of the other three beside it
+carrying none of theirs; each of those gets its own block below. That is the Dow
+failure written as a layout rule - on 2026-08-12 a pooled line described a
+co-proposed row and a correct row was rejected because of it.
+
+**3. Record each decision.** Network-free, and it names ROW ids, not event ids:
+```bash
+python3 railway/warn_adjudicate.py --queue          # what is pending
+python3 railway/warn_adjudicate.py --show <ref_id>  # one evidence block, raw
+python3 railway/warn_adjudicate.py --accept <ref_id> \
+    --reviewed-by 'Name' --reason 'what in the notice and the row decided it' \
+    --row-ids 137699
+python3 railway/warn_adjudicate.py --reject <ref_id> \
+    --reviewed-by 'Name' --reason '...' --row-ids 137699
+python3 railway/warn_adjudicate.py --revert <ref_id> \
+    --reviewed-by 'Name' --reason 'why the first reading was wrong'
+python3 railway/warn_adjudicate.py --verify
+```
+`--row-ids` takes every value until the next flag. A blank reviewer or reason is
+REFUSED with nothing written. The same decision twice writes once. A DIFFERENT
+decision is refused until you revert, and a revert restores the event byte for
+byte including the `adjudicated_*` mirror fields.
+
+**4. Commit the manifest AND `railway/warn_recall_adjudications.json`**, then
+re-measure:
+```bash
+python3 railway/warn_reference_set.py --measure
+```
+
+**Never hand-edit `match_decision`.** `--verify` fails on any `matched` event
+with no named decision behind it, across BOTH the sample and the 500-plus
+census, and `tests/test_warn_adjudication.py` runs it against the committed
+files.
+
+**This set cannot move the SEC figure and must not be made able to.** Different
+manifest, different ledger, different measurement file. One test drives a real
+WARN decision and then asserts `recall_measurement.json`,
+`recall_adjudications.json` and the SEC manifest are byte-identical afterwards;
+another asserts no WARN module can even name them.
+
+**The sample and the census are never pooled.** 100 systematic events and 33
+large-cut census events are two figures. Deciding a census event moves the
+census figure and nothing else.
+
 ## Research pointers
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)
 - GDELT DOC 2.0 API: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ (keyless; ~gentle rate limits, 429s happen)

@@ -196,8 +196,15 @@ Four rules about it:
 3. **Its 99 of 100 is not recall.** Nothing is adjudicated; the editor-confirmed
    figure is zero and the queue is
    [`us-warn-adjudication-queue.md`](us-warn-adjudication-queue.md). Every line
-   of that sheet describes exactly one candidate row, because on 2026-08-12 a
-   pooled line lost the SEC set a correct Dow acceptance.
+   of that sheet describes exactly one candidate row, named by its id, because on
+   2026-08-12 a pooled line lost the SEC set a correct Dow acceptance — and a row
+   with nothing wrong is SAID to have nothing wrong, which is the other half of
+   that failure. The sheet states the range before the first decision: 100/100 if
+   everything including Wood Group is accepted, 99/100 if Wood Group is not,
+   67/100 if only the events agreeing on count, date basis AND employer name are
+   (and whose row is not also proposed for another notice),
+   and 0/100 as it stands. **Wood Group has no candidate row and is a section of
+   its own above the index, not a row in a list of ninety-nine.**
 4. **It cannot speak for the Midwest or the Northeast.** NY, PA, IL, OH, GA, NC,
    NJ, MI and MA were excluded because their own WARN lists are JavaScript-only,
    a proprietary BI extract, or 404. VA and MD were excluded because their

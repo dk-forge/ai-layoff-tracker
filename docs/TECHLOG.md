@@ -1,5 +1,115 @@
 # Tech Log
 
+## 2026-08-13 - the WARN review sheet, and one adjudication mechanism instead of two (railway + docs, no deploy)
+
+**Why.** The set above reports 99/100 and 33/33 with **zero editor-confirmed**.
+The gate held exactly as designed, which means 99% is a machine's opinion. The
+owner asked for a review sheet in the shape of the SEC one so they can adjudicate
+it. Building it turned up a second problem underneath.
+
+**The sheet the first build produced was not reviewable.** It had one index line
+per (event, candidate row) pair - correct, per-row attribution, no pooling - but
+that is **714 lines for 132 events**, and the events the owner most needs are
+lost in it. Two changes, neither of which softens a flag:
+
+* **One index line per EVENT**, naming the row the rule proposes first, carrying
+  **only that row's evidence**, with the ids of every other candidate beside it
+  carrying **none of theirs**. Nothing is invisible and nothing is conflated.
+  Every other row still gets its own block below with its own evidence.
+* **A clean row is SAID to be clean.** "Nothing to look twice at on row `X` -
+  count, date basis, employer name, state and source all line up" is a fact
+  about that row. Leaving it blank is how a clean row starts looking like an
+  unexamined one, and it is the other half of the Dow failure: the pooled line
+  was loud about the wrong row and silent about the right one.
+
+**What each line now puts side by side**, from evidence re-fetched on every
+build: the state's published employer / notice date / effective date(s) /
+affected count / source document and locator, against our row id, employer as we
+hold it, count, date, `source_type` and the URL we cite. Then two explicit
+verdicts: **whether the count is exact and by how much it differs if not**, and
+**which date basis the row agrees on**. WARN publishes a notice date and an
+effective date and this repo stores the effective one, so a 68-day gap is the
+other basis, not a mismatch - the sheet names the basis instead of calling either
+wrong. Ordering is by how much there is to read: **67 events whose proposed row
+agrees on every field, then 22 where only the employer string is shorter than
+the state's glued-address form, then 10 where one stored row is claimed by more
+than one notice, then the census.**
+
+**Building the sheet found a flag the set did not have.** Spirit, Amazon, KBR and
+SMBC Manubank each filed several notices close together and we hold one row per
+site, so **one tracker row was the lead proposal for two different reference
+events** — at most one of them can be it, and an editor accepting both counts one
+row twice. The SEC pack has that flag; this set did not. It is now stated on
+**every** row it is true of, naming the other REFERENCE EVENTS and never another
+candidate row, so it is a per-row fact and not a pooled line. It moved the
+fully-agreeing count from 74 to 67, which is the honest direction.
+
+**The one event with no candidate row is not filed among the ninety-nine.**
+`warn-tx-2025-11-18-wood`: we hold Wood Group USA (TX, 180, row `140104`) and
+TWC publishes that record's layoff date as 2025-01-05 against its own
+2025-11-18 notice date. It gets its own section **above** the index, with every
+row we hold for that employer at ANY date (a deliberately windowless query, wider
+than the matching rule), both decisions offered and neither preferred. **The
+window was not widened**, and the section says so: no decision there changes the
+rule, which is frozen in the definition document.
+
+**The recorder was the real find.** `warn_adjudicate.py` had ONE of the four
+properties the SEC recorder earned through two incidents. Measured before the
+change:
+
+```
+TypeError: main() got an unexpected keyword argument 'manifest_path'
+--revert implemented: False
+--verify implemented: False
+ledger append is unconditional: True
+```
+
+So: not reversible; no gate against a hand-edited `match_decision`; a second
+identical run appended a second ledger entry; and it could not be exercised at
+all without writing the real reference set, which is why none of that had been
+caught.
+
+**Fixed by deleting the second implementation, not by patching it.** The
+mechanism now lives once in `railway/adjudication_ledger.py`, set-neutral, and
+each set supplies a `Profile`: its paths, the manifest keys holding its events,
+whether a decision names tracker EVENT ids or ROW ids, and how its manifest is
+serialised. `recall_adjudicate.py` is that core plus the SEC profile and **the
+23 SEC tests pass unchanged** - same messages, same exit codes, same byte-stable
+`indent=1` round-trip. `warn_adjudicate.py` is the same core plus the WARN
+profile and now has all four properties, across **both** the sample and the
+500-plus census (its manifest keeps events in two lists; the old recorder read
+one, so a third of the set was un-adjudicable).
+
+Two adjudication tools that drift apart is a worse outcome than one slightly
+awkward one. Fix a property once and both sets get it.
+
+**Two guards specific to the boundary.** `adjudicated_by`/`adjudicated_at`/
+`adjudicated_tracker_row_ids` are mirror fields the offline guards read, so they
+are inside the snapshot `--revert` restores - a mirror outside it outlives its
+own reversal and keeps claiming an adjudicator. And a test drives a **real WARN
+decision** and then asserts `recall_measurement.json`,
+`recall_adjudications.json` and the SEC manifest are byte-identical afterwards:
+the existing regex proves no WARN module can NAME a SEC file, this proves a
+decision cannot TOUCH one.
+
+**The range, stated before the owner spends attention** (primary sample only;
+the census is never pooled with it): everything accepted including Wood Group
+**100/100**; everything accepted except Wood Group **99/100**; only the events
+whose proposed row agrees on count, date basis and employer name and is claimed
+by no other notice **67/100**;
+nothing accepted **0/100**, which is where it stands today.
+
+**Cost: $0.00.** No model called. Read-only public `/query` GETs. Virginia and
+Maryland were not fetched - they remain excluded on their published robots
+instructions, confirmed by the owner.
+
+**Nothing published moved.** `recall_measurement.json`,
+`recall_adjudications.json`, the SEC manifest and `MATCHED_FLOOR` (52) are
+byte-identical to `origin/main`; the SEC set's 56/57 is untouched. No plugin
+file changed, so no deploy and no version bump.
+
+---
+
 ## 2026-08-13 - the WARN half of US recall had never been measured, and measuring it broke the measurer twice (railway + docs, no deploy)
 
 **The gap.** US recall was a single number over SEC Form 8-K Item 2.05 filings:
