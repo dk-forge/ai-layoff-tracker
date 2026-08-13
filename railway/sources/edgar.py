@@ -117,6 +117,38 @@ def _strip_html(markup):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _window_at(text, idx):
+    """RAW_TEXT_LIMIT characters of `text` around `idx`, with 500 of lead-in.
+
+    500 is not decoration: the extractor's verbatim-count guard and the model
+    both need the sentence the number sits in, and a window that starts ON the
+    match loses the subject of that sentence.
+    """
+    start = max(0, idx - 500)
+    return text[start:start + RAW_TEXT_LIMIT]
+
+
+# A headcount as a filing states one: a number immediately governing a
+# people-noun. Used for exactly two jobs, both narrow:
+#   * deciding whether a primary document states a count at all (below), and
+#   * centring an exhibit's window on the count rather than on nothing.
+# It is NOT a replacement for extractor._count_in_text — it does not know which
+# number is the layoff, and it never decides what gets published. Its only job
+# is to point the reading window at the paragraph a human would read.
+HEADCOUNT_ANCHOR = re.compile(
+    r"(?<![\d.,])\d{1,3}(?:[.,   ]\d{3})*(?![\d])"
+    r"(?:\s+\S+){0,2}\s+"
+    r"(?:employees|positions|jobs|roles|workers|staff|personnel|colleagues|"
+    r"associates|people)\b",
+    re.I)
+
+
+def _headcount_index(text):
+    """Offset of the first headcount-shaped statement, or None."""
+    found = HEADCOUNT_ANCHOR.search(text or "")
+    return found.start() if found else None
+
+
 def _fetch_filing_text(url):
     """Fetch a filing document and return a text window centered on the first
     layoff keyword, so the relevant passage survives the length cap."""
@@ -128,9 +160,138 @@ def _fetch_filing_text(url):
     for keyword in KEYWORDS:
         idx = lowered.find(keyword)
         if idx != -1:
-            start = max(0, idx - 500)
-            return text[start:start + RAW_TEXT_LIMIT]
+            return _window_at(text, idx)
     return text[:RAW_TEXT_LIMIT]
+
+
+# ---------------------------------------------------------------------------
+# EX-99.1 fallback: the count that is not in the 8-K
+#
+# An Item 2.05 8-K is often a two-sentence legal wrapper — "the Company
+# committed to a plan", "the Company expects to incur $X in charges" — that
+# furnishes the headcount by reference: the press release filed as EX-99.1 in
+# the SAME accession. Measured on the frozen SEC Item 2.05 gold set
+# (2026-08-01, re-probed 2026-08-12): Codexis 2025-11-06 (46) and PLAYSTUDIOS
+# 2026-03-16 (177) state their count NOWHERE in the stripped primary document.
+# The extractor then correctly refuses a number it cannot see, and a filing we
+# reached, fetched and read is lost at the last step.
+#
+# WHY THIS IS GATED AND NOT UNCONDITIONAL. Fetching every exhibit of every
+# filing would multiply this collector's bytes and its LLM candidates for the
+# sake of a handful of events: the EX-99.1 press releases here are 92KB and
+# 367KB against 37KB and 33KB primaries, and every extra candidate is an extra
+# paid extraction against a per-run spend ceiling the cron already hits. So the
+# exhibit is read only when the primary document states NO headcount at all,
+# which costs one index request plus one document request on the small minority
+# of filings that need it, and nothing on the rest.
+#
+# The window is anchored on the headcount, not on a KEYWORD. That matters and
+# was measured: neither exhibit contains a single phrase from KEYWORDS ("in
+# November 2025, Codexis eliminated 46 positions"; "Eliminating 177
+# positions"), so the keyword anchor falls through to text[:RAW_TEXT_LIMIT] and
+# the counts, at offsets 3,766 and 7,582 of the stripped text, are truncated
+# away before the extractor ever sees them — the EnerSys failure mode exactly,
+# one document further along. Anchored, both land ~500 characters into a
+# 3,000-character window, inside extractor.RAW_TEXT_LIMIT by construction.
+# ---------------------------------------------------------------------------
+
+# Press-release exhibit types, most specific first. Deliberately short: EX-99.1
+# is where a restructuring announcement goes. Widening this is a cost decision,
+# not a formatting one.
+EXHIBIT_TYPES = ("EX-99.1", "EX-99.01", "EX-99")
+
+_ROW_RX = re.compile(r"(?is)<tr[^>]*>(.*?)</tr>")
+_CELL_RX = re.compile(r"(?is)<t[dh][^>]*>(.*?)</t[dh]>")
+_HREF_RX = re.compile(r"""(?is)<a[^>]+href=["']([^"']+\.(?:htm|html|txt))["']""")
+
+
+def _filing_index_url(doc_url):
+    """The accession's filing index, derived from the document path.
+
+    An Archives document URL ends `/<18-digit accession>/<file>`, and the index
+    is `<accession with dashes>-index.htm` in the same directory. Derived rather
+    than passed so every call site gets it right by construction.
+    """
+    match = re.match(r"(?i)^(.*/(\d{18}))/[^/]+$", doc_url or "")
+    if not match:
+        return None
+    base, nodash = match.group(1), match.group(2)
+    dashed = f"{nodash[:10]}-{nodash[10:12]}-{nodash[12:]}"
+    return f"{base}/{dashed}-index.htm"
+
+
+def _exhibit_urls(index_url):
+    """Absolute URLs of the press-release exhibits listed in a filing index.
+
+    Returns them in EXHIBIT_TYPES order so the most specific type is read first.
+    """
+    time.sleep(REQUEST_DELAY_SECONDS)
+    resp = requests.get(index_url, headers=_headers(), timeout=30)
+    resp.raise_for_status()
+    origin = re.match(r"(?i)^(https?://[^/]+)", index_url)
+    origin = origin.group(1) if origin else ""
+    by_type = {}
+    for row in _ROW_RX.findall(resp.text):
+        href = _HREF_RX.search(row)
+        if not href:
+            continue
+        cells = [_strip_html(c).upper() for c in _CELL_RX.findall(row)]
+        for wanted in EXHIBIT_TYPES:
+            if wanted in cells:
+                link = html.unescape(href.group(1))
+                by_type.setdefault(wanted, link if link.startswith("http")
+                                    else origin + link)
+                break
+    return [by_type[t] for t in EXHIBIT_TYPES if t in by_type]
+
+
+def _fetch_exhibit_text(url):
+    """A press-release exhibit's window, centred on the headcount it states.
+
+    Falls back to the keyword anchor and then to the head of the document, so a
+    layoff exhibit that phrases its count in a way this does not recognise is
+    still read — just not centred.
+    """
+    time.sleep(REQUEST_DELAY_SECONDS)
+    resp = requests.get(url, headers=_headers(), timeout=30)
+    resp.raise_for_status()
+    text = _strip_html(resp.text[:MAX_DOC_BYTES])
+    idx = _headcount_index(text)
+    if idx is not None:
+        return _window_at(text, idx)
+    lowered = text.lower()
+    for keyword in KEYWORDS:
+        found = lowered.find(keyword)
+        if found != -1:
+            return _window_at(text, found)
+    return text[:RAW_TEXT_LIMIT]
+
+
+def fetch_document_window(doc_url):
+    """(text, url) for one filing: the primary document, or its EX-99.1.
+
+    The primary document is always read. The exhibit is read ONLY when the
+    primary states no headcount, and the exhibit is used ONLY when it states
+    one — so this can add a candidate's count, never remove or dilute it. The
+    returned URL is the document the text actually came from, because a row
+    must cite the document whose sentence it quotes.
+
+    Exhibit lookup is best-effort: any failure leaves the primary untouched.
+    """
+    text = _fetch_filing_text(doc_url)
+    if _headcount_index(text) is not None:
+        return text, doc_url
+    index_url = _filing_index_url(doc_url)
+    if not index_url:
+        return text, doc_url
+    try:
+        for exhibit_url in _exhibit_urls(index_url):
+            exhibit_text = _fetch_exhibit_text(exhibit_url)
+            if _headcount_index(exhibit_text) is not None:
+                return exhibit_text, exhibit_url
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"EDGAR exhibit lookup skipped for {doc_url}: {exc}")
+    return text, doc_url
 
 
 PAGE_SIZE = 10  # EFTS fixed page size
@@ -212,7 +373,7 @@ def search_company_filings(company, days_back=120, max_hits=6):
                 acc_nodash = acc.replace("-", "")
                 url = f"{SEC_ARCHIVES_BASE}/{int(cik)}/{acc_nodash}/{doc}"
                 try:
-                    raw_text = _fetch_filing_text(url)
+                    raw_text, url = fetch_document_window(url)
                 except Exception:
                     continue
                 names = src.get("display_names") or [company]
@@ -296,7 +457,7 @@ def pull_edgar_filings_between(start, end):
     results = []
     for doc_url, entry in candidates.items():
         try:
-            entry["raw_text"] = _fetch_filing_text(doc_url)
+            entry["raw_text"], entry["source_url"] = fetch_document_window(doc_url)
         except Exception as e:
             print(f"EDGAR document fetch error for {doc_url}: {e}")
             continue
