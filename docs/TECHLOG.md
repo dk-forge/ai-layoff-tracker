@@ -51,6 +51,17 @@ reach the site the result is UNKNOWN, never a pass. `ThemeTitleRemovalTests`
 EXECUTES the PHP filter against stubbed WordPress, so the scope gates are tested
 rather than read.
 
+**AND IT REFUSES TO GRADE A BUILD THAT IS NOT THE ONE IN THE CHECKOUT.** The
+first push proved why: `Tests` runs on push, BESIDE the deploy rather than after
+it, so all six pages went red against a site still serving 2.20.24 while 2.20.25
+was uploading. Two shared caches in front of /blog then held the old copy for
+several more minutes, on their own per-page timers. That is a race, not a
+defect, and a check that cannot tell them apart is a check that cries wolf on
+every push. So each page's own HTML is read for the plugin build that produced
+it, out of the SAME response the headings are counted in, and a page built by a
+different version resolves to UNKNOWN. A stale page can no longer fail this, and
+it was never able to pass it.
+
 **Left alone, on purpose.** A single layoff entry page also renders two `<h1>`
 elements, but the first is the SITE NAME and the second is the employer.
 Demoting the employer would leave the page headed "AskTheRecruiter.com", which is

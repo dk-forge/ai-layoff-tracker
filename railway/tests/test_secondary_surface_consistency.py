@@ -455,7 +455,21 @@ class RenderedPageHeadingTests(unittest.TestCase):
     It reaches the site the way a reader does - bare URL, browser-ish
     User-Agent, no cache buster - and when it cannot reach it the result is
     UNKNOWN, never a pass.
+
+    IT ALSO REFUSES TO GRADE A BUILD THAT IS NOT THIS ONE. `Tests` runs on push,
+    beside the deploy rather than after it, and two shared caches sit in front of
+    /blog with their own timers, so for a few minutes after any push the page
+    this fetches was built by the PREVIOUS commit. Measured on 2026-08-13: this
+    check went red on all six pages against a site that was still serving
+    2.20.24 while 2.20.25 was uploading, which is not a defect, it is a race.
+    So each page's own HTML is read for the plugin build that produced it, out
+    of the same response the headings are counted in, and a page built by a
+    different version than this checkout resolves to UNKNOWN. A stale page can
+    therefore never fail this and can never pass it either.
     """
+
+    VERSION = re.search(r"define\('ALT_VERSION',\s*'([^']+)'\)",
+                        (PLUGIN / "ai-layoff-tracker.php").read_text()).group(1)
 
     # The six that supply their own heading, plus the two the fix deliberately
     # leaves alone. /report/ renders one <h1> and it is the theme's.
@@ -478,6 +492,14 @@ class RenderedPageHeadingTests(unittest.TestCase):
             self.skipTest("UNKNOWN, NOT passing: could not reach %s (%s)" % (page, e))
         if "<h1" not in html and "wp-block-post-title" not in html:
             self.skipTest("UNKNOWN, NOT passing: %s returned no page body" % page)
+        built = re.search(r"layoffs\.(?:css|js)\?ver=(\d+\.\d+\.\d+)", html)
+        if not built:
+            self.skipTest("UNKNOWN, NOT passing: %s carries no plugin asset "
+                          "version, so which build served it cannot be told" % page)
+        if built.group(1) != self.VERSION:
+            self.skipTest("UNKNOWN, NOT passing: %s was built by %s and this "
+                          "checkout is %s, so the page on the other end is not "
+                          "the code under test" % (page, built.group(1), self.VERSION))
         out = []
         for m in re.finditer(r"<h1\b[^>]*>(.*?)</h1>", html, re.S | re.I):
             # The text a reader reads, not the markup around it.
