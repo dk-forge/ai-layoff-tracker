@@ -33,6 +33,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write   # commit the ratcheted per-state baselines
+
 jobs:
   warn:
     runs-on: ubuntu-latest
@@ -104,3 +107,49 @@ jobs:
           done
           echo "::error::still failing after 3 attempts"
           exit 1
+
+      # The per-state floors are what turn "the scraper answered" into "the
+      # scraper answered with the whole state". They only ever ratchet UP, so
+      # the merge against origin/main is a max() and can never be lost to a
+      # race — and a failure to record them must not redden a successful
+      # import, hence `|| true` on the push.
+      # Only a run that COMPLETED may teach a floor: a half-finished sweep's
+      # counts are not evidence of how much a state normally yields.
+      - name: Commit the ratcheted per-state baselines
+        run: |
+          set -euo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          # The import wrote this file; `git reset` below would throw it away.
+          cp railway/warn_state_baselines.json "$RUNNER_TEMP/warn_baselines.json"
+          for attempt in 1 2 3; do
+            cp "$RUNNER_TEMP/warn_baselines.json" railway/warn_state_baselines.json
+            git fetch -q origin main
+            python - <<'PY'
+          import json, subprocess
+          P = "railway/warn_state_baselines.json"
+          mine = json.load(open(P))
+          try:
+              theirs = json.loads(subprocess.check_output(
+                  ["git", "show", f"origin/main:{P}"], text=True))
+          except Exception:
+              theirs = {}
+          for tier, m in theirs.items():
+              out = mine.setdefault(tier, {})
+              for st, v in (m or {}).items():
+                  out[st] = max(out.get(st, 0), v)   # upward-only merge
+          json.dump({t: dict(sorted(m.items())) for t, m in sorted(mine.items())},
+                    open(P, "w"), indent=2, sort_keys=True)
+          open(P, "a").write("\n")
+          PY
+            git add railway/warn_state_baselines.json
+            if git diff --staged --quiet; then
+              echo "Baselines unchanged."; exit 0
+            fi
+            git commit -q -m "warn: ratchet per-state baselines $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push origin HEAD:main; then
+              echo "Recorded on attempt $attempt."; exit 0
+            fi
+            git reset -q --hard origin/main
+          done
+          echo "::warning::could not record baselines after 3 attempts (import itself succeeded)"

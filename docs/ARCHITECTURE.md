@@ -68,7 +68,10 @@ railway/
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   announcement-lifecycle-review.yml Daily read-only exact-match lifecycle lead summary
   sources/{edgar,gdelt,newsapi,warn,companies_house}.py
-  warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload); drift tripwires for new + legacy custom scrapers
+  warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload); per-state drift tripwires
+                             for generic + new + legacy custom scrapers, floored by railway/warn_state_baselines.json
+                             (committed per-tier high-water marks, ratcheted UP only) so a PARTIAL collapse is caught,
+                             not just a hard zero
   company_watchlist.py       Daily targeted sweep of big employers with no current-year entry (news → extractor → poster); auto-grows via WATCHLIST_INDEX_URLS
   supplemental_news.py       DORMANT: NewsData.io + Marketaux + Finnhub non-English/EU news (per-key)
   distress_watchlist.py      DORMANT: CourtListener bankruptcy + Companies House insolvency → watchlist news search (per-key)
