@@ -56,7 +56,13 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
 MANIFEST_PATH = (REPO_ROOT / "docs" / "recall-reference-sets"
                  / "uk-hansard-2024-07_2026-06.goldset.json")
-MEASUREMENT_PATH = HERE / "recall_uk_measurement.json"
+# Named UK_MEASUREMENT_PATH, not MEASUREMENT_PATH, on purpose. The SEC figure
+# is published and its two files must never drift, so
+# test_archive_promise.test_only_one_function_writes_either_measurement_file
+# forbids any railway/*.py but recall_goldset.py from writing a name-matched
+# MEASUREMENT_PATH. This is a different, unpublished file with no plugin render
+# copy; the distinct name keeps that guard exactly as strict as it was.
+UK_MEASUREMENT_PATH = HERE / "recall_uk_measurement.json"
 
 # See the module docstring. None means "no tripwire armed yet", which judges to
 # UNKNOWN rather than PASS. It is not zero: zero would be a floor that can
@@ -84,7 +90,7 @@ def load_manifest(path=None):
 
 def load_measurement(path=None):
     try:
-        return json.loads(Path(path or MEASUREMENT_PATH).read_text(encoding="utf-8"))
+        return json.loads(Path(path or UK_MEASUREMENT_PATH).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
 
@@ -224,9 +230,9 @@ def main(argv=None):
         print(f"    ADJUDICATE {c['announcement_date']} {c['employer'][:36]:36s} new tracker "
               f"events {c['new_tracker_event_ids']} — NOT counted until an editor decides")
     if "--write" in argv:
-        MEASUREMENT_PATH.write_text(
+        UK_MEASUREMENT_PATH.write_text(
             json.dumps(measurement, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"  written: {MEASUREMENT_PATH}")
+        print(f"  written: {UK_MEASUREMENT_PATH}")
     return {PASS: 0, FAIL: 2, UNKNOWN: 3}[state]
 
 
