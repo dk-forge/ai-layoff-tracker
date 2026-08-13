@@ -338,7 +338,7 @@ fail at a gate of 7. A comment on `ARCHIVE_BACKFILL_LIMIT` records that this
 red is not answered by raising it.
 
 
-## 2026-08-13 - Ohio answered, and was still broken
+## 2026-08-13 - Ohio answered, and was still broken (2.20.31)
 
 Reported as "every documented path to Ohio's and North Carolina's WARN
 listings 404s". Both scrapers were in fact **working**, and the investigation
