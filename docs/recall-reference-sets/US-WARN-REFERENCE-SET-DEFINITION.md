@@ -11,7 +11,8 @@ git history says so and the number must be re-derived, not patched.
 
 ## 1. The gap this closes
 
-US recall is measured at **53 of 57, 93.0%**, over SEC Form 8-K filings carrying
+US recall is measured at **53 of 57, 93.0%** (56 of 57 by 2026-08-13, after this
+document was written), over SEC Form 8-K filings carrying
 structured item code 2.05. That set is excellent at what it does and it can only
 see one kind of employer: **a US public company that files 8-Ks**. It has no
 industry dimension, no state dimension, and no private employers at all. It

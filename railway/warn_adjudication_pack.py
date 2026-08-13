@@ -58,18 +58,30 @@ def _weight(cand):
                for f in cand["flags"])
 
 
-def _live_row(row_id, state):
-    """Re-fetch one tracker row as the public endpoint serves it right now."""
-    q = urllib.parse.urlencode({"id": row_id, "state": state, "per_page": 5,
-                                "cb": W._cachebust()})
-    try:
-        payload = W._api("query?" + q) or {}
-    except Exception as exc:                                       # noqa: BLE001
-        return {"refetch_error": f"{type(exc).__name__}: {exc}"}
-    for row in payload.get("data") or []:
-        if row.get("id") == row_id:
-            return row
-    return {"refetch_error": "the endpoint no longer serves this row id"}
+def _live_rows(event):
+    """Re-fetch this event's candidate rows as the endpoint serves them NOW.
+
+    ONE request per event, not one per row, and it goes through the event's own
+    query terms because **`/query` has no `id` filter**. An earlier version
+    passed `id=` and, since an unknown parameter is simply ignored, got back the
+    state's most recent rows and reported "the endpoint no longer serves this
+    row id" for every candidate in the sheet. A refetch that cannot find what it
+    is looking for must not be rendered as evidence that the row is gone.
+    """
+    found = {}
+    for term in event.get("query_terms") or []:
+        q = urllib.parse.urlencode({"company": term, "state": event["state"],
+                                    "from": event["match_window"][0],
+                                    "to": event["match_window"][1],
+                                    "per_page": 200, "cb": W._cachebust()})
+        try:
+            payload = W._api("query?" + q) or {}
+        except Exception as exc:                                   # noqa: BLE001
+            return {"__error__": f"{type(exc).__name__}: {exc}"}
+        for row in payload.get("data") or []:
+            found[row.get("id")] = row
+        time.sleep(0.15)
+    return found
 
 
 def build_pack(refetch=True):
@@ -83,11 +95,14 @@ def build_pack(refetch=True):
             if not result["candidates"] or result["match_decision"] == "matched":
                 continue
             ev = by_id[result["id"]]
+            live_by_id = _live_rows(ev) if refetch else {}
+            error = live_by_id.pop("__error__", None)
             candidates = []
             for cand in result["candidates"]:
-                live = _live_row(cand["tracker_row_id"], ev["state"]) if refetch else {}
-                if refetch:
-                    time.sleep(0.15)
+                live = live_by_id.get(cand["tracker_row_id"])
+                if live is None:
+                    live = {"refetch_error": error or
+                            "not returned by a re-query of this event's own terms"}
                 candidates.append({
                     **cand,
                     "weight": _weight(cand),

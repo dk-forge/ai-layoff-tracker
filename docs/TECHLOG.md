@@ -1,5 +1,112 @@
 # Tech Log
 
+## 2026-08-13 - the WARN half of US recall had never been measured, and measuring it broke the measurer twice (railway + docs, no deploy)
+
+**The gap.** US recall was a single number over SEC Form 8-K Item 2.05 filings:
+public companies that file 8-Ks, no state dimension, no industry dimension, no
+private employers. Meanwhile `warn_import.py` has ingested US state WARN notices
+daily for months and **nothing had ever measured what fraction of them we hold.**
+WARN is mandatory disclosure, it is already in the pipeline, and it covers
+exactly the employers Item 2.05 cannot see.
+
+**The set.** `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`
+was committed **before the first tracker query**, in its own commit, as the UK
+set was. Four states by an employment-order walk over a published eligibility
+rule; window 2025-07-01..2026-06-30 on the **notice** date, the same twelve
+months as the SEC set; one event per `(state, employer, notice date)` because
+CLAUDE.md exempts WARN from dedup precisely so the unit cannot be assumed;
+25 per state systematic on a chronological re-sort, plus a **census of all 33
+remaining 500+ events** reported separately.
+
+**Result: 99 of 100 machine-proposed, 33 of 33 in the large-event census, and
+0 of 100 editor-confirmed** — because every candidate ships `not_matched`. All
+99 are exact tier: same state, same date window, and a job count identical to a
+published component row of the notice, which is very nearly the `dedup_hash`.
+The one unmatched event is `stored_unmatched`, not a collection miss: we hold
+Wood Group USA (TX, 180, row `140104`), and the TWC dataset publishes its layoff
+date as **2025-01-05 against a 2025-11-18 notice date on the same record**, ten
+months earlier, so it falls outside the rule's window. The rule was not widened
+after seeing which event it excluded.
+
+**The figure moved 79 -> 86 -> 99 and BOTH moves were defects in the measurer.
+No line of the pipeline was changed at any point.**
+
+1. `aliases_for` cut Florida's glued names with `_CITY_ST_ZIP.sub("")`, whose
+   greedy `[A-Za-z .'-]+` head matched the employer along with the address.
+   **Fourteen events got an empty alias list, so no query was sent, and all
+   fourteen scored as misses.** `measure()` now refuses to score an event it
+   could not query, independently of the fix.
+2. `/query?company=` is a substring LIKE and the aliases were punctuation-
+   stripped. `Mattel Inc` is not a substring of `Mattel, Inc.`, nor `Raley s` of
+   `Raley's`, `Frito Lay` of `Frito-Lay, Inc`, `Albertsons 4286` of
+   `Albertsons #4286`, `Parsec LLC` of `Parsec, LLC`. **Every employer whose
+   name carries a comma, apostrophe, hyphen, ampersand or `#` was unfindable by
+   construction** and the rows were in the table the whole time. Eleven of the
+   sixteen remaining misses were that. Retrieval is now a separate object from
+   matching: literal leading substrings, with `state` and the window pushed into
+   the query so a common leading token cannot bury the row past the page cap.
+
+**That is the same defect the SEC set closed the same day.** Its alias `HP `
+could not match a company stored as `HP`, hiding a 4,000-job event held since
+November. Two independent reference sets, one afternoon, both finding that their
+largest apparent coverage gap was the substring semantics of one query
+parameter. **A reference set that constructs its query terms instead of taking
+them verbatim from the source will under-report, and it under-reports in the
+direction that looks like a finding.**
+
+A burst of host 503s also made ten consecutive Texas events UNKNOWN on the third
+run - the correct verdict, and `_api` now retries so a six-minute Bluehost wobble
+cannot delete a tenth of a sample.
+
+**Is WARN better than SEC? Not distinguishably.** 99.0% [94.6%, 99.8%]
+unadjudicated against 56/57 = 98.2% [90.7%, 99.7%] confirmed. Anyone quoting a
+two-point difference between those is quoting noise. The structural difference is
+the real one: **the WARN path has no extraction step to lose an event at**, so it
+will move when a state changes its website, while the SEC path moves when a
+model, a fetch depth or a count guard changes.
+
+**Where we are actually weak is coverage, and this set cannot measure it.** The
+eligibility walk excluded **NY, PA, IL, OH, GA, NC, NJ, MI and MA** - every one a
+JavaScript-only page, a proprietary BI extract, or a 404 - plus **VA and MD**,
+which publish cleanly and whose `robots.txt` names ClaudeBot / `anthropic-ai` /
+`Content-Signal: ai-input=no`. The convenient source did not get an exception,
+which is the call the UK set made about the FCA. That leaves the set with no
+Midwest and no Northeast state, so **99% is an optimistic bound on national WARN
+recall** and says so before the number.
+
+Two findings that fall out of the walk and are not about recall:
+
+* **Ohio's and North Carolina's official WARN pages 404 on every documented
+  path**, including the archive pattern `sources/warn_custom.fetch_oh` builds and
+  the `dam.assets.ohio.gov` fallback it keeps for exactly this failure. We hold
+  133 OH and 130 NC rows in the window, so something still reaches them - but a
+  collector whose discovery pages are dead while its fallback resolves is one
+  deploy from freezing silently, and `report_source_health` reports the whole
+  WARN import as ONE source, so a single state going dark inside it does not
+  surface.
+* **Five states hold zero WARN rows in the window**: OK, AR, WV, NH, WY. Four are
+  already named as open work by the baton holder. A state at zero is a missing
+  collector, and no recall figure will ever show it.
+
+**Nothing here touches the published SEC figure.** `recall_measurement.json`,
+`recall_adjudications.json`, the SEC manifest and `MATCHED_FLOOR` are untouched
+(verified against `origin/main`), and `tests/test_warn_reference_set.py` asserts
+no module in this set can name them outside a docstring.
+
+**The adjudication sheet is built with the Dow defect designed out.** On
+2026-08-12 a pooled summary line described a co-proposed row and a correct Dow
+acceptance was rejected because of it. Here **no line ever describes more than
+one candidate row**, the index has one line per (event, row) pair, and
+`warn_adjudicate.py` *requires* the tracker row ids a decision is about.
+
+**Cost: $0.00.** No model was called. Enumeration, matching and classification
+are deterministic code and read-only GETs. The California frame is read from the
+EDD's archived fiscal-year PDF by a stdlib PDF text extractor
+(`railway/warn_pdf.py`) rather than by adding `pdfplumber`, because the locks are
+hash-pinned and a reference set is not a reason to widen the install surface of a
+runner holding two API keys.
+
+---
 ## 2026-08-13 - Idaho: the break was one filename, the defect was no floor
 
 `fetch_id` had been raising `ID: WARN pdf link not found on landing page`.
