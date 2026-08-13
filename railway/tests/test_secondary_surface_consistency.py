@@ -38,6 +38,11 @@ TPL = PLUGIN / "templates"
 
 # The secondary surfaces this file owns. The dashboard is deliberately absent:
 # it has its own guards, and it is the one page that renders no <h1> of its own.
+# The one name the press page has, everywhere it is named. Kept here rather
+# than typed into each assertion so a future rename moves in one place and the
+# guards below cannot drift apart from each other.
+LINK_LABEL = "Press kit and soundbites"
+
 SECONDARY = {
     "methodology": TPL / "page-methodology.php",
     "sources": TPL / "page-sources.php",
@@ -723,6 +728,27 @@ class SiblingNavigationTests(unittest.TestCase):
                                                 TPL / "page-tracker.php"]:
             self.assertNotIn(">Press kit<", read(path),
                              "%s still calls the press page by a third name" % path.name)
+
+    def test_the_press_page_calls_itself_what_the_links_call_it(self):
+        """The page's own heading has to be the name the links use.
+
+        Forbidding a third name was not enough: every link said "Press kit and
+        soundbites" while the page it opened was headed "Press & Media Kit", so
+        a reader who clicked to find the soundbites landed on a page that
+        appeared to be something else. The owner reported exactly that.
+        """
+        press = read(TPL / "page-press.php")
+        self.assertIn("<h1>%s</h1>" % LINK_LABEL, press,
+                      "the press page heads itself with something other than "
+                      "%r, which is what every link to it says" % LINK_LABEL)
+        for path in list(SECONDARY.values()) + [TPL / "page-report.php",
+                                                TPL / "page-tracker.php"]:
+            body = read(path)
+            if "ai-layoff-tracker/press" not in body:
+                continue
+            self.assertIn(LINK_LABEL, body,
+                          "%s links to the press page by some other name than "
+                          "%r" % (path.name, LINK_LABEL))
 
 
 class WarnCoverageBasisTests(unittest.TestCase):

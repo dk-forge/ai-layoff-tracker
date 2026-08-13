@@ -405,7 +405,7 @@ if (!is_array($alt_ps)) {
      emits the single Dataset block on tracker-family pages; a second one with a
      different url read as two conflicting datasets (audit 2026-07-28). */ ?>
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
-  <h1>Press &amp; Media Kit</h1>
+  <h1>Press kit and soundbites</h1>
   <p class="alt-lead"><span class="alt-lead-text">Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>
   <p class="alt-sb-disclaimer"><b>Every number on this page traces to an SEC filing, a state WARN notice, or a named news report. Nothing is estimated.</b> That makes our totals a documented floor, deliberately smaller than announcement surveys: surveys count intentions, including multi-year plans and cuts with no public paper trail. We count what can be verified, on the day each cut takes effect.</p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How every number is built</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
