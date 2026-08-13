@@ -196,7 +196,11 @@ class BoardIsReadable(unittest.TestCase):
                 "at %dpx the board body measured %dpx tall"
                 % (width, got["body_h"]))
 
-    def test_the_four_period_columns_are_the_ones_the_owner_quoted(self):
+    def test_the_period_columns_are_the_ones_the_owner_quoted(self):
+        """Six since 2.20.23: the four to-date windows plus the last completed
+        calendar month and quarter. What each column MEANS, and that its label
+        is computed rather than typed, is test_signal_board_periods.py; this
+        one only holds that a reader can read all of them without a click."""
         html = FIXTURE % {
             "plugin": CSS.read_text(),
             "freeze": contrast_audit.FREEZE_CSS,
@@ -224,8 +228,8 @@ class BoardIsReadable(unittest.TestCase):
         except CDPUnavailable as exc:
             raise unittest.SkipTest("could not launch Chrome: %s" % exc)
         self.assertEqual(
-            len(got["cols"]), 4,
-            "the board rendered %d period columns, not four: %r"
+            len(got["cols"]), 6,
+            "the board rendered %d period columns, not six: %r"
             % (len(got["cols"]), got["cols"]))
         # innerText reports what is PAINTED, and .alt-sb-label carries
         # text-transform: uppercase, so the rows come back as WORKERS. That is
@@ -233,7 +237,7 @@ class BoardIsReadable(unittest.TestCase):
         # rather than the assertion dropping back to textContent.
         rows = [r.casefold() for r in got["rows"]]
         for want in ("Workers", "Verified layoffs",
-                     "Explicitly AI-attributed", "Largest event"):
+                     "Explicitly AI-attributed", "Largest entry"):
             self.assertIn(
                 want.casefold(), rows,
                 "the board no longer renders the %r row a reader can read; "
