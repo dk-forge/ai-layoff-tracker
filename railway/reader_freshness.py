@@ -116,6 +116,13 @@ SHARED_CACHE_HOPS = 2
 # waiting rather than declaring anything.
 PROPAGATION_MARGIN_S = 120
 
+# How long the deploy's wait will hold out for the ORIGIN to report the build
+# this checkout computes, before deciding the difference is not a deploy in
+# flight. The files are already on disk when the deploy step runs - the FTPS
+# mirror finished a step earlier - so this covers the flush and a slow first
+# render, not an upload.
+ORIGIN_GATE_S = 120
+
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 
 # Only the PLUGIN'S own fingerprinted assets carry ALT_VERSION. A bare
@@ -379,6 +386,14 @@ def wait_for(expected, expected_build=None, timeout=600, interval=15, log=print)
     fired alt_flush_caches_on_deploy(), and our first bare-URL request can only
     store a coherent render. It does not stop another visitor arriving mid
     upload. Nothing here can, and pretending otherwise is how the last one hid.
+
+    IF THE ORIGIN SETTLES ON A BUILD THIS CHECKOUT DOES NOT RECOGNISE, the gate
+    ADOPTS the origin's build and says so loudly rather than failing the deploy.
+    The two can legitimately differ for one reason that has nothing to do with a
+    deploy reaching readers: a file on the server that is not in this checkout.
+    Turning a stray file into a permanently red deploy is how a check gets
+    deleted, and the reader-versus-origin comparison still catches the cached
+    mid-upload render, which is what this step is for.
     """
     started = time.monotonic()
 
@@ -386,9 +401,11 @@ def wait_for(expected, expected_build=None, timeout=600, interval=15, log=print)
         return time.monotonic() - started + interval > timeout
 
     if expected_build:
+        gate_until = time.monotonic() + min(timeout, ORIGIN_GATE_S)
+        seen = (None, None)
         while True:
             try:
-                version, build = origin_build()
+                seen = version, build = origin_build()
                 if version == expected and build == expected_build:
                     log(f"    origin is coherent at {expected}/{expected_build} "
                         f"({int(time.monotonic() - started)}s); now asking for the bare URL")
@@ -397,8 +414,18 @@ def wait_for(expected, expected_build=None, timeout=600, interval=15, log=print)
                     f"{expected}/{expected_build} before touching the reader's URL")
             except Exception as exc:              # noqa: BLE001
                 log(f"    /status unreachable ({exc}); retrying")
+            if time.monotonic() > gate_until and seen[0] == expected and seen[1]:
+                log(f"::warning::The origin is running {expected} but reports build "
+                    f"{seen[1]}, and this checkout computes {expected_build}. The plugin "
+                    f"directory on the server is not byte-identical to this tree - most "
+                    f"likely a file that is on the server and not in this checkout. "
+                    f"Waiting on the ORIGIN's build instead, which still catches a cached "
+                    f"mid-upload render but no longer proves the server matches this "
+                    f"commit.")
+                expected_build = seen[1]
+                break
             if out_of_time():
-                log("    the ORIGIN never reported the expected build; the bare URL was "
+                log("    the ORIGIN never reported the expected version; the bare URL was "
                     "deliberately never requested, so nothing was cached by this check")
                 return None
             time.sleep(interval)

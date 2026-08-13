@@ -593,6 +593,50 @@ class TheCheckDoesNotFillTheCacheItIsMeasuring(unittest.TestCase):
                          "the page cache with the raced render on 2.20.21")
 
 
+    def test_an_origin_that_never_matches_the_checkout_is_adopted_and_announced(self):
+        """A file on the server that is not in this checkout would otherwise
+        redden every deploy forever, and a check that cries wolf on every deploy
+        gets deleted. The gate adopts the ORIGIN's build, says so loudly, and
+        keeps the comparison that actually catches a cached mid-upload render."""
+        said = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        real_gate = reader_freshness.ORIGIN_GATE_S
+        reader_freshness.ORIGIN_GATE_S = 0        # the gate expires immediately
+        reader_freshness.origin_build = lambda *a, **k: ("2.20.31", "origin-build")
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            "2.20.31", "origin-build", {})
+        try:
+            delay = reader_freshness.wait_for("2.20.31", expected_build="checkout-build",
+                                              timeout=60, interval=0, log=said.append)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+            reader_freshness.ORIGIN_GATE_S = real_gate
+        self.assertIsNotNone(delay, "the deploy must not go red over a file inventory "
+                                    "difference that no reader can see")
+        self.assertTrue(any("::warning::" in line and "not byte-identical" in line
+                            for line in said), said)
+
+    def test_an_origin_that_never_reports_the_version_is_not_adopted(self):
+        """Adoption is for a build difference, never for a deploy that did not
+        land. A version that never arrives still fails, and the bare URL is
+        never requested, so nothing is cached by the attempt."""
+        said = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        real_gate = reader_freshness.ORIGIN_GATE_S
+        reader_freshness.ORIGIN_GATE_S = 0
+        reader_freshness.origin_build = lambda *a, **k: ("2.20.30", "old-build")
+        reader_freshness.reader_view = lambda *a, **k: self.fail(
+            "the bare URL must not be requested when the origin never reported the "
+            "expected version")
+        try:
+            delay = reader_freshness.wait_for("2.20.31", expected_build="checkout-build",
+                                              timeout=1, interval=0, log=said.append)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+            reader_freshness.ORIGIN_GATE_S = real_gate
+        self.assertIsNone(delay)
+
+
 class TheGuardIsActuallyWired(unittest.TestCase):
     def test_deploy_workflow_runs_the_reader_check(self):
         body = re.sub(r"^\s*#.*$", "", DEPLOY_YML, flags=re.M)
