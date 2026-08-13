@@ -53,6 +53,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import reader_freshness  # noqa: E402  - sibling module, stdlib only
+import benchmark_freshness  # noqa: E402  - sibling module, stdlib only
 
 BASE = "https://asktherecruiter.com/blog"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
@@ -858,8 +859,32 @@ def main():
     # 5+6. Surfaces to keep current
     print("\n[5] SOURCES PAGE   https://asktherecruiter.com/blog/ai-layoff-tracker/sources/")
     print("      -> must list EXACTLY the live collectors; update on any source add/remove.")
-    print("[6] BENCHMARK      scratchpad/bm-live.html (LOCAL ONLY, never commit)")
-    print("      -> refresh vs-competitor read; every table shows ours + theirs.")
+    # [6] used to be two printed sentences telling a human to go and look. The
+    # coverage figure it pointed at is the most quotable number the project has
+    # and it was the least watched: on 2026-08-12 the comparator side had been
+    # re-verified two days earlier while the paragraph carrying the headline
+    # percentage was still the one written on 2026-07-27, standing on a
+    # denominator that had moved underneath it. A reminder cannot catch that.
+    #
+    # It still cannot be checked the ordinary way. Half the ratio is competitor
+    # data and may not enter the repo, a secret, or any log, so the comparison
+    # itself stays manual and local. What CAN be automated is its AGE: a date is
+    # not a figure and names nobody. benchmark_freshness.py reads dates out of
+    # the local-only file and returns dates — see its header for why that is a
+    # structural property and not a promise.
+    print("\n[6] BENCHMARK COMPARISON  scratchpad/bm-live.html (LOCAL ONLY, never commit)")
+    try:
+        bench = benchmark_freshness.check_file()
+        print(f"    verdict: {bench.verdict}")
+        for line in bench.lines:
+            print(f"    {line}")
+        if bench.needs_a_human:
+            issues.append("the coverage comparison is stale")
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        print(f"    UNKNOWN — could not run the freshness check ({exc}).")
+        print("    THIS IS NOT A PASS.")
+    print("      -> the refresh is MANUAL by design (competitor figures stay off")
+    print("         this machine's repo); every table shows ours + theirs.")
     # [1b] proves which VERSION a reader is served. It cannot tell a readable
     # page from one whose paragraphs are 1.06:1, which is exactly what shipped
     # on 2026-08-10. Not run inline: it needs a browser, and this script is

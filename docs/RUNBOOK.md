@@ -571,6 +571,49 @@ Mitigations, in order: (1) Cloudflare cache rule serving the API from edge (chec
 `cf-cache-status: HIT` on `/aggregate`); (2) page HTML is already super-cached (~0.4s);
 (3) if sustained, upgrade hosting — the plugin itself scales (indexed table, micro-cache).
 
+**The coverage comparison is stale**
+`ops_status.py` section `[6]` printed `STALE`, or `python3
+railway/benchmark_freshness.py` exited 2.
+
+**What it means.** The coverage figure against the independent national survey
+is the number a journalist tests first, and it is the one figure in this system
+whose other half cannot be automated: that half is competitor data and may not
+enter the repo, a secret, a workflow log or any public page. So the comparison
+is refreshed by hand in the local-only `scratchpad/bm-live.html`, and the only
+thing a machine can watch is **how old it is**. A date is not a figure and names
+nobody. That is the whole of what `[6]` checks, and it is deliberately a smaller
+claim than "the coverage number is monitored".
+
+Two things can put it in `STALE`:
+- **The oldest comparator-side input is 15+ days old** (two missed Mondays of
+  the local weekly claim check — one missed Monday only shows `DUE`). The
+  *oldest* input governs, not the freshest: a weekly check that confirms one
+  cell while a hand-maintained one sits untouched for a month has not refreshed
+  the ratio, it has refreshed part of it.
+- **A hand-written ratio claim predates the last denominator re-check.** This is
+  the one that matters and it is why the section exists. On 2026-08-12 the
+  weekly check had moved the denominator on 2026-08-10 while the paragraph
+  carrying the headline percentage was still the one typed on 2026-07-27. The
+  percentage was correct when written, was never recomputed, and was quoted for
+  sixteen days. Nothing in the system could see it.
+
+**Do this.**
+1. Run `python3 railway/benchmark_freshness.py`. It prints the dates: which
+   inputs are old, and which quoted claims stand on a superseded figure.
+2. Open `scratchpad/bm-live.html` **locally**. Re-verify the flagged
+   comparator-side inputs by hand against their own published sources.
+3. **Recompute every percentage the check flagged, and restamp it with today's
+   date.** A claim keeps its old stamp until someone recomputes it — do not
+   restamp without recomputing, which converts a stale number into a stale
+   number that looks fresh.
+4. Re-run the check. Cells with no machine-readable claim page stay
+   hand-maintained by design; they simply have to be re-entered on the cadence.
+
+**Never** fix this by widening `COMPARATOR_STALE_DAYS`, and never move the
+figures into the repo, a secret, or an Actions log to make them checkable. The
+constraint is the owner's standing decision, reconfirmed 2026-08-12, and the
+staleness signal is what was built *because of* it, not in spite of it.
+
 ## How to ADD a new source (the pattern every collector follows)
 Never write to the DB directly. Every source produces "raw entries" and hands
 them to the shared pipeline, so it inherits dedup + entity-alias + country/
