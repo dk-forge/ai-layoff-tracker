@@ -1,5 +1,65 @@
 # Tech Log
 
+## 2026-08-12 - the site published 24 of 57 for two days while the repo said 52: two writers, one of which wrote one of two files that must agree (2.20.18)
+
+**Symptom.** `railway/recall_measurement.json` read `matched: 52` of 57
+(91.2%, measured 2026-08-12T23:44:31Z). The plugin's render copy,
+`wordpress-plugin/ai-layoff-tracker/data/recall-measurement.json`, still read
+`matched: 24` (42.1%, 2026-08-10T16:30:56Z), and that file is the one
+`alt_recall_measurement()` reads, so the tracker page's "how complete is that,
+measured?" paragraph told every reader **24 of 57** from `c39fec7` onward. The
+number the page understated was its own coverage, which is the polite direction
+to be wrong in and still wrong. `test_archive_promise.RecallParagraphIsRendered
+.test_plugin_render_copy_matches_the_canonical_measurement` was red on main for
+it.
+
+**Cause, and it is not the adjudication.** `recall_adjudicate.py` writes the
+manifest and the ledger and touches neither measurement file — correct, and it
+stays that way. There were **two writers of the canonical file**:
+
+- `recall_precision.py` (weekly, recall-precision.yml) wrote the canonical file
+  and then the render copy. That path was fine, and it is why the assertion's
+  own hint said "recall_precision.py writes both".
+- `recall_goldset.py --write` wrote **only** the canonical file. That is the
+  path a person takes right after an adjudication moves the figure — the module
+  docstring recommends it by name — so the one moment the number changes was
+  exactly the moment the copy was skipped. It would have recurred on every
+  future adjudication, and the drift would have lasted until the next Monday
+  each time.
+
+**Fix.** One writer: `recall_goldset.write_measurement(measurement, precision)`
+writes the canonical file and the render copy, both or neither.
+`recall_precision.py` now calls it instead of writing either file itself, and
+`--write` calls it too. The render copy is still rewritten **only when a figure
+moves**, so a timestamp-only weekly refresh does not touch the plugin tree and
+manufacture an FTPS deploy every Monday.
+
+The `--write` path has no precision sample, and a naive shared writer would have
+**deleted** the "counts appear verbatim in their own source" sentence from the
+live page every time someone re-measured recall. `_render_payload` carries the
+previous copy's dated `precision_verbatim` block forward when no sample is
+passed. The block is dated on the page, so a carried-forward one is honest.
+
+**Guards.** `test_only_one_function_writes_either_measurement_file` greps
+`railway/*.py` for any `MEASUREMENT_PATH…write_text` outside `recall_goldset.py`
+— a third writer reddens CI rather than waiting to be noticed on the live page.
+`test_write_measurement_refreshes_both_files` runs the real function over the
+real drift (24→52 with a precision block present) and asserts the copy moves,
+the precision block survives, and a second identical call writes nothing.
+
+The render copy was regenerated **through `write_measurement()` from the
+committed canonical file**, not typed: the canonical file is byte-identical
+after (asserted while doing it). 52/57 is a human adjudication and nothing here
+may move it.
+
+**Still red, separately, and it needs the owner.** `test_recall_goldset
+.test_the_floor_leaves_headroom_but_is_not_a_rubber_stamp` fails because
+`MATCHED_FLOOR` is 20 against a confirmed 52 — the test wants a floor above
+0.6 × confirmed. The documented rule ("four events of headroom") would put it at
+48, but raising a tripwire is a policy decision and applying it also rewrites
+`matched_floor` inside the canonical measurement, which only a re-measure may
+do. Left alone deliberately; it pre-dates this change and is not caused by it.
+
 ## 2026-08-12 - company-watchlist: measurement only. It grows, it reports green, it has produced one row, and every run we can price was cut off before it finished (no code change, no deploy)
 
 `ops_status.py` reads `company-watchlist  6 runs  $0.0301/run  0 rows  bought 0`.

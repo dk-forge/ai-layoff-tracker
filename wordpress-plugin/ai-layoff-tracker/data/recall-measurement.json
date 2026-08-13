@@ -1,7 +1,7 @@
 {
-  "matched": 24,
-  "measured_at": "2026-08-10T16:30:56Z",
-  "note": "Render copy of railway/recall_measurement.json for the tracker page's measured-completeness paragraph. Written by railway/recall_precision.py (recall-precision.yml, Mondays); railway/tests/test_archive_promise.py pins it against the canonical file. Do not hand-edit.",
+  "matched": 52,
+  "measured_at": "2026-08-12T23:44:31Z",
+  "note": "Render copy of railway/recall_measurement.json for the tracker page's measured-completeness paragraph. Written by recall_goldset.write_measurement(), which is the ONLY writer of either file \u2014 so every path that moves the canonical figure moves this one too. railway/tests/test_archive_promise.py pins them together. Do not hand-edit.",
   "precision_verbatim": {
     "checked": 40,
     "measured_at": "2026-08-10",

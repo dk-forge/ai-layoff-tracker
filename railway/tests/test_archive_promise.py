@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -313,7 +314,68 @@ class RecallParagraphIsRendered(unittest.TestCase):
         for key in ("matched", "reference_events", "reference_set_id"):
             self.assertEqual(render[key], canonical[key],
                              f"data/recall-measurement.json {key} drifted from "
-                             f"railway/recall_measurement.json — recall_precision.py writes both")
+                             f"railway/recall_measurement.json — recall_goldset."
+                             f"write_measurement() writes both, so re-run the writer "
+                             f"rather than editing either file")
+
+    def test_only_one_function_writes_either_measurement_file(self):
+        """The cause of the 24-vs-52 drift: two writers, one of which wrote one file.
+
+        `recall_goldset.py --write` is the path a human takes right after an
+        adjudication moves the figure, and it used to write ONLY the canonical
+        file, leaving the live page publishing the superseded number. Any new
+        writer must go through write_measurement(), which writes both.
+        """
+        rail = REPO / "railway"
+        offenders = []
+        for path in sorted(rail.glob("*.py")):
+            src = path.read_text(encoding="utf-8")
+            for name in ("MEASUREMENT_PATH", "PLUGIN_MEASUREMENT_PATH"):
+                for m in re.finditer(rf"\b{name}\b[^\n]*\.write_text", src):
+                    line = src[:m.start()].count("\n") + 1
+                    if path.name == "recall_goldset.py":
+                        continue
+                    offenders.append(f"{path.name}:{line}")
+        self.assertEqual(offenders, [],
+                         "a second writer of the recall measurement files: only "
+                         "recall_goldset.write_measurement() may write them, or the "
+                         "canonical figure and the figure the site publishes drift again "
+                         f"({offenders})")
+
+    def test_write_measurement_refreshes_both_files(self):
+        sys.path.insert(0, str(REPO / "railway"))
+        try:
+            import recall_goldset
+        finally:
+            sys.path.pop(0)
+        with tempfile.TemporaryDirectory() as tmp:
+            canonical = Path(tmp) / "recall_measurement.json"
+            render = Path(tmp) / "plugin" / "recall-measurement.json"
+            render.parent.mkdir()
+            render.write_text(json.dumps({
+                "matched": 24, "reference_events": 57,
+                "reference_set_id": "sec-item-205-us-2025-07_2026-06",
+                "measured_at": "2026-08-10T16:30:56Z",
+                "precision_verbatim": {"ok": 40, "checked": 40,
+                                       "measured_at": "2026-08-10"}}) + "\n")
+            measurement = {"matched": 52, "reference_events": 57,
+                           "reference_set_id": "sec-item-205-us-2025-07_2026-06",
+                           "measured_at": "2026-08-12T23:44:31Z"}
+            # No precision sample — the `recall_goldset.py --write` path.
+            wrote = recall_goldset.write_measurement(
+                measurement, None, measurement_path=canonical, plugin_path=render)
+            self.assertTrue(wrote, "a moved figure must rewrite the render copy")
+            out = json.loads(render.read_text())
+            self.assertEqual(out["matched"], 52)
+            self.assertEqual(out["measured_at"], "2026-08-12T23:44:31Z")
+            self.assertEqual(json.loads(canonical.read_text())["matched"], 52)
+            self.assertEqual(out["precision_verbatim"],
+                             {"ok": 40, "checked": 40, "measured_at": "2026-08-10"},
+                             "a recall-only re-measure must carry the dated precision "
+                             "block forward, not delete the sentence it renders")
+            # Idempotent: same figures, no rewrite, so no needless FTPS deploy.
+            self.assertFalse(recall_goldset.write_measurement(
+                measurement, None, measurement_path=canonical, plugin_path=render))
 
     def test_render_copy_is_internally_sane(self):
         render = json.loads((PLUGIN / "data" / "recall-measurement.json").read_text())

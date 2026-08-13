@@ -62,7 +62,9 @@ or stale measurement file is UNKNOWN too. Absence of a signal is not a pass.
 
 USAGE
     python3 railway/recall_goldset.py            # re-measure, print, exit 0/2/3
-    python3 railway/recall_goldset.py --write    # also write recall_measurement.json
+    python3 railway/recall_goldset.py --write    # write recall_measurement.json AND
+                                                 # the plugin's render copy (one
+                                                 # writer: write_measurement)
 """
 import json
 import math
@@ -85,6 +87,12 @@ MANIFEST_PATH = (REPO_ROOT / "docs" / "recall-reference-sets"
 # result that lives only in a runner is a result that resets every night. This
 # is the same reasoning as railway/headline_baseline.json.
 MEASUREMENT_PATH = HERE / "recall_measurement.json"
+# The tracker page's "how complete is that, measured?" paragraph renders from
+# this file (db.php alt_recall_measurement()), so the public numbers follow the
+# measurement instead of being typed into the template. It lives INSIDE the
+# plugin directory because the FTPS deploy only uploads that tree.
+PLUGIN_MEASUREMENT_PATH = (REPO_ROOT / "wordpress-plugin" / "ai-layoff-tracker"
+                           / "data" / "recall-measurement.json")
 
 # ---------------------------------------------------------------------------
 # THE BOUNDS. Read the reasoning above before changing one.
@@ -348,6 +356,79 @@ def _days_since(stamp, now=None):
     return max(0.0, ((now or datetime.now(timezone.utc)) - when).total_seconds() / 86400.0)
 
 
+def _render_payload(measurement, precision=None, previous=None):
+    """What the plugin renders: the four public fields, plus precision if known.
+
+    When `precision` is None the caller measured recall WITHOUT a precision
+    sample (`recall_goldset.py --write`, the path a re-measure after an
+    adjudication takes). Dropping the block would silently delete the "counts
+    appear verbatim in their own source" sentence from the live page, so the
+    previous copy's block is carried forward instead — it is dated, and the page
+    prints it as a separate claim.
+    """
+    payload = {
+        "matched": measurement.get("matched"),
+        "reference_events": measurement.get("reference_events"),
+        "reference_set_id": measurement.get("reference_set_id"),
+        "measured_at": measurement.get("measured_at"),
+        "note": ("Render copy of railway/recall_measurement.json for the tracker page's "
+                 "measured-completeness paragraph. Written by recall_goldset.write_measurement(), "
+                 "which is the ONLY writer of either file — so every path that moves the "
+                 "canonical figure moves this one too. railway/tests/test_archive_promise.py "
+                 "pins them together. Do not hand-edit."),
+    }
+    prec = None
+    if precision and precision.get("checked"):
+        prec = {"ok": precision["ok"], "checked": precision["checked"],
+                "measured_at": str(date.today())}
+    elif isinstance((previous or {}).get("precision_verbatim"), dict):
+        prec = previous["precision_verbatim"]
+    if prec:
+        payload["precision_verbatim"] = prec
+    return payload
+
+
+def write_measurement(measurement, precision=None, measurement_path=None,
+                      plugin_path=None):
+    """Write the canonical measurement AND the plugin's render copy. The ONE writer.
+
+    Both files or neither. They drifted for two days because there were two
+    writers: recall_precision.py wrote the pair, and `recall_goldset.py --write`
+    — the path a human takes right after an adjudication moves the figure —
+    wrote only the canonical file. The live page kept publishing 24 of 57 while
+    the repo said 52. A second writer of one of two files that must agree is the
+    defect; this function exists so there is one.
+
+    The render copy is still rewritten only when a FIGURE moves: a timestamp-only
+    weekly refresh would touch the plugin tree and trigger a real FTPS deploy
+    every Monday for no reader-visible change.
+    """
+    canonical = Path(measurement_path or MEASUREMENT_PATH)
+    canonical.write_text(json.dumps(measurement, indent=2, sort_keys=True) + "\n",
+                         encoding="utf-8")
+    print(f"measurement written: {canonical}")
+
+    render = Path(plugin_path or PLUGIN_MEASUREMENT_PATH)
+    try:
+        old = json.loads(render.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        old = {}
+    payload = _render_payload(measurement, precision, old)
+
+    def figures(d):
+        return (d.get("matched"), d.get("reference_events"), d.get("reference_set_id"),
+                (d.get("precision_verbatim") or {}).get("ok"),
+                (d.get("precision_verbatim") or {}).get("checked"))
+
+    if figures(old) == figures(payload):
+        print(f"plugin render copy unchanged (no figure moved): {render}")
+        return False
+    render.parent.mkdir(parents=True, exist_ok=True)
+    render.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"plugin render copy written: {render}")
+    return True
+
+
 def main(argv=None):
     argv = argv or sys.argv[1:]
     try:
@@ -368,9 +449,10 @@ def main(argv=None):
         print(f"    ADJUDICATE {c['filing_date']} {c['filer'][:36]:36s} new tracker events "
               f"{c['new_tracker_event_ids']} — NOT counted until an editor decides")
     if "--write" in argv:
-        MEASUREMENT_PATH.write_text(
-            json.dumps(measurement, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"  written: {MEASUREMENT_PATH}")
+        # Writes the plugin render copy too. This path has no precision sample,
+        # so the copy's existing precision block is carried forward rather than
+        # dropped — see _render_payload.
+        write_measurement(measurement)
     return {PASS: 0, FAIL: 2, UNKNOWN: 3}[state]
 
 

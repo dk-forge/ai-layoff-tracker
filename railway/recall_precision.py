@@ -42,19 +42,17 @@ the recall claim unfalsifiable:
 Env: RP_PRECISION_SAMPLE (default 40), RP_DRY (skip health post + file write).
 """
 import csv
-import json
 import os
 import re
 import sys
 import time
 import urllib.parse
 from datetime import date
-from pathlib import Path
 
 import requests
 
-from recall_goldset import (MEASUREMENT_PATH, format_interval, judge, measure,
-                            wilson)
+from recall_goldset import (format_interval, judge, measure, wilson,
+                            write_measurement)
 
 SITE = (os.environ.get("WP_SITE_URL") or "https://asktherecruiter.com/blog").rstrip("/")
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -300,55 +298,6 @@ def judge_precision(prec):
     return "pass", f"{shown}; floor is a {PRECISION_LOWER_FLOOR:.0%} lower bound"
 
 
-# The tracker page's "how complete is that, measured?" paragraph renders from
-# this file (db.php alt_recall_measurement()), so the public numbers follow the
-# measurement instead of being typed into the template. It lives INSIDE the
-# plugin directory because the FTPS deploy only uploads that tree.
-PLUGIN_MEASUREMENT_PATH = (
-    Path(__file__).resolve().parents[1] / "wordpress-plugin" / "ai-layoff-tracker"
-    / "data" / "recall-measurement.json")
-
-
-def write_plugin_render_copy(sec, prec):
-    """Refresh the plugin's render copy — only when a FIGURE changed.
-
-    A timestamp-only weekly refresh would touch the plugin tree and trigger a
-    real FTPS deploy every Monday for no reader-visible change, so the copy is
-    rewritten only when matched / reference_events / the precision counts move.
-    railway/tests/test_archive_promise.py pins the copy against the canonical
-    measurement so the two cannot drift.
-    """
-    payload = {
-        "matched": sec.get("matched"),
-        "reference_events": sec.get("reference_events"),
-        "reference_set_id": sec.get("reference_set_id"),
-        "measured_at": sec.get("measured_at"),
-        "note": ("Render copy of railway/recall_measurement.json for the tracker page's "
-                 "measured-completeness paragraph. Written by railway/recall_precision.py "
-                 "(recall-precision.yml, Mondays); railway/tests/test_archive_promise.py "
-                 "pins it against the canonical file. Do not hand-edit."),
-    }
-    if prec and prec.get("checked"):
-        payload["precision_verbatim"] = {
-            "ok": prec["ok"], "checked": prec["checked"],
-            "measured_at": str(date.today()),
-        }
-    try:
-        old = json.loads(PLUGIN_MEASUREMENT_PATH.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        old = {}
-    figures = lambda d: (d.get("matched"), d.get("reference_events"),  # noqa: E731
-                         (d.get("precision_verbatim") or {}).get("ok"),
-                         (d.get("precision_verbatim") or {}).get("checked"))
-    if figures(old) == figures(payload):
-        print(f"plugin render copy unchanged (no figure moved): {PLUGIN_MEASUREMENT_PATH}")
-        return
-    PLUGIN_MEASUREMENT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PLUGIN_MEASUREMENT_PATH.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"plugin render copy written: {PLUGIN_MEASUREMENT_PATH}")
-
-
 def main():
     print(f"=== recall/precision @ {SITE} ===")
     prec = measure_precision()
@@ -388,10 +337,10 @@ def main():
         # Committed by the workflow. The data being measured changes without a
         # commit, so a result that lives only in the runner is a result that
         # resets every night — the same reasoning as headline_baseline.json.
-        MEASUREMENT_PATH.write_text(json.dumps(sec, indent=2, sort_keys=True) + "\n",
-                                    encoding="utf-8")
-        print(f"measurement written: {MEASUREMENT_PATH}")
-        write_plugin_render_copy(sec, prec)
+        # recall_goldset.write_measurement is the ONE writer of the canonical
+        # file and the plugin's render copy, so no path can move one without
+        # the other (they drifted for two days when there were two writers).
+        write_measurement(sec, prec)
 
     # UNKNOWN maps to 'degraded' on the health page, never to 'ok': the ledger
     # must not show green for a rate nobody could measure.
