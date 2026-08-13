@@ -56,7 +56,13 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
 REF_DIR = REPO_ROOT / "docs" / "recall-reference-sets"
 MANIFEST_PATH = REF_DIR / "us-warn-ca-tx-fl-tn-2025-07_2026-06.goldset.json"
-MEASUREMENT_PATH = HERE / "warn_recall_measurement.json"
+# Named WARN_MEASUREMENT_PATH, not MEASUREMENT_PATH, and the name is load-bearing:
+# test_archive_promise.test_only_one_function_writes_either_measurement_file greps
+# every railway/*.py for a bare `MEASUREMENT_PATH ... write_text` outside
+# recall_goldset.py, because two writers of the SEC measurement pair once left the
+# live page publishing 24 of 57 while the repo said 52. This set has its own file
+# and must not look like a second writer of that one.
+WARN_MEASUREMENT_PATH = HERE / "warn_recall_measurement.json"
 QUEUE_JSON = REF_DIR / "us-warn-adjudication-queue.json"
 QUEUE_MD = REF_DIR / "us-warn-adjudication-queue.md"
 
@@ -796,8 +802,8 @@ def measure(manifest=None):
         "cost_usd": 0.0,
     }
     out["summary"] = summarise(out, manifest)
-    MEASUREMENT_PATH.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
-    print(f"measurement written: {MEASUREMENT_PATH}")
+    WARN_MEASUREMENT_PATH.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
+    print(f"measurement written: {WARN_MEASUREMENT_PATH}")
     return out
 
 

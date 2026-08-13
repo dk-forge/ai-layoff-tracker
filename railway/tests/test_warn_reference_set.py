@@ -52,7 +52,7 @@ class TheSecFigureIsNotThisSetsBusiness(unittest.TestCase):
 
     def test_the_two_measurement_files_are_different_files(self):
         import recall_goldset
-        self.assertNotEqual(W.MEASUREMENT_PATH, recall_goldset.MEASUREMENT_PATH)
+        self.assertNotEqual(W.WARN_MEASUREMENT_PATH, recall_goldset.MEASUREMENT_PATH)
         self.assertNotEqual(W.MANIFEST_PATH, recall_goldset.MANIFEST_PATH)
 
 
@@ -117,13 +117,13 @@ class AQueryThatWasNeverSentIsNotAMiss(unittest.TestCase):
 
 def _measure_offline(manifest):
     """Run measure() with the network stubbed out and nothing written to disk."""
-    original_api, original_path = W._api, W.MEASUREMENT_PATH
+    original_api, original_path = W._api, W.WARN_MEASUREMENT_PATH
     W._api = lambda *a, **k: (_ for _ in ()).throw(AssertionError("no query may be sent"))
-    W.MEASUREMENT_PATH = Path(__file__).resolve().parent / "_throwaway_measurement.json"
+    W.WARN_MEASUREMENT_PATH = Path(__file__).resolve().parent / "_throwaway_measurement.json"
     try:
         return W.measure(manifest=manifest)
     finally:
-        W._api, W.MEASUREMENT_PATH = original_api, original_path
+        W._api, W.WARN_MEASUREMENT_PATH = original_api, original_path
         Path(__file__).resolve().parent.joinpath(
             "_throwaway_measurement.json").unlink(missing_ok=True)
 

@@ -86,7 +86,7 @@ def _live_rows(event):
 
 def build_pack(refetch=True):
     manifest = json.loads(W.MANIFEST_PATH.read_text(encoding="utf-8"))
-    measurement = json.loads(W.MEASUREMENT_PATH.read_text(encoding="utf-8"))
+    measurement = json.loads(W.WARN_MEASUREMENT_PATH.read_text(encoding="utf-8"))
     by_id = {e["reference_row_id"]: e
              for e in manifest["reference_events"] + manifest["large_event_census"]}
     entries = []
