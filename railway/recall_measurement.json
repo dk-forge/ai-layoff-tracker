@@ -1,8 +1,8 @@
 {
   "candidates_needing_adjudication": [],
   "lost_since_adjudication": [],
-  "matched": 53,
-  "matched_floor": 49,
+  "matched": 56,
+  "matched_floor": 52,
   "matched_ids": [
     "sec-205-0001751788-25-000139",
     "sec-205-0001396814-25-000093",
@@ -28,8 +28,10 @@
     "sec-205-0001193125-25-261612",
     "sec-205-0000048465-25-000053",
     "sec-205-0001193125-25-266980",
+    "sec-205-0001193125-25-269716",
     "sec-205-0001628280-25-050671",
     "sec-205-0001173514-25-000133",
+    "sec-205-0000047217-25-000068",
     "sec-205-0001193125-25-303185",
     "sec-205-0001193125-25-307535",
     "sec-205-0001193125-25-311445",
@@ -42,6 +44,7 @@
     "sec-205-0002055592-26-000008",
     "sec-205-0001193125-26-048738",
     "sec-205-0001650372-26-000021",
+    "sec-205-0001823878-26-000018",
     "sec-205-0001628280-26-020222",
     "sec-205-0001289308-26-000009",
     "sec-205-0001628280-26-024066",
@@ -58,25 +61,9 @@
     "sec-205-0001628280-26-039805",
     "sec-205-0001193125-26-278582"
   ],
-  "measured_at": "2026-08-13T04:46:04Z",
-  "missed": 4,
+  "measured_at": "2026-08-13T06:09:48Z",
+  "missed": 1,
   "missed_events": [
-    {
-      "filer": "CODEXIS, INC.",
-      "filing_date": "2025-11-06",
-      "id": "sec-205-0001193125-25-269716",
-      "stated_job_count": 46,
-      "tracker_event_ids": []
-    },
-    {
-      "filer": "HP INC",
-      "filing_date": "2025-11-25",
-      "id": "sec-205-0000047217-25-000068",
-      "stated_job_count": 4000,
-      "tracker_event_ids": [
-        35397
-      ]
-    },
     {
       "filer": "WABASH NATIONAL Corp",
       "filing_date": "2026-01-05",
@@ -86,13 +73,6 @@
         1466,
         1467
       ]
-    },
-    {
-      "filer": "PLAYSTUDIOS, Inc.  (MYPS, MYPSW)",
-      "filing_date": "2026-03-16",
-      "id": "sec-205-0001823878-26-000018",
-      "stated_job_count": 177,
-      "tracker_event_ids": []
     }
   ],
   "note": "Recall of the frozen SEC Item 2.05 gold set against the live API. Written by recall-precision.yml. Committed on purpose: the data being measured changes without a commit. Do not hand-edit this file to clear a failing floor.",
