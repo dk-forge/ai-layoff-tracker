@@ -68,7 +68,10 @@ an assumption.
 | 10 | NJ | `nj.gov/labor/employer-services/warn/` | out (b) |
 | 11 | MI | `michigan.gov/leo/.../warn-notices` | out (b) |
 | 12 | MA | `mass.gov/info-details/worker-adjustment-...` | out (a) |
-| 13 | **VA** | `virginiaworks.gov/warn-notices` (+ its own CSV export) | **IN** |
+| 13 | VA | `virginiaworks.gov/warn-notices` | **out (a) — robots** |
+| 14 | WA | `esd.wa.gov/.../warn-layoff-and-closure-database` | out (b) |
+| 15 | AZ | `azjobconnection.gov/search/warn_lookups` | out (a) — HTTP 400 |
+| 16 | **TN** | `tn.gov/workforce/.../reports.html` | **IN** |
 
 Details on the exclusions, because "out" is a claim and needs evidence:
 
@@ -92,15 +95,39 @@ Details on the exclusions, because "out" is a claim and needs evidence:
   it keeps for exactly this failure. That is a separate finding and it is
   reported separately; it is not evidence about recall.
 - **MA** — HTTP 403 to a plain UA.
-- **MD** would have qualified (static HTML, per-year archive, Notice Date +
-  NAICS + Company + Location + Total Employees + Effective Date + Type) but sits
-  **below VA** in the employment order, so the rule stops before it. It is named
-  here so that "why not MD" has an answer that is not hindsight.
+- **VA — out on an explicit publisher instruction, and this one hurt.**
+  `virginiaworks.gov` publishes a static HTML table of 1,121 notices with
+  Company, Notice Date, Impact Date, Employees Affected, Location and Notice
+  Type, **plus its own CSV export**. On the content test it is the best source in
+  this document. `https://www.virginiaworks.gov/robots.txt` names, each with
+  `Disallow: /`: `GPTBot`, `ChatGPT-User`, `CCBot`, `anthropic-ai`,
+  **`ClaudeBot`**, **`Claude-Web`**, `Google-Extended`, `Bytespider`,
+  `PerplexityBot` and others, then allows Googlebot, Bingbot, DuckDuckBot and
+  Applebot by name and gives `*` a crawl-delay. That is not an accident of
+  configuration; it is a publisher deciding which kinds of agent may read it, and
+  this one is named twice. Running as `AiLayoffTracker/1.0` would formally fall
+  under `*` — **and renaming the agent to evade a block aimed at the agent is not
+  a reading of robots.txt this project is willing to make.** That is the same
+  call the UK reference set made about the FCA's National Storage Mechanism, for
+  the same reason, and it has to be the same call when the blocked source is the
+  convenient one. *One CSV was fetched during eligibility probing, before the
+  robots file was read. It was deleted unread of any row, it populates nothing,
+  and it is recorded here rather than quietly forgotten.*
+- **MD** — static HTML, per-year archive, Notice Date + NAICS + Company +
+  Location + Total Employees + Effective Date + Type. Excellent content, and
+  `dllr.state.md.us/robots.txt` carries
+  `Content-Signal: ai-train=no, search=yes, ai-input=no`. `ai-input=no` is an
+  explicit request that the content not be used as input to an AI system, which
+  is what building this frame would be. **Out**, on the same principle as VA and
+  as the BBC in the UK document. It is named here so that "why not MD" has an
+  answer that is not hindsight.
+- **AZ** — HTTP 400 to a plain UA on the documented WARN lookup path.
+- **TN** — in, with one disclosed variance, see §3.
 
 ### The bias this creates, stated before the number
 
-The four states are **CA, TX, FL, VA** — West, Southwest, Southeast,
-Mid-Atlantic. **There is no Midwest state and no Northeast state in the set**,
+The four states are **CA, TX, FL, TN** — West, Southwest, Southeast, Midsouth.
+**There is no Midwest state and no Northeast state in the set**,
 and that is not a sampling choice: NY, PA, IL, OH, MI, NJ and MA were all
 excluded by their own publication format. The consequence is direct and must not
 be glossed: **this set cannot say anything about our WARN coverage in the
@@ -115,8 +142,20 @@ optimistic bound on national WARN recall**, and it is labelled that way.
 ## 3. The window, and the date it is counted on
 
 **2025-07-01 to 2026-06-30, counted on the NOTICE DATE** — the date the employer
-notified the state, as the state itself publishes it (`Notice Date` in CA and
-MD, `notice_date` in TX, `State Notification Date` in FL, `Notice Date` in VA).
+notified the state, as the state itself publishes it: `Notice Date` in CA,
+`notice_date` in TX, `State Notification Date` in FL.
+
+**Tennessee is the one variance and it is disclosed rather than smoothed over.**
+TN publishes `Date of Posting` — the date the department posted the notice — and
+does not publish the employer's own notice date in the list. So for TN the window
+is counted on the posting date. The rule is therefore, precisely: *the earliest
+state-published date that represents the filing itself* — the employer's notice
+date where the state publishes it, the state's own received/posted date where
+that is all the state publishes. California publishes both and lets the size of
+the substitution be measured rather than assumed: on the first page of its FY
+report the notice-to-processed lag is 0 to 1 day. That lag is reported for the
+whole CA frame in the manifest, and it is the best available evidence for how
+much TN's substitution moves an event across the window boundary.
 
 Three reasons, and the third is the one that decided it:
 
