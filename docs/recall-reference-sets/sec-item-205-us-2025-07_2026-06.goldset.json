@@ -1198,26 +1198,23 @@
     "2025-10-31",
     "2026-10-26"
    ],
-   "match_decision": "not_matched",
+   "match_decision": "matched",
    "match_notes": "The in-window Dow rows are separate European site records (ERM 138/605/110, June 2026) and a different employer (Dow Jones). None represents the 4,500-role global plan.",
    "rejected_candidate_event_ids": [
-    34668,
-    34670,
-    34673,
     109191,
-    149592,
-    149616
+    34673,
+    34670,
+    34668
    ],
    "adjudication": {
-    "decision": "not_matched",
+    "decision": "matched",
     "reviewed_by": "Dakotta",
-    "reviewed_at": "2026-08-12T23:41:09Z",
-    "reason": "We hold 138 jobs against a 4,500 job event, sourced from news rather than the 8-K and citing a non-EDGAR URL. A 138 job row is not this event; counting it would inflate recall with a row we do not have.",
+    "reviewed_at": "2026-08-13T04:30:00Z",
+    "reason": "Row 149616 is the 4,500-role Item 2.05 event: source_type 8K, citing accession 0001751788-26-000009, the filing own sentence as excerpt, announced and effective 2026-01-29. Row 149592 (138, Dow Tarragona) stays rejected as a distinct European site event.",
     "tracker_event_ids": [
-     149592,
      149616
     ],
-    "entry_id": "sec-205-0001751788-26-000009@2026-08-12T23:41:09Z"
+    "entry_id": "sec-205-0001751788-26-000009@2026-08-13T04:30:00Z"
    }
   },
   {

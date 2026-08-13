@@ -510,6 +510,47 @@
     "match_notes": "Only EnerSys row is an undated ERM record for Bulgaria (400). Nothing represents the 575-employee July 2025 plan.",
     "rejected_candidate_event_ids": []
    }
+  },
+  {
+   "entry_id": "sec-205-0001751788-26-000009@2026-08-13T04:29:53Z",
+   "reference_row_id": "sec-205-0001751788-26-000009",
+   "decision": "revert",
+   "reverts": "sec-205-0001751788-26-000009@2026-08-12T23:41:09Z",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-13T04:29:53Z",
+   "reason": "The rejection was recorded against a merged summary line describing row 149592 (138 jobs, news source, non-EDGAR URL). Row 149616 holds 4,500 from the filing itself, citing the gold set own accession. Re-decided on the per-row evidence.",
+   "restored": {
+    "match_decision": "not_matched",
+    "match_notes": "The in-window Dow rows are separate European site records (ERM 138/605/110, June 2026) and a different employer (Dow Jones). None represents the 4,500-role global plan.",
+    "rejected_candidate_event_ids": [
+     109191,
+     34673,
+     34670,
+     34668
+    ]
+   }
+  },
+  {
+   "entry_id": "sec-205-0001751788-26-000009@2026-08-13T04:30:00Z",
+   "reference_row_id": "sec-205-0001751788-26-000009",
+   "decision": "accept",
+   "reviewed_by": "Dakotta",
+   "reviewed_at": "2026-08-13T04:30:00Z",
+   "reason": "Row 149616 is the 4,500-role Item 2.05 event: source_type 8K, citing accession 0001751788-26-000009, the filing own sentence as excerpt, announced and effective 2026-01-29. Row 149592 (138, Dow Tarragona) stays rejected as a distinct European site event.",
+   "tracker_event_ids": [
+    149616
+   ],
+   "evidence_pack_built_at": "2026-08-12T18:21:01Z",
+   "manifest_before": {
+    "match_decision": "not_matched",
+    "match_notes": "The in-window Dow rows are separate European site records (ERM 138/605/110, June 2026) and a different employer (Dow Jones). None represents the 4,500-role global plan.",
+    "rejected_candidate_event_ids": [
+     109191,
+     34673,
+     34670,
+     34668
+    ]
+   }
   }
  ]
 }
