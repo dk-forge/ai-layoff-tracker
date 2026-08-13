@@ -830,6 +830,49 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-btn-primary { background: var(--alt-blue); border-color: var(--alt-blue); color: var(--alt-on-accent); box-shadow: 0 1px 2px rgba(var(--alt-heat-rgb), .25); }
 .alt-btn-primary:hover { background: var(--alt-blue-dark); border-color: var(--alt-blue-dark); color: var(--alt-on-accent); }
 .alt-btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* THE PRESS ROUTE, and why it is a third shape rather than a second .alt-btn.
+
+   A plain .alt-btn beside "How we count" is the same control twice, and a
+   reader scanning for themselves would have to READ both to find the one
+   written for them. This one is the brand green, filled and edged, so the eye
+   separates it from the neutral button in one pass without it competing with
+   the blue primary. Sober on purpose: the audience is professional and a
+   garish call to action on this page costs more credibility than it buys
+   attention.
+
+   1.4.11 IS THE BAR THAT BITES HERE, AND IT FAILS SEPARATELY FROM THE TEXT.
+   The theme switcher shipped with 8.50:1 labels inside a control whose edge
+   was 1.20:1, so every text check on the page was green while the control had
+   no visible boundary at all. This button therefore carries an OPAQUE fill of
+   its own and an edge measured against everything it can touch: its own fill,
+   the page, and BOTH stops of the hero's gradient (--alt-red-tint at the top,
+   --alt-surface at 70%), because the actions row sits partway down it.
+   Resolved from the tokens actually shipped, the worst of those pairs is
+   4.81:1 in light and 7.07:1 in dark, against a floor of 3.0.
+
+   The border stays 1px. A 2px edge would make this button 2px taller than the
+   two beside it at desktop, where nothing sets box-sizing on .alt-btn, and a
+   row of buttons at three different heights is a worse page than a thin edge.
+
+   The tag is a label, not a badge: no pill, no fill of its own, no glyph. It
+   is --alt-accent on --alt-tint, 4.82:1 in light and 7.07:1 in dark, which
+   clears 4.5 for the small text it is. */
+.alt-btn-press {
+    background: var(--alt-tint);
+    border-color: var(--alt-accent);
+    color: var(--alt-ink);
+}
+.alt-btn-press:hover { background: var(--alt-tint); border-color: var(--alt-accent); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.alt-btn-tag {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--alt-accent);
+    margin-right: 8px;
+    white-space: nowrap;
+}
 .alt-btn-active, .alt-btn-active:hover { background: var(--alt-blue); border-color: var(--alt-blue); color: var(--alt-on-accent); }
 
 /* ===========================================================================

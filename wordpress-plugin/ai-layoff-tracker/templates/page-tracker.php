@@ -212,9 +212,45 @@ $alt_hero_basis  = 'counted by filing date';
                      hero trust paragraph and the freshness panel's "No figure appears
                      unless its source states it") are gone, not moved. */ ?>
             <p class="alt-hero-thesis" role="heading" aria-level="2">Every entry links to the filing, notice or report it came from.</p>
+            <?php /* THE THIRD ROUTE, AND THE ONE THE PRIMARY READER NEEDS.
+                     Journalists are this product's audience and the press kit
+                     is the page written for them, yet until 2.20.32 the only
+                     route to it was a text link inside .alt-lead-links, which
+                     sits in the data strip BELOW the whole page. Measured on
+                     the live page, bare URL, 2026-08-13: that link's top edge
+                     was 13,252px down at 1280px and 31,707px down at 375px, on
+                     a 44,128px document. The owner failed to find it twice in
+                     one day, and he knew it existed. Renaming it (2.20.27, from
+                     "Press & media" to the destination's own heading) fixed
+                     what it SAID without fixing where it was.
+
+                     It is a button here and not a fourth text link because the
+                     two things a reader does on this page are already buttons,
+                     and a link among links is what the press route already was.
+
+                     THE LABEL IS THE DESTINATION'S OWN H1, "Press kit and
+                     soundbites", carried in front of a "For press" tag that
+                     answers the owner's actual question ("are you press, click
+                     here") without inventing a fifth name for that page. The
+                     tag is a label, not a shout: 11px, the brand green, and no
+                     exclamation anywhere near it. This page's credibility with
+                     the reader it is aimed at costs more than the click.
+
+                     PLACED HERE BECAUSE IT COSTS THE FIRST SCREEN NOTHING IT
+                     DOES NOT HAVE TO. It sits BELOW the hero figure, so the
+                     figure does not move at any width; at 1280px the three
+                     buttons share one flex row and nothing below moves either.
+                     At 375px there is 24.4px of slack on that row and no label
+                     fits in it, so the button wraps and everything below the
+                     hero drops by exactly one 44px target plus the 8px gap.
+                     That is the floor, not a choice: 44px is the tap minimum
+                     this page already holds. Do not "save" those 52px by
+                     shrinking it under 44, and do not save them by moving it
+                     back down the page, which is the defect. */ ?>
             <p class="alt-hero-actions">
                 <a class="alt-btn alt-btn-primary" id="alt-hero-search" href="#alt-search">Search the record</a>
                 <a class="alt-btn" href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count</a>
+                <a class="alt-btn alt-btn-press" id="alt-hero-press" href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>"><span class="alt-btn-tag">For press</span> Press kit and soundbites</a>
             </p>
             <?php /* THE RECONCILING LINE, DEMOTED BUT NOT HIDDEN. to-date + later =
                      the hero figure, so a reader can add up what is on screen, and
@@ -1228,7 +1264,15 @@ $alt_hero_basis  = 'counted by filing date';
             <?php endif; ?>
             <span class="alt-citeline-links"><a href="#alt-cite-box">Cite this tracker</a> · <a id="alt-export-csv-top" href="<?php echo esc_url($alt_csv); ?>"><span id="alt-export-csv-top-label">CSV</span></a> · <a id="alt-export-json-top" href="<?php echo esc_url($alt_json); ?>"><span id="alt-export-json-top-label">JSON</span></a> · <a href="<?php echo esc_url($alt_api); ?>">API</a></span>
         </p>
-        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>"><?php echo esc_html(alt_page_link_label('page-ai-quotes.php', 'AI layoffs, in the employer\'s own words')); ?></a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
+        <?php /* THE PRESS LINK IS NO LONGER ONE OF THESE, and that is the whole
+                 of the demotion: it was promoted to a button in the hero
+                 (2.20.32) and this row is 31,707px down a 44,128px page at
+                 375px. Offering the same destination twice under the same name,
+                 once where it is seen and once where it is not, teaches nobody
+                 anything and makes the second one look like a different page.
+                 The other three are untouched and still here: each is somebody's
+                 route to something and none of them has a route above it. */ ?>
+        <p class="alt-lead"><span class="alt-lead-links"><a class="alt-report-star" href="<?php echo esc_url(home_url('/ai-layoff-tracker/report/')); ?>">★ Monthly report (1-pager)</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>"><?php echo esc_html(alt_page_link_label('page-ai-quotes.php', 'AI layoffs, in the employer\'s own words')); ?></a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/publisher-tools/')); ?>">Embed this tracker</a></span></p>
         <?php include ALT_PLUGIN_DIR . 'templates/partials/scan-scope.php'; ?>
     </section>
 

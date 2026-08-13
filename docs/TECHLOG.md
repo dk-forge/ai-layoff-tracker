@@ -1,5 +1,99 @@
 # Tech Log
 
+## 2026-08-13 - the press kit is a button, not the last link on a long page (2.20.32)
+
+The owner, twice in one day: "Can we have a button: Are you press click here, or
+for the press, a button that is obvious? so it's easy to see?" He was not asking
+for a feature. He was reporting that he could not find a page he knew existed.
+
+**What the measurement said.** Journalists are this product's primary audience,
+and `/ai-layoff-tracker/press/` is the page written for them: ready-to-quote
+statements with copy buttons, the evidence ladder, the citation line, live since
+2.19.61. The only route to it off the tracker was one text link among four
+inside `.alt-lead-links`, which 2.19.263 moved out of the hero into the data
+strip below the whole page. Taken off the live page that morning, bare URL,
+browser User-Agent, no cache buster, ver=2.20.28:
+
+| viewport | press link top | document height |
+|---|---|---|
+| 1280x900 | 13,252px | 19,139px |
+| 375x812 | 31,707px | 44,128px |
+
+Fifteen screens down on a desktop, thirty-nine on a phone. 2.20.27 had renamed
+that link from "Press & media" to the destination's own heading a few hours
+earlier, which fixed what it SAID and is why the owner could not find it after
+the fix either. **A link that says the right thing from the bottom of a
+forty-thousand-pixel page is not a route.** The renaming work was correct and
+insufficient, and the lesson is that a naming audit does not surface a placement
+defect: every check in the repo was green on both.
+
+**The button, and why it is where it is.** A third `.alt-btn` joins the two the
+hero already has, reading `FOR PRESS  Press kit and soundbites`. The label is
+the destination's own `<h1>`, in front of a tag that answers the owner's actual
+question. This page has shipped four names for one destination in a week; a
+fifth was not the improvement. The tag is 11px and the brand green, not a badge
+and not a shout: the audience is professional and a garish call to action on
+this page costs more credibility than the click is worth.
+
+It sits BELOW the hero figure, so the number the page exists to publish does not
+move at any width. Measured on the rendered template:
+
+| | 1280x900 | 375x812 |
+|---|---|---|
+| hero figure top | unchanged | unchanged |
+| the three buttons | one row, y=250.3 for all | wraps to a second row |
+| everything below the hero | +0px | +52px |
+
+At 1280px it is free: the row had 800px of slack. At 375px the row has 24.4px of
+slack and no label fits in it, so the button wraps and costs 44px of target plus
+the 8px gap. That 52px is the floor, not a choice, and it is spent below the
+figure rather than above it. Do not reclaim it by shrinking the button under the
+44px tap floor this page already holds, and do not reclaim it by moving the
+button back down the page, which is the defect.
+
+**Contrast, because 1.4.11 fails independently of every text check.** The theme
+switcher shipped at 8.50:1 for its labels inside a control edged at 1.20:1, so
+the button carries an opaque fill of its own and an edge measured against
+everything it can touch: its own fill, the page, and both stops of the hero
+gradient it sits partway down. Worst pair is 4.81:1 in light and 7.07:1 in dark,
+against a floor of 3.0, in all three theme states. The `:hover` rule is
+overridden rather than inherited: `.alt-btn:hover` repaints the edge in
+`--alt-chart-dim`, which on this fill is ~1.2:1, so the stock hover would have
+dissolved the boundary at the moment a pointer arrived.
+
+**One demotion, named.** The peer text link left `.alt-lead-links`. One
+destination under one name, offered at two wildly different weights on one page,
+is how a reader concludes they are two different pages. The other three links in
+that row are untouched: none of them has a route above it, so none is
+duplicated, and each is somebody's only way in. The colophon link in the
+provenance footer also stays; a footer is a different register, not a competing
+headline route.
+
+**The same defect one page later.** A journalist who takes the button lands on a
+page whose reason to exist is the soundbite library, and at 375px the jump menu
+that announces it ended 847px down an 812px screen: below the fold, behind the
+title, a lead, a four-clause methodology disclaimer and a row of four outbound
+links. The menu now sits directly under the lead. Nothing was shortened and
+nothing moved further down the page; two adjacent blocks swapped. The two
+"before you quote a number" sections stay exactly where they are and earn their
+place, because a reporter who quotes the wrong basis writes a wrong sentence.
+The menu is how somebody skips them on purpose, so the menu is what has to be
+visible.
+
+**The guard.** `tests/test_press_route_is_findable.py`, 15 tests, all rendered
+in headless Chrome off the real templates with PHP stripped. It asserts on
+geometry and `innerText` from the rendered ancestor, never on a class name
+existing: the press control is found by matching the press page's own `<h1>`,
+read out of `page-press.php`, so a rename of either surface breaks the test
+rather than quietly producing a fifth name. Nine of the fifteen fail on
+8da7938; the six that pass are named in the module docstring as regression bars
+rather than left to look like evidence. The one that would have caught this
+defect is the first-screen assertion, and nothing in the repo made that claim
+before.
+
+Also checked by eye rather than by `style_check.py`: that file needs 12
+characters and 3 real words before a string is eligible, so a short button label
+slips past it entirely. There is a test for the dashes instead.
 ## 2026-08-13 - a card fills its row or stops being stretched to it (2.20.30)
 
 The owner reported the same defect three times about three different cards:

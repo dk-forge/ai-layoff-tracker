@@ -407,9 +407,24 @@ if (!is_array($alt_ps)) {
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press kit and soundbites</h1>
   <p class="alt-lead"><span class="alt-lead-text">Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>
-  <p class="alt-sb-disclaimer"><b>Every number on this page traces to an SEC filing, a state WARN notice, or a named news report. Nothing is estimated.</b> That makes our totals a documented floor, deliberately smaller than announcement surveys: surveys count intentions, including multi-year plans and cuts with no public paper trail. We count what can be verified, on the day each cut takes effect.</p>
-  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How every number is built</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
+  <?php /* THE JUMP MENU IS THE SECOND THING ON THE PAGE, and it moved up here
+           in 2.20.32 for the same reason the tracker grew a press button in
+           the same release: the thing a reader came for was below the thing
+           we wanted to say first.
 
+           Measured live at 375x812 on 2026-08-13, before the move: the h1 sat
+           273px down, this nav sat 943px down, and the first quotable
+           statement 4,858px down a 26,289px page. So a journalist on a phone
+           met the title, a lead, a four-clause methodology disclaimer and a
+           row of four outbound links, and had to scroll past all of it before
+           anything told them the soundbite library existed. The two "before
+           you quote a number" sections below are worth what they cost and are
+           NOT moving; this nav is how somebody skips them on purpose.
+
+           The disclaimer did not move down the page and was not shortened. It
+           now sits under the menu instead of over it, which is a swap of two
+           adjacent blocks, and it is still the first prose a reader meets
+           after the lead. */ ?>
   <nav class="alt-press-toc" aria-label="On this page">
     <span class="alt-toc-label">On this page</span>
     <a href="#alt-press-basis">Which basis</a>
@@ -423,6 +438,9 @@ if (!is_array($alt_ps)) {
     <a href="#alt-boilerplate">About</a>
     <a href="#alt-press-signup">Contact &amp; brief</a>
   </nav>
+
+  <p class="alt-sb-disclaimer"><b>Every number on this page traces to an SEC filing, a state WARN notice, or a named news report. Nothing is estimated.</b> That makes our totals a documented floor, deliberately smaller than announcement surveys: surveys count intentions, including multi-year plans and cuts with no public paper trail. We count what can be verified, on the day each cut takes effect.</p>
+  <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How every number is built</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
 
   <h2 id="alt-press-basis">Before you quote a number: which basis</h2>
   <p>Our published US headline counts <b>jobs physically located in the US</b>. Most announcement surveys count <b>US-company announcements wherever the jobs land</b>. Those are different questions, so the totals differ by design. Both of ours are below, live, so you can quote the one that matches your comparison.</p>
