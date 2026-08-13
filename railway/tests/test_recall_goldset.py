@@ -120,8 +120,13 @@ class FloorJudgementTests(unittest.TestCase):
         self.assertIn("NOT a recall regression", detail)
 
     def test_a_few_unreachable_still_judges(self):
+        # matched is stated rather than inherited from the helper's default,
+        # which is 24 and predates the 2026-08-12 adjudication. A fixture that
+        # drifts below the floor makes this read as an unreachable-handling
+        # failure when it is really a stale number.
         state, _ = recall_goldset.judge(
-            _measurement(unreachable=recall_goldset.UNREACHABLE_CEILING))
+            _measurement(matched=recall_goldset.MATCHED_FLOOR + 4,
+                         unreachable=recall_goldset.UNREACHABLE_CEILING))
         self.assertEqual(state, PASS)
 
 

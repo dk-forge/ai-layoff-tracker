@@ -105,7 +105,18 @@ PLUGIN_MEASUREMENT_PATH = (REPO_ROOT / "wordpress-plugin" / "ai-layoff-tracker"
 # regression or a bad purge-reload does. It is NOT 30% (the interval's lower
 # bound) because that bound describes uncertainty about the POPULATION, and the
 # denominator here is frozen.
-MATCHED_FLOOR = 20
+# 49 of 57, four below the 53 confirmed on 2026-08-12. It was 20 when only 24
+# were adjudicated, and 20 against 53 is not a tripwire — it would have absorbed
+# losing more than half the set in silence, which is why the test that guards
+# this ratio went red rather than the measurement quietly carrying on.
+#
+# Four events of headroom is deliberate and it is tight: name-normalisation
+# churn and a dedup merge each cost about one. A fifth loss should redden,
+# because at that point something real has gone.
+#
+# Do not raise this to whatever the next run reports. The floor moves when a
+# human has confirmed new matches, never as a side effect of a measurement.
+MATCHED_FLOOR = 49
 
 # Above this many unresolvable queries the run says UNKNOWN instead of
 # reporting a recall figure. 6 of 57 is ~10%: enough to ride out a couple of
