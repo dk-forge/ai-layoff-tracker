@@ -280,7 +280,7 @@
     // themselves pinned to the archive-backfill cron). One promise, two
     // renderers; railway/tests/test_archive_promise.py asserts these constants
     // stay equal to the PHP ones.
-    var ARCHIVE_RETRY_HOURS = 72, ARCHIVE_RECHECK_DAYS = 7, ARCHIVE_RUN_UTC = [5, 25];
+    var ARCHIVE_RETRY_HOURS = 72, ARCHIVE_RECHECK_DAYS = 4, ARCHIVE_RUN_UTC = [5, 25];
     // The REAL date (UTC, YYYY-MM-DD) of the next automatic archive attempt for
     // this row's source, derived from its recorded state + the cron schedule —
     // never a typed promise. Queued rows are picked up by the next daily run;

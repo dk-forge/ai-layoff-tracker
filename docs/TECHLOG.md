@@ -233,6 +233,55 @@ footnote were updated to cover the new columns, and
 saying "Largest event" and "verified events", so the old column test had been
 asserting against a body the site stopped serving at 2.20.22.
 
+## 2026-08-13 - the archive promise was gated by the promise, not by the cron (2.20.29)
+
+`archive_recheck_cadence` went red on main and on every branch, projecting a
+15.8d cycle against an 8d bound, and its own failure message said *"raise
+throughput in archive-backfill.yml"*. It was pointing at the wrong file.
+
+**The workflow was already draining everything it was offered.** Four of the
+five preceding runs stopped on an EMPTY server batch, not on their limit and
+not on their deadline: 08-13 took 14 candidate URLs and finished in five
+minutes against a 2,000 limit and a 5,400s deadline; 08-11 took 1,230 in 38
+minutes; only 08-10 reached 2,000. A bigger `ARCHIVE_BACKFILL_LIMIT` or a
+second daily cron would have been handed zero extra URLs on those days. Both
+levers named in the alert were already slack.
+
+**What moved was the pool's composition.** Between 08-09 and 08-13 `pending`
+fell 3,698 -> 195 while `unavailable` rose 0 -> 3,381, as URLs crossed
+`ALT_ARCHIVE_MAX_ATTEMPTS`. That migrated ~96% of the un-archived pool off the
+72-hour retry gate and onto `ALT_ARCHIVE_RECHECK_DAYS` = 7 — and a pool gated
+at seven days cycles in seven days, which is exactly the cycle the invariant
+demands. The achievable ceiling was 3,381/7 + 195/3 = 548/day against a
+required 3,529/7 = 504/day. Eight percent of headroom, available only to a
+perfectly de-synchronised pool; this one was created in a four-day lump, so the
+48-hour measurement window sampled troughs (224/day on 08-13, 1,615/day on
+08-12) and the check flipped on which side of a run it landed.
+
+So the invariant was correct, its remedy was not, and no value of any workflow
+knob could have satisfied it. **The gate is the throughput.**
+
+**Fix:** `ALT_ARCHIVE_RECHECK_DAYS` 7 -> 4 (db.php + the `layoffs.js` mirror,
+2.20.29). Ceiling becomes 3,381/4 + 195/3 = 910/day, a 3.9d cycle and a 4.9d
+worst age against the 8d projected bound — margin that absorbs a missed run
+and the bunching instead of riding the bound. Capacity holds with no workflow
+change: ~845 URLs/day at the measured 0.457 URL/s is ~31 min inside a 5,400s
+deadline and a 2,000 limit. `ARCHIVE_SPN_MAX` is untouched, because Save Page
+Now is rate-limited for anonymous callers and it is the free availability pass
+that stamps `checked_at` and moves the cadence.
+
+The reader-facing sentence does not change and stays true: *"We re-check
+weekly"* is a floor, and the cron now keeps it early rather than exactly.
+
+**The guard that was missing,** in `test_archive_promise.py`: nothing related
+the eligibility gate to the cycle the invariant demands, so the two could be
+set to the same number and the check would sit on its own bound forever.
+`TheGateLeavesRoomToKeepThePromise` now pins both halves — the gate must leave
+at least two days of margin under `PROJECTED_MAX_AGE_DAYS`, and the best
+throughput the gate permits must actually PASS the invariant end to end. Both
+fail at a gate of 7. A comment on `ARCHIVE_BACKFILL_LIMIT` records that this
+red is not answered by raising it.
+
 ## 2026-08-13 - the twelve jobs that could not survive our own deploy
 
 `Extract affected-role categories` failed on main at 22:54 with `503 Server

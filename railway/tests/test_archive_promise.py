@@ -299,6 +299,64 @@ class TheRunCanActuallyReachItsOwnLimit(unittest.TestCase):
                         "timeout leaves no room for checkout, install and the final flush")
 
 
+class TheGateLeavesRoomToKeepThePromise(unittest.TestCase):
+    """The re-check GATE sets the throughput ceiling. The workflow cannot.
+
+    2026-08-13: archive_recheck_cadence went red projecting a 15.8d cycle, and
+    every arrow in the failure message pointed at archive-backfill.yml. The
+    workflow was innocent. On 4 of the 5 preceding days the run drained the due
+    pool and stopped on an EMPTY batch -- 08-13 took 14 candidates and finished
+    in 5 minutes against a 2,000 limit and a 5,400s deadline; 08-11 took 1,230
+    and stopped the same way. A bigger batch or a second daily run would have
+    been handed zero extra URLs on those days.
+
+    What had moved was the pool's composition: 'pending' fell 3,698 -> 195 and
+    'unavailable' rose 0 -> 3,381 as URLs crossed ALT_ARCHIVE_MAX_ATTEMPTS, so
+    almost the whole pool left the 72h retry gate for the weekly one. A pool
+    gated at 7 days cycles in 7 days, which is exactly the cycle the invariant
+    demands, so the check sat on its own bound and flipped on sampling noise.
+
+    These two tests pin the arithmetic that makes that unarguable, so the next
+    session to meet this red does not answer it by raising the batch size.
+    """
+
+    def _gate_days(self):
+        return int(_php_define("ALT_ARCHIVE_RECHECK_DAYS"))
+
+    def test_the_gate_is_short_enough_to_cycle_inside_the_projected_bound(self):
+        """Worst-case composition is the whole pool on the weekly gate, which is
+        what 2026-08-13 actually looked like. Then the best cycle any workflow
+        can reach IS the gate, and the worst age is gate + run granularity."""
+        worst_age = self._gate_days() + ArchiveRecheckInvariant.RUN_GRANULARITY_DAYS
+        self.assertLessEqual(
+            worst_age, ArchiveRecheckInvariant.PROJECTED_MAX_AGE_DAYS - 2,
+            f"ALT_ARCHIVE_RECHECK_DAYS = {self._gate_days()} caps the achievable cycle "
+            f"at {worst_age}d worst age against a {ArchiveRecheckInvariant.PROJECTED_MAX_AGE_DAYS}d "
+            f"projected bound. Under 2 days of margin means the check rides its own "
+            f"bound and flips on which side of a run the 48h window lands. Shorten the "
+            f"GATE -- no value of ARCHIVE_BACKFILL_LIMIT can reach over it.")
+
+    def test_a_fully_drained_pool_on_this_gate_passes_the_invariant(self):
+        """End to end, not just an inequality: feed the invariant the very best
+        throughput this gate permits and require a PASS. At a 7-day gate this
+        fails, which is the whole point."""
+        pool = 3529                      # live, 2026-08-13
+        gate = self._gate_days()
+        window_h = 48
+        # A perfectly drained, perfectly spread pool: pool/gate URLs a day.
+        rechecked = int(pool / gate * (window_h / 24))
+        stamp = (datetime.now(timezone.utc) - timedelta(days=gate)).strftime("%Y-%m-%d %H:%M:%S")
+        r = _run({"distinct_source_urls": 25206, "archived": 21742, "pending": 195,
+                  "unavailable": 3381, "queued": 0, "coverage_pct": 86.3,
+                  "oldest_unarchived_checked_at": stamp, "recheck_days": gate,
+                  "unarchived_live": pool, "rechecked_recent": rechecked,
+                  "recheck_window_hours": window_h})
+        self.assertEqual(
+            r.state, PASS,
+            f"the best throughput a {gate}-day gate allows ({rechecked / 2:.0f}/day over a "
+            f"{pool:,} pool) still does not satisfy archive_recheck_cadence: {r.detail}")
+
+
 class RecallParagraphIsRendered(unittest.TestCase):
     def test_tracker_page_no_longer_hardcodes_the_measurement(self):
         src = (PLUGIN / "templates" / "page-tracker.php").read_text(encoding="utf-8")
