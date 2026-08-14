@@ -372,9 +372,17 @@ def _pdf_text(content):
 
 def fetch_id():
     """Idaho: one cumulative text-layer PDF; link rotates, scraped from landing."""
-    landing = "https://www.labor.idaho.gov/businesss/layoff-assistance/"
+    landing = "https://www.labor.idaho.gov/businesses/layoff-assistance/"
     page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
-    m = re.search(r'href="(https://www\.labor\.idaho\.gov/wp-content/uploads/\d{4}/\d{2}/Idaho-WARN-Notices-[\dx.]+\.pdf)"', page)
+    # The filename rotates. It carried a version suffix until mid-2026
+    # (Idaho-WARN-Notices-3.2.pdf) and is now plain Idaho-WARN-Notices.pdf, in
+    # an uploads folder dated the month they last republished. Match the stem,
+    # then fall back to any WARN-named pdf on the page.
+    m = re.search(r'href="(https://www\.labor\.idaho\.gov/wp-content/uploads/'
+                  r'\d{4}/\d{2}/Idaho-WARN-Notices[^"]*\.pdf)"', page)
+    if not m:
+        m = re.search(r'href="(https?://[^"]*/wp-content/uploads/[^"]*'
+                      r'[Ww][Aa][Rr][Nn][^"]*\.pdf)"', page)
     if not m:
         raise RuntimeError("ID: WARN pdf link not found on landing page")
     pdf = requests.get(m.group(1), headers=UA, timeout=60)
