@@ -158,3 +158,52 @@ Rebuild it with `python3 railway/news_goldset_build.py --write`. A rebuild
 later will find MORE items, because the tracker keeps storing rows; that is a
 new frozen set, not a correction of this one, and a model comparison must not
 straddle two of them.
+
+## US state WARN set (CA/TX/FL/TN, 2025-07 → 2026-06)
+
+`us-warn-ca-tx-fl-tn-2025-07_2026-06.goldset.json` is the **fourth kind of file**
+here and the first one to measure a source family other than SEC EDGAR. Its
+definition —
+[`US-WARN-REFERENCE-SET-DEFINITION.md`](US-WARN-REFERENCE-SET-DEFINITION.md) —
+was committed **before the first tracker query**, in its own commit, and its
+results are in [`US-WARN-RESULTS-2026-08.md`](US-WARN-RESULTS-2026-08.md).
+
+It exists because the SEC set can only see **public companies that file 8-Ks**.
+It has no state dimension, no industry dimension and no private employers.
+State WARN notices are mandatory disclosure, already inside the pipeline, and
+cover exactly the employers Item 2.05 cannot.
+
+| | SEC Item 2.05 | US WARN |
+|---|---|---|
+| Frame | one regulator index | four separate state publications |
+| Enumerated from | EDGAR full-text search | a fiscal-year PDF, a Socrata dataset, two HTML tables |
+| Unit | one filing | one (state, employer, notice date) — several notices for one action collapse |
+| Denominator | 57 | 100 primary + a 33-event large-event census |
+| Stratified by | nothing | state and event size |
+| Editor-confirmed | 56 of 57 | **0 of 100 — nothing is adjudicated** |
+| Machine upper bound | — | 99 of 100 |
+| Read by | `recall_goldset.py`, `data_integrity`, CI | `warn_reference_set.py` only |
+
+Four rules about it:
+
+1. **It never touches the SEC figure.** `railway/recall_measurement.json`,
+   `railway/recall_adjudications.json`, the SEC manifest and `MATCHED_FLOOR` are
+   not written by anything in this set, and
+   `railway/tests/test_warn_reference_set.py` asserts no module here can even
+   name them outside a docstring.
+2. **It is never posted to `/benchmarks/recall`.** One author, no three-actor
+   chain, same rule as the SEC set.
+3. **Its 99 of 100 is not recall.** Nothing is adjudicated; the editor-confirmed
+   figure is zero and the queue is
+   [`us-warn-adjudication-queue.md`](us-warn-adjudication-queue.md). Every line
+   of that sheet describes exactly one candidate row, because on 2026-08-12 a
+   pooled line lost the SEC set a correct Dow acceptance.
+4. **It cannot speak for the Midwest or the Northeast.** NY, PA, IL, OH, GA, NC,
+   NJ, MI and MA were excluded because their own WARN lists are JavaScript-only,
+   a proprietary BI extract, or 404. VA and MD were excluded because their
+   `robots.txt` asks agents like this one not to read them, and the convenient
+   source does not get an exception. See the definition, §2.
+
+Rebuild: `python3 railway/warn_reference_set.py --build`, then `--measure`, then
+`python3 railway/warn_adjudication_pack.py --write`. No model is called; the cost
+is $0.00.
