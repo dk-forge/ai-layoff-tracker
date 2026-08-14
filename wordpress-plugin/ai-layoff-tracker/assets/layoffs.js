@@ -825,11 +825,23 @@
       The default was 'effective' and is now 'notice'. The reason is not that
       one basis is more true: it is that the filing basis is the one every
       other published layoff figure is counted on, so a reader arriving with a
-      number in their head can reconcile ours against it in one step. On the
-      filing basis, US July 2026 reads within about one percent of the
-      independent national estimate for the same month. On the effective basis
+      number in their head meets one dated the same way. On the effective basis
       the same month reads roughly double, and a correct number that needs a
       paragraph before it can be compared gets read as a wrong one.
+
+      THE BASIS IS NOT A CLAIM OF EQUIVALENCE. This comment used to put US July
+      2026 inside a hand-written percentage of the national estimate, and the
+      tile below used to say the figure compared to it exactly. Both were measured
+      once and then aged against a figure that kept moving: July went on
+      collecting WARN notices after the sentence shipped. Measured 2026-08-13,
+      US verified, filing basis, against the published national totals: May 47%
+      below, June 21% below, July 19% ABOVE, Jan to Jul 67% of it. The basis is
+      shared; the population is not. A survey also counts federal reductions,
+      buyout ceilings and employer estimates that never produce a document, and
+      a measured decomposition of the year-to-date gap puts most of it there
+      rather than in our coverage. Say "worth setting side by side", never
+      "compares directly", and put no percentage on a surface that has nothing
+      recomputing it.
 
       The effective basis is NOT demoted out of existence. It answers a real
       and different question, when the jobs actually ended, it is one click
@@ -846,10 +858,10 @@
             // The (i) body on the Verified job cuts tile. Names ONE basis. It
             // used to name both ("Filed or reported, counted on the day each
             // cut takes effect"), which was wrong on whichever basis was live.
-            tile: 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure compares directly. Every row behind it links to its source.',
+            tile: 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure can be set beside a national estimate for the same month. It is not the same measurement: we count only cuts with a public filing or named report behind them. Every row behind it links to its source.',
             // The switch itself, so the active option states the question it
             // answers rather than only naming a date.
-            toggleTitle: 'Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure compares directly. This is the default.'
+            toggleTitle: 'Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure can be read beside a national estimate for the same month rather than converted first. It is not the same measurement. This is the default.'
         },
         effective: {
             headline: 'counted by effective date',
@@ -1750,14 +1762,28 @@
         return parts.length ? 'in ' + parts.join(' ') : 'all time';
     }
 
-    // Fill the Years select from the data range, newest first, capped at the
-    // current year (no future years even if a filing is future-dated).
+    // Fill the Years select from the data range, newest first. The list ALWAYS
+    // ends at the current year: never past it (a future-dated WARN effective
+    // date must not put 2028 in a Year dropdown) and never short of it.
+    //
+    // "Never short of it" is the year rollover, and it is not cosmetic. The
+    // boot default writes the current year through writeControl, which only
+    // flips `selected` on options that already exist — it never creates one. A
+    // list capped by the DATA rather than the CLOCK stops at last year on 1
+    // January, the default then matches no option, nothing is selected, and the
+    // hero, board, charts, table and exports all silently open on ALL TIME
+    // under copy that says the current year.
+    //
+    // It survives today only because max_date is 2028-08-25, a future-dated
+    // WARN notice, so the old Math.min happened to return the current year. One
+    // corrected row and that stops being true, on the one day of the year
+    // nobody is reading the dashboard.
     function initYears(facets) {
         var sel = document.getElementById('alt-f-years');
         if (!sel) return;
         var nowY = new Date().getFullYear();
         var minY = facets.min_date ? parseInt(facets.min_date.slice(0, 4), 10) : 2019;
-        var maxY = facets.max_date ? Math.min(parseInt(facets.max_date.slice(0, 4), 10), nowY) : nowY;
+        var maxY = nowY;
         for (var y = maxY; y >= minY; y--) {
             var opt = document.createElement('option');
             opt.value = String(y); opt.textContent = String(y);
@@ -6198,7 +6224,15 @@
                 && !(readControl('alt-f-months') || []).length
                 && !readControl('alt-f-from') && !readControl('alt-f-to');
             if (noPeriod && document.getElementById('alt-f-years')) {
-                writeControl('alt-f-years', [String(new Date().getFullYear())]);
+                // ensureOption FIRST: writeControl selects, it never creates.
+                // initYears already guarantees the current year is in the list;
+                // this holds the invariant at the point of USE, so a Years list
+                // built some other way later - server-rendered, cached, rebuilt
+                // from a different facet - still cannot leave the default
+                // unselected and quietly open the page on all time.
+                var bootYear = String(new Date().getFullYear());
+                ensureOption('alt-f-years', bootYear, bootYear);
+                writeControl('alt-f-years', [bootYear]);
             }
 
             initMultiDropdowns();
