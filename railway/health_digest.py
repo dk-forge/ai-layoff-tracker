@@ -20,6 +20,9 @@ from datetime import datetime, timezone
 
 import requests
 
+from source_value import (escalation_line, repair_brief, routes_for,
+                          zero_is_outage)
+
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 DRY = os.environ.get("HEALTH_DIGEST_DRY", "").lower() in {"1", "true", "yes"}
@@ -105,15 +108,24 @@ def subscriber_line():
             f"{last.get('recipients')}, {clicks} clicks, {unsub} unsubscribed.")
 
 
-def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
+def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribers=""):
     """POST an actionable breakage email to the owner via the site's /alert."""
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     key = os.environ.get("WP_API_KEY", "")
     if not (site and key):
         return
     names = [s for s, _, _ in stale] + [s for s, _ in degraded]
+    zero_outage = list(zero_outage)
     integrity_failed = list(integrity_failed)
-    if integrity_failed:
+    if zero_outage and not integrity_failed:
+        # A declared-never-zero collector at zero outranks a generic degrade:
+        # it is a source we have gone BLIND on, and the subject line should say
+        # which one rather than making the owner open a dashboard to find out.
+        subject = ("SOURCE RETURNING NOTHING: "
+                   + ", ".join(s for s, _ in zero_outage)
+                   + (f" (+{len(names) - len(zero_outage)} other source issue(s))"
+                      if len(names) > len(zero_outage) else ""))
+    elif integrity_failed:
         # Lead the subject line with it. A wrong published number outranks a
         # collector that stopped: one is misinformation already served, the
         # other is coverage we have not collected yet.
@@ -134,6 +146,13 @@ def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
             f'{", ".join(r.inv.key for r in integrity_failed)}. Run python3 '
             'railway/data_integrity.py, then follow docs/RUNBOOK.md \'a data-integrity '
             'check is failing\'."\n')
+    # A collector at zero goes ABOVE the stale/degraded list, with what it is
+    # worth spelled out. "warn_quebec degraded" is a status; "the only named
+    # layoff register in Canada is returning nothing" is a decision.
+    for s, d in zero_outage:
+        lines.append("\n" + escalation_line(s, d))
+        lines.append(f"  last detail: {str(d)[:160]}")
+        lines.append("  " + repair_brief(s).replace("\n", "\n  "))
     for s, a, m in stale:
         lines.append(f"STALE {s}: last reported {a} days ago (expected within {m}). It likely stopped running.")
     for s, d in degraded:
@@ -143,14 +162,24 @@ def _email_alert(stale, degraded, integrity_failed=(), subscribers=""):
     # appending "flagged these sources: " with an empty list is the kind of
     # nonsense that teaches an owner to stop reading these.
     if names:
+        # The paste-line now carries the candidate ROUTES for each named source,
+        # so the next session starts with somewhere to look instead of a shrug.
+        # A repair that begins "the parser is broken" wastes the first hour when
+        # the parser is usually fine and discovery is what died.
+        routes = "; ".join(
+            f"for {s}: " + " OR ".join(routes_for(s)) for s in dict.fromkeys(names))
         lines.append(
-            "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n"
+            "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo "
+            "and paste this line:\n"
             f'  "The health digest flagged these sources: {", ".join(names)}. '
-            'For each, find its collector in railway/ (or railway/sources/), check whether the '
-            'third-party site changed, and fix the parser; a scraper returning 0 usually means the '
-            'page layout changed. Then dry-run it to confirm."\n'
-            "\nMost breakages are a government/state site changing its page layout. The fix is a "
-            "quick re-recon of that one scraper.")
+            "Find each collector in railway/ or railway/sources/. "
+            "Check DISCOVERY before the parser. "
+            "A scraper returning 0 has usually lost the step that finds its documents, "
+            "not the step that reads them. "
+            f"Candidate routes to try: {routes}. "
+            'Then dry-run it against the totals the source declares for itself."\n'
+            "\nMost breakages are a government site changing its layout, or one scraped "
+            "index page that stopped answering. Prefer a route that needs no HTML at all.")
     # The audience, in one line, counts only. It rides along with whatever else
     # went wrong so the owner sees it without opening a dashboard.
     if subscribers:
@@ -191,12 +220,24 @@ def main():
         return 1
 
     now = datetime.now(timezone.utc)
-    ok, degraded, stale = 0, [], []
+    ok, degraded, stale, zero_outage = 0, [], [], []
     for src, info in health.items():
         if not isinstance(info, dict):
             continue
         status = info.get("status")
         age = _age_days(info.get("checked_at"), now)
+        # A collector that RAN and returned nothing, where returning nothing is
+        # declared impossible for that source (source_value.py). This is checked
+        # independently of `status`, because the whole failure mode is a source
+        # that reports itself "ok" while producing no rows -- the staleness
+        # clock cannot see that at all, since the collector is running fine.
+        if status not in ("retired", "running") and zero_is_outage(src):
+            try:
+                entries = int(info.get("entries") or 0)
+            except (TypeError, ValueError):
+                entries = 0
+            if entries == 0:
+                zero_outage.append((src, info.get("detail", "")))
         maxage = MAX_AGE_DAYS.get(src, DEFAULT_MAX_AGE)
         if status == "retired":
             ok += 1            # deliberately stopped; real old timestamp is expected
@@ -238,7 +279,12 @@ def main():
     subscribers = subscriber_line()
     print(f"SUBSCRIBERS: {subscribers}")
 
-    print(f"HEALTH DIGEST: {ok} ok · {len(degraded)} degraded · {len(stale)} stale")
+    print(f"HEALTH DIGEST: {ok} ok · {len(degraded)} degraded · {len(stale)} stale"
+          + (f" · {len(zero_outage)} returning NOTHING" if zero_outage else ""))
+    for s, d in zero_outage:
+        print(f"  ::error:: {escalation_line(s, d)}")
+        for line in repair_brief(s).splitlines():
+            print(f"      {line}")
     for s, d in degraded:
         print(f"  ::warning:: DEGRADED {s}: {str(d)[:120]}")
     for s, a, m in stale:
@@ -252,6 +298,8 @@ def main():
         detail += " | degraded: " + ", ".join(s for s, _ in degraded)
     if stale:
         detail += " | STALE: " + ", ".join(s for s, _, _ in stale)
+    if zero_outage:
+        detail += " | RETURNING NOTHING: " + ", ".join(s for s, _ in zero_outage)
 
     # Drop benign flags BEFORE anything is signalled: a state with no public
     # WARN register returning 0 is correct, not a breakage.
@@ -268,18 +316,27 @@ def main():
             # degraded -> two amber lights for one issue). A genuinely stale
             # collector still escalates here, since that means data is missing.
             report_source_health(
-                "health_digest", "degraded" if stale else "ok", ok, detail)
+                "health_digest", "degraded" if (stale or zero_outage) else "ok",
+                ok, detail)
         except Exception as exc:
             print(f"(digest health post skipped: {exc})")
         # Email ONLY on real breakage, with a ready-to-paste fix instruction.
-        if stale or real_degraded or integrity_failed:
-            _email_alert(stale, real_degraded, integrity_failed, subscribers)
+        if stale or real_degraded or integrity_failed or zero_outage:
+            _email_alert(stale, real_degraded, integrity_failed, zero_outage,
+                         subscribers)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.
     # A FAILING data-integrity check is at least as serious: it is a wrong number
     # already published, not coverage we might miss, so it fails the run too.
-    if stale or integrity_failed:
+    #
+    # A collector RETURNING NOTHING joins them, and it is the case the other two
+    # cannot see: it runs on schedule (so never stale) and it may even report
+    # itself ok (so never degraded), while producing no rows at all. warn_quebec
+    # sat exactly there and only ever earned an amber light, which is why it was
+    # still broken days later. Only sources DECLARED never-legitimately-zero in
+    # source_value.py reach here, so a genuinely quiet week cannot redden this.
+    if stale or integrity_failed or zero_outage:
         return 2
     return 0
 

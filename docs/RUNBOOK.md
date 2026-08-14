@@ -75,6 +75,41 @@ read the diagnostics (they log the raw API status) before trusting live output.
 
 ## "X is broken" playbooks
 
+**A collector is RETURNING NOTHING** (digest subject `SOURCE RETURNING NOTHING`)
+The digest exits 2 and the email leads with what the source is worth, plus the
+candidate routes for it. That listing comes from `railway/source_value.py`,
+which is the file to read first and the file to update when you learn something.
+
+**Check DISCOVERY before the parser.** A collector returning 0 has usually lost
+the step that FINDS its documents, not the step that reads them. On 2026-08-13
+`warn_quebec` reported "parser returned 0, check PDF layout" for days while the
+parser was perfect: it discovered its PDFs by scraping one HTML landing page,
+and that page returned links to a laptop but not to a GitHub runner. The message
+accused the only component that was working.
+
+**Do this, in order.**
+1. **Run the collector locally and read what it says**, e.g.
+   `cd railway && python3 sources/quebec.py 4`. If it works locally but not in
+   CI, the difference is the network path, not the code: a WAF, a bot wall or a
+   geo-block on the runner's IP. Confirm from the workflow log
+   (`gh run view <id> --log | grep -i <source>`) rather than guessing.
+2. **Find a route that needs no HTML.** This is the durable fix and the one the
+   owner asks for. In order of preference: a constructible URL pattern (Quebec's
+   `CDN_TEMPLATE`), an open-data/CKAN endpoint, an RSS feed, a Wayback snapshot.
+   Keep the original route too, since it is what catches a change to the naming
+   pattern; make the two a UNION, not a fallback.
+3. **Audit against the source's OWN declared totals** if it publishes any. The
+   Quebec PDFs print `Total - Nombre d'avis`, so the collector can report "83 of
+   the 84 this document declares" instead of a bare count. Every thin-parse
+   defect found that day was invisible until that comparison existed.
+4. **Record what you learned in `source_value.py`** — the worth line and the
+   routes. The next breakage should arrive with candidates attached.
+
+**Do NOT** answer a zero by lowering an expectation or by marking the source
+soft-degraded. And do not add a source to `zero_is_outage` unless a zero is
+genuinely impossible for it: a bankruptcy watchlist that found nothing this week
+found nothing, and a false alarm costs more trust than a missed one costs data.
+
 **A WARN state COLLAPSED against its own history**
 The health page shows `warn_custom_legacy` degraded with
 `Custom WARN state(s) collapsed vs their own history`, naming states as
