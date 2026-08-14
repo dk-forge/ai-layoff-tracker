@@ -1681,6 +1681,14 @@
         var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
         setText('alt-stat-ai', fmt(aiJ));
         setText('alt-hero-ai', fmt(aiJ));
+        // The hero's second tier (owner decision 2026-08-14): the
+        // announced-inclusive total beside the verified primary, from the
+        // same totals object in the same pass. Hidden when the view holds no
+        // announced rows, so a stage=verified view never prints the same
+        // number twice under two labels.
+        setText('alt-hero-incl', fmt(t.jobs || 0));
+        var inclWrap = document.getElementById('alt-hero-incl-wrap');
+        if (inclWrap) inclWrap.hidden = !(annJ > 0);
         var pctTxt = function (num, den) {
             if (!(den > 0) || num == null) return null;
             var pv = 100 * num / den;

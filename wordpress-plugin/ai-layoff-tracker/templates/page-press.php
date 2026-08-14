@@ -77,6 +77,7 @@ if (!is_array($alt_sb_groups)) {
         // members (+25,242 on the 2026 floor, audit 2026-07-28), contradicting
         // the API and the FAQ on the same site.
         $sql = "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v,
+                       COALESCE(SUM(CASE WHEN announced=1 THEN job_count END),0) a,
                        COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) aiv,
                        COALESCE(SUM(CASE WHEN (ai_explicit=1 OR ai_causation='ai_linked') AND announced=0 THEN job_count END),0) aib
                 FROM $alt_t WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s";
@@ -115,9 +116,14 @@ if (!is_array($alt_sb_groups)) {
     // ONCE at the top of the page, never inside the bites.
     $alt_period_items = function ($from, $to, $when, $periodarg, $reportlink) use ($alt_stats, $alt_top, $alt_bigcut, $alt_toprole, $alt_lk, $alt_stmap) {
         $items = array();
-        $s = $alt_stats($from, $to, ''); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
+        $s = $alt_stats($from, $to, ''); $v = (int) ($s->v ?? 0); $ann = (int) ($s->a ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
         $pct = $v ? round(100 * $aiv / $v) : 0; $pctb = $v ? round(100 * $aib / $v) : 0;
-        if ($v) $items[] = array('label' => 'Headline', 'text' => 'The AI Layoff Tracker verified ' . number_format($v) . ' job cuts worldwide in ' . $when . '. Employers themselves blamed AI for ' . $pct . '% of them; counting every cut with any AI link, the share reaches ' . $pctb . '%.', 'link' => $alt_lk($periodarg), 'linklabel' => 'See the rows behind this number');
+        // The second tier, stated where the total is (owner decision
+        // 2026-08-14): the announced-inclusive figure rides in the quotable
+        // sentence itself, so a paste keeps both tiers. The tier sentence
+        // lives once, in the disclaimer above the soundbite library.
+        $tier = $ann > 0 ? ' Including announced cuts, ' . number_format($v + $ann) . '.' : '';
+        if ($v) $items[] = array('label' => 'Headline', 'text' => 'The AI Layoff Tracker verified ' . number_format($v) . ' job cuts worldwide in ' . $when . '. Employers themselves blamed AI for ' . $pct . '% of them; counting every cut with any AI link, the share reaches ' . $pctb . '%.' . $tier, 'link' => $alt_lk($periodarg), 'linklabel' => 'See the rows behind this number');
         $ind = $alt_top('industry', $from, $to, '');
         if ($ind && $ind->k) $items[] = array('label' => 'Top industry', 'text' => $ind->k . ' was the hardest-hit industry in ' . $when . ', with ' . number_format((int) $ind->j) . ' recorded job cuts.', 'link' => $alt_lk(array_merge($periodarg, array('industry' => $ind->k))), 'linklabel' => 'See the ' . $ind->k . ' rows');
         $ctry = $alt_top('country', $from, $to, '');
@@ -167,13 +173,17 @@ if (!is_array($alt_sb_groups)) {
     );
     $geo_items = array();
     foreach ($alt_places as $p) {
-        $s = $alt_stats($alt_ytd_from, $alt_ytd_to, $p[1]); $v = (int) ($s->v ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
+        $s = $alt_stats($alt_ytd_from, $alt_ytd_to, $p[1]); $v = (int) ($s->v ?? 0); $ann = (int) ($s->a ?? 0); $aiv = (int) ($s->aiv ?? 0); $aib = (int) ($s->aib ?? 0);
         $pct = $v ? round(100 * $aiv / $v) : 0; $pctb = $v ? round(100 * $aib / $v) : 0;
         $flag = alt_country_flag($p[1] === '' ? 'World' : $p[1]);
+        // The announced-inclusive companion rides in the sentence, same as the
+        // Headline soundbite above; the tier sentence lives once in the
+        // disclaimer over the library.
+        $tier = $ann > 0 ? ' Including announced cuts, ' . number_format($v + $ann) . '.' : '';
         // Same Jan 1 -> today window as the year-to-date block above (these come
         // from the same $alt_ytd_from/$alt_ytd_to pair), so the same from/to link.
         $geo_win = array('from' => $alt_ytd_from, 'to' => $alt_ytd_to);
-        if ($v > 0) $geo_items[] = array('label' => ($flag ? $flag . ' ' : '') . $p[0], 'text' => $p[2] . number_format($v) . ' job cuts are on record for ' . $alt_y . '. Employers blamed AI for ' . $pct . '% of them; ' . $pctb . '% carry any AI link.', 'link' => $alt_lk($p[1] === '' ? $geo_win : array_merge($geo_win, array('country' => $p[1]))), 'linklabel' => 'See the rows behind this number');
+        if ($v > 0) $geo_items[] = array('label' => ($flag ? $flag . ' ' : '') . $p[0], 'text' => $p[2] . number_format($v) . ' job cuts are on record for ' . $alt_y . '. Employers blamed AI for ' . $pct . '% of them; ' . $pctb . '% carry any AI link.' . $tier, 'link' => $alt_lk($p[1] === '' ? $geo_win : array_merge($geo_win, array('country' => $p[1]))), 'linklabel' => 'See the rows behind this number');
     }
     if ($geo_items) $alt_sb_groups[] = array('id' => 'sb-geo', 'title' => 'By region and country (' . $alt_y . ')', 'items' => $geo_items);
 
@@ -250,8 +260,13 @@ if (!is_array($alt_ps)) {
             ? sprintf('Employers themselves blamed AI or automation for %s of those jobs (%d%%), each with the quote on file.',
                       $alt_pn($ai), $pct)
             : 'No employer has named AI as a cause in this window yet. That is normal for a short window: filings record a cut\'s size, date and location first, and the company\'s stated reason often arrives later.';
+        // The second tier, stated where the total is (owner decision
+        // 2026-08-14): the announced-inclusive figure beside the verified
+        // primary, labeled with the one shared sentence. The verified figure
+        // still leads the statement and stays the quotable headline.
         $annclause = $a > 0
-            ? sprintf(' A further %s announced cuts are tracked in a separate tier until they take effect, and are never mixed into this figure.', $alt_pn($a))
+            ? sprintf(' Including announced cuts, the figure is %s. %s', $alt_pn($v + $a),
+                      function_exists('alt_announced_tier_sentence') ? alt_announced_tier_sentence() : '')
             : '';
         $out[] = array(
             'label' => 'The documented floor',
@@ -429,6 +444,7 @@ if (!is_array($alt_ps)) {
     <span class="alt-toc-label">On this page</span>
     <a href="#alt-press-basis">Which basis</a>
     <a href="#alt-press-period">Which period</a>
+    <a href="#alt-press-vs-survey">Versus the survey</a>
     <a href="#alt-press-statements">Numbers to use now</a>
     <a href="#alt-soundbites">Soundbites</a>
     <a href="#alt-evidence-ladder">What counts as AI</a>
@@ -478,6 +494,120 @@ if (!is_array($alt_ps)) {
   <p class="alt-muted">Both figures come from the same query. Only the end date changes, so you can reproduce either one from the public API. For the first row, use <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html(gmdate('Y-m-d')); ?></code>. For the third row, use <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code>. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>.</p>
   <?php endif; ?>
 
+  <?php
+  /*
+    MONTH BY MONTH AGAINST THE NATIONAL ANNOUNCEMENT SURVEY (owner decision
+    2026-08-14). Public, on this page rather than a page of its own, because
+    this is the surface a journalist is routed to and the table completes the
+    two "before you quote a number" blocks directly above it: basis, period,
+    and now the comparison a reader arrives wanting to make.
+
+    OUR SIDE IS RE-DERIVED LIVE ON EVERY CACHE BUILD, never pasted. The
+    January 2026 correction moved our monthly figures the same morning this
+    table shipped, which is exactly why a typed copy of our own side is
+    banned here. THEIR side is hand-entered constants in
+    data/survey-monthly.json with the date they were read, shared with
+    railway/monthly_us_comparison.py so the repo holds ONE copy. A released
+    month with no constant is flagged on the page (the awaiting note below)
+    and by the script's STALE verdict; the due window is $alt_mc_due_days and
+    must equal DUE_AFTER_DAYS in the script
+    (test_stage_tier_and_survey_table pins both). No organization name
+    appears anywhere: figures and dates only, per the standalone-brand rule.
+  */
+  $alt_mc = get_transient('alt_press_monthly_compare_' . ALT_VERSION);
+  if (!is_array($alt_mc)) {
+      global $wpdb; $alt_mct = alt_db_table();
+      $alt_mc = array('rows' => array(), 'read_date' => '', 'stale_missing' => array(), 'sum' => null);
+      $alt_mc_due_days = 40; // must equal DUE_AFTER_DAYS in railway/monthly_us_comparison.py
+      $alt_mc_path = ALT_PLUGIN_DIR . 'data/survey-monthly.json';
+      $alt_mc_j = is_readable($alt_mc_path) ? json_decode((string) file_get_contents($alt_mc_path), true) : null;
+      if (is_array($alt_mc_j) && !empty($alt_mc_j['total']) && is_array($alt_mc_j['total'])) {
+          $alt_mc['read_date'] = (string) ($alt_mc_j['read_date'] ?? '');
+          $alt_mc_sum = array('eff' => 0, 'notice' => 0, 'survey' => 0);
+          $alt_mc_months = array_keys($alt_mc_j['total']); sort($alt_mc_months);
+          foreach ($alt_mc_months as $alt_mm) {
+              if (!preg_match('/^\d{4}-\d{2}$/', $alt_mm)) continue;
+              $alt_mfrom = $alt_mm . '-01';
+              $alt_mto = gmdate('Y-m-t', strtotime($alt_mfrom));
+              // Both tiers together and strict US job location, mirroring the
+              // aggregate the API serves for the same window, so every cell is
+              // reproducible from the public endpoint.
+              $alt_mc_eff = (int) $wpdb->get_var($wpdb->prepare(
+                  "SELECT COALESCE(SUM(job_count),0) FROM $alt_mct
+                   WHERE superset_of=0 AND country='United States' AND layoff_date BETWEEN %s AND %s",
+                  $alt_mfrom, $alt_mto));
+              $alt_mc_not = (int) $wpdb->get_var($wpdb->prepare(
+                  "SELECT COALESCE(SUM(job_count),0) FROM $alt_mct
+                   WHERE superset_of=0 AND country='United States'
+                     AND COALESCE(announcement_date, layoff_date) BETWEEN %s AND %s",
+                  $alt_mfrom, $alt_mto));
+              $alt_mc_sv = $alt_mc_j['total'][$alt_mm];
+              $alt_mc_sv = is_numeric($alt_mc_sv) ? (int) $alt_mc_sv : null;
+              $alt_mc_due = (time() - strtotime($alt_mto . ' 23:59:59 UTC')) > $alt_mc_due_days * DAY_IN_SECONDS;
+              if ($alt_mc_sv !== null) {
+                  $alt_mc_sum['eff'] += $alt_mc_eff; $alt_mc_sum['notice'] += $alt_mc_not; $alt_mc_sum['survey'] += $alt_mc_sv;
+              } elseif ($alt_mc_due) {
+                  $alt_mc['stale_missing'][] = gmdate('F Y', strtotime($alt_mfrom));
+              }
+              $alt_mc['rows'][] = array(
+                  'label' => gmdate('F Y', strtotime($alt_mfrom)),
+                  'eff' => $alt_mc_eff, 'notice' => $alt_mc_not,
+                  'survey' => $alt_mc_sv, 'due' => $alt_mc_due,
+              );
+          }
+          if ($alt_mc_sum['survey'] > 0) $alt_mc['sum'] = $alt_mc_sum;
+      }
+      set_transient('alt_press_monthly_compare_' . ALT_VERSION, $alt_mc, HOUR_IN_SECONDS);
+  }
+  $alt_mc_pct = function ($ours, $survey) {
+      return $survey ? round(100 * $ours / $survey) . '%' : 'n/a';
+  };
+  ?>
+  <?php if (!empty($alt_mc['rows'])) : ?>
+  <h2 id="alt-press-vs-survey">Month by month against the national announcement survey</h2>
+  <p>Two lenses on the same months, side by side. Our columns count jobs located in the US, verified and announced tiers together, recomputed live from the database. The survey column is the published national monthly total of announced cuts.</p>
+  <p><b>Effective basis</b> dates each cut on the day it takes effect. <b>Notice basis</b> dates it on the day its notice or announcement entered the record. The survey books each announcement in the month it was made.</p>
+  <div class="alt-health-table-wrap">
+  <table class="alt-basis-table alt-press-table">
+    <thead><tr><th>Month</th><th class="num">Ours, effective basis</th><th class="num">Ours, notice basis</th><th class="num">National survey, announcement basis</th><th class="num">Effective vs survey</th><th class="num">Notice vs survey</th></tr></thead>
+    <tbody>
+    <?php foreach ($alt_mc['rows'] as $alt_mr) : ?>
+      <tr>
+        <th><?php echo esc_html($alt_mr['label']); ?></th>
+        <td class="num"><?php echo number_format($alt_mr['eff']); ?></td>
+        <td class="num"><?php echo number_format($alt_mr['notice']); ?></td>
+        <?php if ($alt_mr['survey'] !== null) : ?>
+        <td class="num"><?php echo number_format($alt_mr['survey']); ?></td>
+        <td class="num"><?php echo esc_html($alt_mc_pct($alt_mr['eff'], $alt_mr['survey'])); ?></td>
+        <td class="num"><?php echo esc_html($alt_mc_pct($alt_mr['notice'], $alt_mr['survey'])); ?></td>
+        <?php else : ?>
+        <td class="num alt-muted"><?php echo $alt_mr['due'] ? 'awaiting entry here' : 'not published yet'; ?></td>
+        <td class="num alt-muted">n/a</td>
+        <td class="num alt-muted">n/a</td>
+        <?php endif; ?>
+      </tr>
+    <?php endforeach; ?>
+    <?php if (!empty($alt_mc['sum'])) : ?>
+      <tr>
+        <th>Published months, added</th>
+        <td class="num"><b><?php echo number_format($alt_mc['sum']['eff']); ?></b></td>
+        <td class="num"><b><?php echo number_format($alt_mc['sum']['notice']); ?></b></td>
+        <td class="num"><b><?php echo number_format($alt_mc['sum']['survey']); ?></b></td>
+        <td class="num"><b><?php echo esc_html($alt_mc_pct($alt_mc['sum']['eff'], $alt_mc['sum']['survey'])); ?></b></td>
+        <td class="num"><b><?php echo esc_html($alt_mc_pct($alt_mc['sum']['notice'], $alt_mc['sum']['survey'])); ?></b></td>
+      </tr>
+    <?php endif; ?>
+    </tbody>
+  </table>
+  </div>
+  <p>The two columns of percentages are a comparison of lenses, not a score. The survey also counts federal reductions, voluntary buyout offers, employer estimates never filed anywhere, and unnamed small announcements. We count only cuts with a filing or a named public report behind them.</p>
+  <p>A month above 100 percent is not an error. The two lenses date and admit cuts differently, so a notice filed in one month for a cut landing in another sits in different rows under each. The difference is the lens, not a shortfall in either count.</p>
+  <?php if (!empty($alt_mc['stale_missing'])) : ?>
+  <p class="alt-sb-disclaimer"><b>Awaiting an update:</b> the survey figure for <?php echo esc_html(implode(', ', $alt_mc['stale_missing'])); ?> is due and not yet entered here. Treat the added row as provisional until it is.</p>
+  <?php endif; ?>
+  <p class="alt-muted">Our columns read live from the same database as every other figure on this page, so this table re-derives itself as records arrive. The survey column is hand entered from the survey's published releases, read <?php echo esc_html($alt_mc['read_date']); ?>, and a released month missing here is flagged automatically rather than left to age. Reproduce our cells from the public API with <code>aggregate?country=United%20States&amp;from=&lt;month-start&gt;&amp;to=&lt;month-end&gt;</code>, adding <code>date_basis=notice</code> for the notice column.</p>
+  <?php endif; ?>
+
   <h2 id="alt-press-statements">Numbers you can use right now</h2>
   <p>This week, the latest complete month, and the year to date. Each card is ready to paste into a pitch or a story. Each one ends with a link that opens the live tracker, filtered to the exact rows behind the number. An editor can check the claim in one click.</p>
   <p class="alt-muted"><b>Generated <?php echo esc_html($alt_ps['generated']); ?>.</b> Figures refresh hourly; the wording stays stable. When a period rolls over, it moves to the archive below, so a number you already quoted stays reachable.</p>
@@ -523,7 +653,7 @@ if (!is_array($alt_ps)) {
   <?php if ($alt_sb_groups) : ?>
   <h2 id="alt-soundbites">Soundbite library</h2>
   <p>One-line versions of the same numbers, grouped by period and by region. Copy, cite, done. Attribute to "the AI Layoff Tracker by AskTheRecruiter.com." Each links to the chart or rows behind it.</p>
-  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> means the employer named AI in its own words, quote on file. The <b>broad measure</b> adds looser AI-linked cases, such as an AI pivot underway or press AI-framing, and is always larger. The two are never merged. Pick the standard your story needs.</p>
+  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> means the employer named AI in its own words, quote on file. The <b>broad measure</b> adds looser AI-linked cases, such as an AI pivot underway or press AI-framing, and is always larger. The two are never merged. Pick the standard your story needs. <b>Two stages, always labeled too.</b> The verified figure leads every soundbite. <?php echo esc_html(function_exists('alt_announced_tier_sentence') ? alt_announced_tier_sentence() : ''); ?> A figure that says including announced adds that tier.</p>
     <?php foreach ($alt_sb_groups as $alt_g) : ?>
   <h3 id="<?php echo esc_attr($alt_g['id']); ?>" class="alt-sb-grouptitle"><?php echo esc_html($alt_g['title']); ?></h3>
   <div class="alt-soundbites">

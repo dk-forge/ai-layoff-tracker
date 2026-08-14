@@ -201,6 +201,20 @@ $alt_hero_basis  = 'counted by filing date';
                          AI/automation, quote on file"), so the two surfaces now agree
                          and neither asserts causation on the employer's behalf. */ ?>
                 <span class="alt-hero-figure-sub"><b id="alt-hero-ai"><?php echo esc_html($alt_stat('ai')); ?></b> of those are cuts where the employer named AI as a reason.</span>
+                <?php /* THE SECOND TIER, STATED WHERE THE TOTAL IS (owner
+                         decision 2026-08-14). The verified figure above stays
+                         primary; this companion states the announced-inclusive
+                         total beside it so a reader comparing us against an
+                         announcement estimate meets both tiers on the first
+                         screen instead of discovering the announced tile
+                         later. Same stage split the tiles below carry, same
+                         basis as the headline, and the sentence is
+                         alt_announced_tier_sentence(), rendered verbatim here,
+                         on the press page and on the report page. Kept in step
+                         live by renderStats(), which also hides the wrapper
+                         when the view holds no announced rows, because the
+                         same number twice under two labels is noise. */ ?>
+                <span class="alt-hero-figure-incl" id="alt-hero-incl-wrap"<?php echo ($alt_sv !== null && $alt_sv['announced'] > 0) ? '' : ' hidden'; ?>><b id="alt-hero-incl"><?php echo esc_html($alt_stat('all')); ?></b> including announced cuts. <?php echo esc_html(function_exists('alt_announced_tier_sentence') ? alt_announced_tier_sentence() : ''); ?></span>
             </p>
             <?php endif; ?>
             <?php /* ONE trust line, and it is the benefit, not the refusal. It read

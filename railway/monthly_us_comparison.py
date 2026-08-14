@@ -28,43 +28,52 @@ THE BASES ARE NAMED BECAUSE THEY ARE NOT THE SAME MEASUREMENT (TECHLOG
 
 The comparator constants follow the survey_reconcile convention: no
 organization name in the repo, figures only, with the date they were read.
+
+SINCE 2026-08-14 THE CONSTANTS LIVE IN ONE FILE, SHARED WITH THE PUBLIC PAGE:
+wordpress-plugin/ai-layoff-tracker/data/survey-monthly.json. page-press.php
+renders the same figures on the public monthly comparison table, so a second
+copy here would be two hand-entered comparators waiting to disagree. This
+script also carries the STALENESS verdict: a month whose end is more than
+DUE_AFTER_DAYS behind today with no constant entered is reported STALE (exit
+2, a human task, not an outage), and the page prints an awaiting note for the
+same months from the same file. The due window must equal $alt_mc_due_days in
+page-press.php; test_stage_tier_and_survey_table pins both.
 """
 import json
 import ssl
 import sys
 import time
+from datetime import date, timedelta
+from pathlib import Path
+
 import urllib.request
 
 API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/aggregate"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
-#: Published national monthly totals, announcement basis, US.
-#: Read 2026-08-13 from the survey's own monthly releases (the same figures
-#: recorded in docs/TECHLOG.md 2026-08-13 and docs/COVERAGE_GAP_CLOSURE_PLAN.md).
-#: A None means the survey has not published that month yet.
-SURVEY_READ_DATE = "2026-08-13"
-SURVEY_TOTAL = {
-    "2026-01": 108435,
-    "2026-02": 48307,
-    "2026-03": 60620,
-    "2026-04": 83387,
-    "2026-05": 97006,
-    "2026-06": 45849,
-    "2026-07": 33429,
-    "2026-08": None,
-}
-#: The survey's monthly AI-attributed line, same source and read date.
-#: July onward had not been published as a monthly AI split when read.
-SURVEY_AI = {
-    "2026-01": 7624,
-    "2026-02": 4680,
-    "2026-03": 15341,
-    "2026-04": 21490,
-    "2026-05": 38579,
-    "2026-06": 14029,
-    "2026-07": None,
-    "2026-08": None,
-}
+#: Days after a month closes before a missing survey constant is STALE.
+#: Must equal $alt_mc_due_days in page-press.php.
+DUE_AFTER_DAYS = 40
+
+#: The one copy of the hand-entered comparator, shared with the public page.
+SURVEY_FILE = (Path(__file__).resolve().parents[1]
+               / "wordpress-plugin" / "ai-layoff-tracker" / "data"
+               / "survey-monthly.json")
+
+
+def load_survey():
+    """Constants dict from the shared JSON, or None (UNKNOWN, not empty)."""
+    try:
+        data = json.loads(SURVEY_FILE.read_text())
+    except (OSError, ValueError) as exc:
+        print(f"UNKNOWN: {SURVEY_FILE} -> {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+        return None
+    if not isinstance(data.get("total"), dict) or not data.get("read_date"):
+        print(f"UNKNOWN: {SURVEY_FILE} is missing 'total' or 'read_date'",
+              file=sys.stderr)
+        return None
+    return data
 
 RECEIPTLESS = (
     "Known receiptless categories in the national figure: federal reductions, "
@@ -110,37 +119,52 @@ def pct(ours, theirs):
     return f"{100.0 * ours / theirs:.0f}%"
 
 
+def month_is_due(month):
+    """True once the month's end is more than DUE_AFTER_DAYS behind today."""
+    year, num = (int(p) for p in month.split("-"))
+    month_end = date(year, num, MONTH_DAYS[num])
+    return date.today() > month_end + timedelta(days=DUE_AFTER_DAYS)
+
+
 def main():
-    months = sorted(SURVEY_TOTAL)
+    survey = load_survey()
+    if survey is None:
+        return 3
+    totals = survey["total"]
+    ai_line = survey.get("ai", {})
+    months = sorted(totals)
     print("# US 2026, month by month, ours beside the national announcement survey")
     print()
     print(f"Ours: measured live at run time, strict US job location. "
-          f"Theirs: announcement basis, read {SURVEY_READ_DATE}.")
+          f"Theirs: announcement basis, read {survey['read_date']}.")
     print()
     print("| Month | Ours, effective basis | Ours, notice basis | National, announcement basis | Effective vs national | Notice vs national | National AI line |")
     print("|---|---|---|---|---|---|---|")
     sums = {"eff": 0, "notice": 0, "survey": 0}
     unknown = False
+    stale = []
     for m in months:
         eff = month_totals(m, "effective")
         notice = month_totals(m, "notice")
         eff_j = eff["jobs"] if eff else None
         notice_j = notice["jobs"] if notice else None
-        survey = SURVEY_TOTAL[m]
-        ai = SURVEY_AI[m]
+        month_survey = totals[m]
+        ai = ai_line.get(m)
         if eff_j is None or notice_j is None:
             unknown = True
         else:
-            if survey is not None:
+            if month_survey is not None:
                 sums["eff"] += eff_j
                 sums["notice"] += notice_j
-                sums["survey"] += survey
+                sums["survey"] += month_survey
+        if month_survey is None and month_is_due(m):
+            stale.append(m)
         print(f"| {m} "
               f"| {eff_j if eff_j is not None else 'UNKNOWN'} "
               f"| {notice_j if notice_j is not None else 'UNKNOWN'} "
-              f"| {survey if survey is not None else 'not published yet'} "
-              f"| {pct(eff_j, survey)} "
-              f"| {pct(notice_j, survey)} "
+              f"| {month_survey if month_survey is not None else 'not published yet'} "
+              f"| {pct(eff_j, month_survey)} "
+              f"| {pct(notice_j, month_survey)} "
               f"| {ai if ai is not None else 'not published'} |")
     if not unknown and sums["survey"]:
         print(f"| published months | {sums['eff']} | {sums['notice']} "
@@ -151,6 +175,17 @@ def main():
     print()
     print("An UNKNOWN row means the live API could not be read from here. "
           "It is not a zero and not a pass.")
+    read_age = (date.today()
+                - date(*[int(p) for p in survey["read_date"].split("-")])).days
+    if read_age > DUE_AFTER_DAYS:
+        stale.append(f"read_date {survey['read_date']} is {read_age}d old")
+    if stale:
+        print()
+        print(f"STALE: {', '.join(stale)} -> the survey has released figures "
+              f"this repo has not entered. Update {SURVEY_FILE.name} (the one "
+              f"copy, shared with the public press-page table). A stale "
+              f"comparator is a human task, not an outage.")
+        return 2
     return 3 if unknown else 0
 
 
