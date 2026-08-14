@@ -462,9 +462,43 @@ class TheRacedRenderOf2_20_21(unittest.TestCase):
 class TheBuildStampTiesTheBodyToTheBuild(unittest.TestCase):
     STAMP = '<!-- alt-build ver=2.20.29 build=0123456789abcdef -->'
 
+    ELEMENT = ('<span class="alt-build" hidden aria-hidden="true"'
+               ' data-alt-build-ver="2.20.29"'
+               ' data-alt-build="0123456789abcdef"></span>')
+
     def test_a_stamp_is_read_out_of_the_body(self):
         self.assertEqual(reader_freshness.build_in_html("<div>x</div>" + self.STAMP),
                          "0123456789abcdef")
+
+    def test_the_element_carrier_alone_is_a_build(self):
+        """THE COMMENT ALONE DOES NOT REACH READERS ON THIS HOST. 2.20.38
+        shipped the stamp as an HTML comment and the deploy's own reader check
+        failed on its first real run: the origin was coherent at
+        2.20.38/af2cbcb8 and every reader view read build=None for 600s.
+        Measured on the live page, not guessed: id="alt-active-filters" is
+        served and the comment written directly above it in page-tracker.php is
+        not, on the bare URL and with a cache buster alike. An element survives
+        that; the comment stays only because it is the readable one."""
+        self.assertEqual(reader_freshness.build_in_html("<div>x</div>" + self.ELEMENT),
+                         "0123456789abcdef")
+
+    def test_both_carriers_agreeing_is_one_build(self):
+        self.assertEqual(
+            reader_freshness.build_in_html(self.STAMP + "<div>x</div>" + self.ELEMENT),
+            "0123456789abcdef")
+
+    def test_carriers_that_disagree_are_not_a_build(self):
+        """Two carriers from two builds is the same half-a-page state two
+        comments would be. Neither gets to cast the deciding vote."""
+        other = self.ELEMENT.replace("0123456789abcdef", "fedcba9876543210")
+        self.assertIsNone(reader_freshness.build_in_html(self.STAMP + other))
+
+    def test_the_plugin_emits_the_element_carrier(self):
+        """The regex above is only worth anything if the PHP still emits what it
+        reads. Pins the two together against a future tidy-up of either."""
+        src = (PLUGIN / "includes" / "build-stamp.php").read_text(encoding="utf-8")
+        self.assertIn("data-alt-build=", src)
+        self.assertIn("<!-- alt-build ver=", src)
 
     def test_a_page_without_a_stamp_is_not_a_build(self):
         """None routes to UNKNOWN in check(). A page that cannot say which bytes

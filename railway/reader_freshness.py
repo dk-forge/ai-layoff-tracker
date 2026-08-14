@@ -47,9 +47,15 @@ rather than fixing it here.
 
 So a second, independent thing is compared: the BUILD STAMP. The plugin hashes
 its own files at render time (`includes/build-stamp.php`) and the rendered page
-carries the answer as `<!-- alt-build ver=X build=Y -->`, emitted from
+carries the answer as a `<span class="alt-build" data-alt-build=Y>` AND an
+`<!-- alt-build ver=X build=Y -->` comment, emitted together from
 `alt_template()`, the funnel every plugin surface renders through, so the stamp
-is produced by the same render as the body around it. `/status` reports the same
+is produced by the same render as the body around it. BOTH carriers exist
+because the comment alone does not survive to a reader on this host: 2.20.38
+shipped the comment form and every reader view read `build=None` while the
+origin was coherent, so something in front of the body strips HTML comments.
+An element is not droppable that way. Either carrier is accepted; when both
+are present they must agree. `/status` reports the same
 function's answer, cache-immune. A template that has not landed yet is different
 bytes, so it is a different stamp, and
 
@@ -139,7 +145,11 @@ PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 VERSION_RE = re.compile(r"layoffs\.(?:css|js)\?ver=(\d+\.\d+\.\d+)")
 
 # What the plugin's alt_build_stamp_comment() emits into the body it rendered.
+# TWO carriers, on purpose (see the module docstring): the element is the one
+# that reaches readers on this host, the comment is the readable one in a
+# view-source. Read both, require them to agree.
 BUILD_RE = re.compile(r"<!--\s*alt-build ver=[\d.]+ build=([0-9a-f]{8,64})\s*-->")
+BUILD_EL_RE = re.compile(r'data-alt-build=["\']([0-9a-f]{8,64})["\']')
 
 # The plugin tree this checkout would deploy. The expected build stamp is
 # computed from it, so the deploy waits on the bytes it is uploading rather than
@@ -211,9 +221,13 @@ def build_in_html(html):
     None is not a failure to be smoothed over: it routes to UNKNOWN in check().
     Two DIFFERENT stamps on one page is also None, because half a page from one
     build and half from another is precisely the state this exists to catch and
-    is not a value to compare against anything.
+    is not a value to compare against anything. That rule spans both carriers:
+    an element and a comment that disagree are two builds on one page just as
+    surely as two comments are, so they collapse to None together rather than
+    letting one carrier cast the deciding vote.
     """
     found = set(BUILD_RE.findall(html or ""))
+    found |= set(BUILD_EL_RE.findall(html or ""))
     if len(found) != 1:
         return None
     return found.pop()

@@ -86,9 +86,26 @@ function alt_build_stamp() {
 }
 
 /**
- * The comment a rendered plugin surface carries. Emitted ONCE per request, by
+ * The stamp a rendered plugin surface carries. Emitted ONCE per request, by
  * alt_template(), so it is produced by the same render as the body around it.
  * Anywhere else it would be another version string with extra steps.
+ *
+ * IT IS NOT ONLY A COMMENT, AND THE COMMENT ALONE DOES NOT REACH READERS.
+ * The stamp shipped as an HTML comment in 2.20.38 and the deploy's own reader
+ * check failed on the first run that used it: the origin was coherent at
+ * 2.20.38/af2cbcb8 and every reader view read `build=None`. Something in front
+ * of the rendered body on this host strips HTML comments. Measured on the live
+ * page rather than guessed: `id="alt-active-filters"` is served, and the
+ * `<!-- Active-filter summary` comment written directly above it in
+ * templates/page-tracker.php is not, on the bare URL and with a cache buster
+ * alike. Only WP-Super-Cache's own three comments survive, and it appends
+ * those after the strip.
+ *
+ * So the carrier is an ELEMENT, which no minifier is free to drop, and the
+ * comment stays beside it because it costs one line and is the more readable
+ * of the two in a view-source. Both say the same thing from the same render;
+ * reader_freshness.py accepts either and requires them to agree when it sees
+ * both. Do NOT "simplify" this back to the comment alone.
  */
 function alt_build_stamp_comment() {
     static $emitted = false;
@@ -96,5 +113,17 @@ function alt_build_stamp_comment() {
     $stamp = alt_build_stamp();
     if ($stamp === '') return '';          // UNKNOWN is not something to publish
     $emitted = true;
-    return "<!-- alt-build ver=" . ALT_VERSION . " build=" . $stamp . " -->\n";
+    // Escaped WITHOUT esc_attr() on purpose. This file is required before the
+    // rest of the plugin and is deliberately WP-independent, so that it can
+    // still answer during a mid-upload request -- the exact condition it exists
+    // to describe. Reaching for a WP function here fatals the page instead of
+    // stamping it. Neither value is user input (one is our own constant, the
+    // other a hex digest), and the whitelist below is narrower than esc_attr:
+    // anything outside [A-Za-z0-9._-] cannot reach an attribute at all.
+    $ver = preg_replace('/[^A-Za-z0-9._-]/', '', (string) ALT_VERSION);
+    $stamp = preg_replace('/[^a-f0-9]/', '', $stamp);
+    return "<!-- alt-build ver=" . $ver . " build=" . $stamp . " -->\n"
+         . '<span class="alt-build" hidden aria-hidden="true"'
+         . ' data-alt-build-ver="' . $ver . '"'
+         . ' data-alt-build="' . $stamp . '"></span>' . "\n";
 }
