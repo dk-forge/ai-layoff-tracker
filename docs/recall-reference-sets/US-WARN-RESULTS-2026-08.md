@@ -300,12 +300,31 @@ Stated in the definition before measuring; nothing below is hindsight.
 
 1. Rebuild the sheet (`python3 railway/warn_adjudication_pack.py --write`) — it
    reads live data and live data moves.
-2. Work the 71 single-candidate exact-tier events first; they are quick to
-   **check**, which is not the same as quick to accept.
-3. Then the 28 multi-candidate events, where the question is which of our rows
-   belongs to the notified action — and where every line in the sheet describes
-   one row only, because on 2026-08-12 a pooled line cost the SEC set a correct
-   Dow acceptance.
-4. Record each decision with `railway/warn_adjudicate.py`, which requires a
-   reviewer, a reason, and the tracker row ids the decision is about.
-5. Re-measure. The editor-confirmed figure moves then, and only then.
+2. **Read the Wood Group section first.** It is above the index, it is the one
+   event the rule proposes nothing for, and it is a different question from the
+   ninety-nine below it. We hold the row; TWC publishes that record's layoff date
+   ten months before its own notice date. The window was not widened, and no
+   decision there changes the rule.
+3. Then the index, which is ordered so the easy ones are first: **67 events**
+   whose proposed row agrees on count, on date basis and on employer name and is
+   proposed for no other notice, then **22** where only the employer string
+   differs (three of the four states glue the site address into the employer
+   cell), then **10** where one stored row is proposed for more than one notice
+   — Amazon, KBR, SMBC Manubank and Spirit all filed several notices close
+   together and we hold one row per site, so at most one of the claimants can be
+   it. Each is quick to **check**, which is not the same as quick to accept.
+4. Every index line names ONE row by id and carries only that row's evidence; the
+   ids of any other candidate rows sit beside it carrying none of theirs, and
+   each of those has its own block below. On 2026-08-12 a pooled line cost the
+   SEC set a correct Dow acceptance.
+5. Record each decision with `railway/warn_adjudicate.py`, which requires a
+   reviewer, a reason, and the tracker row ids the decision is about. It shares
+   its mechanism with the SEC recorder (`railway/adjudication_ledger.py`), so it
+   is reversible, refuses an unattributed decision, refuses a `matched` event
+   with no decision behind it, and records a repeated run once.
+6. Re-measure. The editor-confirmed figure moves then, and only then.
+
+**The range before you start**, primary sample only (the 500-plus census is never
+pooled with it): **100/100** if everything including Wood Group is accepted,
+**99/100** if Wood Group is not, **67/100** if only the fully-agreeing events
+are, **0/100** as it stands today.
