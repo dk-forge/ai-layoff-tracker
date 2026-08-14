@@ -1,6 +1,6 @@
 # US WARN reference set — adjudication sheet
 
-Built `2026-08-13T23:43:00Z` from a measurement taken `2026-08-13T06:50:31Z`. **Rebuild it before deciding** (`python3 railway/warn_adjudication_pack.py --write`) — it reads live data and live data moves.
+Built `2026-08-14T19:17:22Z` from a measurement taken `2026-08-13T06:50:31Z`. **Rebuild it before deciding** (`python3 railway/warn_adjudication_pack.py --write`) — it reads live data and live data moves.
 
 Reference set: `us-warn-ca-tx-fl-tn-2025-07_2026-06`. Definition: [`docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`](../../docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md). Nothing in this set is published anywhere, and nothing in it touches the SEC Item 2.05 figure.
 
@@ -998,7 +998,10 @@ python3 railway/warn_adjudicate.py --reject warn-tn-2025-09-30-doubletree-by-mem
 - **count**: exact — 82, the whole notice
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-21 is a date the state published as effective for this notice; the notice date 2025-10-07 is 45 day(s) earlier
 - **employer name**: matches the state's published string
-- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
+- **live now**: OP Mobility — 82 — 2025-11-21 — `warn`
+
+  > Layoff at OP Mobility. 82 employees affected, effective 2025-11-21. Filed under the TN WARN Act.
+
 - **nothing to look twice at on row `136950`** — count, date basis, employer name, state and source all line up. That is a fact about this row, not a verdict on it.
 
 ```
@@ -2183,10 +2186,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-09-24-cottonwood-creek-
 - **count**: exact — 82, the whole notice
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-28 is a date the state published as effective for this notice; the notice date 2025-09-30 is 59 day(s) earlier
 - **employer name**: matches the state's published string
-- **live now**: Holiday Inn Club Vacations Incorporated-The Villages Resort — 82 — 2025-11-28 — `warn`
-
-  > Layoff at Holiday Inn Club Vacations Incorporated-The Villages Resort in Flint. 82 employees affected, effective 2025-11-28. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **nothing to look twice at on row `136909`** — count, date basis, employer name, state and source all line up. That is a fact about this row, not a verdict on it.
 
 ```
@@ -7250,10 +7250,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 1 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Franklin)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Franklin) — 1 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Franklin) in El Paso. 1 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137367`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137367`:** row `137367` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7272,10 +7269,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 3 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Norma Linda)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Norma Linda) — 3 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Norma Linda) in Los Fresnos. 3 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137366`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137366`:** row `137366` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7294,10 +7288,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 3 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Rio Grande)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Rio Grande) — 3 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Rio Grande) in San Benito. 3 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137365`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137365`:** row `137365` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7316,10 +7307,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 3 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Canutillo)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Canutillo) — 3 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Canutillo) in Canutillo. 3 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137364`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137364`:** row `137364` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7338,10 +7326,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 2 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: matches the state's published string
-- **live now**: Southwest Key Programs-Casa Canutillo — 2 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casa Canutillo in Canutillo. 2 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137093`:** row `137093` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
 ### row `137091` — event `109926` — tier `exact`
@@ -7359,10 +7344,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 1 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Casa Houston Reliant'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Casa Houston Reliant — 1 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casa Houston Reliant in Houston. 1 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137091`:** we store the employer as 'Southwest Key Programs-Casa Houston Reliant'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
 - **LOOK TWICE at row `137091`:** row `137091` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7381,10 +7363,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 1 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Casa Montezuma'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Casa Montezuma — 1 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casa Montezuma in Channelview. 1 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137090`:** we store the employer as 'Southwest Key Programs-Casa Montezuma'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
 - **LOOK TWICE at row `137090`:** row `137090` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7403,10 +7382,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 3 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Casa Norma Linda'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Casa Norma Linda — 3 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casa Norma Linda in Los Fresnos. 3 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137089`:** we store the employer as 'Southwest Key Programs-Casa Norma Linda'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
 - **LOOK TWICE at row `137089`:** row `137089` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7425,10 +7401,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 8 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Casa Nueva Esperanza'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Casa Nueva Esperanza — 8 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casa Nueva Esperanza in Brownsville. 8 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137088`:** we store the employer as 'Southwest Key Programs-Casa Nueva Esperanza'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
 - **LOOK TWICE at row `137088`:** row `137088` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7447,10 +7420,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 3 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Casa Rio Grande'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Casa Rio Grande — 3 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casa Rio Grande in San Benito. 3 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137087`:** we store the employer as 'Southwest Key Programs-Casa Rio Grande'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
 - **LOOK TWICE at row `137087`:** row `137087` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7469,10 +7439,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: exact — 3 is one of the 6 rows the state published under this notice (total 18)
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-National Headquarters (Austin)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-National Headquarters (Austin) — 3 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-National Headquarters (Austin) in Austin. 3 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137086`:** we store the employer as 'Southwest Key Programs-National Headquarters (Austin)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
 - **LOOK TWICE at row `137086`:** row `137086` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7491,10 +7458,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +193 — we hold 211, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Houston Reliant)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Houston Reliant) — 211 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Houston Reliant) in Houston. 211 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137377`:** DIFFERS by +193 — we hold 211, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137377`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137377`:** row `137377` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7514,10 +7478,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -7 — we hold 11, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Houston HQ)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Houston HQ) — 11 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Houston HQ) in Houston. 11 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137376`:** DIFFERS by -7 — we hold 11, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137376`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137376`:** row `137376` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7537,10 +7498,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +291 — we hold 309, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Quetzal)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Quetzal) — 309 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Quetzal) in Houston. 309 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137375`:** DIFFERS by +291 — we hold 309, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137375`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137375`:** row `137375` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7560,10 +7518,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +205 — we hold 223, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Sunzal)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Sunzal) — 223 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Sunzal) in Houston. 223 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137374`:** DIFFERS by +205 — we hold 223, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137374`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137374`:** row `137374` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7583,10 +7538,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +110 — we hold 128, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Oasis)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Oasis) — 128 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Oasis) in McAllen. 128 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137373`:** DIFFERS by +110 — we hold 128, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137373`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137373`:** row `137373` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7606,10 +7558,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +75 — we hold 93, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Sueno)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Sueno) — 93 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Sueno) in Weslaco. 93 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137372`:** DIFFERS by +75 — we hold 93, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137372`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137372`:** row `137372` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7629,10 +7578,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +220 — we hold 238, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (Casa Montezuma)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (Casa Montezuma) — 238 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (Casa Montezuma) in Channelview. 238 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137371`:** DIFFERS by +220 — we hold 238, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137371`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137371`:** row `137371` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7652,10 +7598,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -14 — we hold 4, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. La Esperanza)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. La Esperanza) — 4 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. La Esperanza) in Brownsville. 4 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137370`:** DIFFERS by -14 — we hold 4, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137370`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137370`:** row `137370` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7675,10 +7618,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -9 — we hold 9, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc.(Casa Nueva Esperanza)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc.(Casa Nueva Esperanza) — 9 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc.(Casa Nueva Esperanza) in Brownsville. 9 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137369`:** DIFFERS by -9 — we hold 9, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137369`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137369`:** row `137369` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7698,10 +7638,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -5 — we hold 13, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc.(South Texas HQ)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc.(South Texas HQ) — 13 — 2025-10-05 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc.(South Texas HQ) in Brownsville. 13 employees affected, effective 2025-10-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137368`:** DIFFERS by -5 — we hold 13, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137368`:** our 2025-10-05 is neither the notice date (+3 days) nor a published effective date (-31 days from 2025-11-05)
 - **LOOK TWICE at row `137368`:** row `137368` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7721,10 +7658,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by +27 — we hold 45, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: our 2025-10-06 is neither the notice date (+4 days) nor a published effective date (-30 days from 2025-11-05)
 - **employer name**: we store the employer as 'Southwest Key Programs, Inc. (SWK National Headquarters)'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs, Inc. (SWK National Headquarters) — 45 — 2025-10-06 — `warn`
-
-  > Layoff at Southwest Key Programs, Inc. (SWK National Headquarters) in Austin. 45 employees affected, effective 2025-10-06. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137359`:** DIFFERS by +27 — we hold 45, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137359`:** our 2025-10-06 is neither the notice date (+4 days) nor a published effective date (-30 days from 2025-11-05)
 - **LOOK TWICE at row `137359`:** row `137359` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
@@ -7744,10 +7678,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -13 — we hold 5, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Casita Del Valle'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Casita Del Valle — 5 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Casita Del Valle in Clint. 5 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137092`:** DIFFERS by -13 — we hold 5, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137092`:** row `137092` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7766,10 +7697,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -6 — we hold 12, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-STX Regional Headquarters'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-STX Regional Headquarters — 12 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-STX Regional Headquarters in Brownsville. 12 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137085`:** DIFFERS by -6 — we hold 12, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137085`:** row `137085` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 
@@ -7788,10 +7716,7 @@ python3 railway/warn_adjudicate.py --reject warn-tx-2025-08-06-southwest-key-pro
 - **count**: DIFFERS by -8 — we hold 10, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **dates**: agree on the EFFECTIVE basis — our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier
 - **employer name**: we store the employer as 'Southwest Key Programs-Houston Headquarters'; the state publishes it as 'Southwest Key Programs-Casa Canutillo'
-- **live now**: Southwest Key Programs-Houston Headquarters — 10 — 2025-11-05 — `warn`
-
-  > Layoff at Southwest Key Programs-Houston Headquarters in Houston. 10 employees affected, effective 2025-11-05. Filed under the TX WARN Act.
-
+- **re-fetch**: HTTPError: HTTP Error 503: Service Unavailable — this row could not be confirmed live, which is UNKNOWN, not a reason to reject
 - **LOOK TWICE at row `137084`:** DIFFERS by -8 — we hold 10, the notice totals 18 across rows of 2, 1, 1, 3, 8, 3
 - **LOOK TWICE at row `137084`:** row `137084` is also proposed for 2 other reference event(s) — warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la — and at most one of them can be it
 

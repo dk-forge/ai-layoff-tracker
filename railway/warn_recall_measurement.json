@@ -1,8 +1,8 @@
 {
-  "note": "Recall of the frozen US WARN reference set against the live API. The numerator is EDITOR-CONFIRMED ONLY; machine_* figures are an upper bound and must never be quoted as recall. This file is separate from railway/recall_measurement.json on purpose \u2014 the published SEC figure is not this set's business.",
+  "note": "Recall of the frozen US WARN reference set against the live API. The numerator is EDITOR-CONFIRMED ONLY; machine_* figures are an upper bound and must never be quoted as recall. This file is separate from the SEC Item 2.05 set's own measurement file on purpose \u2014 that published figure is not this set's business, and tests/test_warn_reference_set.py asserts no module here can reach it.",
   "reference_set_id": "us-warn-ca-tx-fl-tn-2025-07_2026-06",
   "definition_document": "docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md",
-  "measured_at": "2026-08-13T06:50:31Z",
+  "measured_at": "2026-08-14T19:57:05Z",
   "unreachable": 0,
   "unreachable_events": [],
   "results": {
@@ -14,7 +14,7 @@
         "notice_date": "2025-07-03",
         "stated_job_count": 6,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -42,7 +42,7 @@
         "notice_date": "2025-07-11",
         "stated_job_count": 15,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -70,7 +70,7 @@
         "notice_date": "2025-07-28",
         "stated_job_count": 61,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -114,7 +114,7 @@
         "notice_date": "2025-08-13",
         "stated_job_count": 49,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -142,7 +142,7 @@
         "notice_date": "2025-08-25",
         "stated_job_count": 78,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -170,7 +170,7 @@
         "notice_date": "2025-09-04",
         "stated_job_count": 146,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -232,7 +232,7 @@
         "notice_date": "2025-09-24",
         "stated_job_count": 94,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -277,7 +277,7 @@
         "notice_date": "2025-10-06",
         "stated_job_count": 82,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -305,7 +305,7 @@
         "notice_date": "2025-10-20",
         "stated_job_count": 5,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -333,7 +333,7 @@
         "notice_date": "2025-10-28",
         "stated_job_count": 18,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -361,7 +361,7 @@
         "notice_date": "2025-10-30",
         "stated_job_count": 757,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -389,7 +389,7 @@
         "notice_date": "2025-11-13",
         "stated_job_count": 89,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -433,7 +433,7 @@
         "notice_date": "2025-12-01",
         "stated_job_count": 58,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -461,7 +461,7 @@
         "notice_date": "2026-01-05",
         "stated_job_count": 100,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -505,7 +505,7 @@
         "notice_date": "2026-01-23",
         "stated_job_count": 104,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -533,7 +533,7 @@
         "notice_date": "2026-02-03",
         "stated_job_count": 98,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -561,7 +561,7 @@
         "notice_date": "2026-02-20",
         "stated_job_count": 43,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -589,7 +589,7 @@
         "notice_date": "2026-03-06",
         "stated_job_count": 758,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -633,7 +633,7 @@
         "notice_date": "2026-03-25",
         "stated_job_count": 53,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -661,7 +661,7 @@
         "notice_date": "2026-04-07",
         "stated_job_count": 89,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -723,7 +723,7 @@
         "notice_date": "2026-04-17",
         "stated_job_count": 10,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -751,7 +751,7 @@
         "notice_date": "2026-04-28",
         "stated_job_count": 238,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -795,7 +795,7 @@
         "notice_date": "2026-05-13",
         "stated_job_count": 2,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1095,7 +1095,7 @@
         "notice_date": "2026-05-29",
         "stated_job_count": 6,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1123,7 +1123,7 @@
         "notice_date": "2026-06-21",
         "stated_job_count": 365,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1270,7 +1270,7 @@
         "notice_date": "2025-07-02",
         "stated_job_count": 59,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1298,7 +1298,7 @@
         "notice_date": "2025-07-09",
         "stated_job_count": 110,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1326,7 +1326,7 @@
         "notice_date": "2025-07-21",
         "stated_job_count": 194,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1354,7 +1354,7 @@
         "notice_date": "2025-07-30",
         "stated_job_count": 2,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1671,7 +1671,7 @@
         "notice_date": "2025-07-31",
         "stated_job_count": 1,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1988,7 +1988,7 @@
         "notice_date": "2025-07-31",
         "stated_job_count": 114,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2016,7 +2016,7 @@
         "notice_date": "2025-08-06",
         "stated_job_count": 4,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2452,7 +2452,7 @@
         "notice_date": "2025-09-03",
         "stated_job_count": 51,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2480,7 +2480,7 @@
         "notice_date": "2025-09-24",
         "stated_job_count": 70,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2508,7 +2508,7 @@
         "notice_date": "2025-09-30",
         "stated_job_count": 82,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2536,7 +2536,7 @@
         "notice_date": "2025-10-02",
         "stated_job_count": 18,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2972,7 +2972,7 @@
         "notice_date": "2025-10-08",
         "stated_job_count": 75,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3000,7 +3000,7 @@
         "notice_date": "2025-10-23",
         "stated_job_count": 31,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3096,7 +3096,7 @@
         "notice_date": "2025-10-29",
         "stated_job_count": 225,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3124,7 +3124,7 @@
         "notice_date": "2025-11-05",
         "stated_job_count": 58,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3152,7 +3152,7 @@
         "notice_date": "2025-11-18",
         "stated_job_count": 180,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [],
         "machine_tier": "none"
       },
@@ -3163,7 +3163,7 @@
         "notice_date": "2025-12-02",
         "stated_job_count": 105,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3191,7 +3191,7 @@
         "notice_date": "2025-12-26",
         "stated_job_count": 110,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3219,7 +3219,7 @@
         "notice_date": "2026-01-20",
         "stated_job_count": 1761,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3264,7 +3264,7 @@
         "notice_date": "2026-01-29",
         "stated_job_count": 148,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3292,7 +3292,7 @@
         "notice_date": "2026-02-04",
         "stated_job_count": 92,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3320,7 +3320,7 @@
         "notice_date": "2026-02-19",
         "stated_job_count": 120,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3348,7 +3348,7 @@
         "notice_date": "2026-03-25",
         "stated_job_count": 56,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3376,7 +3376,7 @@
         "notice_date": "2026-04-02",
         "stated_job_count": 391,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3404,7 +3404,7 @@
         "notice_date": "2026-04-23",
         "stated_job_count": 50,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3432,7 +3432,7 @@
         "notice_date": "2025-07-07",
         "stated_job_count": 70,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3478,7 +3478,7 @@
         "notice_date": "2025-07-29",
         "stated_job_count": 330,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3507,7 +3507,7 @@
         "notice_date": "2025-08-08",
         "stated_job_count": 36,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3536,7 +3536,7 @@
         "notice_date": "2025-08-19",
         "stated_job_count": 58,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3565,7 +3565,7 @@
         "notice_date": "2025-09-04",
         "stated_job_count": 73,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3594,7 +3594,7 @@
         "notice_date": "2025-09-25",
         "stated_job_count": 71,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3760,7 +3760,7 @@
         "notice_date": "2025-10-02",
         "stated_job_count": 174,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3806,7 +3806,7 @@
         "notice_date": "2025-10-10",
         "stated_job_count": 70,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3835,7 +3835,7 @@
         "notice_date": "2025-10-23",
         "stated_job_count": 100,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3864,7 +3864,7 @@
         "notice_date": "2025-11-04",
         "stated_job_count": 500,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3910,7 +3910,7 @@
         "notice_date": "2025-11-18",
         "stated_job_count": 133,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3956,7 +3956,7 @@
         "notice_date": "2025-11-22",
         "stated_job_count": 163,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -3985,7 +3985,7 @@
         "notice_date": "2025-12-22",
         "stated_job_count": 79,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4085,23 +4085,6 @@
         "match_decision": "not_matched",
         "candidates": [
           {
-            "tier": "exact",
-            "tracker_event_id": 108765,
-            "tracker_row_id": 135930,
-            "company_name": "SMBC MANUBANK",
-            "job_count": 1,
-            "row_date": "2026-03-10",
-            "state": "FL",
-            "source_type": "warn",
-            "source_name": "FL WARN notice",
-            "source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026",
-            "flags": [
-              "job_count equals one published component row of this notice",
-              "row date equals this notice's earliest published effective date",
-              "stored name 'SMBC MANUBANK' differs from the published 'SMBC MANUBANK Bradenton 515 South Figueroa Street Los Angeles, CA 90071 BRADENTON, FL, 34207'"
-            ]
-          },
-          {
             "tier": "loose",
             "tracker_event_id": 108766,
             "tracker_row_id": 135931,
@@ -4117,9 +4100,26 @@
               "row date equals this notice's earliest published effective date",
               "stored name 'SMBC MANUBANK' differs from the published 'SMBC MANUBANK Bradenton 515 South Figueroa Street Los Angeles, CA 90071 BRADENTON, FL, 34207'"
             ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 150011,
+            "tracker_row_id": 177278,
+            "company_name": "SMBC Manubank",
+            "job_count": 9,
+            "row_date": "2026-10-09",
+            "state": "FL",
+            "source_type": "warn",
+            "source_name": "FL WARN notice",
+            "source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026",
+            "flags": [
+              "job_count 9 matches neither a component row nor the notice total 1",
+              "row date is 274 day(s) after the notice date",
+              "stored name 'SMBC Manubank' differs from the published 'SMBC MANUBANK Bradenton 515 South Figueroa Street Los Angeles, CA 90071 BRADENTON, FL, 34207'"
+            ]
           }
         ],
-        "machine_tier": "exact"
+        "machine_tier": "loose"
       },
       {
         "id": "warn-fl-2026-01-08-smbc-manubank-marco-island",
@@ -4128,7 +4128,7 @@
         "notice_date": "2026-01-08",
         "stated_job_count": 1,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4163,6 +4163,23 @@
               "row date equals this notice's earliest published effective date",
               "stored name 'SMBC MANUBANK' differs from the published 'SMBC MANUBANK Marco Island 515 South Figueroa Street Los Angeles, CA 90071 MARCO ISLAND, FL, 34145'"
             ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 150011,
+            "tracker_row_id": 177278,
+            "company_name": "SMBC Manubank",
+            "job_count": 9,
+            "row_date": "2026-10-09",
+            "state": "FL",
+            "source_type": "warn",
+            "source_name": "FL WARN notice",
+            "source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026",
+            "flags": [
+              "job_count 9 matches neither a component row nor the notice total 1",
+              "row date is 274 day(s) after the notice date",
+              "stored name 'SMBC Manubank' differs from the published 'SMBC MANUBANK Marco Island 515 South Figueroa Street Los Angeles, CA 90071 MARCO ISLAND, FL, 34145'"
+            ]
           }
         ],
         "machine_tier": "exact"
@@ -4174,7 +4191,7 @@
         "notice_date": "2026-01-16",
         "stated_job_count": 92,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4203,7 +4220,7 @@
         "notice_date": "2026-01-23",
         "stated_job_count": 74,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4249,7 +4266,7 @@
         "notice_date": "2026-02-05",
         "stated_job_count": 102,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4278,7 +4295,7 @@
         "notice_date": "2026-02-13",
         "stated_job_count": 57,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4307,7 +4324,7 @@
         "notice_date": "2026-02-23",
         "stated_job_count": 147,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4336,7 +4353,7 @@
         "notice_date": "2026-03-02",
         "stated_job_count": 58,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4365,7 +4382,7 @@
         "notice_date": "2026-03-27",
         "stated_job_count": 120,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4394,7 +4411,7 @@
         "notice_date": "2026-04-17",
         "stated_job_count": 616,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4458,7 +4475,7 @@
         "notice_date": "2026-04-27",
         "stated_job_count": 84,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4487,7 +4504,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 181,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4585,7 +4602,7 @@
         "notice_date": "2025-07-02",
         "stated_job_count": 150,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4613,7 +4630,7 @@
         "notice_date": "2025-07-24",
         "stated_job_count": 57,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4657,7 +4674,7 @@
         "notice_date": "2025-08-27",
         "stated_job_count": 611,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4685,7 +4702,7 @@
         "notice_date": "2025-09-30",
         "stated_job_count": 88,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4713,7 +4730,7 @@
         "notice_date": "2025-10-07",
         "stated_job_count": 82,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4741,7 +4758,7 @@
         "notice_date": "2025-10-17",
         "stated_job_count": 76,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4769,7 +4786,7 @@
         "notice_date": "2025-10-27",
         "stated_job_count": 108,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4797,7 +4814,7 @@
         "notice_date": "2025-10-30",
         "stated_job_count": 710,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4825,7 +4842,7 @@
         "notice_date": "2025-11-07",
         "stated_job_count": 100,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4853,7 +4870,7 @@
         "notice_date": "2025-11-14",
         "stated_job_count": 132,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4881,7 +4898,7 @@
         "notice_date": "2025-12-03",
         "stated_job_count": 132,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4909,7 +4926,7 @@
         "notice_date": "2025-12-19",
         "stated_job_count": 95,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4937,7 +4954,7 @@
         "notice_date": "2026-01-13",
         "stated_job_count": 80,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4965,7 +4982,7 @@
         "notice_date": "2026-01-26",
         "stated_job_count": 100,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -4993,7 +5010,7 @@
         "notice_date": "2026-01-30",
         "stated_job_count": 209,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5021,7 +5038,7 @@
         "notice_date": "2026-02-03",
         "stated_job_count": 154,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5049,7 +5066,7 @@
         "notice_date": "2026-02-19",
         "stated_job_count": 1,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5077,7 +5094,7 @@
         "notice_date": "2026-03-02",
         "stated_job_count": 54,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5105,7 +5122,7 @@
         "notice_date": "2026-03-04",
         "stated_job_count": 333,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5133,7 +5150,7 @@
         "notice_date": "2026-03-05",
         "stated_job_count": 114,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5161,7 +5178,7 @@
         "notice_date": "2026-03-24",
         "stated_job_count": 85,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5189,7 +5206,7 @@
         "notice_date": "2026-04-10",
         "stated_job_count": 79,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5217,7 +5234,7 @@
         "notice_date": "2026-04-15",
         "stated_job_count": 100,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5245,7 +5262,7 @@
         "notice_date": "2026-04-21",
         "stated_job_count": 210,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5273,7 +5290,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 75,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5303,7 +5320,7 @@
         "notice_date": "2025-07-01",
         "stated_job_count": 1364,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -5432,7 +5449,7 @@
         "notice_date": "2025-07-07",
         "stated_job_count": 584,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -6020,7 +6037,7 @@
         "notice_date": "2025-09-23",
         "stated_job_count": 914,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -6064,7 +6081,7 @@
         "notice_date": "2025-10-02",
         "stated_job_count": 555,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -7628,7 +7645,7 @@
         "notice_date": "2025-10-03",
         "stated_job_count": 638,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -7741,7 +7758,7 @@
         "notice_date": "2025-10-14",
         "stated_job_count": 543,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -7769,7 +7786,7 @@
         "notice_date": "2025-10-20",
         "stated_job_count": 773,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -7797,7 +7814,7 @@
         "notice_date": "2025-10-28",
         "stated_job_count": 673,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -9372,7 +9389,7 @@
         "notice_date": "2025-10-31",
         "stated_job_count": 639,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -10080,7 +10097,7 @@
         "notice_date": "2026-01-28",
         "stated_job_count": 3855,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -10108,7 +10125,7 @@
         "notice_date": "2026-01-29",
         "stated_job_count": 1025,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -11683,7 +11700,7 @@
         "notice_date": "2026-01-30",
         "stated_job_count": 776,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -11762,7 +11779,7 @@
         "notice_date": "2026-04-01",
         "stated_job_count": 702,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -11838,7 +11855,7 @@
         "notice_date": "2026-05-15",
         "stated_job_count": 606,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -11931,7 +11948,7 @@
         "notice_date": "2026-05-18",
         "stated_job_count": 725,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -11959,7 +11976,7 @@
         "notice_date": "2026-05-20",
         "stated_job_count": 910,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12035,7 +12052,7 @@
         "notice_date": "2026-05-22",
         "stated_job_count": 3270,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12175,7 +12192,7 @@
         "notice_date": "2026-05-24",
         "stated_job_count": 650,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12219,7 +12236,7 @@
         "notice_date": "2025-07-21",
         "stated_job_count": 575,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12298,7 +12315,7 @@
         "notice_date": "2025-07-31",
         "stated_job_count": 1213,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12734,7 +12751,7 @@
         "notice_date": "2025-11-25",
         "stated_job_count": 856,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12762,7 +12779,7 @@
         "notice_date": "2025-11-26",
         "stated_job_count": 1761,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12807,7 +12824,7 @@
         "notice_date": "2026-03-04",
         "stated_job_count": 571,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12869,7 +12886,7 @@
         "notice_date": "2026-04-23",
         "stated_job_count": 1903,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12965,7 +12982,7 @@
         "notice_date": "2026-04-27",
         "stated_job_count": 648,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -12993,7 +13010,7 @@
         "notice_date": "2026-05-02",
         "stated_job_count": 515,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13038,7 +13055,7 @@
         "notice_date": "2025-11-18",
         "stated_job_count": 1350,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13118,7 +13135,7 @@
         "notice_date": "2026-04-22",
         "stated_job_count": 653,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13198,7 +13215,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 2529,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13299,23 +13316,6 @@
         "match_decision": "not_matched",
         "candidates": [
           {
-            "tier": "exact",
-            "tracker_event_id": 108090,
-            "tracker_row_id": 135255,
-            "company_name": "Spirit Airlines",
-            "job_count": 796,
-            "row_date": "2026-05-02",
-            "state": "FL",
-            "source_type": "warn",
-            "source_name": "FL WARN notice",
-            "source_url": "https://reactwarn.floridajobs.org/WarnList/Records?year=2026",
-            "flags": [
-              "job_count equals one published component row of this notice",
-              "row date equals this notice's earliest published effective date",
-              "stored name 'Spirit Airlines' differs from the published 'Spirit Airlines MCO Infight & Operations Center (OOC) 10084 Air Tran Blvd Orlando ORLANDO, FL, 32827'"
-            ]
-          },
-          {
             "tier": "loose",
             "tracker_event_id": 108092,
             "tracker_row_id": 135257,
@@ -13385,7 +13385,7 @@
             ]
           }
         ],
-        "machine_tier": "exact"
+        "machine_tier": "loose"
       },
       {
         "id": "warn-fl-2026-05-04-spirit-airlines-orlando-international",
@@ -13394,7 +13394,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 796,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13492,7 +13492,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 551,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13590,7 +13590,7 @@
         "notice_date": "2026-01-27",
         "stated_job_count": 583,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -13617,11 +13617,11 @@
   "summary": {
     "editor_confirmed_overall": {
       "n": 100,
-      "k": 0,
-      "interval": "0/100 = 0.0%  (Wilson 95% CI [0.0%, 3.7%], width 3.7%)",
-      "point": 0.0,
-      "low": 0.0,
-      "high": 0.03699480747600191
+      "k": 99,
+      "interval": "99/100 = 99.0%  (Wilson 95% CI [94.6%, 99.8%], width 5.3%)",
+      "point": 0.99,
+      "low": 0.9455124752390652,
+      "high": 0.9982326134344527
     },
     "machine_upper_bound_any_candidate": {
       "n": 100,
@@ -13633,21 +13633,21 @@
     },
     "machine_exact_tier": {
       "n": 100,
-      "k": 99,
-      "interval": "99/100 = 99.0%  (Wilson 95% CI [94.6%, 99.8%], width 5.3%)",
-      "point": 0.99,
-      "low": 0.9455124752390652,
-      "high": 0.9982326134344527
+      "k": 98,
+      "interval": "98/100 = 98.0%  (Wilson 95% CI [93.0%, 99.4%], width 6.5%)",
+      "point": 0.98,
+      "low": 0.9299868370580063,
+      "high": 0.9944981477650318
     },
     "by_state": {
       "CA": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
+          "k": 25,
+          "interval": "25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%)",
+          "point": 1.0,
+          "low": 0.8668035060468213,
+          "high": 1.0
         },
         "machine_any": {
           "n": 25,
@@ -13669,11 +13669,11 @@
       "TX": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
+          "k": 25,
+          "interval": "25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%)",
+          "point": 1.0,
+          "low": 0.8668035060468213,
+          "high": 1.0
         },
         "machine_any": {
           "n": 25,
@@ -13695,11 +13695,11 @@
       "FL": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
+          "k": 24,
+          "interval": "24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%)",
+          "point": 0.96,
+          "low": 0.8045552759497747,
+          "high": 0.9929039496133008
         },
         "machine_any": {
           "n": 25,
@@ -13711,21 +13711,21 @@
         },
         "machine_exact": {
           "n": 25,
-          "k": 25,
-          "interval": "25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%)",
-          "point": 1.0,
-          "low": 0.8668035060468213,
-          "high": 1.0
+          "k": 24,
+          "interval": "24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%)",
+          "point": 0.96,
+          "low": 0.8045552759497747,
+          "high": 0.9929039496133008
         }
       },
       "TN": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
+          "k": 25,
+          "interval": "25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%)",
+          "point": 1.0,
+          "low": 0.8668035060468213,
+          "high": 1.0
         },
         "machine_any": {
           "n": 25,
@@ -13749,11 +13749,11 @@
       "S": {
         "editor_confirmed": {
           "n": 57,
-          "k": 0,
-          "interval": "0/57 = 0.0%  (Wilson 95% CI [0.0%, 6.3%], width 6.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.06314100878346394
+          "k": 56,
+          "interval": "56/57 = 98.2%  (Wilson 95% CI [90.7%, 99.7%], width 9.0%)",
+          "point": 0.9824561403508771,
+          "low": 0.9070903306173727,
+          "high": 0.9968964152933198
         },
         "machine_any": {
           "n": 57,
@@ -13765,21 +13765,21 @@
         },
         "machine_exact": {
           "n": 57,
-          "k": 57,
-          "interval": "57/57 = 100.0%  (Wilson 95% CI [93.7%, 100.0%], width 6.3%)",
-          "point": 1.0,
-          "low": 0.936858991216536,
-          "high": 0.9999999999999999
+          "k": 56,
+          "interval": "56/57 = 98.2%  (Wilson 95% CI [90.7%, 99.7%], width 9.0%)",
+          "point": 0.9824561403508771,
+          "low": 0.9070903306173727,
+          "high": 0.9968964152933198
         }
       },
       "M": {
         "editor_confirmed": {
           "n": 36,
-          "k": 0,
-          "interval": "0/36 = 0.0%  (Wilson 95% CI [0.0%, 9.6%], width 9.6%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.09642183044857636
+          "k": 36,
+          "interval": "36/36 = 100.0%  (Wilson 95% CI [90.4%, 100.0%], width 9.6%)",
+          "point": 1.0,
+          "low": 0.9035781695514236,
+          "high": 1.0
         },
         "machine_any": {
           "n": 36,
@@ -13801,11 +13801,11 @@
       "L": {
         "editor_confirmed": {
           "n": 7,
-          "k": 0,
-          "interval": "0/7 = 0.0%  (Wilson 95% CI [0.0%, 35.4%], width 35.4%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.35433884297520657
+          "k": 7,
+          "interval": "7/7 = 100.0%  (Wilson 95% CI [64.6%, 100.0%], width 35.4%)",
+          "point": 1.0,
+          "low": 0.6456611570247934,
+          "high": 1.0
         },
         "machine_any": {
           "n": 7,
@@ -13826,12 +13826,22 @@
       }
     },
     "large_event_census": {
-      "n": 33,
-      "k": 33,
-      "interval": "33/33 = 100.0%  (Wilson 95% CI [89.6%, 100.0%], width 10.4%)",
-      "point": 1.0,
-      "low": 0.8957265699643882,
-      "high": 1.0
+      "editor_confirmed": {
+        "n": 33,
+        "k": 32,
+        "interval": "32/33 = 97.0%  (Wilson 95% CI [84.7%, 99.5%], width 14.8%)",
+        "point": 0.9696969696969697,
+        "low": 0.8468093832683193,
+        "high": 0.9946307279103482
+      },
+      "machine_any": {
+        "n": 33,
+        "k": 33,
+        "interval": "33/33 = 100.0%  (Wilson 95% CI [89.6%, 100.0%], width 10.4%)",
+        "point": 1.0,
+        "low": 0.8957265699643882,
+        "high": 1.0
+      }
     },
     "machine_any_volume_weighted": 0.9944
   }

@@ -839,7 +839,15 @@ def summarise(measurement, manifest):
         "machine_upper_bound_any_candidate": _rate(prim, any_cand),
         "machine_exact_tier": _rate(prim, exact),
         "by_state": {}, "by_size_band": {},
-        "large_event_census": _rate(measurement["results"]["large_census"], any_cand),
+        # Same shape as by_state: the census carries its confirmed figure and its
+        # machine bound side by side. Until 2026-08-14 only the machine bound was
+        # recorded, so after adjudication the file reported 33/33 while its own
+        # results list held a rejected event — a confirmed miss invisible in the
+        # summary.
+        "large_event_census": {
+            "editor_confirmed": _rate(measurement["results"]["large_census"], confirmed),
+            "machine_any": _rate(measurement["results"]["large_census"], any_cand),
+        },
     }
     for st in STATES:
         rows = [r for r in prim if r["state"] == st]
@@ -883,6 +891,8 @@ def main(argv=None):
             print(f"    {st}  machine any {s['by_state'][st]['machine_any']['interval']}")
         for band in ("S", "M", "L"):
             print(f"    {band}   machine any {s['by_size_band'][band]['machine_any']['interval']}")
+        print(f"  census (500+, never pooled) editor-confirmed "
+              f"{s['large_event_census']['editor_confirmed']['interval']}")
         return 0
     if "--pack" in argv:
         from warn_adjudication_pack import write_pack

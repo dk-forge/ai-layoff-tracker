@@ -1,0 +1,2266 @@
+{
+  "note": "Append-only ledger of every editor decision on the US WARN reference set, and of every reversal. Written ONLY by railway/warn_adjudicate.py. `manifest_before` is the snapshot --revert restores; do not hand-edit this file, and do not hand-edit match_decision in the manifest -- `--verify` fails on a matched event that has no entry here, and the test suite runs it.",
+  "decisions": [
+    {
+      "entry_id": "warn-ca-2025-07-03-1045-san-diego-lgbt@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-07-03-1045-san-diego-lgbt",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137699 (source warn, CA): count exact \u2014 6, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-06 is a date the state published as effective for this notice; the notice date 2025-07-03 is 65 day(s) earlier.",
+      "tracker_row_ids": [
+        137699
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-07-11-quanex-homeshield@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-07-11-quanex-homeshield",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137666 (source warn, CA): count exact \u2014 15, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-09 is a date the state published as effective for this notice; the notice date 2025-07-11 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        137666
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-08-13-bausch-health@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-08-13-bausch-health",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137919 (source warn, CA): count exact \u2014 49, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-08-13 is a date the state published as effective for this notice; the notice date 2025-08-13 is 0 day(s) earlier.",
+      "tracker_row_ids": [
+        137919
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-08-25-enloe-health@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-08-25-enloe-health",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137166 (source warn, CA): count exact \u2014 78, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-31 is a date the state published as effective for this notice; the notice date 2025-08-25 is 67 day(s) earlier.",
+      "tracker_row_ids": [
+        137166
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-06-sap-america@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-10-06-sap-america",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136946 (source warn, CA): count exact \u2014 82, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-21 is a date the state published as effective for this notice; the notice date 2025-10-06 is 46 day(s) earlier.",
+      "tracker_row_ids": [
+        136946
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-20-centene-management@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-10-20-centene-management",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136710 (source warn, CA): count exact \u2014 5, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-19 is a date the state published as effective for this notice; the notice date 2025-10-20 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        136710
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-30-educational-testing-service@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-10-30-educational-testing-service",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136584 (source warn, CA): count exact \u2014 757, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-31 is a date the state published as effective for this notice; the notice date 2025-10-30 is 62 day(s) earlier.",
+      "tracker_row_ids": [
+        136584
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-12-01-terzo-enterprises-incorporated@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-12-01-terzo-enterprises-incorporated",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136246 (source warn, CA): count exact \u2014 58, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-30 is a date the state published as effective for this notice; the notice date 2025-12-01 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        136246
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-01-23-autodesk@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-01-23-autodesk",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135682 (source warn, CA): count exact \u2014 104, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-01 is a date the state published as effective for this notice; the notice date 2026-01-23 is 68 day(s) earlier.",
+      "tracker_row_ids": [
+        135682
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-02-03-first-brands@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-02-03-first-brands",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135649 (source warn, CA): count exact \u2014 98, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-04 is a date the state published as effective for this notice; the notice date 2026-02-03 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        135649
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-02-20-raley-s@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-02-20-raley-s",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135393 (source warn, CA): count exact \u2014 43, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-28 is a date the state published as effective for this notice; the notice date 2026-02-20 is 67 day(s) earlier.",
+      "tracker_row_ids": [
+        135393
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-03-25-mag-brand@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-03-25-mag-brand",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134246 (source warn, CA): count exact \u2014 53, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-08-01 is a date the state published as effective for this notice; the notice date 2026-03-25 is 129 day(s) earlier.",
+      "tracker_row_ids": [
+        134246
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-04-17-ymca-juan-pacifico-ontiveros@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-04-17-ymca-juan-pacifico-ontiveros",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134867 (source warn, CA): count exact \u2014 10, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-09 is a date the state published as effective for this notice; the notice date 2026-04-17 is 53 day(s) earlier.",
+      "tracker_row_ids": [
+        134867
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-29-tricor-industrial-dba-astrolite@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-05-29-tricor-industrial-dba-astrolite",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134264 (source warn, CA): count exact \u2014 6, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-07-31 is a date the state published as effective for this notice; the notice date 2026-05-29 is 63 day(s) earlier.",
+      "tracker_row_ids": [
+        134264
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-07-02-bluecross-blueshield-of-tennessee@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-07-02-bluecross-blueshield-of-tennessee",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137751 (source warn, TN): count exact \u2014 150, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-01 is a date the state published as effective for this notice; the notice date 2025-07-02 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        137751
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-08-27-fedex-supply-chain@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-08-27-fedex-supply-chain",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137315 (source warn, TN): count exact \u2014 611, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-11 is a date the state published as effective for this notice; the notice date 2025-08-27 is 45 day(s) earlier.",
+      "tracker_row_ids": [
+        137315
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-09-30-doubletree-by-memphis@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-09-30-doubletree-by-memphis",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136884 (source warn, TN): count exact \u2014 88, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-30 is a date the state published as effective for this notice; the notice date 2025-09-30 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        136884
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-10-07-op-mobility@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-10-07-op-mobility",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136950 (source warn, TN): count exact \u2014 82, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-21 is a date the state published as effective for this notice; the notice date 2025-10-07 is 45 day(s) earlier.",
+      "tracker_row_ids": [
+        136950
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-10-17-crescent-park@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-10-17-crescent-park",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136715 (source warn, TN): count exact \u2014 76, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-19 is a date the state published as effective for this notice; the notice date 2025-10-17 is 63 day(s) earlier.",
+      "tracker_row_ids": [
+        136715
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-10-27-hd-supply@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-10-27-hd-supply",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136439 (source warn, TN): count exact \u2014 108, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-09 is a date the state published as effective for this notice; the notice date 2025-10-27 is 74 day(s) earlier.",
+      "tracker_row_ids": [
+        136439
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-10-30-gm@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-10-30-gm",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136470 (source warn, TN): count exact \u2014 710, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-05 is a date the state published as effective for this notice; the notice date 2025-10-30 is 67 day(s) earlier.",
+      "tracker_row_ids": [
+        136470
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-11-07-creative-dining-services@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-11-07-creative-dining-services",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136769 (source warn, TN): count exact \u2014 100, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-13 is a date the state published as effective for this notice; the notice date 2025-11-07 is 36 day(s) earlier.",
+      "tracker_row_ids": [
+        136769
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-11-14-edgewell-personal-care@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-11-14-edgewell-personal-care",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134968 (source warn, TN): count exact \u2014 132, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-01 is a date the state published as effective for this notice; the notice date 2025-11-14 is 199 day(s) earlier.",
+      "tracker_row_ids": [
+        134968
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-12-03-kroger-fulfillment-network@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-12-03-kroger-fulfillment-network",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136213 (source warn, TN): count exact \u2014 132, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-12-03 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        136213
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-12-19-archer-daniels-midland@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-12-19-archer-daniels-midland",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136254 (source warn, TN): count exact \u2014 95, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-30 is a date the state published as effective for this notice; the notice date 2025-12-19 is 42 day(s) earlier.",
+      "tracker_row_ids": [
+        136254
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-01-13-linamar-shelbyville@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-01-13-linamar-shelbyville",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136415 (source warn, TN): count exact \u2014 80, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-01-13 is the notice date; the state published effective (none).",
+      "tracker_row_ids": [
+        136415
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-01-26-smoky-mountain-logistics@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-01-26-smoky-mountain-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136338 (source warn, TN): count exact \u2014 100, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-01-26 is the notice date; the state published effective 2026-03-24.",
+      "tracker_row_ids": [
+        136338
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-01-30-dlh-solutions@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-01-30-dlh-solutions",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135751 (source warn, TN): count exact \u2014 209, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-31 is a date the state published as effective for this notice; the notice date 2026-01-30 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        135751
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-02-03-premiere-building-maintenance@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-02-03-premiere-building-maintenance",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135752 (source warn, TN): count exact \u2014 154, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-31 is a date the state published as effective for this notice; the notice date 2026-02-03 is 56 day(s) earlier.",
+      "tracker_row_ids": [
+        135752
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-02-19-liberty-dental-plan@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-02-19-liberty-dental-plan",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135635 (source warn, TN): count exact \u2014 1, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-06 is a date the state published as effective for this notice; the notice date 2026-02-19 is 46 day(s) earlier.",
+      "tracker_row_ids": [
+        135635
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-03-02-mckay-books@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-03-02-mckay-books",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136015 (source warn, TN): count exact \u2014 54, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-03-02 is the notice date; the state published effective 2026-05-03.",
+      "tracker_row_ids": [
+        136015
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-03-04-first-brands@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-03-04-first-brands",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136003 (source warn, TN): count exact \u2014 333, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-03-04 is the notice date; the state published effective 2026-04-30.",
+      "tracker_row_ids": [
+        136003
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-03-05-ikea-memphis@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-03-05-ikea-memphis",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135997 (source warn, TN): count exact \u2014 114, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-03-05 is the notice date; the state published effective (none).",
+      "tracker_row_ids": [
+        135997
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-03-24-blount-memorial-hospital@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-03-24-blount-memorial-hospital",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135814 (source warn, TN): count exact \u2014 85, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-03-24 is the notice date; the state published effective 2026-05-01.",
+      "tracker_row_ids": [
+        135814
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-04-10-durham-school-services@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-04-10-durham-school-services",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135592 (source warn, TN): count exact \u2014 79, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-04-10 is the notice date; the state published effective 2026-06-06.",
+      "tracker_row_ids": [
+        135592
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-04-15-pave-it-forward-logistics@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-04-15-pave-it-forward-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135536 (source warn, TN): count exact \u2014 100, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-04-15 is the notice date; the state published effective 2026-03-31.",
+      "tracker_row_ids": [
+        135536
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-04-21-adient@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-04-21-adient",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135470 (source warn, TN): count exact \u2014 210, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-04-21 is the notice date; the state published effective 2026-06-30.",
+      "tracker_row_ids": [
+        135470
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-05-04-fayette-county-public-schools@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2026-05-04-fayette-county-public-schools",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135237 (source warn, TN): count exact \u2014 75, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-05-04 is the notice date; the state published effective 2026-06-30.",
+      "tracker_row_ids": [
+        135237
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-02-international-business-machines-coppell@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-07-02-international-business-machines-coppell",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137811 (source warn, TX): count exact \u2014 59, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-08-29 is a date the state published as effective for this notice; the notice date 2025-07-02 is 58 day(s) earlier.",
+      "tracker_row_ids": [
+        137811
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-09-intel@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-07-09-intel",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 138170 (source warn, TX): count exact \u2014 110, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-07-15 is a date the state published as effective for this notice; the notice date 2025-07-09 is 6 day(s) earlier.",
+      "tracker_row_ids": [
+        138170
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-21-sm-cargo@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-07-21-sm-cargo",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137593 (source warn, TX): count exact \u2014 194, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-21 is a date the state published as effective for this notice; the notice date 2025-07-21 is 62 day(s) earlier.",
+      "tracker_row_ids": [
+        137593
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-31-planned-parenthood-gulf-coast@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-07-31-planned-parenthood-gulf-coast",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137495 (source warn, TX): count exact \u2014 114, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-30 is a date the state published as effective for this notice; the notice date 2025-07-31 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        137495
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-09-03-condair-operations@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-09-03-condair-operations",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137117 (source warn, TX): count exact \u2014 51, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-03 is a date the state published as effective for this notice; the notice date 2025-09-03 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        137117
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-09-24-cottonwood-creek-healthcare-community@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-09-24-cottonwood-creek-healthcare-community",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136854 (source warn, TX): count exact \u2014 70, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-01 is a date the state published as effective for this notice; the notice date 2025-09-24 is 68 day(s) earlier.",
+      "tracker_row_ids": [
+        136854
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-09-30-holiday-inn-club-vacations@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-09-30-holiday-inn-club-vacations",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136909 (source warn, TX): count exact \u2014 82, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-28 is a date the state published as effective for this notice; the notice date 2025-09-30 is 59 day(s) earlier.",
+      "tracker_row_ids": [
+        136909
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-10-08-meadow-burke-d-b@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-10-08-meadow-burke-d-b",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136835 (source warn, TX): count exact \u2014 75, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-02 is a date the state published as effective for this notice; the notice date 2025-10-08 is 55 day(s) earlier.",
+      "tracker_row_ids": [
+        136835
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-10-29-wells-fargo@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-10-29-wells-fargo",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137220 (source warn, TX): count exact \u2014 225, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-28 is a date the state published as effective for this notice; the notice date 2025-10-29 is 1 day(s) later.",
+      "tracker_row_ids": [
+        137220
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-11-05-apogee-architectural-metals@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-11-05-apogee-architectural-metals",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136482 (source warn, TX): count exact \u2014 58, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-03 is a date the state published as effective for this notice; the notice date 2025-11-05 is 59 day(s) earlier.",
+      "tracker_row_ids": [
+        136482
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-12-02-yang-ming-america-updated@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-12-02-yang-ming-america-updated",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136887 (source warn, TX): count exact \u2014 105, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-30 is a date the state published as effective for this notice; the notice date 2025-12-02 is 2 day(s) later.",
+      "tracker_row_ids": [
+        136887
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-12-26-telvista@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-12-26-telvista",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136034 (source warn, TX): count exact \u2014 110, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-28 is a date the state published as effective for this notice; the notice date 2025-12-26 is 64 day(s) earlier.",
+      "tracker_row_ids": [
+        136034
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-01-29-compass-connections@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2026-01-29-compass-connections",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135789 (source warn, TX): count exact \u2014 148, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-29 is a date the state published as effective for this notice; the notice date 2026-01-29 is 59 day(s) earlier.",
+      "tracker_row_ids": [
+        135789
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-02-04-hgs-solutions@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2026-02-04-hgs-solutions",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135758 (source warn, TX): count exact \u2014 92, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-31 is a date the state published as effective for this notice; the notice date 2026-02-04 is 55 day(s) earlier.",
+      "tracker_row_ids": [
+        135758
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-02-19-stockyards-hotel-and-h3@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2026-02-19-stockyards-hotel-and-h3",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135636 (source warn, TX): count exact \u2014 120, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-06 is a date the state published as effective for this notice; the notice date 2026-02-19 is 46 day(s) earlier.",
+      "tracker_row_ids": [
+        135636
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-03-25-albertsons-4286@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2026-03-25-albertsons-4286",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135435 (source warn, TX): count exact \u2014 56, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-25 is a date the state published as effective for this notice; the notice date 2026-03-25 is 31 day(s) earlier.",
+      "tracker_row_ids": [
+        135435
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-04-02-dsv-contract-logistics@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2026-04-02-dsv-contract-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135326 (source warn, TX): count exact \u2014 391, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-30 is a date the state published as effective for this notice; the notice date 2026-04-02 is 28 day(s) earlier.",
+      "tracker_row_ids": [
+        135326
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-04-23-national-safety-apparel@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2026-04-23-national-safety-apparel",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134623 (source warn, TX): count exact \u2014 50, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-30 is a date the state published as effective for this notice; the notice date 2026-04-23 is 68 day(s) earlier.",
+      "tracker_row_ids": [
+        134623
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-07-28-decra-roofing-systems@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-07-28-decra-roofing-systems",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137464 (source warn, CA): count exact \u2014 57 is one of the 2 rows the state published under this notice (total 61). Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-30 is a date the state published as effective for this notice; the notice date 2025-07-28 is 64 day(s) earlier.",
+      "tracker_row_ids": [
+        137464
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-09-24-palo-verde-healthcare-district@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-09-24-palo-verde-healthcare-district",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136935 (source warn, CA): count exact \u2014 94, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-23 is a date the state published as effective for this notice; the notice date 2025-09-24 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        136935
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-11-13-mattel@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-11-13-mattel",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136421 (source warn, CA): count exact \u2014 89, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-12 is a date the state published as effective for this notice; the notice date 2025-11-13 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        136421
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-01-05-wabash-national@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-01-05-wabash-national",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135967 (source warn, CA): count exact \u2014 94 is one of the 2 rows the state published under this notice (total 100). Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-06 is a date the state published as effective for this notice; the notice date 2026-01-05 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        135967
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-04-28-geodis@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-04-28-geodis",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134477 (source warn, CA): count exact \u2014 238, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-07-03 is a date the state published as effective for this notice; the notice date 2026-04-28 is 66 day(s) earlier.",
+      "tracker_row_ids": [
+        134477
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2025-07-24-geodis-logistics@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tn-2025-07-24-geodis-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137485 (source warn, TN): count exact \u2014 57, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-30 is a date the state published as effective for this notice; the notice date 2025-07-24 is 68 day(s) earlier.",
+      "tracker_row_ids": [
+        137485
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-09-04-essendant@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2025-09-04-essendant",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136567 (source warn, CA): count exact \u2014 146, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-31 is a date the state published as effective for this notice; the notice date 2025-09-04 is 118 day(s) earlier.",
+      "tracker_row_ids": [
+        136567
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-04-07-wellpath-and-cfmg@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-04-07-wellpath-and-cfmg",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134538 (source warn, CA): count exact \u2014 50 is one of the 3 rows the state published under this notice (total 89). Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-30 is a date the state published as effective for this notice; the notice date 2026-04-07 is 84 day(s) earlier. Employer name: we store the employer as 'Wellpath and CFMG - Placer Jail - Auburn'; the state publishes it as 'Wellpath and CFMG - South Placer Jail' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        134538
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-10-23-job1@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-tx-2025-10-23-job1",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136986 (source warn, TX): count exact \u2014 31, the sum the state published across 2 rows. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-15 is a date the state published as effective for this notice; the notice date 2025-10-23 is 23 day(s) earlier. Employer name: we store the employer as 'Job1 USA (Arlington)'; the state publishes it as 'Job1 USA (San Antonio)' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136986
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-06-21-vine-hospitality@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-06-21-vine-hospitality",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134723 (source warn, CA): count exact \u2014 73 is one of the 8 rows the state published under this notice (total 365). Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-23 is a date the state published as effective for this notice; the notice date 2026-06-21 is 2 day(s) earlier. Employer name: we store the employer as 'Vine Hospitality (La Rive Gauche San Jose, LLC)'; the state publishes it as 'Vine Hospitality (LB Steak Bishop Ranch, LP)' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        134723
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-13-boys-girls-club-at@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-ca-2026-05-13-boys-girls-club-at",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 134852 (source warn, CA): count exact \u2014 2, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-10 is a date the state published as effective for this notice; the notice date 2026-05-13 is 28 day(s) earlier.",
+      "tracker_row_ids": [
+        134852
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-07-29-carroll-fulmer-logistics@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-07-29-carroll-fulmer-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137541 (source warn, FL): count exact \u2014 330, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-27 is a date the state published as effective for this notice; the notice date 2025-07-29 is 60 day(s) earlier. Employer name: we store the employer as 'Carroll Fulmer Logistics Corporation'; the state publishes it as 'Carroll Fulmer Logistics Corporation 8340 American Way GROVELAND, FL, 34736' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        137541
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-08-08-pasa-services-d-b@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-08-08-pasa-services-d-b",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137329 (source warn, FL): count exact \u2014 36, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-09 is a date the state published as effective for this notice; the notice date 2025-08-08 is 62 day(s) earlier. Employer name: we store the employer as 'Pasa Services, Inc. d/b/a Flamingo Graphics'; the state publishes it as 'Pasa Services, Inc. d/b/a Flamingo Graphics 13015 NW 38th Avenue OPA LOCKA, FL, 33054' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        137329
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-08-19-tata-consultancy-services@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-08-19-tata-consultancy-services",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137279 (source warn, FL): count exact \u2014 58, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-18 is a date the state published as effective for this notice; the notice date 2025-08-19 is 60 day(s) earlier. Employer name: we store the employer as 'Tata Consultancy Services, Ltd'; the state publishes it as 'Tata Consultancy Services, Ltd 550 Water Street JACKSONVILLE, FL, 32202' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        137279
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-09-04-essendant@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-09-04-essendant",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136616 (source warn, FL): count exact \u2014 73, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-31 is a date the state published as effective for this notice; the notice date 2025-09-04 is 118 day(s) earlier. Employer name: we store the employer as 'Essendant'; the state publishes it as 'Essendant 2405 Commerce Park Dr ORLANDO, FL, 32819' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136616
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-10-10-reworld-projects@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-10-10-reworld-projects",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136617 (source warn, FL): count exact \u2014 70, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-31 is a date the state published as effective for this notice; the notice date 2025-10-10 is 82 day(s) earlier. Employer name: we store the employer as 'Reworld Projects, LLC'; the state publishes it as 'Reworld Projects, LLC 3001 110th Ave. N SAINT PETERSBURG, FL, 33716' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136617
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-10-23-eulen-aviation@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-10-23-eulen-aviation",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136804 (source warn, FL): count exact \u2014 100, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-06 is a date the state published as effective for this notice; the notice date 2025-10-23 is 44 day(s) earlier. Employer name: we store the employer as 'Eulen Aviation'; the state publishes it as 'Eulen Aviation 2100 NW 42nd Ave MIAMI, FL, 33142' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136804
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-11-22-sodexo-and-affiliates-miami@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-11-22-sodexo-and-affiliates-miami",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136035 (source warn, FL): count exact \u2014 163, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-28 is a date the state published as effective for this notice; the notice date 2025-11-22 is 98 day(s) earlier. Employer name: we store the employer as 'Sodexo, Inc and Affiliates'; the state publishes it as 'Sodexo, Inc and Affiliates Miami Jewish Health 5200 NE 2nd Ave MIAMI, FL, 33137' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136035
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-01-16-host-international@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-01-16-host-international",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136261 (source warn, FL): count exact \u2014 92, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-30 is a date the state published as effective for this notice; the notice date 2026-01-16 is 14 day(s) earlier. Employer name: we store the employer as 'Host International, Inc.'; the state publishes it as 'Host International, Inc. 1 Jeff Fuqua Blvd ORLANDO, FL, 32827' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136261
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-02-05-liberty-dental-plan@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-02-05-liberty-dental-plan",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135638 (source warn, FL): count exact \u2014 102, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-06 is a date the state published as effective for this notice; the notice date 2026-02-05 is 60 day(s) earlier. Employer name: we store the employer as 'Liberty Dental Plan Corporation'; the state publishes it as 'Liberty Dental Plan Corporation 3109 W. Dr. Martin Luther King Jr. Blvd Suite 100 TAMPA, FL, 33607' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135638
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-02-13-ttec@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-02-13-ttec",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135555 (source warn, FL): count exact \u2014 57, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-14 is a date the state published as effective for this notice; the notice date 2026-02-13 is 60 day(s) earlier. Employer name: we store the employer as 'TTEC'; the state publishes it as 'TTEC 7195 34th Street South, SAINT PETERSBURG, FL, 33711' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135555
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-02-23-parsec@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-02-23-parsec",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135288 (source warn, FL): count exact \u2014 147, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-01 is a date the state published as effective for this notice; the notice date 2026-02-23 is 67 day(s) earlier. Employer name: we store the employer as 'Parsec, LLC'; the state publishes it as 'Parsec, LLC 6098 Soutel Drive JACKSONVILLE, FL, 32219' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135288
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-03-02-trulieve@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-03-02-trulieve",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135290 (source warn, FL): count exact \u2014 58, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-01 is a date the state published as effective for this notice; the notice date 2026-03-02 is 60 day(s) earlier. Employer name: we store the employer as 'Trulieve, Inc.'; the state publishes it as 'Trulieve, Inc. 13773 Icot Blvd Bldg. 5 CLEAR WATER, FL, 33760' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135290
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-03-27-hcl-america@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-03-27-hcl-america",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135073 (source warn, FL): count exact \u2014 120, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-26 is a date the state published as effective for this notice; the notice date 2026-03-27 is 60 day(s) earlier. Employer name: we store the employer as 'HCL America, Inc'; the state publishes it as 'HCL America, Inc 9002 San Marco Court ORLANDO, FL, 32819' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135073
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-04-27-msgr-bryan-walsh-children@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2026-04-27-msgr-bryan-walsh-children",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 135002 (source warn, FL): count exact \u2014 84, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-31 is a date the state published as effective for this notice; the notice date 2026-04-27 is 34 day(s) earlier. Employer name: we store the employer as 'Msgr. Bryan Walsh Children?s Village'; the state publishes it as 'Msgr. Bryan Walsh Children\u2019s Village 9525 Sterling Drive MIAMI, FL, 33157' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135002
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-07-07-qb-intermediate-quality-built@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-07-07-qb-intermediate-quality-built",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 138283 (source warn, FL): count exact \u2014 50 is one of the 2 rows the state published under this notice (total 70). Dates: agree on the EFFECTIVE basis \u2014 our 2025-07-03 is a date the state published as effective for this notice; the notice date 2025-07-07 is 4 day(s) later. Employer name: we store the employer as 'QB Intermediate Holdings, LLC, Quality Built, LLC, Foresite Technology Solutions, LLC (f/k/a QB Technology Co., LLC), SMC Systems LLC (d/b/a SkyeTec), SkyeTec Engineering Services, LLC, and DuctTesters, Inc.'; the state publishes it as 'QB Intermediate Holdings, LLC, Quality Built, LLC, Foresite Technology Solutions, LLC (f/k/a QB Technology Co., LLC), SMC Systems LLC (d/b/a SkyeTec), SkyeTec Engineering Services, LLC, and DuctTesters, Inc. 9570 Regency Square Blvd Suite 410 JACKSONVILLE, FL, 32225' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        138283
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-10-02-id-logistics@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-10-02-id-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 136751 (source warn, FL): count exact \u2014 119 is one of the 2 rows the state published under this notice (total 174). Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-14 is a date the state published as effective for this notice; the notice date 2025-10-02 is 73 day(s) earlier. Employer name: we store the employer as 'ID Logistics'; the state publishes it as 'ID Logistics 2007 Gandy Blvd. N SAINT PETERSBURG, FL, 33702' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136751
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-11-04-frito-lay@2026-08-14T19:34:55Z",
+      "reference_row_id": "warn-fl-2025-11-04-frito-lay",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:55Z",
+      "reason": "Row 137101 (source warn, FL): count exact \u2014 454 is one of the 2 rows the state published under this notice (total 500). Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-04 is a date the state published as effective for this notice; the notice date 2025-11-04 is 0 day(s) earlier. Employer name: we store the employer as 'Frito-Lay, Inc'; the state publishes it as 'Frito-Lay, Inc 2000 Parks Oaks Avenue ORLANDO, FL, 32808' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        137101
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-11-18-hudson@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2025-11-18-hudson",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136359 (source warn, FL): count exact \u2014 133, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-23 is a date the state published as effective for this notice; the notice date 2025-11-18 is 66 day(s) earlier. Employer name: we store the employer as 'Hudson'; the state publishes it as 'Hudson 1 Jeff Fuqua Blvd ORLANDO, FL, 32827' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136359
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-01-23-saks@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-01-23-saks",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135803 (source warn, FL): count exact \u2014 74, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-27 is a date the state published as effective for this notice; the notice date 2026-01-23 is 63 day(s) earlier. Employer name: we store the employer as 'Saks & Company LLC'; the state publishes it as 'Saks & Company LLC 2784 Executive Way MIRAMAR, FL, 33025' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        135803
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-04-17-amazon@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-04-17-amazon",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134509 (source warn, FL): count exact \u2014 616, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-07-02 is a date the state published as effective for this notice; the notice date 2026-04-17 is 76 day(s) earlier. Employer name: we store the employer as 'Amazon'; the state publishes it as 'Amazon 27505 SW 132 Ave TMB8 HOMESTEAD, FL, 33032' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        134509
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-12-22-railcrew-xpress@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2025-12-22-railcrew-xpress",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136054 (source warn, FL): count exact \u2014 34 is one of the 5 rows the state published under this notice (total 79). Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-27 is a date the state published as effective for this notice; the notice date 2025-12-22 is 67 day(s) earlier. Employer name: we store the employer as 'Railcrew Xpress'; the state publishes it as 'Railcrew Xpress 1718-1 North McDuff Avenue JACKSONVILLE, FL, 32254' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136054
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-09-25-spirit-airlines-miami-international@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2025-09-25-spirit-airlines-miami-international",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136856 (source warn, FL): count exact \u2014 71, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-01 is a date the state published as effective for this notice; the notice date 2025-09-25 is 67 day(s) earlier. Employer name: we store the employer as 'Spirit Airlines'; the state publishes it as 'Spirit Airlines Miami International Airport located at 4200 NW 42nd Avenue MIAMI, FL, 33142' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136856
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-28-amazon-sfo12@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-28-amazon-sfo12",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136306 (source warn, CA): count exact \u2014 18, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-26 is a date the state published as effective for this notice; the notice date 2025-10-28 is 90 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-ca-2025-10-02-amazon, warn-ca-2025-10-28-amazon, warn-ca-2026-01-29-amazon; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        136306
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-03-06-kbr-services@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-03-06-kbr-services",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135210 (source warn, CA): count exact \u2014 758, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-06 is a date the state published as effective for this notice; the notice date 2026-03-06 is 61 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-ca-2026-05-24-kbr-services; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        135210
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-01-08-smbc-manubank-bradenton@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-01-08-smbc-manubank-bradenton",
+      "decision": "reject",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "The only exact candidate, row 135930 (SMBC MANUBANK, FL, 1 job, effective 2026-03-10, source warn), is a single stored row whose dedup hash (company+count+date+state) collapses the state's several identical one-worker SMBC MANUBANK filings of 2026-01-08 into one row (its stored excerpt names Bonita Springs, a third site). That row is claimed by warn-fl-2026-01-08-smbc-manubank-marco-island, the sibling notice appearing first in Florida's own list, and one stored row may not count for two reference events. This notice therefore has no distinct stored row: a miss caused by dedup-hash collapse of identical sibling notices, not a collector failure.",
+      "tracker_row_ids": [
+        135930
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-01-08-smbc-manubank-marco-island@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-01-08-smbc-manubank-marco-island",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135930 (source warn, FL): count exact \u2014 1, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-10 is a date the state published as effective for this notice; the notice date 2026-01-08 is 61 day(s) earlier. Employer name: we store the employer as 'SMBC MANUBANK'; the state publishes it as 'SMBC MANUBANK Marco Island 515 South Figueroa Street Los Angeles, CA 90071 MARCO ISLAND, FL, 34145' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). The stored row is the dedup-collapsed record of the state's identical one-worker SMBC MANUBANK filings of that day; it is claimed once, here, for the notice appearing first in Florida's own list, and the sibling Bradenton notice is recorded as the resulting miss.",
+      "tracker_row_ids": [
+        135930
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-01-20-tyson-foods-amarillo-b@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2026-01-20-tyson-foods-amarillo-b",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136079 (source warn, TX): count exact \u2014 1,761, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-24 is a date the state published as effective for this notice; the notice date 2026-01-20 is 35 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-tx-2025-11-26-tyson-foods-amarillo-b; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        136079
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-05-04-spirit-airlines-miami-international@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-05-04-spirit-airlines-miami-international",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135256 (source warn, FL): count exact \u2014 181, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-05-04 is 2 day(s) later. Employer name: we store the employer as 'Spirit Airlines'; the state publishes it as 'Spirit Airlines Miami International Airport (MIA) 2100 NW 42nd Ave, Miami MIAMI, FL, 33142' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). This row also falls inside the match window of sibling notice(s) warn-fl-2025-09-25-spirit-airlines-miami-international, warn-fl-2026-05-04-spirit-airlines-fort-lauderdale, warn-fl-2026-05-04-spirit-airlines-mco-infight, warn-fl-2026-05-04-spirit-airlines-orlando-international, warn-fl-2026-05-04-spirit-airlines-spirit-support; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        135256
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-30-equus-workforce-solutions-stephenville@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-07-30-equus-workforce-solutions-stephenville",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137507 (source warn, TX): count exact \u2014 2, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-30 is a date the state published as effective for this notice; the notice date 2025-07-30 is 62 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-tx-2025-07-31-equus-workforce-solutions-camp; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        137507
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-31-equus-workforce-solutions-camp@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-07-31-equus-workforce-solutions-camp",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137504 (source warn, TX): count exact \u2014 1, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-30 is a date the state published as effective for this notice; the notice date 2025-07-31 is 61 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-tx-2025-07-30-equus-workforce-solutions-stephenville; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        137504
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-08-06-southwest-key-programs-la@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-08-06-southwest-key-programs-la",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137370 (source warn, TX): count exact \u2014 4, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-05 is a date the state published as effective for this notice; the notice date 2025-08-06 is 60 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-10-02-southwest-key-programs-casa; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        137370
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-10-02-southwest-key-programs-casa@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-10-02-southwest-key-programs-casa",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137088 (source warn, TX): count exact \u2014 8 is one of the 6 rows the state published under this notice (total 18). Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-05 is a date the state published as effective for this notice; the notice date 2025-10-02 is 34 day(s) earlier. Employer name: we store the employer as 'Southwest Key Programs-Casa Nueva Esperanza'; the state publishes it as 'Southwest Key Programs-Casa Canutillo' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). This row also falls inside the match window of sibling notice(s) warn-tx-2025-07-31-southwest-key-programs, warn-tx-2025-08-06-southwest-key-programs-la; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        137088
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-14-jet-propulsion-laboratory@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-14-jet-propulsion-laboratory",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136767 (source warn, CA): count exact \u2014 543, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-13 is a date the state published as effective for this notice; the notice date 2025-10-14 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        136767
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-20-ojai-valley-inn@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-20-ojai-valley-inn",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136478 (source warn, CA): count exact \u2014 773, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-04 is a date the state published as effective for this notice; the notice date 2025-10-20 is 76 day(s) earlier.",
+      "tracker_row_ids": [
+        136478
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-18-teamone@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-05-18-teamone",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134797 (source warn, CA): count exact \u2014 725, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-13 is a date the state published as effective for this notice; the notice date 2026-05-18 is 26 day(s) earlier.",
+      "tracker_row_ids": [
+        134797
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tn-2026-01-27-nike-retail-services@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tn-2026-01-27-nike-retail-services",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136293 (source warn, TN): count exact \u2014 583, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-01-27 is the notice date; the state published effective 2026-04-03.",
+      "tracker_row_ids": [
+        136293
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-11-25-fedex-supply-chain-logistics@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-11-25-fedex-supply-chain-logistics",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136269 (source warn, TX): count exact \u2014 856, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-29 is a date the state published as effective for this notice; the notice date 2025-11-25 is 65 day(s) earlier.",
+      "tracker_row_ids": [
+        136269
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-04-27-laurel-ridge-treatment-center@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2026-04-27-laurel-ridge-treatment-center",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134698 (source warn, TX): count exact \u2014 648, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-26 is a date the state published as effective for this notice; the notice date 2026-04-27 is 60 day(s) earlier.",
+      "tracker_row_ids": [
+        134698
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-09-23-dreyer-s-grand-ice@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-09-23-dreyer-s-grand-ice",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136937 (source warn, CA): count exact \u2014 726 is one of the 2 rows the state published under this notice (total 914). Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-23 is a date the state published as effective for this notice; the notice date 2025-09-23 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        136937
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-05-02-spirit-airlines-iah-may@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2026-05-02-spirit-airlines-iah-may",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135253 (source warn, TX): count exact \u2014 515, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-05-02 is 0 day(s) earlier.",
+      "tracker_row_ids": [
+        135253
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-03-04-first-brands@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2026-03-04-first-brands",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135329 (source warn, TX): count exact \u2014 345 is one of the 3 rows the state published under this notice (total 571). Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-30 is a date the state published as effective for this notice; the notice date 2026-03-04 is 57 day(s) earlier.",
+      "tracker_row_ids": [
+        135329
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-01-30-del-monte-foods-ii@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-01-30-del-monte-foods-ii",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135621 (source warn, CA): count exact \u2014 765 is one of the 2 rows the state published under this notice (total 776). Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-07 is a date the state published as effective for this notice; the notice date 2026-01-30 is 67 day(s) earlier.",
+      "tracker_row_ids": [
+        135621
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-04-01-oracle-america@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-04-01-oracle-america",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134961 (source warn, CA): count exact \u2014 310 is one of the 4 rows the state published under this notice (total 702). Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-01 is a date the state published as effective for this notice; the notice date 2026-04-01 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        134961
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-20-intuit@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-05-20-intuit",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134255 (source warn, CA): count exact \u2014 493 is one of the 4 rows the state published under this notice (total 910). Dates: agree on the EFFECTIVE basis \u2014 our 2026-07-31 is a date the state published as effective for this notice; the notice date 2026-05-20 is 72 day(s) earlier.",
+      "tracker_row_ids": [
+        134255
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-21-chevron@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-07-21-chevron",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137555 (source warn, TX): count exact \u2014 575, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-26 is a date the state published as effective for this notice; the notice date 2025-07-21 is 67 day(s) earlier.",
+      "tracker_row_ids": [
+        137555
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-15-linkedin@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-05-15-linkedin",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134428 (source warn, CA): count exact \u2014 352 is one of the 5 rows the state published under this notice (total 606). Dates: agree on the EFFECTIVE basis \u2014 our 2026-07-13 is a date the state published as effective for this notice; the notice date 2026-05-15 is 59 day(s) earlier.",
+      "tracker_row_ids": [
+        134428
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2026-04-23-republic-national-distributing-reyes@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2026-04-23-republic-national-distributing-reyes",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134747 (source warn, TX): count exact \u2014 689 is one of the 5 rows the state published under this notice (total 1,903). Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-21 is a date the state published as effective for this notice; the notice date 2026-04-23 is 59 day(s) earlier. Employer name: we store the employer as 'Republic National Distributing Company, LLC (Reyes Holdings, L.L.C) Grand Prairie'; the state publishes it as 'Republic National Distributing Company, LLC (Reyes Holdings, L.L.C) Austin' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        134747
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-03-manna-beverages-mbv-ca@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-03-manna-beverages-mbv-ca",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137337 (source warn, CA): count exact \u2014 245 is one of the 6 rows the state published under this notice (total 638). Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-07 is a date the state published as effective for this notice; the notice date 2025-10-03 is 4 day(s) earlier.",
+      "tracker_row_ids": [
+        137337
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-07-01-republic-national-distributing@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-07-01-republic-national-distributing",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137728 (source warn, CA): count exact \u2014 561 is one of the 6 rows the state published under this notice (total 1,364). Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-02 is a date the state published as effective for this notice; the notice date 2025-07-01 is 63 day(s) earlier. Employer name: we store the employer as 'Republic National Distributing Company (14402)'; the state publishes it as 'Republic National Distributing Company' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        137728
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-22-meta-platforms@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-05-22-meta-platforms",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134371 (source warn, CA): count exact \u2014 2,212 is one of the 6 rows the state published under this notice (total 3,270). Dates: agree on the EFFECTIVE basis \u2014 our 2026-07-22 is a date the state published as effective for this notice; the notice date 2026-05-22 is 61 day(s) earlier.",
+      "tracker_row_ids": [
+        134371
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-07-07-intel@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-07-07-intel",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 138141 (source warn, CA): count exact \u2014 184 is one of the 7 rows the state published under this notice (total 584). Dates: agree on the EFFECTIVE basis \u2014 our 2025-07-15 is a date the state published as effective for this notice; the notice date 2025-07-07 is 8 day(s) earlier.",
+      "tracker_row_ids": [
+        138141
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-31-fresno-economic-opportunities-commission@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-31-fresno-economic-opportunities-commission",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136531 (source warn, CA): count exact \u2014 263 is one of the 41 rows the state published under this notice (total 639). Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-01 is a date the state published as effective for this notice; the notice date 2025-10-31 is 62 day(s) earlier. Employer name: we store the employer as 'Fresno Economic Opportunities Commission'; the state publishes it as 'Fresno Economic Opportunities Commission (1101 E. Annandale, 101)' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136531
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2025-11-18-kroger-fulfillment-network-kroger@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2025-11-18-kroger-fulfillment-network-kroger",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136219 (source warn, FL): count exact \u2014 935 is one of the 3 rows the state published under this notice (total 1,350). Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-11-18 is 75 day(s) earlier. Employer name: we store the employer as 'Kroger Fulfillment Network LLC'; the state publishes it as 'Kroger Fulfillment Network LLC Kroger Tampa Fulfillment Center, 1820 Massaro Blvd TAMPA, FL, 33619' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        136219
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-04-22-republic-national-distributing@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-04-22-republic-national-distributing",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134750 (source warn, FL): count exact \u2014 363 is one of the 3 rows the state published under this notice (total 653). Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-21 is a date the state published as effective for this notice; the notice date 2026-04-22 is 60 day(s) earlier. Employer name: we store the employer as 'Republic National Distributing Company'; the state publishes it as 'Republic National Distributing Company 441 SW 12 Ave DEERFIELD BEACH, FL, 33442' (the state glues the site/address into the employer cell; the stored name is the cleaned employer).",
+      "tracker_row_ids": [
+        134750
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-01-28-amazon@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-01-28-amazon",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135344 (source warn, CA): count exact \u2014 215 is one of the 22 rows the state published under this notice (total 3,855). Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-28 is a date the state published as effective for this notice; the notice date 2026-01-28 is 90 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-ca-2025-10-02-amazon, warn-ca-2025-10-28-amazon, warn-ca-2026-01-29-amazon; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        135344
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-05-24-kbr-services@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-05-24-kbr-services",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 134247 (source warn, CA): count exact \u2014 650, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-08-01 is a date the state published as effective for this notice; the notice date 2026-05-24 is 69 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-ca-2026-03-06-kbr-services; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        134247
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-11-26-tyson-foods-amarillo-b@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-11-26-tyson-foods-amarillo-b",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136371 (source warn, TX): count exact \u2014 1,761, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-20 is a date the state published as effective for this notice; the notice date 2025-11-26 is 55 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-tx-2026-01-20-tyson-foods-amarillo-b; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        136371
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-05-04-spirit-airlines-fort-lauderdale@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-05-04-spirit-airlines-fort-lauderdale",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135254 (source warn, FL): count exact \u2014 2,529, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-05-04 is 2 day(s) later. Employer name: we store the employer as 'Spirit Airlines'; the state publishes it as 'Spirit Airlines Fort Lauderdale-Hollywood International Airport (FLL) 100 Terminal Dr, Fort Lauderdale FORT LAUDERDALE, FL, 33315' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). This row also falls inside the match window of sibling notice(s) warn-fl-2025-09-25-spirit-airlines-miami-international, warn-fl-2026-05-04-spirit-airlines-mco-infight, warn-fl-2026-05-04-spirit-airlines-miami-international, warn-fl-2026-05-04-spirit-airlines-orlando-international, warn-fl-2026-05-04-spirit-airlines-spirit-support; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        135254
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-05-04-spirit-airlines-mco-infight@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-05-04-spirit-airlines-mco-infight",
+      "decision": "reject",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "The only exact candidate, row 135255 (Spirit Airlines, FL, 796 jobs, effective 2026-05-02, source warn, excerpt ORLANDO), is a single stored row whose dedup hash (company+count+date+state) collapses Florida's two identical 796-worker Spirit Airlines Orlando notices of 2026-05-04 (Orlando International Airport and the MCO Inflight & Operations Center) into one row. It is claimed by warn-fl-2026-05-04-spirit-airlines-orlando-international, the sibling notice appearing first in Florida's own list, and one stored row may not count for two reference events. This notice therefore has no distinct stored row: a miss caused by dedup-hash collapse of identical sibling notices, not a collector failure.",
+      "tracker_row_ids": [
+        135255
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-05-04-spirit-airlines-orlando-international@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-05-04-spirit-airlines-orlando-international",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135255 (source warn, FL): count exact \u2014 796, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-05-04 is 2 day(s) later. Employer name: we store the employer as 'Spirit Airlines'; the state publishes it as 'Spirit Airlines Orlando International Airport (MCO) 1 Jeff Fuqua Blvd, Orlando ORLANDO, FL, 32827' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). The stored row is the dedup-collapsed record of Florida's two identical 796-worker Spirit Orlando notices of that day; it is claimed once, here, for the notice appearing first in Florida's own list, and the sibling MCO Inflight & Operations Center notice is recorded as the resulting miss.",
+      "tracker_row_ids": [
+        135255
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-fl-2026-05-04-spirit-airlines-spirit-support@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-fl-2026-05-04-spirit-airlines-spirit-support",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135257 (source warn, FL): count exact \u2014 551, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-05-04 is 2 day(s) later. Employer name: we store the employer as 'Spirit Airlines'; the state publishes it as 'Spirit Airlines Spirit Support Center 1731 Radiant Drive Dania Beach DANIA BEACH, FL, 33004' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). This row also falls inside the match window of sibling notice(s) warn-fl-2025-09-25-spirit-airlines-miami-international, warn-fl-2026-05-04-spirit-airlines-fort-lauderdale, warn-fl-2026-05-04-spirit-airlines-mco-infight, warn-fl-2026-05-04-spirit-airlines-miami-international, warn-fl-2026-05-04-spirit-airlines-orlando-international; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        135257
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-07-31-southwest-key-programs@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-07-31-southwest-key-programs",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 137375 (source warn, TX): count exact \u2014 309 is one of the 7 rows the state published under this notice (total 1,213). Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-05 is a date the state published as effective for this notice; the notice date 2025-07-31 is 66 day(s) earlier. Employer name: we store the employer as 'Southwest Key Programs, Inc. (Casa Quetzal)'; the state publishes it as 'Southwest Key Programs, Inc. (Casa Houston Reliant)' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). This row also falls inside the match window of sibling notice(s) warn-tx-2025-08-06-southwest-key-programs-la, warn-tx-2025-10-02-southwest-key-programs-casa; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        137375
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-02-amazon@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-02-amazon",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136455 (source warn, CA): count exact \u2014 173 is one of the 4 rows the state published under this notice (total 555). Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-06 is a date the state published as effective for this notice; the notice date 2025-10-02 is 96 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-ca-2025-10-28-amazon, warn-ca-2026-01-29-amazon; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        136455
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2025-10-28-amazon@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2025-10-28-amazon",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 136300 (source warn, CA): count exact \u2014 138 is one of the 19 rows the state published under this notice (total 673). Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-26 is a date the state published as effective for this notice; the notice date 2025-10-28 is 90 day(s) earlier. This row also falls inside the match window of sibling notice(s) warn-ca-2025-10-02-amazon, warn-ca-2026-01-29-amazon; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        136300
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-ca-2026-01-29-amazon@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-ca-2026-01-29-amazon",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "Row 135370 (source warn, CA): count exact \u2014 141 is one of the 27 rows the state published under this notice (total 1,025). Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-28 is a date the state published as effective for this notice; the notice date 2026-01-29 is 89 day(s) earlier. Employer name: we store the employer as 'Amazon (SJC38)'; the state publishes it as 'Amazon (LAX10)' (the state glues the site/address into the employer cell; the stored name is the cleaned employer). This row also falls inside the match window of sibling notice(s) warn-ca-2025-10-02-amazon, warn-ca-2025-10-28-amazon; its count and date pin it here, and no other event in this adjudication claims it.",
+      "tracker_row_ids": [
+        135370
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-tx-2025-11-18-wood@2026-08-14T19:34:56Z",
+      "reference_row_id": "warn-tx-2025-11-18-wood",
+      "decision": "accept",
+      "reviewed_by": "Dakotta",
+      "reviewed_at": "2026-08-14T19:34:56Z",
+      "reason": "We hold row 140104 (source warn, TX): Wood Group USA Inc., 180 jobs, exactly the notice total, layoff_date 2025-01-05 exactly as TWC's own record publishes for this notice. The record's layoff date sits 317 days before its own 2025-11-18 notice date, so the frozen matching window (notice-30d..notice+400d) could not reach the row; that inconsistency is the Texas record's own and is noted here as a recorded source anomaly, not a gap in our coverage. Accepted per the owner's 2026-08-14 decision adopting the session's recommendation.",
+      "tracker_row_ids": [
+        140104
+      ],
+      "evidence_pack_built_at": "2026-08-14T19:17:22Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    }
+  ]
+}

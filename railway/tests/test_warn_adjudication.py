@@ -603,6 +603,44 @@ class TheRangeIsStatedBeforeTheFirstDecisionTests(Sheet):
                         self.text.index("## The index"))
 
 
+class NoCandidateEventsAreAdjudicableTests(Harness):
+    """The sheet's no-candidate section prints accept/reject commands, so the
+    recorder must honour them. Until 2026-08-14 `pack_entry` scanned only
+    `entries`, and the one event the rule proposed nothing for (Wood Group) was
+    Refused with 'not in the adjudication pack' — the exact decision the sheet
+    asked the reviewer to make."""
+
+    def _give_the_section_a_held_row(self, row_id):
+        pack = json.loads(self.pack_path.read_text(encoding="utf-8"))
+        for e in pack["no_candidate"]:
+            if e["reference_row_id"] == EMPTY_ID:
+                e["rows_for_this_employer_at_any_date"] = [
+                    {"tracker_row_id": row_id, "company_name": "Nothing Held Inc.",
+                     "job_count": 180, "layoff_date": "2025-01-05"}]
+        self.pack_path.write_text(json.dumps(pack, indent=2) + "\n", encoding="utf-8")
+
+    def test_accepting_a_row_the_section_shows_is_recorded(self):
+        self._give_the_section_a_held_row(900500)
+        code, out = self.run_cli(
+            "--accept", EMPTY_ID, "--reviewed-by", "D",
+            "--reason", "we hold the row at another date; the window could not reach it",
+            "--row-ids", "900500")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.event(EMPTY_ID)["match_decision"], "matched")
+        self.assertEqual(self.ledger()["decisions"][-1]["tracker_row_ids"], [900500])
+
+    def test_a_row_the_section_does_not_show_is_still_refused(self):
+        self._give_the_section_a_held_row(900500)
+        code, out = self.run_cli(
+            "--accept", EMPTY_ID, "--reviewed-by", "D", "--reason", "r",
+            "--row-ids", "999999")
+        self.assertEqual(code, 2, out)
+        self.assertIn("REFUSED", out)
+        self.assertEqual(self.event(EMPTY_ID)["match_decision"], "not_matched",
+                         "a typed id the section's evidence does not cover must not "
+                         "be recordable just because the event has no candidates")
+
+
 class TheRealPackTests(unittest.TestCase):
     """Against the committed files, so a hand-edit or a stale rebuild reddens CI."""
 
