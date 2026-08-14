@@ -458,6 +458,13 @@ def _report_run_cost():
     except OSError:
         pass
     print(f"    allowance   ${allowance}/month (policy, railway/spend.py)")
+    # "Am I on track for the month?" in one line, from the committed ledger.
+    # No key, no network — the same property the rest of this section has.
+    try:
+        print(f"    budget      {_spend.budget_line()}")
+    except Exception as exc:  # noqa: BLE001 — a status line must not crash ops
+        print(f"    budget      UNKNOWN — could not compute ({exc}). Not a pass.")
+        unverified.append("month-to-date budget projection")
     if armed:
         print(f"    guard       armed for {month}: {len(armed)} key(s) have a "
               f"month-start snapshot")

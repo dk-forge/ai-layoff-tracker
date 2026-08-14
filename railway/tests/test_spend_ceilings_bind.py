@@ -208,7 +208,7 @@ class TheMonthlyCapRefusesToStartPaidWork(_SpendCase):
         """The cap is the owner's, and it is a policy in a diff."""
         src = (ROOT / "railway/spend.py").read_text()
         self.assertNotIn("ALT_MONTHLY_ALLOWANCE", src)
-        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 18.0)
+        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 7.0)
 
 
 class TheSweepCannotMistakeABudgetStopForAVerdict(unittest.TestCase):

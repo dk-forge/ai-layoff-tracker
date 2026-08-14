@@ -117,22 +117,95 @@ USER_AGENT = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 # That gap is the whole point of the number — if the provider limit moves,
 # move this one to stay under it, do not match it.
 #
-# Raised 10.0 -> 18.0 because $10 was the cap actually binding: on 2026-08-12
-# the sibling tracker's collect run printed "the monthly spend allowance was
-# already exhausted ($10.08 of ...)" and degraded, so the provider headroom
-# above $10 was unreachable. See docs/TECHLOG.md 2026-08-12.
-MONTHLY_ALLOWANCE_USD = 18.0
+# Raised 10.0 -> 18.0 on 2026-08-12 because $10 was the cap actually binding
+# during a catch-up push. LOWERED 18.0 -> 7.0 on 2026-08-13: that push is over
+# and the owner's instruction is "keep both at steady state", targeting a
+# combined ~$5-8/month across BOTH trackers.
+#
+# THIS CONSTANT IS A PER-REPO BUDGET, NOT A MEASUREMENT OF THE ACCOUNT.
+# The two trackers share ONE OpenRouter account and spend is NOT apportioned
+# between them, so this repo cannot see the sibling's usage and this number can
+# never be checked against the account balance. The REAL target is the SUM of
+# this constant and the sibling's. Lowering this one alone does not lower the
+# account's burn; it lowers this repo's share of it.
+#
+# THE DERIVATION (re-derive it, do not trust it — the inputs are committed):
+#
+#   python3 - <<'PY'
+#   import json, collections
+#   d = json.load(open('railway/spend_jobs.json'))['entries']
+#   by = collections.defaultdict(float)
+#   for e in d:
+#       if '2026-08-07' <= e['date'] <= '2026-08-11':   # steady-state window:
+#           by[e['job']] += e.get('cost_usd') or 0      # no dispatched sweeps
+#   for j, c in sorted(by.items(), key=lambda kv: -kv[1]):
+#       print('%-26s %7.4f/5d -> %5.2f/month' % (j, c, c / 5 * 30))
+#   PY
+#
+#   MEASURED, this repo, 2026-08-07..08-11 (railway/spend_jobs.json):
+#     committed (recurring "stay current") path            $4.92/month
+#     discretionary (backfills) AS HARVESTED                $0.90/month
+#     + the daily edgar-history-sweep, which the ledger only
+#       began harvesting 2026-08-12 (it had no named ceiling
+#       before, and harvest() only reads named jobs), measured
+#       $0.0576-$0.1362 per month-window x 30                ~$2.70/month
+#     = this repo's true steady state                       ~$8.5/month
+#
+#   MEASURED, the ACCOUNT, 2026-08-07..08-10 (openrouter_balance_history.json):
+#     $0.26/day = ~$7.9/month, both trackers together.
+#
+#   Those two numbers are the same number within measurement error, which is
+#   the finding: at steady state this repo IS essentially the whole account,
+#   and the sibling's steady-state share is below the resolution of a
+#   once-daily balance reading. It is NOT zero and must not be assumed zero.
+#
+#   combined target the owner named as acceptable          $8.00/month
+#   less a reserve for the sibling, which this repo cannot
+#   measure and must not spend                             -$1.00/month
+#   = this repo's share                                     $7.00/month
+#
+# WHAT $7.00 COSTS, said plainly rather than discovered later: the committed
+# path measures $4.92/month, so ~$2.08/month is left for every backfill. The
+# historical sweeps therefore run SLOWER than they did in August. That is a
+# throttle, not a stop (see DISCRETIONARY_JOBS below), and it is the owner's
+# trade to revisit — raising this constant is the lever, and it is his.
+#
+# THIS NUMBER IS INTERIM, and the word is load-bearing. It is derived from
+# eleven days of ledger, five of which are the only window with no dispatched
+# sweep in it, and from a sibling reserve that cannot be measured from this
+# repo at all. Re-derive it when the ledger holds a full month, when the
+# sibling's share becomes measurable, or when the owner moves the combined
+# target. Do not treat it as settled because it is committed.
+MONTHLY_ALLOWANCE_USD = 7.0
 
 # Stop with headroom left, so a long batch cannot overshoot mid-run.
 STOP_AT_FRACTION = 0.9
 
 # MEASURED, not modelled: what the free-standing ingest costs per month, from
-# record_usage() on real Railway cron runs (~$0.09/run x 2/day). Every ladder
-# below is written against this number, so it lives here as a constant rather
-# than as a sentence in three comments and a magic `- 3.0` in a test. If ingest
-# is re-measured, this is the ONE place to change, and the ladder test moves
-# with it.
-MEASURED_INGEST_USD_PER_MONTH = 5.1
+# record_usage() on real Railway cron runs. Every ladder below is written
+# against this number, so it lives here as a constant rather than as a sentence
+# in three comments and a magic `- 3.0` in a test. If ingest is re-measured,
+# this is the ONE place to change, and the ladder test moves with it.
+#
+# RE-MEASURED 5.1 -> 2.41 on 2026-08-13. The old figure was ~$0.09/run x 2/day
+# and predated the 2026-08-07 extraction-model swap to google/gemini-2.5-flash-
+# lite (0.388x the incumbent's cost). Over 2026-08-07..08-11 the ten harvested
+# railway-cron runs cost $0.4008, i.e. $0.0401/run x 2/day x 30 = $2.41/month.
+# A stale reserve is not conservative: it was silently claiming $2.69/month of
+# allowance for work that had stopped costing it.
+MEASURED_INGEST_USD_PER_MONTH = 2.41
+
+# What the rest of the COMMITTED path measures, same window, same file:
+# company-watchlist 0.90 + ai-evidence-sweep 0.54 + supplemental-news 0.51 +
+# distress-watchlist 0.30 + dedupe-llm 0.17 + hi-warn-import 0.06 +
+# data-quality 0.03 + process-tips 0.00 = $2.51/month. Plus the ingest above,
+# the committed path measures $4.92/month.
+#
+# This is the FALLBACK rate for the discretionary rationer, used only when the
+# committed ledger holds no entry for the current month yet (a fresh month, or
+# a runtime that cannot read the file). It is never used in preference to the
+# month's own measured run-rate, and when it IS used the rationer says so.
+MEASURED_COMMITTED_USD_PER_MONTH = 4.92
 
 # Per-run ceiling: the backstop that works without durable state (see the module
 # docstring). The measured Railway cron run costs ~$0.09, so this is ~2x
@@ -285,6 +358,83 @@ JOB_RUN_CEILINGS_USD = {
     "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
 }
+
+# ---------------------------------------------------------------------------
+# COMMITTED vs DISCRETIONARY — who gets paid first
+# ---------------------------------------------------------------------------
+#
+# WHAT WENT WRONG (2026-08-12/13). Every paid job was equal before the budget:
+# one flat per-run ceiling each, and nothing that could tell "collect today's
+# layoffs" apart from "re-sweep 2019". Six manually dispatched
+# edgar-history-sweep runs over two mornings (31570100147, 31570908283,
+# 31572141302 on 08-12; 31671206050, 31671918086 on 08-13, plus the scheduled
+# 31675106992) cost $0.884 of a $7.00 month in under 26 hours — 44 days of this
+# repo's discretionary budget spent in one and a bit. Nothing was broken. The
+# per-run ceiling held on five of the six; a per-RUN ceiling simply says
+# nothing about how many runs a day may have, and a dispatch input could raise
+# it besides.
+#
+# The fix is not to switch the sweeps off. It is to say which jobs are the
+# tracker STAYING CURRENT and which are it CATCHING UP, and to pay the first
+# set first:
+#
+#   COMMITTED    the recurring "stay current" path. New layoffs, arriving
+#                today, through collect / WARN / SEC / GDELT / news, plus the
+#                health and integrity work that says whether they are right.
+#                These keep their NAMED ceiling, always. They are never
+#                rationed, never slowed, and their projected cost for the rest
+#                of the month is subtracted BEFORE any backfill sees a cent.
+#
+#   DISCRETIONARY  catch-up. The backfill_* family, the enrichment sweeps and
+#                the model A/B. Every one of them is resumable and idempotent
+#                by construction, so spending less on one delays coverage; it
+#                never loses any. Their per-run ceiling is RATIONED against the
+#                allowance actually left in the month (see
+#                discretionary_run_ceiling_usd) — they SLOW DOWN, they do not
+#                stop, and a run that was cut short says what it did not do.
+#
+# A job in neither set is treated as COMMITTED. That is the safe direction:
+# an unclassified job keeps today's behaviour rather than being silently
+# throttled by a table it was never added to.
+COMMITTED_JOBS = frozenset({
+    "railway-cron",              # the 2x/day ingest itself (no named ceiling)
+    "dedupe-llm",                # today's rows, deduped
+    "ai-evidence-sweep",         # today's AI attributions, verified
+    "supplemental-news",         # today's news
+    "company-watchlist",         # today's watched companies
+    "distress-watchlist",        # this week's distress signals
+    "hi-warn-import",            # today's WARN notices
+    "hi-warn-dryrun",            # the same probe, dry
+    "process-tips",              # reader-submitted tips
+    "data-quality",              # is what arrived correct
+    "source-verification-audit",  # is what we published still true
+    "foreign-filings",           # dormant, but a collector when armed
+})
+
+DISCRETIONARY_JOBS = frozenset({
+    "edgar-history-sweep",       # rotating historical SEC backfill
+    "historical-news-sweep",     # historical news backfill
+    "news-catchup",              # catch-up, by name and by behaviour
+    "industry-backfill",         # enrichment of rows already stored
+    "reason-backfill",           # ditto
+    "enrich-roles",              # ditto
+    "enrich-context",            # ditto
+    "reclassify-legacy-ai",      # re-reads history under today's rules
+    "ab-extraction-models",      # model comparison; buys no row at all
+})
+
+# Half a cent. A rationed job is never handed ZERO because the month is lean —
+# that would be a stop dressed as a throttle. It is handed zero only when the
+# committed path has claimed the whole remaining allowance, and then it says so
+# and exits 0 (see paid_reads_enabled).
+MIN_DISCRETIONARY_RUN_USD = 0.005
+
+
+def is_discretionary(job: str | None = None) -> bool:
+    """True when `job` is catch-up work that may be slowed to protect the
+    recurring collectors. Unknown jobs are COMMITTED — see the note above."""
+    return (job or current_job()) in DISCRETIONARY_JOBS
+
 
 # PAID JOBS THE LEDGER MUST COLLECT THAT THE CEILING TABLE DOES NOT NAME.
 #
@@ -534,19 +684,53 @@ def effective_run_ceiling_usd(job: str | None = None) -> float:
 
     Precedence, highest first:
       1. ALT_RUN_CEILING_USD in the environment -- an explicit operator (or
-         `apply_job_ceiling`) override. Never silently re-tightened.
+         `apply_job_ceiling`) override. Never silently re-tightened. For a
+         DISCRETIONARY job it is CLAMPED to the month's remaining headroom,
+         loudly (see below).
       2. JOB_RUN_CEILINGS_USD[current job] -- the NAMED ceiling, which is now
          a brake wherever the job runs and not only where a guard step ran.
+         For a DISCRETIONARY job this is RATIONED against the allowance
+         actually left in the month.
       3. RUN_CEILING_USD -- the global default, which is what `railway-cron`
          keeps by deliberately not being in the table.
+
+    WHY AN OVERRIDE IS CLAMPED FOR DISCRETIONARY WORK (2026-08-13).
+    "An operator override must not be SILENTLY re-tightened" is the rule, and
+    it stands: a clamp that prints what it did and why is not silent. Six
+    dispatched edgar-history-sweep runs carrying `run_ceiling_usd` inputs spent
+    $0.884 in 26 hours on 2026-08-12/13, which at this repo's allowance is 44
+    days of catch-up budget. The dispatch input keeps working -- it is still
+    the way to authorise a bigger single sweep -- it simply cannot authorise
+    more than the month has left, and the run says so in its own log. A
+    COMMITTED job's override is untouched: those are the collectors, and
+    starving them to protect a backfill is the failure this whole section
+    exists to prevent.
     """
+    job = job or current_job()
     override = (os.environ.get("ALT_RUN_CEILING_USD") or "").strip()
     if override:
         try:
-            return float(override)
+            value = float(override)
         except ValueError:
-            pass  # unparseable override: fall through rather than run uncapped
-    named = JOB_RUN_CEILINGS_USD.get(job or current_job())
+            value = None  # unparseable: fall through rather than run uncapped
+        if value is not None:
+            if not is_discretionary(job):
+                return value
+            headroom, why = discretionary_headroom_usd()
+            if value <= headroom:
+                return value
+            print(f"::warning::spend: the ${value:.3f} per-run override for "
+                  f"'{job}' is CLAMPED to ${headroom:.4f} — {why}. The "
+                  f"override is honoured up to what the month has left; the "
+                  f"recurring collectors are paid first.")
+            return headroom
+    if is_discretionary(job):
+        ceiling, why = discretionary_run_ceiling_usd(job)
+        named = JOB_RUN_CEILINGS_USD.get(job, RUN_CEILING_USD)
+        if ceiling < named:
+            print(f"::notice::spend: {why}")
+        return ceiling
+    named = JOB_RUN_CEILINGS_USD.get(job)
     return float(named) if named is not None else RUN_CEILING_USD
 
 
@@ -572,6 +756,21 @@ def paid_reads_enabled() -> bool:
     # same run), so a shell retry loop cannot buy itself a fresh ceiling.
     spent = logical_run_cost_usd()
     ceiling = effective_run_ceiling_usd()
+    if ceiling <= 0:
+        # A discretionary job with no headroom left. This is a DISCLOSED SKIP,
+        # not a failure: the job must say so and exit 0. Reddening here would
+        # manufacture a red run, which manufactures an alert, which is a
+        # failure mode this repo has already paid for once.
+        if not _run_ceiling_tripped:
+            _run_ceiling_tripped = True
+            _, why = discretionary_headroom_usd()
+            print(f"::notice::spend: '{current_job()}' is SKIPPED this run. "
+                  f"{why} Paid reads are off; the free half of this job still "
+                  f"runs, every candidate defers UNMARKED, and the job exits 0 "
+                  f"— a skipped backfill is not a broken one.")
+        note_truncated(f"skipped: no discretionary headroom left in the month "
+                       f"for '{current_job()}'")
+        return False
     if spent >= ceiling:
         if not _run_ceiling_tripped:
             _run_ceiling_tripped = True
@@ -623,6 +822,8 @@ def run_truncation() -> str | None:
 def reset_run_meter() -> None:
     """Test-only: clear the process meter."""
     global _run_ceiling_tripped, _carried_usd, _meter_tag, _truncation
+    global _month_class_cache
+    _month_class_cache = None
     _run.update({"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
                  "completion_tokens": 0, "cached_prompt_tokens": 0})
     _run_ceiling_tripped = False
@@ -733,6 +934,216 @@ def _load_ledger() -> dict:
     except (OSError, ValueError):
         pass
     return {"v": 1, "entries": []}
+
+
+# ---------------------------------------------------------------------------
+# Rationing the discretionary half — a backfill SLOWS DOWN, it does not stop
+# ---------------------------------------------------------------------------
+#
+# Runs per month, for the discretionary claim. Only exceptions are listed;
+# everything else is on a daily cron and counts 30.
+DISCRETIONARY_RUNS_PER_MONTH = {
+    "news-catchup": 5,           # weekly, Monday 09:30 UTC
+    "ab-extraction-models": 0,   # workflow_dispatch only, no schedule
+}
+
+_month_class_cache: dict | None = None
+
+
+def _month_frame(today: datetime.date | None = None) -> tuple[str, int, int, int]:
+    """(month, day_of_month, days_in_month, days_left_including_today) in UTC.
+
+    Both `day_of_month` and `days_left` COUNT TODAY, deliberately and for
+    different reasons: today's spend is already partly in the ledger (so it is
+    elapsed) and today's runs are not all done (so it still needs funding).
+    The projection below is careful to use `days_in_month - day` for the days
+    whose committed spend has NOT yet been recorded, so nothing is counted
+    twice.
+    """
+    d = today or datetime.datetime.now(datetime.timezone.utc).date()
+    if d.month == 12:
+        days_in_month = 31
+    else:
+        days_in_month = (datetime.date(d.year, d.month + 1, 1)
+                         - datetime.timedelta(days=1)).day
+    return (d.strftime("%Y-%m"), d.day, days_in_month, days_in_month - d.day + 1)
+
+
+def month_spend_by_class(today: datetime.date | None = None,
+                         ledger: dict | None = None) -> dict:
+    """What this month has cost so far, split committed vs discretionary.
+
+    Reads ONLY the committed ledger (railway/spend_jobs.json), so it works with
+    no key and no network — the same property ops_status.py depends on. The
+    ledger is harvested once a day, so today's own runs are usually not in it
+    yet; that makes this figure a FLOOR on the month's spend, never a ceiling,
+    which is the safe direction for a brake to be wrong.
+    """
+    global _month_class_cache
+    month, day, days_in_month, days_left = _month_frame(today)
+    if ledger is None and _month_class_cache is not None:
+        cached = _month_class_cache
+        if cached["month"] == month and cached["day"] == day:
+            return dict(cached)
+    data = ledger if ledger is not None else _load_ledger()
+    committed = discretionary = 0.0
+    entries = 0
+    for e in data.get("entries") or []:
+        if not str(e.get("date", "")).startswith(month):
+            continue
+        cost = float(e.get("cost_usd") or 0)
+        entries += 1
+        if is_discretionary(e.get("job")):
+            discretionary += cost
+        else:
+            committed += cost
+    result = {"month": month, "day": day, "days_in_month": days_in_month,
+              "days_left": days_left, "entries": entries,
+              "committed_usd": committed, "discretionary_usd": discretionary,
+              "total_usd": committed + discretionary}
+    if ledger is None:
+        # Cached per process because the rationer is consulted on every paid
+        # call: a brake must not cost a file read per model call. The ledger
+        # has exactly one writer (`--harvest`) and it is never this process.
+        _month_class_cache = dict(result)
+    return result
+
+
+_live_mtd: tuple[float | None, str] | None = None
+
+
+def live_month_to_date_usd() -> tuple[float | None, str]:
+    """(this key's measured month-to-date, why) or (None, why). Cached per
+    process, exactly like month_gate(), so a rationer consulted on every paid
+    call costs one HTTP request per run and not one per call.
+
+    THE LEDGER LAGS A DAY AND THIS DOES NOT. railway/spend_jobs.json is
+    harvested once a day by the balance job, so a job reading it at 05:20 UTC
+    sees nothing of what today has already spent — which is precisely the shape
+    of the 2026-08-12 incident, where three dispatches inside 31 minutes each
+    read a ledger that knew about none of the other two. The key's own
+    month-to-date does know, and this tracker's key is its own (the sibling has
+    a separate one), so it is this repo's figure and not the account's.
+    """
+    global _live_mtd
+    if _live_mtd is None:
+        key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+        if not key:
+            _live_mtd = (None, "no OPENROUTER_API_KEY in this runtime")
+        else:
+            try:
+                spent, month, basis = month_to_date_usd(key)
+                _live_mtd = ((None, f"{basis} for {month}") if spent is None
+                             else (spent, f"measured on this key for {month}"))
+            except Exception as exc:  # noqa: BLE001 — never break the job
+                _live_mtd = (None, f"could not be read ({exc})")
+    return _live_mtd
+
+
+def discretionary_headroom_usd(today: datetime.date | None = None,
+                               ledger: dict | None = None) -> tuple[float, str]:
+    """(dollars a backfill may still spend this month, why that number).
+
+    THE RECURRING COLLECTORS ARE PAID FIRST, and this is where that happens:
+    the committed path's cost for the REST of the month is projected from its
+    own measured run-rate and subtracted before any backfill sees a cent. A
+    backfill that empties the month on day 2 therefore takes the whole
+    remainder of the DISCRETIONARY budget and none of the committed one.
+
+    Never negative. Zero means "no headroom", which is a disclosed skip, not a
+    failure — see paid_reads_enabled.
+    """
+    m = month_spend_by_class(today, ledger)
+    day, days_in_month = m["day"], m["days_in_month"]
+    unrecorded_days = days_in_month - day
+    if m["committed_usd"] > 0:
+        rate = m["committed_usd"] / day
+        basis = (f"committed measured ${m['committed_usd']:.4f} over {day}d "
+                 f"= ${rate:.4f}/day")
+    else:
+        # No committed entry for this month yet (a fresh month, or a runtime
+        # that could not read the ledger). Fall back to the MEASURED constant
+        # and SAY SO — a rationer running on an unstated assumption is exactly
+        # the silent cap this repo forbids.
+        rate = MEASURED_COMMITTED_USD_PER_MONTH / days_in_month
+        basis = (f"no committed entry for {m['month']} yet, so the fallback "
+                 f"rate ${rate:.4f}/day (MEASURED_COMMITTED_USD_PER_MONTH) "
+                 f"is used")
+    projection = rate * unrecorded_days
+    spent = m["total_usd"]
+    spent_basis = f"${spent:.4f} spent (ledger, harvested daily)"
+    # Prefer the key's own month-to-date when it is readable: the ledger is a
+    # FLOOR that lags a day, and any gap between the two is spend that has
+    # happened and not yet been harvested. Charge that gap to DISCRETIONARY —
+    # being wrong in that direction slows catch-up work and never the
+    # collectors, which is the safe direction for this particular brake.
+    live, live_why = live_month_to_date_usd()
+    if live is not None and live > spent:
+        spent_basis = (f"${live:.4f} spent ({live_why}; the ledger has only "
+                       f"${m['total_usd']:.4f} harvested so far, and the "
+                       f"${live - m['total_usd']:.4f} difference is charged to "
+                       f"catch-up work)")
+        spent = live
+    headroom = MONTHLY_ALLOWANCE_USD - spent - projection
+    why = (f"${MONTHLY_ALLOWANCE_USD:.2f} allowance less {spent_basis}, "
+           f"less ${projection:.4f} projected for the committed path over the "
+           f"remaining {unrecorded_days}d ({basis})")
+    if headroom <= 0:
+        return 0.0, (f"NO HEADROOM: {why} = ${headroom:.4f}. The recurring "
+                     f"collectors keep their full budget; catch-up work waits "
+                     f"for next month.")
+    return headroom, f"${headroom:.4f} left for catch-up work: {why}"
+
+
+def discretionary_run_ceiling_usd(job: str | None = None,
+                                  today: datetime.date | None = None,
+                                  ledger: dict | None = None) -> tuple[float, str]:
+    """(this run's rationed ceiling for a discretionary `job`, why).
+
+    The month's remaining headroom is shared across the discretionary jobs in
+    proportion to their NAMED ceilings and their real cadence, so a lean month
+    shrinks every backfill by the same factor rather than letting whichever one
+    runs first at 05:20 UTC take the lot. Late in a lean month a sweep still
+    runs, just smaller; it is never handed less than
+    MIN_DISCRETIONARY_RUN_USD unless the headroom is genuinely gone.
+
+    A ceiling of 0.0 means SKIPPED, and the caller must say so and exit 0.
+    """
+    job = job or current_job()
+    named = JOB_RUN_CEILINGS_USD.get(job, RUN_CEILING_USD)
+    headroom, why = discretionary_headroom_usd(today, ledger)
+    if headroom <= 0:
+        return 0.0, why
+    _, _, days_in_month, days_left = _month_frame(today)
+    claim = 0.0
+    for other in DISCRETIONARY_JOBS:
+        runs = DISCRETIONARY_RUNS_PER_MONTH.get(other, 30)
+        claim += JOB_RUN_CEILINGS_USD.get(other, RUN_CEILING_USD) * runs
+    remaining_claim = claim * days_left / days_in_month
+    scale = 1.0 if remaining_claim <= 0 else min(1.0, headroom / remaining_claim)
+    ceiling = min(named, max(MIN_DISCRETIONARY_RUN_USD, named * scale))
+    ceiling = min(ceiling, headroom)  # never authorise more than is left
+    if ceiling >= named:
+        return named, (f"'{job}' keeps its full ${named:.3f} ceiling: {why}")
+    return ceiling, (
+        f"'{job}' is THROTTLED to ${ceiling:.4f} of its ${named:.3f} named "
+        f"ceiling ({scale * 100:.0f}% of normal) because {why}. It will sweep "
+        f"less this run and resume where it stopped; nothing is dropped "
+        f"permanently.")
+
+
+def budget_line(today: datetime.date | None = None,
+                ledger: dict | None = None) -> str:
+    """One line answering 'am I on track for the month?'. For ops_status.py,
+    which the owner reads and who is not a developer."""
+    m = month_spend_by_class(today, ledger)
+    projected = (m["total_usd"] / m["day"]) * m["days_in_month"]
+    headroom, _ = discretionary_headroom_usd(today, ledger)
+    verdict = "on track" if projected <= MONTHLY_ALLOWANCE_USD else "OVER"
+    return (f"${m['total_usd']:.2f} of ${MONTHLY_ALLOWANCE_USD:.2f} spent "
+            f"({m['day']}/{m['days_in_month']} days), projecting "
+            f"${projected:.2f} for {m['month']} — {verdict}; "
+            f"${headroom:.2f} left for catch-up work")
 
 
 def _merge_ledger_entries(ledger: dict, new_entries: list[dict]) -> int:
@@ -1353,9 +1764,14 @@ _month_gate: tuple[bool, str] | None = None
 
 
 def reset_month_gate() -> None:
-    """Test-only: forget this process's cached monthly verdict."""
-    global _month_gate
+    """Test-only: forget this process's cached monthly verdict, the cached
+    live month-to-date reading and the cached ledger split. All three are
+    per-process caches on the same subject, so forgetting one and keeping the
+    others is how a test starts passing for the wrong reason."""
+    global _month_gate, _live_mtd, _month_class_cache
     _month_gate = None
+    _live_mtd = None
+    _month_class_cache = None
 
 
 def month_to_date_usd(api_key: str) -> tuple[float | None, str, str]:
@@ -1488,6 +1904,28 @@ def apply_job_ceiling() -> None:
     in `env` for anything that reads it directly.
     """
     job = current_job()
+    print(f"  budget: {budget_line()}")
+    if is_discretionary(job):
+        # Catch-up work is rationed, so the number handed to the later steps
+        # has to be the RATIONED one, not the table's. Written even when the
+        # job has no named ceiling: the global default is not a budget.
+        rationed, why = discretionary_run_ceiling_usd(job)
+        print(f"  per-job ceiling (DISCRETIONARY): {why}")
+        if os.environ.get("ALT_RUN_CEILING_USD"):
+            print(f"  ALT_RUN_CEILING_USD is already set — kept, and clamped "
+                  f"to the month's headroom at spend time")
+            return
+        os.environ["ALT_RUN_CEILING_USD"] = f"{rationed:.4f}"
+        github_env = os.environ.get("GITHUB_ENV")
+        if github_env:
+            try:
+                with open(github_env, "a") as fh:
+                    fh.write(f"ALT_RUN_CEILING_USD={rationed:.4f}\n")
+            except OSError as exc:
+                print(f"  COULD NOT SET ALT_RUN_CEILING_USD for later steps: "
+                      f"{exc} — the job's own import of spend.py rations it "
+                      f"anyway, which is the enforcement path")
+        return
     ceiling = JOB_RUN_CEILINGS_USD.get(job)
     if ceiling is None:
         print(f"  per-job ceiling: none named for '{job}' — global "
@@ -1567,6 +2005,7 @@ def main() -> int:
         print("  nothing about spend could be measured here. This is not a")
         print("  statement that spend is within budget.")
         print(f"  monthly allowance   ${MONTHLY_ALLOWANCE_USD:,.2f} (policy, in railway/spend.py)")
+        print(f"  budget              {budget_line()}")
         if args.degrade:
             apply_job_ceiling()  # the per-run brake needs no key
         return 0 if args.degrade else (1 if args.enforce else 0)

@@ -213,7 +213,7 @@ precondition for the job; `source_health.require_running_note` now defers when
 the host never answered and still raises when it refused the write.
 **The month's budget is spent - what happens now**
 `ops_status.py [2a]` shows month-to-date at or past the stop line, or a job log
-carries `::warning::spend: the $10.00 monthly cap is spent`.
+carries `::warning::spend: the $7.00 monthly cap is spent`.
 
 **What stops.** Paid model calls, and only those. `spend.month_gate()` returns
 blocked, `paid_reads_enabled()` returns False, and every paid call site in the
@@ -235,10 +235,26 @@ day.
 
 | What you see | What it means | What to do |
 |---|---|---|
-| `the $18.00 monthly cap is spent: $16.xx used` | MEASURED month-to-date at the 90% stop line | Nothing is broken. Either wait for the 1st (the balance job takes the new month-start snapshot and paid reads resume by themselves), or take the owner the cut-list in `[2a]` and change `MONTHLY_ALLOWANCE_USD` - **a budget change is the owner's call, never a session's**. If the owner does raise it: the key carries a **$20 PROVIDER limit**, and the policy cap must stay strictly under it. At parity our graceful degrade never fires and the provider hard-stops a run mid-call instead. Raise the provider limit first, then this |
+| `the $7.00 monthly cap is spent: $6.xx used` | MEASURED month-to-date at the 90% stop line | Nothing is broken. Either wait for the 1st (the balance job takes the new month-start snapshot and paid reads resume by themselves), or take the owner the cut-list in `[2a]` and change `MONTHLY_ALLOWANCE_USD` - **a budget change is the owner's call, never a session's**. If the owner does raise it: the key carries a **$20 PROVIDER limit**, and the policy cap must stay strictly under it. At parity our graceful degrade never fires and the provider hard-stops a run mid-call instead. Raise the provider limit first, then this |
 | `month-to-date for 2026-08 is UNKNOWN (no-baseline...)` | No committed month-start for this key here | UNKNOWN, not a pass, and not a fault. The per-run ceiling is what is enforcing. Check the daily `openrouter-balance-check` workflow is green - it is the one job that commits `railway/spend_month.json` |
 | `this run is TRUNCATED, not complete` | The run stopped at its per-run ceiling or its deadline | Expected under throttle. What it did not reach is **deferred, not decided** - do not read its counts as a full pass over the queue |
 | A job spent past its named ceiling in `[2a]` | The brake leaked | This is a defect, not a budget question. The ceiling is resolved by `spend.effective_run_ceiling_usd()`; a job that overshoots is checking it too coarsely (once per item instead of once per model call) |
+
+**A BACKFILL IS SLOWED, NOT STOPPED — and that is a different message.**
+Since 2026-08-13 every paid job is either COMMITTED (staying current: collect,
+WARN, SEC, GDELT, news, health, integrity) or DISCRETIONARY (catching up: the
+`backfill_*` family, the enrichment sweeps, `ab-extraction-models`), listed in
+`spend.COMMITTED_JOBS` / `spend.DISCRETIONARY_JOBS`.
+
+| What you see | What it means | What to do |
+|---|---|---|
+| `'edgar-history-sweep' is THROTTLED to $0.06 of its $0.150 named ceiling (41% of normal)` | The month is lean. The rationer shared what is left across the discretionary jobs | **Nothing.** The sweep still runs, sweeps less, and resumes where it stopped. Do NOT raise the ceiling to "unblock" it - the throttle is the budget working |
+| `'edgar-history-sweep' is SKIPPED this run. NO HEADROOM...` | The committed path's projection has claimed the whole remaining allowance | **Nothing is broken and the job exits 0.** Catch-up work waits for the 1st. If it is skipping every day and coverage matters more than the ceiling, that is a **priced decision for the owner**, not a session's edit |
+| `the $X override for 'job' is CLAMPED to $Y` | A `run_ceiling_usd` dispatch input asked for more than the month has left | Expected. The override still works up to the headroom. Six unclamped dispatches are what cost $0.884 in 26 hours on 2026-08-12/13 |
+
+**Do not answer a throttle by reclassifying a backfill as COMMITTED.** That
+moves it in front of the collectors, which is the exact failure this split
+exists to prevent. The lever is `MONTHLY_ALLOWANCE_USD`, and it is the owner's.
 
 **Do not "fix" a budget stop by making the coverage smaller.** Costs and
 coverage are the same dial here. Slowing a QUEUE-DRAINING job (industry-backfill,
