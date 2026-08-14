@@ -164,19 +164,46 @@ USER_AGENT = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #   measure and must not spend                             -$1.00/month
 #   = this repo's share                                     $7.00/month
 #
+# SUPERSEDED 2026-08-14, and the reason matters more than the number.
+#
+# The paragraph above concluded that "at steady state this repo IS essentially
+# the whole account". That was WRONG, and it was wrong in the one way this repo
+# cannot detect on its own: the sibling has its own key and its own committed
+# cost ledger, and measured against it on 2026-08-13 (the first clean
+# un-degraded day in its month) the sibling spends $0.8020/day = $24.06/month
+# at its own caps. It was not below the resolution of a balance reading. It was
+# simply invisible from here, and "invisible from here" was read as "small".
+#
+# The two repos then set contradictory budgets from that same blind spot: this
+# file said $7.00 while the sibling derived $6.04 from a share whose
+# denominator implied $1.96 for THIS repo. $13.04 against a stated $8.00, and
+# neither side could see the other to notice.
+#
+# So the split is no longer derived, on either side. Both halves are literals
+# of one stated total, because a share only bounds a total if somebody enforces
+# the denominator, and across two repos with separate keys nobody can.
+MONTHLY_TARGET_COMBINED_USD = 22.0   # the owner's stated total, both trackers
+SIBLING_ALLOWANCE_USD = 8.0          # talent-intelligence-tracker, same literal there
+#
 # WHAT $7.00 COSTS, said plainly rather than discovered later: the committed
 # path measures $4.92/month, so ~$2.08/month is left for every backfill. The
 # historical sweeps therefore run SLOWER than they did in August. That is a
 # throttle, not a stop (see DISCRETIONARY_JOBS below), and it is the owner's
 # trade to revisit — raising this constant is the lever, and it is his.
 #
-# THIS NUMBER IS INTERIM, and the word is load-bearing. It is derived from
-# eleven days of ledger, five of which are the only window with no dispatched
-# sweep in it, and from a sibling reserve that cannot be measured from this
-# repo at all. Re-derive it when the ledger holds a full month, when the
-# sibling's share becomes measurable, or when the owner moves the combined
-# target. Do not treat it as settled because it is committed.
-MONTHLY_ALLOWANCE_USD = 7.0
+# WHAT $14.00 BUYS, said plainly rather than discovered later: the committed
+# path measures $4.92/month, so ~$9.08/month is left for discretionary work.
+# That is what funds the local-language discovery in sources/local_news.py,
+# priced at $5.14/month for 25 markets capped at 12 candidates each, and it is
+# the reason the raise happened: 142 countries held nothing because every
+# search phrase was English, and the fix costs money per candidate article.
+#
+# THIS NUMBER IS STILL INTERIM, and the word is load-bearing. It rests on
+# eleven days of this repo's ledger and one clean day of the sibling's. It is
+# NOT derived from a share any more, so moving it does not silently move the
+# other side - but the other side's literal must be edited to match, or the
+# pair stops summing to MONTHLY_TARGET_COMBINED_USD and nothing will notice.
+MONTHLY_ALLOWANCE_USD = 14.0
 
 # Stop with headroom left, so a long batch cannot overshoot mid-run.
 STOP_AT_FRACTION = 0.9

@@ -294,10 +294,23 @@ class NamedCeilingsAreArithmeticNotHope(unittest.TestCase):
             runs = spend.DISCRETIONARY_RUNS_PER_MONTH.get(job, 30)
             claim += spend.JOB_RUN_CEILINGS_USD.get(
                 job, spend.RUN_CEILING_USD) * runs
-        self.assertGreater(
+        # 2026-08-14: the allowance moved 7.00 -> 14.00 to pay for
+        # local-language discovery, and this assertion's original subject went
+        # with it -- the table claims $7.35/month, which now FITS. That is the
+        # deliberate case its own failure message named, so the assertion is
+        # inverted rather than deleted: the table must stay affordable, and if
+        # a future session re-oversubscribes it the rationer becomes load
+        # bearing again and somebody should have to say so in a diff.
+        #
+        # sources/local_news.py is the one to watch: armed at its cap it adds
+        # $5.14/month, taking the claim to ~$12.49 against $14.00. Still fits,
+        # with less room than this reads.
+        self.assertLessEqual(
             claim, spend.MONTHLY_ALLOWANCE_USD,
-            "the discretionary table no longer over-subscribes the allowance; "
-            "if that is deliberate, this test has lost its subject")
+            f"the discretionary table claims ${claim:.2f}/month against a "
+            f"${spend.MONTHLY_ALLOWANCE_USD:.2f} allowance, so the named "
+            "ceilings over-subscribe it again and only the rationer is "
+            "stopping an overrun")
         # ...and on a month where the committed path has already claimed the
         # allowance, the rationer hands out nothing at all.
         ledger = {"v": 1, "entries": [
@@ -477,10 +490,15 @@ class ABackfillCannotStarveTheCollectors(_LedgerSandbox):
         any headroom is left. A backfill that stops loses coverage; a backfill
         that shrinks only delays it, and every one of them is resumable."""
         def month_to(day, sweep_per_day):
+            # Scaled with the allowance when it moved 7.00 -> 14.00 on
+            # 2026-08-14. "Lean" is a RATIO, not a dollar figure: the fixture
+            # has to keep consuming most of the month for the throttle to be
+            # the thing under test. Left at the old absolute numbers it simply
+            # stopped being a lean month and the test passed by not applying.
             rows = []
             for d in range(1, day + 1):
                 rows.append({"job": "railway-cron", "date": f"2026-09-{d:02d}",
-                             "cost_usd": 0.164})
+                             "cost_usd": 0.328})
                 rows.append({"job": "edgar-history-sweep",
                              "date": f"2026-09-{d:02d}",
                              "cost_usd": sweep_per_day})
@@ -490,7 +508,7 @@ class ABackfillCannotStarveTheCollectors(_LedgerSandbox):
         for day in (2, 25):
             ceiling, why = spend.discretionary_run_ceiling_usd(
                 "edgar-history-sweep", today=datetime.date(2026, 9, day),
-                ledger=month_to(day, 0.07))
+                ledger=month_to(day, 0.14))
             with self.subTest(day=day):
                 self.assertGreater(ceiling, 0.0,
                                    f"day {day}: the sweep was stopped, not slowed")
@@ -501,10 +519,10 @@ class ABackfillCannotStarveTheCollectors(_LedgerSandbox):
         # same day, more already spent on catch-up, tighter ceiling.
         thrifty, _ = spend.discretionary_run_ceiling_usd(
             "edgar-history-sweep", today=datetime.date(2026, 9, 25),
-            ledger=month_to(25, 0.02))
+            ledger=month_to(25, 0.04))
         spendy, _ = spend.discretionary_run_ceiling_usd(
             "edgar-history-sweep", today=datetime.date(2026, 9, 25),
-            ledger=month_to(25, 0.09))
+            ledger=month_to(25, 0.18))
         self.assertGreater(
             thrifty, spendy,
             "two months differing only in how much catch-up work was already "
@@ -535,7 +553,7 @@ class TheOwnerCanSeeWhereTheMonthIsGoing(_LedgerSandbox):
              "cost_usd": 0.10} for d in range(1, 11)]}
         line = spend.budget_line(today=datetime.date(2026, 9, 10),
                                  ledger=ledger)
-        self.assertIn("$1.00 of $7.00 spent", line)
+        self.assertIn("$1.00 of $14.00 spent", line)
         self.assertIn("10/30 days", line)
         self.assertIn("$3.00 for 2026-09", line)   # 0.10/day x 30
         self.assertIn("on track", line)
