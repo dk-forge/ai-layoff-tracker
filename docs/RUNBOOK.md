@@ -1133,3 +1133,45 @@ census figure and nothing else.
   ~30–60s window where a PHP-hitting request can 500 on a truncated file. Supercached
   HTML shields most anonymous traffic; a 500 observed right after a push is this window,
   not an outage — re-check after the deploy run goes green before reverting anything.
+
+## The self-healer (draft PRs from red CI — what it may and may never do)
+
+`.github/workflows/self-heal.yml` listens for every workflow completing, and
+when one fails on **main** with a NEW, code-shaped cause, it asks Claude (the
+pinned `anthropics/claude-code-action`) to reproduce the failure from the run's
+log, diagnose it, and open a **DRAFT pull request** with a test-verified fix.
+A second, adversarial pass then reviews the draft — re-derives the failure,
+tries to break the fix — and posts its verdict as a PR comment. **A human
+merges. Always.**
+
+**What it will never do** (enforced in three layers: the gate in
+`railway/self_heal.py`, the action's tool allowlist, and the `guard` job that
+diffs the branch after the fact and goes red on a violation):
+- never merges, never pushes to main, never dispatches or re-runs a workflow;
+- never touches `railway/spend.py`, `railway/headline_incidents.json`,
+  `railway/alert_outbox.json`, either hash-pinned lock, `docs/HANDOFF.md`, or
+  `self-heal.yml` itself (`self_heal.FORBIDDEN` is the one list);
+- never heals the known-expected reds: live-data invariant FAILs (a human
+  closes those with `--close-incident`; ci_alert has already emailed them),
+  self-timeouts (already mailed as CI SELF-TIMEOUT), host-outage-shaped
+  failures, branch/PR reds (they have an author), or the alert workflows
+  themselves. The classification is REUSED from `ci_alert.py` — one
+  definition, so a failure cannot be healed and classified needs-a-human at
+  the same time.
+
+**Budget is structural:** one healer at a time (concurrency group), one open
+PR per cause fingerprint (the branch name is the ledger), hard ceiling of 3
+open healer PRs.
+
+**To arm it:** add the `CLAUDE_CODE_OAUTH_TOKEN` repository secret (Settings →
+Secrets and variables → Actions). Until then every run gates, prints what it
+would have done, and exits green with a notice naming the secret.
+
+**To disable it:** set the repository variable `SELF_HEAL_DISABLED=true`
+(same settings page, Variables tab), or delete the workflow file.
+
+**To test the gate:** `gh workflow run self-heal.yml -f run_id=<a past run id>`
+— or locally, `python3 railway/self_heal.py gate --run-id <id> --workflow
+"<name>" --conclusion failure`. The gate is offline-tested in
+`railway/tests/test_self_heal.py`, including the forbidden-path guard's
+red-on-violation exit.

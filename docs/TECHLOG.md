@@ -1,5 +1,29 @@
 # Tech Log
 
+## 2026-08-14 - self-heal: red CI can now propose its own fix, as a draft a human merges
+
+**`.github/workflows/self-heal.yml` + `railway/self_heal.py` + tests.** When a
+workflow fails on main with a NEW code-shaped cause, the pinned
+`anthropics/claude-code-action` (v1.0.192, by full commit SHA) reproduces it
+from the run log and opens a DRAFT PR with a red-before/green-after fix; a
+second adversarial pass posts a review comment; a human merges, always.
+
+**The gate is most of the design.** It REUSES ci_alert's classification (live
+-data identity from data_integrity's registries — extended to match slice snake
+keys after run 31828616421 surfaced `worldwide_all_time: CONTAINMENT FAILED`
+instead of a registry label) and refuses: live-data invariant FAILs (human
+closes with --close-incident), anything not conclusion `failure` (self-timeouts
+are already mailed), host-outage-shaped causes, non-main branches (a branch red
+has an author), and the alert workflows themselves. Budget is structural: one
+healer at a time, one open PR per cause fingerprint, ceiling of 3 open drafts.
+
+**A prompt is a request; the guard is the fact.** The `guard` job diffs the
+healer's branch against `self_heal.FORBIDDEN` (spend.py, headline_incidents,
+the outbox, both locks, HANDOFF.md, the healer itself) and goes red on a
+violation — which ci-alert then emails. Dormant until the owner adds
+`CLAUDE_CODE_OAUTH_TOKEN`; kill switch `SELF_HEAL_DISABLED=true`. RUNBOOK "The
+self-healer" is the operating doc.
+
 ## 2026-08-14 - the freshness strip says its facts at first paint (2.20.46)
 
 **Owner request: the layoff page carries the same at-a-glance freshness strip
