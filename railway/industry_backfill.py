@@ -53,7 +53,10 @@ from datetime import date, datetime, timezone
 
 import requests
 
-from extractor import classify_industry, INDUSTRY_VOCABULARY, CreditsExhaustedError
+from extractor import (
+    classify_industry, INDUSTRY_VOCABULARY, CreditsExhaustedError,
+    spend_deferral_count, spend_deferred_since,
+)
 import spend
 from source_health import report_source_health
 
@@ -166,19 +169,29 @@ def classify_confirmed(company, excerpt):
     Returns (label, status) where status is one of:
     - 'confirmed'  -> both passes returned the SAME non-empty vocabulary label
     - 'unconfirmed'-> passes disagreed, or one/both said "unknown"/empty (skip)
+    - 'deferred'   -> paid reads are off for budget, so NOBODY LOOKED at this
+                     row (it stays unmarked and returns on a later rotation)
     - 'failed'     -> a model/transport error (retry on a later rotation)
+
+    'deferred' and 'failed' are both a None back from `classify_industry`, and
+    they used to share the 'failed' status. They are not the same event. A
+    budget stop is the guard working as designed, and counting it as a model
+    failure is what raised "All 200 attempted industry classifications failed"
+    on 2026-08-13 and paged the owner over a healthy run.
     """
+    before = spend_deferral_count()
     first = classify_industry(company, excerpt)
     if first is None:
-        return "", "failed"
+        return "", ("deferred" if spend_deferred_since(before) else "failed")
     label = first.get("industry", "")
     if not label:
         return "", "unconfirmed"
     if SINGLE_PASS:
         return label, "confirmed"
+    before = spend_deferral_count()
     second = classify_industry(company, excerpt)
     if second is None:
-        return "", "failed"
+        return "", ("deferred" if spend_deferred_since(before) else "failed")
     if second.get("industry", "") == label:
         return label, "confirmed"
     return "", "unconfirmed"
@@ -316,6 +329,7 @@ def run():
     _ordinal = (date.today().toordinal() * 8 + (_now.hour // 3)) * SHARDS + SHARD
     queue = rotating_slice(remaining, BATCH, _ordinal)
     items, confirmed, unconfirmed, failures, checked = [], 0, 0, 0, 0
+    deferred = 0
     started_at = time.monotonic()
     for row in queue:
         # Nothing is half-written per row, so stopping between rows is safe;
@@ -324,8 +338,25 @@ def run():
             print(f"Reached INDUSTRY_BACKFILL_DEADLINE_SECONDS={DEADLINE_SECONDS}; "
                   f"stopping safely after {checked} row(s)")
             break
+        if not spend.paid_reads_enabled():
+            # A DISCLOSED SKIP, not an outage. Nobody read the rest of this
+            # slice, so it is deferred: unmarked, and picked up by a later
+            # rotation. Asking here rather than 200 times over also spares 200
+            # pointless iterations and the sleep between them.
+            deferred = len(queue) - checked
+            print(f"  paid reads are OFF for budget: deferring the remaining "
+                  f"{deferred} row(s) unread to a later rotation")
+            break
         checked += 1
         label, status = classify_confirmed(row.get("company_name") or "", row.get("excerpt") or "")
+        if status == "deferred":
+            # The ceiling tripped part-way through this row. It was not read,
+            # so it does not count as checked and it is not a failure.
+            checked -= 1
+            deferred = len(queue) - checked
+            print(f"  paid reads went off mid-row: deferring {deferred} unread "
+                  f"row(s) to a later rotation")
+            break
         if status == "failed":
             failures += 1
             print(f"  id={row['id']} ({row.get('company_name','')}): FAILED (retried on a later rotation)")
@@ -339,13 +370,25 @@ def run():
         time.sleep(0.2)
 
     print(f"blank_backlog={len(candidates)} queue={len(queue)} checked={checked} "
-          f"confirmed={confirmed} unconfirmed={unconfirmed} failures={failures}")
+          f"confirmed={confirmed} unconfirmed={unconfirmed} failures={failures} "
+          f"deferred={deferred}")
+    if deferred:
+        # No silent caps: say how many rows went unread and what happens to
+        # them. This is the line a reader of the run summary needs, and it is
+        # deliberately a notice, not a warning or an error.
+        spend.note_truncated(f"{deferred} row(s) left unread: paid reads were "
+                             f"off for budget")
+        print(f"::notice::industry-backfill SKIPPED {deferred} row(s) for "
+              f"budget. Nobody read them, they are UNMARKED, and a later "
+              f"rotation reads them. A skipped backfill is not a broken one, "
+              f"so this run exits 0.")
 
     if DRY_RUN:
         for item in items:
             print(f"  would fill id={item['id']}: {item['industry']}")
         print("DRY RUN: no writes performed.")
-        return {"filled": 0, "checked": checked, "failures": failures}
+        return {"filled": 0, "checked": checked, "failures": failures,
+                "deferred": deferred}
 
     filled, skipped, not_found = ([], [], [])
     remaining = None
@@ -361,6 +404,11 @@ def run():
     # reading as a quiet no-op day (reason_backfill / reclassify rule). The
     # deterministic pre-pass filling rows keeps a bad-LLM day from reading as
     # total failure.
+    #
+    # `checked` counts rows a model was actually ASKED about. Deferred rows are
+    # excluded by construction above, so a run that spent its budget cannot
+    # reach this line, while a genuine model outage still does and still exits
+    # non-zero. Do not widen this to `checked + deferred`.
     if checked and failures == checked and not items and not det_filled:
         raise RuntimeError(f"All {checked} attempted industry classifications failed")
 
@@ -370,13 +418,15 @@ def run():
     detail = (f"{total_filled} industries filled ({len(det_filled)} deterministic + "
               f"{len(filled)} 2-pass LLM, fixed vocabulary, blank fields only); "
               f"{unconfirmed} left blank as unconfirmed/unknown; {failures} model "
-              f"failures; ~{pending} blank-industry rows pending")
+              f"failures; {deferred} rows unread on the spend guard; "
+              f"~{pending} blank-industry rows pending")
     # Best-effort: the classification WORK is already done and committed. A failed
     # telemetry write (after its own retries) is a warning, not a reason to fail
     # a successful run and page the owner.
     if not report_source_health("industry_backfill", "ok", total_filled, detail):
         print("::warning::industry_backfill completed but the health-ledger write failed (data is fine)")
-    return {"filled": total_filled, "checked": checked, "failures": failures}
+    return {"filled": total_filled, "checked": checked, "failures": failures,
+            "deferred": deferred}
 
 
 def main():

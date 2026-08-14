@@ -66,7 +66,10 @@ import requests
 
 import host_call
 import http_retry
-from extractor import classify_reason_tags, CreditsExhaustedError
+from extractor import (
+    classify_reason_tags, CreditsExhaustedError,
+    spend_deferral_count, spend_deferred_since,
+)
 import spend
 from source_health import report_source_health, require_running_note
 
@@ -308,6 +311,7 @@ def run():
     items = list(deterministic)
     model_items = []
     model_skips, model_failures, checked = 0, 0, 0
+    model_deferred = 0
     queue = rotating_slice(model_rows, BATCH, date.today().toordinal())
     for row in queue:
         # Nothing is half-written per row, so stopping between rows is safe;
@@ -317,8 +321,23 @@ def run():
                   f"(less the {WRITE_RESERVE_SECONDS}s write reserve); "
                   f"stopping safely after {checked} model row(s)")
             break
+        if not spend.paid_reads_enabled():
+            # A budget stop is not a model outage. Nobody read these rows, so
+            # they defer UNMARKED and a later rotation reads them; counting
+            # them as failures is what turns a working guard into a red run.
+            model_deferred = len(queue) - checked
+            print(f"  paid reads are OFF for budget: deferring the remaining "
+                  f"{model_deferred} model row(s) unread to a later rotation")
+            break
         checked += 1
+        before = spend_deferral_count()
         result = classify_reason_tags(row.get("excerpt") or "")
+        if result is None and spend_deferred_since(before):
+            checked -= 1
+            model_deferred = len(queue) - checked
+            print(f"  paid reads went off mid-row: deferring {model_deferred} "
+                  f"unread model row(s) to a later rotation")
+            break
         if result is None:
             model_failures += 1
             print(f"  model id={row['id']}: FAILED (retried on a later rotation)")
@@ -336,7 +355,14 @@ def run():
           f"scan_truncated={int(scan_truncated)} template_taggable={deterministic_backlog} "
           f"model_queue={len(model_rows)} model_checked={checked} "
           f"model_skips={model_skips} model_failures={model_failures} "
+          f"model_deferred={model_deferred} "
           f"writes_queued={len(items)} elapsed={elapsed():.0f}s")
+    if model_deferred:
+        spend.note_truncated(f"{model_deferred} model row(s) left unread: paid "
+                             f"reads were off for budget")
+        print(f"::notice::reason-backfill SKIPPED {model_deferred} model row(s) "
+              f"for budget. Nobody read them, they are UNMARKED, and a later "
+              f"rotation reads them. This run exits 0.")
 
     if DRY_RUN:
         for item in items:
@@ -356,7 +382,9 @@ def run():
     spend.record_job_run(items=checked, changed=len(edited))
 
     # A fully failed attempted model pass must be visible in Actions rather
-    # than reading as a quiet no-op day (reclassify worker rule).
+    # than reading as a quiet no-op day (reclassify worker rule). `checked`
+    # counts rows a model was actually ASKED about; deferred rows are excluded
+    # above, so a budget stop cannot reach here and a real outage still does.
     if checked and model_failures == checked and not items:
         raise RuntimeError(f"All {checked} attempted model classifications failed")
 
@@ -372,6 +400,9 @@ def run():
                  f"{pages - 1} scanned page(s), so the pending figure is a floor")
     if unwritten:
         short += f"; {unwritten} decided row(s) deferred to the next run"
+    if model_deferred:
+        short += (f"; {model_deferred} row(s) unread on the spend guard and "
+                  f"unmarked for a later rotation")
     detail = (f"{len(edited)} tagged ({det_edited} from ERM recorded type, "
               f"{len(edited) - det_edited} model-classified); {model_skips} evidence-names-no-reason "
               f"skips; {model_failures} model failures; ~{max(0, pending)} untagged rows pending"

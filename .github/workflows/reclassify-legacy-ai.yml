@@ -61,10 +61,17 @@ jobs:
           # margin below the 20-minute Actions hard limit and resume next day.
           RECLASSIFY_DEADLINE_SECONDS: '900'
           OPENROUTER_TIMEOUT_SECONDS: '35'
+        # The retry-then-::error:: wrapper only ever sees a non-zero exit, so
+        # it can only be as honest as the script under it. A budget stop exits
+        # 0 and is NOT retried and does NOT page: it is a disclosed skip, and
+        # the tee below puts that line in the run summary where a reader will
+        # find it. A genuine model outage still exits non-zero, still retries
+        # three times, and still goes red. Do not soften that half.
         run: |
+          set -o pipefail
           cd railway
           for attempt in 1 2 3; do
-            python reclassify_legacy_ai.py && exit 0
+            python reclassify_legacy_ai.py | tee -a "$GITHUB_STEP_SUMMARY" && exit 0
             echo "::warning::attempt $attempt failed; auto-retrying in $((attempt*45))s"
             sleep $((attempt*45))
           done

@@ -377,6 +377,26 @@ def spend_deferral_count():
     return _spend_deferrals
 
 
+def spend_deferred_since(before):
+    """True when the paid call made since ``before = spend_deferral_count()``
+    was DECLINED for budget, rather than attempted and failed.
+
+    Every paid function in this module returns None for both, and a caller that
+    cannot tell them apart reports the guard working as the model breaking. On
+    2026-08-13 `industry-backfill` printed 200 lines of "FAILED", raised "All
+    200 attempted industry classifications failed", was retried three times and
+    paged the owner, on a run where the budget guard had behaved perfectly and
+    the job had already decided to exit 0.
+
+    So: NOT ASKED is a fourth status, not a kind of failure. A caller that
+    counts a None must ask this before counting it. See
+    `tests/test_budget_stop_is_not_a_failure.py`, and the same lesson one module
+    over in `ai_evidence_sweep._ai_quote` (None is "we did not ask", '' is "we
+    asked and the employer did not name AI").
+    """
+    return _spend_deferrals > before
+
+
 def _precheck_credits():
     """Short-circuit at the top of a classify call once the breaker has tripped,
     so a big batch stops in seconds instead of firing hundreds of doomed calls."""

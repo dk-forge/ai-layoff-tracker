@@ -32,7 +32,9 @@ from datetime import date, datetime, time as dt_time, timedelta
 import requests
 
 import host_call
-from extractor import extract_context_evidence
+from extractor import (
+    extract_context_evidence, spend_deferral_count, spend_deferred_since,
+)
 import spend
 from reclassify_legacy_ai import UA, clean_html
 from safe_fetch import BlockedURL, safe_get
@@ -287,6 +289,7 @@ def main():
             )
         rows = payload.get("data", [])
         updates, unreadable, checked = [], 0, 0
+        deferred = 0
         recovered = {"wayback": 0, "alternate": 0}
         started_at = time.monotonic()
         for row in rows:
@@ -295,13 +298,29 @@ def main():
             if time.monotonic() - started_at >= DEADLINE_SECONDS:
                 print(f"Reached CONTEXT_DEADLINE_SECONDS={DEADLINE_SECONDS}; stopping safely after {checked} row(s)")
                 break
+            if not spend.paid_reads_enabled():
+                # This job never exits non-zero on a budget stop, but it did
+                # publish one: every unread row landed in the health ledger's
+                # `unsupported_or_unreadable` figure, which is a claim that we
+                # looked at a source and could not use it. Nobody looked.
+                deferred = len(rows) - checked
+                print(f"paid reads are OFF for budget: deferring the remaining "
+                      f"{deferred} row(s) unread to a later rotation")
+                break
             checked += 1
             try:
+                before = spend_deferral_count()
                 result, channel = evidence_for_row(row)
                 if result:
                     updates.append({"id": row["id"], **result})
                     if channel in recovered:
                         recovered[channel] += 1
+                elif spend_deferred_since(before):
+                    checked -= 1
+                    deferred = len(rows) - checked
+                    print(f"paid reads went off mid-row: deferring {deferred} "
+                          f"unread row(s) to a later rotation")
+                    break
                 else:
                     unreadable += 1
             except Exception as exc:
@@ -318,10 +337,17 @@ def main():
         detail = (
             f"mode={MODE} page={payload.get('page', 1)} checked={checked} "
             f"unsupported_or_unreadable={unreadable} "
+            f"deferred_on_spend={deferred} "
             f"wayback_verified={recovered['wayback']} alternate_source={recovered['alternate']}"
         )
         report_health("ok", updated, detail)
         print(f"{detail} queued={len(updates)}")
+        if deferred:
+            spend.note_truncated(f"{deferred} row(s) left unread: paid reads "
+                                 f"were off for budget")
+            print(f"::notice::enrich-context SKIPPED {deferred} row(s) for "
+                  f"budget. Nobody read them, they stay queued, and a later "
+                  f"rotation reads them. This run exits 0.")
         spend.record_job_run(items=checked, changed=updated)
         host_call.clear(JOB)
         return 0
