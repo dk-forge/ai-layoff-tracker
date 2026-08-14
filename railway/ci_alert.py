@@ -352,6 +352,63 @@ def live_data_identity(cause):
     return " | ".join([invariant] + named) if named else invariant
 
 
+#: The two steps a workflow uses to say whether the live-data invariants really
+#: were evaluated in this run. Exactly one of them runs.
+#:
+#: TWO steps rather than one step read as success-or-skipped, deliberately: a
+#: skipped step is reported by the jobs API today, and a channel whose "no"
+#: state is an ABSENCE degrades to the old behaviour the moment that changes.
+#: Both states are therefore something that positively ran. Pinned to
+#: .github/workflows/tests.yml by tests/test_ci_alert.py, because a rename on
+#: either side would silently return RECOVERED to being mailed on no evidence.
+LIVE_DATA_STEP = "Live-data invariants were evaluated"
+LIVE_DATA_STEP_UNKNOWN = "Live-data invariants were NOT evaluated"
+
+
+def live_data_was_evaluated(repo, run_id):
+    """True / False / None — did this run actually check the live numbers?
+
+    None means the run publishes no verdict at all, which is every workflow that
+    does not read the live site, and those keep today's behaviour. False is the
+    case worth the code: a green run of a workflow that DOES check, in which the
+    checks skipped.
+
+    THE INCIDENT. 2026-08-13/14, three emails about one wrong number in 33
+    minutes: RED at 23:37 (`tests:live.data:2e215caae5bac21b`), RECOVERED at
+    00:03, RED again at 00:10 under the SAME key. The branch-free scope was
+    working perfectly — main and fix/reader-freshness-content produced the
+    identical key, which is what it was built for. What re-armed the alarm was
+    the green run in between: run 31755860626, in which every live check read
+    `skipped 'site is in its deploy maintenance window (HTTP 503)'`. Nothing had
+    recovered; nobody had looked.
+
+    One `gh api` call, the same one `fetch_annotations` already makes. Never
+    raises: this runs on the notification path.
+    """
+    try:
+        proc = subprocess.run(
+            ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/jobs",
+             "-q", ".jobs[].steps[] | \"\\(.conclusion)\\t\\(.name)\""],
+            capture_output=True, text=True, timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"could not read the run's steps ({exc}): live-data verdict UNKNOWN")
+        return None
+    if proc.returncode != 0:
+        print(f"gh api jobs exited {proc.returncode}: {proc.stderr.strip()[:200]}")
+        return None
+    verdict = None
+    for line in (proc.stdout or "").splitlines():
+        conclusion, _, name = line.partition("\t")
+        if conclusion.strip() != "success":
+            continue
+        if name.strip() == LIVE_DATA_STEP:
+            return True
+        if name.strip() == LIVE_DATA_STEP_UNKNOWN:
+            verdict = False
+    return verdict
+
+
 def live_data_scope(workflow):
     """The branch-free scope live-data incidents are raised and cleared under.
 
@@ -657,6 +714,21 @@ def main(argv=None):
         # how a closed incident would keep its alarm open and earn a STILL
         # FAILING reminder a fortnight later.
         scopes = [scope, live_data_scope(args.workflow)]
+        # ...unless this run did not actually look. A live check that SKIPPED is
+        # UNKNOWN, and clearing an incident on an UNKNOWN is how the owner was
+        # mailed RECOVERED at 00:03 on 2026-08-14 for a number every check in
+        # that run had declined to read, and RED again at 00:10. The branch
+        # scope stays: whatever failed in this checkout really is green again.
+        # `--dry-run` makes no API calls at all, here or anywhere else, so the
+        # offline unit suite can drive this path without reaching a runner.
+        evaluated = None if args.dry_run else live_data_was_evaluated(
+            args.repo, args.run_id)
+        if evaluated is False:
+            print(f"not clearing {live_data_scope(args.workflow)}: the live-data "
+                  f"invariants did not run in this run (they skipped), so this "
+                  f"green run is UNKNOWN about the live numbers, not a pass. The "
+                  f"next run that evaluates them clears it.")
+            scopes = [scope]
         if args.dry_run or not (site and key):
             print(f"[dry-run] resolve scopes={scopes}")
             return 0

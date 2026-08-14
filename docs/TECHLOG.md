@@ -1,5 +1,129 @@
 # Tech Log
 
+## 2026-08-14 - three signals about a red CI run, and only one of them was real
+
+`Tests` was red on main for three days with exactly ONE failing test. Around it
+sat two other signals that a session read as separate defects and spent a night
+on. Both were manufactured by this repository's own alerting, which is worth
+more attention than the failure was: an alerting system that mints plausible
+false leads costs more than one that stays quiet.
+
+### 1. No job was deferring. Three PASSING tests were annotating the run.
+
+The lead was three lines on the run:
+
+```
+::error::test-job: the host reported the work failed: {'ok': False, 'failed': 3}
+::error::test-job: the host reported error=bad request
+::error::test-job has now deferred 3 times in a row. That is no longer an
+         outage - the host is answering other jobs.
+```
+
+Read as an escalating job, per CLAUDE.md's rule that three deferrals in a row is
+not an outage. It was not one. `test-job` is the fixture name in
+`tests/test_host_call_deferral.py`; the "three items the host refused" are the
+literal body `{"ok": false, "failed": 3}` on line 150; the streak is three
+synthetic 504s in a tempdir ledger against a scripted host. All three tests
+PASS. `railway/deferral_ledger.json` has one entry, for archive-backfill, at
+x1, cleared by its next run.
+
+What made them look real is that GitHub Actions parses any step's stdout for
+workflow commands, so a `::error::` printed by a test under inspection becomes a
+red annotation on the run, indistinguishable from one a job emitted. The
+subject's output is now captured in `run_call` (`self.printed` keeps it for
+assertions), and `tests/test_no_annotation_leaks.py` runs the modules that drive
+an annotating script in a subprocess and fails if a workflow command reaches the
+runner. `tests.yml` also pipes the suite through a two-character defang, because
+`spend`, `cron` and `extractor` leak the same way ("::warning::spend: this run
+has spent $1.0000, at or past the $0.200 per-run ceiling" on a green suite) and
+running them all in a guard would be running the suite twice. Nothing a
+simulated world prints is an instruction to the runner.
+
+### 2. The live-data incident was not keyed per branch. It was CLEARED by a run that never looked.
+
+The second lead was two RED emails for the same archive assertion, one saying
+`branch: main` and one `branch: fix/reader-freshness-content`, which is exactly
+the defect CLAUDE.md forbids. The keys say otherwise: both runs produced
+`tests:live.data:2e215caae5bac21b`, the identical branch-free key, and the
+endpoint suppressed the second as already open. That half has been working
+since 2026-08-11.
+
+The email in between is the defect. `Tests` went green on main at 00:00:28 (run
+31755860626) and the alerter posted `resolve tests:live.data`, which mailed
+RECOVERED. In that run every live check had reported
+
+```
+skipped 'site is in its deploy maintenance window (HTTP 503)'
+```
+
+Nothing had recovered; nobody had looked. Seven minutes later the next red run
+re-raised the same key and mailed again. RED, RECOVERED, RED in 33 minutes,
+about one number.
+
+`test_dedup_live.py` maps an UNKNOWN live invariant to a SKIP on purpose - an
+offline laptop and the two minutes an FTPS deploy spends in maintenance mode
+must not redden a push - and the resolve path was the last reader still
+inferring a pass from silence. It now needs evidence:
+`data_integrity.live_data_state()` reports evaluated/unknown from the same
+registry everything else reads, the suite writes it to `LIVE_DATA_VERDICT_FILE`,
+tests.yml turns it into one of two named steps, and `ci_alert.live_data_was_
+evaluated()` reads that from `gh api runs/<id>/jobs` - the same call
+`fetch_annotations` already makes, no log download. A run whose live checks
+skipped clears its BRANCH scope and leaves the live-data incident open.
+
+Two steps rather than one-that-skips, deliberately: a channel whose "no" is an
+absence degrades to the old behaviour the moment the jobs API stops listing
+skipped steps. A workflow that publishes no verdict at all is unchanged, which
+keeps this narrow to the one state that was being guessed.
+
+### 3. The archive re-check invariant was projecting its own failure
+
+The one real failure. The assertion:
+
+```
+oldest un-archived attempt 3.7d ago (202 pending, 3,381 not yet in Wayback) -
+inside the 10d bound TODAY, but 3,536 due at a measured 231/day = 15.3d cycle,
+16.3d worst age, past the 8d projected bound (7d promise + 1d run granularity).
+The re-check promise is about to become false and the slack is what is hiding
+it; raise throughput in archive-backfill.yml
+```
+
+It was not throughput, and the answer was not the published promise. Yesterday's
+session had already found the workflow innocent and shortened the server gate
+from 7 days to 4; the check went red again anyway, because the problem is the
+ESTIMATOR.
+
+`pool / (rechecked_recent / 48h)` is sound only while throughput is
+capacity-limited. It is not. A URL is ineligible until
+`ALT_ARCHIVE_RECHECK_DAYS` after its last attempt, so re-checks arrive in
+convoys and the server hands out nothing in between: run 31756911580 asked for a
+second batch and was told `batch 2: 0 candidate URL(s)` against a pool of 3,480.
+It was finished, not slow. Sampling that trough over 48 hours gives 296/day and
+an "11.7d cycle" for a pool the site's own timestamps prove was fully traversed
+in 3.9 days - `oldest_unarchived_checked_at` at 3.9d means EVERY un-archived URL
+was attempted within 3.9 days, which is a completed pass, four days better than
+the estimate and well inside the 7-day promise.
+
+So the projection may now FAIL only while the direct reading does not already
+show the pool completing inside the same projected bound. **No bound moved** -
+`PROMISE_DAYS` 7, `RUN_GRANULARITY_DAYS` 1, `PROJECTED_MAX_AGE_DAYS` 8,
+`MAX_AGE_DAYS` 10, all pinned by a test that exists to make that checkable - and
+the 2026-08-04 reading the projection was written from (8.6d age, ~500/day,
+3,864 due) still FAILS, two days before the age bound would have caught it.
+The published sentence, "We re-check weekly; next check by <date>", is unchanged
+because it is being kept.
+
+The same reasoning fixed the zero-throughput branch: zero re-checks in a window
+is excusable while nothing was DUE (oldest attempt younger than the gate) and is
+a stopped cron the moment there are overdue URLs, which catches a stall within a
+day of the gate instead of waiting out the 10-day reading.
+
+Live after the change: `archive_recheck_cadence` PASS, "the whole pool completed
+a pass in 3.9d (4.9d worst age, inside the 8d projected bound). The 48h
+throughput sample disagrees, and is not believed."
+
+No plugin file changed, so nothing deployed.
+
 ## 2026-08-13 - one page, one basis, and the broad AI lens is visible (2.20.33)
 
 Two changes to the at-a-glance board, both approved by the owner. They are one

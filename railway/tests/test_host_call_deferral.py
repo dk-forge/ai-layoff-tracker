@@ -25,6 +25,8 @@ being an outage and goes red like any other broken job.
 
 No network anywhere. Offline, no keys.
 """
+import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -84,6 +86,27 @@ class _Case(unittest.TestCase):
         self.addCleanup(patch.stop)
 
     def run_call(self, *responses, job="test-job", extra=(), same_run=False):
+        """Drive one host call and return (exit code, the scripted host).
+
+        The subject's stdout is CAPTURED, not printed, and that is load-bearing
+        rather than tidiness. `host_call.defer()` announces the third
+        consecutive deferral as `::error::...`, and `main()` announces a refused
+        body the same way — those are GitHub Actions workflow commands, and the
+        runner turns any such line on a step's stdout into a red annotation on
+        the run. Printed from here they became annotations describing a job
+        called `test-job` that does not exist, on a fake host, in a temporary
+        ledger:
+
+            ::error::test-job: the host reported the work failed: {'ok': False, 'failed': 3}
+            ::error::test-job has now deferred 3 times in a row.
+
+        All three came from tests that PASSED. On 2026-08-14 they were read off
+        a red `Tests` run as a real job escalating, and cost a session's work
+        chasing an outage that had never happened. A test may exercise the
+        annotation path; it may not emit the annotation.
+
+        `self.printed` keeps the text, so an assertion can still read it.
+        """
         import os
 
         if not same_run:
@@ -91,14 +114,17 @@ class _Case(unittest.TestCase):
         os.environ["GITHUB_RUN_ID"] = str(self._runs)
         host = _Host(*responses)
         http_retry._send = host
-        code = host_call.main([
-            "--job", job,
-            "--url", "https://asktherecruiter.com/blog/wp-json/layoffs/v1/thing",
-            "--ledger", str(self.ledger),
-            "--output", str(self.output),
-            "--no-sleep",
-            *extra,
-        ])
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = host_call.main([
+                "--job", job,
+                "--url", "https://asktherecruiter.com/blog/wp-json/layoffs/v1/thing",
+                "--ledger", str(self.ledger),
+                "--output", str(self.output),
+                "--no-sleep",
+                *extra,
+            ])
+        self.printed = buf.getvalue()
         return code, host
 
     def ledger_doc(self):
