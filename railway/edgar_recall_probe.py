@@ -91,11 +91,11 @@ def classify(raw, gold_count):
               f"TICKER (if known): {raw.get('ticker') or 'Unknown'}\n"
               f"DATE: {raw.get('filing_date') or 'Unknown'}\n\nTEXT:\n{raw_text}")
     try:
-        resp = extractor._get_client().chat.completions.create(
+        resp = spend.metered_call(extractor.MODEL, lambda: extractor._get_client().chat.completions.create(
             model=extractor.MODEL, max_tokens=1000,
             messages=[{"role": "system", "content": extractor.SYSTEM_PROMPT},
-                      {"role": "user", "content": prompt}])
-        spend.record_usage(extractor.MODEL, getattr(resp, "usage", None))
+                      {"role": "user", "content": prompt}]),
+            what="a recall-probe extraction")
     except Exception as exc:
         return {"verdict": "unknown", "stage": "llm_error", "detail": str(exc)[:200],
                 "gold_count_in_window": windowed}

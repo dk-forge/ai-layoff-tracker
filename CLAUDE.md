@@ -127,6 +127,15 @@ the end check.
 - Changing an entry's job count changes its dedup hash → corrections need `/bulk-purge` + full re-import, not plain upsert.
 - Data-changing jobs must FAIL LOUDLY (non-zero exit on any failed batch; `curl --fail-with-body` in workflows).
 - Bump the plugin `Version:` + `ALT_VERSION` on EVERY deploy — it cache-busts assets and triggers the flush.
+- **Never make a paid model call outside `spend.metered_call()`.** It is the gate
+  AND the meter: it reads the per-run brake immediately before the request and
+  meters immediately after, so a caller cannot spend without checking and cannot
+  check without metering. The `make_call` you hand it must perform exactly ONE
+  request — a callable that loops or retries internally puts several charges
+  behind one gate read, which is the once-per-item defect that let a run
+  overshoot its ceiling by 36 calls (2026-08-11). Retry by calling it again. It
+  raises `spend.PaidReadsOff`; a budget stop is UNDECIDED, never a verdict, and
+  never a red run.
 - **Never write a row directly.** A new source builds a raw dict and calls `extract_layoff_data` → `post_to_wordpress`. The raw dict MUST set `raw_text` (the extractor reads ONLY that and returns None if empty — the bug that made supplemental news silently post zero). Mirror `sources/newsapi.py`. Ship key-gated sources DORMANT with dry-run diagnostics. See RUNBOOK "add a new source".
 - **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Competitor tracking lives ENTIRELY in the local benchmark (`gen.py` reads only our own `agg_*.json`; the competitor figures are maintained by hand in `scratchpad/bm-live.html`). **No secret is involved and none is needed.** The `BENCHMARK_FEED_URLS`/`BENCHMARK_COMPANIES` secrets power a SEPARATE, OPTIONAL automated loop (`tracker-diff`) that is **dormant by the owner's decision (2026-07-28)** — it exits green on its schedule and costs nothing. **Do not ask the owner to add those secrets.**
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.

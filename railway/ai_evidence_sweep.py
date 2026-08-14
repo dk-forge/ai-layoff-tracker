@@ -112,6 +112,11 @@ def _ai_quote(company, text):
     found" on '', which is a statement that we looked. Collapsing a budget stop
     into that branch would publish a finding about a row nobody read.
     """
+    # Read the brake BEFORE the "no client configured" answer, and before
+    # spend.metered_call reads it again at the request. Both checks are one
+    # call apart (this function makes exactly one), so neither is the coarse
+    # per-item gate; this one exists because '' below is a VERDICT and a run
+    # with paid reads off must not reach it by way of a missing client.
     if not spend.paid_reads_enabled():
         return None
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -127,13 +132,12 @@ def _ai_quote(company, text):
             "etc. do NOT count), answer exactly NONE.\n\n"
             f"TEXT:\n{text[:4500]}"
         )
-        resp = client.chat.completions.create(
+        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
             model="deepseek/deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
             temperature=0, max_tokens=120,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
-        )
-        spend.record_usage("deepseek/deepseek-chat", getattr(resp, "usage", None))
+        ), what=f"the AI-quote read for {company}")
         quote = resp.choices[0].message.content.strip().strip('"').strip()
         if not quote or quote.upper().startswith("NONE") or len(quote) < 12:
             return ""
@@ -142,6 +146,8 @@ def _ai_quote(company, text):
         if norm(quote)[:60] not in norm(text):
             return ""
         return quote[:300]
+    except spend.PaidReadsOff:
+        return None            # not asked: there is no verdict about this text
     except Exception:
         return ""
 
@@ -151,14 +157,14 @@ def _second_pass_agrees(company, quote):
 
     True / False are verdicts; None means the budget stopped us before asking.
     """
-    if not spend.paid_reads_enabled():
+    if not spend.paid_reads_enabled():   # see _ai_quote: False is a verdict too
         return None
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not (OpenAI and api_key):
         return False
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
-        resp = client.chat.completions.create(
+        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
             model="deepseek/deepseek-chat",
             messages=[{"role": "user", "content": (
                 "Answer only yes or no. Does this sentence show the EMPLOYER "
@@ -167,9 +173,10 @@ def _second_pass_agrees(company, quote):
                 f"projection)?\n\n\"{quote}\"")}],
             temperature=0, max_tokens=4,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
-        )
-        spend.record_usage("deepseek/deepseek-chat", getattr(resp, "usage", None))
+        ), what=f"the second-pass check for {company}")
         return resp.choices[0].message.content.strip().lower().startswith("y")
+    except spend.PaidReadsOff:
+        return None            # not asked: no verdict, not a disagreement
     except Exception:
         return False
 
@@ -263,8 +270,10 @@ def main():
             # normal day. THIS is the loop that made the named per-run ceiling
             # leak: the outer loop checked the budget once per event, so the
             # last event could overshoot by a whole event's worth of calls
-            # (measured 2026-08-07: $0.0196 against a $0.015 ceiling). It now
-            # checks the clock AND the budget per text.
+            # (measured 2026-08-07: $0.0196 against a $0.015 ceiling; still
+            # $0.0166 on 2026-08-11). It now checks the clock per text, and the
+            # budget per CALL -- inside spend.metered_call, which is the only
+            # boundary that bounds the overshoot to one call.
             if past_deadline():
                 unread = "wall-clock deadline reached mid-event"
                 print(f"  deadline reached mid-event for {company}; the row stays "

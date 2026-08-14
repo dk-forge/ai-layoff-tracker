@@ -234,8 +234,19 @@ class EveryPaidCallIsGated(unittest.TestCase):
                 body = EXTRACTOR.split(f"def {name}(", 1)[1].split("\ndef ", 1)[0]
                 self.assertIn("spend.paid_reads_enabled()", body,
                               f"{name} makes a paid call with no spend gate")
-                self.assertIn("spend.record_usage(", body,
-                              f"{name} spends without metering it")
+                # The gate and the meter are the same function now
+                # (spend.metered_call): checking the brake immediately before
+                # the request and metering immediately after is what bounds a
+                # run's overshoot to ONE call. A hand-rolled create() +
+                # record_usage() pair can drift apart again — the item-level
+                # gate is exactly how it drifted last time — so require the
+                # shared path rather than the two halves.
+                self.assertIn("spend.metered_call(", body,
+                              f"{name} spends outside spend.metered_call, so its "
+                              f"brake and its meter can drift apart again")
+                self.assertNotIn("spend.record_usage(", body,
+                                 f"{name} meters by hand as well as through "
+                                 f"metered_call — that double-counts the call")
 
 
 class TheClientItselfIsGated(unittest.TestCase):
@@ -266,8 +277,9 @@ class TheClientItselfIsGated(unittest.TestCase):
             with self.subTest(module=rel):
                 src = (ROOT / rel).read_text()
                 self.assertIn("except Exception", src)
-                self.assertIn("spend.record_usage(", src,
-                              f"{rel} spends without metering it")
+                self.assertIn("spend.metered_call(", src,
+                              f"{rel} spends outside spend.metered_call, which "
+                              f"is both the gate and the meter")
 
 
 class FreeIngestSurvivesDegradation(unittest.TestCase):
