@@ -224,9 +224,23 @@ class NamedCeilingsAreArithmeticNotHope(unittest.TestCase):
                 self.assertLessEqual(ceiling, 0.20)
 
     def test_the_worst_case_sum_fits_beside_the_measured_ingest(self):
-        """Ingest is MEASURED. The named ceilings' worst case must leave that
-        much headroom inside the allowance — if this fails, someone widened a
-        ceiling (or named a new job) without redoing the ladder.
+        """Ingest is MEASURED. The COMMITTED ceilings' worst case must leave
+        that much headroom inside the allowance — if this fails, someone
+        widened a ceiling (or named a new recurring job) without redoing the
+        ladder.
+
+        SCOPE NARROWED TO THE COMMITTED PATH (2026-08-13). It used to sum
+        EVERY named ceiling, which made the ladder unsatisfiable the moment the
+        allowance came down to a steady-state number: the backfills alone claim
+        $7.35/month worst case. That sum is no longer a bound on anything,
+        because a discretionary job's ceiling is now RATIONED at run time
+        against the allowance actually left in the month
+        (spend.discretionary_run_ceiling_usd) rather than taken from the table.
+        What must still fit, and what this asserts, is the recurring path: the
+        collectors are paid first, so their worst case has to be affordable
+        before any catch-up work is even considered.
+        `test_discretionary_claims_are_bounded_by_headroom_not_by_the_table`
+        below covers the other half.
 
         THE RESERVE USED TO BE A LITERAL `- 3.0` (fixed 2026-08-12) while this
         docstring and the failure message both said the reserve was the ~$5.1
@@ -240,14 +254,60 @@ class NamedCeilingsAreArithmeticNotHope(unittest.TestCase):
         """
         total = 0.0
         for job, ceiling in spend.JOB_RUN_CEILINGS_USD.items():
+            if spend.is_discretionary(job):
+                continue
             total += ceiling * self.RUNS_PER_MONTH.get(job, 30)
         budget = spend.MONTHLY_ALLOWANCE_USD - spend.MEASURED_INGEST_USD_PER_MONTH
         self.assertLessEqual(
             total, budget,
-            f"named ceilings sum to ${total:.2f}/month worst case; with ingest "
-            f"MEASURED at ~${spend.MEASURED_INGEST_USD_PER_MONTH:.2f} that "
-            f"leaves ${budget:.2f} inside the "
-            f"${spend.MONTHLY_ALLOWANCE_USD:.0f} allowance, so it does not fit")
+            f"COMMITTED ceilings sum to ${total:.2f}/month worst case; with "
+            f"ingest MEASURED at ~${spend.MEASURED_INGEST_USD_PER_MONTH:.2f} "
+            f"that leaves ${budget:.2f} inside the "
+            f"${spend.MONTHLY_ALLOWANCE_USD:.2f} allowance, so the recurring "
+            f"path does not fit and a backfill is not the reason")
+
+    def test_every_named_job_is_classified(self):
+        """A job in neither set is treated as COMMITTED, which is the safe
+        default but also a silent one. Every job with a ceiling must be an
+        explicit choice, so a new paid job cannot join the recurring path by
+        forgetting."""
+        for job in spend.JOB_RUN_CEILINGS_USD:
+            with self.subTest(job=job):
+                self.assertTrue(
+                    job in spend.COMMITTED_JOBS or job in spend.DISCRETIONARY_JOBS,
+                    f"{job} has a named ceiling but is in neither "
+                    f"COMMITTED_JOBS nor DISCRETIONARY_JOBS, so it silently "
+                    f"defaults to being paid first")
+
+    def test_the_two_classes_do_not_overlap(self):
+        self.assertEqual(spend.COMMITTED_JOBS & spend.DISCRETIONARY_JOBS,
+                         frozenset())
+
+    def test_discretionary_claims_are_bounded_by_headroom_not_by_the_table(self):
+        """The backfills' named ceilings x cadence exceed the whole allowance,
+        and that is FINE — precisely because the table is no longer what binds
+        them. This asserts both halves of that sentence, so nobody 'fixes' the
+        over-subscription by cutting a ceiling that no longer decides anything.
+        """
+        claim = 0.0
+        for job in spend.DISCRETIONARY_JOBS:
+            runs = spend.DISCRETIONARY_RUNS_PER_MONTH.get(job, 30)
+            claim += spend.JOB_RUN_CEILINGS_USD.get(
+                job, spend.RUN_CEILING_USD) * runs
+        self.assertGreater(
+            claim, spend.MONTHLY_ALLOWANCE_USD,
+            "the discretionary table no longer over-subscribes the allowance; "
+            "if that is deliberate, this test has lost its subject")
+        # ...and on a month where the committed path has already claimed the
+        # allowance, the rationer hands out nothing at all.
+        ledger = {"v": 1, "entries": [
+            {"job": "railway-cron", "date": "2026-09-01",
+             "cost_usd": spend.MONTHLY_ALLOWANCE_USD}]}
+        ceiling, why = spend.discretionary_run_ceiling_usd(
+            "edgar-history-sweep", today=datetime.date(2026, 9, 20),
+            ledger=ledger)
+        self.assertEqual(ceiling, 0.0)
+        self.assertIn("NO HEADROOM", why)
 
     def test_the_five_dollar_target_is_documented_not_pretended(self):
         self.assertIn("$5/MONTH TARGET", SPEND.upper())
@@ -341,6 +401,154 @@ class EveryLlmJobLeavesALedgerLine(unittest.TestCase):
         with open(ROOT / "railway/spend_jobs.json") as fh:
             data = json.load(fh)
         self.assertIsInstance(data.get("entries"), list)
+
+
+class ABackfillCannotStarveTheCollectors(_LedgerSandbox):
+    """THE LOAD-BEARING TEST for the 2026-08-12/13 incident.
+
+    Six dispatched edgar-history-sweep runs spent $0.884 in 26 hours. Under a
+    $7.00 month that is 44 days of catch-up budget gone in one, and under the
+    old flat per-run ceiling nothing anywhere could tell that apart from the
+    Railway cron collecting today's layoffs. So: build a month where a backfill
+    empties the allowance on DAY 2, then assert on DAY 20 that the recurring
+    collectors are untouched and the backfill is the only thing that stopped.
+    """
+
+    def _lean_month(self):
+        """Sept 2026: the committed path ticking over at its measured rate, and
+        one catastrophic backfill on the 2nd."""
+        entries = [{"job": "railway-cron", "date": f"2026-09-{d:02d}",
+                    "cost_usd": 0.164} for d in range(1, 21)]
+        entries.append({"job": "edgar-history-sweep", "date": "2026-09-02",
+                        "cost_usd": spend.MONTHLY_ALLOWANCE_USD})
+        return {"v": 1, "entries": entries}
+
+    def test_the_recurring_collectors_still_have_their_full_budget_on_day_20(self):
+        os.environ["ALT_JOB"] = "dedupe-llm"
+        self.assertFalse(spend.is_discretionary("dedupe-llm"))
+        self.assertEqual(spend.effective_run_ceiling_usd("dedupe-llm"),
+                         spend.JOB_RUN_CEILINGS_USD["dedupe-llm"],
+                         "a backfill emptied the month on day 2 and the daily "
+                         "dedup was rationed for it — the collectors are "
+                         "supposed to be paid first")
+        os.environ["ALT_JOB"] = "railway-cron"
+        self.assertEqual(spend.effective_run_ceiling_usd("railway-cron"),
+                         spend.RUN_CEILING_USD)
+
+    def test_the_backfill_is_the_thing_that_stopped(self):
+        ceiling, why = spend.discretionary_run_ceiling_usd(
+            "edgar-history-sweep", today=datetime.date(2026, 9, 20),
+            ledger=self._lean_month())
+        self.assertEqual(ceiling, 0.0)
+        self.assertIn("NO HEADROOM", why)
+
+    def test_a_zero_headroom_run_says_it_was_skipped_and_does_not_go_red(self):
+        """Rule 4: a skipped discretionary job REPORTS and exits 0. A red run
+        manufactures an alert, and this repo has already paid for that loop."""
+        os.environ["ALT_JOB"] = "edgar-history-sweep"
+        os.environ["ALT_RUN_CEILING_USD"] = "0"
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            allowed = spend.paid_reads_enabled()
+        self.assertFalse(allowed)
+        out = buf.getvalue()
+        self.assertIn("SKIPPED", out)
+        self.assertIn("exits 0", out)
+        self.assertIn("skipped", (spend.run_truncation() or "").lower())
+
+    def test_a_truncated_run_says_what_it_dropped(self):
+        """Rule: no silent caps. The ledger line a throttled run leaves must
+        name the cause and must not read as complete."""
+        os.environ["ALT_JOB"] = "edgar-history-sweep"
+        os.environ["ALT_RUN_CEILING_USD"] = "0.010"
+        spend.record_usage("deepseek/deepseek-chat",
+                           {"prompt_tokens": 100000, "completion_tokens": 5000})
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertFalse(spend.paid_reads_enabled())
+            entry = spend.record_job_run(items=800, stored=3)
+        self.assertFalse(entry["complete"])
+        self.assertIsNotNone(entry["truncated"])
+        self.assertIn("ceiling", entry["truncated"])
+        self.assertIn("TRUNCATED", buf.getvalue())
+
+    def test_a_lean_month_slows_a_backfill_rather_than_stopping_it(self):
+        """Day 2 vs day 25 of the SAME lean month: smaller, never zero, while
+        any headroom is left. A backfill that stops loses coverage; a backfill
+        that shrinks only delays it, and every one of them is resumable."""
+        def month_to(day, sweep_per_day):
+            rows = []
+            for d in range(1, day + 1):
+                rows.append({"job": "railway-cron", "date": f"2026-09-{d:02d}",
+                             "cost_usd": 0.164})
+                rows.append({"job": "edgar-history-sweep",
+                             "date": f"2026-09-{d:02d}",
+                             "cost_usd": sweep_per_day})
+            return {"v": 1, "entries": rows}
+
+        named = spend.JOB_RUN_CEILINGS_USD["edgar-history-sweep"]
+        for day in (2, 25):
+            ceiling, why = spend.discretionary_run_ceiling_usd(
+                "edgar-history-sweep", today=datetime.date(2026, 9, day),
+                ledger=month_to(day, 0.07))
+            with self.subTest(day=day):
+                self.assertGreater(ceiling, 0.0,
+                                   f"day {day}: the sweep was stopped, not slowed")
+                self.assertLess(ceiling, named, f"day {day}: not throttled")
+                self.assertIn("THROTTLED", why)
+
+        # ...and the throttle is a function of what is LEFT, not of the date:
+        # same day, more already spent on catch-up, tighter ceiling.
+        thrifty, _ = spend.discretionary_run_ceiling_usd(
+            "edgar-history-sweep", today=datetime.date(2026, 9, 25),
+            ledger=month_to(25, 0.02))
+        spendy, _ = spend.discretionary_run_ceiling_usd(
+            "edgar-history-sweep", today=datetime.date(2026, 9, 25),
+            ledger=month_to(25, 0.09))
+        self.assertGreater(
+            thrifty, spendy,
+            "two months differing only in how much catch-up work was already "
+            "bought got the same ceiling, so the rationer is not reading the "
+            "allowance actually remaining")
+
+    def test_an_override_cannot_outspend_the_month_but_is_never_silent(self):
+        """The Aug 12/13 shape exactly: a dispatch input raising the ceiling.
+        It still works, it is still honoured up to what is left, and the run
+        log says what was clamped. Committed jobs are not clamped at all."""
+        ledger = self._lean_month()
+        self.assertEqual(
+            spend.discretionary_headroom_usd(
+                today=datetime.date(2026, 9, 20), ledger=ledger)[0], 0.0)
+        src = (ROOT / "railway/spend.py").read_text()
+        self.assertIn("is CLAMPED to", src)
+        os.environ["ALT_JOB"] = "company-watchlist"   # committed
+        os.environ["ALT_RUN_CEILING_USD"] = "0.90"
+        self.assertEqual(spend.effective_run_ceiling_usd(), 0.90)
+
+
+class TheOwnerCanSeeWhereTheMonthIsGoing(_LedgerSandbox):
+    """Rule 5: one line, readable by someone who is not a developer."""
+
+    def test_the_budget_line_names_spent_allowance_days_and_projection(self):
+        ledger = {"v": 1, "entries": [
+            {"job": "railway-cron", "date": f"2026-09-{d:02d}",
+             "cost_usd": 0.10} for d in range(1, 11)]}
+        line = spend.budget_line(today=datetime.date(2026, 9, 10),
+                                 ledger=ledger)
+        self.assertIn("$1.00 of $7.00 spent", line)
+        self.assertIn("10/30 days", line)
+        self.assertIn("$3.00 for 2026-09", line)   # 0.10/day x 30
+        self.assertIn("on track", line)
+
+    def test_the_budget_line_says_OVER_when_it_is(self):
+        ledger = {"v": 1, "entries": [
+            {"job": "railway-cron", "date": "2026-09-01", "cost_usd": 3.0}]}
+        line = spend.budget_line(today=datetime.date(2026, 9, 1), ledger=ledger)
+        self.assertIn("OVER", line)
+
+    def test_ops_status_prints_it(self):
+        self.assertIn("_spend.budget_line()",
+                      (ROOT / "railway/ops_status.py").read_text())
 
 
 if __name__ == "__main__":

@@ -1,5 +1,124 @@
 # Tech Log
 
+## 2026-08-13 - the collectors are paid first, catch-up work spends the rest
+
+The owner measured the burn and said "keep both at steady state", targeting a
+combined ~$5-8/month across both trackers. Two days had blown through it:
+2026-08-12 took $2.50 off the shared OpenRouter balance and 2026-08-13 took
+$1.13, against a $0.26/day steady state measured 08-07..08-10.
+
+### What actually spent it, named
+
+`railway/spend_jobs.json` names **$0.816 of the $2.50** on 08-12 and **$0.355 of
+the $1.13** on 08-13. Inside that, the whole excess is one job:
+
+| day | edgar-history-sweep runs | $ | rest of this repo |
+|---|---|---|---|
+| 08-12 | 31570100147, 31570908283, 31572141302 (all `workflow_dispatch`) | 0.6012 | 0.2150 |
+| 08-13 | 31671206050, 31671918086 (dispatch) + 31675106992 (schedule) | 0.2830 | 0.0723 |
+
+Six runs of a job whose cron is **daily**, $0.884 in 26 hours. Against this
+repo's steady state that is 44 days of catch-up budget. **None of them used the
+`run_ceiling_usd` override** — 31572141302's own guard step printed "none named
+for 'edgar-history-sweep' - global $0.20 default applies" and still cost
+$0.2721. A per-RUN ceiling says nothing about how many runs a day may have.
+
+**The other 70% of both spikes is NOT visible from this repo and must not be
+claimed as measured.** `unattributed_report()` puts the remainder at $9.19 over
+08-02..08-13, 75% of the account's fall. It contains the sibling tracker on the
+same account, plus this repo's own daily EDGAR sweep for every day before
+08-12 (an UNNAMED job is an UNHARVESTED one, so it was invisible until it was
+named). Lowering this repo's ceiling cannot lower the sibling's share of the
+account.
+
+### The shape of the fix: committed vs discretionary
+
+Not switching backfills off - that protects the budget by abandoning coverage.
+`railway/spend.py` now splits every paid job in two, `COMMITTED_JOBS` and
+`DISCRETIONARY_JOBS`, and a job in neither is treated as committed (safe
+direction, and `test_every_named_job_is_classified` makes it an explicit
+choice rather than an omission).
+
+- **Committed** = staying current. Keeps its NAMED ceiling, always. Never
+  rationed, and its projected cost for the rest of the month is subtracted
+  BEFORE any backfill sees a cent.
+- **Discretionary** = catching up. `discretionary_run_ceiling_usd()` rations the
+  named ceiling against the allowance actually left, shared in proportion to
+  each job's ceiling and real cadence so whichever sweep runs first at 05:20
+  UTC cannot take the lot. Every one is resumable, so a smaller run delays
+  coverage and never loses it.
+
+Zero headroom is a **disclosed skip**: `paid_reads_enabled()` prints what was
+skipped and why and the job **exits 0**. A red run manufactures an alert, and
+this repo has already paid for that loop once (2026-07-31).
+
+### Two constants that were quietly wrong
+
+`MEASURED_INGEST_USD_PER_MONTH` was 5.1, measured before the 2026-08-07 swap to
+`google/gemini-2.5-flash-lite` (0.388x). Re-measured over the ten harvested
+railway-cron runs of 08-07..08-11: $0.0401/run x 2/day = **$2.41/month**. A
+stale reserve is not conservative — it was claiming $2.69/month of allowance
+for work that had stopped costing it.
+
+`MONTHLY_ALLOWANCE_USD` 18.0 -> **7.0**. It is a PER-REPO budget whose SUM with
+the sibling's is the real target; this repo cannot see the sibling's usage and
+the constant can never be checked against the account balance. Derivation is in
+the constant's comment, with the snippet to re-derive it.
+
+### The ledger lags a day and the key does not
+
+Three dispatches inside 31 minutes each read a ledger harvested at 05:00 that
+knew about none of the other two. `live_month_to_date_usd()` reads this
+tracker's own key (the sibling has a separate one), cached per process exactly
+like `month_gate`, and any gap above the harvested ledger is charged to
+catch-up work — wrong in the direction that slows a backfill, never a
+collector.
+
+### Replayed against 08-12 and 08-13
+
+| | actual | new, ledger only | new, with live key MTD |
+|---|---|---|---|
+| 08-12 sweeps | $0.6012 | $0.2412 | $0.1667 |
+| 08-13 sweeps | $0.2830 | $0.1802 | $0.0940 |
+
+### Does a $7 ceiling put 95% coverage out of reach? Measured, not assumed
+
+The owner also asked for 95% coverage. "Coverage" is not one number here, and
+blending them would hide the answer:
+
+| metric | measured | date | gap to 95% |
+|---|---|---|---|
+| SEC Item 2.05 recall, US (`railway/recall_measurement.json`) | **98.2%** (56/57) | 2026-08-13 | already past it |
+| Archive coverage, all rows (`/archive-coverage`, pinned in `tests/test_archive_promise.py`) | **86.3%** (21,742/25,206) | 2026-08-13 | ~2,204 more URLs |
+| UK / Hansard recall (`railway/recall_uk_measurement.json`) | **0/32 editor-confirmed** | 2026-08-13 | true value **UNKNOWN** - 24 of 32 are unmeasured because the GDELT half of the probe was skipped |
+
+**Neither metric with a number is gated by this budget.** `archive_backfill.py`
+makes no OpenRouter call at all — it spends a Save-Page-Now budget, not a model
+budget — so lowering `MONTHLY_ALLOWANCE_USD` does not slow archive coverage by
+one URL. SEC recall is already 98.2% and is moved by the weekly measurement
+job, not by a sweep.
+
+What the ceiling DOES throttle is `edgar-history-sweep`, and **its contribution
+to any measured coverage figure is UNMEASURED**: the rotation is stateless by
+design (`backfill.rotating_month` — "the date IS the cursor"), so nothing
+records which months have been swept and no completion percentage exists to
+project a date from. Measured yield is 24 rows stored for $0.884 across six
+runs (~$0.037/row).
+
+So the honest answer to "how many months until 95%" is: **for archive coverage,
+not a budget question at all** — and its own ceiling may be lower than 95%
+regardless, because 3,381 of the 25,206 URLs are past `ALT_ARCHIVE_MAX_ATTEMPTS`
+and whether Wayback can capture them at all is unmeasured; if it cannot, the
+reachable ceiling is 86.6%. **For historical SEC coverage, unprojectable**
+until a per-month sweep ledger exists. Quoting a date would mean inventing the
+denominator.
+
+**Residual, stated rather than fixed:** the brake is checked before each call,
+so a run can overshoot its ceiling by the cost of one batch — 31572141302 spent
+$0.2721 under a $0.200 ceiling, and ops_status `[2a]` already flags it as "the
+per-job brake is not holding". Rationing lowers the ceiling; it does not close
+the overshoot.
+
 ## 2026-08-14 - three signals about a red CI run, and only one of them was real
 
 `Tests` was red on main for three days with exactly ONE failing test. Around it
