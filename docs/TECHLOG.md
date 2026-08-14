@@ -1,5 +1,78 @@
 # Tech Log
 
+## 2026-08-14 - the January 42,000 was never January, and 17 corrections went through the sign-off path
+
+**The US 2026 headline moved DOWN 42,000 jobs on purpose.** Two rows that were
+never layoff events were signed off and trashed through `apply-correction.yml`
+(dry run first, then apply; each reason is on the public corrections log):
+
+- **id 176454, Internal Revenue Service, 31,000, dated 2026-01-01** - the row's
+  own excerpt reads "hemorrhaged more than 31,000 employees as of January", a
+  cumulative attrition stock since 2025 scraped from a 2026-07-23 CNBC article
+  and floored to Jan 1. A stock, not an event.
+- **id 70169, Dell, 11,000, dated 2026-01-31** - the excerpt reads "about
+  97,000 employees as of January 31, down from about 108,000 a year ago", a
+  fiscal-year headcount decline (attrition included) from a 10-K story.
+
+Measured live before and after, strict US job location, 2026:
+**444,327 / 2,963 entries before -> 402,327 / 2,961 after** (exactly -42,000 /
+-2). Against the national Jan-Jul cumulative of 477,033 (announcement basis,
+read 2026-08-13) that is 84.3% where the inflated figure read 93.1%; the 95%
+mark of that cumulative is 453,181 and the honest gap to it is now 50,854, of
+which the known receiptless categories (federal reductions, buyouts, employer
+estimates, unnamed small announcements) are most of the residual. **The number
+went down because it was wrong, and the movement guard is EXPECTED to open a
+headline incident on its next recorded run** - close it citing rows 176454 and
+70169 plus the fifteen below; do not treat that FAIL as a new defect.
+
+**The 12 blank-country AI rows (16,600 jobs) are labeled and visible.** Every
+2026 `ai=1` row with an empty `country` was re-read against its own source and
+corrected via signed-off edits; measured after: **zero blank-country AI rows in
+2026, zero `ai_explicit` rows with `ai_causation='unknown'`** (the
+extractor invariant the seeded rows had bypassed). In the same review five rows
+turned out not to be events at all and were trashed with individual reasons:
+Xbox 70900 (duplicate of 176369), Elastic 70563 (a "7 percent" misparsed as 7
+jobs; no primary source states an absolute count, so the event is honestly
+absent until one does), Klarna 70051 (a 2030 headcount projection), BNP Paribas
+Fortis 176694 (the bank itself says attrition, "no plan for large-scale cuts"),
+and 176751 (an LA Times multi-company roundup double-counting Visa and
+Patreon). Meta 176814 was corrected from 7,000 (the REASSIGNED population) to
+the 8,000 actually notified on 2026-05-20, labeled Multiple countries so the
+US WARN execution slices keep carrying the strict-US part.
+
+**The TRUSTED_DOMAINS gap of the coverage brief is measured CLOSED, not open.**
+The 2026-07-18 R4 expansion is on the allowlist (boston.com, techrepublic.com,
+electrek.co, wral.com, mprnews.org, sanantonioreport.org, healthcaredive.com
+and the rest all pass `_is_trusted`), and the named May-July reference events
+are held live: Cisco 4,000 at 2026-05-13, PayPal 4,500 at 2026-05-05, Intuit
+3,000 at 2026-05-20, GM 600 at 2026-05-11, GitLab, Rackspace, Rivian, SAS,
+Groupon, LinkedIn, Cloudflare, Coinbase, Freshworks, Arctic Wolf - recovered by
+the 2026-07-19/23 seeding passes. The whole measured residual from the named
+reference list is **Fidelity ~800 (2026-05-11, boston.com now trusted)** plus
+Webflow ~140 (analyst estimate, excluded by the R10 policy). No new domain
+admission is currently justified by a measured miss; finalroundai.com and
+xtalks.com stay rejected (layoff-roundup product / marketing site).
+
+**A May-July 2026 re-sweep is priced, not run:** 14 seven-day
+`historical-news-sweep` windows via `HISTORICAL_START_OVERRIDE`, modelled at
+the job's $0.020/run ceiling = **$0.28 worst case** against the ~$8 of
+discretionary allowance left this month. Expected named recovery is only the
+Fidelity 800; the rest of the survey residual is receiptless. A zero-spend
+GDELT probe of the Fidelity window could not run from this machine (HTTP 429
+both attempts) - that check is UNKNOWN, not a pass.
+
+**New: `railway/monthly_us_comparison.py`** - read-only, keyless, prints the
+month-by-month US table on both our bases (effective and notice) beside the
+national monthly figures, which are typed as dated constants per the
+survey_reconcile convention (figures only, no organization name). Run it
+instead of re-deriving the monthly position by hand.
+
+UNVERIFIED: whether the movement-guard incident opens under the us slice only
+or also worldwide; whether `/reconcile-supersets` picks up the corrected Meta
+8,000 against its July WARN slices (flagged, not forced); Microsoft 48817
+(4,800, 2026-07-06) may contain the Xbox 3,200's first tranche - left for a
+superset adjudication, not resolved here.
+
 ## 2026-08-14 - the WARN ratchet's first alarm was true, the archive slowdown was a regime change, and one red run was a model answering twice
 
 Three items off one `ops_status.py` exit 2, taken in the order the file asks
