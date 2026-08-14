@@ -87,7 +87,13 @@ from pathlib import Path
 
 BASE = os.environ.get("WP_SITE_URL", "https://asktherecruiter.com/blog").rstrip("/")
 PAGE_URL = f"{BASE}/ai-layoff-tracker/"
-STATUS_URL = f"{BASE}/wp-json/layoffs/v1/status"
+# `?build=1` asks /status to hash the plugin's files and report the build stamp.
+# It is opt-in because that route is polled by the live badge in every open tab
+# every 60s and is deliberately uncached; hashing 2MB for each of those would be
+# a tax on readers to answer a question only this file asks. The query string is
+# safe HERE and nowhere near the reader's page: /status is no-store, so it has no
+# cache entry for anything to be keyed on. See PAGE_URL, which must stay bare.
+STATUS_URL = f"{BASE}/wp-json/layoffs/v1/status?build=1"
 
 # A reader is a browser. ModSecurity blocks `python-requests`, and more to the
 # point a bot User-Agent is not the surface we are trying to measure.

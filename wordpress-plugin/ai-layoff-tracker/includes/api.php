@@ -699,21 +699,27 @@ function alt_api_status(WP_REST_Request $r) {
     update_option('alt_pipeline_status', array('phase' => $phase, 'at' => time()), false);
     return rest_ensure_response(array('phase' => $phase));
 }
-function alt_api_status_get() {
+function alt_api_status_get($request = null) {
     $ph = alt_pipeline_phase();
     $last = (int) get_option('alt_last_write', 0);
-    $resp = rest_ensure_response(array(
+    $payload = array(
         'version'        => ALT_VERSION,                         // running plugin version (cache-immune deploy probe)
-        // The bytes on disk right now, by the same function that stamps a
-        // rendered page. This response is no-store, so it is the ORIGIN's
-        // answer, and a reader's page whose stamp differs from it is a page a
-        // cache is holding from a different build. '' means the stamp could not
-        // be computed, which is UNKNOWN and not a value to compare.
-        'build_stamp'    => alt_build_stamp(),
         'pipeline_phase' => $ph['phase'],                        // live | refreshing | cleaning
         'pipeline_since' => $ph['at'] ? gmdate('c', $ph['at']) : '',
         'last_updated'   => $last ? gmdate('c', $last) : '',
-    ));
+    );
+    // The BUILD STAMP: the bytes on disk right now, by the same function that
+    // stamps a rendered page, so a reader's page whose stamp differs from this
+    // is a page a cache is holding from a different build. '' means it could
+    // not be computed, which is UNKNOWN and not a value to compare.
+    //
+    // ON DEMAND, because it hashes ~2MB and this route is polled by the live
+    // badge in every open tab every 60 seconds and is deliberately uncached.
+    // The only caller that needs it is reader_freshness.py, twice a deploy.
+    if ($request && $request->get_param('build')) {
+        $payload['build_stamp'] = alt_build_stamp();
+    }
+    $resp = rest_ensure_response($payload);
     $resp->header('Cache-Control', 'no-store, max-age=0');
     return $resp;
 }
