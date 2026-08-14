@@ -1,0 +1,4 @@
+....................................ssss..................................................................................................................................../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_card_contract.py:125: ResourceWarning: unclosed file <_io.BufferedReader name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/docs/card-contract.json'>
+  raw = open(CONTRACT_PATH, "rb").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+............................................................................................................................................E.....

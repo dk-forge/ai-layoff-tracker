@@ -103,6 +103,52 @@ in tests.yml (2,034 tests in 353s, ~6.5m job wall, so ~2.3x headroom). The
 owner's preference recorded the same day: make the job fit, raise only with a
 measurement; the self-timeout is the alarm that caught this, so a padded
 ceiling is a disarmed alarm.
+## 2026-08-14 - the second tier is stated where the total is, and the monthly survey comparison is public (2.20.45)
+
+**Two public-surface changes, both decided by the owner with an explicit yes
+(2026-08-14), both closing the "your number is smaller" optics gap honestly.**
+
+**1. The announced-inclusive companion, beside every headline total.** Every
+headline surface showed verified-only; the announced tier existed only in the
+tiles further down. Now the verified figure stays PRIMARY everywhere and an
+"N including announced cuts" companion is stated beside it, labeled with ONE
+sentence defined once, `alt_announced_tier_sentence()` in db.php ("Announced
+cuts are plans companies have stated that no filing or named report verifies
+yet."), and rendered verbatim by all three surfaces so they cannot drift:
+
+- **page-tracker.php hero** - `#alt-hero-incl` under the AI sub-line, kept in
+  step by `renderStats()` and hidden when the view holds no announced rows
+  (the same number twice under two labels is noise).
+- **page-press.php** - the statement cards' announced clause now states the
+  combined figure ("Including announced cuts, the figure is N.") plus the
+  sentence; the Headline and per-country soundbites carry "Including announced
+  cuts, N." inside the quotable text so a paste keeps both tiers; the library
+  disclaimer carries the tier sentence once.
+- **page-report.php** - `.alt-op-boxtier` under the verified headline box.
+
+The tier is a STAGE distinction, not a basis change: every surface keeps its
+one date basis, and the signal board still refuses a third AI row
+(test_signal_board_periods). Pinned by
+`railway/tests/test_stage_tier_and_survey_table.py` (12 tests, RED first).
+
+**2. The month-by-month survey comparison is public, on the press page**
+(`#alt-press-vs-survey`), not a page of its own: the press page is where the
+"For press" button lands and the table completes the two "before you quote a
+number" blocks directly above it. Our side (effective + notice bases, strict
+US job location, both tiers, mirroring the public aggregate) is RE-DERIVED
+LIVE on every hourly cache build - the January -42,000 correction moved the
+monthly figures the same morning, which is why pasting this morning's numbers
+was banned. The survey side moved out of `monthly_us_comparison.py` into
+**data/survey-monthly.json, the ONE hand-entered copy** (read_date attached,
+no organization name anywhere), read by both the page and the script.
+Staleness is visible, not silent: a month closed more than 40 days with no
+constant prints an "awaiting entry here" cell and an awaiting note on the
+page, and the script exits 2 with a STALE verdict naming the months. The due
+window (40d) is pinned equal in both files by the same test. The >100% months
+are explained on the page ("A month above 100 percent is not an error...")
+and the receiptless categories are named beside the table; no
+direct-comparability phrasing (the test reuses
+test_no_surface_claims_direct_comparability's banned list).
 
 ## 2026-08-14 - the January 42,000 was never January, and 17 corrections went through the sign-off path
 

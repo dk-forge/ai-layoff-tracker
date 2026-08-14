@@ -302,6 +302,15 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
             <?php endif; ?>
           </div>
           <div class="alt-op-boxnote">The main number, every figure traces to a filing or named report.</div>
+          <?php /* The second tier, stated where the total is (owner decision
+                   2026-08-14): the announced-inclusive total, beside the
+                   verified primary above it. The sentence is
+                   alt_announced_tier_sentence(), shared verbatim with the
+                   tracker hero and the press page. Hidden when the period
+                   holds no announced rows. */ ?>
+          <?php $alt_all_j = (int) ($alt_cur['all_jobs'] ?? 0); if ($alt_all_j > $alt_v) : ?>
+          <div class="alt-op-boxtier"><b><?php echo number_format($alt_all_j); ?></b> including announced cuts. <?php echo esc_html(function_exists('alt_announced_tier_sentence') ? alt_announced_tier_sentence() : ''); ?></div>
+          <?php endif; ?>
         </div>
         <div class="alt-op-box alt-op-box-ai">
           <a class="alt-op-figlink" href="<?php echo $alt_rlink(array('ai' => '1')); ?>" target="_blank" rel="noopener" title="See every AI-attributed cut this period"><div class="alt-op-big alt-op-big-ai"><?php echo number_format($alt_ai_v); ?></div></a>

@@ -1391,6 +1391,8 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-op-boxlabel { font-size: 13.5px; font-weight: 600; color: var(--alt-ink); margin-top: 4px; }
 .alt-op-aipct { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--alt-red-tint); color: var(--alt-crit); font-size: 12px; font-weight: 700; }
 .alt-op-boxnote { font-size: 11.5px; color: var(--alt-muted); margin-top: 6px; line-height: 1.4; }
+.alt-op-boxtier { font-size: 12px; color: var(--alt-ink-2); margin-top: 6px; line-height: 1.4; }
+.alt-op-boxtier b { font-variant-numeric: tabular-nums; color: var(--alt-ink); }
 @media (max-width: 560px) { .alt-op-twobox { grid-template-columns: 1fr; } }
 .alt-expanded .alt-expand { background: var(--alt-blue); border-color: var(--alt-blue); color: var(--alt-on-accent); }
 
@@ -3202,6 +3204,15 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     color: var(--alt-ink-2);
 }
 .alt-hero-figure-sub b { font-variant-numeric: tabular-nums; color: var(--alt-ink); }
+/* The announced-inclusive companion tier: one step quieter than the AI sub,
+   so the verified figure above it stays visually primary. */
+.alt-hero-figure-incl {
+    display: block;
+    margin-top: 4px;
+    font-size: 12.5px;
+    color: var(--alt-ink-2);
+}
+.alt-hero-figure-incl b { font-variant-numeric: tabular-nums; color: var(--alt-ink); }
 /* The reconciling line: what has taken effect, and what is filed ahead. Set a
    step quieter than the AI sub so it reads as arithmetic about the figure
    rather than as a second finding. */

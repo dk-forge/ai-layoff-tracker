@@ -1,0 +1,47 @@
+....................................ssss..................................................................................................................................../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_card_contract.py:125: ResourceWarning: unclosed file <_io.BufferedReader name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/docs/card-contract.json'>
+  raw = open(CONTRACT_PATH, "rb").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+............................................................................................................................................E.......................................................................................................F......................................................................................................................../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:508: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/ops_status.py' mode='r' encoding='utf-8'>
+  code = open(os.path.join(RAILWAY, "ops_status.py"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/includes/subscribe.php' mode='r' encoding='utf-8'>
+  cls.src = open(SUBSCRIBE, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:160: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/templates/page-tracker.php' mode='r' encoding='utf-8'>
+  tpl = open(os.path.join(PLUGIN, "templates", "page-tracker.php"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:167: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/ops_status.py' mode='r' encoding='utf-8'>
+  ops = open(os.path.join(railway, "ops_status.py"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:168: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/health_digest.py' mode='r' encoding='utf-8'>
+  dig = open(os.path.join(railway, "health_digest.py"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:169: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/assets/health.js' mode='r' encoding='utf-8'>
+  js = open(os.path.join(PLUGIN, "assets", "health.js"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:111: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php' mode='r' encoding='utf-8'>
+  boot = open(os.path.join(PLUGIN, "ai-layoff-tracker.php"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:115: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/includes/db.php' mode='r' encoding='utf-8'>
+  db = open(os.path.join(PLUGIN, "includes", "db.php"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:263: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/includes/subscribe.php' mode='r' encoding='utf-8'>
+  src = open(SUBSCRIBE, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:252: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/includes/db.php' mode='r' encoding='utf-8'>
+  db = open(os.path.join(PLUGIN, "includes", "db.php"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:275: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/includes/subscribe.php' mode='r' encoding='utf-8'>
+  src = open(SUBSCRIBE, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_digest_subscription.py:568: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/health_digest.py' mode='r' encoding='utf-8'>
+  code = open(os.path.join(RAILWAY, "health_digest.py"), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.E...............................................................................E............................................................................................................................................................................................................................................................../opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/lib/python3.14/tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 503: 'maintenance'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+/opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/lib/python3.14/tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 500: 'nope'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+......................../Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/railway/tests/test_ingest_schedule.py:45: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aa1ea665c8c4829fe/wordpress-plugin/ai-layoff-tracker/assets/layoffs.js' mode='r' encoding='utf-8'>
+  js = open(js_path, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+......................EE...............E.ss..........................................................................

@@ -2915,6 +2915,26 @@ function alt_period_split_short($to_date, $calendar, $period) {
 }
 
 /**
+ * THE ONE SENTENCE THAT LABELS THE ANNOUNCED TIER, wherever a total that
+ * includes it is stated (owner decision 2026-08-14). The verified figure is
+ * the primary figure on every surface; the announced-inclusive companion
+ * exists because the honest answer to "why is your number smaller" is a
+ * labeled second tier beside the verified one, never a bigger headline.
+ *
+ * page-tracker.php (hero), page-press.php (statements and soundbites) and
+ * page-report.php (headline box) all render this function's output verbatim,
+ * so the three surfaces cannot drift one edit at a time. The tier is a STAGE
+ * distinction, not a basis change: each surface keeps its one date basis, and
+ * the signal board deliberately still carries no third AI row.
+ * Pinned by railway/tests/test_stage_tier_and_survey_table.py.
+ *
+ * @return string plain text, no markup, safe to esc_html() at the call site
+ */
+function alt_announced_tier_sentence() {
+    return 'Announced cuts are plans companies have stated that no filing or named report verifies yet.';
+}
+
+/**
  * Descriptive WARN notice-gap distribution, computed from the main table's own
  * recorded dates and nothing else. For US WARN rows, announcement_date holds
  * the state-recorded notice/received date and layoff_date the effective date
