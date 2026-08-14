@@ -121,6 +121,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>Local-language market sweep</b><br><span class="alt-muted">Built, not switched on</span></td><td>25 markets configured</td>
+        <td>Searches each market in its own words rather than in English. An English query put to a German or Spanish edition returns the worldwide English feed, not that country's news. So this sweep carries a phrase set written per language and per market. A free locality check runs before any article is read by a model, so foreign stories are dropped rather than paid for. <b>Built and tested but deliberately switched off</b>: it collects nothing until it is turned on, market by market. Layoff tracker products and compiled tallies are excluded by design; only individual reporting is ever read.</td>
+        <td>Not collecting yet</td>
+        <td><span class="alt-muted">No data collected</span></td>
+      </tr>
+      <tr>
         <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Marketaux · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
         <td>Extends the news net into non-English outlets (German, French, Dutch, Spanish, Italian) so European cuts surface without waiting for English coverage. Every candidate runs through the same extraction, de-duplication and verification as the rest.</td>
         <td>Verified (named report)</td>
