@@ -236,6 +236,46 @@ class NothingHeldClearsTheAlarm(unittest.TestCase):
                         "mailing STILL FAILING every fortnight")
 
 
+class ASecondObjectDoesNotThrowAwayTheFirst(unittest.TestCase):
+    """A reply carrying two JSON objects must yield the FIRST, not an error.
+
+    Measured, not hypothetical: run 31815799989 on 2026-08-14 reddened "Data
+    quality report (anomaly flags)" with `model returned no usable JSON: Extra
+    data: line 1 column 178 (char 177)`. A correction had been selected; the
+    reader sliced first-'{' to last-'}', caught both objects, and json.loads
+    refused the pair. The model was answering twice, not answering wrongly.
+    """
+
+    def test_trailing_object_is_ignored(self):
+        first = {"verdict": "correct", "field": "country"}
+        reply = json.dumps(first) + "\n" + json.dumps({"verdict": "wrong"})
+        self.assertEqual(sc.first_json_object(reply), first)
+
+    def test_the_exact_shape_that_reddened_ci_now_parses(self):
+        # 177 characters of valid object, then more. The char offset in the
+        # real failure is what makes this the same defect and not a lookalike.
+        first = {"id": 114335, "field": "country", "current": "Multiple countries",
+                 "proposed": "United States", "confidence": "high", "pad": "x" * 48}
+        head = json.dumps(first)
+        self.assertEqual(len(head), 177, "the fixture no longer reproduces the "
+                                         "char-177 boundary from run 31815799989")
+        with self.assertRaises(ValueError):
+            json.loads(head + '\n{"note": "second answer"}')
+        self.assertEqual(sc.first_json_object(head + '\n{"note": "second answer"}'),
+                         first)
+
+    def test_prose_around_one_object_still_works(self):
+        self.assertEqual(sc.first_json_object('Sure!\n```json\n{"a": 1}\n```\n'),
+                         {"a": 1})
+
+    def test_no_object_and_malformed_object_still_raise(self):
+        # The reader is tolerant of a SECOND answer, not of a broken first one.
+        with self.assertRaises(ValueError):
+            sc.first_json_object("the model refused")
+        with self.assertRaises(ValueError):
+            sc.first_json_object('{"a": ')
+
+
 class TheDocsDoNotClaimIndependence(unittest.TestCase):
     def test_the_public_correction_reason_does_not_say_independent(self):
         src = (Path(__file__).resolve().parents[1] /
