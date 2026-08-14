@@ -205,6 +205,99 @@ fails on the blind state, which reads exactly like a healthy one.
 `fetch_id` (Idaho, legacy tier) is **broken right now** — its landing page no
 longer carries the cumulative PDF link. It surfaced only because seeding the
 ledger required running every legacy scraper by hand.
+## 2026-08-13 - Quebec returned zero for days, and nothing went looking
+
+The owner's question was the whole point: "why didn't you learn to fix the
+sources if they weren't working... surprised you didn't look for alternatives."
+He was right. The health system detects a collector that breaks, emails about
+it, and then waits for a human. It never looks for another route to the data.
+
+### The instance
+
+`warn_quebec` had sat at `degraded - parser returned 0, check PDF layout` for
+days. **The parser was fine and so were the PDFs.** The CI log said what the
+health message did not:
+
+```
+Quebec: no monthly PDF links found (page structure changed?)
+```
+
+Discovery scraped ONE HTML landing page. That page returned all 13 monthly PDF
+links to a laptop and none to a GitHub runner (a bot wall or geo-block on
+`www.quebec.ca`; the `cdn-contenu` host in front of the PDFs was reachable
+throughout). The collector had no second way to the documents, so a statutory
+register went dark and the alert accused the only component that was working.
+
+Quebec matters more than its row count suggests: it is the **only public
+per-employer layoff register in Canada**, and its statutory floor is **10
+employees** against US WARN's 50. Research this session confirmed there is no
+alternative: no dataset on donneesquebec.ca (CKAN `q=licenciement` returns 0),
+no CNESST equivalent, no RSS, and the pre-2022 host `travail.gouv.qc.ca` now
+301s everything to a landing page.
+
+### The fix, and what it uncovered
+
+Discovery is now the **union** of the landing page and URLs **constructed** from
+the documented CDN template. The page catches a change to the naming pattern;
+the template needs no HTML at all. It also reaches further, and this was
+unexpected: **the page lists a rolling 13 months, the CDN holds 36** (verified
+by probing every month 2019-01..2026-12). Six of those months are filed under
+other names, two of them under a ministry year typo of **2032** - confirmed, not
+inferred, from the PDF's own `/Subject` metadata reading "octobre 2023".
+
+Then the part worth remembering. Each monthly PDF prints its own tally
+(`Total - Nombre d'avis`), so the collector can check itself. Turning that
+comparison on immediately exposed three defects that a zero-check would never
+have caught, because the run was not zero, it was **thin**:
+
+| defect | effect |
+|---|---|
+| `\d{4}-\d{2}` guard meant to catch dates in employer names | dropped every Quebec NUMBERED company ("2534-1215 Quebec Inc.", "7806302 Canada Inc") - real statutory notices, silently deleted |
+| the tally prints per region AND as a grand total | the audit double-counted, reading 40 where the document holds 20 |
+| French typography groups thousands with a space | "1 006" parsed as **1** |
+
+Four recent months now reconcile EXACTLY against the declared totals (121
+notices, 3,846 jobs). Full 36-month reach: 1,290 of 1,328 notices, 47,285 jobs.
+
+**The lesson is the self-audit, not the parser.** A collector that can compare
+itself against a number the source publishes cannot silently under-read. Look
+for that number in every structured source.
+
+### The pattern
+
+A zero was **invisible to both existing signals**. A collector that runs on
+schedule and returns nothing is not stale (it ran) and need not be degraded (it
+may report ok). `warn_quebec` earned an amber light and nothing more.
+
+`railway/source_value.py` now holds two facts per source, kept together because
+they are useless apart: **what it sees that nothing else does**, and the
+**alternate routes to the same data**, researched while the source is healthy
+rather than at 2am. Sources declared never-legitimately-zero redden the digest
+like a stale one, and the email leads with the cost rather than the status.
+
+Declared, **not learned**, and deliberately narrow. Audited the live ledger
+before choosing: of nine zero-entry collectors only `warn_quebec` was a real
+outage. The other eight say what they did - "300 distressed, 0 layoffs posted",
+"0 of 0 eligible", dormant by owner decision - and are left alone. A monthly
+register re-read four months deep can never legitimately return nothing; a
+bankruptcy watchlist that found no distressed employers found none. When in
+doubt the default is False, because a false alarm costs more trust than a missed
+one costs data, and the missed one is still caught by the staleness clock.
+
+### Canada federal: notify-but-not-publish, so we stop
+
+Checked whether Canada Labour Code Part III group terminations (16 weeks, 50+,
+federally regulated) are published. **They are not, and ESDC says so in
+writing.** QP note EF_031_20260105 on open.canada.ca: "Group termination of
+employment notices are confidential", adding that details of one such notice
+"were published in error and have since been removed from the website." The
+statute (s.212) requires notice to the Head of Compliance, the Minister, the EI
+Commission and any union, plus a posting **inside the workplace** - no
+publication provision anywhere. People ATIP for the list precisely because there
+is none to read. Ontario, BC and Alberta are the same shape. **Quebec remains
+the only Canadian jurisdiction with a public named register**, so there is no
+second Canadian statutory source to build. Federal Canadian cuts must keep
+coming through news and securities filings.
 
 ## 2026-08-13 - the collectors are paid first, catch-up work spends the rest
 
