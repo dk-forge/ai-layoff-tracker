@@ -1,6 +1,6 @@
 # Tech Log
 
-## 2026-08-13 - the methodology was live and the header did not say so (2.20.35)
+## 2026-08-13 - the methodology was live and the header did not say so (2.20.36)
 
 The owner asked for "a submenu under each tracker in WP admin". What he wanted
 was the outcome, and the plugin already owns the pages, so this does it from
