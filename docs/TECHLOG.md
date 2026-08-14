@@ -126,6 +126,85 @@ the plugin's own output, which is what makes the second run meaningful.
 
 **NOT DEPLOYED.** Pushed as `nav-submenu-under-trackers`; a push to main is an
 FTPS deploy on this repo and the deploy was not this session's to make.
+## 2026-08-13 - the year rolls on the clock, and the comparison stops overclaiming (2.20.37)
+
+The owner asked for two things: default the dashboard to "When it was filed"
+and to the current year, with the year rolling on its own. The first was
+already done in 2.20.33 and holds (146 basis tests green, `date_basis=notice`
+in `layoffs.js`, in the bootstrap and in the six board periods). The second was
+right in every place that WRITES the year and wrong in the one place that
+OFFERS it.
+
+### The year could not roll, and the failure was silent
+
+`writeControl` on a multi-select only flips `selected` on options that already
+exist. It never creates one. `initYears` built the list as
+
+    var maxY = facets.max_date ? Math.min(parseInt(...), nowY) : nowY;
+
+which caps at the current year (correct: a future-dated WARN effective date
+must not put 2028 in a Year dropdown) but also lets the list END BELOW the
+current year whenever the data does. On 1 January the newest row still carries
+last year, the boot default writes the new year, nothing matches, no year is
+selected, and the hero, board, charts, table and exports all open on ALL TIME
+under copy that says the current year.
+
+It has been surviving on luck. `facets.max_date` is 2028-08-25, a future-dated
+WARN notice, so `Math.min` happened to return the current year. One corrected
+row and it fires, on the one day nobody is reading the dashboard.
+
+`maxY` is now `nowY` unconditionally, and the boot default calls `ensureOption`
+before `writeControl` so the invariant is also held at the point of use.
+`test_year_rolls_with_the_clock.py` runs the real `initYears` in node with the
+clock moved to 2027; before the fix it returned `['2025','2024']` where
+`['2027','2026','2025','2024']` was wanted.
+
+### The comparability claim had decayed, on three surfaces
+
+The tile, the toggle and the basis explainer told readers the filed-basis total
+"compares directly" with a national estimate, and two comments put US July 2026
+inside a hand-written percentage of it. That was measured once, on a month that
+was still collecting WARN notices. Measured 2026-08-13, US verified, filing
+basis, against the published national monthly totals:
+
+| 2026 | ours (filing) | national | ours vs theirs |
+|---|---|---|---|
+| May | 51,755 | 97,006 | 47% BELOW |
+| Jun | 36,176 | 45,849 | 21% BELOW |
+| Jul | 39,877 | 33,429 | **19% ABOVE** |
+| Jan-Jul | 317,554 | 477,033 | 67% of it |
+
+Same basis, different populations. The copy now says the two are worth setting
+side by side and are **not the same measurement**, and names why: we count only
+cuts with a filing or a named report behind them, and a survey also counts
+federal reductions, buyout offers and employer estimates that never produce a
+public document. No percentage is written into any surface, because nothing
+recomputes one. `test_no_surface_claims_direct_comparability.py` holds both the
+removal and the honest claim that replaced it.
+
+### Two AI sentences that reversed under our own fair basis
+
+`page-tracker.php` claimed our AI count "exceeds the headline announcement
+trackers every year" and that our broad AI-linked measure is "at or above" a
+survey's AI figure. Those compared our WORLDWIDE, ALL-TIER number against a
+US-only one. On the like-for-like basis this repo itself defines
+(`railway/survey_reconcile.py`: announced stage, announcement date, employer
+domicile, `ai=1`) we hold 8,900 YTD against roughly 112,700. Both sentences now
+say we run lower and say why: a survey codes a reason from what an employer
+reports to it privately, and we require a quote we can show you.
+
+### Not fixed here, and needing an owner call
+
+Findings from the same investigation, none acted on: the January headline
+carries ~42,000 jobs from two cumulative-headcount rows ingested as January
+events (an IRS attrition stock scraped from a July article, a Dell fiscal-year
+10-K decline); 12 AI-tagged 2026 rows totalling 16,600 jobs carry a blank
+`country` and are invisible to every country filter, including Meta 7,000 and
+Visa 2,600; three rows have `ai_explicit=1` with `ai_causation='unknown'`; and
+the table's date sort is hard-wired to `layoff_date` while the default basis
+selects on `COALESCE(announcement_date, layoff_date)`, so 27 of 199 adjacent
+row pairs on the default US July view are out of order on the basis that chose
+them. See the session report.
 
 ## 2026-08-13 - five "broken" WARN states, measured: one was, four were not
 

@@ -1,9 +1,13 @@
 """THE FILED BASIS IS THE DEFAULT, AND EVERY TOTAL SAYS WHICH QUESTION IT ANSWERS.
 
 WHY THIS CHANGE EXISTS. Layoffs are reported nearly everywhere on the FILING
-date. On that basis our US July 2026 figure sits within about one percent of
-the independent national estimate for the same month. On the effective-date
-basis, which was the default, the same month reads roughly double, so a reader
+date, so that is the basis a reader's own number is already on. (An earlier
+draft of this paragraph put our US July 2026 figure inside a hand-written
+percentage of the national estimate. July went on collecting WARN notices and
+the claim decayed; by 2026-08-13 the same month was 19% ABOVE. The claim is
+gone from the product and from here, and
+test_no_surface_claims_direct_comparability.py now holds it out.) On the
+effective-date basis, which was the default, the same month reads double, so a reader
 arriving with a number in their head met a figure they could not reconcile and
 a paragraph of explanation standing between them and the data. Defaulting to
 the basis everybody else reports on turns the differentiator from "a different

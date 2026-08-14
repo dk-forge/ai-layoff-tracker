@@ -85,10 +85,16 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
 2. **`railway/`** — Python ingest. Cron 2×/day (EDGAR + NewsAPI + GDELT worldwide) → LLM
    extraction via OpenRouter → POST `/add`. The extraction model is
    `google/gemini-2.5-flash-lite` (swapped 2026-08-07 on a news-path gold set,
-   30/30 at 0.388x the incumbent's cost); **classification is pinned separately**
-   to `deepseek/deepseek-chat` via `OPENROUTER_CLASSIFY_MODEL`, because it used
-   to default to the extraction model and a swap measured on one surface would
-   have silently moved three. WARN notices skip the LLM: `warn_import.py` scrapes
+   30/30 at 0.388x the incumbent's cost). `OPENROUTER_CLASSIFY_MODEL` pins
+   `deepseek/deepseek-chat` for context, domicile, reason tags, industry and
+   roles. **It does NOT govern AI causation**, and this doc said it did until
+   2026-08-13. `ai_explicit` is set in two places (`extractor.py:946` and
+   `classify_ai_evidence()` at :592) and both deliberately use `MODEL`, with the
+   comment "AI-causation is correctness-critical". The consequence is real: the
+   2026-08-07 swap to flash-lite was validated on a news-EXTRACTION gold set and
+   moved the AI-causation classifier with it. The env var is also set in no
+   workflow, so it runs on its default everywhere. Decide which behaviour is
+   intended before trusting either. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 11AM ET GitHub cron).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental

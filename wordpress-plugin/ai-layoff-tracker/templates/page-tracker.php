@@ -614,12 +614,22 @@ $alt_hero_basis  = 'counted by filing date';
                  the option carrying alt-datebasis-on has to be the one a reader
                  meets first or the control teaches that the page is showing the
                  other one. The default moved because the filing basis is the
-                 basis every other published layoff figure is counted on: on it,
-                 US July 2026 sits within about one percent of the independent
-                 national estimate for the same month, so a reader lands on a
-                 number they can reconcile with what they already have. On the
-                 effective basis the same month reads roughly double and needs a
-                 paragraph before it can be compared at all.
+                 basis every other published layoff figure is counted on, so a
+                 reader lands on a number dated the way the one in their head is
+                 dated. On the effective basis the same month reads roughly
+                 double and needs a paragraph before it can be compared at all.
+
+                 THE BASIS IS NOT A CLAIM OF EQUIVALENCE, and a sentence here
+                 used to make it one: it put US July 2026 inside a hand-written
+                 percentage of the national estimate. That was measured once, on a
+                 month still collecting WARN notices, and the figure underneath
+                 it kept moving. Measured 2026-08-13, US verified, filing basis:
+                 May is 47% below the national figure, June 21% below, July 19%
+                 ABOVE, and Jan to Jul is 67% of it. Same basis, different
+                 populations, because a survey also counts federal reductions,
+                 buyouts and employer estimates that file nothing. Do not write
+                 a percentage into this file again; it has no recomputing
+                 behind it and it decays silently.
 
                  The effective basis is not demoted out of existence. It is one
                  click away, every figure on the page recomputes on it, and a
@@ -630,7 +640,7 @@ $alt_hero_basis  = 'counted by filing date';
             <span class="alt-ctl-label" id="alt-datebasis-label">Count Layoffs By</span>
             <span class="alt-datebasis-switch" role="group" aria-labelledby="alt-datebasis-label">
             <button type="button" class="alt-datebasis-opt alt-datebasis-on" data-basis="notice" aria-pressed="true"
-                title="Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure compares directly. This is the default.">When it was filed</button>
+                title="Counts each layoff on the day its notice was filed or the cut was announced. This is the basis layoffs are reported on elsewhere, so our figure can be read beside a national estimate for the same month rather than converted first. It is not the same measurement. This is the default.">When it was filed</button>
             <button type="button" class="alt-datebasis-opt" data-basis="effective" aria-pressed="false"
                 title="Counts each layoff on the day the cut takes effect, the day the jobs actually end. A different question from the filing basis, and equally real.">When it takes effect</button>
             </span>
@@ -852,7 +862,7 @@ $alt_hero_basis  = 'counted by filing date';
                          changes when the toggle changes. The server prints the
                          default (filing) wording, byte-identical to
                          BASIS_COPY.notice.tile. */ ?>
-                <span class="alt-stat-label">Verified job cuts <?php echo $alt_tile_i('What counts as verified', 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure compares directly. Every row behind it links to its source.', 'alt-stat-total-i-body'); // phpcs:ignore ?></span>
+                <span class="alt-stat-label">Verified job cuts <?php echo $alt_tile_i('What counts as verified', 'Counted on the day each cut was filed or announced. This is the basis layoffs are reported on elsewhere, so this figure can be set beside a national estimate for the same month. It is not the same measurement: we count only cuts with a public filing or named report behind them. Every row behind it links to its source.', 'alt-stat-total-i-body'); // phpcs:ignore ?></span>
                 <span class="alt-stat-sub" id="alt-stat-total-entries"><?php echo esc_html($alt_period); ?></span>
                 <span class="alt-stat-sub alt-stat-detail" id="alt-stat-total-basis"><?php echo esc_html($alt_hero_basis); ?></span>
             </div>
@@ -1405,14 +1415,14 @@ $alt_hero_basis  = 'counted by filing date';
                      that this explainer is present and open on the live page.
 
                      Anchored so the hero's "Why two figures" link lands here. */ ?>
-            <p id="alt-basis-explainer"><b>4 &middot; We count each cut on the day it was filed, and you can recount it on the day it takes effect.</b> Layoffs are reported nearly everywhere on the filing date. The US national survey counts announcements made during a month. Our default counts each cut on the day its notice was filed or the cut was announced, which is the same question. So the figure at the top of this page can be set beside a national estimate for the same month and read straight against it. The effective date answers a different and equally real question: when the jobs actually ended. That is what a worker lives through, and what a labour-market reader often wants. Neither basis is the true one. <b>When it was filed</b> is the default, and the one that lines up with the survey. Set &ldquo;Count Layoffs By&rdquo; to <b>When it takes effect</b> and every figure, chart and table here is recounted on it. The gap between the two is not noise. A notice filed in May for a July closing sits in May on the default and in July on the other. In any given month the two totals can differ widely. The line under the headline figure shows how they split. On either basis, every row we count has a filing or a named report behind it.</p>
-            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>. It is smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate. A number a journalist can verify is worth more than a bigger one they cannot. And on the measure this tracker exists for, <b>layoffs companies attribute to AI</b>, our count actually <em>exceeds</em> the headline announcement trackers every year. We surface AI attributions from primary sources they never itemize.</p>
+            <p id="alt-basis-explainer"><b>4 &middot; We count each cut on the day it was filed, and you can recount it on the day it takes effect.</b> Layoffs are reported nearly everywhere on the filing date. The US national survey counts announcements made during a month. Our default counts each cut on the day its notice was filed or the cut was announced, which is the same question. So the figure at the top of this page is dated the way a national estimate for the same month is dated. The two are worth setting side by side. They are not the same measurement. We count only cuts with a filing or a named report behind them. A national survey also counts federal job cuts, buyout offers and employer estimates that never produce a public document. So in any given month our total can land above or below theirs. The effective date answers a different and equally real question: when the jobs actually ended. That is what a worker lives through, and what a labour-market reader often wants. Neither basis is the true one. <b>When it was filed</b> is the default, and the one that lines up with the survey. Set &ldquo;Count Layoffs By&rdquo; to <b>When it takes effect</b> and every figure, chart and table here is recounted on it. The gap between the two is not noise. A notice filed in May for a July closing sits in May on the default and in July on the other. In any given month the two totals can differ widely. The line under the headline figure shows how they split. On either basis, every row we count has a filing or a named report behind it.</p>
+            <p><b>The bottom line, stated plainly.</b> Our verified figure is a <em>documented floor</em>. It is smaller than the estimates, but every single number clicks through to a legal filing or a named report. We deliberately do <b>not</b> pad it to match a headline estimate. A number a journalist can verify is worth more than a bigger one they cannot. That holds on the measure this tracker exists for too, <b>layoffs companies attribute to AI</b>. Compared like for like against an announcement survey's AI figure, ours is <em>much smaller</em>, and we would rather say so than pick the widest slice we have. A survey codes a reason from what an employer reports to it. We require the employer's own words, with the source behind them. So what we offer there is not a bigger number. It is that every attribution can be read back to the sentence the employer actually said.</p>
 
             <p><b>Where we lead, and where we don't, stated honestly.</b> Because our figure is built from receipts, it is not always smaller. Measured like-for-like against the public trackers by category:</p>
             <ul class="alt-method-list">
                 <li><b>Against WARN-only aggregators</b> (the legally-filed US floor), we come out <em>higher</em>. We import the same WARN notices, then add SEC filings and named-news reports on top. Our US verified total clears the WARN floor rather than stopping at it.</li>
                 <li><b>Against tech-event trackers</b>, our worldwide technology job-cut total is <em>at or above</em> the largest of them by volume. We carry fewer tiny private-startup events, but more total tech job losses. We catch the big filed cuts they sometimes miss.</li>
-                <li><b>On AI attribution</b>, our broad AI-linked measure is <em>at or above</em> the scale of the announcement surveys' AI figure, and every entry carries the employer's own words. Our strict measure is deliberately smaller than a survey, because a survey infers a reason and we require a quote.</li>
+                <li><b>On AI attribution</b>, we run <em>lower</em> than an announcement survey's AI figure, and that is the one place readers most expect us to claim otherwise. A survey codes a reason from what an employer reports to it privately. We require a quote we can show you. So we only ever hold the subset that was said in public. Our broader AI-linked tier is wider than our strict one, and neither is a claim to have found more AI-driven cuts than a survey counted.</li>
                 <li><b>Against announcement surveys' all-industry total</b>, we run <em>lower</em>, on purpose: the gap is receiptless cuts (federal-workforce reductions, buyouts, attrition, and small closings that file nothing). We do not claim what we cannot source.</li>
                 <li><b>On coverage no one else offers</b>, we are the only one of these measuring the <em>global, all-industry, source-linked</em> universe. Everyone else is US-only, tech-only, or a survey.</li>
             </ul>
