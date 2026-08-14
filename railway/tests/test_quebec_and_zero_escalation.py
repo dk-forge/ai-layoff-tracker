@@ -196,9 +196,22 @@ class TheDigestRedensOnACollectorReturningNothing(unittest.TestCase):
             def json():
                 return ledger
 
+        # check_all is stubbed to an empty (passing) Report, because
+        # health_digest.main() otherwise runs the LIVE data-integrity
+        # invariants against asktherecruiter.com from inside a unit test:
+        # data_integrity does its own `import requests`, so the requests
+        # mock below never reaches it. On 2026-08-14 the live
+        # archive_recheck_cadence FAIL turned both rc==0 assertions here red
+        # on every branch (and spent ~74s of suite time on the network).
+        # These tests assert the LEDGER logic - zero-outage vs legitimate
+        # zero - and the integrity backstop has its own live test
+        # (test_dedup_live) and daily workflow.
+        import data_integrity
         with mock.patch.object(health_digest, "SITE", "https://example.invalid"), \
              mock.patch.object(health_digest, "DRY", True), \
              mock.patch.object(health_digest, "subscriber_line", lambda: ""), \
+             mock.patch.object(data_integrity, "check_all",
+                               return_value=data_integrity.Report([])), \
              mock.patch.object(health_digest.requests, "get",
                                return_value=R()):
             return health_digest.main()
