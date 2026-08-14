@@ -252,6 +252,38 @@ What is still open is the account total: **$31/month across both trackers is
 above the two repos' stated allowances, and no combined account allowance is
 recorded anywhere.** That number is the owner's, not a session's.
 
+### And `[4]` went green while three workflows were red, because of its window
+
+Found by accident at the end of this session, which is the worrying part. After
+the two merges above, `ops_status.py` printed **"No workflow is currently
+failing on main"** while the 15:42Z "Data quality report" failure was still the
+newest run of that workflow.
+
+`_report_ci()` asked `gh run list -L 80 --branch main` and judged each workflow
+by its newest FINISHED run in that page. That is sound only while one page
+reaches back far enough to hold every workflow's newest run. It did not: two
+merges generated enough runs that the page began at **17:10Z**, and the 15:42Z
+failure fell off the end. Raising the number does not fix it - at `-L 300` the
+page still spanned **12 hours**.
+
+So the window is now part of the answer. A full page spanning under 24 hours is
+not evidence of green; the code asks the question a different way instead -
+`gh run list --status failure`, which needs no window, then a per-workflow
+re-check so a failure already superseded by a green run is not reported as
+current. If any of that cannot be read, the section says UNKNOWN with a reason
+and never an empty failure list.
+
+**It was hiding more than the one run.** With the window fixed, `[4]` shows
+three reds, not one: "Data quality report (anomaly flags)" (fixed above),
+"Industry backfill" (`RuntimeError: All 200 attempted industry classifications
+failed`, matching the `industry_backfill` DEGRADED row that has been on the
+health page all day), and "Extract affected-role categories", whose ledger line
+reads `truncated: skipped: no discretionary headroom left in the month for
+'enrich-roles'`. **That last one wants a second look**: CLAUDE.md's rule is
+that a budget stop is UNDECIDED and never a red run, and a rationed job exiting
+non-zero because it was rationed is the shape that rule forbids.
+`tests/test_ops_ci_window.py` pins the window behaviour.
+
 ### Also seen, not acted on
 
 `warn_custom_legacy` is DEGRADED with `LA=33 (floor 324), MN=31 (floor 72)`,
