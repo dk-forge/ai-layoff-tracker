@@ -115,7 +115,27 @@ scraper and `fetch_oh()` fell through to a single fallback CSV, returning 61 of
 
 **A first run says the floors are UNKNOWN.** `no per-state floors yet — partial
 collapse is UNDETECTABLE this run` means the ledger has not been seeded for
-that tier. That is UNKNOWN, not a pass; the next clean full sweep seeds it.
+that tier. That is UNKNOWN, not a pass; the next full sweep seeds it.
+
+**There are THREE tiers, and each has its own floors:** `generic` (the open
+warn-scraper states), `legacy_custom` (`warn_custom.CUSTOM_STATES`) and
+`new_custom` (`warn_new_states.NEW_CUSTOM_STATES` — MS/WV/NM/WA/KS/AL). The
+third tier had no floors at all until 2026-08-13: its only tripwire was a hard
+zero, so a state there could lose 90% of its archive and `warn_custom_states`
+would still report ok. If you add a tier, give it floors in the same commit —
+an unfloored tier is indistinguishable from a healthy one on the health page.
+
+**The ratchet skips the drifted state, not the tier.** Do not "simplify" it back
+to `if not drift: ratchet(...)`. That gate is why the ledger sat empty: one
+permanently broken state (Idaho's landing page today) withheld the floor from
+every healthy state in its tier, forever, and a tier with no floors detects
+nothing but a hard zero. A collapsed state must teach nothing; its healthy
+siblings must still record.
+
+**Seeding by hand is allowed, and only in one direction.** A floor seeded LOW is
+harmless — the ratchet raises it on the next healthy run. A floor seeded HIGH
+cries wolf on every run until someone edits it. So seed from counts you actually
+measured, never from an estimate, and never from a run you have not eyeballed.
 
 **A job is DEFERRING (and what three in a row means)**
 `ops_status.py` section `[4d]` listed a job as deferred, or a workflow run

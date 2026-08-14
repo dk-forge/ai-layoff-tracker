@@ -1,5 +1,84 @@
 # Tech Log
 
+## 2026-08-13 - five "broken" WARN states, measured: one was, four were not
+
+A diagnosis estimated ~5,200 recoverable US 2026 jobs sitting in broken or
+absent state WARN collectors (WV ~750, NM ~550, MN ~1,000, OK ~2,000, AR/NH/WY
+~1,900), all of it free because WARN bypasses the LLM. Every state was
+re-verified at the source before anything was changed. **The measured
+recoverable total is 169 jobs**, and the four-fifths that evaporated is the more
+useful finding than the fifth that did not.
+
+The diagnosis was run from an egress-restricted environment, and that is the
+single root cause of three of the five wrong calls. A proxy 403 and a WAF block
+and a 404 all look alike from behind a blocked tunnel, and each was read as "the
+state's page moved". CLAUDE.md already says an environment that cannot check
+resolves to UNKNOWN, never to a finding; this is that rule applied to a
+diagnosis rather than to ops_status.
+
+| State | Claimed | Measured at the source | Recovered |
+|---|---|---|---|
+| **WV** | landing page 404s | Landing page **HTTP 200**. Real defect is different and worse: the newest cumulative summary PDF ends **2025-01-03** and WV never published another, so the per-notice tier the scraper deliberately skipped IS the state's record from 2025 on. Of 27 post-cutoff letters, **21 are image-only scans** | **2 notices / 169 jobs** |
+| **NM** | 269-byte stub for every path; 603 -> 51 collapse | `2026_WARN.pdf` is a **real 182KB PDF** that parses cleanly. The state published **one** notice in 2026 (Atkore, 51). Tracker holds 1 entry / 51 jobs. NM is at **100% of what NM published** — 603 -> 51 is the layoff market, not a scraper | 0, nothing was wrong |
+| **MN** | hand-seeding, 6 of 8 months unreachable | Month gap is real (CDX holds Jan + Jun 2026 only). But every mn.gov HTML path is behind a **PerfDrive/ShieldSquare CAPTCHA**, live *and in Wayback* — the archived snapshot of the index page is itself the captcha wall. Only `/assets/*.pdf` passes. Discovery is structurally blocked and we do not bypass CAPTCHAs | 0, not reachable |
+| **OK** | Salesforce app, needs an Aura client | An Aura client **works** — one unauthenticated POST returns all 218 notices. It does not help: the guest projection has **eight fields and no headcount**, and reading the object directly is `INSUFFICIENT_ACCESS`. 2026 is 9 notices and a job figure that is **structurally absent, not unmeasured** | 0, and it is not a scraper problem |
+| **AR / NH / WY** | UNKNOWN whether they publish | **All three confirmed non-publishing**, first-party. AR cites A.C.A. § 11-10-314 confidentiality by name. NH is fax-a-spreadsheet intake. WY's one "WARN Notifications in Wyoming" PDF is two pages of guidance ending in a phone number | 0, correctly |
+
+The Sources page already described AR, NH, WY and OK exactly this way. Four of
+the five estimates were built on top of states this repo had already
+investigated and disclosed. Read `page-sources.php` before estimating a state.
+
+### What was actually fixed
+
+**WV per-notice tier** (`sources/warn_new_states.py`). `fetch_wv` now parses the
+rolling listing's per-notice letters for everything after the summary cutoff,
+which it reads out of the summary *filename* so a newer summary hands the span
+back automatically instead of double-sourcing it. Counts come only from
+layoff-bound phrasing (a ZIP code can never qualify), then the existing gated
+LLM fallback. Recovered live: Greenbrier Minerals 71 (2026-05-29), Felman
+Productions 98 (2026-07-13), against a tracker that held **0 WV rows for 2026**.
+
+The other 21 are scans, and that is WV's real ceiling. An OCR tier now exists,
+delegating to `warn_hi_ocr._ocr_pdf` so there is one OCR implementation for the
+two states with the identical problem. It ships **DORMANT** (`WV_OCR=1`) with
+`wv_warn_dryrun.py` + `wv-warn-dryrun.yml`, exactly how the HI path was
+promoted: a human eyeballs the counts before they are published. The dry-run
+**exits 1 if tesseract is missing** rather than reporting a clean run of a tier
+that never executed.
+
+### The meta-finding: two bugs, not one
+
+`warn_state_baselines.json` was `{"generic": {}, "legacy_custom": {}}`. The
+ledger's own docstring says a missing floor means only a hard-zero collapse is
+detectable. Two reasons it was empty, and the second is the one that would have
+kept it empty forever:
+
+1. **The new-states tier had no floors at all.** MS/WV/NM/WA/KS/AL had exactly
+   one tripwire, `len(got) == 0`. A state could lose 90% of its archive and
+   `warn_custom_states` still reported ok. That tier now carries floors, drift
+   detection and a ratchet like the legacy tier — with its **own peer gate**,
+   because the nationwide gate (3 producing states AND 50 notices) applied to a
+   six-state tier is a check that is off more often than on.
+2. **The ratchet was gated on a clean run of the WHOLE tier.** `if not drift:`
+   meant one permanently broken state withheld the floor from all forty of its
+   healthy siblings — and a tier containing a broken state could never record a
+   single floor. Idaho is that state today (`fetch_id` raises: "WARN pdf link
+   not found on landing page"), so the generic and legacy tiers had a live
+   reason to stay empty indefinitely. The skip is now **per state**: a collapsed
+   state teaches nothing, a healthy one records its floor regardless of its
+   neighbours.
+
+Seeded from a verified live sweep: 11 legacy states, all 6 new-states. A floor
+seeded low is harmless (the ratchet only ever raises); a floor seeded high cries
+wolf, so nothing was estimated into it. `test_shipped_ledger_is_not_empty` now
+fails on the blind state, which reads exactly like a healthy one.
+
+### Also found, not chased
+
+`fetch_id` (Idaho, legacy tier) is **broken right now** — its landing page no
+longer carries the cumulative PDF link. It surfaced only because seeding the
+ledger required running every legacy scraper by hand.
+
 ## 2026-08-13 - the collectors are paid first, catch-up work spends the rest
 
 The owner measured the burn and said "keep both at steady state", targeting a

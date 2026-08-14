@@ -1,0 +1,60 @@
+name: West Virginia WARN OCR dry-run
+
+# DORMANT verification job, same shape as hi-warn-dryrun.
+#
+# WorkForce WV's newest cumulative summary PDF stops at 2025-01-03. Every notice
+# since is an individual letter, and most are image-only scans whose headcount
+# exists only as pixels — which is why WV published 0 countable notices for all
+# of 2025 and 2026 while the state was posting them the whole time. fetch_wv now
+# has an OCR tier for exactly that span, gated behind WV_OCR=1.
+#
+# This job installs tesseract, runs the fetcher WITH OCR on, and PRINTS the rows
+# so a human can check the extracted counts against the source PDFs before the
+# tier is promoted to live. It posts NOTHING (no WP_API_KEY). Manual dispatch
+# only — never scheduled. tesseract is installed here only, kept out of the
+# daily WARN import so that job stays lean and OCR-free.
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Only print rows on/after this ISO date (blank = 2025-01-04)'
+        required: false
+        default: ''
+      llm_fallback:
+        description: 'Enable the LLM count fallback for regex-skipped letters (1 = on)'
+        required: false
+        default: ''
+
+jobs:
+  wv-warn-dryrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # Spend guard (railway/spend.py). The OCR itself is free; the optional
+      # LLM count fallback is not, so the same guard applies. It NEVER fails the
+      # job — past the allowance the paid call is refused and the regex-only
+      # path still runs. Stdlib only, so it needs no install.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+      - name: Install tesseract (system)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+      - name: Install deps
+        working-directory: railway
+        run: |
+          pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: West Virginia WARN OCR dry-run (prints only, posts nothing)
+        working-directory: railway
+        env:
+          WV_DRYRUN_SINCE: ${{ github.event.inputs.since }}
+          WARN_LLM_FALLBACK: ${{ github.event.inputs.llm_fallback }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python wv_warn_dryrun.py

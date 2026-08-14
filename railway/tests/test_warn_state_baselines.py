@@ -136,6 +136,88 @@ class BaselineLedgerTest(unittest.TestCase):
         finally:
             os.unlink(path)
 
+    def test_one_broken_state_does_not_withhold_its_siblings_floors(self):
+        """The bug that kept the ledger empty in the first place.
+
+        Every caller used to gate the whole tier on `if not drift:`, so a single
+        permanently-broken state meant NOBODY in that tier ever recorded a
+        floor — and a tier with no floors can only detect a hard zero, which is
+        precisely the blindness the ledger exists to remove. The drifted state
+        must be skipped; its healthy siblings must still be recorded.
+        """
+        ledger = {}
+        counts = dict(_HEALTHY, OH=61)          # OH collapsed, everyone else fine
+        self.assertTrue(W.ratchet_state_baselines(
+            ledger, "legacy_custom", counts, _EXPECTED, skip=["OH"]))
+        tier = ledger["legacy_custom"]
+        self.assertNotIn("OH", tier, "a collapsed state must not teach a floor")
+        self.assertEqual(2400, tier["TX"])
+        self.assertEqual(520, tier["NY"])
+        # And the healthy siblings really did all get one.
+        self.assertEqual(len(_EXPECTED) - 1, len(tier))
+
+    def test_new_custom_tier_catches_a_90_percent_drop(self):
+        """New Mexico, concretely.
+
+        The new-states tier (MS/WV/NM/WA/KS/AL) had NO floors at all — its only
+        tripwire was `len(got) == 0`. So NM could fall from a full year of
+        notices to a single one and the health page would still read
+        "warn_custom_states: ok". With a floor from its own history, that drop
+        is drift.
+        """
+        wanted = ["MS", "WV", "NM", "WA", "KS", "AL"]
+        floors = {"MS": 142, "WV": 26, "NM": 11, "WA": 206, "KS": 13, "AL": 274}
+        healthy = dict(floors)
+        self.assertEqual([], W.detect_generic_state_drift(
+            healthy, wanted, floors, drop_frac=0.5, zero_needs_baseline=True,
+            peer_min_frac=0.0, peer_min_total=1))
+        collapsed = dict(healthy, NM=1)         # 11 -> 1 is a 91% drop
+        self.assertEqual(["NM"], W.detect_generic_state_drift(
+            collapsed, wanted, floors, drop_frac=0.5, zero_needs_baseline=True,
+            peer_min_frac=0.0, peer_min_total=1))
+
+    def test_small_tier_is_not_silenced_by_the_nationwide_peer_gate(self):
+        """The peer gate is calibrated for a 40-state sweep.
+
+        Left at its defaults on a six-state tier it needs 3 producing states AND
+        50 notices before it will speak, so the tier would be unguarded on most
+        runs — a check that is off by default is not a check.
+        """
+        wanted = ["MS", "WV", "NM", "WA", "KS", "AL"]
+        floors = {"MS": 142, "WV": 26, "NM": 11, "WA": 206, "KS": 13, "AL": 274}
+        # Only two of the six states file enough to clear a 50-notice total on a
+        # quiet run, so the nationwide gate suppresses a real collapse purely on
+        # tier size.
+        quiet = {"MS": 8, "WV": 2, "NM": 1, "WA": 9, "KS": 1, "AL": 6}
+        quiet_floors = {"MS": 8, "WV": 2, "NM": 11, "WA": 9, "KS": 1, "AL": 6}
+        self.assertEqual([], W.detect_generic_state_drift(
+            quiet, wanted, quiet_floors, drop_frac=0.5, zero_needs_baseline=True,
+            peer_min_frac=0.5, peer_min_total=50))
+        # With the tier's own gate, the same run names NM.
+        self.assertEqual(["NM"], W.detect_generic_state_drift(
+            quiet, wanted, quiet_floors, drop_frac=0.5, zero_needs_baseline=True,
+            peer_min_frac=0.0, peer_min_total=1))
+        collapsed = dict(floors, NM=1)
+        # And a busy run with the tier gate still names only the collapsed state.
+        self.assertEqual(["NM"], W.detect_generic_state_drift(
+            collapsed, wanted, floors, drop_frac=0.5, zero_needs_baseline=True,
+            peer_min_frac=0.0, peer_min_total=1))
+
+    def test_shipped_ledger_is_not_empty(self):
+        """An empty ledger is the blind state, and it reads exactly like a
+        healthy one. `{"generic": {}, "legacy_custom": {}}` parses fine, passes
+        every structural check, and silently downgrades all three tiers to
+        hard-zero detection — which is how New Mexico's decline stayed invisible
+        while the health page said every supported state was fine."""
+        loaded = W.load_state_baselines()
+        self.assertTrue(loaded, "baseline ledger is empty — per-state floors are "
+                                "UNKNOWN, so only a hard zero is detectable")
+        for tier in ("legacy_custom", "new_custom"):
+            self.assertTrue(
+                loaded.get(tier),
+                f"tier {tier!r} has no per-state floors; a partial collapse in it "
+                f"cannot be detected")
+
     def test_shipped_ledger_is_valid(self):
         """The committed ledger must always parse — a broken one silently
         downgrades every tier to hard-zero detection."""

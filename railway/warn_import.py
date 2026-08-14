@@ -171,7 +171,7 @@ def load_state_baselines(path=BASELINE_LEDGER):
         return {}
 
 
-def ratchet_state_baselines(ledger, tier, counts, expected):
+def ratchet_state_baselines(ledger, tier, counts, expected, skip=()):
     """Raise this tier's high-water marks to match a healthy run. NEVER lowers.
 
     A floor that follows the data down is not a floor — it is the same
@@ -179,11 +179,24 @@ def ratchet_state_baselines(ledger, tier, counts, expected):
     waiting. If a state's archive legitimately shrinks, a human lowers the
     number in a reviewed commit; the ledger is committed for exactly that.
 
+    `skip` is the set of states that DID drift this run. They are excluded, for
+    the same reason: a collapsed count must never be recorded as normal.
+
+    The exclusion is PER STATE, and that is the whole point. Every caller used
+    to gate the entire tier on `if not drift:`, so one broken state withheld the
+    floor from all forty of its healthy siblings — and a tier containing a
+    permanently broken state could never record a single floor, which is a
+    ledger that stays empty forever while reporting nothing wrong. A state whose
+    own count is healthy has earned its floor regardless of its neighbours.
+
     Returns True when anything changed (so the caller only rewrites on change).
     """
     tier_map = ledger.setdefault(tier, {})
+    skip = {s.upper() for s in (skip or ())}
     changed = False
     for st in [s.upper() for s in expected]:
+        if st in skip:
+            continue
         n = float(counts.get(st, 0))
         if n > tier_map.get(st, 0):
             tier_map[st] = n
@@ -413,6 +426,19 @@ def main():
         #   * AR / WY / NH publish no public register at all.
         #   * OK publishes notices with NO affected-employee counts, so they can
         #     never become countable rows -- 0 is the correct result, not drift.
+        #     Re-verified 2026-08-13 at the source, because the old wording read
+        #     like "nothing to collect" and that is not what is true. OESC's
+        #     portal is a Salesforce Aura app whose guest-accessible Apex call
+        #     returns all 218 notices in ONE request, so the notices are very
+        #     much reachable -- but the projection has eight fields and a
+        #     headcount is not among them (employer, city, zip, workforce board,
+        #     notice date, closure type, Id, RecordTypeId). Reading the object
+        #     directly is refused for the guest user (INSUFFICIENT_ACCESS), so
+        #     there is no unauthenticated path to a count at all. 2026 is 9
+        #     notices and a structurally absent job figure -- absent, not
+        #     unmeasured. Ingesting count-less rows would be a policy change
+        #     (they cannot enter wp_alt_layoffs, which requires job_count > 0),
+        #     not a scraper fix.
         # Without this the alert named HI/OK every run alongside genuinely
         # uncovered states, which is how a real breakage gets ignored.
         _NOT_GENERIC_TIER = {"HI", "AR", "WY", "NH", "OK"}
@@ -425,8 +451,11 @@ def main():
                   "The ledger seeds itself from this run.")
         _generic_drift = detect_generic_state_drift(
             _generic_by_state, _expected_g, _floors_g)
-        if not _generic_drift and ratchet_state_baselines(
-                _baselines, "generic", _generic_by_state, _expected_g):
+        # Record floors for every state that did NOT drift, drifted siblings
+        # excluded. Gating this on an entirely clean sweep meant one broken
+        # state kept forty healthy ones floor-less indefinitely.
+        if ratchet_state_baselines(_baselines, "generic", _generic_by_state,
+                                   _expected_g, skip=_generic_drift):
             save_state_baselines(_baselines)
         if _generic_drift:
             print(f"::warning:: generic WARN state(s) went dark vs healthy peers — likely "
@@ -492,11 +521,15 @@ def main():
         report_source_health("warn_custom_legacy", "ok", len(customs),
                              f"{len(_expected_c)} legacy custom scraper(s) checked, "
                              f"no state collapsed against its own history")
-        # Only a clean run may raise the floors, and only upward. Ratcheting on a
-        # drifted run would teach the collapse as the new normal.
-        if _scrape_all_c and ratchet_state_baselines(
-                _baselines, "legacy_custom", _got_by_state, _expected_c):
-            save_state_baselines(_baselines)
+    # Only a healthy STATE may raise its own floor, and only upward. Ratcheting a
+    # drifted state would teach the collapse as the new normal; withholding the
+    # floor from its healthy siblings (the old whole-tier gate) taught nothing
+    # at all. This is outside the elif on purpose: a tier with one drifted state
+    # still has to record the rest, which is exactly the run where it matters.
+    if _scrape_all_c and ratchet_state_baselines(
+            _baselines, "legacy_custom", _got_by_state, _expected_c,
+            skip=_real_drift):
+        save_state_baselines(_baselines)
     if min_emp:
         customs = [e for e in customs if e["job_count"] >= min_emp]
     if start:
@@ -531,15 +564,53 @@ def main():
             except Exception as exc:
                 drift_states.append(st)
                 print(f"WARN {st} (new importer) failed: {exc}")
-        if drift_states:
+        # PARTIAL collapse, the failure this tier could not see. Until now the
+        # only tripwire here was `len(got) == 0`, so a state could lose most of
+        # its archive and still read green: New Mexico went from 603 jobs in
+        # 2025 to 51 in 2026 while the health page said "warn_us: ok — all
+        # supported states". A hard zero is the loud failure; the quiet one is a
+        # scraper that keeps answering with a fraction of the state, and that is
+        # the one that survives for months. Same floors, same ledger, same
+        # semantics as the legacy tier — a state's own history, never a peer's.
+        _new_by_state = {}
+        for _e in new_entries:
+            _ns = (_e.get("state") or "").upper()
+            if _ns:
+                _new_by_state[_ns] = _new_by_state.get(_ns, 0) + 1
+        _floors_n = dict(_baselines.get("new_custom", {}))
+        _collapse_n = detect_generic_state_drift(
+            _new_by_state, wanted, _floors_n,
+            drop_frac=0.5, zero_needs_baseline=True,
+            # This tier is SIX states, not forty. The peer gate is written for a
+            # nationwide sweep where half the states going quiet means the run
+            # itself failed; applied unchanged here it would need 3 producing
+            # states and 50 notices before it would speak at all, which on a
+            # tier this small means the check is off more often than it is on.
+            peer_min_frac=0.0, peer_min_total=1)
+        if not _floors_n:
+            print("::notice:: new-states tier has no per-state floors yet — partial "
+                  "collapse is UNDETECTABLE this run (UNKNOWN, not a pass). Seeding "
+                  "from this run's counts.")
+        _new_drift = sorted(set(drift_states) | set(_collapse_n))
+        if _new_drift:
+            _detail = ", ".join(
+                f"{st}={_new_by_state.get(st, 0)}"
+                + (f" (floor {int(_floors_n[st])})" if st in _floors_n else "")
+                for st in _new_drift)
             report_source_health("warn_custom_states", "degraded", 0,
-                                  "Custom WARN scraper(s) returned 0 / errored — likely site drift: "
-                                  + ", ".join(drift_states))
+                                  "Custom WARN scraper(s) returned 0 / errored / collapsed "
+                                  "against their own history — likely site drift: " + _detail)
+            print(f"::warning:: new-states WARN scraper(s) collapsed vs their own "
+                  f"history — likely site drift: {_detail}")
         elif wanted:
             # Explicit OK so a resolved drift clears (HI stayed red for 8h after
             # it moved to its own OCR importer and left this list entirely).
             report_source_health("warn_custom_states", "ok", len(new_entries),
-                                 f"{len(wanted)} custom scraper(s) checked, no drift")
+                                 f"{len(wanted)} custom scraper(s) checked, "
+                                 f"no state collapsed against its own history")
+        if scrape_all and ratchet_state_baselines(
+                _baselines, "new_custom", _new_by_state, wanted, skip=_new_drift):
+            save_state_baselines(_baselines)
         if min_emp:
             new_entries = [e for e in new_entries if e["job_count"] >= min_emp]
         if start:
