@@ -9,7 +9,15 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** the US incident close (prepared for the owner to sign), tracker_diff's dormant health row, the SERP floor, then WARN scrapers for NH/AR/OK/WY
+- **WORKING ON:** the archive re-check throughput decision, the deferring test-job, the live-data alert scope, the press and board surfaces, WARN adjudication
+
+**Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
+had gone stale: it still named the US incident close, which landed, so a session
+reading it could reasonably conclude the holder had stopped and take the baton
+under the stale clause. It had not stopped; it was the session that shipped
+2.20.23 through 2.20.34. **A stale subject line reads as an absent holder**, and
+that is the whole failure mode this file exists to prevent. Update the line when
+the subject changes, not only when the baton does.
 
 **Left FREE on purpose by the session behind PR #3.** That session was told not
 to push to main, and the baton only gates anything when it is ON main: a claim
