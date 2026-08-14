@@ -64,6 +64,10 @@
     --alt-ink: #16181d;
     --alt-ink-2: #4a4d55;
     --alt-muted: #696d77;
+    /* --alt-muted is 3.13:1 on a max-heat cell (rgba(heat,.34) over cream
+       composites to #b3cce6); this ink holds >= 5.2:1 there and on plain
+       cream, so the "same entry" marker stays AA wherever heat lands. */
+    --alt-sb-again-ink: #474c56;
     --alt-navy: #1f2b3d;
     --alt-ink-warm: #20283a;
     --alt-ink-warm-2: #3d4658;
@@ -222,6 +226,7 @@
         --alt-ink: #e9eaee;
         --alt-ink-2: #bcc1cb;
         --alt-muted: #9aa0ac;
+        --alt-sb-again-ink: #c6ccd6;
         --alt-navy: #ccd5e3;
         --alt-ink-warm: #e3e7ef;
         --alt-ink-warm-2: #b6becd;
@@ -349,6 +354,7 @@
     --alt-ink: #e9eaee;
     --alt-ink-2: #bcc1cb;
     --alt-muted: #9aa0ac;
+    --alt-sb-again-ink: #c6ccd6;
     --alt-navy: #ccd5e3;
     --alt-ink-warm: #e3e7ef;
     --alt-ink-warm-2: #b6becd;
@@ -3422,7 +3428,7 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
    it reads like a bug without a word saying so. */
 .alt-sb-again {
     display: block; font-style: normal; font-size: 10px; font-weight: 700;
-    letter-spacing: .03em; text-transform: uppercase; color: var(--alt-muted);
+    letter-spacing: .03em; text-transform: uppercase; color: var(--alt-sb-again-ink);
     max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .alt-sb-ev-repeat b { font-weight: 600; color: var(--alt-ink-2); }

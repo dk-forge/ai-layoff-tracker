@@ -1,5 +1,27 @@
 # Tech Log
 
+## 2026-08-14 - the "same entry" marker failed AA only when the data made it render (2.20.44)
+
+**`.alt-sb-again` ("same entry", shipped 2.20.33) read `--alt-muted`, and
+muted was never measured against the heat surface it actually sits on.** The
+signal-board leader cells carry `rgba(var(--alt-heat-rgb), .08-.34)` over
+`--alt-cream`; at max heat that composites to #b3cce6 light / #394e63 dark,
+and muted lands at 3.13:1 / 3.27:1 there (AA needs 4.5). The deploy contrast
+step only reddened on 2026-08-14 because the marker only renders when live
+data shows a repeated leader - the violation shipped eleven versions before
+the data first painted it. That is the same lesson as the audit's own founding
+defect, one layer up: the audit reads what the page renders, so a conditional
+element is unmeasured until the data conditions it in.
+
+**Fix: a dedicated ink, not a darker muted.** `--alt-sb-again-ink` (#474c56
+light, #c6ccd6 dark, both theme blocks) holds >= 5.2:1 against BOTH the plain
+cream/card row and the max-heat composite in both themes; `--alt-muted` is
+untouched because its other ~40 uses sit on plain surfaces where it passes.
+Verified numerically by recomputing the checker's own composites (they
+reproduce its measured 3.13/3.27 exactly) before deploying. layoffs.css only -
+page-tracker.php deliberately untouched (held by the two-tier headline
+session).
+
 ## 2026-08-14 - regional feeds: the long tail gets a route that fits the budget (2.20.40)
 
 **Five regional publishers' RSS feeds now feed discovery for ~50 low-volume
