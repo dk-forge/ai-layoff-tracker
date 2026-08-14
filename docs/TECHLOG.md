@@ -1,5 +1,38 @@
 # Tech Log
 
+## 2026-08-14 - the freshness strip says its facts at first paint (2.20.46)
+
+**Owner request: the layoff page carries the same at-a-glance freshness strip
+the talent tracker has**, including the Roo line. Most of it already existed
+(Roo, the Live pill, the cadence label derived from data/ingest-schedule.json,
+the next-update stamp); what was missing is now in:
+
+- **Roo's say line is server-rendered** in `alt_render_status_header()`:
+  "Roo pulled the latest data N ago. Next update M j, H:i UTC." The last pull
+  is READ from the health ledger (newest non-retired `checked_at` in
+  `alt_source_health`), falling back to `alt_last_write`; the next run comes
+  from the real cron via `alt_next_ingest_utc()`. A half that cannot be known
+  from data is omitted, never guessed. `renderStatus()` still rewrites the
+  span live a moment later. `.alt-next` lost its `white-space: nowrap` so the
+  longer first-paint line wraps instead of bleeding.
+- **The promise line is back**: "No figure appears unless its source states
+  it." (`.alt-fine-say`, inside the strip). It left the page in the 2026-08-04
+  hero simplification as a duplicate of the hero's trust line; the owner
+  explicitly restored it to the STRIP (datastrip, below the data). The hero
+  still carries exactly one trust claim, and
+  test_first_screen_simplification's RETIRED list records the reversal.
+- **Year and all-time pairs** in the freshness stats: companies and countries
+  for the current year (bootstrap aggregate) beside all-time companies,
+  countries and entries (one cached COUNT query). The headline jobs total is
+  still deliberately not repeated in the panel.
+
+**Cadence copy is derived, and now honestly says once daily.** The owner wants
+both trackers on "updated daily around noon Eastern", and since #88 the
+Railway cron IS one pull a day at noon Eastern, so the derived label
+(`alt_ingest_times_label` off data/ingest-schedule.json) now reads exactly
+that with no hand-typed schedule anywhere. Say what is, which finally matches
+what was wanted.
+
 ## 2026-08-14 - the "same entry" marker failed AA only when the data made it render (2.20.44)
 
 **`.alt-sb-again` ("same entry", shipped 2.20.33) read `--alt-muted`, and
@@ -104,7 +137,6 @@ owner's preference recorded the same day: make the job fit, raise only with a
 measurement; the self-timeout is the alarm that caught this, so a padded
 ceiling is a disarmed alarm.
 ## 2026-08-14 - the second tier is stated where the total is, and the monthly survey comparison is public (2.20.45)
-
 **Two public-surface changes, both decided by the owner with an explicit yes
 (2026-08-14), both closing the "your number is smaller" optics gap honestly.**
 
