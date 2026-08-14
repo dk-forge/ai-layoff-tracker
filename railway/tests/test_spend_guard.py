@@ -372,11 +372,11 @@ class EveryPaidWorkflowIsGuarded(unittest.TestCase):
 
 class PolicyIsInTheDiffNotASecret(unittest.TestCase):
     def test_allowance_is_a_literal_constant(self):
-        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 7.0)
-        self.assertIn("MONTHLY_ALLOWANCE_USD = 7.0", SPEND)
+        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 14.0)
+        self.assertIn("MONTHLY_ALLOWANCE_USD = 14.0", SPEND)
 
     def test_allowance_is_documented_as_interim(self):
-        preamble = SPEND.split("MONTHLY_ALLOWANCE_USD = 7.0")[0][-2400:]
+        preamble = SPEND.split("MONTHLY_ALLOWANCE_USD = 14.0")[0][-2400:]
         self.assertIn("INTERIM", preamble.upper())
 
     def test_allowance_is_not_read_from_the_environment(self):
