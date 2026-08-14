@@ -128,6 +128,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><span class="alt-muted">No data collected</span></td>
       </tr>
       <tr>
+        <td><b>Regional news feeds</b><br><span class="alt-muted">Pacific · Francophone Africa · Caribbean</span></td><td>~50 low-volume countries</td>
+        <td>Five regional publishers' own RSS feeds, read twice daily, covering countries too small for a dedicated sweep. <b>RNZ Pacific</b> and the <b>Pacific Island Times</b> cover the Pacific islands (Fiji, Papua New Guinea, Samoa, Tonga, Vanuatu, Solomon Islands, Guam, Palau, Micronesia and more). <b>Financial Afrik</b> and <b>Jeune Afrique</b> cover Francophone Africa in French (Senegal, Ivory Coast, Cameroon, Morocco, Tunisia, Mali and more). <b>Caribbean News Global</b> covers the Caribbean (Saint Lucia, Jamaica, Barbados, Guyana and more). Only stories carrying collective-layoff language in English or French are read further. The publication decides nothing: the article text itself determines the country and count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
+        <td>Verified (named report)</td>
+        <td><a href="https://www.rnz.co.nz/international/pacific" target="_blank" rel="noopener">RNZ Pacific &#8599;</a></td>
+      </tr>
+      <tr>
         <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Marketaux · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
         <td>Extends the news net into non-English outlets (German, French, Dutch, Spanish, Italian) so European cuts surface without waiting for English coverage. Every candidate runs through the same extraction, de-duplication and verification as the rest.</td>
         <td>Verified (named report)</td>

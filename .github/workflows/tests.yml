@@ -17,6 +17,15 @@ on:
 jobs:
   railway-tests:
     runs-on: ubuntu-latest
+    # 15 minutes is ~2.3x the measured suite: 2,034 tests in 353s, ~6.5m job
+    # wall including the pip install (run 31824538127, 2026-08-14). When four
+    # runs self-cancelled on this ceiling that same day, the suite had NOT
+    # outgrown it: the cron tests were fetching Google News RSS for real (an
+    # unstubbed new source, 87 requests per test, unbounded under throttling)
+    # plus a 1s-per-query sleep frozen by import order. Both fixed where they
+    # lived. If this times out again, measure first - a network wait or a
+    # sleep in this suite is a defect to fix, not a reason to raise this
+    # number, and the self-timeout is the alarm that catches it.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5

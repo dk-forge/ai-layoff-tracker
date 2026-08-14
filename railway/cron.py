@@ -13,6 +13,7 @@ from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
 from sources.local_news import pull_local_news
+from sources.regional_feeds import pull_regional_feeds
 from sources.press_releases import pull_press_releases, reviewed_feed_count
 import extractor
 from extractor import extract_layoff_data, spend_deferral_count
@@ -191,6 +192,23 @@ def _pull_local_news_rows():
     return rows
 
 
+def _pull_regional_feeds_rows():
+    """Adapter: pull_regional_feeds returns (rows, stats); this loop wants rows.
+
+    Per-feed tallies are printed for the same reason as local_news: a dead
+    regional feed hidden inside a healthy total is the Quebec failure shape,
+    and most runs will honestly keep 0 candidates (layoff events are rare in
+    these regions), so the fetched counts are the liveness signal.
+    """
+    rows, stats = pull_regional_feeds()
+    for key in sorted(stats):
+        st = stats[key]
+        print(f"regional_feeds[{key}]: kept={st['kept']} "
+              f"fetched={st['fetched']} aggregator={st['aggregator']} "
+              f"dropped={st['dropped']} errors={st['errors']}")
+    return rows
+
+
 def _spend_preflight():
     """Decide, before any paid call, whether this run may spend.
 
@@ -256,6 +274,12 @@ def run():
         # list contract and prints the per-country tallies so a thin country is
         # visible in the run log rather than only a total.
         ("local_news", _pull_local_news_rows),
+        # Regional feeds: five verified regional outlets (Pacific, Francophone
+        # Africa, Caribbean) covering the low-volume countries no per-country
+        # sweep would justify. Direct RSS, robots-checked, armed by committed
+        # default (measured under $1/month worst case; see ARMED_BY_DEFAULT in
+        # sources/regional_feeds.py). Most runs honestly keep 0 candidates.
+        ("regional_feeds", _pull_regional_feeds_rows),
         # newsapi RETIRED 2026-07-25: the free tier is dev-only and the paid tier
         # is ~$449/mo, so it perpetually reported degraded (dead/exhausted key)
         # while contributing nothing. Google News RSS (keyless) replaced it and
@@ -304,6 +328,19 @@ def run():
                     report_source_health(source, "degraded", 0,
                         f"{source} returned 0 items — {hint}")
                     print(f"::warning::{source} returned 0 items")
+                else:
+                    report_source_health(source, "ok", len(pulled))
+            elif source == "regional_feeds":
+                # 0 rows is NORMAL here (layoff events are rare in these
+                # regions), so unlike google_news an empty pull is not
+                # degradation. A feed-level failure IS: pull_regional_feeds
+                # sets last_error on a non-200, a timeout, or a 200 whose body
+                # is no longer an RSS document (the changed-scheme shape).
+                err = getattr(pull_regional_feeds, "last_error", None)
+                if err:
+                    report_source_health(source, "degraded", len(pulled),
+                                         f"regional feed broke: {err}")
+                    print(f"::warning::regional_feeds degraded: {err}")
                 else:
                     report_source_health(source, "ok", len(pulled))
             else:
