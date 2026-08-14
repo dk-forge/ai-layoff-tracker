@@ -178,14 +178,61 @@ def _report_ci():
     Offline-safe by construction: no exception escapes, and every not-looked-at
     path returns a reason string rather than an empty failure list.
     """
-    ok, out, why = _gh(["run", "list", "-L", "80", "--branch", "main",
-                        "--json", "name,conclusion,status,url,createdAt"], timeout=30)
+    limit = 300
+    ok, out, why = _gh(["run", "list", "-L", str(limit), "--branch", "main",
+                        "--json", "name,conclusion,status,url,createdAt"], timeout=60)
     if not ok:
         return [], why
     try:
         runs = json.loads(out or "[]")
     except ValueError:
         return [], "gh returned output that was not JSON"
+
+    # THE WINDOW IS A SIGNAL, NOT A BACKGROUND DETAIL (2026-08-14). This asks
+    # for one page of recent runs and calls a workflow green when its newest
+    # FINISHED run is green. That is only sound while the page reaches back far
+    # enough to contain every workflow's newest run. At -L 80 it did not: two
+    # merges in one afternoon generated enough runs that the page began at
+    # 17:10Z, the 15:42Z "Data quality report" failure fell off the end, and
+    # this section printed "No workflow is currently failing on main" while it
+    # was. A red run scrolling out of view is exactly the silence this section
+    # exists to break, so a full page is now UNKNOWN rather than a pass. Every
+    # workflow here runs at least daily, so a page spanning 24h holds them all.
+    if len(runs) >= limit:
+        newest, oldest = runs[0].get("createdAt", ""), runs[-1].get("createdAt", "")
+        span_h = 0.0
+        try:
+            span_h = (datetime.strptime(newest, "%Y-%m-%dT%H:%M:%SZ")
+                      - datetime.strptime(oldest, "%Y-%m-%dT%H:%M:%SZ")).total_seconds() / 3600
+        except (ValueError, TypeError):
+            pass
+        if span_h < 24:
+            # Do not give up and do not pretend. Ask the question directly:
+            # "which runs FAILED", which needs no window, then re-check each
+            # named workflow's own newest run so a failure already superseded
+            # by a green one is not reported as current.
+            f_ok, f_out, f_why = _gh(["run", "list", "--status", "failure",
+                                      "--branch", "main", "-L", "20", "--json", "name"],
+                                     timeout=45)
+            if not f_ok:
+                return [], (f"the run list came back full ({limit}) spanning {span_h:.1f}h, "
+                            f"and the failure-only query also failed ({f_why}). Not a pass")
+            try:
+                names = {r.get("name") for r in json.loads(f_out or "[]") if r.get("name")}
+            except ValueError:
+                return [], "gh returned output that was not JSON for the failure query"
+            runs = []
+            for name in sorted(names):
+                w_ok, w_out, _ = _gh(["run", "list", "--workflow", name, "--branch", "main",
+                                      "-L", "5", "--json",
+                                      "name,conclusion,status,url,createdAt"], timeout=45)
+                if not w_ok:
+                    return [], (f"could not read the newest run of {name!r} after the run "
+                                f"list truncated at {limit}. Not a pass")
+                try:
+                    runs.extend(json.loads(w_out or "[]"))
+                except ValueError:
+                    return [], "gh returned output that was not JSON for a workflow query"
 
     latest = {}
     for run in runs:
