@@ -6,17 +6,21 @@
 # Both daily runs are expressed instead as a comma list in a single cron
 # expression on this service.
 #
-# Timezone note: Railway cron runs in UTC. 12:00/22:00 UTC == 8 AM / 6 PM
-# Eastern during daylight saving (EDT, summer). In winter (EST, UTC-5) these
-# fire at 7 AM / 5 PM Eastern. The morning run catches overnight news + the
-# prior day's after-close 8-Ks; the evening run catches same-day filings made
-# after the 4 PM ET market close. To hold 8 AM/6 PM year-round you'd shift to
-# "0 13,23 * * *" in winter.
+# Once daily since 2026-08-14, the owner's freshness-for-cost call: the
+# product updates daily, one pull at noon US Eastern lands after the full
+# morning news cycle (overnight news, the prior day's after-close 8-Ks, and
+# the morning announcement window). Same decision as the talent tracker's
+# collect.yml. Cost: halves the paid discovery/extraction runs. Trade: filings
+# made after the 4 PM ET close now appear the NEXT day rather than same-day.
+#
+# Timezone note: Railway cron runs in UTC. 16:00 UTC == noon Eastern during
+# daylight saving (EDT, summer); in winter (EST, UTC-5) it fires at 11 AM
+# Eastern. To hold noon year-round shift to "0 17 * * *" in winter.
 
 [build]
 builder = "NIXPACKS"
 
 [deploy]
 startCommand = "python cron.py"
-cronSchedule = "0 13,22 * * *"
+cronSchedule = "0 16 * * *"
 restartPolicyType = "NEVER"
