@@ -378,5 +378,89 @@ class TheWorkflowsRecordWhatWasDeferred(unittest.TestCase):
                 self.assertEqual(module.JOB, self.CONVERTED[name])
 
 
+class TheActionLooksWhereTheWorkersWrite(unittest.TestCase):
+    """The rest of the envelope contract, pinned end to end.
+
+    `test_the_race_recovery_looks_where_the_envelope_actually_lands` above
+    holds the action's probe. These hold everything the probe silently
+    assumes: that the action's default and host_call.DEFAULT_ENVELOPE are the
+    same name, that every converted worker runs from one of the two probed
+    CWDs, that the two root-running CLI workflows pass --envelope at all (the
+    CLI's default is EMPTY), that a replay which no-ops because main already
+    carries the record is a pass rather than a false red, and that a
+    state=success envelope actually closes the deferral it replays — the
+    record run 31777647007 lost was a RESOLUTION, and a stale pending entry
+    lets non-consecutive events walk the streak toward ESCALATE_AFTER.
+    """
+
+    ROOT = Path(__file__).resolve().parents[2]
+    ACTION = ROOT / ".github" / "actions" / "commit-deferral-ledger" / "action.yml"
+    WORKFLOWS = ROOT / ".github" / "workflows"
+
+    def test_the_action_default_is_host_calls_default(self):
+        import re
+        m = re.search(r"^\s*default:\s*'([^']+)'", self.ACTION.read_text(),
+                      re.MULTILINE)
+        self.assertIsNotNone(m, "the action's envelope input lost its default")
+        self.assertEqual(m.group(1), host_call.DEFAULT_ENVELOPE,
+                         "the action and host_call.py disagree about the "
+                         "envelope's name — the replay branch is dead again")
+
+    def test_every_converted_worker_runs_from_railway(self):
+        """The probe list encodes exactly two writer CWDs (the root and
+        railway/). A converted workflow that runs its worker from anywhere
+        else writes the envelope where the action never looks."""
+        for name in TheWorkflowsRecordWhatWasDeferred.CONVERTED:
+            text = (self.WORKFLOWS / name).read_text()
+            with self.subTest(name):
+                self.assertTrue(
+                    "cd railway" in text or "working-directory: railway" in text,
+                    f"{name} runs its worker from a directory the action's "
+                    "envelope probe does not cover")
+
+    def test_the_root_running_cli_workflows_name_the_root_envelope(self):
+        """Two workflows call host_call.py's CLI from the workspace root; the
+        CLI's --envelope default is EMPTY, so without the flag they write no
+        envelope and a push race silently drops their record too."""
+        for name in ("announcement-lifecycle-review.yml",
+                     "reconcile-supersets.yml"):
+            text = (self.WORKFLOWS / name).read_text()
+            with self.subTest(name):
+                self.assertIn(f"--envelope {host_call.DEFAULT_ENVELOPE}", text,
+                              f"{name} writes no envelope, so the action has "
+                              "nothing to replay after a rejected push")
+
+    def test_a_replay_main_already_carries_is_a_pass_not_a_red(self):
+        """A success envelope whose deferral someone else already resolved
+        replays as a no-op: the empty diff then means the desired end state
+        EXISTS on main, not that a record was lost. Exiting 1 there mails the
+        owner about a race that cost nothing — the cry-wolf shape that gets an
+        alert channel filtered."""
+        text = self.ACTION.read_text()
+        self.assertIn("replayed", text,
+                      "the action cannot tell a discarded record from one "
+                      "main already carries")
+        self.assertIn("already carries", text)
+
+    def test_a_success_envelope_replays_through_record_success(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.json"
+            envelope = Path(tmp) / "envelope.json"
+            doc = deferral_ledger.load(ledger)
+            deferral_ledger.record_deferral(doc, job="archive-backfill",
+                                            reason="HTTP 504", key="run-1")
+            deferral_ledger.save(doc, ledger)
+            deferral_ledger.write_envelope(envelope, job="archive-backfill",
+                                           state="success", key="run-2")
+            code = deferral_ledger.main(["record", "--envelope", str(envelope),
+                                         "--path", str(ledger)])
+            self.assertEqual(code, 0)
+            self.assertEqual(
+                deferral_ledger.pending(deferral_ledger.load(ledger)), [],
+                "replaying a success envelope must close the open deferral — "
+                "a stale pending entry inflates the escalation streak")
+
+
 if __name__ == "__main__":
     unittest.main()
