@@ -48,6 +48,67 @@ No bound and no timeout moved. `tests/test_deploy_reaches_readers.py` pins the
 element carrier, the agreement rule, and the PHP-emits-what-Python-reads pair,
 so a tidy-up of either half cannot quietly restore comment-only.
 
+## 2026-08-14 - a budget stop is NOT ASKED, and five jobs stopped calling it FAILED (railway + workflows, no deploy)
+
+**The red run.** `industry-backfill` went red at 06:05 UTC with "All 200
+attempted industry classifications failed". Its own log, six lines above, said
+what had happened: `spend: 'industry-backfill' is SKIPPED this run. NO HEADROOM
+... the job exits 0 - a skipped backfill is not a broken one.` The guard behaved
+perfectly. The job then printed 200 lines of `FAILED (retried on a later
+rotation)`, raised, was retried three times by its workflow wrapper, and raised
+`::error::still failing after 3 attempts - a real failure, worth a look`.
+
+**Root cause: one None, two events, one status.** Every paid function in
+`extractor.py` returns `None` both for a model or transport error and for "paid
+reads are off for budget". `classify_confirmed` mapped `None` to `"failed"`
+while its own docstring promised `'failed' -> a model/transport error`. The
+allowance in that log was $7.00 and `f8e6c24` has since raised it to $14.00, but
+the raise is not the fix: the conflation recurs at any allowance the first month
+that runs tight.
+
+**The lesson already existed one module over.** `ai_evidence_sweep._ai_quote`
+returns `None` rather than `''` so a call nobody made cannot be read as a verdict
+of "we looked and the employer did not name AI", pinned by
+`test_a_gated_quote_read_returns_not_asked_not_no_quote`. It was never carried
+across. `extractor.spend_deferred_since(before)` carries it now.
+
+**Five callers were counting a budget stop as a failure**, and the sweep is the
+deliverable rather than the two known instances:
+
+| Module | What it did |
+|---|---|
+| `industry_backfill.py` | 200 budget stops -> 200 model failures -> raise -> 3 retries -> email |
+| `reason_backfill.py:324` | the identical `FAILED (retried on a later rotation)` line |
+| `enrich_roles.py` | "no discretionary headroom left in the month" -> `return 1` |
+| `reclassify_legacy_ai.py` | unread rows counted into the all-attempted-failed alarm |
+| `enrich_context.py` | never red, but published unread rows as `unsupported_or_unreadable` on the PUBLIC health ledger, which claims we fetched a source and could not use it |
+
+Each now pre-checks the guard before walking its queue (a run with paid reads off
+no longer makes 200 calls it knows will defer, nor sleeps between them), asks
+`spend_deferred_since` when a `None` comes back mid-row, and reports the deferred
+count plus what becomes of those rows. `industry_backfill` gained a fourth status
+beside confirmed / unconfirmed / failed.
+
+**Both halves, or it is half a fix.** `checked` counts rows a model was actually
+ASKED about, so a budget stop cannot reach the all-failed raise and a genuine
+model outage still can. The workflow wrappers keep their retry and their
+`::error::`: silencing real failures to buy the quiet is the failure mode this
+repo records for the alert channel, and
+`tests/test_budget_stop_is_not_a_failure.py` asserts both directions for
+`industry_backfill` and `enrich_roles`, plus a structural net over all five.
+
+**Before / after**, same 200 rows, paid reads off:
+
+```
+before  checked=200 confirmed=0 unconfirmed=0 failures=200
+        RuntimeError: All 200 attempted industry classifications failed  -> exit 1
+
+after   checked=0 confirmed=0 unconfirmed=0 failures=0 deferred=200
+        ::notice::industry-backfill SKIPPED 200 row(s) for budget. Nobody read
+        them, they are UNMARKED, and a later rotation reads them.
+        SPEND_LEDGER_V1 ... "complete": false                            -> exit 0
+```
+
 ## 2026-08-13 - the WARN review sheet, and one adjudication mechanism instead of two (railway + docs, no deploy)
 
 **Why.** The set above reports 99/100 and 33/33 with **zero editor-confirmed**.
