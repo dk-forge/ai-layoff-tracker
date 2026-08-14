@@ -624,7 +624,7 @@ def main():
     # so a Quebec hiccup never sinks the US WARN import.
     if os.environ.get("WARN_SKIP_QUEBEC") != "1":
         try:
-            from sources.quebec import pull_quebec
+            from sources.quebec import pull_quebec, health_detail
             qc = pull_quebec(months_back=int(os.environ.get("QUEBEC_MONTHS", "4")))
             print(f"Quebec (custom): {len(qc)} notices kept")
             if start:
@@ -632,9 +632,14 @@ def main():
             if min_emp:
                 qc = [e for e in qc if e["job_count"] >= min_emp]
             entries.extend(qc)
+            # The detail now says what the run SAW -- which discovery route
+            # answered, how many PDFs were readable, and how the parsed count
+            # compares with the total each document states for itself. The old
+            # text guessed "parser returned 0, check PDF layout" at a parser
+            # that was working perfectly; the landing page was the thing that
+            # had gone quiet, and that guess cost days.
             report_source_health("warn_quebec", "ok" if qc else "degraded", len(qc),
-                                 "Quebec collective-dismissal notices (MESS)"
-                                 + ("" if qc else " — parser returned 0, check PDF layout"))
+                                 health_detail(qc))
         except Exception as exc:
             print(f"Quebec importer failed: {exc}")
             report_source_health("warn_quebec", "degraded", 0, f"Quebec importer failed: {exc}")
