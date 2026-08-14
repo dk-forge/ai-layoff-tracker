@@ -338,6 +338,27 @@ class TheWorkflowsRecordWhatWasDeferred(unittest.TestCase):
                 self.assertIn("contents: write", text,
                               f"{name} cannot push the ledger without it")
 
+    def test_the_race_recovery_looks_where_the_envelope_actually_lands(self):
+        """Every converted workflow runs its Python with `cd railway`, so
+        host_call.py writes railway/deferral_envelope.json - while the commit
+        action runs from the workspace root. For a month the root-only check
+        made the re-derive arm dead code: a rejected push reset away the
+        ledger edit, found no envelope, and the next iteration read the empty
+        diff as 'unchanged' and exited 0. Run 31777647007 lost a real recovery
+        to exactly this (review 2026-08-14)."""
+        action = (self.WORKFLOWS.parent / "actions" / "commit-deferral-ledger"
+                  / "action.yml").read_text()
+        self.assertIn(
+            'railway/${{ inputs.envelope }}', action,
+            "the action never looks for the envelope under railway/, where "
+            "every cd-railway workflow actually writes it - the race recovery "
+            "is dead code again")
+        self.assertIn(
+            "had_changes", action,
+            "the action lost the memory of having staged a change, so a "
+            "discarded record can exit 0 as 'unchanged' - the silently-green "
+            "shape this action exists to close")
+
     def test_the_module_and_the_workflow_agree_on_the_key(self):
         modules = {
             "enrich-roles.yml": "enrich_roles",

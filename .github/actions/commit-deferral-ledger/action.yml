@@ -28,12 +28,36 @@ runs:
         git config user.name  'ai-layoff-tracker-bot'
         git config user.email 'bot@users.noreply.github.com'
 
+        # Every workflow runs its Python with `cd railway`, so the envelope
+        # lands at railway/<name> while this action runs from the workspace
+        # root. For a month the root-only check made the whole re-derive arm
+        # dead code: a rejected push reset away the ledger edit, found no
+        # envelope, and the NEXT iteration read the empty diff as "unchanged
+        # — nothing to record" and exited 0. A discarded record reported as
+        # recorded is the exact silently-green shape this action exists to
+        # close (found by review 2026-08-14; run 31777647007 lost a real
+        # recovery to it). Hence: look in both places, and remember whether
+        # there was ever anything to record so the quiet exit is only taken
+        # when the ledger was truly untouched.
+        find_envelope() {
+          for cand in "${{ inputs.envelope }}" "railway/${{ inputs.envelope }}"; do
+            if [ -f "$cand" ]; then echo "$cand"; return 0; fi
+          done
+          return 1
+        }
+
+        had_changes=0
         for attempt in 1 2 3 4 5; do
           git add railway/deferral_ledger.json 2>/dev/null || true
           if git diff --staged --quiet; then
+            if [ "$had_changes" = "1" ]; then
+              echo "::error::A ledger change was discarded by the race recovery and could not be re-derived (no envelope found). A deferral nobody counts is a silently green job."
+              exit 1
+            fi
             echo "The deferral ledger is unchanged — nothing to record."
             exit 0
           fi
+          had_changes=1
           git commit -q -m "defer: ${{ inputs.job }} $(date -u +%Y-%m-%dT%H:%MZ)"
           if git push origin HEAD:main; then
             echo "Recorded on attempt $attempt."
@@ -45,8 +69,8 @@ runs:
           echo "Push rejected (attempt $attempt) — re-deriving on current main."
           git fetch origin main
           git reset --hard origin/main
-          if [ -f "${{ inputs.envelope }}" ]; then
-            python3 railway/deferral_ledger.py record --envelope "${{ inputs.envelope }}" || true
+          if env_path="$(find_envelope)"; then
+            python3 railway/deferral_ledger.py record --envelope "$env_path" || true
           fi
           sleep $((attempt * 5))
         done
