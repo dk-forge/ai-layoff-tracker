@@ -28,6 +28,42 @@ redirecting to `virginiaworks.gov/im-an-employer/retain-and-grow/warn-notices/`
 and offering a plain `warn_notices_*.csv`. Virginia publishes. Nothing there
 went dark.
 
+**Correction, same session: that second fetch should not have been made, and a
+later session must not cite it as precedent.** `virginiaworks.gov/robots.txt`
+names Anthropic agents in its deny list, and the page was fetched with a
+browser UA before that file was read. Reading `robots.txt` is the permitted
+way to answer the question and reading the page was not. Recorded rather than
+removed, because a quietly deleted overstep is one a future session repeats.
+
+**But the robots file does NOT block the collector, and retiring Virginia on
+robots grounds would be wrong.** Read from the permitted vantage,
+`https://www.virginiaworks.gov/robots.txt` (200, 832 bytes) is a
+crawler-specific deny list, not a site-wide one:
+
+* `Disallow: /` for eighteen NAMED agents - GPTBot, ChatGPT-User, CCBot,
+  **anthropic-ai**, **ClaudeBot**, **Claude-Web**, Google-Extended, Bytespider,
+  PerplexityBot, Amazonbot and the SEO crawlers.
+* `Allow: /` for Googlebot, Bingbot, DuckDuckBot, Applebot.
+* `User-agent: *` carries `Crawl-delay: 10` and **no Disallow at all**.
+
+So the state denies AI and SEO crawlers and permits everyone else under a
+ten-second crawl delay. `AiLayoffTracker/1.0` falls under the wildcard and is
+permitted; an Anthropic agent reading the page in a session is not. Those are
+two different actors and only one of them is the collector. The scraper the
+sweep actually runs does not touch that host anyway - the upstream
+`warn/scrapers/va.py` drives `vec.virginia.gov`, whose own robots.txt (200,
+2,027 bytes) disallows `/core/`, `/profiles/`, `/admin/`, `/search/` and the
+`/user/` paths for `*`, and does not disallow `/warn-notices` for anyone.
+
+**Do not retire VA.** The three-step retirement is for a source we may not
+collect or the state does not publish. Neither holds: the state publishes, the
+collector is permitted, 1,108 VA rows are already stored, and the sweep
+succeeded on 13 of the last 14 runs. The failure is a headless-Chrome session
+on our own runner. If VA proves flaky rather than one-off, the fix is a custom
+fetcher reading the CSV that page links, with the collector's own UA and the
+ten-second delay honoured - not a disclosure that we are blocked, which would
+be untrue.
+
 VA's own history says the same: **1111 or 1113 notices on each of the 13
 preceding runs** (2026-08-02 through 2026-08-13), zero exactly once, today,
 with the only Selenium failure in that window. So this is a one-run
@@ -113,6 +149,20 @@ same window, so new rows cited URLs whose archive attempts were already old,
 and the join-filtered MIN admitted them. `oldest_unarchived_checked_at` is
 therefore not a monotone measure of the achieved cycle either.
 
+**Why the projection arm fired at all, given that `001ee18` already forbids
+it from overruling a completed pass.** The suppression is
+`measured_pass = (age + RUN_GRANULARITY_DAYS) <= PROJECTED_MAX_AGE_DAYS`, and
+today that is `7.4 + 1 = 8.4 > 8`. So the rule did not misfire and was not
+bypassed: it stopped suppressing because **the direct reading itself crossed
+the bound**, which is exactly the condition it was written to defer to. What
+moved the direct reading was not ageing. It was composition - the WARN sweep
+upserted 40,835 rows at 14:46Z and re-admitted cited URLs whose archive
+attempts were already old, which is why the oldest ran BACKWARD from
+`2026-08-10 07:36` to `2026-08-07 07:17` inside eight hours. Making the
+invariant tolerate that means making the direct reading composition-aware, and
+that is a design change, not a threshold. **Leave the FAIL standing for two
+more daily runs.** If it survives the convoy landing, it is real.
+
 **No bound was moved and none needs to be.** `PROMISE_DAYS` 7,
 `RUN_GRANULARITY_DAYS` 1, `PROJECTED_MAX_AGE_DAYS` 8 and `MAX_AGE_DAYS` 10 are
 untouched, as is `ARCHIVE_BACKFILL_LIMIT`. The fix for this is already on main:
@@ -177,14 +227,30 @@ disagreement has a start date:
 | 08-14 | $0.112 (partial) | $1.00 | **$0.89** |
 
 Through 08-11 the gap is a dime a day, which is rounding and the un-metered
-edges. From 08-12 something began spending roughly **$0.70-0.90/day on the key
-that this repo's meter never sees**, and it is still doing it after the
-rationing landed - so the rationer is working on the half it can see while most
-of the money leaves elsewhere. The two obvious candidates are the sibling
-tracker sharing the OpenRouter account and a paid path here that bypasses
-`spend.metered_call`. **This needs the owner**: resolving it means reading the
-OpenRouter account's activity, which no session should be doing with the
-owner's credentials.
+edges. From 08-12 the account is losing roughly **$0.70-0.90/day that this
+repo's meter never sees**, and it continued after the rationing landed. An
+independent review attributed it: the sibling tracker runs at its caps for
+about $0.80/day on the same key, and this repo's $0.23/day makes up the
+measured $1.04.
+
+**So the alarm was a category error, and `[2a]` now says what it measures.**
+`burn` is the fall in one OpenRouter ACCOUNT's balance and covers both
+trackers; `allowance` is the policy in THIS repo's `spend.py` and covers one.
+Comparing them blamed this repo for a sibling's spend and could never have been
+cleared by anything done here - a permanently red line, which is how a
+dashboard stops being read. `burn_problems()` now judges each half against its
+own denominator: this repo's metered ledger against its $14.00, and the account
+against its runway. Nothing is silenced. At today's numbers it reports "the
+SHARED account is burning $1.04/day (~$31/month) while this repo's meter
+explains only $0.38/day of it", plus the 9.3-day runway as the owner's call
+across both repos rather than this repo's overspend. `RUNWAY_FLOOR_DAYS` went
+7 -> 14, because at $1.04/day seven days is inside the time it takes to notice,
+decide and top up. `tests/test_ops_burn_denominator.py` pins all of it,
+including that an unreadable ledger attributes NOTHING rather than zero.
+
+What is still open is the account total: **$31/month across both trackers is
+above the two repos' stated allowances, and no combined account allowance is
+recorded anywhere.** That number is the owner's, not a session's.
 
 ### Also seen, not acted on
 

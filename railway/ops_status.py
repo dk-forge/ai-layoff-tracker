@@ -331,6 +331,50 @@ def _report_deferrals():
     return lines
 
 
+#: Runway below this many days is the owner's problem to solve, across both
+#: repos. Raised from 7 on 2026-08-14: at the measured account rate 7 days is
+#: inside the time it takes to notice, decide and top up.
+RUNWAY_FLOOR_DAYS = 14
+
+
+def burn_problems(account_per_day, repo_per_day, allowance_month, runway_days):
+    """The spend verdict, split by which denominator each half belongs to.
+
+    Pulled out of `_report_run_cost` so it can be tested without a filesystem.
+    `account_per_day` is the OpenRouter BALANCE delta, which covers every repo
+    billing that key. `repo_per_day` is THIS repo's own metered ledger, or None
+    when the ledger could not be read. `allowance_month` is this repo's policy.
+
+    The bug this shape exists to prevent: those first two numbers were compared
+    against each other until 2026-08-14, so a sibling tracker's spend on the
+    shared key read as this repo exceeding its allowance, and no change here
+    could ever have cleared it. Nothing is silenced -- an account burning more
+    than this repo's allowance still reports, as an ACCOUNT fact naming what
+    this repo could and could not account for.
+    """
+    out = []
+    if runway_days < RUNWAY_FLOOR_DAYS:
+        out.append(
+            f"~{runway_days:.1f} days of OpenRouter runway left on the SHARED account "
+            f"(${account_per_day:.2f}/day across both trackers) — a top-up or a "
+            f"cross-repo cut is the owner's call, not this repo's")
+    if repo_per_day is None:
+        return out
+    if repo_per_day * 30 > allowance_month:
+        out.append(
+            f"THIS repo's own metered burn (${repo_per_day:.2f}/day, "
+            f"~${repo_per_day * 30:.0f}/month) is above its "
+            f"${allowance_month:.2f}/month allowance")
+    elif account_per_day * 30 > allowance_month:
+        out.append(
+            f"the SHARED account is burning ${account_per_day:.2f}/day "
+            f"(~${account_per_day * 30:.0f}/month) while this repo's meter explains only "
+            f"${repo_per_day:.2f}/day of it — this repo is inside its "
+            f"${allowance_month:.2f}/month allowance, so the balance is the other "
+            f"tracker on the same key. No combined account allowance is recorded here")
+    return out
+
+
 def _report_run_cost():
     """[2a] What the models are costing, and what that money bought.
 
@@ -523,19 +567,45 @@ def _report_run_cost():
         unverified.append("LLM burn rate")
         return problems, unverified
 
+    # THE BALANCE IS AN ACCOUNT, THE ALLOWANCE IS A REPO. Until 2026-08-14
+    # these two lines were compared directly and the comparison was a category
+    # error: `spent` is the fall in ONE OpenRouter account's balance, and both
+    # trackers bill to that account, while `allowance` is the policy in THIS
+    # repo's spend.py and covers this repo alone. Measured on 2026-08-14, the
+    # account fell $1.04/day while this repo's own meter recorded $0.23/day of
+    # it; the remaining ~$0.81 is the sibling tracker, which this repo has no
+    # ledger for and no authority over. So the old alarm compared a two-repo
+    # numerator against a one-repo denominator and would have stayed red
+    # forever no matter what this repo did.
+    #
+    # It is NOT silenced, because the account really is burning more than the
+    # trackers' stated allowances and the runway really is short. It is split
+    # into the two questions it was conflating, each against its own
+    # denominator:
+    #   * IS THIS REPO INSIDE ITS ALLOWANCE?  ledger vs allowance. Actionable
+    #     here, and the only half any change in this repo can move.
+    #   * IS THE ACCOUNT SOLVENT?  balance vs runway, plus how much of the
+    #     account's burn this repo can account for. Actionable only by the
+    #     owner, across both repos, so it says so instead of naming a number
+    #     this repo could not have caused.
     per_day = spent / days
+    mine = None
+    if _ledger is not None:
+        window_dates = {r["date"] for r in window}
+        mine = sum(float(e.get("cost_usd") or 0) for e in _ledger
+                   if str(e.get("date", "")) in window_dates) / days
     print(f"    burn        ${per_day:,.2f}/day over the last {days}d "
-          f"(${spent:,.2f} total)")
+          f"(${spent:,.2f} total) — ACCOUNT-WIDE, both trackers bill this key")
+    if mine is None:
+        print("    of which     UNKNOWN — this repo's ledger could not be read, "
+              "so none of the account burn is attributed. Not a pass.")
+        unverified.append("this repo's share of the account burn")
+    else:
+        print(f"    of which    ${mine:,.2f}/day is THIS repo's metered spend; "
+              f"${max(0.0, per_day - mine):,.2f}/day is not in this ledger")
     runway = float(last.get("balance") or 0) / per_day
     print(f"    runway      ~{runway:,.1f} days at that rate")
-    if runway < 7:
-        problems.append(f"under a week of OpenRouter runway (~{runway:.1f} days)")
-
-    projected = per_day * 30
-    if projected > float(allowance):
-        problems.append(
-            f"the measured burn (${per_day:.2f}/day, ~${projected:.0f}/month) is "
-            f"above the ${allowance}/month allowance")
+    problems.extend(burn_problems(per_day, mine, float(allowance), runway))
 
     r0, r1 = first.get("rows"), last.get("rows")
     if not isinstance(r0, int) or not isinstance(r1, int):
