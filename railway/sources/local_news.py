@@ -209,9 +209,22 @@ def market(country):
     return _markets.BY_COUNTRY.get(country)
 
 
+#: The committed arming decision. The owner authorized the 25 wired markets on
+#: 2026-08-14 against a stated ~$10/month layoff-side budget: committed path
+#: $4.92/month + these markets capped at 12 candidates each $5.14/month = $10.06.
+#: A policy lives in a diff, not in a dashboard env var nobody can review - the
+#: same rule spend.py applies to the allowance. LOCAL_NEWS_COUNTRIES still
+#: overrides for a dry run of a subset, and "off" disarms without a deploy.
+ARMED_BY_DEFAULT = "all"
+
+
 def armed_countries():
     """Countries this run is armed for. Empty tuple means DORMANT."""
     raw = (os.environ.get("LOCAL_NEWS_COUNTRIES") or "").strip()
+    if raw.lower() == "off":
+        return ()
+    if not raw:
+        raw = ARMED_BY_DEFAULT
     if not raw:
         return ()
     if raw.lower() in {"all", "*"}:
@@ -371,9 +384,9 @@ def pull_local_news(countries=None, fetch=None):
     stats = {c: {"fetched": 0, "aggregator": 0, "dropped": 0,
                  "kept": 0, "errors": 0, "why": {}} for c in picked}
     if not picked:
-        print("local_news: DORMANT — LOCAL_NEWS_COUNTRIES is unset, so no "
-              "request was made and nothing was spent. Known countries: "
-              + ", ".join(COUNTRIES))
+        print("local_news: DORMANT (LOCAL_NEWS_COUNTRIES=off, or the armed set "
+              "is empty), so no request was made and nothing was spent. "
+              "Known countries: " + ", ".join(COUNTRIES))
         return [], stats
 
     def _default_fetch(url):

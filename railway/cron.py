@@ -12,6 +12,7 @@ from sources.edgar import pull_edgar_filings
 from sources.gdelt import pull_gdelt_between
 from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
+from sources.local_news import pull_local_news
 from sources.press_releases import pull_press_releases, reviewed_feed_count
 import extractor
 from extractor import extract_layoff_data, spend_deferral_count
@@ -174,6 +175,22 @@ def filter_already_seen(entries):
     return _shared(entries)
 
 
+def _pull_local_news_rows():
+    """Adapter: pull_local_news returns (rows, stats); this loop wants rows.
+
+    The stats are printed per country rather than discarded, because a country
+    returning 0 kept is exactly the signal this collector exists to surface -
+    a thin country hidden inside a healthy total is the Quebec failure shape.
+    """
+    rows, stats = pull_local_news()
+    for country in sorted(stats):
+        st = stats[country]
+        print(f"local_news[{country}]: kept={st['kept']} "
+              f"fetched={st['fetched']} aggregator={st['aggregator']} "
+              f"dropped={st['dropped']} errors={st['errors']}")
+    return rows
+
+
 def _spend_preflight():
     """Decide, before any paid call, whether this run may spend.
 
@@ -230,6 +247,15 @@ def run():
         # paywalled marquee layoffs (the exact gap NewsAPI's death + paywalls
         # created), so it leads the news sweep.
         ("google_news", pull_google_news),
+        # Local-language discovery for the 25 wired markets. 45 editions carried
+        # local UI languages while every DISCOVERY_QUERIES phrase was English,
+        # which is why 142 countries held nothing (TECHLOG 2026-08-14). Armed by
+        # ARMED_BY_DEFAULT in sources/local_news.py; a run with it dormant
+        # reports itself dormant rather than vanishing from this table.
+        # pull_local_news returns (rows, stats) - the adapter keeps this loop's
+        # list contract and prints the per-country tallies so a thin country is
+        # visible in the run log rather than only a total.
+        ("local_news", _pull_local_news_rows),
         # newsapi RETIRED 2026-07-25: the free tier is dev-only and the paid tier
         # is ~$449/mo, so it perpetually reported degraded (dead/exhausted key)
         # while contributing nothing. Google News RSS (keyless) replaced it and
