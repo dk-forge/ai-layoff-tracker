@@ -45,6 +45,7 @@ DRY = os.environ.get("HEALTH_DIGEST_DRY", "").lower() in {"1", "true", "yes"}
 # divergence fails CI instead of becoming background noise.
 MAX_AGE_DAYS = {
     "edgar": 2, "news_catchup": 9, "gdelt": 2, "regional_feeds": 2,
+    "national_feeds": 2,
     "warn_us": 3, "eurofound_erm": 3,
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
     "press_releases": 3, "warn_hi_ocr": 3, "warn_mazowieckie": 3,

@@ -79,6 +79,7 @@ HIGH_VOLUME = {"TX", "FL", "GA", "CA", "OH", "MI", "NY", "NC"}
 # live and overstated by 4,000 jobs. A ceiling a job cannot meet is not a
 # monitor, it is noise that hides real breakage. See news_catchup.py.
 MAX_AGE = {"edgar": 2, "news_catchup": 9, "google_news": 2, "regional_feeds": 2,
+           "national_feeds": 2,
            "gdelt": 2, "warn_us": 3,
            "eurofound_erm": 3, "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
            "press_releases": 3, "warn_quebec": 3, "federal_rif": 35, "warn_hi_ocr": 3,

@@ -58,6 +58,85 @@ rejected Spirit OOC event. The key now carries `editor_confirmed` and
 `machine_any` side by side (the by_state shape), and `--measure` prints the
 census's editor-confirmed figure instead of not printing the census at all -
 which is how the 33/33 went unnoticed in the first place.
+## 2026-08-14 - the country research is repo data, and fifteen economies get a publisher (2.20.47)
+
+**The problem was that ~300 researched publishers across ~90 countries lived in
+a conversation.** A publisher we probed and refused is worth as much as one we
+wired: the difference between "we hold nothing on Bahrain" and "GDN Online 404s
+at both feed paths and News of Bahrain serves HTML at its rss.xml" is the
+difference between a gap and an answer, and neither survives in a chat log.
+
+- **`railway/data/source_catalogue.json`** is now that research, as data. 382
+  rows, each with country, language and one of three statuses: `wired` (a
+  collector reads that publisher's own feed), `researched` (known, and its
+  stories arrive through its country's own market sweep, but no feed of its
+  own is read) and `refused` (probed first-party, unusable, with the measured
+  reason). 20 wired, 335 researched, 27 refused.
+- **It renders publicly.** `railway/generate_source_catalogue.py` emits
+  `templates/partials/source-catalogue-table.php`, included on the sources page
+  under "Every publisher we researched, connected or not".
+  `tests/test_source_catalogue_render.py` fails when the committed partial does
+  not match a fresh render, so a catalogue edit nobody rendered goes red in CI
+  instead of leaving a stale public table.
+
+**`railway/sources/national_feeds.py` wires ONE verified national publisher per
+Tier-2 economy**, for the band where neither existing collector reaches: the
+national Google News edition returns the worldwide English feed, and no
+regional service covers the country at all. Ethiopia, Jordan, Iraq, Nepal and
+Paraguay held nothing and had no route to hold anything.
+
+  Wired (15): Daily News Egypt, La Republica (CO), Addis Fortune (ET), Kursiv
+  (KZ), MyJoyOnline (GH), Dawn Business (PK), Jordan News, Iraq Business News,
+  Jamaica Gleaner Business, The Kathmandu Post, Post-Courier (PG), ABC Color
+  Economia (PY), EconomyNext (LK), Biznis.rs (RS), Gestion Economia (PE).
+
+**Twenty-five candidates were probed live and first-party; ten countries had no
+usable feed.** Every refusal was measured at least twice from a machine with
+real egress, because the brief's first rule is that a proxy 403, a WAF block
+and a real 404 are indistinguishable from a restricted environment. Georgia
+403s at bm.ge including robots.txt; Ivory Coast's Abidjan.net answers 200 with
+a 4.1MB body that is not well-formed XML; Morocco 403s at both candidates;
+Lebanon's lorientlejour.com robots.txt opens `Disallow: /`; Oman's Times of
+Oman IS RSS but carries an unbound namespace prefix no strict parser reads;
+Kuwait, Bahrain, Panama, Mongolia and Moldova each fail on 404s, TLS or a 503.
+Nothing was bypassed: no paywall, no bot wall, no certificate error, no
+robots.txt.
+
+**Kazakhstan is the measured fix, not a guess.** The brief recorded
+"Kazakhstan: 201 items, 0 local" because the ru-KZ Google News edition serves
+Russian press rather than Kazakh press. Kursiv publishes Kazakh business news
+in Russian and returns 100 items from its own feed, which is the route that
+edition could never provide.
+
+**ARMED by committed default, and the arithmetic is in the diff.** 15 feeds x
+MAX_PER_FEED 8 x 2 runs/day x 30 days x $0.000315 = **$2.27/month worst case**,
+under the $4/month bar. That worst case assumes every feed hits its cap every
+run; the measured live run fetched 547 items across all 15 feeds and kept
+**one** candidate ($0.000315), and seen_urls dedup makes a repeated URL free
+forever. `test_the_armed_worst_case_stays_inside_the_committed_ceiling` fails
+if a later change adds feeds or raises the cap past $4, so the owner gets asked
+again rather than discovering it on a bill. `NATIONAL_FEEDS=off` disarms
+without a deploy.
+
+**The relevance filter reads four languages** (English, Spanish, Russian,
+Serbian) and re-applies two lessons per language rather than translating one
+set: collective vocabulary only, because Spanish bare "despido" and Serbian
+bare "otkaz" are individual-dismissal words exactly as French "licenciement"
+and Russian bare "увольнения" are; and noisy homographs only when paired with
+a workforce word. English rides `EN_TERMS`/`EN_PATTERNS` imported from
+regional_feeds and the aggregator rule is imported from local_news, so there is
+one definition of each and a correction cannot land in only one collector.
+
+**No country is ever pre-assigned.** The `country` on each Feed is a coverage
+claim for the sources page and the run report; the extractor decides the
+country from the article text, so a Ghanaian paper covering a Nigerian closure
+still lands as Nigeria.
+
+Health: `national_feeds` in the ledger, its label in `assets/health.js`, its
+row on the sources page, and 0 kept rows is NOT degradation (a national feed
+honestly has no layoff story most weeks) while a non-200, an unparseable body
+or a 200 that is not RSS sets `last_error` and degrades. 34 new guards; the
+suite is green.
 
 ## 2026-08-14 - the freshness strip says its facts at first paint (2.20.46)
 
