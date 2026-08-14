@@ -782,7 +782,7 @@ Also checked by eye rather than by `style_check.py`: that file needs 12
 characters and 3 real words before a string is eligible, so a short button label
 slips past it entirely. There is a test for the dashes instead.
 
-## 2026-08-13 - the reader check dated the build and never read the body (2.20.33)
+## 2026-08-14 - the reader check dated the build and never read the body (2.20.38)
 
 `reader_freshness.py` compared the plugin VERSION a reader is served against the
 version that is deployed. Those are equal on a page that carries the new version
