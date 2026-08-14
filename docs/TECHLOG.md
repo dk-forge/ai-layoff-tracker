@@ -485,6 +485,42 @@ or also worldwide; whether `/reconcile-supersets` picks up the corrected Meta
 (4,800, 2026-07-06) may contain the Xbox 3,200's first tranche - left for a
 superset adjudication, not resolved here.
 
+
+## 2026-08-14 - rolling-window states exempted from the WARN high-water ratchet (owner decision)
+
+Resolves the open question from section A below. Four generic-tier states
+publish a rolling window, not an archive (measured over the 14 runs
+2026-08-02..2026-08-14: AZ 16-755, DE 8-105, ME 5-90, VT 8-100 — AZ read 307,
+299, 58, 76 on four consecutive days), so a never-lowering high-water floor is
+a false alarm waiting to be manufactured: AZ's first 755-day would pin a floor
+its ordinary days can never clear at `drop_frac=0.7`.
+
+The owner chose **exemption over a median-ratchet**: archive states keep the
+high-water semantics unchanged; rolling-window states are excluded and fall
+back to what already worked for them — hard-zero detection behind the existing
+peer-health gate.
+
+Implementation, deliberately at the LEDGER layer and in two places:
+
+* `ROLLING_WINDOW_STATES = {AZ, DE, ME, VT}` in `railway/warn_import.py`.
+* `ratchet_state_baselines()` never records them, on any tier.
+* `load_state_baselines()` DROPS them on read, so a stale floor surviving in
+  the committed file (hand-edit, old branch, revert) cannot resurrect the
+  alarm through the ledger.
+* Their four seeded floors are removed from `railway/warn_state_baselines.json`.
+* A hand-set `WARN_GENERIC_BASELINE` floor still applies to them: that is a
+  reviewed human judgment, not the ratchet, and the detector honours it.
+* `load_state_baselines()`'s docstring no longer claims every state scraper
+  re-reads its whole archive — that sentence was the false premise the whole
+  defect hid behind.
+
+Pinned by five tests in `tests/test_warn_state_baselines.py` (never ratcheted,
+stale-floor drop on load, hard zero still flags, hand floor still applies,
+shipped ledger holds no rolling-window state). Not done, on purpose: widening
+`drop_frac` (would blunt the detector for all 22 archive states to excuse 4),
+and a partial-collapse guard for rolling states (needs run history the ledger
+does not hold; a rolling state that breaks to a hard zero still surfaces).
+
 ## 2026-08-14 - the WARN ratchet's first alarm was true, the archive slowdown was a regime change, and one red run was a model answering twice
 
 Three items off one `ops_status.py` exit 2, taken in the order the file asks
@@ -588,7 +624,8 @@ prints 755 its floor becomes 755 and **every ordinary day afterwards is below
 in the tier whose credibility this ledger was built to establish. Not touched
 here: the honest fixes (exempt rolling-window states, or ratchet toward a
 median rather than a maximum) both change what the detector means, and that is
-the owner's call, not a threshold to quietly move.
+the owner's call, not a threshold to quietly move. **Resolved same day — the
+owner chose exemption; see the entry above this one.**
 
 ### B. `archive_recheck_cadence` - the pool changed regime, and the rationer is innocent
 
