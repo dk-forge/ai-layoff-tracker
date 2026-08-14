@@ -1,5 +1,50 @@
 # Tech Log
 
+## 2026-08-13 - Idaho: the break was one filename, the defect was no floor
+
+`fetch_id` had been raising `ID: WARN pdf link not found on landing page`.
+Fetched from here, first-party: the landing page answers **HTTP 200, 109,000
+bytes** of real content, and it redirects `/businesss/` to `/businesses/` (the
+scraper's URL carried a typo the state still forwards). The cumulative PDF is
+still there and still parses: **249KB, 5 pages, 205 rows back to 2009**.
+
+The only thing that changed is the filename. It carried a version suffix
+(`Idaho-WARN-Notices-3.2.pdf`) and Idaho's August republish dropped it, so the
+regex `Idaho-WARN-Notices-[\dx.]+\.pdf` no longer matched a link sitting three
+inches away on the page. The stem now matches with or without a suffix, with a
+fallback to any WARN-named PDF on the page. **Idaho has not stopped publishing
+and no per-notice migration happened** — this is not the West Virginia shape.
+
+Recovered live, measured against what Idaho actually published rather than an
+estimate: the scraper returns **135 notices / 34,144 jobs, 2015 through 2026**,
+and the tracker already held all but **one notice, JeniusBank, 106 jobs,
+effective 2026-10-09**, letter dated 8/10/2026. The break was days old, not
+months. Six rows first read as missing were the same notices under raw cell
+text; `_clean_company` collapses the wrapped newline and strips a trailing
+"Unit", and the dedup hash stays keyed to the raw scrape, so nothing forks.
+One live row, Albertsons 2026-03-01 / 295, is no longer in Idaho's PDF and is
+left alone: removing it needs `/bulk-purge` plus a full re-import.
+
+**The filename was the accident. This is the defect:** Idaho was the only
+legacy state the ledger held no floor for. It is not in `_HIGH_VOLUME`, so its
+0 never reached `_real_drift`, and `zero_needs_baseline=True` reads a floorless
+state's 0 as unproven rather than anomalous. Both rules are right on their own,
+and together a floorless state is exactly the one whose breakage cannot be
+seen. Before `950379f` the tier gate then made it recursive: Idaho broken meant
+no legacy state could earn a floor at all.
+
+Idaho's measured floor (135) is seeded, and
+`test_every_legacy_state_the_importer_scrapes_has_a_floor` now fails on any
+scraped legacy state the ledger does not carry. It was RED on `[] != ['ID']`
+before the seed. A second test drives the real shape: `pull_warn_custom`
+swallows the exception, so a raised Idaho arrives as a 0 among thirteen healthy
+siblings, is named alone, and no longer withholds their floors.
+
+Swept all 14 legacy scrapers by hand to close the class rather than the
+instance. **Every one returns exactly its floor** (TX 2359, FL 2761, GA 273,
+OH 787, MI 88, CO 38, LA 324, NC 1153, NV 15, MN 72, MA 357, NY 557, KY 33).
+Idaho was the only silent state, and after the seed the tier has no floorless
+member left. Suite: `Ran 1849 tests`, `OK (skipped=2)`.
 ## 2026-08-13 - the methodology was live and the header did not say so (2.20.36)
 
 The owner asked for "a submenu under each tracker in WP admin". What he wanted

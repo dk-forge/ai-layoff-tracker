@@ -218,6 +218,51 @@ class BaselineLedgerTest(unittest.TestCase):
                 f"tier {tier!r} has no per-state floors; a partial collapse in it "
                 f"cannot be detected")
 
+    def test_every_legacy_state_the_importer_scrapes_has_a_floor(self):
+        """Idaho, concretely — the state that proved the detector was blind.
+
+        `fetch_id` raised "WARN pdf link not found on landing page" for days
+        and nothing anywhere reported it. Idaho is not high-volume, so its 0
+        never reached `_real_drift`; and with `zero_needs_baseline=True` a
+        state holding no floor has its 0 read as UNPROVEN rather than
+        anomalous. Both halves are correct on their own, and together they mean
+        a floorless state is exactly the state whose breakage cannot be seen.
+
+        A floor is therefore not optional per state. Any legacy scraper the
+        importer runs and the ledger does not carry is silent in the same way,
+        so this test names the gap instead of waiting for the next accident.
+        """
+        try:
+            from sources.warn_custom import CUSTOM_STATES
+        except Exception as exc:            # pragma: no cover - import guard
+            self.skipTest(f"warn_custom unavailable: {exc}")
+        floors = W.load_state_baselines().get("legacy_custom", {})
+        missing = sorted(set(CUSTOM_STATES) - set(floors))
+        self.assertEqual(
+            [], missing,
+            f"legacy WARN state(s) {missing} are scraped but hold no floor, so a "
+            f"break in them reports nothing (Idaho's failure mode)")
+
+    def test_a_broken_idaho_now_surfaces_per_state(self):
+        """The whole point of the floor, on the real shape.
+
+        `pull_warn_custom` swallows a fetcher exception and logs it, so a raised
+        Idaho arrives at the drift check as a plain 0 among thirteen healthy
+        siblings. With its measured floor that 0 is drift, it is named alone,
+        and the ratchet still records every sibling — the state that starved
+        its tier must not go on starving it while broken.
+        """
+        floors = dict(_FLOORS, ID=133)
+        counts = dict(_HEALTHY, ID=0)
+        self.assertEqual(["ID"], W.detect_generic_state_drift(
+            counts, _EXPECTED, floors, drop_frac=0.5, zero_needs_baseline=True))
+        ledger = {}
+        self.assertTrue(W.ratchet_state_baselines(
+            ledger, "legacy_custom", counts, _EXPECTED, skip=["ID"]))
+        tier = ledger["legacy_custom"]
+        self.assertNotIn("ID", tier, "a broken state must not record a 0 floor")
+        self.assertEqual(len(_EXPECTED) - 1, len(tier))
+
     def test_shipped_ledger_is_valid(self):
         """The committed ledger must always parse — a broken one silently
         downgrades every tier to hard-zero detection."""
