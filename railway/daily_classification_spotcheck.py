@@ -154,6 +154,32 @@ def request_json(url, payload=None, headers=None, attempts=3, timeout=120):
     raise RuntimeError(str(last))
 
 
+def first_json_object(content):
+    """The FIRST complete JSON object in a model reply. Raises ValueError if none.
+
+    The old reader sliced from the first '{' to the LAST '}' and handed the
+    whole span to json.loads. That is correct for one object wrapped in prose
+    and wrong for two: a reply of `{...}\\n{...}` slices to both objects and
+    json.loads answers `Extra data: line 1 column 178 (char 177)`. That is the
+    exact string that reddened "Data quality report (anomaly flags)" on
+    2026-08-14 (run 31815799989) — a valid correction was selected, and the
+    parser threw it away because the model had appended a second object after
+    it. `response_format=json_object` is requested but not guaranteed.
+
+    raw_decode reads ONE value and reports where it stopped, so trailing
+    objects, trailing prose and code-fence tails all stop mattering. It is
+    still NOT a permissive reader: a reply with no object, or whose first
+    object is malformed, raises exactly as before. Do not "fix" a future
+    parse failure by concatenating or repairing what came back — a second
+    object is the model answering twice, and the first answer is the one the
+    prompt asked for.
+    """
+    start = content.find("{")
+    if start < 0:
+        raise ValueError("no JSON object in the reply")
+    return json.JSONDecoder().raw_decode(content, start)[0]
+
+
 def ask_model(prompt):
     """One metered model call. Raises spend.PaidReadsOff if the brake is on.
 
@@ -178,8 +204,7 @@ def ask_model(prompt):
         what="a classification spot-check question")
     try:
         content = response["choices"][0]["message"]["content"]
-        content = content[content.find("{"):content.rfind("}") + 1]
-        return json.loads(content)
+        return first_json_object(content)
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise RuntimeError("model returned no usable JSON: " + str(exc))
 

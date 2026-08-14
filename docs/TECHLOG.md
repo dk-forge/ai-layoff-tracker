@@ -1,5 +1,199 @@
 # Tech Log
 
+## 2026-08-14 - the WARN ratchet's first alarm was true, the archive slowdown was a regime change, and one red run was a model answering twice
+
+Three items off one `ops_status.py` exit 2, taken in the order the file asks
+for. None of the three was what its own message suggested, and the differences
+are the useful part.
+
+### A. `warn_us` DEGRADED names VA, and the detector is trustworthy
+
+The alarm reads *"generic-tier state(s) went dark vs healthy peers"* and the
+state is **VA**, alone. Verified against the run log rather than inferred: run
+31808688362 printed per-state counts for 25 of the 26 expected generic states
+and Virginia is simply absent from the line.
+
+**It is a TRUE POSITIVE, and the cause is ours, not the state's.** The same
+log carries the traceback: `warn/scrapers/va.py:176` drives Selenium, and
+Chrome would not start on the runner -
+`SessionNotCreatedException: session not created from timeout: Timed out
+receiving message from renderer: 60.000`.
+
+**Verified first-party, from the owner's machine, with a browser UA, because
+the last diagnosis in this area called four healthy states broken from an
+egress-restricted environment.** Status codes and byte counts actually
+received: `https://www.vec.virginia.gov/warn-notices` -> **200, 35,175 bytes**;
+`https://www.virginiaworks.gov/warn-notices` -> **200, 423,751 bytes**,
+redirecting to `virginiaworks.gov/im-an-employer/retain-and-grow/warn-notices/`
+and offering a plain `warn_notices_*.csv`. Virginia publishes. Nothing there
+went dark.
+
+VA's own history says the same: **1111 or 1113 notices on each of the 13
+preceding runs** (2026-08-02 through 2026-08-13), zero exactly once, today,
+with the only Selenium failure in that window. So this is a one-run
+infrastructure flake and the next run should clear it. The floors were NOT
+seeded during an anomalous window - the seeding sweep was today's run
+(`737aafd`), and every state in it that carries a floor produced a count in
+line with its own two-week history.
+
+**The correction, made visible rather than silent.** `ratchet_state_baselines`
+skips a drifted state, VA drifted on the very run that seeded the ledger, and
+the skip is permanent in the sense that matters: VA never earns a floor from a
+run it fails. So Virginia was the one expected generic state with no floor at
+all, and a future VA collapse to 50 rows - a 95% loss - would have been
+non-zero, floorless and invisible. `railway/warn_state_baselines.json` now
+carries `"VA": 1111`, the LOWEST of the twelve verified healthy readings and
+not the high-water 1113, because a floor seeded low is harmless and a floor
+seeded high cries wolf. It does not silence today's alarm: the generic tier
+treats any zero as drift regardless of floor.
+
+**What is NOT fixed, and should be decided before it fires.**
+`load_state_baselines`' docstring justifies a never-lowering high-water mark
+with *"every state WARN scraper re-reads its state's WHOLE archive each run, so
+a healthy count is near-monotonic"*. Measured over the last 14 runs, that is
+false for four states:
+
+| state | range over 14 runs | current floor | floor if it ratchets to its own peak | alarm threshold at that peak (30%) |
+|---|---|---|---|---|
+| AZ | 16 - 755 | 76 | 755 | 226 |
+| DE | 8 - 105 | 29 | 105 | 31 |
+| ME | 5 - 90 | 18 | 90 | 27 |
+| VT | 8 - 100 | 41 | 100 | 30 |
+
+These four publish a rolling window, not an archive. AZ alone reads 307, 299,
+58, 76 on four consecutive days. The ratchet never lowers, so the first time AZ
+prints 755 its floor becomes 755 and **every ordinary day afterwards is below
+30% of it** - a permanent false alarm manufactured by the mechanism itself,
+in the tier whose credibility this ledger was built to establish. Not touched
+here: the honest fixes (exempt rolling-window states, or ratchet toward a
+median rather than a maximum) both change what the detector means, and that is
+the owner's call, not a threshold to quietly move.
+
+### B. `archive_recheck_cadence` - the pool changed regime, and the rationer is innocent
+
+**The rationer is RULED OUT, on three independent counts.** `archive-backfill`
+appears in neither `DISCRETIONARY_JOBS` nor `COMMITTED_JOBS`, and an
+unclassified job is treated as COMMITTED by `is_discretionary()` - the safe
+direction, by design. `railway/archive_backfill.py` does not import `spend` at
+all; its only three matches for the string are in prose about the Save-Page-Now
+budget. And it makes zero OpenRouter calls, so there is nothing for a
+model-spend rationer to meter. A job that never consults the brake cannot be
+slowed by it.
+
+**The pool is not completing more slowly. It moved from one clock to another.**
+Read the `coverage before:` snapshots the runs print:
+
+| date | pending | unavailable | candidates offered | `rechecked_recent` (48h) |
+|---|---|---|---|---|
+| 08-07 | 3,699 | 0 | 38 + 449 + 488 + 243 | 2,632 |
+| 08-09 | 3,712 | 0 | 460 | 1,232 |
+| 08-10 | 3,688 | 0 | 500 x 4 | 460 -> 1,960 |
+| 08-11 | 1,812 | 1,803 | 500 + 500 + 230 | 2,460 |
+| 08-12 | 605 | 3,013 | 45 + 23 + 269 + 111 | 3,230 |
+| 08-13 | 195 | 3,381 | **14** | 448 |
+| 08-14 | 127 | 3,392 | **17** | 162 |
+
+Between 08-10 and 08-13 the whole pool crossed `ALT_ARCHIVE_MAX_ATTEMPTS` and
+migrated from `pending`, which is retried every **72 hours**, to
+`unavailable`, which is retried every **7 days** (now 4). Nothing broke. The
+retry interval for ~96% of the pool roughly tripled, all of it at once, so the
+pool is now one convoy rather than a steady stream - and both numbers the
+invariant reads were taken in the trough between convoys. That is the same
+unsoundness `001ee18` identified, and it is still the right reading.
+
+**Including the direct reading, which is the half that fix said to trust.** The
+oldest un-archived attempt is `2026-08-07 07:17:17`, which is the timestamp of
+run 31154648154 - a URL last attempted in that run and not offered since. Under
+the OLD 7-day gate it became eligible at 07:17 today, **24 minutes after**
+today's scheduled run read the pool at 06:53. It was never slow; it was one
+convoy that had not landed yet. The reading also moved BACKWARD in time during
+the day, from `2026-08-10 07:36` at 06:53 to `2026-08-07 07:17` now, which a
+draining pool cannot do: `distinct_source_urls` rose 25,214 -> 25,219 in the
+same window, so new rows cited URLs whose archive attempts were already old,
+and the join-filtered MIN admitted them. `oldest_unarchived_checked_at` is
+therefore not a monotone measure of the achieved cycle either.
+
+**No bound was moved and none needs to be.** `PROMISE_DAYS` 7,
+`RUN_GRANULARITY_DAYS` 1, `PROJECTED_MAX_AGE_DAYS` 8 and `MAX_AGE_DAYS` 10 are
+untouched, as is `ARCHIVE_BACKFILL_LIMIT`. The fix for this is already on main:
+`7152626` (2.20.29) took `ALT_ARCHIVE_RECHECK_DAYS` from 7 to 4 on 08-13 for
+exactly this reason, and it has not yet had a cycle to show. At a 3,472 pool
+and a 2,000-URL run limit that is a ~1.7 day cycle in steady state, ~2.7 days
+worst age. **The one thing to watch is the landing:** the convoy is now due all
+at once and one run cannot drain 3,472, so expect the reading to peak around
+8-9 days over the next two runs before it falls. If it touches 10, the pool
+needs a second daily run, not a wider bound - and if it settles above 8 after
+the convoy clears, the published promise is the thing that has to change, and
+that is the owner's decision on every surface stating it.
+
+### C. CI red on "Data quality report (anomaly flags)" - a valid correction, discarded
+
+Run 31815799989 failed with
+`A correction was selected but could not be applied: model returned no usable
+JSON: Extra data: line 1 column 178 (char 177)`.
+
+The alarm is correct - a correction really was lost - but the flag is not about
+the data. `ask_model` in `daily_classification_spotcheck.py` sliced from the
+first `{` to the **last** `}` and handed the whole span to `json.loads`. That
+is right for one object wrapped in prose and wrong for two: the model answered
+twice, the slice caught both objects, and `json.loads` refused the pair. The
+offset says so exactly - 177 characters of valid object, then more.
+`response_format=json_object` is requested but not guaranteed.
+
+`first_json_object()` now reads ONE value with `json.JSONDecoder().raw_decode`
+from the first `{`, so a trailing object, trailing prose or a code-fence tail
+stops mattering. It is not a permissive reader: no object, or a malformed first
+object, still raises exactly as before, and the run still fails loudly on a
+correction it could not apply. `tests/test_spotcheck_relabel_bounds.py` pins
+all four cases, including a fixture that reproduces the char-177 boundary from
+the real run.
+
+### The two spend readings in [2a], and one that needs the owner
+
+**Both per-run ceiling breaches predate the granularity fix and are
+self-clearing.** `ai-evidence-sweep`'s $0.020 is run 31200721446 on
+**2026-08-07**; since 08-12 its runs stop at $0.0151 and $0.0150 and say so
+(`truncated: per-run ceiling $0.015 reached after $0.0151`), an overshoot of
+one item, which is the bound a per-run ceiling can honestly promise.
+`edgar-history-sweep`'s $0.272 is run 31572141302 on **2026-08-12**, one of the
+six dispatched runs that motivated the COMMITTED/DISCRETIONARY split; every run
+since is 0.136, 0.089, 0.058, 0.068 against a $0.150 ceiling. `[2a]` reports a
+14-day maximum, so these roll off on 08-21 and 08-26 with nothing to do.
+
+**The $1.04/day burn does NOT predate the rationing, and it is not this repo's
+ledger.** `[2a]` prints two figures from two sources: `$3.21 of $14.00 spent
+(14/31 days) ... on track` comes from `spend_jobs.json`, and `$1.04/day over
+the last 5d ($5.22 total)` comes from OpenRouter account balance deltas. $5.22
+over five days cannot fit inside $3.21 over fourteen, so they disagree, and the
+disagreement has a start date:
+
+| date | this repo's ledger | balance drop | unexplained |
+|---|---|---|---|
+| 08-09 | $0.150 | $0.26 | $0.11 |
+| 08-10 | $0.162 | $0.25 | $0.09 |
+| 08-11 | $0.241 | $0.34 | $0.10 |
+| 08-12 | $0.816 | $2.50 | **$1.68** |
+| 08-13 | $0.437 | $1.13 | **$0.69** |
+| 08-14 | $0.112 (partial) | $1.00 | **$0.89** |
+
+Through 08-11 the gap is a dime a day, which is rounding and the un-metered
+edges. From 08-12 something began spending roughly **$0.70-0.90/day on the key
+that this repo's meter never sees**, and it is still doing it after the
+rationing landed - so the rationer is working on the half it can see while most
+of the money leaves elsewhere. The two obvious candidates are the sibling
+tracker sharing the OpenRouter account and a paid path here that bypasses
+`spend.metered_call`. **This needs the owner**: resolving it means reading the
+OpenRouter account's activity, which no session should be doing with the
+owner's credentials.
+
+### Also seen, not acted on
+
+`warn_custom_legacy` is DEGRADED with `LA=33 (floor 324), MN=31 (floor 72)`,
+and `ops_status.py` classifies that row as benign. Louisiana held 324 for ten
+straight runs and dropped to 33 on 08-13; Minnesota held 72 and dropped to 31
+today. Those are the per-state floors doing exactly what they were built for,
+on a row the dashboard is currently discounting.
+
 ## 2026-08-14 - the brake was checked once per item, and one of the two jobs [2a] accused was innocent
 
 `ops_status.py [2a]` was reporting **"the per-job brake is not holding"** for
