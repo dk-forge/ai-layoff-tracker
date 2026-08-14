@@ -206,10 +206,31 @@ class TheCheckWarnsBeforeThePromiseBreaks(unittest.TestCase):
 
     def test_a_stopped_cron_is_a_failure_not_a_fresh_reading(self):
         """Right after the pool is drained the reading is young, so the age half
-        alone would pass for days while nothing ran at all."""
-        r = _run(self._payload(1.0, unarchived_live=3782, rechecked_recent=0))
+        alone would pass for days while nothing ran at all.
+
+        REVISED 2026-08-14. The trigger is being OVERDUE, not merely idle. A
+        re-check is gated: a URL is ineligible until ALT_ARCHIVE_RECHECK_DAYS
+        after its last attempt, so a window with zero re-checks in it while the
+        oldest attempt is younger than the gate means the server had nothing to
+        hand out — which is what the live runs actually do (run 31756911580 read
+        "batch 2: 0 candidate URL(s)" and finished). Once the oldest attempt is
+        older than the gate there ARE overdue URLs, and zero is a stall. That
+        still catches it days before the 10d reading does, which is the point of
+        the test; it just no longer fires on a healthy idle day.
+        """
+        r = _run(self._payload(9.0, recheck_days=7, unarchived_live=3782,
+                               rechecked_recent=0))
         self.assertEqual(r.state, FAIL)
         self.assertIn("NOTHING was re-checked", r.detail)
+
+    def test_an_idle_window_inside_the_gate_is_the_gate_working(self):
+        """The other half of the same rule, and the reason it had to change: at
+        a 4-day gate the whole pool is re-attempted in a convoy and then nothing
+        is due for days. Failing on that is failing on the system working."""
+        r = _run(self._payload(1.0, recheck_days=4, unarchived_live=3782,
+                               rechecked_recent=0))
+        self.assertEqual(r.state, PASS, r.detail)
+        self.assertIn("nothing was DUE", r.detail)
 
     def test_an_old_build_leaves_the_margin_unknown_never_a_pass(self):
         """A server that does not publish the margin fields must not be read as
@@ -220,6 +241,48 @@ class TheCheckWarnsBeforeThePromiseBreaks(unittest.TestCase):
         r = _run(dict(old, oldest_unarchived_checked_at=stamp))
         self.assertEqual(r.state, UNKNOWN)
         self.assertIn("MARGIN is unmeasured", r.detail)
+
+    def test_a_completed_pass_is_not_overruled_by_a_two_day_sample(self):
+        """THE 2026-08-14 FALSE FAIL, pinned as a PASS.
+
+        Live /archive-coverage that morning, byte for byte: 3,480 due, 593
+        re-checked in 48h, oldest un-archived attempt 3.9 days old, gate 4 days.
+        The projection read 296/day -> an 11.7d cycle and reddened `Tests` for
+        three days, naming archive-backfill.yml. The workflow was innocent twice
+        over: run 31756911580 asked for a second batch and was handed
+        "0 candidate URL(s)", because at a 4-day gate the pool is re-attempted in
+        a convoy and nothing is due in between.
+
+        The site's own timestamps settle it. An oldest attempt of 3.9d means
+        EVERY un-archived URL was attempted within 3.9 days, so the pool
+        completed a full pass in 3.9 days — the thing the projection was trying
+        to estimate, measured directly, four days better than the estimate and
+        well inside the 7-day promise. A rate sampled over 2 days cannot measure
+        a 4-day cycle.
+        """
+        r = _run(self._payload(3.9, recheck_days=4, unarchived_live=3480,
+                               rechecked_recent=593, recheck_window_hours=48))
+        self.assertEqual(r.state, PASS, r.detail)
+        self.assertIn("completed a pass", r.detail)
+        self.assertIn("is not believed", r.detail)
+
+    def test_the_early_warning_still_fires_where_it_was_written_to(self):
+        """The rule above must not be able to excuse the case the projection
+        exists for. On 2026-08-04 the age was already 8.6d, so the direct
+        reading contradicts nothing and the FAIL stands — two days before the
+        10d reading would have caught it."""
+        r = _run(self._payload(8.6, unarchived_live=3864, rechecked_recent=1000))
+        self.assertEqual(r.state, FAIL)
+        self.assertIn("about to become false", r.detail)
+
+    def test_no_bound_was_widened_to_get_that_pass(self):
+        """The cheap way to silence 2026-08-14 was to move a number. None moved:
+        a session reading this can check the four constants against the
+        published sentence without re-deriving anything."""
+        self.assertEqual(ArchiveRecheckInvariant.PROMISE_DAYS, 7)
+        self.assertEqual(ArchiveRecheckInvariant.RUN_GRANULARITY_DAYS, 1)
+        self.assertEqual(ArchiveRecheckInvariant.PROJECTED_MAX_AGE_DAYS, 8)
+        self.assertEqual(ArchiveRecheckInvariant.MAX_AGE_DAYS, 10)
 
     def test_the_projected_bound_is_derived_from_the_published_promise(self):
         # "We re-check weekly" + one day of daily-run granularity. It is

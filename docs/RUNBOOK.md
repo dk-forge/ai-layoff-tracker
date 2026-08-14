@@ -121,6 +121,17 @@ that tier. That is UNKNOWN, not a pass; the next clean full sweep seeds it.
 `ops_status.py` section `[4d]` listed a job as deferred, or a workflow run
 printed `DEFERRED: <job> could not reach the host`.
 
+> **FIRST: is the job called `test-job`, and did you read it off a run
+> ANNOTATION rather than off `[4d]`?** Then nothing is deferring.
+> `test-job` is the fixture name in `railway/tests/test_host_call_deferral.py`,
+> and until 2026-08-14 those PASSING tests printed their subject's `::error::`
+> lines, which GitHub turns into red annotations on the `Tests` run. A session
+> spent a night hunting the three items the host had refused; the "three" was
+> the fixture body `{"ok": false, "failed": 3}`. `[4d]` and
+> `railway/deferral_ledger.json` are the only sources of truth for what is
+> deferred. If an annotation like that appears again, the leak is the defect —
+> see `railway/tests/test_no_annotation_leaks.py`.
+
 **What it means.** The job never got an answer from the WordPress host — a
 transport error, or a transient status (502/503/504 and friends) that survived
 every in-run retry. Nothing was read and nothing was written. The run exits 0

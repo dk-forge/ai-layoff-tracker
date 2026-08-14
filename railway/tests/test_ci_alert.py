@@ -510,14 +510,163 @@ class Behaviour(unittest.TestCase):
 
         orig, ci_alert.post_alert = ci_alert.post_alert, capture
         try:
-            code, _ = self._run(["--run-id", "1", "--workflow", "Tests",
-                                 "--conclusion", "success", "--branch", "main"],
-                                WP_SITE_URL="https://example.invalid", WP_API_KEY="k")
+            with mock.patch.object(ci_alert, "live_data_was_evaluated",
+                                   lambda *a: True):
+                code, _ = self._run(["--run-id", "1", "--workflow", "Tests",
+                                     "--conclusion", "success", "--branch", "main"],
+                                    WP_SITE_URL="https://example.invalid",
+                                    WP_API_KEY="k")
         finally:
             ci_alert.post_alert = orig
         self.assertEqual(code, 0)
         self.assertEqual(calls[0]["resolve_scope"], "tests:main")
         self.assertNotIn("dedupe_key", calls[0])
+
+
+class ASkippedCheckIsNotARecovery(unittest.TestCase):
+    """One number, three emails: RED, RECOVERED, RED, in 33 minutes.
+
+    THE INCIDENT (2026-08-13/14). `archive_recheck_cadence` failed on main at
+    23:37 and mailed under `tests:live.data:2e215caae5bac21b`. It failed again on
+    fix/reader-freshness-content at 00:06 with the identical sentence — and the
+    branch-free scope handled that exactly as designed: same key, and the alert
+    endpoint suppressed it as already open. That half was never broken.
+
+    What re-armed the alarm was the run in between. `Tests` went GREEN on main at
+    00:00:28 (run 31755860626) with every live check reporting
+
+        skipped 'site is in its deploy maintenance window (HTTP 503)'
+
+    and the alerter posted `resolve tests:live.data`, which mailed RECOVERED for
+    a number nobody had read. The next red re-raised the same key and mailed
+    again. A check that did not run is UNKNOWN, not a pass — the rule the
+    dashboard and the digest have followed for months, applied at last to the one
+    reader that still inferred a pass from silence.
+    """
+
+    def _resolve_scopes(self, evaluated):
+        calls = []
+
+        def capture(site, key, payload, sleep=None):
+            calls.append(payload["resolve_scope"])
+            return True, "emailed the owner", False
+
+        import os
+        old = {k: os.environ.get(k) for k in ("WP_SITE_URL", "WP_API_KEY")}
+        os.environ.update({"WP_SITE_URL": "https://example.invalid",
+                           "WP_API_KEY": "k"})
+        orig, ci_alert.post_alert = ci_alert.post_alert, capture
+        try:
+            with mock.patch.object(ci_alert, "live_data_was_evaluated",
+                                   lambda *a: evaluated), \
+                    redirect_stdout(io.StringIO()) as out:
+                ci_alert.main(["--run-id", "1", "--workflow", "Tests",
+                               "--conclusion", "success", "--branch", "main"])
+        finally:
+            ci_alert.post_alert = orig
+            for k, v in old.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+        return calls, out.getvalue()
+
+    def test_a_run_whose_live_checks_skipped_does_not_clear_the_incident(self):
+        scopes, printed = self._resolve_scopes(evaluated=False)
+        self.assertNotIn(
+            "tests:live.data", scopes,
+            "a green run in which every live check SKIPPED just mailed "
+            "RECOVERED about a number it never read")
+        self.assertIn("tests:main", scopes,
+                      "the branch-scoped recovery is unaffected: whatever failed "
+                      "in THIS checkout really is green again")
+        self.assertIn("UNKNOWN", printed)
+
+    def test_a_run_that_really_checked_still_clears_it(self):
+        scopes, _ = self._resolve_scopes(evaluated=True)
+        self.assertEqual(scopes, ["tests:main", "tests:live.data"],
+                         "an incident that nothing can clear earns a STILL "
+                         "FAILING reminder a fortnight later")
+
+    def test_a_workflow_that_publishes_no_verdict_is_unchanged(self):
+        """Most workflows never read the live site. They keep today's behaviour;
+        this change is narrow to the one state that was being guessed."""
+        scopes, _ = self._resolve_scopes(evaluated=None)
+        self.assertEqual(scopes, ["tests:main", "tests:live.data"])
+
+    # -- the channel itself ------------------------------------------------
+
+    def _jobs(self, *steps):
+        payload = "\n".join(f"{conclusion}\t{name}" for conclusion, name in steps)
+        return mock.patch("subprocess.run", lambda *a, **kw: mock.Mock(
+            returncode=0, stdout=payload, stderr=""))
+
+    def test_the_evaluated_step_reads_as_evaluated(self):
+        with self._jobs(("success", "Run railway unit tests"),
+                        ("success", ci_alert.LIVE_DATA_STEP)):
+            self.assertIs(ci_alert.live_data_was_evaluated("r", "1"), True)
+
+    def test_the_not_evaluated_step_reads_as_not_evaluated(self):
+        with self._jobs(("success", "Run railway unit tests"),
+                        ("skipped", ci_alert.LIVE_DATA_STEP),
+                        ("success", ci_alert.LIVE_DATA_STEP_UNKNOWN)):
+            self.assertIs(ci_alert.live_data_was_evaluated("r", "1"), False)
+
+    def test_a_run_with_neither_step_is_unknown_not_false(self):
+        with self._jobs(("success", "Deploy")):
+            self.assertIsNone(ci_alert.live_data_was_evaluated("r", "1"))
+
+    def test_an_unreadable_jobs_api_never_raises(self):
+        with mock.patch("subprocess.run", side_effect=OSError("no gh")), \
+                redirect_stdout(io.StringIO()):
+            self.assertIsNone(ci_alert.live_data_was_evaluated("r", "1"))
+
+    def test_the_workflow_runs_the_steps_the_alerter_looks_for(self):
+        """The parity that makes the channel real. A rename on either side turns
+        RECOVERED back into a mail sent on no evidence, silently."""
+        yml = (Path(__file__).resolve().parents[2] / ".github" / "workflows"
+               / "tests.yml").read_text(encoding="utf-8")
+        for name in (ci_alert.LIVE_DATA_STEP, ci_alert.LIVE_DATA_STEP_UNKNOWN):
+            self.assertIn(f"- name: {name}\n", yml,
+                          f"tests.yml no longer runs a step named {name!r}, so "
+                          f"ci_alert.py can never learn whether the live checks "
+                          f"ran")
+        self.assertIn("LIVE_DATA_VERDICT_FILE", yml,
+                      "the suite is not being told where to write the verdict, "
+                      "so the two steps above decide on an empty file")
+
+
+class OneIncidentAcrossTwoBranches(unittest.TestCase):
+    """The half that was NOT broken, pinned so it stays that way.
+
+    Read off the real runs: `Tests` failed on main (31754238064) and on
+    fix/reader-freshness-content (31756204615) with the same archive assertion
+    and different numbers. Both produced `tests:live.data:2e215caae5bac21b`.
+    """
+
+    MAIN = ("Unarchived sources are re-checked on the promised cadence: oldest "
+            "un-archived attempt 3.7d ago (177 pending, 3,381 not yet in Wayback) "
+            "— inside the 10d bound TODAY, but 3,511 due at a measured 244/day = "
+            "14.4d cycle, 15.4d worst age, past the 8d projected bound (7d promise "
+            "+ 1d run granularity). The re-check promise is about to become false "
+            "and the slack is what is hiding it; raise throughput in "
+            "archive-backfill.yml")
+    BRANCH = MAIN.replace("177 pending", "202 pending").replace(
+        "3,511 due", "3,536 due").replace("244/day", "231/day").replace(
+        "14.4d cycle, 15.4d", "15.3d cycle, 16.3d")
+
+    def test_the_same_live_assertion_on_two_branches_is_one_alert(self):
+        first = ci_alert.build_alert(
+            repo="r", workflow="Tests", branch="main", event="push",
+            run_url="u", run_id="1", cause=self.MAIN, context=[])[2]
+        second = ci_alert.build_alert(
+            repo="r", workflow="Tests", branch="fix/reader-freshness-content",
+            event="push", run_url="u", run_id="2", cause=self.BRANCH, context=[])[2]
+        self.assertEqual(first, second,
+                         "the archive assertion is keyed per branch again — the "
+                         "owner gets one email per branch that happens to notice "
+                         "the same one wrong number")
+        self.assertTrue(first.startswith("tests:live.data:"), first)
 
 
 if __name__ == "__main__":

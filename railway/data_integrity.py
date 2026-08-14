@@ -1588,6 +1588,21 @@ class ArchiveRecheckInvariant:
     NEITHER HALF WEAKENS THE OTHER. Both must hold. The age FAIL is unchanged;
     the projection can only add failures.
 
+    AND THE PROJECTION IS NOT ALLOWED TO OVERRULE A COMPLETED PASS (2026-08-14).
+    `oldest_unarchived_checked_at` is a measurement of the achieved cycle: every
+    un-archived URL was attempted within that many days. The projection is an
+    inference from a 48-hour throughput sample, and it is sound only while
+    throughput is CAPACITY-limited. It is not: re-checks sit behind
+    ALT_ARCHIVE_RECHECK_DAYS, so they arrive in convoys and the server hands out
+    nothing between them (run 31756911580 read "batch 2: 0 candidate URL(s)"
+    against a 3,480 pool — finished, not slow). Sampling that trough gave
+    "296/day, 11.7d cycle" for a pool whose own timestamps showed a full pass in
+    3.9 days, and reddened CI for three days. So the projection may FAIL only
+    while the direct reading does not already show the pool completing inside
+    the same projected bound. No bound moved; the 2026-08-04 case it was written
+    from (8.6d age) still fires, because 8.6 + 1 is past the 8d projected bound
+    and nothing contradicts it.
+
     MISSING DATA. No response, a non-JSON body, or a build that predates the
     coverage fields (plugin < 2.19.248) -> UNKNOWN, never a pass. A build that
     predates the MARGIN fields (plugin < 2.20.2) leaves the projection
@@ -1692,17 +1707,67 @@ class ArchiveRecheckInvariant:
                                  f"inside the bound with an unknown cycle time is how this "
                                  f"promise broke on 2026-08-06; deploy 2.20.2 or later")
         worst, per_day, pool = projected
+
+        # THE PROJECTION IS AN INFERENCE. THE AGE IS A MEASUREMENT.
+        #
+        # `age` is the oldest last-attempt in the whole un-archived pool, so
+        # "3.9d" says something the projection cannot: EVERY un-archived URL was
+        # attempted within the last 3.9 days, i.e. a full pass over the pool
+        # completed in 3.9 days. It is also starvation-proof — the 2026-08-02
+        # defect where a freshly restamped top slice cycled every 72h while
+        # everything below it starved forever shows up here as a growing oldest
+        # age, which is exactly why this reading leads.
+        #
+        # `pool / (rechecked_recent / 48h)` is an inference, and it is only sound
+        # while throughput is CAPACITY-limited. Re-checks are gated: a URL is
+        # ineligible until ALT_ARCHIVE_RECHECK_DAYS after its last attempt, so
+        # they arrive in convoys and the server hands out nothing in between. On
+        # 2026-08-14 run 31756911580 processed its first batch and then read
+        # "batch 2: 0 candidate URL(s)" against a pool of 3,480 — the run was not
+        # slow, it was finished. Sampling that trough over a 48h window while the
+        # cycle is ~4 days yields 296/day and "11.7d cycle", against a pool the
+        # site's own timestamps prove was fully traversed in 3.9 days.
+        #
+        # A rate sampled over a window SHORTER than the cycle it is estimating
+        # cannot overrule a completed pass. So the projection may only FAIL while
+        # the direct reading does not already demonstrate the promise being kept
+        # inside the same projected bound. NOTHING IS WIDENED: PROMISE_DAYS,
+        # RUN_GRANULARITY_DAYS, PROJECTED_MAX_AGE_DAYS and MAX_AGE_DAYS are
+        # untouched, and the 2026-08-04 reading this projection was written from
+        # (8.6d age, ~500/day, 3,864 due) still FAILS on it — 8.6 + 1 = 9.6 is
+        # past the 8d projected bound, so the direct reading contradicts nothing
+        # and the early warning fires two days before the age bound, as designed.
+        # The bound this trades against is the age one, which is unchanged and
+        # still the thing that goes red if a real stall follows.
+        direct_worst = age + self.RUN_GRANULARITY_DAYS
+        measured_pass = direct_worst <= self.PROJECTED_MAX_AGE_DAYS
+        window_h = int(payload.get("recheck_window_hours") or 0)
+
+        gate_days = int(payload.get("recheck_days") or 0)
         if worst == float("inf"):
+            # Zero re-checks in the window is only excusable while NOTHING WAS
+            # DUE: every URL in the pool was attempted more recently than the
+            # eligibility gate, so the server had nothing to hand out and the
+            # run finished in five minutes on an empty batch. The moment the
+            # oldest attempt is older than the gate there ARE overdue URLs, and
+            # zero re-checks then is a stopped cron — caught within a day of the
+            # gate rather than waiting out the 10d reading.
+            if gate_days and age <= gate_days:
+                return Result(self, PASS, observed=round(age, 1),
+                              detail=f"{shown} — nothing was re-checked in the last {window_h}h "
+                                     f"because nothing was DUE: the whole {pool:,}-URL pool was "
+                                     f"attempted inside the {gate_days}d eligibility gate, and "
+                                     f"the pass completed in {age:.1f}d")
             return Result(self, FAIL, observed=0,
                           detail=f"{shown}, but NOTHING was re-checked in the last "
-                                 f"{int(payload.get('recheck_window_hours') or 0)}h against a "
+                                 f"{window_h}h against a "
                                  f"pool of {pool:,} — the reading is only inside the bound "
                                  f"because the ageing has not caught up yet. The cron is "
                                  f"stopped; check archive-backfill.yml")
         rate = (f"{pool:,} due at a measured {per_day:,.0f}/day = "
                 f"{worst - self.RUN_GRANULARITY_DAYS:.1f}d cycle, "
                 f"{worst:.1f}d worst age")
-        if worst > self.PROJECTED_MAX_AGE_DAYS:
+        if worst > self.PROJECTED_MAX_AGE_DAYS and not measured_pass:
             return Result(self, FAIL, observed=round(worst, 1),
                           detail=f"{shown} — inside the {self.MAX_AGE_DAYS}d bound TODAY, but "
                                  f"{rate}, past the {self.PROJECTED_MAX_AGE_DAYS}d projected "
@@ -1710,6 +1775,15 @@ class ArchiveRecheckInvariant:
                                  f"{self.RUN_GRANULARITY_DAYS}d run granularity). The re-check "
                                  f"promise is about to become false and the slack is what is "
                                  f"hiding it; raise throughput in archive-backfill.yml")
+        if worst > self.PROJECTED_MAX_AGE_DAYS:
+            return Result(self, PASS, observed=round(age, 1),
+                          detail=f"{shown}, so the whole pool completed a pass in {age:.1f}d "
+                                 f"({direct_worst:.1f}d worst age, inside the "
+                                 f"{self.PROJECTED_MAX_AGE_DAYS}d projected bound). The {window_h}h "
+                                 f"throughput sample ({rate}) disagrees, and is not believed: a "
+                                 f"rate sampled over {window_h / 24:.0f}d cannot measure a "
+                                 f"{age:.1f}d cycle whose re-checks arrive in convoys behind the "
+                                 f"eligibility gate")
         return Result(self, PASS,
                       detail=f"{shown}, bound {self.MAX_AGE_DAYS}d; {rate}, inside the "
                              f"{self.PROJECTED_MAX_AGE_DAYS}d projected bound")
@@ -2114,6 +2188,46 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
     if ledger_changed:
         save_incidents(ledger, incidents_path)
     return True, notes
+
+
+#: Written by tests/test_dedup_live.py when this env var names a path, read by
+#: the `Live-data invariants were evaluated` step in tests.yml. See
+#: live_data_state below for the whole reason it exists.
+VERDICT_FILE_ENV = "LIVE_DATA_VERDICT_FILE"
+
+EVALUATED, NOT_EVALUATED = "evaluated", "unknown"
+
+
+def live_data_state(report):
+    """('evaluated'|'unknown', detail) for the invariants that read the SITE.
+
+    THE DEFECT THIS CLOSES. A live-data incident is raised and cleared under a
+    branch-free `<workflow>:live.data` scope, because every branch reads the same
+    one wrong number (see railway/ci_alert.py). Clearing it is the half that had
+    no evidence behind it: the alerter posted the resolve on any green run of the
+    workflow, and `tests/test_dedup_live.py` turns an UNKNOWN live invariant into
+    a SKIP — deliberately, so a laptop with no wifi and the two minutes an FTPS
+    deploy spends in maintenance mode do not redden a push.
+
+    So on 2026-08-14, between 23:37 and 00:10, the owner got three emails about
+    ONE number: RED, then RECOVERED, then RED again. The RECOVERED came from run
+    31755860626, in which every live check read `skipped 'site is in its deploy
+    maintenance window (HTTP 503)'`. Nothing had recovered. A check that did not
+    run is UNKNOWN, and UNKNOWN is not a pass — that rule was already written
+    down for the dashboard and the digest, and the resolve path was the one
+    reader still guessing.
+
+    A report with no live invariant in it at all is 'unknown' too, not a vacuous
+    'evaluated': the caller asked whether the site was checked, and it was not.
+    """
+    live = [r for r in report.results if getattr(r.inv, "reads_live_data", False)]
+    if not live:
+        return NOT_EVALUATED, "no invariant that reads the live site was checked"
+    unresolved = [r for r in live if r.state == UNKNOWN]
+    if unresolved:
+        return NOT_EVALUATED, "; ".join(
+            f"{r.inv.key}: {r.detail}" for r in unresolved)[:400]
+    return EVALUATED, f"{len(live)} live invariant(s) resolved to pass or fail"
 
 
 def ledger_status(report):

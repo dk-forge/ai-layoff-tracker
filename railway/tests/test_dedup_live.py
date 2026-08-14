@@ -42,6 +42,33 @@ import data_integrity
 from data_integrity import INVARIANTS, FAIL, PASS, UNKNOWN
 
 
+def tearDownModule():
+    """Publish whether the live invariants were EVALUATED at all.
+
+    A skip below is invisible to everything downstream: the run is green, and
+    `ci_alert.py` used to read a green run of this workflow as "the live-data
+    incident is over" and mail RECOVERED. On 2026-08-14 it did exactly that on a
+    run where every live check had skipped on the site's 503 maintenance window,
+    then mailed RED again seven minutes later. Three emails, one number, nothing
+    changed.
+
+    So the verdict leaves this process by a channel a separate workflow can read:
+    a file, which the `Live-data invariants were evaluated` step in tests.yml
+    turns into a step conclusion, which the alerter reads from the jobs API for
+    one cheap call. Absent env var (every local run) — writes nothing.
+    """
+    path = os.environ.get(data_integrity.VERDICT_FILE_ENV)
+    report = getattr(DedupLiveRegression, "_report", None)
+    if not path:
+        return
+    if report is None:
+        state, detail = (data_integrity.NOT_EVALUATED,
+                         "the live invariants were never fetched in this run")
+    else:
+        state, detail = data_integrity.live_data_state(report)
+    Path(path).write_text(f"{state}\n{detail}\n", encoding="utf-8")
+
+
 def _inv(key):
     for i in INVARIANTS:
         if i.key == key:

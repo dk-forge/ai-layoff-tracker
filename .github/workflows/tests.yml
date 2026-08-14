@@ -28,6 +28,85 @@ jobs:
       - name: Install deps
         working-directory: railway
         run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      # WHY THE OUTPUT IS PIPED THROUGH sed.
+      #
+      # GitHub Actions treats any line a step prints that starts with `::error::`,
+      # `::warning::` or `::notice::` as a WORKFLOW COMMAND and renders it as an
+      # annotation on the run. About forty scripts in railway/ emit those on
+      # purpose. The test suite drives those scripts against scripted fake hosts,
+      # tempdir ledgers and simulated spend ceilings, so their output is a
+      # description of a simulated world — never an instruction to this runner.
+      #
+      # Unfiltered, a GREEN run of this suite annotated itself with things like
+      # "::error::test-job has now deferred 3 times in a row" (a fake host, a
+      # tempdir ledger, a job that does not exist) and "::warning::spend: this
+      # run has spent $1.0000, at or past the $0.200 per-run ceiling". On
+      # 2026-08-14 the first of those was read as a real escalating job and cost
+      # a session's work chasing an outage that never happened.
+      #
+      # The text is KEPT, with the leading colons swapped for semicolons, so the
+      # log still reads the same and nothing is hidden — only the runner's
+      # instruction is removed. railway/tests/test_no_annotation_leaks.py is the
+      # narrow half of this: it fails when a test PRINTS one at all, rather than
+      # relying on the net below.
       - name: Run railway unit tests
         working-directory: railway
-        run: python -m unittest discover -s tests -p "test_*.py" -v
+        env:
+          # tests/test_dedup_live.py writes 'evaluated' or 'unknown' here. See
+          # the two steps below for what reads it and why it is not enough for
+          # this job to simply be green.
+          LIVE_DATA_VERDICT_FILE: ${{ runner.temp }}/live-data-verdict.txt
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -p "test_*.py" -v 2>&1 \
+            | sed -E 's/^([[:space:]]*)::(error|warning|notice)/\1;;\2/'
+
+      # WHY A GREEN RUN IS NOT EVIDENCE THAT THE LIVE NUMBERS ARE FINE.
+      #
+      # The live-data invariants (data_integrity, read against
+      # asktherecruiter.com) map onto unittest's two states with a THIRD state
+      # in the middle: an UNKNOWN one — the site unreachable, or answering 503
+      # inside its own FTPS deploy window — is a SKIP here, on purpose, so an
+      # offline laptop and a two-minute deploy do not redden a push.
+      #
+      # `ci_alert.py` raises a live-data incident under a branch-free
+      # `tests:live.data` scope and used to CLEAR it on any green run of this
+      # workflow. On 2026-08-14 run 31755860626 was green with every live check
+      # skipped on `site is in its deploy maintenance window (HTTP 503)`, so the
+      # owner was mailed RECOVERED for a number nobody had looked at, and RED
+      # again seven minutes later. Three emails, one number, nothing changed.
+      #
+      # These steps carry the verdict out of the suite by the cheapest channel a
+      # separate workflow can read: `gh api runs/<id>/jobs` lists every step and
+      # its conclusion, in the one call ci_alert.py already makes, with no log
+      # download. Exactly one of the two named steps runs. Two steps rather than
+      # one-that-skips because a channel whose "no" is an ABSENCE quietly
+      # degrades to the old behaviour; both answers here positively ran.
+      # railway/tests/test_ci_alert.py pins both names to the constants the
+      # alerter looks for.
+      - name: Read the live-data verdict
+        id: livedata
+        if: ${{ always() }}
+        run: |
+          f="${{ runner.temp }}/live-data-verdict.txt"
+          state=unknown
+          [ -f "$f" ] && state="$(head -1 "$f")"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "live-data verdict: $state"
+          [ -f "$f" ] && tail -n +2 "$f" || true
+
+      - name: Live-data invariants were evaluated
+        if: ${{ always() && steps.livedata.outputs.state == 'evaluated' }}
+        run: |
+          echo "The live-data invariants resolved to pass or fail in this run,"
+          echo "so a green run of this workflow is entitled to clear an open"
+          echo "live-data incident."
+
+      - name: Live-data invariants were NOT evaluated
+        if: ${{ always() && steps.livedata.outputs.state != 'evaluated' }}
+        run: |
+          echo "The live-data invariants did not run in this run (unreachable"
+          echo "site, or the deploy's own 503 maintenance window), so they"
+          echo "skipped. That is UNKNOWN, not a pass: a green run here says"
+          echo "nothing about the live numbers and must not clear an open"
+          echo "live-data incident. This step is NOT a failure."
