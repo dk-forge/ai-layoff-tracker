@@ -26,6 +26,23 @@ os.environ.setdefault("LOCAL_NEWS_GAP_SECONDS", "0")
 from sources import local_news as ln          # noqa: E402
 from sources import local_news_markets as mk  # noqa: E402
 
+# The env default above only works when THIS module is the first importer of
+# sources.local_news. Under `unittest discover` it never is: test_cost_funnel
+# sorts earlier, imports cron, cron imports local_news, and GAP is frozen at 1s
+# before the setdefault runs - so the full suite slept ~1s per query (87 per
+# full 25-market pull, several pulls in this file) while the module run alone
+# was fast. Measured 2026-08-14, part of the 15-minute Tests self-timeouts.
+# Patch the already-imported module instead; import order cannot undo this.
+_gap_patch = patch.object(ln, "GAP", 0.0)
+
+
+def setUpModule():
+    _gap_patch.start()
+
+
+def tearDownModule():
+    _gap_patch.stop()
+
 
 def rss(*items):
     """A minimal but real RSS 2.0 body in the shape Google News returns."""
