@@ -1101,7 +1101,10 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
    amber pill blinks alongside it, so visitors can see the data is being
    updated in real time. */
 .alt-status-dim { opacity: .45; }
-.alt-next { font-size: 12px; color: var(--alt-muted); margin-right: 8px; white-space: nowrap; }
+/* white-space was nowrap; now that the say line is server-rendered (and can
+   carry both the last pull and the next run) it must be allowed to wrap on
+   narrow screens rather than bleed past the strip edge. */
+.alt-next { font-size: 12px; color: var(--alt-muted); margin-right: 8px; white-space: normal; min-width: 0; }
 .alt-status-working { color: var(--alt-warn-ink); background: var(--alt-warn-bg); border-color: var(--alt-warn-border);
     font-size: 11.5px; padding: 3px 10px; }
 .alt-work-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--alt-gold);
@@ -2693,7 +2696,11 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
    narrow screens so the button and link never overflow the card. */
 figure.alt-soundbite figcaption.alt-sb-actions,
 .alt-sb-actions { display: flex !important; align-items: center; gap: 10px 12px; margin: auto 0 0; flex-wrap: wrap; }
-.alt-sb-link { font-size: 13px; font-weight: 600; color: var(--op-green, var(--alt-accent)); text-decoration: none; white-space: nowrap; }
+/* white-space was nowrap, and the label carries a company name: "See the
+   Applied Aerospace & Defense, Inc. entries" ran 16px past a 1280px viewport
+   on 2026-08-14, the only horizontal bleed on the press page. A link label
+   with data inside it must be allowed to wrap. */
+.alt-sb-link { font-size: 13px; font-weight: 600; color: var(--op-green, var(--alt-accent)); text-decoration: none; min-width: 0; overflow-wrap: anywhere; }
 .alt-sb-link:hover { text-decoration: underline; }
 
 /* Press kit tables: right-aligned numbers, tidy angle table. */
@@ -3268,6 +3275,9 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    1280px on 2.19.254). */
 .alt-fresh .alt-header .alt-next { white-space: normal; flex: 1 1 100%; min-width: 0; margin-right: 0; }
 .alt-fresh-next { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--alt-ink); }
+/* The strip's promise line (talent-strip parity, 2026-08-14): one quiet full
+   row inside the header, never competing with the Live pill beside it. */
+.alt-fine-say { flex: 1 1 100%; min-width: 0; font-size: 11.5px; color: var(--alt-muted); }
 .alt-fresh-stats {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 12px; padding: 8px 0 2px; border-top: 1px solid var(--alt-grid);

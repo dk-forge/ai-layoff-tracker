@@ -1258,9 +1258,30 @@ $alt_hero_basis  = 'counted by filing date';
                      deliberately NOT repeated here: the same number twice, once at
                      72px and once at 20px, invites the reader to wonder which of
                      the two is the real one. */ ?>
+            <?php
+            /* YEAR AND ALL-TIME PAIRS (owner request 2026-08-14, matching the
+               talent tracker's glance strip). The year figures come from the
+               same bootstrap aggregate as the tiles; the all-time figures are
+               one cached COUNT query. The headline jobs total is still NOT
+               repeated here, for the reason above: entries, companies and
+               countries are the record's shape, not a second headline. */
+            $alt_at = get_transient('alt_fresh_alltime_' . ALT_VERSION);
+            if (!is_array($alt_at)) {
+                global $wpdb; $alt_att = alt_db_table();
+                $alt_at = $wpdb->get_row(
+                    "SELECT COUNT(*) e, COUNT(DISTINCT company_key) co,
+                            COUNT(DISTINCT NULLIF(country,'')) c
+                     FROM $alt_att WHERE superset_of=0", ARRAY_A) ?: array();
+                set_transient('alt_fresh_alltime_' . ALT_VERSION, $alt_at, HOUR_IN_SECONDS);
+            }
+            $alt_yr_label = current_time('Y');
+            ?>
             <div class="alt-fresh-stats">
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies</i></span>
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries</i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies · <?php echo esc_html($alt_yr_label); ?></i></span>
+                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['co'] ?? 0)); ?></b><i>companies · all time</i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries · <?php echo esc_html($alt_yr_label); ?></i></span>
+                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['c'] ?? 0)); ?></b><i>countries · all time</i></span>
+                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['e'] ?? 0)); ?></b><i>entries · all time</i></span>
             </div>
             <?php endif; ?>
         </aside>

@@ -203,6 +203,13 @@ class HeroCopyTests(unittest.TestCase):
 
     # Each of these was live copy on 2026-08-04. They may survive in a comment
     # recording why they went; they may not survive on the page.
+    #
+    # "No figure appears unless its source states it" left this list on
+    # 2026-08-14: the owner asked for the same at-a-glance freshness strip the
+    # talent tracker carries, and that strip includes this promise line. It is
+    # rendered by alt_render_status_header() inside the freshness panel in the
+    # DATASTRIP, below the data; the hero still carries exactly one trust
+    # claim, which the tests below keep holding.
     RETIRED = (
         "That is the whole point",
         "We do not estimate",
@@ -210,7 +217,6 @@ class HeroCopyTests(unittest.TestCase):
         "A verified floor, not a survey",
         "New here? Start with",
         "Filter below; every number",
-        "No figure appears unless its source states it",
     )
 
     def test_the_defensive_copy_is_off_the_page(self):

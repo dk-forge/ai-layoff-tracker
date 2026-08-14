@@ -386,7 +386,40 @@ function alt_render_status_header() {
     <div class="alt-header">
         <span class="alt-roo-wrap is-sleeping" id="alt-roo-wrap" aria-hidden="true"><span class="alt-zzz"><i>z</i><i>z</i><i>z</i></span><svg id="alt-roo" class="alt-roo roo-sleeping" width="60" height="64" viewBox="0 0 140 150"><g class="roo-root"><line x1="70" y1="14" x2="70" y2="26" stroke="var(--primary-deep)" stroke-width="3" stroke-linecap="round"></line><circle class="roo-bulb" cx="70" cy="10" r="5" fill="var(--accent)"></circle><rect x="26" y="24" width="88" height="40" rx="20" fill="var(--surface)" stroke="var(--primary-deep)" stroke-width="3.5"></rect><g class="roo-eyes"><circle cx="51" cy="44" r="12" fill="var(--primary-soft)" stroke="var(--primary-deep)" stroke-width="2.5"></circle><g class="roo-pupil"><circle cx="53.5" cy="44" r="5.5" fill="var(--primary-deep)"></circle><circle cx="55.5" cy="42" r="1.8" fill="var(--surface)"></circle></g><g class="roo-wink-eye"><circle cx="89" cy="44" r="12" fill="var(--primary-soft)" stroke="var(--primary-deep)" stroke-width="2.5"></circle><g class="roo-pupil"><circle cx="86.5" cy="44" r="5.5" fill="var(--primary-deep)"></circle><circle cx="88.5" cy="42" r="1.8" fill="var(--surface)"></circle></g></g></g><path d="M 59 57 Q 70 61 81 57" fill="none" stroke="var(--primary-deep)" stroke-width="2.5" stroke-linecap="round"></path><g class="roo-body-group"><rect x="64" y="64" width="12" height="8" fill="var(--primary-deep)" rx="2"></rect><rect class="roo-arm-l" x="18" y="82" width="14" height="28" rx="7" fill="var(--surface)" stroke="var(--primary-deep)" stroke-width="3"></rect><rect class="roo-arm-r" x="108" y="82" width="14" height="28" rx="7" fill="var(--surface)" stroke="var(--primary-deep)" stroke-width="3"></rect><rect x="36" y="72" width="68" height="46" rx="10" fill="var(--surface)" stroke="var(--primary-deep)" stroke-width="3.5"></rect><rect x="48" y="80" width="44" height="30" rx="5" fill="var(--primary-tint)" stroke="var(--primary-deep)" stroke-width="2"></rect><rect class="roo-line" x="54" y="86" height="3.5" width="26" rx="1.75" fill="var(--primary-deep)"></rect><rect class="roo-line" x="54" y="93" height="3.5" width="18" rx="1.75" fill="var(--primary-deep)"></rect><rect class="roo-line" x="54" y="100" height="3.5" width="22" rx="1.75" fill="var(--primary-deep)"></rect></g><rect x="30" y="122" width="80" height="14" rx="7" fill="var(--primary-soft)" stroke="var(--primary-deep)" stroke-width="2.5"></rect><circle class="roo-tread-dot" cx="42" cy="129" r="3" fill="var(--primary-deep)" opacity="0.55"></circle><circle class="roo-tread-dot" cx="56" cy="129" r="3" fill="var(--primary-deep)" opacity="0.55"></circle><circle class="roo-tread-dot" cx="70" cy="129" r="3" fill="var(--primary-deep)" opacity="0.55"></circle><circle class="roo-tread-dot" cx="84" cy="129" r="3" fill="var(--primary-deep)" opacity="0.55"></circle><circle class="roo-tread-dot" cx="98" cy="129" r="3" fill="var(--primary-deep)" opacity="0.55"></circle></g></svg></span>
         <span class="alt-status alt-status-working" id="alt-status-working" hidden><span id="alt-work-text">Roo is refreshing the data</span></span>
-        <span class="alt-next" id="alt-next-pull"></span>
+        <?php
+        /*
+          ROO'S SAY LINE, SERVER-RENDERED (owner request 2026-08-14: the same
+          at-a-glance strip the talent tracker carries). The first paint used
+          to hold an empty span until renderStatus() polled /status, so a
+          crawler or a no-JS reader met a mascot with nothing to say. Both
+          halves are READ, never typed: the last pull is the newest
+          non-retired collector run in the health ledger (alt_source_health),
+          falling back to the last actual table write (alt_last_write), and
+          the next run comes from data/ingest-schedule.json via
+          alt_next_ingest_utc, generated from the real Railway cron. A half
+          that cannot be known from data is OMITTED, never guessed.
+          renderStatus() rewrites this span with the live Eastern-time
+          reading a moment later, same as before.
+        */
+        $alt_roo_last = 0;
+        if (function_exists('alt_source_health_masked')) {
+            foreach (alt_source_health_masked() as $alt_hrow) {
+                if (!is_array($alt_hrow) || ($alt_hrow['status'] ?? '') === 'retired') continue;
+                $alt_hts = strtotime((string) ($alt_hrow['checked_at'] ?? ''));
+                if ($alt_hts) $alt_roo_last = max($alt_roo_last, $alt_hts);
+            }
+        }
+        if (!$alt_roo_last) $alt_roo_last = (int) get_option('alt_last_write', 0);
+        $alt_roo_next = function_exists('alt_next_ingest_utc') ? alt_next_ingest_utc() : null;
+        $alt_roo_say = '';
+        if ($alt_roo_last > 0 && $alt_roo_last <= time()) {
+            $alt_roo_say = sprintf('Roo pulled the latest data %s ago.', human_time_diff($alt_roo_last, time()));
+        }
+        if ($alt_roo_next) {
+            $alt_roo_say .= ($alt_roo_say ? ' ' : '') . sprintf('Next update %s UTC.', gmdate('M j, H:i', $alt_roo_next));
+        }
+        ?>
+        <span class="alt-next" id="alt-next-pull"><?php echo esc_html($alt_roo_say); ?></span>
         <?php
         // Cadence derived from the REAL cron (data/ingest-schedule.json via
         // alt_ingest_times_label, DST-correct), never typed: the old literal
@@ -399,6 +432,12 @@ function alt_render_status_header() {
             . ($alt_ing_label ? ' · ' . $alt_ing_label : '');
         ?>
         <span class="alt-status" id="alt-status-live"><span class="alt-live-dot" aria-hidden="true"></span> Live · updated <span id="alt-live-time"><?php echo esc_html($alt_cadence); ?></span></span>
+        <?php /* The promise line the talent strip carries, restored here by
+                 the owner's request (2026-08-14). One sentence, stated where
+                 the freshness facts are, not in the hero: the hero's own
+                 trust line ("Every entry links to...") stays the only trust
+                 claim on the first screen. */ ?>
+        <span class="alt-fine-say">No figure appears unless its source states it.</span>
         <span class="alt-brand">by <strong>AskTheRecruiter.com</strong></span>
     </div>
     <?php
