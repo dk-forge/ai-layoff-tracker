@@ -206,6 +206,210 @@ _WV_KNOWN_SUMMARIES = [
     "https://workforcewv.org/wp-content/uploads/2024/10/WV-WARN-Notices-1-1-22-to-10-7-24-.pdf",
 ]
 _WV_SUMMARY_RE = re.compile(r'href="([^"]*WV-WARN-Notices-[\d\-]+to[\d\-]+\.pdf)"', re.I)
+# The summary filename carries its own coverage window: "...-1-1-22-to-1-3-25.pdf".
+# We read the END of that window rather than hardcoding a cutoff, so the day WV
+# posts a wider summary the per-notice tier stands down for the newly covered
+# span on its own instead of double-sourcing it.
+_WV_SUMMARY_SPAN_RE = re.compile(
+    r"WV-WARN-Notices-[\d\-]+to-?(\d{1,2})-(\d{1,2})-(\d{2,4})", re.I)
+# One `<details><summary>YYYY WARN Listings</summary> ... </details>` block per
+# year on the landing page; each holds one `<p><a href="...pdf">Label</a></p>`
+# per notice. The YEAR is the block's, which is what dates a notice whose
+# filename carries no date at all ("WARN-VIMO-INC.pdf").
+_WV_DETAILS_RE = re.compile(r"<details[^>]*>(.*?)</details>", re.S | re.I)
+_WV_YEAR_RE = re.compile(r"<summary[^>]*>\s*(20\d\d)\b", re.I)
+_WV_PDF_LINK_RE = re.compile(r'<a[^>]+href="([^"]+\.pdf)"[^>]*>(.*?)</a>', re.S | re.I)
+# A date inside the label or the filename: "6-4-26", "8-1-24", "6-4-2021",
+# "04_1_2026". Two-digit years are 20xx (WV has posted nothing pre-2000).
+# The separator may be "-", "_" OR a space, because underscores in a filename
+# ("Mettiki_Supplemental_..._04_1_2026") become spaces before the name is
+# cleaned. Without the space alternative that date survived into the employer
+# name as "Mettiki 04 1 2026".
+_WV_LABEL_DATE_RE = re.compile(r"(\d{1,2})[-_ ](\d{1,2})[-_ ](\d{2,4})\b")
+# Boilerplate around the employer name in a link label: "Greenbrier Minerals
+# WARN 2-13-26", "WARN Notice State - West Virginia Conduent", "Carter Roag WARN
+# Update 6-19-23", "CV2 Prep Plant r1 WARN 6-4-25".
+_WV_LABEL_NOISE_RE = re.compile(
+    r"\b(?:warn(?:ing)?|notice[sd]?|state|received|revised|signed|update[sd]?|"
+    r"supplemental|listing[s]?|download|pdf|west\s+virginia|wv|r\d)\b", re.I)
+# Counts as WV letters actually phrase them. Deliberately narrow: each pattern
+# binds the number to layoff language, so a ZIP code, a street number or a
+# year can never be read as a headcount. Anything these miss falls through to
+# the shared LLM fallback, which is itself gated and must find the number
+# verbatim in the text.
+_WV_COUNT_RES = [
+    re.compile(r"(?:terminate|separat\w*|eliminat\w*|affect\w*|lay(?:ing|\s*)?off\w*)"
+               r"[^.\n]{0,60}?\b(?:approximately\s+|about\s+|up\s+to\s+)?"
+               r"(\d[\d,]*)\s+(?:employees|workers|positions|jobs|people)", re.I),
+    # The number and its unit word are often separated by the employer's own
+    # name: "approximately 71 Greenbrier Mineral employees ... will be
+    # terminated". Allow a few capitalised words between the two, but still
+    # require the layoff verb after them, so a street number cannot qualify.
+    re.compile(r"\b(?:approximately|about|up\s+to)\s+(\d[\d,]*)\s+"
+               r"(?:[A-Z][\w.&-]*\s+){0,4}"
+               r"(?:employees|workers|positions|jobs|people)\b"
+               r"[^.\n]{0,80}?(?:will\s+be|are|shall\s+be|to\s+be)\s+"
+               r"(?:terminated|separated|laid\s+off|affected|impacted|eliminated)", re.I),
+    re.compile(r"\b(\d[\d,]*)\s+(?:employees|workers|positions|jobs)\b"
+               r"[^.\n]{0,60}?(?:will\s+be|are|shall\s+be)\s+"
+               r"(?:terminated|separated|laid\s+off|affected|impacted)", re.I),
+    re.compile(r"(?:total\s+)?number\s+of\s+(?:affected\s+)?(?:employees|workers|"
+               r"positions)[^.\n]{0,40}?\bis\s+(\d[\d,]*)", re.I),
+    re.compile(r"(?:employees|workers|positions)\s+affected\s*[:\-]\s*(\d[\d,]*)", re.I),
+]
+
+
+def _wv_label_company(label, filename):
+    """Employer name out of a listing link label (falls back to the filename).
+
+    The label is the only place WV names the employer for a per-notice letter --
+    the letter itself leads with a signatory and an address, not a company
+    field. Strip the WARN boilerplate and the date, keep the rest verbatim; a
+    label that cleans away to nothing yields "" and the notice is dropped rather
+    than published under a guessed name."""
+    text = _html_mod.unescape(re.sub(r"<[^>]+>", " ", label or ""))
+    text = text.replace("_", " ")
+    if not re.search(r"[A-Za-z]", text):
+        text = re.sub(r"[-_]+", " ", (filename or "").rsplit(".", 1)[0])
+    text = _WV_LABEL_DATE_RE.sub(" ", text)
+    text = _WV_LABEL_NOISE_RE.sub(" ", text)
+    # Leftover separators and a trailing bare month ("Greenbrier Minerals July").
+    text = re.sub(r"^[\s\-–—:,]+|[\s\-–—:,]+$", " ", text)
+    text = re.sub(r"\s*(?:January|February|March|April|May|June|July|August|"
+                  r"September|October|November|December)\s*$", " ", text, flags=re.I)
+    text = re.sub(r"\s+", " ", text).strip(" -–—:,")
+    return text if re.search(r"[A-Za-z]", text) else ""
+
+
+def _wv_notice_count(text, label):
+    """Affected-employee count from one WV notice letter, or 0."""
+    for rx in _WV_COUNT_RES:
+        m = rx.search(text or "")
+        if m:
+            n = _count(m.group(1))
+            if 0 < n <= 100000:
+                return n
+    return llm_count_from_text(text, label)
+
+
+def _wv_ocr_enabled():
+    """WV OCR is opt-in (WV_OCR=1). Dormant by default: it needs the tesseract
+    system binary, which the lean daily workflows deliberately do not install,
+    and its counts must be eyeballed in a dry run before they are published."""
+    import os
+    return os.environ.get("WV_OCR") == "1"
+
+
+def _wv_ocr(content, label=""):
+    """OCR one image-only WV notice, or "" if OCR is unavailable. Never raises.
+
+    Delegates to the Hawaii OCR renderer so there is ONE OCR implementation:
+    the two states pose the identical problem (a scanned WARN letter whose
+    headcount exists only as pixels) and a second copy would drift."""
+    try:
+        from .warn_hi_ocr import _ocr_pdf
+        return _ocr_pdf(content)
+    except Exception as exc:
+        print(f"    WV {label}: OCR unavailable/failed ({exc})")
+        return ""
+
+
+def _wv_summary_cutoff(urls):
+    """Latest ISO date the cumulative summary PDFs already cover, or ""."""
+    best = ""
+    for u in urls:
+        m = _WV_SUMMARY_SPAN_RE.search(u)
+        if not m:
+            continue
+        mo, day, yr = m.groups()
+        yr = int(yr)
+        iso = _iso(f"{mo}/{day}/{yr if yr > 99 else 2000 + yr}")
+        if iso > best:
+            best = iso
+    return best
+
+
+def _wv_per_notice(page_html, cutoff, out, seen):
+    """Parse the rolling listing's per-notice PDFs (the tier the summaries stop
+    short of). The summaries end 2025-01-03 and WV has not published a newer
+    one, so from 2025 onward these letters ARE the state's WARN record -- the
+    old 'freeform, therefore skip' rule silently zeroed WV for two years."""
+    kept = 0
+    for block in _WV_DETAILS_RE.findall(page_html or ""):
+        ym = _WV_YEAR_RE.search(block)
+        block_year = ym.group(1) if ym else ""
+        for href, label in _WV_PDF_LINK_RE.findall(block):
+            if _WV_SUMMARY_RE.search(f'href="{href}"'):
+                continue  # the cumulative summary, parsed by the other tier
+            url = href if href.lower().startswith("http") else _WV_ORIGIN + href
+            fname = url.rsplit("/", 1)[-1]
+            dm = (_WV_LABEL_DATE_RE.search(_html_mod.unescape(re.sub(r"<[^>]+>", " ", label)))
+                  or _WV_LABEL_DATE_RE.search(fname))
+            date = ""
+            if dm:
+                mo, day, yr = dm.groups()
+                yr = int(yr)
+                date = _iso(f"{mo}/{day}/{yr if yr > 99 else 2000 + yr}")
+            # A notice the cumulative summary already carries would be a second
+            # copy of the same event under a differently-spelled employer, which
+            # is exactly the cross-collector duplicate _entry's hash cannot
+            # catch. Undated notices are judged by their block's year.
+            if cutoff:
+                if date and date <= cutoff:
+                    continue
+                if not date and block_year and block_year <= cutoff[:4]:
+                    continue
+            company = _wv_label_company(label, fname)
+            if not company:
+                print(f"    WV {fname}: no employer name in the link label; skipped")
+                continue
+            try:
+                resp = requests.get(url, headers=UA, timeout=90)
+                if resp.status_code != 200 or resp.content[:4] != b"%PDF":
+                    continue
+                text = _pdf_text(resp.content)
+            except Exception as exc:
+                print(f"    WV {fname}: fetch/parse failed ({exc})")
+                continue
+            if len(re.sub(r"\s+", "", text or "")) < 40:
+                # Image-only scan. 21 of WV's 27 post-cutoff letters are these,
+                # so they are the state's real coverage ceiling, not an edge
+                # case. OCR is the same problem Hawaii already solved, so it
+                # reuses that module rather than growing a second extractor --
+                # and it stays DORMANT (WV_OCR=1) until a human has eyeballed a
+                # dry run, exactly as the HI path was promoted.
+                ocr_text = _wv_ocr(resp.content, fname) if _wv_ocr_enabled() else ""
+                if len(re.sub(r"\s+", "", ocr_text)) < 40:
+                    print(f"    ::notice:: WV {fname}: image-only scan, no text layer "
+                          f"— {company} not countable")
+                    continue
+                text = ocr_text
+            if not date:
+                date = _iso_from_text(text)
+            jobs = _wv_notice_count(text, f"WV {company}")
+            if jobs <= 0:
+                print(f"    ::notice:: WV {fname}: no affected-employee count in the "
+                      f"letter — {company} not countable")
+                continue
+            kind = "Closure" if re.search(r"\bclosure|closing|shut\s*down|wind\s*down"
+                                          r"|permanent(?:ly)?\s+clos", text, re.I) else "Layoff"
+            e = _entry("WV", company, jobs, date, kind=kind, detail_url=url)
+            if e and e["dedup_hash"] not in seen:
+                seen.add(e["dedup_hash"])
+                out.append(e)
+                kept += 1
+    return kept
+
+
+_WV_TEXT_DATE_RE = re.compile(
+    r"\b(January|February|March|April|May|June|July|August|September|October|"
+    r"November|December)\s+(\d{1,2}),?\s+(20\d\d)\b", re.I)
+
+
+def _iso_from_text(text):
+    """First long-form date in a notice letter (its dateline), or ""."""
+    m = _WV_TEXT_DATE_RE.search(text or "")
+    return _iso(f"{m.group(1)} {m.group(2)}, {m.group(3)}") if m else ""
 
 
 def _wv_flush(rec, url, out, seen):
@@ -223,17 +427,30 @@ def _wv_flush(rec, url, out, seen):
 
 
 def fetch_wv():
-    """WorkForce WV multi-year SUMMARY PDFs (label/value record cards).
+    """WorkForce WV, in two tiers.
 
-    The rolling listing's per-notice PDFs are freeform letters (many are
-    image-only scans) with no reliable count, so they are deliberately NOT
-    parsed. We only read the structured summary PDFs. Summaries overlap heavily,
-    so entries are de-duplicated by hash within this fetcher. Fail-isolated per
-    PDF."""
+    1. The multi-year cumulative SUMMARY PDFs (label/value record cards). These
+       parse cleanly but the newest one WV has published stops at 2025-01-03.
+    2. The rolling listing's PER-NOTICE PDFs, for everything after that cutoff.
+
+    Tier 2 used to be skipped on the grounds that the letters are freeform and
+    some are image-only scans. Both facts are true and neither justified the
+    result: with no newer summary, skipping them meant WV reported ZERO notices
+    for all of 2025 and 2026 while the state was publishing them the whole time.
+    Tier 2 now reads each letter, takes the count only from layoff-bound
+    phrasing (or the gated LLM fallback), and prints a per-notice line for the
+    scans it genuinely cannot read, so the residue is visible rather than
+    silent. The cutoff comes from the summary filenames, so a newer summary
+    hands its span back to tier 1 automatically.
+
+    Summaries overlap heavily, so entries are de-duplicated by hash within this
+    fetcher. Fail-isolated per PDF."""
     urls = list(_WV_KNOWN_SUMMARIES)
+    page_html = ""
     try:
         page = requests.get(_WV_LANDING, headers=UA, timeout=TIMEOUT)
-        for href in _WV_SUMMARY_RE.findall(page.text):
+        page_html = page.text
+        for href in _WV_SUMMARY_RE.findall(page_html):
             url = href if href.lower().startswith("http") else _WV_ORIGIN + href
             if url not in urls:
                 urls.append(url)
@@ -269,6 +486,13 @@ def fetch_wv():
                     rec["number"] = value
         if rec:
             _wv_flush(rec, url, out, seen)
+
+    summary_n = len(out)
+    cutoff = _wv_summary_cutoff(urls)
+    if page_html:
+        kept = _wv_per_notice(page_html, cutoff, out, seen)
+        print(f"    WV: {summary_n} from summary PDFs (through {cutoff or 'unknown'}), "
+              f"{kept} from per-notice letters after that")
     return out
 
 
@@ -288,7 +512,7 @@ _HI_ENTRY_RE = re.compile(
 
 def _hi_clean(text):
     import html as _html
-    return _html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or ""))).strip()
+    return _html_mod.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or ""))).strip()
 
 
 def fetch_hi():
