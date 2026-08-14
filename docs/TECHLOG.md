@@ -1,5 +1,87 @@
 # Tech Log
 
+## 2026-08-13 - the methodology was live and the header did not say so (2.20.36)
+
+The owner asked for "a submenu under each tracker in WP admin". What he wanted
+was the outcome, and the plugin already owns the pages, so this does it from
+the plugin: `includes/nav-submenu.php`.
+
+### What the header menu actually is
+
+Twenty Twenty-Five is a block theme, so the site's header nav is a
+`core/navigation` block and the menu is **not** the classic `nav_menu`
+taxonomy. It is block markup stored as the `post_content` of a `wp_navigation`
+post ("ATR Main Menu", id 72, readable at
+`/blog/wp-json/wp/v2/navigation`). Read live 2026-08-13 its top level was
+Pricing, Blog (a submenu of six), AI Layoff Tracker, Talent Intelligence
+Tracker, with both trackers as flat `core/navigation-link` blocks and nothing
+under either.
+
+The sync parses the post with `parse_blocks()`, converts our item to a
+`core/navigation-submenu` with four children, and writes it back with
+`serialize_blocks()`, so the shape is core's own rather than a string this
+plugin invented.
+
+### The four, and the two that are out
+
+Methodology, Data Sources, Press kit and soundbites, the quote library, in the
+order somebody arriving cold needs them. `ai-tracker-health` stays out (an
+operations dashboard, unlinked on purpose 2026-07-19 and noindexed by
+`alt_page_should_be_noindex()`) and so does `publisher-tools` (embed codes, one
+click from the press kit). A submenu of six is a list to be read.
+
+Every label is `alt_template_heading()` off the template that renders the
+destination, the rule that already binds the post titles and the hero press
+button, so a rename reaches the menu instead of leaving it lying.
+
+### Three things that were nearly wrong
+
+**`innerContent` is not decoration.** `serialize_block()` walks `innerContent`
+and substitutes the next `innerBlock` for each `null` it finds; it never reads
+`innerBlocks` directly. A submenu built with `innerContent => array()`
+serialises with every child silently dropped, which is a menu item that gained
+a toggle and lost everything behind it. One `null` per child, and
+`test_the_children_survive_serialisation` fails on the block-array version.
+
+**Both plugins write this one post.** The sibling tracker's item is next to
+ours and its plugin does exactly this on the same `init`. Two writers that each
+read the post, edit their own subtree and write the whole thing back will, on
+an unlucky interleave, drop the other's children -- and each would have
+verified its own write and set its own done-flag, so neither would ever retry.
+The lock is `add_option('atr_nav_children_lock', ...)`: `wp_options.option_name`
+is UNIQUE, so of two concurrent callers exactly one gets `true`. **The literal
+is shared with the talent tracker's `TIT_NAV_LOCK_OPTION` on purpose**; a
+rename on either side removes the only thing serialising them.
+
+**A retired page must lose its item.** The child set is rebuilt from the source
+of truth every run and any existing child under the tracker path that is not in
+it is dropped, so a renamed or retired page's item goes with it instead of
+lingering on a 404. Children pointing anywhere else are left as the owner left
+them.
+
+### How it is verified
+
+`railway/tests/test_nav_submenu.py`, 25 tests. The rendered half runs real
+headless Chrome against `tests/fixtures/site_nav.json` -- the live header nav's
+markup plus the CSS core prints for it, captured from the bare tracker URL with
+a browser User-Agent -- and builds the submenu by cloning the "Blog" item core
+itself rendered on that page, substituting only the labels and hrefs the plugin
+produces. Measured with the submenu open:
+
+| | 1280x900 | 375x812 |
+|---|---|---|
+| container | visible, opacity 1, 202x282.6 | visible, opacity 1, 349.5x292.2 |
+| items | 200x67.9 / 200x42.9 / 200x67.9 / 200x92.9 | 186.4 / 119.1 / 191.6 / 285.5, all x66 |
+| document scrollWidth | 1280 (= viewport) | 375 (= viewport) |
+
+Proven red twice: on the pre-fix tree all 19 collectable tests fail, and with
+the include present but `alt_nav_children()` cut to two, nine fail including
+both rendered ones. The expectation is read from the templates rather than from
+the plugin's own output, which is what makes the second run meaningful.
+
+**NOT DEPLOYED.** Pushed as `nav-submenu-under-trackers`; a push to main is an
+FTPS deploy on this repo and the deploy was not this session's to make.
+
 ## 2026-08-13 - five "broken" WARN states, measured: one was, four were not
 
 A diagnosis estimated ~5,200 recoverable US 2026 jobs sitting in broken or
