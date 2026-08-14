@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Read what the page RENDERS AS, in every theme, and fail on WCAG AA violations.
 
-Why this exists, in one sentence: `reader_freshness.py` proves which VERSION of
-the bytes a reader is served, and for months nothing proved what those bytes
+Why this exists, in one sentence: `reader_freshness.py` proves WHICH BYTES a
+reader is served (the version, and since 2.20.33 the build stamp that ties the
+body to them), and nothing proved what those bytes
 LOOK LIKE — so a site-level rule in the WordPress database hard-coded
 `color:#1a1a1a !important` onto `.entry-content h2`, beat every token the
 plugin owns, and shipped ~173 elements between 1.06:1 and 1.28:1 to every

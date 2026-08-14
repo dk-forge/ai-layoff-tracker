@@ -2,15 +2,32 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.37
+ * Version: 2.20.38
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.37');
+define('ALT_VERSION', '2.20.38');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+// The build stamp (which BYTES rendered this page). GUARDED for the same reason
+// the generated WARN partial below is: this file is NEW, so on the deploy that
+// introduces it this main file can land BEFORE it does, and a hard require of a
+// not-yet-uploaded file fatals the whole plugin on every request until it
+// arrives (2.19.20). Its absence must degrade to "no stamp", which reads as
+// UNKNOWN downstream, and never to a white screen.
+$alt_build_stamp_file = ALT_PLUGIN_DIR . 'includes/build-stamp.php';
+if (is_readable($alt_build_stamp_file)) {
+    require_once $alt_build_stamp_file;
+}
+if (!function_exists('alt_build_stamp')) {
+    function alt_build_stamp() { return ''; }
+}
+if (!function_exists('alt_build_stamp_comment')) {
+    function alt_build_stamp_comment() { return ''; }
+}
 
 // Load includes
 require_once ALT_PLUGIN_DIR . 'includes/cpt.php';

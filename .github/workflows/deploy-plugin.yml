@@ -250,6 +250,14 @@ jobs:
             wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
             | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
           echo "Deployed ALT_VERSION: $VERSION"
+          # The VERSION is all this step can pass on a command line, and the
+          # version alone is not the content: on 2.20.21 a page rendered while
+          # this very check was running carried the new version around the old
+          # template, and the check passed it for 25 minutes. reader_freshness
+          # therefore also derives the BUILD STAMP from this checkout's plugin
+          # tree and waits for both. It asks the no-store /status first and does
+          # not touch the bare URL until the origin reports that build, so this
+          # step can no longer be the request that caches a mid-upload render.
           # Bounded by the page's own Cache-Control (s-maxage=60 over two chained
           # shared caches), with generous headroom so an edge that is slow to
           # expire is not reported as a stuck deploy.

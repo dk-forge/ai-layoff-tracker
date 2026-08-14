@@ -47,6 +47,15 @@ DEPLOY_YML = (REPO / ".github" / "workflows" / "deploy-plugin.yml").read_text(en
 MAX_PAGE_S_MAXAGE = 60
 
 
+def _php():
+    """The php binary, or None. A missing interpreter is UNKNOWN, not a pass."""
+    from shutil import which
+    for path in ("/opt/homebrew/bin/php", "/usr/bin/php", "/usr/local/bin/php"):
+        if Path(path).exists():
+            return path
+    return which("php")
+
+
 def strip_php_comments(src):
     """Drop /* ... */ and // ... comments.
 
@@ -259,17 +268,21 @@ class ReaderFreshnessMeasuresTheReaderSurface(unittest.TestCase):
 class ReaderFreshnessVerdicts(unittest.TestCase):
     """check() must never turn "I could not tell" into "healthy"."""
 
-    def _patch(self, served, deployed, cache_control="public, max-age=60, s-maxage=60"):
-        reader_freshness.reader_view = lambda *a, **k: (served, {"cache-control": cache_control})
-        reader_freshness.deployed_version = lambda *a, **k: deployed
+    def _patch(self, served, deployed, cache_control="public, max-age=60, s-maxage=60",
+               served_build="same", deployed_build="same"):
+        # Default: the two builds AGREE, so these cases keep testing exactly what
+        # they were written to test, which is the VERSION comparison.
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            served, served_build, {"cache-control": cache_control})
+        reader_freshness.origin_build = lambda *a, **k: (deployed, deployed_build)
 
     def setUp(self):
         self._real_view = reader_freshness.reader_view
-        self._real_deployed = reader_freshness.deployed_version
+        self._real_origin = reader_freshness.origin_build
 
     def tearDown(self):
         reader_freshness.reader_view = self._real_view
-        reader_freshness.deployed_version = self._real_deployed
+        reader_freshness.origin_build = self._real_origin
 
     def test_match_is_a_pass(self):
         self._patch("2.19.275", "2.19.275")
@@ -324,12 +337,357 @@ class ReaderFreshnessVerdicts(unittest.TestCase):
         self.assertFalse(result.ok)
 
 
+class TheRacedRenderOf2_20_21(unittest.TestCase):
+    """THE MEASURED INCIDENT, 2026-08-12/13. Version right, BODY wrong.
+
+    2.20.21 deployed cleanly. The reader check then requested the bare URL, as
+    it must, and that request arrived while FTPS was still uploading:
+    ai-layoff-tracker.php (which carries ALT_VERSION) had landed,
+    templates/page-tracker.php had not. WP Super Cache stored that render, so
+    every reader got asset URLs stamped `ver=2.20.21` wrapped around the
+    PREVIOUS template, for about twenty-five minutes.
+
+    `reader_freshness.check()` compared the served version against the deployed
+    version, they were both 2.20.21, and it returned PASS the whole time. It
+    dated the build, not the content.
+
+    The fixture below is not a fabricated pair of hashes. It materialises two
+    real plugin trees whose ALT_VERSION is byte-identical and whose
+    page-tracker.php is not, which is precisely the raced pair, and runs the
+    real stamp function over them.
+    """
+
+    def _trees(self):
+        """(new_tree, raced_tree): same version, one template different."""
+        import shutil
+        import tempfile
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        new, raced = root / "new", root / "raced"
+        shutil.copytree(PLUGIN, new)
+        shutil.copytree(PLUGIN, raced)
+        # The one file that had not landed yet. Its PREVIOUS content is what the
+        # reader was served; any different bytes reproduce that, and the version
+        # file is untouched on purpose, because that is the whole defect.
+        tpl = raced / "templates" / "page-tracker.php"
+        current = tpl.read_text(encoding="utf-8")
+        old_body = self._previous_revision(tpl)
+        if not old_body or old_body == current:
+            old_body = current + \
+                "\n<!-- the copy of this template that had not finished uploading -->\n"
+        tpl.write_text(old_body, encoding="utf-8")
+        self.assertNotEqual((new / "templates" / "page-tracker.php").read_bytes(),
+                            tpl.read_bytes(), "the raced tree must differ in the body")
+        return new, raced
+
+    @staticmethod
+    def _previous_revision(tpl):
+        """The template's actual previous content, when git history is here.
+
+        Preferred, because then the pair is two real builds rather than one real
+        build and an edit. CI checks out shallow, so this is often unavailable;
+        a byte-level edit reproduces the same shape and the verdict logic cannot
+        tell the difference, since all it ever sees is two stamps.
+        """
+        import subprocess
+        rel = "wordpress-plugin/ai-layoff-tracker/templates/page-tracker.php"
+        try:
+            out = subprocess.run(["git", "-C", str(REPO), "show", f"HEAD~1:{rel}"],
+                                 capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return out.stdout if out.returncode == 0 and out.stdout else None
+
+    def test_the_two_trees_agree_on_the_version_and_that_is_the_point(self):
+        new, raced = self._trees()
+        main = "ai-layoff-tracker.php"
+        self.assertEqual((new / main).read_bytes(), (raced / main).read_bytes(),
+                         "the fixture must differ ONLY in the body, or it is not the "
+                         "2.20.21 shape")
+
+    def test_the_old_rule_passes_the_raced_page(self):
+        """The rule this file used to hold, stated as code: served version ==
+        deployed version, and nothing else. Both are 2.20.21."""
+        new, raced = self._trees()
+        served_version = deployed_version = re.search(
+            r"define\('ALT_VERSION',\s*'([^']+)'\)",
+            (raced / "ai-layoff-tracker.php").read_text(encoding="utf-8")).group(1)
+        self.assertEqual(served_version, deployed_version,
+                         "the version-only rule cannot see this, which is why it passed")
+        # And the bodies really do differ, so a check that could see content
+        # would have something to see.
+        self.assertNotEqual(
+            reader_freshness.checkout_build_stamp(new),
+            reader_freshness.checkout_build_stamp(raced))
+
+    def test_the_new_rule_refuses_the_raced_page(self):
+        new, raced = self._trees()
+        served_build = reader_freshness.checkout_build_stamp(raced)
+        deployed_build = reader_freshness.checkout_build_stamp(new)
+        version = "2.20.21"
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            version, served_build, {"cache-control": "public, max-age=60, s-maxage=60"})
+        reader_freshness.origin_build = lambda *a, **k: (version, deployed_build)
+        try:
+            now = datetime.now(timezone.utc)
+            result = reader_freshness.check(
+                deploy_finished_at=now - timedelta(minutes=25), now=now)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+        self.assertEqual(result.verdict, FAIL, result.detail)
+        self.assertFalse(result.ok)
+        self.assertIn("2.20.21", result.detail)
+
+    def test_the_same_page_inside_the_window_is_propagation_not_a_fault(self):
+        """A stamp mismatch seconds after a deploy is a cache that has not
+        turned over yet. Reporting that as a fault on every deploy is how a
+        check gets removed."""
+        new, raced = self._trees()
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            "2.20.21", reader_freshness.checkout_build_stamp(raced),
+            {"cache-control": "public, max-age=60, s-maxage=60"})
+        reader_freshness.origin_build = lambda *a, **k: (
+            "2.20.21", reader_freshness.checkout_build_stamp(new))
+        try:
+            now = datetime.now(timezone.utc)
+            result = reader_freshness.check(
+                deploy_finished_at=now - timedelta(seconds=30), now=now)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+        self.assertEqual(result.verdict, PASS, result.detail)
+
+
+class TheBuildStampTiesTheBodyToTheBuild(unittest.TestCase):
+    STAMP = '<!-- alt-build ver=2.20.29 build=0123456789abcdef -->'
+
+    def test_a_stamp_is_read_out_of_the_body(self):
+        self.assertEqual(reader_freshness.build_in_html("<div>x</div>" + self.STAMP),
+                         "0123456789abcdef")
+
+    def test_a_page_without_a_stamp_is_not_a_build(self):
+        """None routes to UNKNOWN in check(). A page that cannot say which bytes
+        rendered it has not told us it is current."""
+        self.assertIsNone(reader_freshness.build_in_html("<html><body>x</body></html>"))
+
+    def test_two_different_stamps_on_one_page_are_not_a_build(self):
+        """Half a page from one build and half from another is exactly the state
+        this exists to catch, and it is not a value to compare."""
+        other = self.STAMP.replace("0123456789abcdef", "fedcba9876543210")
+        self.assertIsNone(reader_freshness.build_in_html(self.STAMP + other))
+
+    def test_the_stamp_covers_the_templates(self):
+        """A stamp that ignored the templates would have passed 2.20.21 too."""
+        import shutil
+        import tempfile
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        tree = root / "p"
+        shutil.copytree(PLUGIN, tree)
+        before = reader_freshness.checkout_build_stamp(tree)
+        tpl = tree / "templates" / "page-tracker.php"
+        tpl.write_text(tpl.read_text(encoding="utf-8") + "\n<!-- x -->", encoding="utf-8")
+        self.assertNotEqual(before, reader_freshness.checkout_build_stamp(tree))
+
+    def test_the_stamp_covers_the_assets_a_reader_loads(self):
+        import shutil
+        import tempfile
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        tree = root / "p"
+        shutil.copytree(PLUGIN, tree)
+        before = reader_freshness.checkout_build_stamp(tree)
+        css = tree / "assets" / "layoffs.css"
+        css.write_text(css.read_text(encoding="utf-8") + "\n/* x */", encoding="utf-8")
+        self.assertNotEqual(before, reader_freshness.checkout_build_stamp(tree))
+
+    def test_the_rendered_page_actually_carries_the_stamp(self):
+        """alt_template() is EXECUTED, not read. The stamp only does its job if
+        it leaves with the body, once, ahead of it, and a source-reading test
+        cannot tell whether it does."""
+        php = _php()
+        if not php:
+            self.skipTest("UNKNOWN, NOT passing: php not installed here")
+        import shutil
+        import subprocess
+        import tempfile
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        tree = root / "p"
+        shutil.copytree(PLUGIN, tree)
+        (tree / "templates" / "stub.php").write_text("<div>BODY</div>", encoding="utf-8")
+
+        src = SHORTCODES
+        needle = "function alt_template("
+        body = src[src.index(needle):]
+        alt_template = body[:body.index("\n}\n") + 3]
+        script = ("define('ABSPATH','/'); define('ALT_VERSION','9.9.9');"
+                  "define('ALT_PLUGIN_DIR','%s/');"
+                  "function trailingslashit($p){return rtrim($p,'/').'/';}"
+                  "function esc_html($s){return $s;}"
+                  "require '%s/includes/build-stamp.php';"
+                  "%s"
+                  "echo alt_template('stub.php'); echo alt_template('stub.php');"
+                  % (tree, tree, alt_template))
+        out = subprocess.run([php, "-r", script], capture_output=True, text=True, timeout=120)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        stamps = reader_freshness.BUILD_RE.findall(out.stdout)
+        self.assertEqual(len(stamps), 1,
+                         "a rendered page must carry exactly ONE build stamp, ahead of "
+                         "the body it belongs to; got %r" % out.stdout[:200])
+        self.assertEqual(stamps[0], reader_freshness.checkout_build_stamp(tree))
+        self.assertLess(out.stdout.index("alt-build"), out.stdout.index("BODY"))
+
+    def test_php_and_python_compute_the_same_stamp(self):
+        """Two implementations of one number is a drift risk, so it is executed
+        rather than read: the PHP the server runs is called on the same tree the
+        Python reads, and the answers must be equal."""
+        php = _php()
+        if not php:
+            self.skipTest("UNKNOWN, NOT passing: php not installed here")
+        import subprocess
+        script = ("define('ABSPATH', '/'); define('ALT_PLUGIN_DIR', '%s/');"
+                  "function trailingslashit($p){return rtrim($p,'/').'/';}"
+                  "require '%s'; echo alt_build_stamp();"
+                  % (PLUGIN, PLUGIN / "includes" / "build-stamp.php"))
+        out = subprocess.run([php, "-r", script], capture_output=True, text=True,
+                             timeout=120)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(out.stdout.strip(),
+                         reader_freshness.checkout_build_stamp(PLUGIN),
+                         "the PHP that stamps the page and the Python that grades it "
+                         "disagree about what this build is")
+
+
+class TheCheckDoesNotFillTheCacheItIsMeasuring(unittest.TestCase):
+    """2.20.21 was cached BY THE VERIFICATION REQUEST. The bare URL is the
+    surface, so the request cannot be avoided; what can be avoided is making it
+    while the origin is still incoherent."""
+
+    def test_wait_for_asks_the_origin_first(self):
+        calls = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+
+        def origin(*a, **k):
+            calls.append("origin")
+            # Incoherent twice (mid-upload), then coherent.
+            return ("2.20.29", "new") if len(calls) > 2 else ("2.20.29", "raced")
+
+        def view(*a, **k):
+            calls.append("reader")
+            return reader_freshness.ReaderView("2.20.29", "new", {})
+
+        reader_freshness.origin_build, reader_freshness.reader_view = origin, view
+        try:
+            delay = reader_freshness.wait_for("2.20.29", expected_build="new",
+                                              timeout=60, interval=0, log=lambda *a: None)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+        self.assertIsNotNone(delay)
+        self.assertNotIn("reader", calls[:calls.index("reader")],
+                         "sanity")
+        self.assertEqual(calls[:3], ["origin", "origin", "origin"],
+                         "the bare URL must not be requested until the ORIGIN reports "
+                         "the expected build: a request made before that is what filled "
+                         "the page cache with the raced render on 2.20.21")
+
+
+    def test_an_origin_that_never_matches_the_checkout_is_adopted_and_announced(self):
+        """A file on the server that is not in this checkout would otherwise
+        redden every deploy forever, and a check that cries wolf on every deploy
+        gets deleted. The gate adopts the ORIGIN's build, says so loudly, and
+        keeps the comparison that actually catches a cached mid-upload render."""
+        said = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        real_gate = reader_freshness.ORIGIN_GATE_S
+        reader_freshness.ORIGIN_GATE_S = 0        # the gate expires immediately
+        reader_freshness.origin_build = lambda *a, **k: ("2.20.31", "origin-build")
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            "2.20.31", "origin-build", {})
+        try:
+            delay = reader_freshness.wait_for("2.20.31", expected_build="checkout-build",
+                                              timeout=60, interval=0, log=said.append)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+            reader_freshness.ORIGIN_GATE_S = real_gate
+        self.assertIsNotNone(delay, "the deploy must not go red over a file inventory "
+                                    "difference that no reader can see")
+        self.assertTrue(any("::warning::" in line and "not byte-identical" in line
+                            for line in said), said)
+
+    def test_an_origin_with_no_stamp_degrades_loudly_to_the_version(self):
+        """A running build older than the stamp has nothing to compare a body
+        against. Degrade to the version-only wait and SAY that it is the check
+        which passed 2.20.21, rather than failing a deploy for it."""
+        said = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        real_gate = reader_freshness.ORIGIN_GATE_S
+        reader_freshness.ORIGIN_GATE_S = 0
+        reader_freshness.origin_build = lambda *a, **k: ("2.20.32", None)
+        reader_freshness.reader_view = lambda *a, **k: reader_freshness.ReaderView(
+            "2.20.32", None, {})
+        try:
+            delay = reader_freshness.wait_for("2.20.32", expected_build="checkout-build",
+                                              timeout=60, interval=0, log=said.append)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+            reader_freshness.ORIGIN_GATE_S = real_gate
+        self.assertIsNotNone(delay)
+        self.assertTrue(any("::warning::" in line and "2.20.21" in line for line in said), said)
+
+    def test_an_origin_that_never_reports_the_version_is_not_adopted(self):
+        """Adoption is for a build difference, never for a deploy that did not
+        land. A version that never arrives still fails, and the bare URL is
+        never requested, so nothing is cached by the attempt."""
+        said = []
+        real_view, real_origin = reader_freshness.reader_view, reader_freshness.origin_build
+        real_gate = reader_freshness.ORIGIN_GATE_S
+        reader_freshness.ORIGIN_GATE_S = 0
+        reader_freshness.origin_build = lambda *a, **k: ("2.20.30", "old-build")
+        reader_freshness.reader_view = lambda *a, **k: self.fail(
+            "the bare URL must not be requested when the origin never reported the "
+            "expected version")
+        try:
+            delay = reader_freshness.wait_for("2.20.31", expected_build="checkout-build",
+                                              timeout=1, interval=0, log=said.append)
+        finally:
+            reader_freshness.reader_view, reader_freshness.origin_build = real_view, real_origin
+            reader_freshness.ORIGIN_GATE_S = real_gate
+        self.assertIsNone(delay)
+
+
 class TheGuardIsActuallyWired(unittest.TestCase):
     def test_deploy_workflow_runs_the_reader_check(self):
         body = re.sub(r"^\s*#.*$", "", DEPLOY_YML, flags=re.M)
         self.assertIn("reader_freshness.py", body,
                       "the deploy workflow must verify the deploy reached readers")
         self.assertIn("--wait-for", body)
+
+    def test_the_deploy_gate_is_the_checkout_build_not_just_the_version(self):
+        """The deploy workflow passes only ALT_VERSION, so the module must
+        derive the expected BUILD from the checkout itself. A deploy that waited
+        on the version alone is the check that passed 2.20.21."""
+        import inspect
+        src = inspect.getsource(reader_freshness.main)
+        self.assertIn("checkout_build_stamp", src)
+
+    def test_the_plugin_emits_the_stamp_from_the_template_funnel(self):
+        """The stamp has to be produced by the same render as the body. Emitted
+        anywhere else it is another version string with extra steps."""
+        body = strip_php_comments(SHORTCODES)
+        func = re.search(r"function\s+alt_template\s*\(.*?\n\}", body, re.S)
+        self.assertIsNotNone(func, "alt_template() not found")
+        self.assertIn("alt_build_stamp", func.group(0),
+                      "alt_template() must stamp what it renders")
+
+    def test_the_origin_reports_its_own_build(self):
+        api = strip_php_comments((PLUGIN / "includes" / "api.php").read_text(encoding="utf-8"))
+        status = re.search(r"function\s+alt_api_status_get\s*\(.*?\n\}", api, re.S)
+        self.assertIsNotNone(status)
+        self.assertIn("alt_build_stamp", status.group(0),
+                      "/status must report the build the origin would render, or the "
+                      "reader's stamp has nothing cache-immune to be compared against")
 
     def test_ops_status_reports_the_reader_view(self):
         ops = (REPO / "railway" / "ops_status.py").read_text(encoding="utf-8")

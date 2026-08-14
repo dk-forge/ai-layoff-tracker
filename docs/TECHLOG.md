@@ -874,6 +874,104 @@ before.
 Also checked by eye rather than by `style_check.py`: that file needs 12
 characters and 3 real words before a string is eligible, so a short button label
 slips past it entirely. There is a test for the dashes instead.
+
+## 2026-08-14 - the reader check dated the build and never read the body (2.20.38)
+
+`reader_freshness.py` compared the plugin VERSION a reader is served against the
+version that is deployed. Those are equal on a page that carries the new version
+string around an old body, so it returned PASS on exactly the state it exists to
+catch. Three times in two days:
+
+- **2.20.21.** The deploy's own reader check requested the bare URL while FTPS
+  was still uploading. `ai-layoff-tracker.php`, which carries `ALT_VERSION`, had
+  landed; `templates/page-tracker.php` had not. WP Super Cache stored that
+  render and served it to every reader for about twenty-five minutes while this
+  check read green. **The verification request was the thing that filled the
+  cache with the raced page.**
+- a heading fix reported green and its own live check then found the previous
+  build still serving,
+- a title change read 2.20.25 on the first attempt and 2.20.26 on a re-read.
+
+Two sessions worked around it locally - one gating a live check on reading the
+version out of the SAME response as the content, one re-reading until every page
+agreed. Both routed around the tool. This fixes the tool.
+
+**The mechanism: a build stamp, computed from the bytes, carried by the body.**
+`includes/build-stamp.php` hashes every file the deploy mirrors (the same set,
+by the same two exclude globs `lftp mirror` uses, so there is no second list to
+drift), at render time, memoised per request and never across requests. The
+rendered page carries the answer as `<!-- alt-build ver=X build=Y -->`, emitted
+from `alt_template()` - the funnel every plugin surface renders through - so the
+stamp is produced by the same render as the body around it. `/status`, which is
+no-store, reports the same function's answer for the bytes on disk now. A
+template that has not landed yet is different bytes, so it is a different stamp:
+
+    version equal + stamp different  ==  the 2.20.21 shape, and it is a FAULT.
+
+**Why not the alternatives.** A per-surface content fingerprint (hash the
+rendered HTML) cannot be compared to anything: the page contains live numbers,
+so it differs between two correct renders. Reading the version out of the same
+response as one known string - the workaround two sessions already built - only
+covers the strings someone thought to check, and page-tracker.php is 1,100
+lines. Hashing the FILES is the only version of this that is complete, and it is
+the same instrument the deploy already trusts, since `lftp mirror` decides what
+to upload the same way.
+
+**Proved on the real failure, not a fabricated one.** de50765 and 1f0258b are
+two consecutive states of main, both `ALT_VERSION 2.20.21`, differing in
+page-tracker.php by 46 added and 19 removed lines. Materialised from git and run
+past both tools:
+
+    raced tree (de50765): version=2.20.21 build=6a80ada88a849f7a
+    new   tree (1f0258b): version=2.20.21 build=a1f31fc4c66fd46c
+
+    OLD TOOL: PASS: readers are served 2.20.21, which is the deployed build
+    NEW TOOL: FAIL: readers are served version 2.20.21, which is current, but a
+      body built from 6a80ada88a849f7a while the origin would render
+      a1f31fc4c66fd46c, 1500s after the deploy and past the 240s window.
+
+Twenty-five minutes in, exactly as measured. Forty-five seconds in, the same
+observation is `PASS: propagating, not a fault`.
+
+**The three states are kept, and the version half got no weaker.** The version
+comparison is judged FIRST and exactly as it was, so nothing this module could
+already catch was traded away. Only once the versions agree does the stamp
+speak, and a page with no stamp, two different stamps, or a `/status` that
+reports none, resolves to UNKNOWN. `alt_build_stamp()` returns `''` rather than
+a partial hash if any file cannot be read, and an empty stamp is emitted
+nowhere.
+
+**The observer effect, handled where it can be and named where it cannot.**
+`wait_for()` now polls the no-store `/status` - a REST route, which fills no
+page cache - until the ORIGIN reports the expected build, and only then requests
+the bare URL. By that point every file is on disk and the version bump has fired
+`alt_flush_caches_on_deploy()`, so our first bare-URL request lands on an empty
+page cache and stores a coherent render instead of a raced one. It cannot stop
+another visitor or a crawler arriving mid-upload. Nothing here can. What changed
+is that the result is now detected instead of passed.
+
+**The window, sized from the one measurement there is.** 2026-08-05: 470s from
+deploy to reader, under headers permitting `s-maxage=300` per hop over two hops,
+so 600s of plain freshness - the realised delay was 0.78 of what the headers
+allowed. Today's page header is `s-maxage=60` with no swr, 120s over the two
+hops, and the same ratio predicts ~94s. The module allows 120 + 120 = 240s,
+about 2.5x the scaled measurement. The deploy's own wait is separate and simply
+keeps waiting (`--timeout 600`) rather than declaring anything.
+
+**What it still cannot catch.** Anything the plugin does not render: a theme
+change, a WordPress core update, a post title edited in the database (2.20.26
+moved four of those, and no stamp here would move with them). Content that is
+correct bytes and wrong output - the stamp says the files match, not that the
+page is right. A stale page on a surface this does not fetch; it reads the
+tracker page only. And a stamp stripped by an HTML minifier would read as
+UNKNOWN, which is loud, not silent.
+
+**Two implementations of one number, executed rather than read.**
+`checkout_build_stamp()` in reader_freshness.py is the Python half.
+`test_deploy_reaches_readers.py` runs the actual PHP against the actual tree and
+fails if the two answers differ, because the alternative is a drift nobody would
+notice until it mattered.
+
 ## 2026-08-13 - a card fills its row or stops being stretched to it (2.20.30)
 
 The owner reported the same defect three times about three different cards:
@@ -929,7 +1027,7 @@ real DOM, holds the ellipsis contract at the same time (a name cut with no
 visible marker reads as a complete company name), pins that 375px is unchanged,
 and proves it can fail by putting the old declarations back.
 
-## 2026-08-13 - the shrink half named the wrong container (2.20.31)
+## 2026-08-13 - the shrink half named the wrong container (2.20.32)
 
 2.20.30 shipped both halves and only one worked. The live audit re-run after the
 deploy still showed two bands at 1280px: Cumulative AI-attributed cuts at 277px
@@ -1234,7 +1332,7 @@ fail at a gate of 7. A comment on `ARCHIVE_BACKFILL_LIMIT` records that this
 red is not answered by raising it.
 
 
-## 2026-08-13 - Ohio answered, and was still broken (2.20.31)
+## 2026-08-13 - Ohio answered, and was still broken (2.20.32)
 
 Reported as "every documented path to Ohio's and North Carolina's WARN
 listings 404s". Both scrapers were in fact **working**, and the investigation

@@ -24,7 +24,13 @@ function alt_template($file, $vars = array()) {
     }
     ob_start();
     include $path;
-    return ob_get_clean();
+    // The build stamp rides out with the body it belongs to, emitted once per
+    // request from the funnel every plugin surface renders through. It says
+    // which BYTES produced this page, which is the one thing a version string
+    // cannot say: on 2.20.21 a page rendered mid-upload carried the new version
+    // around the previous template and every check read green. See
+    // includes/build-stamp.php.
+    return alt_build_stamp_comment() . ob_get_clean();
 }
 
 function alt_shortcode_tracker() {
