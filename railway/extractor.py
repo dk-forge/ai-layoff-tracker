@@ -287,14 +287,13 @@ def gate_verdict(raw_entry):
         return GATE_ERROR  # not judged; extraction will defer and say so
     outlet = raw_entry.get("source_name") or raw_entry.get("source_type") or ""
     try:
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(GATE_MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=GATE_MODEL, max_tokens=4, temperature=0,
             messages=[{"role": "system", "content": GATE_SYSTEM},
                       {"role": "user",
                        "content": f"Published by: {outlet}\n\n{text[:GATE_CHARS]}"}],
-        )
-        spend.record_usage(GATE_MODEL, getattr(response, "usage", None))
+        ), what="the pre-extraction gate")
         content = ""
         if response.choices and response.choices[0].message:
             content = response.choices[0].message.content or ""
@@ -595,12 +594,11 @@ TEXT:\n""" + raw_text
         # preamble it used to send described a different task (full-record
         # JSON with fields this call must not return) — dead context on every
         # call of the daily ai-evidence-sweep.
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        )
-        spend.record_usage(MODEL, getattr(response, "usage", None))
+        ), what="AI-causation reassessment")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -643,12 +641,11 @@ any unsupported field. Evidence phrases must be copied exactly from TEXT.
 
 TEXT:\n""" + raw_text
     try:
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(CLASSIFY_MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=350,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        )
-        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
+        ), what="context-evidence reassessment")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -713,12 +710,11 @@ Rules:
 TEXT:\n""" + raw_text
     _precheck_credits()
     try:
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(CLASSIFY_MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=200,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        )
-        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
+        ), what="reason-tag classification")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -790,12 +786,11 @@ def classify_industry(company, raw_text):
     )
     _precheck_credits()
     try:
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(CLASSIFY_MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=40,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        )
-        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
+        ), what="industry classification")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -853,12 +848,11 @@ copied exactly from TEXT and is REQUIRED whenever categories is non-empty.
 TEXT:\n""" + raw_text
     _precheck_credits()
     try:
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(CLASSIFY_MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        )
-        spend.record_usage(CLASSIFY_MODEL, getattr(response, "usage", None))
+        ), what="role-category extraction")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -938,7 +932,7 @@ TEXT:
 {raw_text}"""
 
     try:
-        response = _get_client().chat.completions.create(
+        response = spend.metered_call(MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=MODEL,
             max_tokens=1000,
@@ -946,8 +940,12 @@ TEXT:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
-        )
-        spend.record_usage(MODEL, getattr(response, "usage", None))
+        ), what="layoff extraction")
+    except spend.PaidReadsOff:
+        # The ceiling tripped between the check at the top of this function and
+        # the call (another paid call in between spent the last of it). Same
+        # answer as the check itself gives: undecided, row stays queued.
+        return _defer_for_spend("layoff extraction")
     except Exception as e:
         # Per error-handling requirements: log the raw text that failed, skip entry
         print(f"OpenRouter/DeepSeek API error: {e} — source: {raw_entry.get('source_url')} "

@@ -165,13 +165,25 @@ def _second_pass_confirms(company, jobs, text):
             "not a rumor, not a different company, not a past year)?\n\n"
             f"TEXT:\n{text[:4000]}"
         )
-        resp = client.chat.completions.create(
+        # Through metered_call for two reasons. This call was UNMETERED — the
+        # only paid call in the repo whose cost never reached the ledger — and
+        # it was ungated: main() checks the brake once, then each tip costs an
+        # extraction plus this, so the ceiling was read once per run for two
+        # calls per tip.
+        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
             model="deepseek/deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
             temperature=0, max_tokens=4,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
-        )
+        ), what=f"the second-pass confirmation for {company}")
         return resp.choices[0].message.content.strip().lower().startswith("y")
+    except spend.PaidReadsOff:
+        # Fails closed, like every other failure here: unconfirmed, so the tip
+        # goes to the human queue. Printed so the log does not read as the
+        # model having disagreed with the tip.
+        print(f"  spend ceiling reached before confirming {company}; the tip "
+              f"goes to the review queue unjudged")
+        return False
     except Exception:
         return False
 

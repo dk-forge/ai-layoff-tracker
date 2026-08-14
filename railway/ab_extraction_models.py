@@ -157,17 +157,20 @@ def judge(model, raw_text, prompt, gold_count):
         return {"verdict": "unknown", "stage": "budget_stop"}
 
     try:
-        resp = extractor._get_client().chat.completions.create(
+        resp = spend.metered_call(model, lambda: extractor._get_client().chat.completions.create(
             extra_body=extractor.USAGE_ACCOUNTING,
             model=model, max_tokens=MAX_TOKENS,
             messages=[{"role": "system", "content": extractor.SYSTEM_PROMPT},
-                      {"role": "user", "content": prompt}])
+                      {"role": "user", "content": prompt}]),
+            what=f"an A/B extraction on {model}")
+    except spend.PaidReadsOff:
+        # Same answer as the check above, for the case where the ceiling trips
+        # between them: UNKNOWN, never a model scored as having failed.
+        return {"verdict": "unknown", "stage": "budget_stop"}
     except Exception as exc:
         return {"verdict": "unknown", "stage": "llm_error", "detail": str(exc)[:160]}
 
-    usage = getattr(resp, "usage", None)
-    spend.record_usage(model, usage)
-    out = {"usage": _usage_dict(usage)}
+    out = {"usage": _usage_dict(getattr(resp, "usage", None))}
 
     choice = resp.choices[0] if resp.choices else None
     text = (choice.message.content or "").strip() if choice and choice.message else ""

@@ -231,12 +231,22 @@ def ask_llm(group):
         headers={"Authorization": "Bearer " + OR_KEY, "Content-Type": "application/json", "User-Agent": UA})
     for attempt in range(3):
         try:
-            out = json.load(urllib.request.urlopen(req, timeout=150))
-            spend.record_usage(out.get("model") or "deepseek/deepseek-chat",
-                               out.get("usage"))
+            # Through metered_call, so the ceiling is re-read before EVERY
+            # attempt. A retry is a second charge, and the loop below used to
+            # sit behind one gate check per cluster: three attempts on a
+            # cluster that trips the ceiling on the first is three charges past
+            # the line, for one budget check.
+            out = spend.metered_call(
+                os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat"),
+                lambda: json.load(urllib.request.urlopen(req, timeout=150)),
+                what="an LLM dedup review")
             c = out["choices"][0]["message"]["content"]
             c = c[c.find("{"): c.rfind("}") + 1]
             return json.loads(c).get("events", [])
+        except spend.PaidReadsOff as e:
+            # Not a failed cluster: an unasked one. The rotation re-selects it.
+            print(f"  {e}")
+            return []
         except Exception as e:
             print(f"  llm retry {attempt+1}: {e}")
             time.sleep(8 * (attempt + 1))

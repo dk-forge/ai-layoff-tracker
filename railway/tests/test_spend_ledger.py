@@ -393,9 +393,13 @@ class EveryLlmJobLeavesALedgerLine(unittest.TestCase):
                               f"{rel} spends but leaves no ledger line")
 
     def test_self_client_scripts_meter_their_own_responses(self):
+        """Through spend.metered_call, which meters what it lets through. A
+        script holding its own client used to hand-roll create() +
+        record_usage(), and the two halves drifted: process_tips' second pass
+        was never metered at all."""
         for rel in self.SELF_CLIENT:
             with self.subTest(script=rel):
-                self.assertIn("spend.record_usage(", (ROOT / rel).read_text(),
+                self.assertIn("spend.metered_call(", (ROOT / rel).read_text(),
                               f"{rel} has its own client and an unmetered call")
 
     def test_dedupe_llm_is_finally_under_the_guard(self):

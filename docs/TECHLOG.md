@@ -1,5 +1,80 @@
 # Tech Log
 
+## 2026-08-14 - the brake was checked once per item, and one of the two jobs [2a] accused was innocent
+
+`ops_status.py [2a]` was reporting **"the per-job brake is not holding"** for
+`edgar-history-sweep` and `ai-evidence-sweep`. One of those was a real defect
+with the diagnosis RUNBOOK already carried; the other was the dashboard's own
+arithmetic.
+
+### The real half: an item is not a call
+
+`spend.paid_reads_enabled()` has always been exact and cheap, and the rule was
+"check it before you spend". The rule never said WHERE, and the answer kept
+being **once per item**:
+
+| caller | gate was read | paid calls behind that one read |
+|---|---|---|
+| `source_verification_audit.py` | once, in `main()` | **40** (`AUDIT_SAMPLE`), one per audited row |
+| `daily_classification_spotcheck.py` | once, in `main()` | 2 (the flag pass and the confirm pass) |
+| `dedupe_llm.py` | once per cluster | up to 3 - the retry loop charges again each time |
+| `process_tips.py` | once, in `main()` | 2 per tip - and the second pass was **not metered at all**, the only paid call in the repo whose cost never reached the ledger |
+| `ai_evidence_sweep.py` | once per candidate text (since 2026-08-12) | 2 |
+
+The bound a per-run ceiling can honestly promise is **one call**: the meter
+learns what a call cost only after it is charged, so the last call always
+straddles the line. What must not happen is the second call after the line, or
+the fortieth. Measured overshoot in the shape it had before: run 31516262943
+(2026-08-11) spent $0.0166 against $0.015, roughly 36 calls past it.
+
+**The fix is that the gate and the meter are now the same function.**
+`spend.metered_call(model, make_call)` checks the brake immediately before the
+request and calls `record_usage()` immediately after, and every paid call site
+in `railway/` - all nine in `extractor.py`, plus the six scripts that build
+their own client - goes through it. A caller cannot spend without checking and
+cannot check without metering. It **raises** `spend.PaidReadsOff` rather than
+returning a sentinel: every one of those sites already wraps its request in a
+`try:` that degrades to a safe value, so the refusal lands in handling that
+exists, and a NEW caller that forgets to handle it fails loudly instead of
+reading the exception's value as a verdict.
+
+Two of those degrade paths needed a word that did not exist yet. The audit's
+verdict bucket is PASS / MISMATCH / UNVERIFIABLE, and "unverifiable" means *we
+read the source and could not tell*; a row the ceiling stopped us from reading
+is **DEFERRED**, and its accuracy percentage now says out loud that it is over a
+smaller sample than the one it drew. The spot-check's second pass deferring now
+exits 0, not 1: a budget decision must not redden CI.
+
+`tests/test_spend_brake_granularity.py` pins the property in the shape the
+defect had - per-item work making N calls per item cannot exceed its ceiling by
+more than one call's cost, for N in 1, 2, 3, 25, 40 - plus the two guards that
+matter more than the arithmetic: no paid call outside `metered_call`, and
+nothing metering by hand beside it. It also asserts the run gets *close* to its
+ceiling, because "never spend anything" satisfies an upper bound and is a
+throttle, not a brake.
+
+### The other half: `edgar-history-sweep` did not overshoot anything
+
+The $0.2721 run (31572141302, 2026-08-12) that `[2a]` called 36% over its
+ceiling was dispatched with `run_ceiling_usd: 0.40` - an authorised one-off
+override that its workflow offers **as an input, on purpose**, so a multi-month
+range does not need an edit to the named table. It spent $0.2721 of $0.40 and
+stopped when `BACKFILL_MAX_CALLS` said to. The guard-step line quoted as
+evidence ("none named for 'edgar-history-sweep' - global $0.20 default applies")
+is printed by `apply_job_ceiling()` *before* it looks at the override, and that
+run predates the job being named at all.
+
+So the ledger recorded a cost with no record of what it was allowed to spend,
+and `[2a]` supplied the missing number from the table - which is a brake failure
+report every time an operator makes a deliberate decision. `record_job_run()`
+now writes `ceiling_usd` (from `effective_run_ceiling_usd()`, the same
+resolution the brake uses) and `[2a]` judges each run against the ceiling **that
+run ran under**, falling back to the named one only for entries written before
+the field existed, and saying which basis it used. A false alarm in the one
+place that reports real overshoot is how real overshoot stops being read.
+
+**No ceiling value and no `MONTHLY_ALLOWANCE_USD` moved in this change.** The
+brake is a mechanism; the budget is the owner's.
 ## 2026-08-14 - the build stamp was an HTML comment, and comments do not reach readers (2.20.39)
 
 2.20.38 shipped the content-aware reader check: the plugin hashes its own files

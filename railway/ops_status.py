@@ -405,11 +405,30 @@ def _report_run_cost():
                 print(f"      {job:26} {len(entries):>4} {cost / window_days:>8.4f} "
                       f"{per_run:>8.4f} {(str(rows) if rows is not None else 'UNK'):>6} "
                       f"{per_row:>9}  {ceil_txt}")
-                worst = max(float(e.get("cost_usd") or 0) for e in entries)
-                if ceiling is not None and worst > ceiling * 1.25:
+                # Judge each run against the ceiling THAT RUN ran under, which
+                # its own ledger entry now records. A dispatch may carry an
+                # authorised ALT_RUN_CEILING_USD override (edgar-history-sweep
+                # offers one as a workflow input on purpose), and comparing
+                # that run to the table's named number reports a brake failure
+                # where an operator made a deliberate one-off decision. Entries
+                # written before ceiling_usd existed have no such record, so
+                # they fall back to the named ceiling — the old behaviour, and
+                # the reason the message says which basis it used.
+                worst, basis, recorded = None, ceiling, False
+                for e in entries:
+                    cost = float(e.get("cost_usd") or 0)
+                    own = e.get("ceiling_usd")
+                    ran_under = float(own) if own is not None else ceiling
+                    if ran_under is None or cost <= ran_under * 1.25:
+                        continue
+                    if worst is None or cost > worst:
+                        worst, basis, recorded = cost, ran_under, own is not None
+                if worst is not None:
+                    named = (" (the ceiling that run ran under)" if recorded else
+                             " (its named ceiling; that run recorded none)")
                     problems.append(
                         f"{job} spent ${worst:.3f} in one run, past its "
-                        f"${ceiling:.3f} named ceiling — the per-job brake is "
+                        f"${basis:.3f} ceiling{named} — the per-job brake is "
                         f"not holding")
             # Per-collector split, for entries that carry one (the Railway
             # cron posts its breakdown via /tracker-meta). This is the table

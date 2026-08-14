@@ -54,7 +54,14 @@ def _fetch_text(url):
 
 
 def _verify(row, text):
-    """Return PASS / MISMATCH / UNVERIFIABLE for a row against its source text."""
+    """Return PASS / MISMATCH / UNVERIFIABLE / DEFERRED for a row.
+
+    DEFERRED is not a verdict about the row: the per-run ceiling stopped us
+    before we asked, so nobody has read it. main() checks the brake once before
+    the sample is drawn, and that check cannot bound a loop that makes one paid
+    call per row — 40 of them by default, with the ceiling read exactly once.
+    The brake is inside spend.metered_call, at the call.
+    """
     if text is None:
         return "UNVERIFIABLE", "source could not be fetched (dead link or bot wall)"
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -75,13 +82,12 @@ def _verify(row, text):
             "Answer with the one word, then a short reason.\n\n"
             f"SOURCE:\n{text[:4000]}"
         )
-        resp = client.chat.completions.create(
+        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
             model="deepseek/deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
             temperature=0, max_tokens=80,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
-        )
-        spend.record_usage("deepseek/deepseek-chat", getattr(resp, "usage", None))
+        ), what=f"the source audit of row {row.get('id')}")
         ans = resp.choices[0].message.content.strip()
         head = ans.split()[0].upper() if ans else "UNCLEAR"
         if head.startswith("PASS"):
@@ -89,6 +95,12 @@ def _verify(row, text):
         if head.startswith("MISMATCH"):
             return "MISMATCH", ans[:140]
         return "UNVERIFIABLE", ans[:140]
+    except spend.PaidReadsOff as exc:
+        # NOT "UNVERIFIABLE". That word means we looked at the source and could
+        # not tell; this row was never read. Folding a budget stop into a
+        # verdict bucket would publish an accuracy percentage whose denominator
+        # includes rows nobody audited.
+        return "DEFERRED", str(exc)[:140]
     except Exception as exc:
         return "UNVERIFIABLE", f"audit error: {exc}"
 
@@ -156,12 +168,23 @@ def main():
         print("audit: no sampleable rows")
         return 0
     print(f"source-verification audit: {len(rows)} rows, {year}, seed {seed}")
-    tally = {"PASS": 0, "MISMATCH": 0, "UNVERIFIABLE": 0}
+    tally = {"PASS": 0, "MISMATCH": 0, "UNVERIFIABLE": 0, "DEFERRED": 0}
     mismatches = []
+    truncated = None
     for row in rows:
         text = _fetch_text(row.get("source_url"))
         verdict, reason = _verify(row, text)
         tally[verdict] += 1
+        if verdict == "DEFERRED":
+            # The ceiling tripped. Every remaining row would defer too, so stop
+            # fetching sources for questions we are not going to ask.
+            tally["DEFERRED"] = len(rows) - (tally["PASS"] + tally["MISMATCH"]
+                                             + tally["UNVERIFIABLE"])
+            truncated = (f"spend ceiling reached with {tally['DEFERRED']} of "
+                         f"{len(rows)} sampled row(s) unread")
+            print(f"  deferred spend ceiling reached — {tally['DEFERRED']} row(s) "
+                  f"unread; the next monthly run re-samples")
+            break
         mark = {"PASS": "  ok  ", "MISMATCH": "MISMATCH", "UNVERIFIABLE": "unverif "}[verdict]
         print(f"  {mark} id={row.get('id')} {str(row.get('company_name'))[:26]:<28} "
               f"{row.get('job_count')} {row.get('layoff_date')}  {reason[:60]}")
@@ -171,6 +194,12 @@ def main():
     acc = (100.0 * tally["PASS"] / verifiable) if verifiable else 0.0
     summary = (f"{tally['PASS']}/{verifiable} verifiable rows matched their source "
                f"= {acc:.1f}% ({tally['UNVERIFIABLE']} unverifiable: dead link / bot wall)")
+    if tally["DEFERRED"]:
+        # Said in the same sentence as the percentage, because the percentage is
+        # over a SMALLER sample than the one this run drew and a reader who does
+        # not know that will read it as the month's full audit.
+        summary += (f"; {tally['DEFERRED']} of {len(rows)} sampled row(s) were "
+                    f"NOT read (spend ceiling), so this is a partial audit")
     print("\nAUDIT RESULT:", summary)
 
     report_source_health("source_audit", "degraded" if mismatches else "ok",
@@ -189,7 +218,11 @@ def main():
                f"Monthly source-verification audit passed.\n\n{summary}\n\nNo mismatches. "
                f"This is the number you can publish: the tracker audits itself and every "
                f"sampled row still matches its source.")
-    spend.record_job_run(items=len(rows), changed=len(mismatches))
+    # `items` is rows actually READ, not rows sampled: a deferred row cost
+    # nothing and reporting it would divide this run's spend over work nobody
+    # paid for.
+    spend.record_job_run(items=len(rows) - tally["DEFERRED"],
+                         changed=len(mismatches), truncated=truncated)
     return 0
 
 

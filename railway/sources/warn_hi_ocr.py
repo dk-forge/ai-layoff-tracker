@@ -264,11 +264,10 @@ def _llm_affected_count(text: str):
     try:
         import spend
         from extractor import _get_client, _parse_json_response, MODEL
-        resp = _get_client().chat.completions.create(
+        resp = spend.metered_call(MODEL, lambda: _get_client().chat.completions.create(
             model=MODEL, max_tokens=40, temperature=0,
             messages=[{"role": "user", "content": prompt}],
-        )
-        spend.record_usage(MODEL, getattr(resp, "usage", None))
+        ), what="a Hawaii WARN OCR count read")
         data = _parse_json_response(resp.choices[0].message.content or "")
     except Exception as exc:
         return 0, f"llm_error({str(exc)[:40]})"

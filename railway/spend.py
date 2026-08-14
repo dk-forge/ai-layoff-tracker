@@ -818,6 +818,78 @@ def paid_reads_enabled() -> bool:
 
 
 # --------------------------------------------------------------------------
+# The brake belongs at the CALL boundary, not at the item boundary
+# --------------------------------------------------------------------------
+#
+# `paid_reads_enabled()` is exact and it is cheap, and for a long time the only
+# rule about it was "check it before you spend". That left every caller to
+# decide WHERE, and the answer kept being "once per item" -- once per event,
+# once per cluster, once per audited row, once at the top of main(). An item is
+# not a call: the AI-evidence sweep asks the model up to two questions per
+# candidate TEXT and pulls an unbounded number of texts per event, so a gate
+# read once per event let the last event overshoot by a whole event's worth of
+# calls (measured 2026-08-11, run 31516262943: $0.0166 against a $0.015
+# ceiling, ~36 calls past the line). The monthly-audit script checked once in
+# main() and then made forty calls with no brake between them at all.
+#
+# The bound a per-run ceiling can actually promise is ONE CALL of overshoot:
+# the meter can only learn what a call cost after it is charged. So the check
+# has to sit immediately before the request, and the only way to keep it there
+# as new callers arrive is to make the request and the meter the same function.
+# `metered_call()` is that function: nothing between the gate and the POST, and
+# `record_usage()` right after, so a caller cannot spend without checking and
+# cannot check without metering.
+#
+# It RAISES rather than returning a sentinel. Every paid call site in this repo
+# already wraps its request in a `try:` that degrades to a safe value (extractor
+# defers the row, the sweep returns "not asked", the audit returns
+# UNVERIFIABLE), so a raise lands in handling that already exists, and a NEW
+# caller that forgets to handle it fails loudly instead of silently reading the
+# exception's value as a verdict.
+
+
+class PaidReadsOff(RuntimeError):
+    """This call was NOT made: the per-run ceiling, the monthly cap, or an
+    explicit ALT_PAID_READS=off says not to spend right now.
+
+    Not an error condition. The candidate is undecided, not decided-negative:
+    callers must leave the row queued and unmarked so a later run reads it.
+    """
+
+
+def _usage_of(response):
+    """The usage block of a completion response, SDK object or raw JSON dict.
+    `record_usage()` reads both shapes; this just finds it either way."""
+    if isinstance(response, dict):
+        return response.get("usage")
+    return getattr(response, "usage", None)
+
+
+def metered_call(model: str, make_call, *, what: str | None = None,
+                 usage_of=None):
+    """Make ONE paid model call under the per-run brake, and meter it.
+
+    `make_call` is a zero-argument callable that performs exactly one request
+    and returns the response (an OpenAI SDK object or the parsed JSON dict).
+    One call per invocation is the whole point: a callable that loops, or that
+    retries internally, puts several charges behind one gate check and is the
+    defect this function exists to remove. Retry by calling this again.
+
+    Raises PaidReadsOff BEFORE the request when paid reads are off. Anything
+    `make_call` itself raises propagates unchanged, so existing per-call error
+    handling is untouched.
+    """
+    if not paid_reads_enabled():
+        raise PaidReadsOff(
+            f"paid reads are OFF (per-run ceiling "
+            f"${effective_run_ceiling_usd():.3f} or the monthly cap); "
+            f"{what or 'this call'} was not made and nothing is decided by it")
+    response = make_call()
+    record_usage(model, (usage_of or _usage_of)(response))
+    return response
+
+
+# --------------------------------------------------------------------------
 # A truncated run is not a clean run
 # --------------------------------------------------------------------------
 #
@@ -1231,6 +1303,18 @@ def record_job_run(items: int | None = None, stored: int | None = None,
         "items": items,
         "stored": stored,
         "changed": changed,
+        # The ceiling this run ACTUALLY ran under, resolved the same way the
+        # brake resolves it. Without this the ledger records a cost and a
+        # reader has to guess which ceiling to judge it against, so an
+        # AUTHORISED one-dispatch override (ALT_RUN_CEILING_USD, which
+        # edgar-history-sweep's workflow offers by design) reads afterwards as
+        # a brake that failed: run 31572141302 spent $0.2721 under an operator's
+        # explicit $0.40 and ops_status.py [2a] reported it against the named
+        # $0.150 as "the per-job brake is not holding". A run judged against a
+        # ceiling it was never given is a false alarm, and a false alarm in the
+        # one place that reports real overshoot is how real overshoot stops
+        # being read.
+        "ceiling_usd": round(effective_run_ceiling_usd(), 6),
     }
     # A run stopped early is not a run that finished. `complete` is always
     # written, both ways, so a reader never has to infer completeness from the

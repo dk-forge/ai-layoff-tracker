@@ -155,19 +155,27 @@ def request_json(url, payload=None, headers=None, attempts=3, timeout=120):
 
 
 def ask_model(prompt):
+    """One metered model call. Raises spend.PaidReadsOff if the brake is on.
+
+    main() checks the brake once, before the sample is drawn, and this function
+    is called TWICE per run (the flag pass and the confirm pass). One check
+    cannot bound two calls, and request_json retries inside itself, so the gate
+    goes through spend.metered_call where it is re-read per request.
+    """
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if not key:
         raise RuntimeError("OPENROUTER_API_KEY is not configured")
-    response = request_json(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {"model": "deepseek/deepseek-chat", "messages": [{"role": "user", "content": prompt}],
-         "response_format": {"type": "json_object"}},
-        # This is an advisory daily sample, not a batch job. Keep its outage
-        # budget bounded so a slow provider cannot hold the whole report open.
-        {"Authorization": "Bearer " + key}, attempts=2, timeout=45,
-    )
-    spend.record_usage(response.get("model") or "deepseek/deepseek-chat",
-                       response.get("usage"))
+    response = spend.metered_call(
+        "deepseek/deepseek-chat",
+        lambda: request_json(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {"model": "deepseek/deepseek-chat", "messages": [{"role": "user", "content": prompt}],
+             "response_format": {"type": "json_object"}},
+            # This is an advisory daily sample, not a batch job. Keep its outage
+            # budget bounded so a slow provider cannot hold the whole report open.
+            {"Authorization": "Bearer " + key}, attempts=2, timeout=45,
+        ),
+        what="a classification spot-check question")
     try:
         content = response["choices"][0]["message"]["content"]
         content = content[content.find("{"):content.rfind("}") + 1]
@@ -336,6 +344,12 @@ def main():
                   "— empty flags list if everything is reasonable. Only flag CLEAR mismatches, not debatable ones.\n\n"
                   + json.dumps(sample, ensure_ascii=False))
         flags = ask_model(prompt).get("flags", [])
+    except spend.PaidReadsOff as exc:
+        summary("## Classification spot-check — deferred by the spend ceiling\n"
+                "The data-quality report completed; the advisory model audit was "
+                "NOT run (`" + str(exc) + "`). Nothing was judged, so nothing here "
+                "is a finding about the corpus. It resumes on the next schedule.")
+        return 0
     except Deadline as exc:
         # Finish cleanly with what we have and say what was skipped: the
         # advisory audit is re-run on its next schedule, and an audit that was
@@ -410,6 +424,16 @@ def main():
         applied = result.get("edited", [])
         summary(f"**Auto-applied {len(applied)} re-checked label fix(es)** on entries below "
                 f"{AUTO_APPLY_MAX_JOBS:,} jobs — disclosed in the public corrections log.")
+        return 0
+    except spend.PaidReadsOff as exc:
+        # Exit 0, not 1: the ceiling stopping the SECOND pass means the flags
+        # were never confirmed, so nothing is applied and nothing is wrong. A
+        # budget decision must not redden CI.
+        summary("## Classification spot-check — confirmation deferred by the spend ceiling\n"
+                f"{len(label_flags)} proposed label change(s) were flagged but NOT "
+                "confirmed (`" + str(exc) + "`), so none were applied. A single-pass "
+                "flag is not a finding. The next run re-samples.")
+        clear_hold_alert()
         return 0
     except Exception as exc:
         summary("## Classification spot-check — correction failure\n"
