@@ -1,5 +1,43 @@
 # Tech Log
 
+## 2026-08-14 - regional feeds: the long tail gets a route that fits the budget (2.20.40)
+
+**Five regional publishers' RSS feeds now feed discovery for ~50 low-volume
+countries** (`railway/sources/regional_feeds.py`, wired into `cron.py` beside
+local_news): RNZ Pacific + Pacific Island Times (Pacific islands), Financial
+Afrik + Jeune Afrique (Francophone Africa, French vocabulary), Caribbean News
+Global (Caribbean, ships full article text in `content:encoded`). Discovery
+only: no country is ever pre-assigned from the feed; the extractor rules on
+the article text, same pipeline, same aggregator exclusion (imported from
+local_news, ONE definition).
+
+**Every candidate was probed live first, and half failed.** PACNEWS/PINA's
+/feed/ answers 200 with a single "Sorry, You Don't Have Feed Access" item.
+Loop News has broken TLS on every probed host (www cert expired, caribbean
+subdomain name-mismatch). Marianas Variety and Balkan Insight both carry
+`User-agent: * Disallow: /` in robots.txt - respected, off limits. ABC Pacific
+has no machine-readable feed (topic RSS 404s, `/news/feed/<id>` serves other
+desks). Financial Afrik is wired with a stated ceiling: descriptions are a
+members-only teaser, so ONLY the headline is free text and an event whose
+headcount never reaches the headline is lost.
+
+**Priced and ARMED by committed default** (`ARMED_BY_DEFAULT` in the module,
+`REGIONAL_FEEDS=off` disarms without a deploy): measured 97 items/day across
+the five feeds with 0 candidates passing the filter on wiring day; worst case
+if EVERY item were a fresh candidate is $0.52/month, and `MAX_PER_FEED=10`
+independently caps it at $0.95/month. Well under the ~$1 bar the owner set for
+default arming inside the ~$10 layoff budget.
+
+**Fail-loud shape:** no candidate floor (a Pacific feed honestly keeps 0 most
+weeks) but a feed-level floor - non-200, timeout, or a 200 whose body is no
+longer an RSS document counts an error, sets `last_error`, and cron degrades
+the `regional_feeds` health row. `tests/test_regional_feeds.py` (23 tests, red
+before green) pins the request URLs against the feed table, the fixtures in
+each feed's real shape with the headcount surviving to `raw_text`, the
+aggregator guard, both arming directions, and the cap. Sources page +
+health.js labels updated same session; staleness ceiling 2d in ops_status +
+health_digest (parity-tested).
+
 ## 2026-08-14 - the January 42,000 was never January, and 17 corrections went through the sign-off path
 
 **The US 2026 headline moved DOWN 42,000 jobs on purpose.** Two rows that were

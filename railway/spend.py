@@ -197,6 +197,9 @@ SIBLING_ALLOWANCE_USD = 8.0          # talent-intelligence-tracker, same literal
 # priced at $5.14/month for 25 markets capped at 12 candidates each, and it is
 # the reason the raise happened: 142 countries held nothing because every
 # search phrase was English, and the fix costs money per candidate article.
+# The regional feeds (sources/regional_feeds.py, 2026-08-14) ride the same
+# discretionary slice at a cap-bound worst case of $0.95/month (measured pass
+# rate on wiring day: 0 of 97 items), so 4.92 + 5.14 + 0.95 still fits.
 #
 # THIS NUMBER IS STILL INTERIM, and the word is load-bearing. It rests on
 # eleven days of this repo's ledger and one clean day of the sibling's. It is
