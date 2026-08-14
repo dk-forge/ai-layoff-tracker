@@ -30,7 +30,10 @@ import time
 import requests
 
 import host_call
-from extractor import extract_role_categories, CreditsExhaustedError
+from extractor import (
+    extract_role_categories, CreditsExhaustedError,
+    spend_deferral_count, spend_deferred_since,
+)
 import spend
 from reclassify_legacy_ai import UA
 
@@ -81,6 +84,7 @@ def main():
             print("No rows pending role-category extraction")
             return 0
         items, checked, stated, model_failures = [], 0, 0, 0
+        deferred = 0
         started_at = time.monotonic()
         for row in rows:
             # Stopping between rows changes no fact; unchecked rows simply
@@ -88,13 +92,29 @@ def main():
             if time.monotonic() - started_at >= DEADLINE_SECONDS:
                 print(f"Reached ROLES_DEADLINE_SECONDS={DEADLINE_SECONDS}; stopping safely after {checked} row(s)")
                 break
+            if not spend.paid_reads_enabled():
+                # "No discretionary headroom left in the month" is the guard
+                # working, not the model failing. These rows were never read,
+                # so they stay queued and a later run reads them; counting them
+                # as model failures used to exit 1 and page the owner.
+                deferred = len(rows) - checked
+                print(f"paid reads are OFF for budget: deferring the remaining "
+                      f"{deferred} row(s) unread to a later run")
+                break
             checked += 1
             passage = build_passage(row)
             if not passage:
                 # The queue filter requires stored text, so this is defensive.
                 items.append({"id": row["id"], "categories": ["unknown"], "evidence": ""})
                 continue
+            before = spend_deferral_count()
             result = extract_role_categories(passage)
+            if result is None and spend_deferred_since(before):
+                checked -= 1
+                deferred = len(rows) - checked
+                print(f"paid reads went off mid-row: deferring {deferred} "
+                      f"unread row(s) to a later run")
+                break
             if result is None:
                 # Model/parse failure: leave the row queued rather than
                 # mislabelling a transient outage as "roles not stated".
@@ -117,14 +137,24 @@ def main():
             rejected = len(result.get("rejected", []))
         detail = (
             f"queue={payload.get('total', 0)} checked={checked} stated={stated} "
-            f"marked_unknown={marked_unknown} rejected={rejected} model_failures={model_failures}"
+            f"marked_unknown={marked_unknown} rejected={rejected} "
+            f"model_failures={model_failures} deferred_on_spend={deferred}"
         )
         report_health("ok", updated, detail)
         print(f"{detail} updated={updated}")
+        if deferred:
+            spend.note_truncated(f"{deferred} row(s) left unread: paid reads "
+                                 f"were off for budget")
+            print(f"::notice::enrich-roles SKIPPED {deferred} row(s) for "
+                  f"budget. Nobody read them, they stay queued, and a later "
+                  f"run reads them. This run exits 0.")
         spend.record_job_run(items=checked, changed=updated)
         host_call.clear(JOB)
         # A run where every attempted row failed at the model must be a
         # visible failure, not a quiet no-op that looks like a clean pass.
+        # `checked` counts rows a model was actually ASKED about: deferred rows
+        # are excluded above, so a budget stop exits 0 and a real model outage
+        # still exits 1.
         return 1 if checked and model_failures == checked else 0
     except host_call.Deferred as exc:
         # The host never answered. Nothing was marked, so the identical queue

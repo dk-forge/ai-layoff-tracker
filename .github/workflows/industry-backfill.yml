@@ -108,6 +108,14 @@ jobs:
           OPENROUTER_TIMEOUT_SECONDS: '35'
         # Data-changing jobs fail loudly: a rejected label (vocabulary drift),
         # a health-write failure, or a fully failed model pass exits non-zero.
+        #
+        # A BUDGET STOP IS NOT ONE OF THOSE. This wrapper only ever sees a
+        # non-zero exit, so it is exactly as honest as the script under it, and
+        # on 2026-08-13 the script told it 200 budget stops were 200 model
+        # failures: three retries and an ::error:: over a run where the guard
+        # had worked. The script now reports those as DEFERRED and exits 0, so
+        # they are not retried and do not page; the tee puts the SKIPPED line in
+        # the run summary. A real model outage still reddens this step.
         run: |
           set -o pipefail
           cd railway

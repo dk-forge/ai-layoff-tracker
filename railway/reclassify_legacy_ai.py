@@ -24,7 +24,9 @@ import time
 import requests
 
 import host_call
-from extractor import classify_ai_evidence
+from extractor import (
+    classify_ai_evidence, spend_deferral_count, spend_deferred_since,
+)
 import spend
 
 #: Ledger key. Must match the `job:` given to the commit-deferral-ledger step.
@@ -95,6 +97,7 @@ def _run():
         print("No legacy AI rows pending reclassification")
         return 0
     updates, unreadable, model_failures, blocked, empty = [], 0, 0, 0, 0
+    deferred = 0
     started_at = time.monotonic()
     checked = 0
     for row in rows:
@@ -102,6 +105,14 @@ def _run():
         # row is therefore safe and lets the next daily run resume the queue.
         if time.monotonic() - started_at >= DEADLINE_SECONDS:
             print(f"Reached RECLASSIFY_DEADLINE_SECONDS={DEADLINE_SECONDS}; stopping safely after {checked} row(s)")
+            break
+        if not spend.paid_reads_enabled():
+            # Budget stop, not an outage: these rows were never read, they are
+            # unmarked, and a later run reads them. Counting them as model
+            # failures is what let a thrifty run exit 1 and page the owner.
+            deferred = len(rows) - checked
+            print(f"paid reads are OFF for budget: deferring the remaining "
+                  f"{deferred} row(s) unread to a later run")
             break
         checked += 1
         try:
@@ -111,7 +122,15 @@ def _run():
                 # A property of the page, not a failure of this job.
                 empty += 1
                 continue
+            before = spend_deferral_count()
             result = classify_ai_evidence(text)
+            if not result and spend_deferred_since(before):
+                # Nobody read this row. Not checked, not failed.
+                checked -= 1
+                deferred = len(rows) - checked
+                print(f"paid reads went off mid-row: deferring {deferred} "
+                      f"unread row(s) to a later run")
+                break
             if not result:
                 model_failures += 1
                 continue
@@ -132,14 +151,23 @@ def _run():
         result = post_updates(updates)
         print(f"reclassified={len(result.get('updated', []))} rejected={len(result.get('rejected', []))}")
     print(f"checked={checked} queued={len(updates)} blocked={blocked} empty={empty} "
-          f"unreadable={unreadable} model_failures={model_failures}")
+          f"unreadable={unreadable} model_failures={model_failures} "
+          f"deferred_on_spend={deferred}")
+    if deferred:
+        spend.note_truncated(f"{deferred} row(s) left unread: paid reads were "
+                             f"off for budget")
+        print(f"::notice::reclassify-legacy-ai SKIPPED {deferred} row(s) for "
+              f"budget. Nobody read them, they are UNMARKED, and a later run "
+              f"reads them. This run exits 0.")
     spend.record_job_run(items=checked, changed=len(updates))
     # A total failure should be visible in Actions rather than silently looking
     # like a successful historical clean-up.
     # Fail only on a REAL breakage: nothing written AND every row we could
     # actually attempt failed transiently. Publisher-blocked rows are excluded,
     # because a batch that happens to contain only bot-walled URLs is not an
-    # outage and must not page the owner.
+    # outage and must not page the owner. Neither is a budget stop: `checked`
+    # counts only rows a model was actually ASKED about, so deferred rows never
+    # reach this arithmetic.
     attempted = checked - blocked - empty
     return 1 if (not updates and attempted >= MIN_ATTEMPTED_FOR_ALARM
                  and unreadable + model_failures == attempted) else 0

@@ -167,7 +167,13 @@ class WritesSurviveTheDeadline(unittest.TestCase):
         patches = {
             "fetch_candidates": lambda stop=None: ([erm], 1, False),
             "classify_reason_tags": fake_classify,
-            "spend": SimpleNamespace(record_job_run=lambda **kw: None),
+            # paid_reads_enabled/note_truncated: the model loop now asks the
+            # budget guard before each row so a budget stop is reported as
+            # DEFERRED rather than as a model failure. This test is about the
+            # deadline, so the guard always says yes.
+            "spend": SimpleNamespace(record_job_run=lambda **kw: None,
+                                     paid_reads_enabled=lambda: True,
+                                     note_truncated=lambda reason: None),
             "report_source_health": lambda *a, **k: True,
             "DRY_RUN": False,
             "SITE": "https://example.invalid/blog",
