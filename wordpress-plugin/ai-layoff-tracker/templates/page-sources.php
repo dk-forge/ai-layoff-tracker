@@ -122,10 +122,10 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>Local-language market sweep</b><br><span class="alt-muted">Built, not switched on</span></td><td>25 markets configured</td>
-        <td>Searches each market in its own words rather than in English. An English query put to a German or Spanish edition returns the worldwide English feed, not that country's news. So this sweep carries a phrase set written per language and per market. A free locality check runs before any article is read by a model, so foreign stories are dropped rather than paid for. <b>Built and tested but deliberately switched off</b>: it collects nothing until it is turned on, market by market. Layoff tracker products and compiled tallies are excluded by design; only individual reporting is ever read.</td>
-        <td>Not collecting yet</td>
-        <td><span class="alt-muted">No data collected</span></td>
+        <td><b>Local-language market sweep</b></td><td>25 markets, in their own languages</td>
+        <td>Searches each market in its own words rather than in English, twice daily. An English query put to a German or Spanish edition returns the worldwide English feed, not that country's news. So this sweep carries a phrase set written per language and per market, from German, French and Spanish to Arabic, Russian, Turkish and Ukrainian. A free locality check runs before any article is read by a model, so foreign stories are dropped rather than paid for. Layoff tracker products and compiled tallies are excluded by design; only individual reporting is ever read.</td>
+        <td>Verified (named report)</td>
+        <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
       <tr>
         <td><b>Regional news feeds</b><br><span class="alt-muted">Pacific · Francophone Africa · Caribbean</span></td><td>~50 low-volume countries</td>

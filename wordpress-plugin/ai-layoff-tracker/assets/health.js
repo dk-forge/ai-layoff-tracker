@@ -31,7 +31,7 @@
     news_catchup: ['Weekly catch-up sweep of credible outlets (fills weekend gaps)', 'Weekly', 'Worldwide', 'Licensed news API'],
     data_integrity: ['Live data-integrity guards: known duplicates count once, no single row carries a headline, no headline moves without rows to explain it', 'Daily', 'Internal QA', 'Read-only assertions against the public API'],
     google_news: ['Free worldwide layoff-headline discovery (no key)', 'Twice daily', 'Worldwide', 'Google News RSS'],
-    local_news: ['Local-language market sweep, searching each market in its own words. Built and tested, deliberately not switched on, so it collects nothing yet', 'Not collecting yet', '25 markets configured', 'Google News national editions'],
+    local_news: ['Local-language market sweep, searching each market in its own words', 'Twice daily', '25 markets', 'Google News national editions'],
     regional_feeds: ['Regional news feeds covering low-volume countries: RNZ Pacific, Pacific Island Times, Financial Afrik, Jeune Afrique, Caribbean News Global', 'Twice daily', 'Pacific · Francophone Africa · Caribbean', 'Publisher RSS feeds'],
     gdelt: ['Worldwide multilingual news discovery', 'Twice daily', 'Worldwide', 'Open news-index API'],
     gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],
