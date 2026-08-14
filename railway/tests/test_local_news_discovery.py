@@ -14,6 +14,7 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -255,18 +256,72 @@ class AggregatorExclusionTests(unittest.TestCase):
         self.assertTrue(ln.is_aggregator("http://[::bad::]/x"))
 
 
-class DormancyTests(unittest.TestCase):
-    def test_unset_arming_variable_makes_no_request_and_returns_nothing(self):
+class TheRequestCarriesTheLocalLanguage(unittest.TestCase):
+    """The original defect was editions requested with English-only phrases,
+    and the 2026-08-14 review proved it could silently return: a mutation
+    deleting `q` from the request URL passed this suite with 0 failures,
+    because no test read what the collector actually asked for. This one does.
+    """
+
+    def test_every_armed_market_asks_in_its_own_words(self):
         calls = []
 
         def fetch(url):
             calls.append(url)
             return 200, rss()
 
-        with patch.dict(os.environ, {"LOCAL_NEWS_COUNTRIES": ""}, clear=False):
+        with patch.dict(os.environ, {"LOCAL_NEWS_COUNTRIES": "all"},
+                        clear=False):
+            ln.pull_local_news(fetch=fetch)
+
+        self.assertTrue(calls, "an armed run made no request at all")
+        for url in calls:
+            self.assertIn(
+                "q=", url,
+                "a discovery request carries no query at all - the English-only "
+                "defect's silent-return shape (review 2026-08-14)")
+
+        # The load-bearing half: a known market's own vocabulary appears in
+        # the requests, URL-encoded. Switzerland is the canary because it is
+        # the market whose one-entry-ever state exposed the original defect.
+        swiss = [u for u in calls if "gl=CH" in u]
+        self.assertTrue(swiss, "Switzerland was armed and never requested")
+        self.assertTrue(
+            any("Stellenabbau" in unquote(u) for u in swiss),
+            "the Swiss requests never ask for 'Stellenabbau' - the edition is "
+            "being requested with someone else's vocabulary, which is the "
+            "exact defect this collector exists to fix")
+
+
+class DormancyTests(unittest.TestCase):
+    """The arming default flipped on 2026-08-14: the owner authorized all 25
+    markets against a stated ~$10/month layoff-side budget ($4.92 committed +
+    $5.14 for these at cap). Unset now means ARMED_BY_DEFAULT; the off switch
+    is the explicit string 'off'. Both directions are pinned, because the
+    dangerous drift runs both ways: a default that quietly disarms loses 25
+    markets without a diff, and an off switch that quietly stops working makes
+    every dry run a paid run."""
+
+    def test_off_makes_no_request_and_returns_nothing(self):
+        calls = []
+
+        def fetch(url):
+            calls.append(url)
+            return 200, rss()
+
+        with patch.dict(os.environ, {"LOCAL_NEWS_COUNTRIES": "off"}, clear=False):
             rows, stats = ln.pull_local_news(fetch=fetch)
         self.assertEqual(rows, [])
         self.assertEqual(calls, [], "a DORMANT collector made a network request")
+
+    def test_unset_arms_every_wired_market_by_committed_default(self):
+        with patch.dict(os.environ, {"LOCAL_NEWS_COUNTRIES": ""}, clear=False):
+            armed = ln.armed_countries()
+        self.assertEqual(
+            sorted(armed), sorted(ln.COUNTRIES),
+            "the committed default no longer arms every wired market - if that "
+            "is a deliberate narrowing, it belongs in ARMED_BY_DEFAULT's "
+            "comment with the owner's date, not in a silent drift")
 
     def test_arming_one_country_arms_only_that_country(self):
         with patch.dict(os.environ, {"LOCAL_NEWS_COUNTRIES": "Chile"}, clear=False):
