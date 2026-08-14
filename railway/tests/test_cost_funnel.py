@@ -237,6 +237,14 @@ class CronWiringTests(unittest.TestCase):
                  "source_url": "https://x.test/1", "source_type": "news",
                  "source_name": "Example Wire"}
         posted = []
+        # EVERY source in cron.run()'s table must be stubbed here, including
+        # any added later. When local_news was armed by committed default
+        # (2026-08-14, 4931498) this harness did not stub it, so each of these
+        # five tests ran a REAL 25-market, 87-query Google News RSS pull with a
+        # 1s pacing sleep per query - about 90s per test when the RSS answered
+        # instantly and unbounded when it throttled. Four Tests runs
+        # self-cancelled on the 15-minute ceiling that afternoon; the suite
+        # itself was ~6 minutes. The workflow's contract is offline and fast.
         with patch.object(cron, "GATE_MODE", gate_mode), \
              patch.object(cron, "_mark_phase"), \
              patch.object(cron, "_spend_preflight"), \
@@ -244,6 +252,7 @@ class CronWiringTests(unittest.TestCase):
              patch.object(cron, "_post_spend_record") as post_rec, \
              patch.object(cron, "pull_edgar_filings", return_value=[]), \
              patch.object(cron, "pull_google_news", return_value=[entry]), \
+             patch.object(cron, "_pull_local_news_rows", return_value=[]), \
              patch.object(cron, "pull_press_releases", return_value=[]), \
              patch.object(cron, "reviewed_feed_count", return_value=1), \
              patch.object(cron, "pull_gdelt_between", return_value=[]), \
