@@ -1,5 +1,53 @@
 # Tech Log
 
+## 2026-08-14 - the build stamp was an HTML comment, and comments do not reach readers (2.20.39)
+
+2.20.38 shipped the content-aware reader check: the plugin hashes its own files
+at render time and the rendered body carries the answer, so the 2.20.21 shape
+(new version string wrapped around an old body) becomes detectable. The
+mechanism is right. The **carrier was not**, and the very first deploy that used
+it failed on its own check.
+
+**What the run said.** Deploy 31778531198, the merge of 2.20.38. The FTPS upload
+succeeded, the API verified, and `Verify the deploy has reached READERS` failed
+after 600s. Its log is the whole diagnosis:
+
+- `origin is coherent at 2.20.38/af2cbcb833bc5948 (1s)` — the origin had the
+  bytes and `/status` said so.
+- `reader view is 2.20.37/None` for the first 484s, then `2.20.38/None` to the
+  end. The version reached readers. **The stamp never did, from any build.**
+
+`None` on both sides of the version flip is the tell. A cache serving a stale
+page would have served a stale STAMP, not no stamp.
+
+**Measured, not guessed.** Fetched the live page with a browser UA, bare and
+again with a cache buster. `id="alt-active-filters"` is served both ways. The
+comment written directly above it in `templates/page-tracker.php`
+(`<!-- Active-filter summary`) is served neither way, and neither is
+`<!-- Hidden state holders`. Three comments survive in 416KB of HTML and all
+three are WP-Super-Cache's own, appended after the fact. Something in front of
+the rendered body strips HTML comments. The stamp was never in the page to be
+cached.
+
+**The fix is the carrier, not the check.** `alt_build_stamp_comment()` now emits
+the comment AND a `<span class="alt-build" hidden data-alt-build="...">` from
+the same call, in the same render, still once per request. An element is not
+something a minifier is free to drop. `reader_freshness.py` reads either and
+requires them to AGREE: two carriers naming two builds collapse to `None`
+exactly as two disagreeing comments already did, so neither carrier can cast a
+deciding vote about a half-rendered page.
+
+`build-stamp.php` escapes with a `preg_replace` whitelist rather than
+`esc_attr()`. The file is required before the rest of the plugin and is
+deliberately WP-independent so it can answer during the mid-upload request it
+exists to describe; reaching for a WP function there fatals the page instead of
+stamping it. Neither value is user input and the whitelist is narrower than
+`esc_attr` anyway.
+
+No bound and no timeout moved. `tests/test_deploy_reaches_readers.py` pins the
+element carrier, the agreement rule, and the PHP-emits-what-Python-reads pair,
+so a tidy-up of either half cannot quietly restore comment-only.
+
 ## 2026-08-13 - the WARN review sheet, and one adjudication mechanism instead of two (railway + docs, no deploy)
 
 **Why.** The set above reports 99/100 and 33/33 with **zero editor-confirmed**.
