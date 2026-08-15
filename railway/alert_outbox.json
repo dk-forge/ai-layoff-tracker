@@ -17,6 +17,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "deploy-wordpress-plugin:main:9d5276030025b73c",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-15T07:23:31+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "payload": {
+        "body": "The workflow 'Deploy WordPress plugin' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Deploy WordPress plugin\n  branch:   main\n  trigger:  push\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025\n\nWHAT FAILED:\n  json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Deploy WordPress plugin' is failing on main with: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0). The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "deploy-wordpress-plugin:main:9d5276030025b73c",
+        "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+      },
+      "raised_at": "2026-08-15T07:23:31+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025",
+      "scope": "deploy-wordpress-plugin:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -238,6 +254,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-15T07:22:30+00:00",
+  "updated_at": "2026-08-15T07:23:31+00:00",
   "version": 1
 }
