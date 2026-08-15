@@ -33,6 +33,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "self-heal:main:1c2949974c27b624",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-15T07:24:13+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "payload": {
+        "body": "The workflow 'Self-heal' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Self-heal\n  branch:   main\n  trigger:  workflow_run\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785\n\nWHAT FAILED:\n  Action failed with error: Could not fetch an OIDC token. Did you remember to add `id-token: write` to your workflow permissions?\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Self-heal' is failing on main with: Action failed with error: Could not fetch an OIDC token. Did you remember to add `id-token: write` to your workflow permissions?. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "self-heal:main:1c2949974c27b624",
+        "subject": "CI RED: Self-heal \u2014 Action failed with error: Could not fetch an OIDC token. Did you remember to add `id-token: write` to your workflow permissions?"
+      },
+      "raised_at": "2026-08-15T07:24:13+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785",
+      "scope": "self-heal:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -254,6 +270,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-15T07:23:31+00:00",
+  "updated_at": "2026-08-15T07:24:13+00:00",
   "version": 1
 }
