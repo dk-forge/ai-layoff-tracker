@@ -106,6 +106,41 @@ function alt_digest_valid_freq($f) {
     return in_array($f, array('daily', 'weekly'), true) ? $f : 'weekly';
 }
 
+/**
+ * The window a row must not already have been sent inside, in seconds.
+ *
+ * Slightly under the nominal period on purpose. A job that ran at 13:00:04
+ * yesterday and 12:59:58 today is the same daily cadence, and a strict 24
+ * hours would silently skip that person every other day.
+ */
+function alt_digest_period_seconds($freq) {
+    return $freq === 'daily' ? 20 * HOUR_IN_SECONDS : 6 * DAY_IN_SECONDS;
+}
+
+/**
+ * Who is due for this tier, as ONE definition used by BOTH senders.
+ *
+ * Confirmed, consented to a list at this frequency, and not already sent to
+ * inside the current period. That last clause is what makes two senders safe:
+ * the built in wp_mail cron and the external relay (includes/digest-api.php)
+ * read this same function, so even if both ran in the same minute nobody
+ * receives two copies. A row is due, is sent, is stamped, and is then not due.
+ *
+ * A 'bounced' row is not confirmed, so a dead mailbox drops out here without
+ * any sender needing to know the concept exists.
+ */
+function alt_digest_due_rows($freq) {
+    global $wpdb;
+    $table = alt_subscribers_table();
+    $cutoff = gmdate('Y-m-d H:i:s', time() - alt_digest_period_seconds($freq));
+    return $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table WHERE status = 'confirmed'
+           AND ((consent_layoff = 1 AND freq_layoff = %s)
+             OR (consent_talent = 1 AND freq_talent = %s))
+           AND (last_sent_at IS NULL OR last_sent_at < %s)",
+        $freq, $freq, $cutoff), ARRAY_A) ?: array();
+}
+
 function alt_digest_get_by_email($email) {
     global $wpdb;
     return $wpdb->get_row($wpdb->prepare(
@@ -771,6 +806,13 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
 function alt_digest_send($freq) {
     global $wpdb;
     $freq = alt_digest_valid_freq($freq);
+    // An external relay claimed this tier recently, so it is the sender and
+    // this one stands down. The claim ages out (ALT_DIGEST_CLAIM_HOURS), so a
+    // relay that stops running hands sending back here by itself rather than
+    // leaving the list silent. See includes/digest-api.php.
+    if (function_exists('alt_digest_external_active') && alt_digest_external_active($freq)) {
+        return array(0, 0);
+    }
     if (!alt_subscribers_table_ready()) return array(0, 0);
     $table = alt_subscribers_table();
 
@@ -800,10 +842,7 @@ function alt_digest_send($freq) {
         // add a sender here without an actual editorial pipeline behind it.
     );
 
-    $rows = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table WHERE status = 'confirmed'
-           AND ((consent_layoff = 1 AND freq_layoff = %s)
-             OR (consent_talent = 1 AND freq_talent = %s))", $freq, $freq), ARRAY_A) ?: array();
+    $rows = alt_digest_due_rows($freq);
 
     $label = $freq === 'daily' ? 'Daily' : 'Weekly';
     $sent = 0;
@@ -876,8 +915,12 @@ function alt_digest_purge() {
     $table = alt_subscribers_table();
     $cutoff = gmdate('Y-m-d H:i:s', time() - ALT_DIGEST_RETENTION_DAYS * DAY_IN_SECONDS);
     $n = 0;
+    // 'bounced' is here with 'unsubscribed' deliberately. A mailbox the
+    // provider says does not exist is an address we will never send to again,
+    // so holding it past the retention window would keep personal data for no
+    // purpose, which is the one thing the privacy note promises not to do.
     $n += (int) $wpdb->query($wpdb->prepare(
-        "DELETE FROM $table WHERE status = 'unsubscribed' AND unsubscribed_at IS NOT NULL AND unsubscribed_at < %s", $cutoff));
+        "DELETE FROM $table WHERE status IN ('unsubscribed', 'bounced') AND unsubscribed_at IS NOT NULL AND unsubscribed_at < %s", $cutoff));
     $n += (int) $wpdb->query($wpdb->prepare(
         "DELETE FROM $table WHERE status = 'pending' AND confirmed_at IS NULL AND created_at < %s", $cutoff));
     return $n;
@@ -951,6 +994,7 @@ function alt_digest_stats() {
         'confirmed'  => null,
         'pending'    => null,
         'unsubscribed' => null,
+        'bounced'    => null,
         'signups_retained' => null,
         'confirm_rate' => null,
         'confirmed_last_7_days' => null,
@@ -977,6 +1021,10 @@ function alt_digest_stats() {
     );
     $out['pending'] = $count("status = 'pending'");
     $out['unsubscribed'] = $count("status = 'unsubscribed'");
+    // Counted apart from unsubscribed because they are different facts: one is
+    // a person who asked us to stop, the other is a mailbox that does not
+    // exist. Rolling them together would read as readers leaving.
+    $out['bounced'] = $count("status = 'bounced'");
     $retained = (int) $wpdb->get_var("SELECT COUNT(*) FROM $subs");
     $out['signups_retained'] = $retained;
     $out['confirm_rate'] = $retained > 0 ? round($confirmed / $retained, 4) : null;

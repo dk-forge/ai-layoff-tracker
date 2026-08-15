@@ -43,6 +43,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | recall-precision | weekly Mon 16:10 UTC + manual | **The only place the recall claim can FAIL.** Re-runs the frozen SEC Item 2.05 gold set (57 events) against live data, **commits** `railway/recall_measurement.json`, and exits 2 below `recall_goldset.MATCHED_FLOOR`; also measures count precision (exits 2 when the Wilson 95% lower bound drops under 80%) and AI-attribution precision. Every rate is printed **with its interval**. Needs `contents: write` for the commit. Inputs: RP_PRECISION_SAMPLE |
 | data-integrity | daily 17:30 UTC + manual | **Is the published data CORRECT?** Runs `railway/data_integrity.py` — the live invariants (known duplicate events must count once) shared with `tests/test_dedup_live.py` — and writes the verdict to the health ledger as `data_integrity`. Scheduled 50 min AFTER reconcile-supersets so it sees that pass's result. Exit 2 = failing, exit 3 = could not verify (never a silent pass) |
 | health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades, **or when a live data-integrity check is failing** (subject leads "WRONG NUMBER LIVE"). Weekly is the backstop only — the fast paths are `ops_status.py` [3] and the daily data-integrity run. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
+| digest-send | daily 13:10 UTC + manual | **The email digest's sending half.** Pulls the due recipients from the keyed `/digest-recipients`, relays through the transport chosen by `DIGEST_TRANSPORT`, records counts to `digest_mailer`. **DORMANT: `dryrun` by default, so it prints the exact email and sends nothing, exit 0.** Arming it is three owner steps, see "The email digest: arming the sender". Inputs: dry_run, freq, limit |
 | tracker-diff | dormant BY DESIGN (owner decision 2026-07-28) | Optional gap-chase against a private feed. Competitor tracking is handled by the LOCAL benchmark instead; this loop is not needed, exits green on schedule, and nobody should be asked to enable it |
 
 The advisory DeepSeek spot-check inside `data-quality` retries temporary
@@ -1140,6 +1141,132 @@ another asserts no WARN module can even name them.
 **The sample and the census are never pooled.** 100 systematic events and 33
 large-cut census events are two figures. Deciding a census event moves the
 census figure and nothing else.
+
+## The email digest: arming the sender
+
+The signup half has been live and complete for a while: double opt-in, token
+confirm links, one-click unsubscribe, a 30-day retention purge and a keyed
+counts-only `/subscriber-stats` route. What did not exist until 2.20.51 was
+anything that reliably puts a digest on the wire. `wp_mail` on shared hosting
+is the weakest link in a delivery chain, so the digest now goes out through a
+real relay, driven by `digest-send.yml` -> `railway/digest_send.py`.
+
+**It is DORMANT and cannot send.** With no transport secret the job resolves to
+the dry-run transport, prints the exact messages it would have sent, and exits
+0. That is a state, not a failure, and it must never be made a red run.
+
+### The three things only the owner can do
+
+Nothing sends until all three are done. Steps 1 and 2 are unavoidable with any
+provider: SPF and DKIM are how deliverability works, and a From address on an
+unverified domain lands in spam whoever relays it.
+
+1. **Create the Resend account** at resend.com and add the sending domain
+   `asktherecruiter.com`. **While in the dashboard, turn open tracking and
+   click tracking OFF.** They are the pixel and the link rewriting the
+   published privacy note promises we do not use, and nothing in this repo can
+   read that setting, so it is stated here rather than checked.
+2. **Add the DNS records at the registrar.** Resend shows the exact values:
+   a DKIM `TXT` record on a `resend._domainkey` subdomain, an SPF `TXT` record
+   on a `send` subdomain, and an MX record on that same subdomain for bounce
+   feedback. Verification usually completes within an hour of propagation.
+   Take care not to replace an existing SPF record on the root domain; the
+   records Resend asks for sit on the `send` subdomain and do not collide.
+3. **Add `RESEND_API_KEY` as a repository secret** (Settings, Secrets and
+   variables, Actions), then change `DIGEST_TRANSPORT` in
+   `.github/workflows/digest-send.yml` from `dryrun` to `resend`.
+
+Then run the workflow by hand once with `dry_run: 1` and read the rendered
+email, then once with `dry_run` blank and `limit: 1` before letting the
+schedule take over.
+
+### Changing provider is one variable
+
+`DIGEST_TRANSPORT` is the whole switch, and the seam lives in
+`railway/digest_transport.py`.
+
+| value | what it uses | what it needs |
+|---|---|---|
+| `dryrun` | nothing. Prints the message. | nothing. The default |
+| `resend` | Resend's HTTP API | `RESEND_API_KEY` |
+| `smtp` | any SMTP relay: Brevo, SES-SMTP, Postmark, Mailgun | `DIGEST_SMTP_HOST`, `DIGEST_SMTP_USER`, `DIGEST_SMTP_PASSWORD`, optional `DIGEST_SMTP_PORT` |
+
+The `smtp` path is the reason there is no Brevo client and no SES client:
+nearly every provider speaks SMTP, so switching to one is four secrets and no
+code. SES's own HTTP API is deliberately not built. It would need AWS request
+signing to reach a service that SES-SMTP already reaches, and speculative code
+nobody has run is not a saving.
+
+### What it costs, and the honest caveat
+
+**Provider pricing moves. Re-check before deciding anything on these numbers.**
+Read on the dates given, from the providers' own pricing pages.
+
+| provider | free tier | paid | verified |
+|---|---|---|---|
+| Resend | 3,000 emails/month, **capped at 100 per day** | Pro $20/month for 50,000 | 2026-08-14, resend.com/pricing |
+| Amazon SES | $200 of new-account AWS credit, 12 months | **$0.10 per 1,000** a la carte, no monthly minimum. Essentials $0.16 per 1,000 | 2026-08-14, aws.amazon.com/ses/pricing |
+| Brevo | a daily-capped free tier, widely quoted at 300/day | tiered monthly | NOT verified from this session; the pricing page did not render. Check it yourself before relying on it |
+
+Read that as: **at any list size this tracker has now, every free tier is free,
+and the choice does not matter yet.** Two things would change it.
+
+- **Resend's 100 per day cap bites before its 3,000 per month cap does.** A
+  daily digest to 150 confirmed subscribers exceeds the free plan on day one
+  while using 4,500 of a 3,000 monthly allowance. Watch the daily number in
+  `ops_status.py [4c]`, not the monthly one.
+- **SES is roughly 10 to 20 times cheaper per email at volume**, and that is
+  the reason to move, once the volume exists. It costs an AWS account and a
+  written request to leave the SES sandbox, which is a real afternoon. Do it
+  when the bill justifies it, and reach it through `DIGEST_TRANSPORT=smtp`.
+
+At $0.10 per 1,000, a weekly digest to 1,000 subscribers is about **$0.005 per
+send and $0.02 a month**. The relay is not going to be what this project spends
+money on.
+
+### Bounces and complaints
+
+`POST /wp-json/layoffs/v1/digest-webhook` handles them. It is not key gated,
+because a provider cannot send our key, so it verifies the provider's own
+HMAC signature (the Svix scheme Resend uses) and **fails closed when no signing
+secret is configured**. To arm it: add the webhook in the Resend dashboard for
+`email.bounced` and `email.complained`, then put the signing secret in
+`wp-config.php` as `ALT_DIGEST_WEBHOOK_SECRET`.
+
+A **permanent** bounce sets the row to `bounced`; a complaint sets it to
+`unsubscribed`. Both stop sending at once and both carry `unsubscribed_at`, so
+the 30-day retention purge erases them on the same promise as any other
+departure. A **soft** bounce changes nothing: dropping someone because their
+inbox was full for an hour is data loss dressed up as hygiene.
+
+Until the webhook is armed, bounce handling is UNKNOWN rather than working, and
+`ops_status.py [4c]` will report `bounced 0` because nothing has told us
+otherwise. That is a real gap, not a passing check.
+
+### Two senders, one list
+
+The built-in `wp_mail` cron still exists and still works. It stands down
+automatically whenever the external relay has claimed a tier within
+`ALT_DIGEST_CLAIM_HOURS` (36), and it resumes by itself if the relay stops
+running. Independently of that lease, **both senders read one definition of
+who is due** (`alt_digest_due_rows`), which excludes anyone already sent to
+inside the current period. So even two senders racing in the same minute cannot
+put two copies in one inbox. Do not add a recipient query anywhere else.
+
+### The digest is sending nothing, or the wrong thing
+
+- **`digest_mailer` is STALE in `ops_status.py [2]`** (3-day ceiling): the
+  sender stopped completing. Check `digest-send.yml`'s last run, then the WP
+  cron, and remember the health row is stamped on COMPLETION so a fatal
+  mid-run leaves it stale on purpose.
+- **A section is missing from the email**: that is the design. The site's own
+  `/aggregate` composed nothing for that period, so the digest omits it rather
+  than printing a zero it cannot stand behind. Check the endpoint before
+  changing the sender.
+- **A run printed `REFUSED to send`**: composition produced a message that
+  breaks the published privacy note (an image, a remote fetch, a missing
+  unsubscribe header). That is a defect in this repo, never a provider
+  problem, and it is not retried. Fix the composer.
 
 ## Research pointers
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)

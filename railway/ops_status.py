@@ -731,6 +731,15 @@ def subscriber_lines():
         f"confirm rate {'UNKNOWN' if rate is None else format(rate * 100, '.1f') + '%'}; "
         f"daily {freq.get('daily')}, weekly {freq.get('weekly')}",
     ]
+    # Bounces are counted apart from unsubscribes because they are a different
+    # fact: a mailbox that does not exist, not a reader who left. A rising
+    # bounce count is a deliverability problem, and rolling it into the
+    # unsubscribe number would hide it as readers losing interest. Older
+    # installs have no such field, and that is UNKNOWN rather than zero.
+    bounced = data.get("bounced")
+    if bounced is not None:
+        lines.append(f"bounced {bounced} (dead mailboxes, stopped automatically; "
+                     f"counted apart from unsubscribes)")
     last = data.get("last_send")
     if not last:
         lines.append("last send  none logged yet (the send log is empty, not unreadable)")

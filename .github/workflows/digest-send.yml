@@ -1,0 +1,68 @@
+name: Send email digest
+
+# The sending half of the email digest. DORMANT until the owner adds a
+# transport secret: with no RESEND_API_KEY (and DIGEST_TRANSPORT unset) the job
+# resolves to the dry run transport, prints the exact messages it WOULD send,
+# and exits 0. A missing key is a state, not a failure, and a red run for it
+# would teach everyone to ignore red runs.
+#
+# To arm it, after the Resend domain is verified (see docs/RUNBOOK.md
+# "the email digest is not sending"):
+#   1. add RESEND_API_KEY as a repository secret
+#   2. change DIGEST_TRANSPORT below from dryrun to resend
+# Changing providers later is that same one variable: smtp covers Brevo,
+# SES-SMTP and most others with no code change at all.
+#
+# 13:10 UTC daily, ten minutes after the site's own WP-Cron slot, so if this
+# job is armed it claims the tier and the built in wp_mail sender stands down
+# for that day rather than both sending.
+
+on:
+  schedule:
+    - cron: '10 13 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to 1 to render the digest and send nothing'
+        required: false
+        default: '1'
+      freq:
+        description: 'daily, weekly, or blank for auto (weekly on Mondays)'
+        required: false
+        default: ''
+      limit:
+        description: 'Stop after N recipients. Use for a first live send.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Send the digest
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # The one line that chooses a provider. dryrun sends nothing.
+          DIGEST_TRANSPORT: dryrun
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DIGEST_SMTP_HOST: ${{ secrets.DIGEST_SMTP_HOST }}
+          DIGEST_SMTP_PORT: ${{ secrets.DIGEST_SMTP_PORT }}
+          DIGEST_SMTP_USER: ${{ secrets.DIGEST_SMTP_USER }}
+          DIGEST_SMTP_PASSWORD: ${{ secrets.DIGEST_SMTP_PASSWORD }}
+          DIGEST_FROM: ${{ secrets.DIGEST_FROM }}
+          DIGEST_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DIGEST_FREQ: ${{ github.event.inputs.freq }}
+          DIGEST_LIMIT: ${{ github.event.inputs.limit }}
+        run: python digest_send.py

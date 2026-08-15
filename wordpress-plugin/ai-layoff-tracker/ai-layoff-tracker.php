@@ -42,6 +42,7 @@ require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
+require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
 // GUARDED: FTP deploys upload files one at a time, so this main plugin file can
