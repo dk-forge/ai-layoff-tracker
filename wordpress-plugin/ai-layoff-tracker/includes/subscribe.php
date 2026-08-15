@@ -204,6 +204,14 @@ function alt_digest_subscribe_form($context = '') {
        wrapping and the whole signup ends 741.7px down, with 70px to spare. */
     @media (max-width: 560px) {
         .alt-digest { padding: 14px; }
+        /* 220px of flex-basis plus the 8px gap plus a 106px button is 334px,
+           and the content box inside a 375px phone is 311px, so the row wrapped
+           and the Subscribe button landed 15px BELOW the fold after the jump.
+           Measured on the live page at 2.20.52, not in a fixture: the local
+           harness renders this component 375px wide because it has no theme
+           gutter, so it never wrapped there and reported a pass. 140px still
+           grows to ~197px on that screen. */
+        .alt-digest-row input[type="email"] { flex-basis: 140px; }
         .alt-digest-form fieldset { margin-bottom: 10px; }
         .alt-digest-lists label { margin: 3px 0; }
         .alt-digest-privacy { margin-top: 12px; }

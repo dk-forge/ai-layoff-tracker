@@ -101,6 +101,23 @@ TEXT_MIN = 4.5    # WCAG 1.4.3
 
 PHONE_WIDTHS = (375, 414)
 
+# THE THEME'S HORIZONTAL GUTTER, AND WHY THIS FILE CARRIES IT.
+#
+# The shared fixture wraps the markup in `.has-global-padding` and then styles
+# nothing, so a 375px viewport renders this page's content 375px wide. The live
+# page renders it 339px wide: 18px of gutter each side, measured off
+# asktherecruiter.com at 375x812 on 2026-08-15 at ver=2.20.52.
+#
+# 36px of phantom width is not cosmetic here. The signup's email row is
+# `flex-basis: 220px` for the field plus an 8px gap plus a ~106px button, which
+# fits on one line at 375 and wraps at 339. Without this rule the landing test
+# measured an unwrapped row, reported 741.7px on an 812px screen and passed,
+# and the live page put the Subscribe button 15px BELOW the fold. Every
+# geometry claim in this file is about a phone, and a phone has gutters.
+SITE_GUTTER = """
+.wp-block-group.has-global-padding { padding-left: 18px; padding-right: 18px; }
+"""
+
 
 def digest_markup():
     """The signup component, read out of the file that ships it.
@@ -223,7 +240,7 @@ class _Rendered(unittest.TestCase):
     def _html(self):
         return FIXTURE % {
             "plugin": CSS.read_text(),
-            "theme": THEME_SHIM, "site": SITE_OVERRIDE,
+            "theme": THEME_SHIM, "site": SITE_OVERRIDE + SITE_GUTTER,
             "freeze": contrast_audit.FREEZE_CSS,
             "markup": self._markup,
             "built": JS_BUILT,

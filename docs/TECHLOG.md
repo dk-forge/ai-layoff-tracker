@@ -1,6 +1,42 @@
 # Tech Log
 
 
+## 2026-08-15 - the fixture had no gutters, so the Subscribe button shipped 15px below the fold (2.20.53)
+
+2.20.52's landing check passed in the harness and failed on the page. Verified
+live from a reader's view immediately after the deploy, 375x812: following the
+hero's new digest button put the section top at 92px, the heading at 142px, the
+email field at 731px and the **Subscribe button at 783 to 827px** on an 812px
+screen. Fifteen pixels below the fold, which is the defect the whole change
+exists to end.
+
+**The cause was the fixture, not the CSS.** `test_tap_targets.FIXTURE` wraps
+the markup in `.has-global-padding` and then styles nothing, so at a 375px
+viewport it renders this page's content **375px wide**. The live page renders it
+**339px**: 18px of theme gutter each side. The signup's email row is
+`flex-basis: 220px` for the field plus an 8px gap plus a ~106px button, which
+fits on one line at 375 and wraps at 339, and a wrapped row is exactly the 52px
+that put the button off the screen. The harness measured an unwrapped row,
+reported 741.7px, and reported a pass.
+
+Two fixes, and the order matters:
+
+1. `SITE_GUTTER` in `railway/tests/test_digest_route_is_findable.py` reproduces
+   the measured 18px gutter, so the fixture describes a phone. **Proven to
+   reproduce the live defect**: with the gutter in place and the CSS fix taken
+   back out, the landing test fails with `at 375x812 the jump leaves the
+   signup's submit 815px down a 812px screen`.
+2. `.alt-digest-row input[type="email"] { flex-basis: 140px }` under 560px, so
+   the field and the button share one line at 339px. The field still grows to
+   about 197px there.
+
+The lesson is the one this repo keeps relearning in a new place: a fixture that
+is 36px wider than the page is not a slightly optimistic fixture, it is a
+different layout. Nothing here was measured wrong; the thing being measured was
+not the page.
+
+---
+
 ## 2026-08-14 - the digest signup had no route, and the hero got one (2.20.52)
 
 The press-kit defect, a second time, on a second surface. The email-digest
