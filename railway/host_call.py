@@ -77,9 +77,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import deferral_ledger
 import http_retry
 
-#: Where the composite action `commit-deferral-ledger` looks by default. A
-#: worker that records a deferral the workflow never commits is a silently
-#: green job, so the two defaults must agree.
+#: Where the composite action `commit-deferral-ledger` looks by default. The
+#: path is relative to the writer's CWD — workspace root for the CLI, railway/
+#: for the workers behind `cd railway` — so the action probes BOTH this name
+#: and railway/<this name>. A worker that records a deferral the workflow
+#: never commits is a silently green job, so these defaults must agree
+#: (railway/tests/test_job_deferrals.py holds them together).
 DEFAULT_ENVELOPE = "deferral_envelope.json"
 
 

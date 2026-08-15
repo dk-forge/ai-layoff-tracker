@@ -47,10 +47,21 @@ runs:
         }
 
         had_changes=0
+        replayed=0
         for attempt in 1 2 3 4 5; do
           git add railway/deferral_ledger.json 2>/dev/null || true
           if git diff --staged --quiet; then
             if [ "$had_changes" = "1" ]; then
+              # An empty diff after a reset means one of two very different
+              # things. A successful replay that wrote nothing means the NEW
+              # main already carries this run's record (a success envelope
+              # whose deferral someone else resolved) — the desired end state
+              # exists, so this is a pass, not a loss. No replay means the
+              # edit was discarded with nothing to re-derive it from: loud.
+              if [ "$replayed" = "1" ]; then
+                echo "Nothing left to record — main already carries this run's ledger record."
+                exit 0
+              fi
               echo "::error::A ledger change was discarded by the race recovery and could not be re-derived (no envelope found). A deferral nobody counts is a silently green job."
               exit 1
             fi
@@ -70,7 +81,9 @@ runs:
           git fetch origin main
           git reset --hard origin/main
           if env_path="$(find_envelope)"; then
-            python3 railway/deferral_ledger.py record --envelope "$env_path" || true
+            if python3 railway/deferral_ledger.py record --envelope "$env_path"; then
+              replayed=1
+            fi
           fi
           sleep $((attempt * 5))
         done
