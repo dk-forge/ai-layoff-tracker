@@ -241,5 +241,9 @@ $alt_bd_titles = array(
 
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
+
+    <?php // Our own signup, once, as the last block. function_exists is the
+          // FTP-deploy race guard every optional call in this plugin uses.
+          if (function_exists('alt_digest_placement')) echo alt_digest_placement('facet'); ?>
 </main>
 <?php alt_render_page_footer(); ?>

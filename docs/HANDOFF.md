@@ -9,7 +9,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** the digest's third consent box (articles subscribers were confirmed and never mailed), the manage-subscriptions footer, and the surfaces those touch; and the blog's reading surface (2.20.57: headings 420px left of their own text, a 26-character column on a phone)
+- **WORKING ON:** putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
 
 **Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
 had gone stale: it still named the US incident close, which landed, so a session

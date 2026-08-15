@@ -168,6 +168,35 @@ function alt_digest_get_by_token($column, $token) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Where a signup is being rendered, and the one sentence that changes with it.
+ *
+ * $context has been a parameter of alt_digest_subscribe_form() since the form
+ * was written and did nothing at all until 2026-08-15: the tracker passed
+ * 'layoff' and the body never read it. It matters now because the signup no
+ * longer renders only on the two tracker pages. A reader who arrived on an
+ * article about resume length, or on one employer's history page, has not been
+ * told what this site tracks, and the tracker's own intro ("what changed on
+ * these trackers") assumes they were.
+ *
+ * So each context adds ONE plain sentence in front of the shared intro, saying
+ * where the reader is in relation to the thing being offered. Nothing else
+ * about the form varies: same lists, same consent, same route, same handler.
+ * An unknown or empty context returns '', which is the tracker's own behaviour
+ * and the safe default for any caller that has not been updated.
+ */
+function alt_digest_context_lead($context) {
+    $leads = array(
+        // The tracker pages say it themselves, at length, above the form.
+        'layoff'  => '',
+        'post'    => 'We also run a layoff tracker, built from company filings and official notices.',
+        'company' => 'This employer is one part of a layoff record we keep and check.',
+        'facet'   => 'This page is one slice of a layoff record we keep and check.',
+        'entry'   => 'This entry is one row in a layoff record we keep and check.',
+    );
+    return isset($leads[$context]) ? $leads[$context] : '';
+}
+
+/**
  * Render the subscription form. The Talent plugin calls this through
  * function_exists(), so the signature must stay stable.
  *
@@ -178,6 +207,8 @@ function alt_digest_get_by_token($column, $token) {
  *   - submitting with zero boxes ticked is refused politely server-side.
  */
 function alt_digest_subscribe_form($context = '') {
+    $context = sanitize_key((string) $context);
+    $lead = alt_digest_context_lead($context);
     $notice = isset($_GET['alt_dg']) ? sanitize_key($_GET['alt_dg']) : '';
     $messages = array(
         'check'        => array('ok',  'Almost done. We sent you one email with a confirmation link. Nothing is sent until you click it.'),
@@ -197,9 +228,55 @@ function alt_digest_subscribe_form($context = '') {
              the talent page does not load this plugin's stylesheet, so the
              component may depend on nothing outside itself (the honeypot in
              particular must be hidden everywhere). Mobile-safe: the email row
-             wraps, nothing bleeds horizontally. */ ?>
+             wraps, nothing bleeds horizontally.
+
+             THAT CLAIM WAS NOT TRUE UNTIL 2026-08-15, and it only stopped
+             mattering because the form had nowhere to go. Every colour below
+             was a bare var(--alt-*), and those tokens live in layoffs.css,
+             which alt_page_needs_assets() enqueues on tracker surfaces and on
+             nothing else. The submit button was `.alt-btn .alt-btn-primary`,
+             defined in the same file. Put this component on a blog post, where
+             that stylesheet is not loaded, and a bare var() with no fallback
+             resolves to the unset value: no border on the box, no fill on the
+             button, a stock grey browser button, and one hard-coded #ccc on
+             the email field that measures 1.6:1 on white and fails WCAG 1.4.11
+             wherever it is.
+
+             The fix is one indirection. Every colour is a component token that
+             READS the site token and carries the site's own light literal as
+             its fallback, so a surface that loads layoffs.css is unchanged to
+             the byte (the var resolves, the fallback is never used) and a
+             surface that does not gets the light palette those literals came
+             from. The button self-carries its fill rather than borrowing a
+             class, so .alt-btn:hover cannot repaint its edge either.
+
+             THERE IS DELIBERATELY NO prefers-color-scheme BLOCK HERE. It would
+             be the obvious next line and it would be wrong: the surfaces that
+             have a dark mode all load layoffs.css, so they are already served
+             by the var() half of every token above. The one surface relying on
+             these literals is the blog, and blog-reading.css declares no dark
+             palette at all, while the theme and the two database stylesheets
+             pin the article to #fff. A dark box on a permanently white page is
+             not dark mode, it is a hole. */ ?>
     <style>
-    .alt-digest { margin: 40px 0; padding: 20px; border: 1px solid var(--alt-border); border-radius: 12px; }
+    .alt-digest {
+        --alt-dg-edge: var(--alt-border, #e2e3e8);
+        --alt-dg-ink: var(--alt-ink, #16181d);
+        --alt-dg-field-edge: var(--alt-control-border, #838893);
+        --alt-dg-field-bg: var(--alt-surface, #ffffff);
+        --alt-dg-btn-bg: var(--alt-blue, #1f6fd0);
+        --alt-dg-btn-bg-hover: var(--alt-blue-dark, #1c5cab);
+        --alt-dg-btn-ink: var(--alt-on-accent, #ffffff);
+        --alt-dg-ok-bg: var(--alt-ok-bg, #dff3df);
+        --alt-dg-ok-ink: var(--alt-ok-ink, #165d28);
+        --alt-dg-ok-edge: var(--alt-tint-border, #cfdad0);
+        --alt-dg-err-bg: var(--alt-red-tint, #fdeeee);
+        --alt-dg-err-ink: var(--alt-crit, #b3261e);
+        --alt-dg-err-edge: var(--alt-crit-border, #e6b6b3);
+        margin: 40px 0; padding: 20px;
+        border: 1px solid var(--alt-dg-edge); border-radius: 12px;
+        color: var(--alt-dg-ink);
+    }
     .alt-digest h2 { margin: 0 0 8px; }
     /* !important, and it is not decoration. Both trackers render inside a
        theme that sets `.entry-content p { font-size:1.05rem !important;
@@ -224,11 +301,48 @@ function alt_digest_subscribe_form($context = '') {
     .alt-digest-freq label { margin-right: 16px; font-size: 14px; }
     .alt-digest-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .alt-digest-row label { font-weight: 600; flex-basis: 100%; margin: 0; }
-    .alt-digest-row input[type="email"] { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; }
-    .alt-digest-status { border: 1px solid var(--alt-tint-border); background: var(--alt-ok-bg); color: var(--alt-ok-ink); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 14px; }
-    .alt-digest-status-error { border-color: var(--alt-crit-border); background: var(--alt-red-tint); color: var(--alt-crit); }
+    /* border-box, declared by the component rather than inherited.
+       A control's height and its 44px floor are only the same number under
+       border-box, and nothing guarantees it: layoffs.css sets it globally on
+       tracker surfaces, blog-reading.css sets it on `.entry-content > *`
+       (the section, not the field two levels inside it), and the site's own
+       WPCode rule only sets it below 1024px. Measured on the blog fixture
+       before this rule: min-height:44px applied to the CONTENT box and the
+       field rendered 62.0px, which passes a 44px floor while being a
+       different size on the blog than on the tracker for no reason a reader
+       could name. Owning it makes the control one size everywhere. */
+    .alt-digest, .alt-digest *, .alt-digest *::before, .alt-digest *::after { box-sizing: border-box; }
+    /* 16px is not a type choice. Below it iOS Safari zooms the whole page when
+       the field takes focus, and a zoomed page is a horizontal-overflow report
+       from a reader who only tapped an email box. 44px is WCAG 2.5.5. */
+    .alt-digest-row input[type="email"] {
+        flex: 1 1 220px; min-width: 0; min-height: 44px;
+        padding: 8px 10px; font: inherit; font-size: 16px; line-height: 1.3;
+        border: 1px solid var(--alt-dg-field-edge); border-radius: 8px;
+        background: var(--alt-dg-field-bg); color: var(--alt-dg-ink);
+    }
+    /* Self-carried, rather than .alt-btn .alt-btn-primary from layoffs.css:
+       those classes are absent on every surface this form has just been added
+       to, and .alt-btn:hover repaints a control's edge in --alt-chart-dim,
+       which is ~1.2:1 on a light fill. */
+    .alt-digest-submit {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 44px; min-width: 44px; padding: 8px 18px;
+        font: inherit; font-size: 14px; font-weight: 600; line-height: 1.2;
+        border: 1px solid var(--alt-dg-btn-bg); border-radius: 8px;
+        background: var(--alt-dg-btn-bg); color: var(--alt-dg-btn-ink);
+        cursor: pointer;
+    }
+    .alt-digest-submit:hover { background: var(--alt-dg-btn-bg-hover); border-color: var(--alt-dg-btn-bg-hover); }
+    .alt-digest-submit:focus-visible { outline: 2px solid var(--alt-dg-btn-bg); outline-offset: 2px; }
+    .alt-digest-status { border: 1px solid var(--alt-dg-ok-edge); background: var(--alt-dg-ok-bg); color: var(--alt-dg-ok-ink); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 14px; }
+    .alt-digest-status-error { border-color: var(--alt-dg-err-edge); background: var(--alt-dg-err-bg); color: var(--alt-dg-err-ink); }
     .alt-digest-privacy { margin-top: 14px; font-size: 13px; }
     .alt-digest-privacy p { margin: 8px 0; }
+    /* A disclosure control is a control: the summary line is the whole hit
+       area, not the seven words inside it. It sits BELOW the submit button, so
+       this height is free against the phone-fold budget below. */
+    .alt-digest-privacy summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
     /* THE LANDING BUDGET ON A PHONE. Both trackers now carry a hero button
        that jumps here, and a jump that puts the email field below the fold is
        the defect wearing the fix's clothes (the press page's own jump menu
@@ -261,11 +375,17 @@ function alt_digest_subscribe_form($context = '') {
                 <?php echo esc_html($messages[$notice][1]); ?>
             </div>
         <?php endif; ?>
-        <p class="alt-digest-intro">A plain email summary of what changed on these trackers: the period's
+        <p class="alt-digest-intro"><?php if ($lead !== '') echo esc_html($lead) . ' '; ?>A plain email summary of what changed on these trackers: the period's
             headline numbers and the largest new entries, with links back to the source pages. No images,
             no tracking pixels. You confirm your address by clicking a link we email you, and every email
             carries a one-click unsubscribe. Details in the <a href="#alt-digest-privacy">privacy note</a> below.</p>
-        <form class="alt-digest-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+        <?php /* The context rides on the FORM, not on the <section>. The
+                 section's opening tag is matched by a regex in
+                 tests/test_digest_route_is_findable.py that reads the signup's
+                 own <h2> out of this file, and `[^>]*` inside that pattern
+                 cannot survive a PHP echo, whose `?>` is a literal `>`. */ ?>
+        <form class="alt-digest-form" data-alt-context="<?php echo esc_attr($context); ?>"
+              method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <input type="hidden" name="action" value="alt_digest_subscribe">
             <?php wp_nonce_field('alt_digest_subscribe', 'alt_digest_nonce'); ?>
             <input type="hidden" name="alt_ts" value="<?php echo esc_attr(time()); ?>">
@@ -293,7 +413,7 @@ function alt_digest_subscribe_form($context = '') {
                 <label for="alt-digest-email">Your email</label>
                 <input type="email" id="alt-digest-email" name="alt_email" required maxlength="190"
                        autocomplete="email" placeholder="you@example.com">
-                <button type="submit" class="alt-btn alt-btn-primary" style="padding:8px 18px;border-radius:8px;cursor:pointer;">Subscribe</button>
+                <button type="submit" class="alt-digest-submit">Subscribe</button>
             </div>
         </form>
 

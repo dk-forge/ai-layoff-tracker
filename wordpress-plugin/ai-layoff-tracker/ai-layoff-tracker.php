@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.59
+ * Version: 2.20.60
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.59');
+define('ALT_VERSION', '2.20.60');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -44,6 +44,17 @@ require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
+// Where the signup renders beyond the two tracker pages (blog posts, company
+// profiles, the facet pages, entry permalinks). GUARDED with is_readable for
+// the reason spelled out below: this file is NEW, so the deploy that
+// introduces it can land this main file first. Its absence must degrade to
+// "the signup is on the tracker pages only", which is exactly where it was
+// yesterday, and never to a white screen. It declares no function anything
+// else calls, so there is no stub accessor to leave behind.
+$alt_subscribe_placements = ALT_PLUGIN_DIR . 'includes/subscribe-placements.php';
+if (is_readable($alt_subscribe_placements)) {
+    require_once $alt_subscribe_placements;
+}
 // The blog's reading surface (single posts only). GUARDED with is_readable for
 // the same reason build-stamp.php and the WARN partial are: this file is NEW,
 // so on the deploy that introduces it this main file can land BEFORE it does,

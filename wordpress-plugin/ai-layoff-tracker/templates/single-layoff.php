@@ -93,6 +93,10 @@ $cite = sprintf(
         <span class="alt-detail-h">Cite this entry</span>
         <code><?php echo esc_html($cite); ?></code>
     </div>
+
+    <?php // Our own signup, once, as the last block. function_exists is the
+          // FTP-deploy race guard every optional call in this plugin uses.
+          if (function_exists('alt_digest_placement')) echo alt_digest_placement('entry'); ?>
 </div>
 <?php
 get_footer();

@@ -1,5 +1,111 @@
 # Tech Log
 
+## 2026-08-15 - the signup was on two URLs, and it could not have survived being on more (2.20.60)
+
+`alt_digest_subscribe_form()` rendered on this repo's tracker page and on the
+sibling talent tracker's, and nowhere else. Everything else the plugin
+publishes offered nothing: the company profiles at `/company-layoffs/<slug>/`,
+the country/state/industry pages, the ~1,800 entry permalinks, and the site's
+articles, which this plugin already styles from `includes/blog-typography.php`
+and never offered anything on. Those are the pages search actually lands people
+on.
+
+**The placement was the small half.** The component's own comment claimed it
+"may depend on nothing outside itself". It did not, and the dependency was
+invisible while it only ever rendered on two pages that happened to satisfy it:
+
+    .alt-digest        border: 1px solid var(--alt-border)      no fallback
+    .alt-digest-status background/color/border, 4 x var(--alt-*)  no fallback
+    submit button      class="alt-btn alt-btn-primary"          layoffs.css
+    email field        border: 1px solid #ccc                   1.6:1 on white
+
+Those tokens and both classes live in `assets/layoffs.css`, which
+`alt_page_needs_assets()` enqueues on tracker surfaces and on no blog post. A
+bare `var()` with no fallback resolves to unset. Measured in headless Chrome on
+the blog fixture, on the pre-change component:
+
+    at 375px the signup's outer box has no border width at all
+    at 375px the signup's field is 33.0px tall, under the 44px floor
+
+So the box was not a box and the field was 11px under the tap floor. Placing it
+on four more surfaces without fixing that ships four broken signups instead of
+none.
+
+**The fix is one indirection, not a second stylesheet.** Every colour is now a
+component token that READS the site token and carries the site's own light
+literal as its fallback: `--alt-dg-edge: var(--alt-border, #e2e3e8)`. A surface
+that loads layoffs.css is unchanged to the byte, because the var resolves and
+the fallback is never reached. A surface that does not gets the palette those
+literals were copied from. The submit button self-carries its fill instead of
+borrowing `.alt-btn-primary`, which also stops it inheriting `.alt-btn:hover`,
+the rule that repaints a control's edge in `--alt-chart-dim` at ~1.2:1 on a
+light fill.
+
+**No `prefers-color-scheme` block, deliberately.** It is the obvious next line
+and it is wrong. Every surface with a dark mode loads layoffs.css and is
+already served by the `var()` half of each token. The one surface leaning on
+the literals is the blog, and `blog-reading.css` declares no dark palette at
+all while the theme and both database stylesheets pin the article to `#fff`. A
+dark box on a permanently white page is not dark mode, it is a hole. The test
+pins the reasoning: it fails if a dark palette appears in either file.
+
+**`box-sizing`, found by not accepting a passing number.** After the 44px floor
+went on, the field measured 62.0px on the blog. That passes a 44px floor, so it
+would have shipped. It resolved `content-box`: layoffs.css sets border-box
+globally on tracker surfaces, blog-reading.css sets it on `.entry-content > *`
+(the section, not the field two levels inside it), and the site's WPCode rule
+only sets it below 1024px. The control was a different size on the blog than on
+the tracker for no reason a reader could name. The component now declares
+border-box for itself, and the field is 44.0px everywhere.
+
+**`$context` was a parameter the body never read.** It has been in the
+signature since the form was written; the tracker passed `'layoff'` and nothing
+looked at it. It matters now, because "a plain email summary of what changed on
+these trackers" is written for someone who is already on a tracker. Each
+context adds one plain sentence in front of that intro. The context rides on
+the `<form>`, not the `<section>`: `test_digest_route_is_findable.py` reads the
+signup's `<h2>` with a `<section class="alt-digest"[^>]*>\s*<h2>` pattern over
+the raw PHP, and a PHP echo in that tag carries a literal `>` in its `?>`.
+
+**One placement per page.** A request renders one of these surfaces, never two.
+The once-per-request static is a backstop against `the_content` firing more
+than once for one article, which WordPress does routinely. The gate that
+actually bites is `doing_filter('get_the_excerpt')`: `get_the_excerpt()` runs
+the_content filters, an SEO plugin does that during `wp_head`, and without the
+guard the static would be spent on a meta description before the article ever
+rendered.
+
+**Measured, on the blog fixture that carries all three database stylesheets and
+the real 18px gutters** (375x812, 414x896, 1280x900): zero horizontal overflow
+at 375/414/768/1280; the whole signup is 715.8px at 375px and fits an 812px
+screen with 96.2px spare; the Subscribe button ends 641.2px down with 170.8px
+of headroom; field, button and the privacy summary are each 44.0px; the field
+edge is 3.55:1 and the button fill 4.95:1 against the article, and the lowest
+text ratio anywhere in the block is 4.95:1.
+
+**The panel edge is not held to the control bar,** and that is layoffs.css's own
+distinction, stated where `--alt-control-border` is defined: a panel edge
+separates two regions and may be quiet; a control edge says "this is a thing
+you operate" and 1.4.11 asks it for 3:1. The signup's outer box is a panel. The
+first draft of the test held it to 3:1 and failed `--alt-read-rule` at 1.26:1,
+a bar neither product has ever held on any panel. What the test asserts instead
+is the thing that actually broke: an unresolved `var()` draws no border at all.
+
+**`.atr-capture` is untouched.** The third-party Mailjet signup is injected from
+WordPress, its contents are cross-origin, and the owner is deleting it in
+wp-admin. Nothing here reads, styles, hides or waits for it, and a test asserts
+our geometry is identical with and without it on the page, because both are on
+the page until the owner acts. Section 8 of blog-reading.css does style that
+box; it predates this change and was left exactly as it was.
+
+**Not added:** the methodology, sources, health, press, report, dashboard and
+quarterly pages. Those are tracker sub-pages reached from the tracker, which
+already carries the signup and a hero button pointing at it.
+
+`railway/tests/test_signup_reaches_landing_pages.py` is the record: 12 of its
+26 assertions fail on the pre-change tree, including both rendered ones quoted
+above.
+
 ## 2026-08-15 - one sentence of copy put the Subscribe button below the fold, twice (2.20.58)
 
 2.20.55 added a clause to the digest signup's intro paragraph. The paragraph
