@@ -114,6 +114,182 @@ class OneSentenceEverywhere(unittest.TestCase):
                           f"{tpl} lost the live archive-coverage line")
 
 
+QUEUED_NOTE = "No archive snapshot yet. This source has not been checked yet; first check by"
+UNAVAILABLE_NOTE = "Not in the Internet Archive yet. We keep checking weekly; next check by"
+
+# Words that would announce a retirement. The re-check gate never retires a
+# URL: ALT_ARCHIVE_MAX_ATTEMPTS moves it from the 72h 'pending' retry ONTO the
+# ALT_ARCHIVE_RECHECK_DAYS gate, and it is re-checked from there forever. On
+# 2026-08-15 the oldest un-archived attempt in the whole 3,462-URL pool was 4.9
+# days old. Copy claiming we stopped would be false in the reader's favour.
+STOP_WORDS = ("no longer check", "stopped checking", "given up", "gave up",
+              "will not check", "final check", "we stop")
+
+
+def _render_all_states(retry_hours, recheck_days, run_utc):
+    """The three note sentences as PHP and JS actually render them.
+
+    EXECUTED, not pattern-matched. The property under test is that a cadence
+    constant moves the printed date, and only running the two renderers can
+    show that. A regex would pass on a renderer that had quietly started
+    printing a literal.
+    """
+    php = _render_php(retry_hours, recheck_days, run_utc)
+    js = _render_js(retry_hours, recheck_days, run_utc)
+    assert php == js, (
+        "db.php and layoffs.js disagree about the archive note.\n"
+        f"  php: {php}\n  js:  {js}")
+    return php
+
+
+def _php_fn(name):
+    # _php_function_body() stops AT the closing brace, so put it back.
+    body = data_integrity._php_function_body(DB_PHP, name)
+    assert body, f"{name} missing from db.php"
+    return body + "\n}"
+
+
+def _js_fn(name):
+    m = re.search(r"^    function " + name + r"\(.*?^    \}", LAYOFFS_JS, re.M | re.S)
+    assert m, f"{name} missing from layoffs.js"
+    return m.group(0)
+
+
+# A fixed instant, so the assertions are about the constants and never about
+# the day the suite happens to run.
+NOW = "2026-08-15 12:00:00"
+STATES = (("queued", ""), ("pending", "2026-08-14 06:00:00"), ("unavailable", "2026-08-10 07:36:24"))
+
+
+def _render_php(retry_hours, recheck_days, run_utc):
+    src = [
+        "<?php",
+        # A namespace so the frozen time() below shadows the builtin: PHP
+        # resolves an unqualified internal call to the current namespace first,
+        # and time() cannot be redefined globally.
+        "namespace ArchiveNoteHarness;",
+        "define('HOUR_IN_SECONDS', 3600); define('DAY_IN_SECONDS', 86400);",
+        f"define('ALT_ARCHIVE_RETRY_HOURS', {retry_hours});",
+        f"define('ALT_ARCHIVE_RECHECK_DAYS', {recheck_days});",
+        f"define('ALT_ARCHIVE_DAILY_RUN_UTC', '{run_utc}');",
+        "function esc_html($s) { return $s; }",
+        # Freeze time: the renderers clamp a past eligibility to "now", so a
+        # real clock would make the queued row's date drift with the calendar.
+        f"function time() {{ return strtotime('{NOW} UTC'); }}",
+        _php_fn("alt_archive_next_check_date"),
+        _php_fn("alt_archive_note_text"),
+        "$out = array();",
+        "foreach ([" + ", ".join(f"['{s}', '{c}']" for s, c in STATES) + "] as $p) {",
+        "  $out[] = alt_archive_note_text($p[0], alt_archive_next_check_date($p[0], $p[1]));",
+        "}",
+        "echo json_encode($out);",
+    ]
+    return _run_interpreter(["php"], "\n".join(src), ".php")
+
+
+def _render_js(retry_hours, recheck_days, run_utc):
+    h, mi = run_utc.split(":")
+    src = [
+        "function escapeHtml(s) { return s; }",
+        f"var ARCHIVE_RETRY_HOURS = {retry_hours}, ARCHIVE_RECHECK_DAYS = {recheck_days},"
+        f" ARCHIVE_RUN_UTC = [{int(h)}, {int(mi)}];",
+        f"Date.now = function () {{ return Date.parse('{NOW.replace(' ', 'T')}Z'); }};",
+        _js_fn("archiveNextCheckDate").strip(),
+        _js_fn("archiveNoteText").strip(),
+        "var out = [" + ", ".join(
+            "archiveNoteText({archive_status: '%s', archive_checked_at: '%s'})" % (s, c)
+            for s, c in STATES) + "];",
+        "console.log(JSON.stringify(out));",
+    ]
+    return _run_interpreter(["node"], "\n".join(src), ".js")
+
+
+def _run_interpreter(cmd, src, suffix):
+    import subprocess
+    with tempfile.NamedTemporaryFile("w", suffix=suffix, delete=False) as fh:
+        fh.write(src)
+        path = fh.name
+    try:
+        p = subprocess.run(cmd + [path], capture_output=True, text=True, timeout=60)
+    finally:
+        os.unlink(path)
+    if p.returncode != 0:
+        raise AssertionError(f"{cmd[0]} failed rendering the archive note:\n{p.stderr}")
+    return json.loads(p.stdout.strip())
+
+
+def _have(binary):
+    import shutil
+    return shutil.which(binary) is not None
+
+
+@unittest.skipUnless(_have("php") and _have("node"),
+                     "php and node are needed to EXECUTE both renderers; they are present on "
+                     "ubuntu-latest, so this runs in CI. A skip here is UNKNOWN, not a pass")
+class ThreeStatesSayThreeDifferentTrueThings(unittest.TestCase):
+    """One flattened sentence told a URL nothing had looked at that it had been
+    re-checked. Before 2.20.51 all three archive states printed "No archive
+    snapshot yet. We re-check weekly; next check by <date>", including 'queued',
+    which has no archive row at all and has never been attempted.
+    """
+
+    def test_the_three_states_are_distinct(self):
+        queued, pending, unavailable = _render_all_states(72, 4, "05:25")
+        self.assertEqual(len({queued, pending, unavailable}), 3,
+                         "two archive states print the same sentence again")
+        self.assertIn(QUEUED_NOTE, queued)
+        self.assertIn(PROMISE, pending)
+        self.assertIn(UNAVAILABLE_NOTE, unavailable)
+
+    def test_a_never_attempted_row_does_not_claim_a_re_check(self):
+        queued = _render_all_states(72, 4, "05:25")[0]
+        self.assertNotIn("re-check", queued,
+                         "a 'queued' URL has no archive row and has never been attempted; "
+                         "calling its first look a re-check is the defect 2.20.51 fixed")
+        self.assertIn("first check by", queued)
+
+    def test_unavailable_never_announces_a_stop_we_do_not_make(self):
+        """'unavailable' is not a retirement. ALT_ARCHIVE_MAX_ATTEMPTS moves a
+        URL onto the re-check gate; nothing takes it off. Measured 2026-08-15:
+        oldest un-archived attempt 4.9d against a 7d promise."""
+        unavailable = _render_all_states(72, 4, "05:25")[2].lower()
+        for phrase in STOP_WORDS:
+            self.assertNotIn(phrase, unavailable,
+                             f"the 'unavailable' note claims we stopped checking ({phrase!r}); "
+                             "the cron re-checks it forever on ALT_ARCHIVE_RECHECK_DAYS")
+        self.assertIn("keep checking", unavailable)
+
+    def test_moving_a_cadence_constant_moves_every_printed_date(self):
+        """The one-definition property, executed rather than asserted.
+
+        A constant is only the single definition if changing it changes what
+        every reader sees. This renders both renderers at the live cadence and
+        again at a slower one, and fails if any dated state sits still. It is
+        the guard that would catch a renderer that started printing a literal
+        date, or a JS mirror left behind when the PHP moved.
+        """
+        base = _render_all_states(72, 4, "05:25")
+        slower = _render_all_states(96, 9, "05:25")
+        # 'pending' is gated by RETRY_HOURS, 'unavailable' by RECHECK_DAYS.
+        self.assertNotEqual(base[1], slower[1],
+                            "ALT_ARCHIVE_RETRY_HOURS moved and the 'pending' date did not")
+        self.assertNotEqual(base[2], slower[2],
+                            "ALT_ARCHIVE_RECHECK_DAYS moved and the 'unavailable' date did not")
+        # 'queued' has no last attempt, so it is gated by the daily run time only.
+        later_run = _render_all_states(72, 4, "18:40")
+        self.assertNotEqual(base[0], later_run[0],
+                            "ALT_ARCHIVE_DAILY_RUN_UTC moved and the 'queued' date did not")
+
+    def test_no_em_or_en_dash_in_any_state(self):
+        for note in _render_all_states(72, 4, "05:25"):
+            self.assertNotIn("—", note, f"em-dash in UI copy: {note}")
+            self.assertNotIn("–", note, f"en-dash in UI copy: {note}")
+
+    def test_every_state_stays_inside_the_copy_budget(self):
+        for note in _render_all_states(72, 4, "05:25"):
+            self.assertLessEqual(len(note.split()), 30, f"note over the 30-word cap: {note}")
+
+
 def _run(payload):
     inv = ArchiveRecheckInvariant()
     ctx = data_integrity.Ctx(lambda url, timeout: json.dumps(payload).encode(), 5, "cb")

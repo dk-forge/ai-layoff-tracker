@@ -300,15 +300,38 @@
         if (run < eligible) run += 86400000;
         return new Date(run).toISOString().slice(0, 10);
     }
+    // Mirror of db.php alt_archive_note_text(). Three archive states, three
+    // different true sentences, one derived date. Before 2.20.51 all three
+    // printed "We re-check weekly", which made a 'queued' URL nothing had ever
+    // looked at claim it had been re-checked.
+    //
+    // 'unavailable' says we KEEP checking, and that is not a softening: the
+    // re-check gate never retires a URL (ALT_ARCHIVE_MAX_ATTEMPTS moves it onto
+    // the gate, it does not stop it), and the live archive_recheck_cadence
+    // invariant measured a 4.9d oldest attempt against the weekly promise on
+    // 2026-08-15. Never reword this into announcing a stop we do not make.
+    function archiveNoteText(row) {
+        var status = row && row.archive_status ? String(row.archive_status) : 'queued';
+        var next = escapeHtml(archiveNextCheckDate(row));
+        if (status === 'unavailable') {
+            return 'Not in the Internet Archive yet. We keep checking weekly; next check by ' + next + '.';
+        }
+        if (status === 'pending') {
+            return 'No archive snapshot yet. We re-check weekly; next check by ' + next + '.';
+        }
+        return 'No archive snapshot yet. This source has not been checked yet; first check by ' + next + '.';
+    }
     // Every row with a source URL shows EITHER a permanent Wayback link OR a
     // truthful, dated "archive pending" disclaimer — never a silent gap. The
     // backfill re-checks the Internet Archive weekly and adds the link the moment
     // a snapshot exists, so the disclaimer is honest about state, not a dead end.
     function archivePendingTitle(row) {
         var d = archiveCheckedDate(row);
-        return 'No permanent Internet Archive (Wayback) copy exists yet. We re-check '
-            + 'automatically every week and add the archived copy the moment the '
-            + 'Internet Archive captures this source. Next check by ' + archiveNextCheckDate(row) + '.'
+        // Same three-state sentence as the cell and the server pages, so the
+        // tooltip cannot tell a 'queued' row it has been re-checked while the
+        // cell beside it says it has not.
+        return archiveNoteText(row)
+            + ' We add the archived copy the moment the Internet Archive captures this source.'
             + (d ? ' Last checked ' + d + '.' : '');
     }
     // The archived copy on a result card: always a SECOND link, never instead
@@ -340,8 +363,7 @@
         if (a) return '<a href="' + escapeHtml(a) + '" target="_blank" rel="noopener nofollow" title="Permanent Internet Archive (Wayback Machine) snapshot, in case the official source moves or is taken down">Wayback Machine snapshot ↗</a>';
         if (hasSourceUrl(row)) {
             var d = archiveCheckedDate(row);
-            return '<span class="alt-muted">No archive snapshot yet. We re-check weekly; next check by '
-                + escapeHtml(archiveNextCheckDate(row)) + '.'
+            return '<span class="alt-muted">' + archiveNoteText(row)
                 + (d ? ' Last checked ' + escapeHtml(d) + '.' : '') + '</span>';
         }
         // WARN rows without an article URL still show the official state list
