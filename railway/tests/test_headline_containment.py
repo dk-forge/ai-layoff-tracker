@@ -40,13 +40,21 @@ import data_integrity as di
 # --------------------------------------------------------------------------
 # Committed baseline of 2026-08-07 (commit 4028cec), the last one recorded
 # before the re-scoring, and the one the us_all_time incident stayed pinned to.
+#
+# `recorded_in` is the recorder run that wrote the entry. These three were
+# written by one run, which is what makes their differences a complement — see
+# `TheStraddleArtifact` for the day they were not.
+E0807 = "2026-08-07T18:23:55Z"
 BASE_0807 = {
     "worldwide_all_time": {"jobs": 20392202, "entries": 63574,
-                           "captured_at": "2026-08-07T18:23:38Z"},
+                           "captured_at": "2026-08-07T18:23:38Z",
+                           "recorded_in": E0807},
     "us_all_time": {"jobs": 6968670, "entries": 43341,
-                    "captured_at": "2026-08-07T18:23:51Z"},
+                    "captured_at": "2026-08-07T18:23:51Z",
+                    "recorded_in": E0807},
     "ai_all_time": {"jobs": 215065, "entries": 99,
-                    "captured_at": "2026-08-07T18:23:24Z"},
+                    "captured_at": "2026-08-07T18:23:24Z",
+                    "recorded_in": E0807},
 }
 # What the live site read on 2026-08-10. Worldwide/AI are the figures the
 # recorder committed that day (commit 0894291, 18:24Z); the US pair is
@@ -58,17 +66,24 @@ OBS_0810 = {
     "ai_all_time": {"jobs": 215065, "entries": 99},
 }
 
-# Today. Baselines are the committed ones after the incident was closed (the
-# us_all_time entry is the reviewer's replacement baseline, which is why its
-# capture time is ~10h adrift of the other two); observations are the live
-# figures read from /aggregate on 2026-08-12.
+# A clean day: one recorder run wrote all three, and the live figures are the
+# ones read from /aggregate on 2026-08-12. (The committed baselines of that
+# morning were a mixed pair — the us_all_time entry was a reviewer's
+# replacement baseline installed 10h after the others — and the check then
+# tolerated that skew because it was under a one-day window. It no longer does;
+# that exact shape is TheStraddleArtifact below. So this fixture is the same
+# figures as one observation, which is what a clean day now means.)
+E_TODAY = "2026-08-12T04:42:24Z"
 BASE_TODAY = {
     "worldwide_all_time": {"jobs": 20379846, "entries": 63615,
-                           "captured_at": "2026-08-11T18:26:48Z"},
+                           "captured_at": "2026-08-11T18:26:48Z",
+                           "recorded_in": E_TODAY},
     "us_all_time": {"jobs": 6978103, "entries": 43368,
-                    "captured_at": "2026-08-12T04:42:24Z"},
+                    "captured_at": "2026-08-12T04:42:24Z",
+                    "recorded_in": E_TODAY},
     "ai_all_time": {"jobs": 215065, "entries": 99,
-                    "captured_at": "2026-08-11T18:26:39Z"},
+                    "captured_at": "2026-08-11T18:26:39Z",
+                    "recorded_in": E_TODAY},
 }
 OBS_TODAY = {
     "worldwide_all_time": {"jobs": 20383796, "entries": 63620},
@@ -158,14 +173,100 @@ class TodayIsClean(unittest.TestCase):
         res, _ = _run(OBS_TODAY, BASE_TODAY, now=AT_TODAY)
         self.assertEqual(res.state, di.PASS, res.detail)
 
-    def test_a_baseline_skew_inside_the_tolerance_still_renders_a_verdict(self):
-        """Today's two baselines are ~10h apart, because closing the incident
-        installed a replacement baseline for one slice only. That is inside one
-        recorder cycle, so the pair is still comparable and must be judged."""
-        skew = di._days_since(BASE_TODAY["worldwide_all_time"]["captured_at"], AT_TODAY) \
-            - di._days_since(BASE_TODAY["us_all_time"]["captured_at"], AT_TODAY)
-        self.assertLess(abs(skew), di.MAX_PAIR_SKEW_DAYS)
-        self.assertGreater(abs(skew), 0.4, "the skew this tolerance is sized for is real")
+
+# --------------------------------------------------------------------------
+# 2026-08-14: the day the check asserted a correction as a finding
+# --------------------------------------------------------------------------
+# A signed-off editorial correction (commit 3ec3f3a, ~42,000 jobs off already
+# published rows) was applied between the 05:06Z recorder run and the 18:26Z
+# one. At 18:26Z the ai pair FAILED, which held BOTH ai_all_time and
+# worldwide_all_time at their pre-correction figures; the us pair passed under
+# its floor (-20,159 against 25,000), so us_all_time alone advanced to a
+# post-correction reading. From then on the pair straddled the correction, and
+# the subtraction returned the correction itself: -53,476 jobs on +56 entries,
+# every run, with no incident to close and no exit but a fourteen-day timeout.
+#
+# Every figure below is real: the baselines are railway/headline_baseline.json
+# at 271faef, the observations are /aggregate read live on 2026-08-15.
+STRADDLED = {
+    "worldwide_all_time": {"jobs": 20414760, "entries": 63673,      # pre-correction
+                           "captured_at": "2026-08-14T05:06:00Z",
+                           "recorded_in": "2026-08-14T05:06:00Z"},
+    "us_all_time": {"jobs": 6950893, "entries": 43450,              # post-correction
+                    "captured_at": "2026-08-14T18:26:18Z",
+                    "recorded_in": "2026-08-14T18:26:18Z"},
+    "ai_all_time": {"jobs": 211158, "entries": 96,
+                    "captured_at": "2026-08-15T06:04:44Z",
+                    "recorded_in": "close:ai_all_time:2026-08-15T06:04:44Z"},
+}
+OBS_0815 = {
+    "worldwide_all_time": {"jobs": 20361284, "entries": 63729},
+    "us_all_time": {"jobs": 6950893, "entries": 43450},            # not one job moved
+    "ai_all_time": {"jobs": 211158, "entries": 96},
+}
+AT_0815 = datetime(2026, 8, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+
+class TheStraddleArtifact(unittest.TestCase):
+    """Two readings taken either side of a correction are not evidence."""
+
+    def test_the_straddled_pair_is_unknown_and_names_why(self):
+        res, _ = _run(OBS_0815, STRADDLED, now=AT_0815)
+        self.assertEqual(res.state, di.UNKNOWN, res.detail)
+        self.assertIn("DIFFERENT recorder runs", res.detail)
+        self.assertNotIn("53,476", res.detail,
+                         "the artifact is still being asserted as a number")
+
+    def test_the_same_numbers_taken_together_are_still_a_fail(self):
+        """The half that keeps this from being decorative.
+
+        Identical readings, identical baselines — only the recorder stamp is
+        made common. -53,476 jobs on +56 arriving entries is then a real
+        containment breach and must FAIL. The new UNKNOWN is about the
+        provenance of the two readings, and nothing else.
+        """
+        one_run = {k: dict(v, recorded_in="2026-08-14T05:06:00Z")
+                   for k, v in STRADDLED.items()}
+        res, _ = _run(OBS_0815, one_run, now=AT_0815)
+        self.assertEqual(res.state, di.FAIL, res.detail)
+        self.assertIn("53,476", res.detail)
+
+    def test_a_baseline_written_before_the_stamp_existed_is_unknown(self):
+        """The migration case: no stamp is missing data, never a pass."""
+        legacy = {k: {x: y for x, y in v.items() if x != "recorded_in"}
+                  for k, v in STRADDLED.items()}
+        res, _ = _run(OBS_0815, legacy, now=AT_0815)
+        self.assertEqual(res.state, di.UNKNOWN, res.detail)
+        self.assertIn("recorder-run stamp", res.detail)
+        self.assertIn("UNJUDGED", res.detail)
+
+    def test_it_self_heals_in_one_recorder_run_with_no_hand_edit(self):
+        """UNKNOWN does not hold the baseline, so the next run re-arms it.
+
+        This is the whole exit from the stuck state: nothing is FAILING, so
+        nothing is held, so all three slices are recorded together under one
+        stamp and the pair is comparable again the very next run — without
+        editing either JSON by hand, which is forbidden.
+        """
+        d = Path(tempfile.mkdtemp())
+        bpath, ipath = d / "baseline.json", d / "incidents.json"
+        legacy = {k: {x: y for x, y in v.items() if x != "recorded_in"}
+                  for k, v in STRADDLED.items()}
+        bpath.write_text(json.dumps({"slices": legacy}), encoding="utf-8")
+        ipath.write_text(json.dumps({"open": {}, "closed": []}), encoding="utf-8")
+        ctx = di.Ctx(_feed(OBS_0815), 5, "cb")
+        movement = di.MovementInvariant(headlines=di.HEADLINES, baseline_path=bpath,
+                                        incidents_path=ipath)
+        containment = di.ContainmentInvariant(baseline_path=bpath, now=AT_0815)
+        report = di.Report([movement.run(ctx), containment.run(ctx)])
+        di.record_baseline(ctx, report, path=bpath, incidents_path=ipath)
+
+        stamps = {name: entry.get("recorded_in")
+                  for name, entry in json.loads(bpath.read_text())["slices"].items()}
+        self.assertEqual(len(set(stamps.values())), 1, stamps)
+        self.assertTrue(all(stamps.values()), stamps)
+        self.assertEqual(json.loads(ipath.read_text())["open"], {},
+                         "an UNJUDGED pair must not open an incident")
 
 
 class HonestDegradation(unittest.TestCase):
@@ -175,12 +276,12 @@ class HonestDegradation(unittest.TestCase):
         res, _ = _run(OBS_0810, base)
         self.assertEqual(res.state, di.UNKNOWN, res.detail)
 
-    def test_baselines_captured_a_week_apart_are_unknown(self):
+    def test_a_baseline_too_old_to_bound_a_movement_is_unknown(self):
         base = {k: dict(v) for k, v in BASE_0807.items()}
-        base["worldwide_all_time"]["captured_at"] = "2026-07-31T18:23:38Z"
+        base["worldwide_all_time"]["captured_at"] = "2026-07-20T18:23:38Z"
         res, _ = _run(OBS_0810, base)
         self.assertEqual(res.state, di.UNKNOWN, res.detail)
-        self.assertIn("apart", res.detail)
+        self.assertIn("too stale", res.detail)
 
     def test_an_unreachable_api_is_unknown(self):
         def dead(url, timeout):
@@ -260,6 +361,32 @@ class ItCannotLaunderItself(unittest.TestCase):
                              BASE_0807[name]["jobs"],
                              f"{name} advanced over a containment FAIL: {notes}")
         self.assertIn("us_all_time", incidents["open"])
+
+    def test_a_pair_advances_together_or_not_at_all(self):
+        """The straddle is made unconstructible, not merely detected.
+
+        The 2026-08-14 shape exactly: the AI pair fails, which holds ai and
+        worldwide — and us_all_time, whose own pair was passing, used to advance
+        alone and land on the far side of whatever happened in between. All
+        three now wait, so the next comparison is still between two readings of
+        the same instant.
+        """
+        obs = {k: dict(v) for k, v in OBS_TODAY.items()}
+        obs["ai_all_time"]["jobs"] -= 60000        # re-scored across the AI boundary
+        obs["ai_all_time"]["entries"] += 5
+        base, incidents, notes, _ = self._record(obs, BASE_TODAY)
+        self.assertIn("ai_all_time", incidents["open"], notes)
+        for name in ("ai_all_time", "worldwide_all_time", "us_all_time"):
+            self.assertEqual(base["slices"][name]["jobs"], BASE_TODAY[name]["jobs"],
+                             f"{name} advanced while its group was held: {notes}")
+        self.assertTrue(any("HELD WITH ITS PAIR" in n for n in notes), notes)
+
+    def test_every_slice_recorded_in_one_run_carries_that_run_s_stamp(self):
+        base, _incidents, notes, _ = self._record(OBS_TODAY, BASE_TODAY)
+        stamps = {n: base["slices"][n].get("recorded_in")
+                  for n in ("ai_all_time", "worldwide_all_time", "us_all_time")}
+        self.assertTrue(all(stamps.values()), f"{stamps} {notes}")
+        self.assertEqual(len(set(stamps.values())), 1, stamps)
 
     def test_a_clean_day_still_advances(self):
         base, incidents, notes, written = self._record(OBS_TODAY, BASE_TODAY)

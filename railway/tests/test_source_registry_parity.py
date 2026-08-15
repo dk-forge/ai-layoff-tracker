@@ -99,6 +99,118 @@ def _literal_health_reporters():
     return ids
 
 
+WORKFLOWS = os.path.abspath(os.path.join(RAILWAY, "..", ".github", "workflows"))
+
+
+def _worst_gap_days(cron):
+    """Longest legitimate gap, in days, between two runs of one cron line.
+
+    Deliberately coarse and deliberately an OVER-estimate of the cadence, never
+    an under-estimate: this feeds a test that fails when a ceiling is TIGHTER
+    than the cadence, so guessing a job runs more often than it does is the
+    direction that manufactures a false failure.
+    """
+    fields = cron.split()
+    if len(fields) != 5:
+        return None
+    _minute, _hour, dom, month, dow = fields
+    if month != "*":                      # quarterly and friends: not swept here
+        return None
+    if dom != "*":                        # "the 1st", "the 6th": monthly
+        return 31 if dom.isdigit() else None
+    if dow != "*":                        # weekly, or n days a week
+        days = [d for d in dow.split(",") if d.strip()]
+        return 7 if len(days) == 1 else (7 // max(len(days), 1)) + 1
+    return 1                              # daily or more often
+
+
+def _workflow_cadences():
+    """{health id: (worst gap in days, workflow file)} for what we can derive.
+
+    A workflow's cron gives the cadence; the modules it runs give the health ids
+    it posts under. Anything this cannot resolve statically (a runtime id, a
+    PHP-side reporter, a manual-dispatch-only job) is simply absent, which is
+    the honest answer for a static sweep — absence here is "not swept", not
+    "fine".
+    """
+    out = {}
+    for name in sorted(os.listdir(WORKFLOWS)):
+        if not name.endswith((".yml", ".yaml")):
+            continue
+        with open(os.path.join(WORKFLOWS, name), encoding="utf-8") as fh:
+            text = fh.read()
+        crons = re.findall(r"^\s*-\s*cron:\s*'([^']+)'", text, re.M)
+        gaps = [g for g in (_worst_gap_days(c) for c in crons) if g]
+        if not gaps:
+            continue
+        gap = min(gaps)                   # several schedules: the job runs on the tightest
+        for mod in set(re.findall(r"python3?\s+(?:railway/)?([a-z0-9_]+)\.py", text)):
+            path = os.path.join(RAILWAY, f"{mod}.py")
+            if not os.path.exists(path):
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            ids = set(re.findall(
+                r"""report_source_health\(\s*['"]([a-z0-9_]+)['"]""", src))
+            ids.update(re.findall(r"""^HEALTH_ID\s*=\s*['"]([a-z0-9_]+)['"]""",
+                                  src, re.M))
+            for src_id in ids:
+                prev = out.get(src_id)
+                # A source posted by two jobs is as fresh as the FASTER one.
+                if prev is None or gap < prev[0]:
+                    out[src_id] = (gap, name)
+    return out
+
+
+class StalenessCeilingsMatchTheRealCadence(unittest.TestCase):
+    """A ceiling a job cannot meet is not a monitor, it is permanent noise.
+
+    Three instances of this one defect have now been fixed by hand: `newsapi`
+    at 2 days against a weekly job, `federal_rif` missing from health_digest so
+    a monthly job fell through DEFAULT_MAX_AGE = 10, and `source_audit` (fixed
+    2026-08-15) with no entry in EITHER map against a monthly workflow — STALE
+    for roughly two weeks in every three, every month, since it shipped.
+
+    Three is a class, not three instances, so this closes it: the cadence is
+    read from the workflow's own cron and the ceiling must cover it. A source
+    this cannot resolve statically is left out rather than guessed at.
+    """
+
+    def test_no_monitored_source_has_a_ceiling_tighter_than_its_cadence(self):
+        cadences = _workflow_cadences()
+        self.assertIn("source_audit", cadences,
+                      "the sweep stopped seeing the source it was written for")
+        ops = _ops_status_max_age()
+        digest, default = _health_digest_max_age()
+        problems = []
+        for src, (gap, workflow) in sorted(cadences.items()):
+            # ops_status only judges what it lists; the digest applies
+            # DEFAULT_MAX_AGE to every id in the ledger, so its effective
+            # ceiling is never absent — that is the federal_rif defect.
+            for where, ceiling in (("ops_status.MAX_AGE", ops.get(src)),
+                                   ("health_digest.MAX_AGE_DAYS",
+                                    digest.get(src, default))):
+                if ceiling is None:
+                    continue
+                if ceiling < gap:
+                    problems.append(
+                        f"{src}: {where} allows {ceiling}d but {workflow} can leave "
+                        f"{gap}d between runs")
+        self.assertFalse(problems, (
+            f"These ceilings are tighter than the job's own cron cadence, so they "
+            f"report STALE on a healthy job: {problems}. Raise the ceiling to the "
+            f"real cadence (longest gap + a few days of slack) and put the "
+            f"derivation in the comment."))
+
+    def test_the_monthly_audit_ceiling_is_derived_not_guessed(self):
+        """31 (longest month) + 4 days of slack, the federal_rif arithmetic."""
+        ops = _ops_status_max_age()
+        digest, _default = _health_digest_max_age()
+        self.assertEqual(ops.get("source_audit"), 35)
+        self.assertEqual(digest.get("source_audit"), 35)
+        self.assertEqual(_worst_gap_days("0 13 1 * *"), 31)
+
+
 class SourceRegistryParityTest(unittest.TestCase):
     def test_meta_keys_are_unique(self):
         keys = _meta_keys()
