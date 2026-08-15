@@ -1133,3 +1133,76 @@ census figure and nothing else.
   ~30–60s window where a PHP-hitting request can 500 on a truncated file. Supercached
   HTML shields most anonymous traffic; a 500 observed right after a push is this window,
   not an outage — re-check after the deploy run goes green before reverting anything.
+
+## The self-healer (draft PRs from red CI — what it may and may never do)
+
+`.github/workflows/self-heal.yml` listens for every workflow completing, and
+when one fails on **main** with a NEW, code-shaped cause, it asks Claude (the
+pinned `anthropics/claude-code-action`) to reproduce the failure from the run's
+log, diagnose it, and open a **DRAFT pull request** with a test-verified fix.
+A second, adversarial pass then reviews the draft — re-derives the failure,
+tries to break the fix — and posts its verdict as a PR comment.
+
+**The healer MERGES ITS OWN DRAFT when every condition holds** (owner
+authorization, 2026-08-14: "a human clicks merge — I want you to click merge,
+I'm okay with that"). The click is delegated; the conditions are not, and
+every one resolves UNKNOWN to "stay a draft":
+1. the forbidden-path guard job passed;
+2. the adversarial reviewer's machine-readable verdict is **exactly**
+   `SELF-HEAL-REVIEW-VERDICT: LOOKS SOUND` — absent, ambiguous, or any other
+   verdict keeps the draft;
+3. the diff is source/test files only — **never** `.github/` and never
+   anything in `self_heal.FORBIDDEN`;
+4. the merged preview runs the offline suite and introduces **no failure main
+   does not already have**. That is the honest form of "green except the
+   documented live-data reds": a standing red fails both runs and subtracts
+   out; anything new blocks the merge.
+
+A blocked merge is a decision, not a failure — the job stays green, comments
+on the PR, and leaves the draft for a human.
+
+**What it will never do** (enforced in three layers: the gate in
+`railway/self_heal.py`, the action's tool allowlist, and the `guard` job that
+diffs the branch after the fact and goes red on a violation):
+- never merges, never pushes to main, never dispatches or re-runs a workflow;
+- never touches `railway/spend.py`, `railway/headline_incidents.json`,
+  `railway/alert_outbox.json`, either hash-pinned lock, `docs/HANDOFF.md`, or
+  `self-heal.yml` itself (`self_heal.FORBIDDEN` is the one list);
+- never heals the known-expected reds: live-data invariant FAILs (a human
+  closes those with `--close-incident`; ci_alert has already emailed them),
+  self-timeouts (already mailed as CI SELF-TIMEOUT), host-outage-shaped
+  failures, branch/PR reds (they have an author), or the alert workflows
+  themselves. The classification is REUSED from `ci_alert.py` — one
+  definition, so a failure cannot be healed and classified needs-a-human at
+  the same time.
+
+**Budget is structural:** one healer at a time (concurrency group), one open
+PR per cause fingerprint (the branch name is the ledger), hard ceiling of 3
+open healer PRs.
+
+**To arm it:** add the `CLAUDE_CODE_OAUTH_TOKEN` repository secret (Settings →
+Secrets and variables → Actions). Until then every run gates, prints what it
+would have done, and exits green with a notice naming the secret.
+
+**To turn the AUTO-MERGE off and keep the drafts** (the one-line kill
+switch): set the repository variable `SELF_HEAL_AUTOMERGE_DISABLED=true`
+(Settings → Secrets and variables → Actions → Variables). The healer keeps
+diagnosing, drafting and reviewing; the click returns to you.
+
+**To disable the whole healer:** set the repository variable
+`SELF_HEAL_DISABLED=true` (same page), or delete the workflow file.
+
+**When a heal breaks something** — every auto-merge is ONE squash commit, and
+`docs/HEALING-LOG.md` is the revert index (date, workflow, run URL, cause,
+PR, merge SHA, files, reviewer verdict; newest first). Revert with
+`git revert <merge sha>` from that entry. `docs/TECHLOG.md` carries the
+narrative for the same heal under the same date. Both are written
+best-effort, AFTER the merge, and can never fail a heal — so an empty stretch
+in the log is not proof nothing merged; cross-check
+`git log --grep 'self-heal: auto-merged'` on main.
+
+**To test the gate:** `gh workflow run self-heal.yml -f run_id=<a past run id>`
+— or locally, `python3 railway/self_heal.py gate --run-id <id> --workflow
+"<name>" --conclusion failure`. The gate is offline-tested in
+`railway/tests/test_self_heal.py`, including the forbidden-path guard's
+red-on-violation exit.

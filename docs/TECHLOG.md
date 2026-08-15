@@ -131,85 +131,53 @@ rejected Spirit OOC event. The key now carries `editor_confirmed` and
 `machine_any` side by side (the by_state shape), and `--measure` prints the
 census's editor-confirmed figure instead of not printing the census at all -
 which is how the 33/33 went unnoticed in the first place.
-## 2026-08-14 - the country research is repo data, and fifteen economies get a publisher (2.20.47)
 
-**The problem was that ~300 researched publishers across ~90 countries lived in
-a conversation.** A publisher we probed and refused is worth as much as one we
-wired: the difference between "we hold nothing on Bahrain" and "GDN Online 404s
-at both feed paths and News of Bahrain serves HTML at its rss.xml" is the
-difference between a gap and an answer, and neither survives in a chat log.
+## 2026-08-14 - self-heal: red CI can now propose its own fix, as a draft a human merges
 
-- **`railway/data/source_catalogue.json`** is now that research, as data. 382
-  rows, each with country, language and one of three statuses: `wired` (a
-  collector reads that publisher's own feed), `researched` (known, and its
-  stories arrive through its country's own market sweep, but no feed of its
-  own is read) and `refused` (probed first-party, unusable, with the measured
-  reason). 20 wired, 335 researched, 27 refused.
-- **It renders publicly.** `railway/generate_source_catalogue.py` emits
-  `templates/partials/source-catalogue-table.php`, included on the sources page
-  under "Every publisher we researched, connected or not".
-  `tests/test_source_catalogue_render.py` fails when the committed partial does
-  not match a fresh render, so a catalogue edit nobody rendered goes red in CI
-  instead of leaving a stale public table.
+**`.github/workflows/self-heal.yml` + `railway/self_heal.py` + tests.** When a
+workflow fails on main with a NEW code-shaped cause, the pinned
+`anthropics/claude-code-action` (v1.0.192, by full commit SHA) reproduces it
+from the run log and opens a DRAFT PR with a red-before/green-after fix; a
+second adversarial pass posts a review comment; a human merges, always.
 
-**`railway/sources/national_feeds.py` wires ONE verified national publisher per
-Tier-2 economy**, for the band where neither existing collector reaches: the
-national Google News edition returns the worldwide English feed, and no
-regional service covers the country at all. Ethiopia, Jordan, Iraq, Nepal and
-Paraguay held nothing and had no route to hold anything.
+**The gate is most of the design.** It REUSES ci_alert's classification (live
+-data identity from data_integrity's registries — extended to match slice snake
+keys after run 31828616421 surfaced `worldwide_all_time: CONTAINMENT FAILED`
+instead of a registry label) and refuses: live-data invariant FAILs (human
+closes with --close-incident), anything not conclusion `failure` (self-timeouts
+are already mailed), host-outage-shaped causes, non-main branches (a branch red
+has an author), and the alert workflows themselves. Budget is structural: one
+healer at a time, one open PR per cause fingerprint, ceiling of 3 open drafts.
 
-  Wired (15): Daily News Egypt, La Republica (CO), Addis Fortune (ET), Kursiv
-  (KZ), MyJoyOnline (GH), Dawn Business (PK), Jordan News, Iraq Business News,
-  Jamaica Gleaner Business, The Kathmandu Post, Post-Courier (PG), ABC Color
-  Economia (PY), EconomyNext (LK), Biznis.rs (RS), Gestion Economia (PE).
+**A prompt is a request; the guard is the fact.** The `guard` job diffs the
+healer's branch against `self_heal.FORBIDDEN` (spend.py, headline_incidents,
+the outbox, both locks, HANDOFF.md, the healer itself) and goes red on a
+violation — which ci-alert then emails.
 
-**Twenty-five candidates were probed live and first-party; ten countries had no
-usable feed.** Every refusal was measured at least twice from a machine with
-real egress, because the brief's first rule is that a proxy 403, a WAF block
-and a real 404 are indistinguishable from a restricted environment. Georgia
-403s at bm.ge including robots.txt; Ivory Coast's Abidjan.net answers 200 with
-a 4.1MB body that is not well-formed XML; Morocco 403s at both candidates;
-Lebanon's lorientlejour.com robots.txt opens `Disallow: /`; Oman's Times of
-Oman IS RSS but carries an unbound namespace prefix no strict parser reads;
-Kuwait, Bahrain, Panama, Mongolia and Moldova each fail on 404s, TLS or a 503.
-Nothing was bypassed: no paywall, no bot wall, no certificate error, no
-robots.txt.
+**THE HEALER MERGES ITS OWN DRAFT, under conditions it cannot relax** (owner
+authorization 2026-08-14: "a human clicks merge — I want you to click merge,
+I'm okay with that"). `merge-gate` requires all four and resolves every
+UNKNOWN to "stay a draft": the guard job passed; the reviewer's verdict is
+exactly `SELF-HEAL-REVIEW-VERDICT: LOOKS SOUND` (absent or ambiguous is not);
+the diff is source/test only, never `.github/` and never a FORBIDDEN path;
+and the MERGED PREVIEW introduces no test failure main does not already have.
+That last one is the honest form of "green except the documented live-data
+reds" — a standing red fails both the baseline and the preview and subtracts
+out, while anything new blocks — and it also closes the gap where a branch
+pushed with GITHUB_TOKEN triggers no checks at all. A blocked merge is a
+decision, not a red run.
 
-**Kazakhstan is the measured fix, not a guess.** The brief recorded
-"Kazakhstan: 201 items, 0 local" because the ru-KZ Google News edition serves
-Russian press rather than Kazakh press. Kursiv publishes Kazakh business news
-in Russian and returns 100 items from its own feed, which is the route that
-edition could never provide.
-
-**ARMED by committed default, and the arithmetic is in the diff.** 15 feeds x
-MAX_PER_FEED 8 x 2 runs/day x 30 days x $0.000315 = **$2.27/month worst case**,
-under the $4/month bar. That worst case assumes every feed hits its cap every
-run; the measured live run fetched 547 items across all 15 feeds and kept
-**one** candidate ($0.000315), and seen_urls dedup makes a repeated URL free
-forever. `test_the_armed_worst_case_stays_inside_the_committed_ceiling` fails
-if a later change adds feeds or raises the cap past $4, so the owner gets asked
-again rather than discovering it on a bill. `NATIONAL_FEEDS=off` disarms
-without a deploy.
-
-**The relevance filter reads four languages** (English, Spanish, Russian,
-Serbian) and re-applies two lessons per language rather than translating one
-set: collective vocabulary only, because Spanish bare "despido" and Serbian
-bare "otkaz" are individual-dismissal words exactly as French "licenciement"
-and Russian bare "увольнения" are; and noisy homographs only when paired with
-a workforce word. English rides `EN_TERMS`/`EN_PATTERNS` imported from
-regional_feeds and the aggregator rule is imported from local_news, so there is
-one definition of each and a correction cannot land in only one collector.
-
-**No country is ever pre-assigned.** The `country` on each Feed is a coverage
-claim for the sources page and the run report; the extractor decides the
-country from the article text, so a Ghanaian paper covering a Nigerian closure
-still lands as Nigeria.
-
-Health: `national_feeds` in the ledger, its label in `assets/health.js`, its
-row on the sources page, and 0 kept rows is NOT degradation (a national feed
-honestly has no layoff story most weeks) while a non-200, an unparseable body
-or a 200 that is not RSS sets `last_error` and degrades. 34 new guards; the
-suite is green.
+**Every heal writes its own revert index.** `docs/HEALING-LOG.md` (new) gets
+a terse entry per auto-merge — UTC stamp, workflow, run URL, one-line cause,
+PR, merge SHA, files, reviewer verdict, and the literal
+`git revert <merge sha>` — and `docs/TECHLOG.md` gets the narrative under the
+same date. Both are appended AFTER the merge, best-effort: a failure to
+record warns loudly and never fails a heal, so an empty stretch in the log is
+not proof nothing merged (`git log --grep 'self-heal: auto-merged'` is).
+Kill switches: `SELF_HEAL_AUTOMERGE_DISABLED=true` keeps the drafts and
+returns the click to a human; `SELF_HEAL_DISABLED=true` stops the healer.
+Dormant until the owner adds `CLAUDE_CODE_OAUTH_TOKEN`. RUNBOOK "The
+self-healer" is the operating doc.
 
 ## 2026-08-14 - the freshness strip says its facts at first paint (2.20.46)
 
