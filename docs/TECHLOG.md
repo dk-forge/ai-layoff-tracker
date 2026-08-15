@@ -47,6 +47,18 @@ where the live page carries a sentence, so a label with no letter and no digit
 in it is read as the fixture talking; and the sign-up honeypot is parked at
 -9999px, where no thumb can reach it and no floor applies.
 
+**Follow-up in 2.20.49, found by re-sweeping after the deploy.** Section 4
+gives a link inside a sentence `padding: 10px 3px; margin: 0 -3px`, and the
+tracker wrapper had been clipping that 3px overhang at the boundary since the
+rule was written. With the rules now on `.alt-wrap`, a link starting a line on
+the company and country pages hit-tested 3px past the left edge of the screen
+at 375 and 414. The document never overflowed and no text moved, but the same
+containment those rules have always assumed now applies to the wrapper they
+now reach: `.alt-wrap { box-sizing: border-box; max-width: 100%; overflow-x:
+clip; }` under 640px, beside the tracker line it copies. `clip` and not
+`hidden`, so nothing becomes a scroll container and the tables keep their own
+deliberate scroll region.
+
 Not fixed, and noted rather than touched: `i.alt-sb-again` contrast is owned by
 another session. Under 768px the floor is deliberately not applied, so an iPad
 in portrait still meets the 24px AA minimum but not the 44px one; that is the

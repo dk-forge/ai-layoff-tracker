@@ -1032,6 +1032,16 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
         max-width: 100%;
     }
     .alt-tracker-wrap { box-sizing: border-box; overflow-x: clip; }
+    /* THE SAME BOUNDARY, ON THE PAGES THAT NOW SHARE THE SAME RULES. Section
+       4 of the tap-target block gives a link inside a sentence `padding:
+       10px 3px; margin: 0 -3px`, so its hit box reaches 3px either side and
+       the sentence does not move. On the tracker page the line above already
+       held that inside the wrapper. From 2.20.48 those rules carry .alt-wrap
+       rather than .alt-tracker-wrap, so a link at the very start of a line on
+       the company and country pages was hit-testing 3px past the left edge of
+       the screen. Same containment, same reason, and the tables keep their
+       own deliberate scroll region because this clips the WRAPPER. */
+    .alt-wrap { box-sizing: border-box; max-width: 100%; overflow-x: clip; }
     .alt-search-wrap { min-width: 0; width: 100%; }
     .alt-range-pop {
         left: auto;
