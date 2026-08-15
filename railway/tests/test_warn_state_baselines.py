@@ -263,6 +263,65 @@ class BaselineLedgerTest(unittest.TestCase):
         self.assertNotIn("ID", tier, "a broken state must not record a 0 floor")
         self.assertEqual(len(_EXPECTED) - 1, len(tier))
 
+    def test_rolling_window_states_are_never_ratcheted(self):
+        """AZ, concretely (owner decision 2026-08-14).
+
+        AZ's portal publishes a rolling window: 307, 299, 58, 76 on four
+        consecutive days, 16-755 over two weeks. The first 755-day would pin a
+        never-lowering floor that flags every ordinary day after it (below 226
+        at drop_frac=0.7) as drift, forever — a permanent false alarm
+        manufactured by the ratchet itself. So the ratchet must refuse to
+        record a rolling-window state even on its biggest run, while still
+        recording its archive-publishing siblings.
+        """
+        ledger = {}
+        counts = {"AZ": 755, "CA": 17366, "IL": 3139}
+        self.assertTrue(W.ratchet_state_baselines(
+            ledger, "generic", counts, ["AZ", "CA", "IL"]))
+        tier = ledger["generic"]
+        self.assertNotIn("AZ", tier,
+                         "a rolling-window count is recent volume, not archive "
+                         "size — it must never become a floor")
+        self.assertEqual(17366, tier["CA"])
+        self.assertEqual(3139, tier["IL"])
+
+    def test_stale_committed_rolling_floor_cannot_resurrect_the_alarm(self):
+        """The exemption must hold at LOAD too: a floor for AZ that survives in
+        the committed file (hand-edit, old branch, revert) must be dropped, or
+        the false alarm the ratchet no longer manufactures comes back through
+        the ledger instead."""
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            json.dump({"generic": {"AZ": 755, "CA": 17366}}, fh)
+            path = fh.name
+        try:
+            loaded = W.load_state_baselines(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual({"CA": 17366.0}, loaded["generic"])
+
+    def test_rolling_window_states_still_flag_a_hard_zero(self):
+        """Exempt from the ratchet, not from watching: in the generic tier a
+        bare 0 needs no floor, so a broken AZ scraper still surfaces."""
+        counts = {"AZ": 0, "CA": 17366, "IL": 3139, "NJ": 2307}
+        self.assertEqual(["AZ"], W.detect_generic_state_drift(
+            counts, ["AZ", "CA", "IL", "NJ"], {}))
+
+    def test_hand_set_floor_still_applies_to_a_rolling_state(self):
+        """WARN_GENERIC_BASELINE is a reviewed human judgment, not the ratchet;
+        the detector honours a floor for AZ when a human deliberately sets one."""
+        counts = {"AZ": 10, "CA": 17366, "IL": 3139, "NJ": 2307}
+        self.assertEqual(["AZ"], W.detect_generic_state_drift(
+            counts, ["AZ", "CA", "IL", "NJ"], {"AZ": 100}, drop_frac=0.7))
+
+    def test_shipped_ledger_holds_no_rolling_window_state(self):
+        with open(W.BASELINE_LEDGER) as fh:
+            raw = json.load(fh)
+        for tier, states in raw.items():
+            stray = sorted(set(states) & set(W.ROLLING_WINDOW_STATES))
+            self.assertEqual([], stray,
+                             f"tier {tier!r} carries floor(s) for rolling-window "
+                             f"state(s) {stray}; the ledger must not hold them")
+
     def test_shipped_ledger_is_valid(self):
         """The committed ledger must always parse — a broken one silently
         downgrades every tier to hard-zero detection."""

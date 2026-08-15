@@ -172,6 +172,18 @@ harmless — the ratchet raises it on the next healthy run. A floor seeded HIGH
 cries wolf on every run until someone edits it. So seed from counts you actually
 measured, never from an estimate, and never from a run you have not eyeballed.
 
+**Rolling-window states are EXEMPT from the ratchet (AZ, DE, ME, VT).** Their
+portals publish a rolling window, not an archive — AZ read 307, 299, 58, 76 on
+four consecutive days (TECHLOG 2026-08-14) — so a high-water floor there is a
+false alarm the mechanism manufactures itself. `ROLLING_WINDOW_STATES` in
+`railway/warn_import.py` is never ratcheted AND is dropped on ledger load, so
+do not hand-seed them into `warn_state_baselines.json`; the entry is dead on
+read. They are watched by hard-zero detection behind the peer gate. If one
+needs a partial-collapse floor, set it deliberately via `WARN_GENERIC_BASELINE`
+— that path is honoured because it is a human judgment, not the ratchet. If a
+state's portal changes publishing model (rolling ↔ archive), move it in or out
+of `ROLLING_WINDOW_STATES` in a reviewed commit that cites measured counts.
+
 **A job is DEFERRING (and what three in a row means)**
 `ops_status.py` section `[4d]` listed a job as deferred, or a workflow run
 printed `DEFERRED: <job> could not reach the host`.

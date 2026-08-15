@@ -140,13 +140,27 @@ def _sanitize_warn_entries(entries):
 BASELINE_LEDGER = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                "warn_state_baselines.json")
 
+# States whose WARN portal publishes a ROLLING WINDOW, not an archive. A
+# high-water floor is meaningless for them: measured over the 14 warn-import
+# runs 2026-08-02..2026-08-14 (TECHLOG 2026-08-14 §A), AZ swung 16-755, DE
+# 8-105, ME 5-90, VT 8-100 — one high day would ratchet a floor that flags
+# every ordinary day after it as drift, forever. These states are excluded
+# from the ratchet AND dropped on ledger load (so a stale committed floor
+# cannot resurrect the alarm); they are judged by hard-zero detection behind
+# the peer-health gate instead. A hand-set WARN_GENERIC_BASELINE floor still
+# applies to them — that is a reviewed human judgment, not the ratchet.
+ROLLING_WINDOW_STATES = frozenset({"AZ", "DE", "ME", "VT"})
+
 
 def load_state_baselines(path=BASELINE_LEDGER):
     """Committed per-tier, per-state high-water marks: {tier: {STATE: count}}.
 
-    Every state WARN scraper re-reads its state's WHOLE archive each run, so a
-    healthy count is near-monotonic and the high-water mark is a sound floor.
-    Without one, drift detection can only see a hard 0 — and the failure that
+    An ARCHIVE-publishing state's WARN scraper re-reads the state's whole
+    history each run, so a healthy count is near-monotonic and the high-water
+    mark is a sound floor. ROLLING_WINDOW_STATES publish a rolling window and
+    are dropped here — for them the mark floats with recent volume and a floor
+    built from it is a manufactured false alarm.
+    Without a floor, drift detection can only see a hard 0 — and the failure that
     actually happens is a PARTIAL collapse: when Ohio's JFS pages went
     unreachable, fetch_oh fell back to a single CSV and returned 61 of 787
     notices. Non-zero, so every tripwire stayed green while 92% of the state
@@ -161,7 +175,8 @@ def load_state_baselines(path=BASELINE_LEDGER):
         if not isinstance(data, dict):
             raise ValueError("baseline ledger is not an object")
         return {str(t): {str(k).upper(): float(v) for k, v in (m or {}).items()
-                         if float(v) > 0}
+                         if float(v) > 0
+                         and str(k).upper() not in ROLLING_WINDOW_STATES}
                 for t, m in data.items() if isinstance(m, dict)}
     except FileNotFoundError:
         return {}
@@ -189,13 +204,17 @@ def ratchet_state_baselines(ledger, tier, counts, expected, skip=()):
     ledger that stays empty forever while reporting nothing wrong. A state whose
     own count is healthy has earned its floor regardless of its neighbours.
 
+    ROLLING_WINDOW_STATES are never recorded: their portals publish a rolling
+    window, so a count is recent volume, not archive size, and one high day
+    would pin a floor their ordinary days can never clear.
+
     Returns True when anything changed (so the caller only rewrites on change).
     """
     tier_map = ledger.setdefault(tier, {})
     skip = {s.upper() for s in (skip or ())}
     changed = False
     for st in [s.upper() for s in expected]:
-        if st in skip:
+        if st in skip or st in ROLLING_WINDOW_STATES:
             continue
         n = float(counts.get(st, 0))
         if n > tier_map.get(st, 0):
