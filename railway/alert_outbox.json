@@ -65,6 +65,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "resolve:style-standard:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-15T07:25:30+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "payload": {
+        "body": "'Style standard' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881313\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "style-standard:main",
+        "subject": "RECOVERED: Style standard is green again"
+      },
+      "raised_at": "2026-08-15T07:25:30+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881313",
+      "scope": "style-standard:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -286,6 +302,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-15T07:25:22+00:00",
+  "updated_at": "2026-08-15T07:25:30+00:00",
   "version": 1
 }
