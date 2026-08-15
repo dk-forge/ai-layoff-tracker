@@ -1141,8 +1141,25 @@ when one fails on **main** with a NEW, code-shaped cause, it asks Claude (the
 pinned `anthropics/claude-code-action`) to reproduce the failure from the run's
 log, diagnose it, and open a **DRAFT pull request** with a test-verified fix.
 A second, adversarial pass then reviews the draft — re-derives the failure,
-tries to break the fix — and posts its verdict as a PR comment. **A human
-merges. Always.**
+tries to break the fix — and posts its verdict as a PR comment.
+
+**The healer MERGES ITS OWN DRAFT when every condition holds** (owner
+authorization, 2026-08-14: "a human clicks merge — I want you to click merge,
+I'm okay with that"). The click is delegated; the conditions are not, and
+every one resolves UNKNOWN to "stay a draft":
+1. the forbidden-path guard job passed;
+2. the adversarial reviewer's machine-readable verdict is **exactly**
+   `SELF-HEAL-REVIEW-VERDICT: LOOKS SOUND` — absent, ambiguous, or any other
+   verdict keeps the draft;
+3. the diff is source/test files only — **never** `.github/` and never
+   anything in `self_heal.FORBIDDEN`;
+4. the merged preview runs the offline suite and introduces **no failure main
+   does not already have**. That is the honest form of "green except the
+   documented live-data reds": a standing red fails both runs and subtracts
+   out; anything new blocks the merge.
+
+A blocked merge is a decision, not a failure — the job stays green, comments
+on the PR, and leaves the draft for a human.
 
 **What it will never do** (enforced in three layers: the gate in
 `railway/self_heal.py`, the action's tool allowlist, and the `guard` job that
@@ -1167,8 +1184,22 @@ open healer PRs.
 Secrets and variables → Actions). Until then every run gates, prints what it
 would have done, and exits green with a notice naming the secret.
 
-**To disable it:** set the repository variable `SELF_HEAL_DISABLED=true`
-(same settings page, Variables tab), or delete the workflow file.
+**To turn the AUTO-MERGE off and keep the drafts** (the one-line kill
+switch): set the repository variable `SELF_HEAL_AUTOMERGE_DISABLED=true`
+(Settings → Secrets and variables → Actions → Variables). The healer keeps
+diagnosing, drafting and reviewing; the click returns to you.
+
+**To disable the whole healer:** set the repository variable
+`SELF_HEAL_DISABLED=true` (same page), or delete the workflow file.
+
+**When a heal breaks something** — every auto-merge is ONE squash commit, and
+`docs/HEALING-LOG.md` is the revert index (date, workflow, run URL, cause,
+PR, merge SHA, files, reviewer verdict; newest first). Revert with
+`git revert <merge sha>` from that entry. `docs/TECHLOG.md` carries the
+narrative for the same heal under the same date. Both are written
+best-effort, AFTER the merge, and can never fail a heal — so an empty stretch
+in the log is not proof nothing merged; cross-check
+`git log --grep 'self-heal: auto-merged'` on main.
 
 **To test the gate:** `gh workflow run self-heal.yml -f run_id=<a past run id>`
 — or locally, `python3 railway/self_heal.py gate --run-id <id> --workflow
