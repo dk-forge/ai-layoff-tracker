@@ -49,6 +49,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "resolve:card-contract:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-15T07:25:22+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "payload": {
+        "body": "'Card contract' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881328\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "card-contract:main",
+        "subject": "RECOVERED: Card contract is green again"
+      },
+      "raised_at": "2026-08-15T07:25:22+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881328",
+      "scope": "card-contract:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -270,6 +286,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-15T07:24:13+00:00",
+  "updated_at": "2026-08-15T07:25:22+00:00",
   "version": 1
 }
