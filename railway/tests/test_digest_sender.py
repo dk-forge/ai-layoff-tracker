@@ -601,6 +601,123 @@ class NoRedeclaredFunction(unittest.TestCase):
                       "it must still CALL the shared definition")
 
 
+class TheThirdList(unittest.TestCase):
+    """The relay must be able to compose and count ALL THREE consent lists.
+
+    alt_digest_lists() has offered three since the form shipped, but this file
+    composed two and iterated two. Somebody who ticked ONLY "occasional
+    articles and product news" confirmed their address, was never counted as a
+    recipient, and received nothing, forever. A consent box with no sender
+    behind it is a promise kept only in the database.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.api = open(os.path.join(PLUGIN, "includes", "digest-api.php"),
+                       encoding="utf-8").read()
+        cls.sub = open(os.path.join(PLUGIN, "includes", "subscribe.php"),
+                       encoding="utf-8").read()
+
+    def _recipients_fn(self):
+        body = self.api[self.api.index("function alt_api_digest_recipients"):]
+        return body[:body.index("\n}")]
+
+    def test_every_list_the_form_offers_has_a_composer(self):
+        lists = self.sub[self.sub.index("function alt_digest_lists"):]
+        lists = lists[:lists.index("\n}")]
+        offered = set(re.findall(r"'(\w+)'\s*=>\s*array\('consent'", lists))
+        self.assertEqual(offered, {"layoff", "talent", "articles"})
+        for name in sorted(offered):
+            self.assertIn(f"function alt_digest_compose_{name}(", self.sub,
+                          f"the {name} consent box has no composer behind it")
+
+    def test_the_relay_composes_all_three(self):
+        fn = self._recipients_fn()
+        for name in ("layoff", "talent", "articles"):
+            self.assertRegex(fn, rf"'{name}'\s*=>\s*'alt_digest_compose_{name}'",
+                             f"the relay never composes the {name} section")
+
+    def test_the_relay_counts_an_articles_subscriber_as_a_recipient(self):
+        """The eligibility loop is the half that decides who gets an email at
+        all. A list missing HERE is an address that is never returned."""
+        fn = self._recipients_fn()
+        loop = fn[fn.index("foreach (alt_digest_due_rows"):]
+        self.assertRegex(
+            loop, r"array\('layoff',\s*'talent',\s*'articles'\)",
+            "the eligibility loop does not iterate all three lists, so an "
+            "articles-only subscriber can never become a recipient")
+
+    def test_the_built_in_sender_composes_and_iterates_all_three(self):
+        sender = self.sub[self.sub.index("function alt_digest_send("):]
+        sender = sender[:sender.index("\n}")]
+        self.assertIn("alt_digest_compose_articles(", sender)
+        self.assertRegex(sender, r"array\('layoff',\s*'talent',\s*'articles'\)")
+
+
+class ManageYourSubscriptions(unittest.TestCase):
+    """Every digest offers a way to change what you get, not only a way to
+    stop everything. One-click unsubscribe is a blunt instrument: a reader who
+    wants one of three lists and gets three has exactly one button, and using
+    it costs us the other two."""
+
+    MANAGE = "https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-digest"
+
+    def _msg(self):
+        payload = _payload(manage_url=self.MANAGE)
+        return digest_send.build_message(
+            payload, payload["recipients"][0],
+            "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
+
+    def test_the_manage_link_is_in_both_body_parts(self):
+        msg = self._msg()
+        self.assertIn(self.MANAGE, msg.html,
+                      "the HTML part offers no way to change preferences")
+        self.assertIn(self.MANAGE, msg.text,
+                      "the plain text part offers no way to change preferences")
+
+    def test_it_sits_beside_the_unsubscribe_and_does_not_replace_it(self):
+        msg = self._msg()
+        self.assertIn(UNSUB, msg.html)
+        self.assertIn(UNSUB, msg.text)
+        dt.assert_message_is_clean(msg)
+
+    def test_a_payload_without_one_omits_the_link_rather_than_guessing(self):
+        """An older plugin build does not send the field. A guessed URL in a
+        million inboxes is worse than no link."""
+        payload = _payload()
+        msg = digest_send.build_message(
+            payload, payload["recipients"][0],
+            "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
+        self.assertNotIn("Manage your subscriptions", msg.html)
+        self.assertNotIn("Manage your subscriptions", msg.text)
+        dt.assert_message_is_clean(msg)
+
+    def test_a_manage_url_off_our_own_site_is_refused(self):
+        payload = _payload(manage_url="https://evil.example/prefs")
+        msg = digest_send.build_message(
+            payload, payload["recipients"][0],
+            "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
+        self.assertNotIn("evil.example", msg.html)
+        self.assertNotIn("evil.example", msg.text)
+
+    def test_the_server_side_sender_offers_it_too(self):
+        sub = open(os.path.join(PLUGIN, "includes", "subscribe.php"),
+                   encoding="utf-8").read()
+        self.assertIn("function alt_digest_manage_url", sub)
+        self.assertIn("#alt-digest", sub)
+        sender = sub[sub.index("function alt_digest_send("):]
+        sender = sender[:sender.index("\n}")]
+        self.assertIn("Manage your subscriptions", sender)
+
+    def test_the_route_hands_the_relay_the_url_rather_than_the_relay_building_it(self):
+        api = open(os.path.join(PLUGIN, "includes", "digest-api.php"),
+                   encoding="utf-8").read()
+        self.assertIn("'manage_url'", api)
+        send = open(os.path.join(RAILWAY, "digest_send.py"), encoding="utf-8").read()
+        self.assertNotIn("asktherecruiter.com/blog/ai-layoff-tracker", send,
+                         "the sender must not carry a hard coded site URL")
+
+
 class HouseStyle(unittest.TestCase):
     FILES = [
         os.path.join(RAILWAY, "digest_send.py"),

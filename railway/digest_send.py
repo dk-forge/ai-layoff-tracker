@@ -128,6 +128,24 @@ def usable_sections(payload: dict, wanted) -> list:
     return out
 
 
+def _same_site(url: str, reference: str) -> bool:
+    """Is `url` on the same host as the unsubscribe link the site gave us?
+
+    The unsubscribe URL is the one address in the payload we already trust to
+    be ours, so it is the reference. This is not a formality: everything in the
+    payload arrives over the network, and a link we print in a mail body under
+    our own name has to be a link home.
+    """
+    try:
+        a = urllib.parse.urlsplit(url)
+        b = urllib.parse.urlsplit(reference)
+    except ValueError:
+        return False
+    if a.scheme != "https" or a.username or a.password:
+        return False
+    return bool(a.hostname) and a.hostname.lower() == (b.hostname or "").lower()
+
+
 def build_message(payload: dict, recipient: dict, from_addr: str,
                   reply_to: str) -> Message | None:
     """One rendered digest, or None when this person has nothing due.
@@ -145,6 +163,22 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     body_html = "".join(html for _, html, _ in parts)
     body_text = "\n".join(text for _, _, text in parts)
 
+    # A way to change WHAT you get, beside the way to stop everything. One
+    # click unsubscribe is a blunt instrument: a reader who wants one of three
+    # lists and receives three has exactly one button, and pressing it costs us
+    # the other two.
+    #
+    # The URL comes from the site, never from here. An older plugin build does
+    # not send the field, and a link guessed into a million inboxes is worse
+    # than no link, so an absent or foreign one is simply omitted.
+    manage = str(payload.get("manage_url") or "").strip()
+    if not (manage.startswith("https://") and _same_site(manage, unsub)):
+        manage = ""
+    manage_html = (f' You can also <a href="{manage}">Manage your subscriptions</a> '
+                   'to change which of these you get.') if manage else ""
+    manage_text = ("\nManage your subscriptions (change which of these you "
+                   "get):\n" + manage) if manage else ""
+
     # Text first HTML: no images, no stylesheet link, no remote anything. The
     # inline styles are literal values for the same reason, since a CSS url()
     # is a remote fetch wearing a stylesheet.
@@ -154,12 +188,15 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
             + '<p style="font-size:12px;color:#555;">You get this because you '
               'confirmed a digest subscription at asktherecruiter.com. '
             + f'<a href="{unsub}">Unsubscribe with one click</a> '
-              '(stops everything at once). We send no images and no tracking '
+              '(stops everything at once).'
+            + manage_html
+            + ' We send no images and no tracking '
               'pixels, so we cannot tell whether you opened this.</p></div>')
     text = (body_text.rstrip()
             + "\n\n----\nYou get this because you confirmed a digest "
               "subscription at asktherecruiter.com.\nUnsubscribe with one "
               "click (stops everything at once):\n" + unsub
+            + manage_text
             + "\nWe send no images and no tracking pixels, so we cannot tell "
               "whether you opened this.\n")
 

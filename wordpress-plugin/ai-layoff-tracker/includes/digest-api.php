@@ -127,8 +127,9 @@ function alt_api_digest_recipients($request) {
     // absent from this payload, and the sender omits it rather than inventing
     // a figure to fill the space.
     $sections = array();
-    foreach (array('layoff' => 'alt_digest_compose_layoff',
-                   'talent' => 'alt_digest_compose_talent') as $name => $fn) {
+    foreach (array('layoff'   => 'alt_digest_compose_layoff',
+                   'talent'   => 'alt_digest_compose_talent',
+                   'articles' => 'alt_digest_compose_articles') as $name => $fn) {
         $part = function_exists($fn) ? $fn($from_date, $to_date, $send_id) : null;
         if (is_array($part) && !empty($part['html']) && !empty($part['text'])) {
             $sections[$name] = array('html' => $part['html'], 'text' => $part['text']);
@@ -138,7 +139,12 @@ function alt_api_digest_recipients($request) {
     $recipients = array();
     foreach (alt_digest_due_rows($freq) as $row) {
         $lists = array();
-        foreach (array('layoff', 'talent') as $list) {
+        // ALL THREE. A list missing from this loop is an address the external
+        // sender is never handed, which is exactly how the articles box spent
+        // its first months: confirmed subscribers, counted by nothing, mailed
+        // by nobody. It is driven off alt_digest_lists() by hand rather than
+        // by iteration so that adding a fourth box is a deliberate edit here.
+        foreach (array('layoff', 'talent', 'articles') as $list) {
             $cols = alt_digest_lists()[$list];
             if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq) {
                 $lists[] = $list;
@@ -180,6 +186,10 @@ function alt_api_digest_recipients($request) {
         'to'         => $to_date,
         'subject'    => '[AskTheRecruiter] ' . $label . ' tracker digest',
         'sections'   => $sections,
+        // Where a reader changes WHAT they get rather than stopping
+        // everything. Built here, from home_url(), so the relay never carries
+        // a hard coded site address it could get wrong or out of date.
+        'manage_url' => function_exists('alt_digest_manage_url') ? alt_digest_manage_url() : '',
         'recipients' => $recipients,
     ), 200);
     // Addresses are never cached, at the edge or anywhere else.

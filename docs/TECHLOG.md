@@ -1,6 +1,68 @@
 # Tech Log
 
 
+## 2026-08-15 - the third consent box had no sender behind it (2.20.55)
+
+The signup form has offered three subscriptions since it shipped: layoff,
+talent, and "occasional articles and product news". `alt_digest_lists()` has
+listed all three from the first commit. Only two could ever be composed, and
+the gap was in THREE places at once, each of which is on its own sufficient to
+guarantee silence:
+
+1. `alt_digest_due_rows()` (the ONE shared definition of who is due, read by
+   both senders) matched `consent_layoff` or `consent_talent` and nothing else,
+   so an articles-only subscriber was never a due row for either sender.
+2. `includes/digest-api.php` composed a map of two and iterated
+   `array('layoff', 'talent')` in its eligibility loop.
+3. `alt_digest_compose_articles()` did not exist. The wp_mail sender carried a
+   comment saying its absence was deliberate because no editorial mechanism
+   existed.
+
+The user-visible consequence: somebody who ticked only the third box completed
+double opt in, saw "check your email", confirmed, was counted by nothing and
+mailed by nobody, forever. Not an error anywhere; a promise kept only in the
+database.
+
+**The mechanism that did exist.** The comment was written when the digest read
+only the two tracker APIs, and it was true of those. It stopped being true the
+moment anyone noticed the site is a WordPress blog: the posts ARE the editorial
+supply. `alt_digest_compose_articles()` reads `post_type => 'post'`,
+`post_status => 'publish'`, inside the same window the other two composers use,
+and emits title, the post's OWN excerpt, and the permalink through the existing
+`alt_digest_track_link()` counter. Two gates keep surfaces out: every tracker
+page is a `page` and every entry is the `layoffs` CPT, so neither can match the
+query, and a permalink under `/ai-layoff-tracker/` is dropped even if somebody
+publishes a surface as a post one day.
+
+**A generated excerpt is not an excerpt.** It uses `$post->post_excerpt` only,
+never `get_the_excerpt()`. WordPress assembling the first 55 words of the body
+is not a standfirst an editor wrote, and a title with no blurb is the honest
+shape when nobody wrote one. Same rule as everywhere else here: an empty window
+returns null and the section is ABSENT. No heading over a "nothing published
+this period" line.
+
+**Footer: manage, not only stop.** Both senders now offer "Manage your
+subscriptions" beside the one-click unsubscribe, in the HTML and the plain text
+part. It points at the signup form's own anchor (`#alt-digest`). There is
+deliberately NO token authenticated preferences route: re-submitting the form
+updates preferences through the same double opt in that created them, so a
+change costs the mailbox, and a long lived link in a million inboxes that edits
+a record without proving the mailbox is a bigger surface than the problem it
+solves. The relay gets the URL from the route (`manage_url`) rather than
+building it, and `digest_send.py` omits the link entirely when the payload has
+none or when it is not on the same host as the unsubscribe URL. An old plugin
+build therefore loses a link rather than printing a guessed one.
+
+**What the tests now hold.** The harness loads `subscribe.php` AND
+`digest-api.php` in one process (which is also a second, behavioural copy of
+the redeclaration guard from 2.20.54), stubs `get_posts`, and drives the real
+route. Verified red first, with the real messages:
+`Regex didn't match: "array\('layoff',\s*'talent',\s*'articles'\)" not found in
+'foreach (alt_digest_due_rows($freq) as $row) {...'` and
+`Call to undefined function alt_digest_compose_articles()`. The new
+`test_every_list_the_form_offers_has_a_composer` reads `alt_digest_lists()` and
+requires a composer per entry, so a fourth box cannot ship silent the same way.
+
 ## 2026-08-15 - a redeclared function took the whole site down for nine minutes (2.20.54)
 
 2.20.53 shipped `alt_digest_due_rows()` and `alt_digest_period_seconds()` in

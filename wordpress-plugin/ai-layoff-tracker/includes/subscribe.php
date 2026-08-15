@@ -136,9 +136,10 @@ function alt_digest_due_rows($freq) {
     return $wpdb->get_results($wpdb->prepare(
         "SELECT * FROM $table WHERE status = 'confirmed'
            AND ((consent_layoff = 1 AND freq_layoff = %s)
-             OR (consent_talent = 1 AND freq_talent = %s))
+             OR (consent_talent = 1 AND freq_talent = %s)
+             OR (consent_articles = 1 AND freq_articles = %s))
            AND (last_sent_at IS NULL OR last_sent_at < %s)",
-        $freq, $freq, $cutoff), ARRAY_A) ?: array();
+        $freq, $freq, $freq, $cutoff), ARRAY_A) ?: array();
 }
 
 function alt_digest_get_by_email($email) {
@@ -261,9 +262,11 @@ function alt_digest_subscribe_form($context = '') {
             </div>
         <?php endif; ?>
         <p class="alt-digest-intro">A plain email summary of what changed on these trackers: the period's
-            headline numbers and the largest new entries, with links back to the source pages. No images,
-            no tracking pixels. You confirm your address by clicking a link we email you, and every email
-            carries a one-click unsubscribe. Details in the <a href="#alt-digest-privacy">privacy note</a> below.</p>
+            headline numbers and the largest new entries, with links back to the source pages, plus anything
+            we published on the blog in that period if you ask for it. No images, no tracking pixels. You
+            confirm your address by clicking a link we email you, and every email carries a one-click
+            unsubscribe and a link back here to change what you get. Details in the
+            <a href="#alt-digest-privacy">privacy note</a> below.</p>
         <form class="alt-digest-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <input type="hidden" name="action" value="alt_digest_subscribe">
             <?php wp_nonce_field('alt_digest_subscribe', 'alt_digest_nonce'); ?>
@@ -792,9 +795,109 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     return array('html' => $html, 'text' => $text);
 }
 
+/**
+ * Compose the articles section: the site's OWN posts published in the period.
+ *
+ * WHY THIS EXISTS. The form has offered three boxes since it shipped, and only
+ * two of them could ever be composed. Somebody who ticked ONLY "occasional
+ * articles and product news" confirmed their address through double opt in,
+ * was never counted as a recipient by either sender, and received nothing,
+ * forever. A consent box with no sender behind it is a promise kept only in
+ * the database.
+ *
+ * The source is WordPress posts, which is the only editorial supply the site
+ * actually has, and it is read deliberately narrowly:
+ *
+ *   post_type 'post' ONLY. Every tracker surface (the tracker itself, health,
+ *   sources, press, methodology, the reports) is a PAGE created by
+ *   ai-layoff-tracker.php, and the entries are the 'layoffs' CPT, so neither
+ *   can reach this list. The permalink check below is a SECOND gate, for the
+ *   day somebody publishes a surface as a post.
+ *
+ *   The post's OWN excerpt, or none. An excerpt WordPress assembled from the
+ *   first 55 words of the body is not a standfirst an editor wrote, and a
+ *   title with no blurb is the honest shape when nobody wrote one.
+ *
+ * Returns null when the window holds no posts. An absent section is ABSENT:
+ * no heading over a "nothing published this period" line. The reader learns
+ * the same thing from silence, and we do not spend their attention saying it.
+ */
+function alt_digest_compose_articles($from, $to, $send_id = 0) {
+    if (!function_exists('get_posts')) return null;
+    $posts = get_posts(array(
+        'post_type'           => 'post',
+        'post_status'         => 'publish',
+        'numberposts'         => 5,
+        'orderby'             => 'date',
+        'order'               => 'DESC',
+        'has_password'        => false,
+        'ignore_sticky_posts' => true,
+        'suppress_filters'    => false,
+        'date_query'          => array(array(
+            'column'    => 'post_date_gmt',
+            'after'     => $from,
+            'before'    => $to . ' 23:59:59',
+            'inclusive' => true,
+        )),
+    ));
+    if (!is_array($posts) || !$posts) return null;
+
+    $surface = home_url('/ai-layoff-tracker/');
+    $items = array();
+    foreach ($posts as $post) {
+        $title = wp_strip_all_tags(get_the_title($post));
+        $link = (string) get_permalink($post);
+        if ($title === '' || !alt_digest_link_allowed($link)) continue;
+        if (strpos($link, $surface) === 0) continue;   // a surface, not an article
+        $items[] = array(
+            'title' => $title,
+            'link'  => $link,
+            'blurb' => wp_strip_all_tags(isset($post->post_excerpt) ? $post->post_excerpt : ''),
+        );
+    }
+    if (!$items) return null;
+
+    $html = '<h2 style="font-size:16px;margin:24px 0 8px;">From the blog</h2>'
+          . '<ul style="margin:0 0 8px;padding-left:20px;">';
+    $text = "From the blog\n";
+    foreach ($items as $item) {
+        // Counted the same way the other two sections count theirs: a
+        // destination that fails the host guard is left unwrapped, never
+        // dropped, so counting can never break or relocate a link.
+        $click = alt_digest_track_link($send_id, $item['link']);
+        $html .= '<li style="margin:0 0 8px;"><a href="' . esc_url($click) . '">'
+               . esc_html($item['title']) . '</a>';
+        $text .= '  - ' . $item['title'] . "\n";
+        if ($item['blurb'] !== '') {
+            $html .= '<br>' . esc_html($item['blurb']);
+            $text .= '    ' . $item['blurb'] . "\n";
+        }
+        $html .= '</li>';
+        // The plain URL in the text part: a text reader should not be handed a
+        // machine shaped URL to squint at.
+        $text .= '    ' . $item['link'] . "\n";
+    }
+    $html .= '</ul>';
+    return array('html' => $html, 'text' => $text);
+}
+
 /* ------------------------------------------------------------------ */
 /* Sending                                                             */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Where a reader changes WHAT they get, as opposed to stopping everything.
+ *
+ * It is the signup form's own anchor, and that is the whole design.
+ * Re-submitting the form updates preferences through the SAME double opt in
+ * that created them, so a change needs the mailbox, and there is deliberately
+ * no token authenticated preferences route: a long lived link in a million
+ * inboxes that edits a record without proving the mailbox is a bigger surface
+ * than the problem it solves.
+ */
+function alt_digest_manage_url() {
+    return home_url('/ai-layoff-tracker/') . '#alt-digest';
+}
 
 /**
  * Send one frequency tier's digests. HARD RULE, tested: recipients are rows
@@ -837,9 +940,7 @@ function alt_digest_send($freq) {
     $sections = array(
         'layoff' => alt_digest_compose_layoff($from_date, $to_date, $send_id),
         'talent' => alt_digest_compose_talent($from_date, $to_date, $send_id),
-        // 'articles' deliberately absent: that consent flag records intent
-        // only. No article-writing mechanism exists, so nothing sends. Do not
-        // add a sender here without an actual editorial pipeline behind it.
+        'articles' => alt_digest_compose_articles($from_date, $to_date, $send_id),
     );
 
     $rows = alt_digest_due_rows($freq);
@@ -849,7 +950,7 @@ function alt_digest_send($freq) {
     foreach ($rows as $row) {
         $parts_html = array();
         $parts_text = array();
-        foreach (array('layoff', 'talent') as $list) {
+        foreach (array('layoff', 'talent', 'articles') as $list) {
             $cols = alt_digest_lists()[$list];
             if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq && $sections[$list]) {
                 $parts_html[] = $sections[$list]['html'];
@@ -866,7 +967,9 @@ function alt_digest_send($freq) {
               . '<hr style="border:none;border-top:1px solid #ddd;margin:24px 0 12px;">'
               . '<p style="font-size:12px;color:#555;">You get this because you confirmed a digest '
               . 'subscription at asktherecruiter.com. '
-              . '<a href="' . esc_url($unsub) . '">Unsubscribe with one click</a> (stops everything at once).</p>'
+              . '<a href="' . esc_url($unsub) . '">Unsubscribe with one click</a> (stops everything at once), or '
+              . '<a href="' . esc_url(alt_digest_manage_url()) . '">Manage your subscriptions</a> '
+              . 'to change which of these you get.</p>'
               . '</div>';
         $headers = array_merge(
             array('Content-Type: text/html; charset=UTF-8'),

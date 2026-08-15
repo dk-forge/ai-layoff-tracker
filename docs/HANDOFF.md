@@ -9,7 +9,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** the archive re-check throughput decision, the deferring test-job, the live-data alert scope, the press and board surfaces, WARN adjudication
+- **WORKING ON:** the digest's third consent box (articles subscribers were confirmed and never mailed), the manage-subscriptions footer, and the surfaces those touch
 
 **Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
 had gone stale: it still named the US incident close, which landed, so a session

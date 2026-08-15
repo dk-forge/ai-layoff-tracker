@@ -33,6 +33,7 @@ PLUGIN = os.path.abspath(os.path.join(
     HERE, "..", "..", "wordpress-plugin", "ai-layoff-tracker"))
 SUBSCRIBE = os.path.join(PLUGIN, "includes", "subscribe.php")
 HARNESS = os.path.join(HERE, "fixtures", "digest_harness.php")
+DIGEST_API = os.path.join(PLUGIN, "includes", "digest-api.php")
 
 
 def _php():
@@ -182,14 +183,34 @@ class StaticGuards(unittest.TestCase):
         self.assertGreater(stamp_pos, send_pos)
         self.assertGreater(stamp_pos, purge_pos)
 
-    def test_articles_consent_sends_nothing_and_says_so(self):
-        """No article mechanism exists; the flag records consent only, and the
-        code must say so where a future sender would be added."""
-        self.assertIn("'articles' deliberately absent", self.src)
+    def test_the_articles_list_has_a_composer_behind_it(self):
+        """Every box the form offers must be able to produce an email.
+
+        The articles box shipped with the form and had no sender for months:
+        somebody who ticked only that one confirmed their address, was never
+        counted as a recipient, and received nothing, forever."""
+        self.assertIn("function alt_digest_compose_articles(", self.src)
         sender = self.src[self.src.index("function alt_digest_send("):]
         sender = sender[:sender.index("\n}")]
-        self.assertNotIn("consent_articles = 1", sender,
-                         "nothing may send under the articles consent yet")
+        self.assertIn("alt_digest_compose_articles(", sender)
+
+    def test_the_articles_section_reads_the_sites_own_posts(self):
+        fn = self.src[self.src.index("function alt_digest_compose_articles("):]
+        fn = fn[:fn.index("\n}")]
+        self.assertIn("get_posts(", fn)
+        self.assertIn("'post_type'", fn)
+        self.assertIn("'publish'", fn)
+
+    def test_an_empty_window_composes_nothing_rather_than_a_filler_line(self):
+        fn = self.src[self.src.index("function alt_digest_compose_articles("):]
+        fn = fn[:fn.index("\n}")]
+        code = re.sub(r"/\*.*?\*/", "", fn, flags=re.S)
+        code = re.sub(r"//[^\n]*", "", code)
+        self.assertIn("return null;", code)
+        for filler in ("No articles", "no articles", "Nothing new",
+                       "no new posts", "0 articles"):
+            self.assertNotIn(filler, code,
+                             f"an absent section must be absent, not {filler!r}")
 
 
 @unittest.skipUnless(_php(), "php not installed")
@@ -285,7 +306,7 @@ class BehaviouralGuards(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE],
+        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE, DIGEST_API],
                               capture_output=True, text=True, timeout=60)
         assert proc.returncode == 0, proc.stderr or proc.stdout
         cls.o = json.loads(proc.stdout)
@@ -371,13 +392,73 @@ class BehaviouralGuards(unittest.TestCase):
 
 
 @unittest.skipUnless(_php(), "php not installed")
+class TheArticlesList(unittest.TestCase):
+    """The third consent box, driven end to end.
+
+    It was offered on the form from the first day and had no sender behind it:
+    an articles-only subscriber double opted in, was never counted as a
+    recipient by either sender, and received nothing, forever.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE, DIGEST_API],
+                              capture_output=True, text=True, timeout=60)
+        assert proc.returncode == 0, proc.stderr or proc.stdout
+        cls.o = json.loads(proc.stdout)
+
+    def test_a_window_with_no_posts_omits_the_section_entirely(self):
+        self.assertTrue(self.o["articles_empty_window_is_null"],
+                        "an empty period must compose nothing at all, not an "
+                        "empty heading and not a 'no articles this period' line")
+
+    def test_an_articles_only_subscriber_gets_nothing_while_nothing_exists(self):
+        self.assertEqual(self.o["articles_only_mails_with_no_posts"], 0)
+
+    def test_an_articles_only_subscriber_is_a_recipient_once_posts_exist(self):
+        self.assertTrue(self.o["articles_section_composed"])
+        self.assertEqual(self.o["articles_only_mails_with_posts"], 1,
+                         "the subscriber who ticked only the articles box must "
+                         "receive the digest once the site has published")
+        body = self.o["articles_mail_body"]
+        self.assertIn("What the WARN data actually says", body)
+
+    def test_the_section_carries_the_posts_own_words_and_nothing_else(self):
+        html, text = self.o["articles_html"], self.o["articles_text"]
+        for part in (html, text):
+            self.assertIn("What the WARN data actually says", part)
+            self.assertIn("Reading an 8-K", part)
+            self.assertIn("A standfirst an editor wrote.", part)
+            # A tracker surface is not an article, whatever type it is stored as.
+            self.assertNotIn("Sources", part)
+            # Outside the window, and unpublished.
+            self.assertNotIn("Last month", part)
+            self.assertNotIn("Half written", part)
+
+    def test_the_section_links_through_the_first_party_counter(self):
+        self.assertIn("/wp-json/layoffs/v1/click", self.o["articles_html"])
+        self.assertNotIn("<img", self.o["articles_html"].lower())
+
+    def test_the_relay_composes_and_counts_the_third_list_too(self):
+        self.assertIn("articles", self.o["relay_sections"],
+                      "the relay never composed the articles section")
+        self.assertIn(["articles"], self.o["relay_recipient_lists"],
+                      "an articles-only subscriber is not returned as a "
+                      "recipient, so the external sender never mails them")
+
+    def test_the_relay_hands_out_a_manage_url(self):
+        self.assertEqual(self.o["relay_manage_url"],
+                         "https://example.test/blog/ai-layoff-tracker/#alt-digest")
+
+
+@unittest.skipUnless(_php(), "php not installed")
 class ClickCountingAndStats(unittest.TestCase):
     """The send log, the aggregate counter, the open-redirect guard and the
     stats payload, all driven through the real handlers."""
 
     @classmethod
     def setUpClass(cls):
-        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE],
+        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE, DIGEST_API],
                               capture_output=True, text=True, timeout=60)
         assert proc.returncode == 0, proc.stderr or proc.stdout
         cls.o = json.loads(proc.stdout)

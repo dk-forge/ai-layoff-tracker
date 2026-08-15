@@ -63,6 +63,38 @@ function wp_mail($to, $subject, $body, $headers = array()) {
 }
 
 function apply_filters($tag, $value, ...$rest) { return $value; }
+function wp_strip_all_tags($s) { return trim(strip_tags((string) $s)); }
+
+/**
+ * The site's own posts, for the articles section. Set $GLOBALS['__posts'] to a
+ * list of post objects; this honours the subset of get_posts() arguments the
+ * composer actually passes (type, status, the date_query window, the ceiling).
+ */
+$GLOBALS['__posts'] = array();
+function get_posts($args = array()) {
+    $type   = $args['post_type'] ?? 'post';
+    $status = $args['post_status'] ?? 'publish';
+    $limit  = (int) ($args['numberposts'] ?? 5);
+    $window = $args['date_query'][0] ?? array();
+    $after  = (string) ($window['after'] ?? '');
+    $before = (string) ($window['before'] ?? '');
+    $found = array();
+    foreach ($GLOBALS['__posts'] as $p) {
+        if (($p->post_type ?? 'post') !== $type) continue;
+        if (($p->post_status ?? 'publish') !== $status) continue;
+        $when = (string) ($p->post_date_gmt ?? '');
+        if ($after !== '' && $when < $after) continue;
+        if ($before !== '' && $when > $before) continue;
+        $found[] = $p;
+        if (count($found) >= $limit) break;
+    }
+    return $found;
+}
+function get_permalink($p) {
+    $slug = is_object($p) ? (string) $p->post_name : (string) $p;
+    return 'https://example.test/blog/' . $slug . '/';
+}
+function get_the_title($p) { return is_object($p) ? (string) $p->post_title : ''; }
 function wp_parse_url($url, $component = -1) { return $component === -1 ? parse_url($url) : parse_url($url, $component); }
 function rest_url($path = '') { return 'https://example.test/blog/wp-json/' . ltrim($path, '/'); }
 function register_rest_route(...$a) { $GLOBALS['__routes'][] = $a; }
@@ -204,6 +236,11 @@ if (!defined('ARRAY_A')) define('ARRAY_A', 'ARRAY_A');
 $GLOBALS['wpdb'] = new FakeWpdb();
 
 require $argv[1];
+// Optional second include: includes/digest-api.php, the external relay's half.
+// Loading BOTH in one process is also how a redeclared function would show up
+// here as the fatal it is on the live site, rather than passing one file at a
+// time. See tests/test_digest_sender.py NoRedeclaredFunction.
+if (isset($argv[2]) && $argv[2] !== '') require $argv[2];
 
 /* ------------------------------------------------------------------ */
 /* Drive the real functions                                            */
@@ -462,6 +499,82 @@ drive('alt_digest_unsubscribe');
 $stats = alt_digest_stats();
 $out['stats'] = $stats;
 $out['stats_json'] = json_encode($stats);
+
+/* ------------------------------------------------------------------ */
+/* 13. The articles list: the third consent box, and its sender.        */
+/* ------------------------------------------------------------------ */
+
+$wpdb->pdo->exec('DELETE FROM wp_alt_subscribers');
+$wpdb->pdo->exec('DELETE FROM wp_alt_digest_sends');
+$wpdb->pdo->exec('DELETE FROM wp_alt_digest_links');
+$GLOBALS['__transients'] = array();
+$GLOBALS['__posts'] = array();
+
+$art_from = gmdate('Y-m-d', time() - 7 * DAY_IN_SECONDS);
+$art_to = gmdate('Y-m-d');
+
+// A real send row, so the composed links go through the counter exactly as
+// they do in a live run.
+$wpdb->insert('wp_alt_digest_sends', array(
+    'freq' => 'weekly', 'sent_at' => gmdate('Y-m-d H:i:s'),
+    'recipients' => 0, 'eligible' => 0));
+$art_send_id = (int) $wpdb->insert_id;
+
+// An empty window composes NOTHING: not an empty heading, not a filler line.
+$out['articles_empty_window_is_null'] = alt_digest_compose_articles($art_from, $art_to, $art_send_id) === null;
+
+// Somebody who ticked ONLY the articles box.
+$confirm_signup('reader@example.com', array('articles'));
+$before_quiet = count($mails);
+list($sent_quiet, ) = alt_digest_send('weekly');
+$out['articles_only_mails_with_no_posts'] = count($mails) - $before_quiet;
+
+$mk = function ($id, $title, $slug, $excerpt, $age_days, $extra = array()) {
+    return (object) array_merge(array(
+        'ID' => $id, 'post_title' => $title, 'post_name' => $slug,
+        'post_excerpt' => $excerpt, 'post_type' => 'post', 'post_status' => 'publish',
+        'post_date_gmt' => gmdate('Y-m-d H:i:s', time() - $age_days * DAY_IN_SECONDS),
+    ), $extra);
+};
+$GLOBALS['__posts'] = array(
+    $mk(11, 'What the WARN data actually says', 'warn-data',
+        'A standfirst an editor wrote.', 2),
+    $mk(12, 'Reading an 8-K', 'reading-an-8k', '', 3),
+    // A tracker surface published as a post is still not an article.
+    $mk(13, 'Sources', 'ai-layoff-tracker/sources', '', 1),
+    // Outside the window, and a draft: neither may appear.
+    $mk(14, 'Last month', 'last-month', '', 40),
+    $mk(15, 'Half written', 'half-written', '', 1, array('post_status' => 'draft')),
+);
+
+$art = alt_digest_compose_articles($art_from, $art_to, $art_send_id);
+$out['articles_section_composed'] = is_array($art)
+    && trim((string) $art['html']) !== '' && trim((string) $art['text']) !== '';
+$out['articles_html'] = is_array($art) ? $art['html'] : null;
+$out['articles_text'] = is_array($art) ? $art['text'] : null;
+
+// The same person, same period, is now a recipient with something to read.
+$before_send = count($mails);
+list($sent_articles, ) = alt_digest_send('weekly');
+$art_mail = end($mails);
+$out['articles_only_mails_with_posts'] = count($mails) - $before_send;
+$out['articles_mail_body'] = ($sent_articles > 0 && is_array($art_mail)) ? $art_mail['body'] : '';
+
+// And the relay half: the route that hands addresses to the external sender.
+if (function_exists('alt_api_digest_recipients')) {
+    $wpdb->pdo->exec("UPDATE wp_alt_subscribers SET last_sent_at = NULL");
+    $req = new WP_REST_Request('GET', '/layoffs/v1/digest-recipients');
+    $req->set_param('freq', 'weekly');
+    $res = alt_api_digest_recipients($req);
+    $data = $res->get_data();
+    $out['relay_sections'] = array_keys((array) ($data['sections'] ?? array()));
+    $out['relay_recipient_lists'] = array_map(
+        function ($r) { return $r['lists']; }, (array) ($data['recipients'] ?? array()));
+    $out['relay_manage_url'] = $data['manage_url'] ?? null;
+    // The claim this route stamps must not make the built in sender stand
+    // down for the checks that follow.
+    unset($GLOBALS['__options']['alt_digest_external_claim']);
+}
 
 // 12. No table, no numbers: UNKNOWN, never a zero.
 $wpdb->pdo->exec('DROP TABLE wp_alt_subscribers');
