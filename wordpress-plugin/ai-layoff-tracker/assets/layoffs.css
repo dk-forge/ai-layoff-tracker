@@ -4131,8 +4131,14 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
        page is byte-identical and the other six inherit the standard rather
        than each growing their own. The rules below are the controls those
        pages have and the tracker page does not. */
+    /* Each of these pages carries its own "on this page" nav, under its own
+       class, and every one of them measured 16 to 32px. They are link RUNS
+       (case 1 in section 3), not words in a sentence, so they are laid out
+       with a real gap and given the floor. */
     .alt-press-toc,
-    .alt-health-toc {
+    .alt-health-toc,
+    .alt-method-toc,
+    .alt-src-toc {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -4140,16 +4146,23 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     }
     .alt-wrap .alt-press-toc a,
     .alt-wrap .alt-health-toc a,
+    .alt-wrap .alt-method-toc a,
+    .alt-wrap .alt-src-toc a,
+    .alt-wrap .alt-report-tab,
+    .alt-wrap .alt-report-pn,
     .alt-wrap .alt-sb-actions > .alt-sb-link {
         display: inline-flex;
         align-items: center;
         min-height: 44px;
     }
-    /* "About" is five characters. Height alone leaves it 38.8px across, and
-       the citeline links needed the same second axis stated for the same
-       reason. */
+    /* "About" is five characters and "2023" is four. Height alone leaves them
+       38.8px and 55px across, and the citeline links needed the same second
+       axis stated for the same reason. */
     .alt-wrap .alt-press-toc a,
-    .alt-wrap .alt-health-toc a { min-width: 44px; justify-content: center; }
+    .alt-wrap .alt-health-toc a,
+    .alt-wrap .alt-method-toc a,
+    .alt-wrap .alt-src-toc a,
+    .alt-wrap .alt-report-tab { min-width: 44px; justify-content: center; }
     /* A 19px select is the smallest control on any of these pages, and it is
        the one that decides what the health page is showing. The sign-up
        fields are the only place a reader types. */

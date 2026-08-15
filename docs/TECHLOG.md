@@ -59,6 +59,14 @@ clip; }` under 640px, beside the tracker line it copies. `clip` and not
 `hidden`, so nothing becomes a scroll container and the tables keep their own
 deliberate scroll region.
 
+**And in 2.20.50, from the same re-sweep.** Section 8 named the press and
+health jump navs; the methodology page, the sources page and the monthly
+report have their own, under their own classes, and they measured 16 to 32px.
+The report's period tabs (28px) and its previous/next links (17px) are in the
+same state. All four navs are link RUNS rather than words in a sentence, so
+they take the layout section 3 gives a run and the floor section 1 gives a
+control. The guard now renders the report template too.
+
 Not fixed, and noted rather than touched: `i.alt-sb-again` contrast is owned by
 another session. Under 768px the floor is deliberately not applied, so an iPad
 in portrait still meets the 24px AA minimum but not the 44px one; that is the

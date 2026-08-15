@@ -78,6 +78,7 @@ SECONDARY_TEMPLATES = (
     ("health", PLUGIN / "templates/page-health.php"),
     ("methodology", PLUGIN / "templates/page-methodology.php"),
     ("sources", PLUGIN / "templates/page-sources.php"),
+    ("report", PLUGIN / "templates/page-report.php"),
 )
 
 TAP_MIN = 44.0
