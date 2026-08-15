@@ -556,6 +556,51 @@ class ServerSideGuards(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
 
+class NoRedeclaredFunction(unittest.TestCase):
+    """PHP fatals on a redeclared function, and a fatal in an include takes
+    down every page on the site.
+
+    This exists because it happened. 2.20.53 shipped `alt_digest_due_rows` and
+    `alt_digest_period_seconds` in BOTH includes/subscribe.php and
+    includes/digest-api.php, and asktherecruiter.com/blog returned 500 to every
+    reader until it was reverted. Nothing caught it: `php -l` checks one file at
+    a time, and the digest harness loads subscribe.php alone, so neither ever
+    saw the two declarations in one process.
+
+    So this reads EVERY plugin include the way PHP would: one namespace, and a
+    name may be declared once in it. Not scoped to the digest files, because
+    the defect is not about the digest.
+    """
+
+    def _declarations(self):
+        import glob
+        seen = {}
+        for path in sorted(glob.glob(os.path.join(PLUGIN, "includes", "*.php"))
+                           + [os.path.join(PLUGIN, "ai-layoff-tracker.php")]):
+            body = open(path, encoding="utf-8").read()
+            # Top level declarations only: a closure or a method is not a
+            # global function and cannot collide with one.
+            for name in re.findall(r"^function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
+                                   body, re.M):
+                seen.setdefault(name, []).append(os.path.basename(path))
+        return seen
+
+    def test_no_function_is_declared_in_two_plugin_files(self):
+        clashes = {n: f for n, f in self._declarations().items() if len(f) > 1}
+        self.assertEqual(
+            clashes, {},
+            "these functions are declared more than once, which is a PHP fatal "
+            "on every request: "
+            + "; ".join(f"{n} in {', '.join(f)}" for n, f in sorted(clashes.items())))
+
+    def test_the_digest_api_uses_the_shared_definition_rather_than_its_own(self):
+        api = open(os.path.join(PLUGIN, "includes", "digest-api.php"),
+                   encoding="utf-8").read()
+        self.assertNotIn("function alt_digest_due_rows", api)
+        self.assertIn("alt_digest_due_rows($freq)", api,
+                      "it must still CALL the shared definition")
+
+
 class HouseStyle(unittest.TestCase):
     FILES = [
         os.path.join(RAILWAY, "digest_send.py"),

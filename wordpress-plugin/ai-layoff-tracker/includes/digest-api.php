@@ -80,32 +80,14 @@ function alt_digest_external_active($freq) {
 /* Who is due                                                          */
 /* ------------------------------------------------------------------ */
 
-/**
- * The period window, in seconds, that a row must not already have been sent
- * inside. Slightly under the nominal period on purpose: a job that ran at
- * 13:00:04 yesterday and 12:59:58 today is the same daily cadence, and a
- * strict 24 hours would silently skip that person every other day.
+/*
+ * `alt_digest_due_rows()` and `alt_digest_period_seconds()` live in
+ * includes/subscribe.php and are used from here. They are deliberately NOT
+ * redefined in this file: one definition of who is due is the whole reason two
+ * senders are safe, and PHP fatals on a redeclared function, which took the
+ * live site down for six minutes on 2026-08-15. tests/test_digest_sender.py
+ * now fails on any function declared in two plugin includes.
  */
-function alt_digest_period_seconds($freq) {
-    return $freq === 'daily' ? 20 * HOUR_IN_SECONDS : 6 * DAY_IN_SECONDS;
-}
-
-/**
- * Rows due for this tier: confirmed, consented to a list at this frequency,
- * and not already sent to inside the current period. One SQL definition, used
- * by BOTH senders, so the two cannot drift into disagreeing about who is due.
- */
-function alt_digest_due_rows($freq) {
-    global $wpdb;
-    $table = alt_subscribers_table();
-    $cutoff = gmdate('Y-m-d H:i:s', time() - alt_digest_period_seconds($freq));
-    return $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table WHERE status = 'confirmed'
-           AND ((consent_layoff = 1 AND freq_layoff = %s)
-             OR (consent_talent = 1 AND freq_talent = %s))
-           AND (last_sent_at IS NULL OR last_sent_at < %s)",
-        $freq, $freq, $cutoff), ARRAY_A) ?: array();
-}
 
 /* ------------------------------------------------------------------ */
 /* GET /digest-recipients                                              */
