@@ -1,0 +1,537 @@
+/* THE BLOG'S READING SURFACE.
+ *
+ * Loaded on single posts ONLY (includes/blog-typography.php gates on
+ * is_singular('post')), so nothing here can reach the tracker, the health page,
+ * the sources page or any layoffs CPT permalink.
+ *
+ * THIS FILE FIGHTS TWO STYLESHEETS THAT ARE NOT ON THE FILESYSTEM. Both are
+ * held in the WordPress database and emitted inline, so no grep of either repo
+ * finds them. Measured off the live post on 2026-08-15 at ver=2.20.55 by
+ * walking document.styleSheets:
+ *
+ *   1. <style id="wp-block-library-inline-css">, i.e. somebody's
+ *      wp_add_inline_style('wp-block-library', ...). It carries, among much
+ *      else:
+ *         .entry-content p  { font-size:1.05rem!important; line-height:1.78!important }
+ *         .entry-content h2 { font-size:1.45rem!important; margin:2.2rem 0 .8rem!important }
+ *         .entry-content h3 { font-size:1.15rem!important; margin:1.5rem 0 .5rem!important }
+ *      The `0` in those two margin SHORTHANDS is the whole "two columns" bug.
+ *      WP core centres a constrained child with
+ *         .is-layout-constrained > :where(:not(.alignfull)) { margin-left:auto!important }
+ *      which is specificity (0,1,0). `.entry-content h2` is (0,1,1), so the
+ *      shorthand's margin-left:0 wins and EVERY heading sits flush at the
+ *      container's left edge while the paragraph it introduces is centred.
+ *      Measured at 1600px: H2 x=50, the paragraph under it x=470. 420px apart.
+ *
+ *   2. <style id="global-styles-inline-css">, i.e. Site Editor > Styles >
+ *      Additional CSS (stored in the wp_global_styles post). Inside
+ *      @media (max-width:781px) it carries
+ *         .entry-content.alignfull, .wp-block-group.alignfull {
+ *            margin-left:0!important; margin-right:0!important; max-width:100%!important }
+ *      which cancels core's `.has-global-padding > .alignfull { margin-inline:
+ *      -root-padding }`. With the negative margins gone the gutters STACK
+ *      instead of cancelling: main 18px + group 30px + entry-content 30px =
+ *      78px a side. At 375px that left the paragraph 219px wide, about 26
+ *      characters per line. Same mechanism as the tracker's own 2026-08-04
+ *      defect (TECHLOG); this is it seen on the blog.
+ *
+ * SO EVERY RULE BELOW IS SCOPED `body.single-post .entry-content ...`, which is
+ * at least (0,2,2), and carries !important where it is contesting an
+ * !important. That is not decoration: without both it loses silently, which is
+ * exactly how the tracker's corrective rule sat dead in the tree for months.
+ *
+ * NEVER USE THE `margin` SHORTHAND IN THIS FILE. Writing `margin: 2rem 0 1rem`
+ * on a constrained child is the bug at the top of this comment. Set
+ * margin-block-start / margin-block-end and leave margin-inline alone (or set
+ * it to auto explicitly).
+ */
+
+/* ------------------------------------------------------------------ scale */
+body.single-post {
+  /* Type. Two steps rather than a curve: the whole page changes at the same
+     781px boundary the theme's own gutters change at, so there is one number
+     to reason about. */
+  --alt-read-body: 20px;
+  --alt-read-lh: 1.62;
+  --alt-read-h1: 40px;
+  --alt-read-h2: 30px;
+  --alt-read-h3: 24px;
+  --alt-read-h4: 20px;
+
+  /* Rhythm. One unit, everything is a multiple of it. */
+  --alt-read-unit: 1rem;
+
+  --alt-read-ink: #23272b;      /* body text */
+  --alt-read-ink-strong: #14171a; /* headings */
+  --alt-read-ink-soft: #55606a;   /* captions, meta, TOC */
+  --alt-read-rule: #e2e6e9;
+  --alt-read-serif: Vollkorn, Charter, "Bitstream Charter", "Iowan Old Style",
+                    "Source Serif Pro", Georgia, "Times New Roman", serif;
+  --alt-read-sans: Manrope, ui-sans-serif, system-ui, -apple-system,
+                   "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --alt-read-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 781px) {
+  body.single-post {
+    --alt-read-body: 19px;
+    --alt-read-lh: 1.6;
+    --alt-read-h1: 30px;
+    --alt-read-h2: 24px;
+    --alt-read-h3: 20px;
+    --alt-read-h4: 18px;
+  }
+}
+
+/* ------------------------------------------------- 1. the stacked gutters
+ *
+ * Neutralise the TWO INNER .alignfull wrappers only. `main` keeps its 18px on
+ * purpose: it is what the post title sits on, and zeroing it too would print
+ * the h1 flush against the glass. This is the shape the tracker's fix landed
+ * on in 2.19.264 and it is the same shape here.
+ */
+@media (max-width: 781px) {
+  body.single-post .wp-site-blocks main .wp-block-group.alignfull.has-global-padding,
+  body.single-post .entry-content.alignfull.has-global-padding {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* ------------------------------------------------ 2. the measure, and only
+ * the measure. The theme's content-size is already 645px, which at 20px
+ * Vollkorn is about 67 characters: the right answer, and nothing here changes
+ * it on desktop. What this restores is the CENTRING that the heading rules
+ * broke, for every block-level child of the article.
+ */
+body.single-post .entry-content
+  > :where(:not(.alignfull):not(.alignleft):not(.alignright):not(.alignwide)) {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Headings specifically, because the rule they are losing to is (0,1,1)
+ * !important and names them one by one. `text-align` is set because the site
+ * also ships an unscoped `.wp-block-heading { text-align:center }`, but an
+ * author who deliberately centred or right-aligned a block keeps it. */
+body.single-post .entry-content h1,
+body.single-post .entry-content h2,
+body.single-post .entry-content h3,
+body.single-post .entry-content h4,
+body.single-post .entry-content h5,
+body.single-post .entry-content h6 {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: var(--wp--style--global--content-size, 645px) !important;
+}
+
+body.single-post .entry-content h1:not(.has-text-align-center):not(.has-text-align-right),
+body.single-post .entry-content h2:not(.has-text-align-center):not(.has-text-align-right),
+body.single-post .entry-content h3:not(.has-text-align-center):not(.has-text-align-right),
+body.single-post .entry-content h4:not(.has-text-align-center):not(.has-text-align-right),
+body.single-post .entry-content h5:not(.has-text-align-center):not(.has-text-align-right),
+body.single-post .entry-content h6:not(.has-text-align-center):not(.has-text-align-right) {
+  text-align: start !important;
+}
+
+/* Every block in the column is measured by its BORDER box. Without this a
+ * blockquote's 3px rule and 1.1em padding, or a list's marker indent, are
+ * added OUTSIDE the 645px max-width and the block sits wider than the text it
+ * belongs to. The site only sets box-sizing globally under 1024px, so on a
+ * desktop nothing else does it. */
+body.single-post .entry-content,
+body.single-post .entry-content > *,
+body.single-post .entry-content ul,
+body.single-post .entry-content ol,
+body.single-post .entry-content blockquote,
+body.single-post .entry-content pre,
+body.single-post .entry-content table {
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------- 3. the body */
+body.single-post .entry-content {
+  font-family: var(--alt-read-serif);
+  color: var(--alt-read-ink);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  /* Lining figures, not Vollkorn's default oldstyle: this blog publishes
+     counts and years inside sentences, and oldstyle digits read as lowercase
+     letters when a number is the point of the sentence. */
+  font-variant-numeric: lining-nums proportional-nums;
+}
+
+body.single-post .entry-content p,
+body.single-post .wp-block-post-content p {
+  font-family: var(--alt-read-serif) !important;
+  font-size: var(--alt-read-body) !important;
+  line-height: var(--alt-read-lh) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  color: var(--alt-read-ink) !important;
+  margin-block-start: 0 !important;
+  margin-block-end: calc(var(--alt-read-unit) * 1.45) !important;
+  /* A serif at 20px hyphenates badly in a 339px column if left to chance and
+     looks ragged if not allowed to break at all. Break long words only. */
+  overflow-wrap: break-word;
+}
+
+body.single-post .entry-content > p:first-child {
+  margin-block-start: 0 !important;
+}
+
+/* The standfirst: the first paragraph of the article carries the reader in. */
+body.single-post .entry-content > p:first-of-type {
+  font-size: calc(var(--alt-read-body) + 2px) !important;
+  line-height: 1.55 !important;
+  color: var(--alt-read-ink-strong) !important;
+}
+
+/* ---------------------------------------------------------- 4. the headings
+ * A scale that steps: 40 / 30 / 24 / 20 over a 20px body on desktop, which is
+ * 2.00x, 1.50x, 1.20x and 1.00x. The site shipped 47px over a 16.8px body with
+ * the next stop at 23.2px, so h1 was 2.8x the text and 2.0x the section
+ * heading under it. That gap is most of why it did not read as long-form.
+ */
+body.single-post .wp-block-post-title,
+body.single-post h1.wp-block-post-title {
+  font-family: var(--alt-read-sans) !important;
+  font-size: var(--alt-read-h1) !important;
+  line-height: 1.16 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.021em !important;
+  color: var(--alt-read-ink-strong) !important;
+  margin-block-start: 0 !important;
+  margin-block-end: calc(var(--alt-read-unit) * 1.4) !important;
+  text-wrap: balance;
+}
+
+body.single-post .entry-content h2,
+body.single-post .wp-block-post-content h2 {
+  font-family: var(--alt-read-sans) !important;
+  font-size: var(--alt-read-h2) !important;
+  line-height: 1.24 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.018em !important;
+  color: var(--alt-read-ink-strong) !important;
+  margin-block-start: calc(var(--alt-read-unit) * 3) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 0.9) !important;
+  /* The site draws a 2px #eef3ee rule under every h2. At this scale the space
+     above already says "new section" and the rule only adds noise. */
+  border-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  text-wrap: balance;
+}
+
+body.single-post .entry-content h3,
+body.single-post .wp-block-post-content h3 {
+  font-family: var(--alt-read-sans) !important;
+  font-size: var(--alt-read-h3) !important;
+  line-height: 1.3 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.014em !important;
+  color: var(--alt-read-ink-strong) !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2.2) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 0.55) !important;
+  text-wrap: balance;
+}
+
+body.single-post .entry-content h4,
+body.single-post .wp-block-post-content h4 {
+  font-family: var(--alt-read-sans) !important;
+  font-size: var(--alt-read-h4) !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+  color: var(--alt-read-ink-strong) !important;
+  margin-block-start: calc(var(--alt-read-unit) * 1.8) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 0.45) !important;
+}
+
+/* A heading immediately after another heading gets its space back. */
+body.single-post .entry-content h2 + h3,
+body.single-post .entry-content h3 + h4 {
+  margin-block-start: calc(var(--alt-read-unit) * 1.1) !important;
+}
+
+/* ------------------------------------------------------------- 5. the rest
+ * Lists, quotes, figures, rules and tables, so vertical rhythm holds across
+ * everything an article actually contains rather than only paragraphs.
+ */
+body.single-post .entry-content ul,
+body.single-post .entry-content ol {
+  font-family: var(--alt-read-serif) !important;
+  font-size: var(--alt-read-body) !important;
+  line-height: var(--alt-read-lh) !important;
+  color: var(--alt-read-ink) !important;
+  margin-block-start: calc(var(--alt-read-unit) * 1.3) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 1.45) !important;
+  padding-inline-start: 1.35em !important;
+}
+
+body.single-post .entry-content li {
+  margin-block-end: 0.5em;
+}
+
+body.single-post .entry-content li > ul,
+body.single-post .entry-content li > ol {
+  margin-block-start: 0.5em !important;
+  margin-block-end: 0.5em !important;
+}
+
+body.single-post .entry-content li::marker {
+  color: var(--alt-read-ink-soft);
+}
+
+body.single-post .entry-content blockquote,
+body.single-post .entry-content .wp-block-quote {
+  font-family: var(--alt-read-serif) !important;
+  font-size: calc(var(--alt-read-body) + 1px) !important;
+  line-height: 1.5 !important;
+  color: var(--alt-read-ink-strong) !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2.2) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 2.2) !important;
+  border-inline-start: 3px solid var(--alt-read-rule) !important;
+  border-left: 3px solid var(--alt-read-rule) !important;
+  padding-inline-start: 1.1em !important;
+  padding-left: 1.1em !important;
+  font-style: normal !important;
+  /* The WPCode snippet pins `blockquote { max-width:100% !important }` under
+     782px, which beats WP core's un-important 645px. Left alone, a pull quote
+     is the ONE block on a tablet that spans the full container while every
+     paragraph around it is 645px. */
+  max-width: var(--wp--style--global--content-size, 645px) !important;
+}
+
+body.single-post .entry-content blockquote p {
+  font-size: inherit !important;
+  color: inherit !important;
+}
+
+body.single-post .entry-content blockquote > :last-child {
+  margin-block-end: 0 !important;
+}
+
+body.single-post .entry-content figure,
+body.single-post .entry-content .wp-block-image,
+body.single-post .entry-content .wp-block-embed,
+body.single-post .entry-content .wp-block-table {
+  margin-block-start: calc(var(--alt-read-unit) * 2.4) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 2.4) !important;
+}
+
+body.single-post .entry-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+body.single-post .entry-content hr,
+body.single-post .entry-content .wp-block-separator {
+  margin-block-start: calc(var(--alt-read-unit) * 3) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 3) !important;
+  border-top: 1px solid var(--alt-read-rule) !important;
+  border-bottom: 0 !important;
+}
+
+/* A table wider than the measure scrolls INSIDE its own box. The document
+   never scrolls sideways (CLAUDE.md hard bar). */
+body.single-post .entry-content .wp-block-table,
+body.single-post .entry-content figure.wp-block-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.single-post .entry-content table {
+  font-family: var(--alt-read-sans) !important;
+  font-size: calc(var(--alt-read-body) - 3px) !important;
+  line-height: 1.45 !important;
+  border-collapse: collapse;
+}
+
+body.single-post .entry-content th,
+body.single-post .entry-content td {
+  padding: 0.55em 0.7em;
+  border-bottom: 1px solid var(--alt-read-rule);
+  text-align: start;
+}
+
+body.single-post .entry-content code,
+body.single-post .entry-content kbd,
+body.single-post .entry-content pre {
+  font-family: var(--alt-read-mono) !important;
+  font-size: 0.88em !important;
+}
+
+body.single-post .entry-content pre {
+  overflow-x: auto;
+  padding: 1em 1.1em;
+  border-radius: 6px;
+  background: #f6f7f8;
+  margin-block-start: calc(var(--alt-read-unit) * 1.8) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 1.8) !important;
+}
+
+/* ------------------------------------------------------------- 6. the links
+ * Colour is deliberately inherited. The site sets
+ * `a:where(:not(.wp-element-button)) { color: currentColor }` and the rendered
+ * contrast audit is a live gate in this repo; introducing a new link colour
+ * here would be a contrast claim this change has not measured. What changes is
+ * the underline, which is what makes a link legible in a serif at 20px.
+ */
+body.single-post .entry-content a:where(:not(.wp-element-button)) {
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.16em;
+  text-decoration-color: rgba(35, 39, 43, 0.42);
+  transition: text-decoration-color 0.15s ease;
+}
+
+body.single-post .entry-content a:where(:not(.wp-element-button)):hover,
+body.single-post .entry-content a:where(:not(.wp-element-button)):focus-visible {
+  text-decoration-color: currentColor;
+}
+
+/* An anchor inside a sentence cannot be 44px tall without opening a 44px hole
+ * in the line around it, and WCAG 2.5.5/2.5.8 both carry the "in a sentence"
+ * exception for exactly that. Inline vertical padding hit-tests without
+ * entering the line box, so the tap area grows and the paragraph does not
+ * move. Same rule the tracker's own tap-target work landed on. */
+@media (max-width: 781px) {
+  body.single-post .entry-content p a,
+  body.single-post .entry-content li a {
+    padding-block: 7px;
+  }
+}
+
+/* -------------------------------------------- 7. the table of contents box
+ * easy-table-of-contents ships its own screen.min.css. This does not fight it,
+ * it dresses it: the box becomes a quiet sans-serif aside inside the reading
+ * column, which is what stops it competing with the article's own headings now
+ * that those are 30px.
+ */
+body.single-post .entry-content div[class*="ez-toc-v"],
+body.single-post .entry-content #ez-toc-container {
+  font-family: var(--alt-read-sans) !important;
+  max-width: var(--wp--style--global--content-size, 645px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 2.4) !important;
+  background: #fafbfb !important;
+  border: 1px solid var(--alt-read-rule) !important;
+  border-radius: 8px !important;
+  padding: 0.9rem 1.1rem !important;
+  box-shadow: none !important;
+  width: auto !important;
+}
+
+body.single-post .entry-content .ez-toc-title-container,
+body.single-post .entry-content .ez-toc-title {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--alt-read-ink-soft) !important;
+}
+
+body.single-post .entry-content .ez-toc-list,
+body.single-post .entry-content nav.ez-toc-nav ul,
+body.single-post .entry-content #ez-toc-container ul {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 16px !important;
+  line-height: 1.45 !important;
+  margin-block-start: 0.5rem !important;
+  margin-block-end: 0 !important;
+  padding-inline-start: 0 !important;
+}
+
+body.single-post .entry-content #ez-toc-container li,
+body.single-post .entry-content .ez-toc-list li {
+  margin-block-end: 0 !important;
+}
+
+body.single-post .entry-content #ez-toc-container a,
+body.single-post .entry-content .ez-toc-list a {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 16px !important;
+  color: var(--alt-read-ink) !important;
+  text-decoration: none !important;
+  display: block;
+  /* A nav list is not a sentence, so the 44px floor applies to it in full. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+body.single-post .entry-content #ez-toc-container a:hover,
+body.single-post .entry-content .ez-toc-list a:hover {
+  text-decoration: underline !important;
+}
+
+/* --------------------------------------------- 8. the inline email capture
+ * .atr-capture is the site's own signup block, styled by a 531-byte inline
+ * <style> held in the database. It is not this plugin's markup and this does
+ * not change it; it makes it match the new scale and gives its two controls
+ * the 44px floor a phone needs. 16px on the input is not a type choice: any
+ * smaller and iOS Safari zooms the page on focus.
+ */
+body.single-post .entry-content .atr-capture {
+  font-family: var(--alt-read-sans) !important;
+  max-width: var(--wp--style--global--content-size, 645px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2.2) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 2.2) !important;
+  border: 1px solid var(--alt-read-rule) !important;
+  border-radius: 8px !important;
+  background: #fafbfb !important;
+  padding: 1.1rem 1.15rem !important;
+}
+
+body.single-post .entry-content .atr-capture-title {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 17px !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+  color: var(--alt-read-ink-strong) !important;
+  margin-block-end: 0.6rem !important;
+}
+
+body.single-post .entry-content .atr-capture-input {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 16px !important;
+  min-height: 44px !important;
+  padding: 10px 12px !important;
+  border-radius: 6px !important;
+}
+
+body.single-post .entry-content .atr-capture-btn {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 16px !important;
+  min-height: 44px !important;
+  padding: 10px 20px !important;
+  border-radius: 6px !important;
+}
+
+body.single-post .entry-content .atr-capture-msg {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 13px !important;
+  color: var(--alt-read-ink-soft) !important;
+}
+
+@media (max-width: 560px) {
+  /* At 339px the field plus an 8px gap plus the button does not fit on one
+     line, and a wrapped row half off the box is worse than two full-width
+     rows. Same lesson as the digest signup's 2.20.53 landing defect. */
+  body.single-post .entry-content .atr-capture-input,
+  body.single-post .entry-content .atr-capture-btn {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* --------------------------------------------------------- 9. print + motion */
+@media (prefers-reduced-motion: reduce) {
+  body.single-post .entry-content a { transition: none; }
+}

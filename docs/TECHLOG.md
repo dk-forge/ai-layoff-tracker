@@ -1,5 +1,91 @@
 # Tech Log
 
+## 2026-08-15 - the headings were 420px from their own text, and the phone column was 26 characters wide (2.20.57)
+
+The blog was asked to read like long-form. Two defects were in the way and
+neither was a taste question. Both were measured off
+https://asktherecruiter.com/blog/how-long-should-a-resume-be/ in real headless
+Chrome at ver=2.20.55, and both live in stylesheets that are NOT in either
+repo: they are held in the WordPress database and emitted inline, which is why
+no grep of this project ever found them.
+
+**1. Every H2 was flush left while every paragraph was centred.** At 1600px the
+container is 1585px wide; the paragraphs and the headings both take the theme's
+645px content-size, but the paragraphs sat at x=470 and every heading at x=50.
+That is the "two columns, header and body" the owner described, and the cause is
+one shorthand:
+
+    .entry-content h2 { margin: 2.2rem 0 .8rem !important }
+
+in `<style id="wp-block-library-inline-css">`, i.e. somebody's
+`wp_add_inline_style('wp-block-library', ...)`. The `0` sets margin-left and
+margin-right. WP core centres a constrained child with
+`.is-layout-constrained > :where(:not(.alignfull)) { margin-left:auto!important }`
+at specificity (0,1,0); `.entry-content h2` is (0,1,1) and wins. `h3` carries
+the same shorthand. **A `margin` shorthand on a constrained block is not a
+margin change, it is an alignment change**, and it does it without naming
+alignment anywhere.
+
+**2. The phone column was 219px of a 375px screen.** `<style
+id="global-styles-inline-css">` (Site Editor > Styles > Additional CSS, stored
+in the `wp_global_styles` post) carries, under `@media (max-width:781px)`:
+
+    .entry-content.alignfull, .wp-block-group.alignfull {
+        margin-left:0!important; margin-right:0!important }
+
+which cancels core's `.has-global-padding > .alignfull { margin-inline:
+-root-padding }`. With the cancellation gone the gutters stack: `main` 18px +
+group 30px + entry-content 30px = **78px a side**, leaving 219px and about 26
+characters per line. This is the tracker's own 2026-08-04 defect (2.19.264)
+seen at a second surface, and the fix is the same shape: neutralise the TWO
+INNER `.alignfull` paddings only, so `main` keeps the 18px the post title sits
+on.
+
+**A correction to the 2026-08-04 entry.** That one named the WPCode snippet as
+the site-level stylesheet holding the breakage. The WPCode snippet is real and
+does pin `max-width:100%` on several containers, but the rule that ZEROES the
+negative margins is in `global-styles-inline-css`, not in WPCode. Three
+DB-held sheets contest this page, not one, and they are listed by id in the
+header of `railway/tests/test_blog_reading_surface.py`.
+
+**Measured, live, before and after** (bare URL, browser UA, no cache buster):
+
+| viewport | paragraph x / width | body size / leading | chars per line | H2 x |
+|---|---|---|---|---|
+| 375 before | 78 / 219 | 16.8 / 29.9 | 26.1 | 78 |
+| 375 after | 18 / 339 | 19.0 / 30.4 | see below | 18 |
+| 1280 before | 317.5 / 645 | 16.8 / 29.9 | 76.9 | **50** |
+| 1280 after | 317.5 / 645 | 20.0 / 32.4 | see below | 317.5 |
+
+**The type.** Body is Vollkorn, a book serif that Twenty Twenty-Five already
+ships inside the active theme and does NOT register (theme.json declares only
+Manrope and Fira Code), so the file is on this origin, no CDN is contacted and
+no new host is introduced. Headings, the contents box and the signup stay in
+Manrope, which is the site's existing voice and costs zero extra bytes. The
+scale steps 40/30/24/20 over a 20px body on a desktop, against the 47.2/23.2/
+18.4 over 16.8 it shipped with, where the h1 was 2.81x the text and 2.03x the
+heading beneath it.
+
+**Where this ships from, said plainly.** `includes/blog-typography.php` +
+`assets/blog-reading.css`, inside the AI Layoff Tracker plugin, gated on
+`is_singular('post')` and scoped `body.single-post` in every selector. That is
+a tracker-named plugin styling the blog, and it is there because the plugin's
+FTPS deploy is this project's only write channel to the site. The correct home
+is a child theme or Additional CSS; RUNBOOK "the blog reading surface" holds the
+exact wp-admin steps to move it, and the move is a copy and a delete.
+
+**What the test holds.** `railway/tests/test_blog_reading_surface.py` rebuilds
+the live ancestor chain and all three DB-held stylesheets verbatim, then
+appends the real CSS file, and measures in headless Chrome at 375/414/768/1280.
+It asserts the heading shares the paragraph's left edge, the measure lands in a
+reading band, the scale steps rather than leaps, space sits above a heading
+rather than below it, nothing overflows and the contents links and signup
+controls clear 44px. It also **proves its own fixture**: strip the last
+`<style>` and both defects must come back, or the file is measuring something
+other than the page. And it forbids the `margin` shorthand anywhere in the
+stylesheet, because that shorthand is defect 1.
+
+
 
 ## 2026-08-15 - the third consent box had no sender behind it (2.20.55)
 

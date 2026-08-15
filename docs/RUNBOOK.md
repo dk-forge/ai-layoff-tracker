@@ -1268,6 +1268,69 @@ put two copies in one inbox. Do not add a recipient query anywhere else.
   unsubscribe header). That is a defect in this repo, never a provider
   problem, and it is not retried. Fix the composer.
 
+## The blog reading surface (and how to move it out of this plugin)
+
+**What ships today.** `wordpress-plugin/ai-layoff-tracker/assets/blog-reading.css`
+plus `includes/blog-typography.php`. The include gates on `is_singular('post')`
+and every selector in the stylesheet is additionally scoped `body.single-post`,
+so nothing it does can reach the tracker, the health page, the sources page or a
+`layoffs` permalink.
+
+**Say the awkward part when asked.** This is a tracker-named plugin styling the
+site's ARTICLES. It lives here only because the plugin's FTPS deploy is this
+project's only write channel to asktherecruiter.com. It is not where it belongs.
+
+**Moving it to its proper home** (needs wp-admin, so a human does it):
+
+1. Appearance > Editor > Styles > the pencil icon > **Additional CSS**.
+2. Paste the contents of `assets/blog-reading.css`, minus the `body.single-post`
+   scoping if you prefer, though leaving it is harmless and safer.
+3. Add the two `@font-face` rules that `alt_blog_reading_font_css()` builds,
+   pointing at the active theme's own Vollkorn files.
+4. Delete `includes/blog-typography.php`, drop its `is_readable` block from
+   `ai-layoff-tracker.php`, delete `assets/blog-reading.css`, and delete
+   `railway/tests/test_blog_reading_surface.py` (its fixture describes CSS that
+   would no longer be in this repo). Bump the version and deploy.
+
+A child theme is the better home still, because Additional CSS is also
+database-held and therefore invisible to every grep, which is the exact property
+that made the two defects in TECHLOG 2026-08-15 so hard to find.
+
+**Three stylesheets fight for this page and NONE of them is on the filesystem.**
+When something on a post looks wrong and no file explains it, walk the CSSOM
+rather than grepping:
+
+```js
+for (const s of document.styleSheets) {
+  const n = s.ownerNode;
+  console.log(s.href || 'INLINE<' + n.tagName + '#' + n.id + '.' + n.className + '>');
+}
+```
+
+The three that matter, by id:
+
+| id | Where it is stored | What it does to articles |
+|---|---|---|
+| `wp-block-library-inline-css` | a `wp_add_inline_style('wp-block-library', ...)`, so a WPCode PHP snippet or the theme's functions | `.entry-content p/h2/h3` sizes AND `margin: x 0 y !important`, which is what un-centres the headings |
+| `global-styles-inline-css` | Site Editor > Styles > Additional CSS, in the `wp_global_styles` post | under 782px, zeroes the `.alignfull` negative margins, so the gutters stack to 78px |
+| `wpcode-css-snippet` (class, no id) | WPCode plugin, `wpcode` CPT rows | pins `max-width:100%!important` on containers and on `blockquote` |
+
+**If a heading goes flush-left again**, something re-introduced a `margin`
+shorthand on a constrained child. Never answer it by widening the column;
+`test_blog_reading_surface.py` fails on the shorthand in our own file and
+`test_every_heading_shares_the_paragraph_left_edge` fails on the rendered
+result.
+
+**If the phone column collapses again**, re-measure the ancestor chain before
+changing anything:
+
+```bash
+python3 railway/reader_freshness.py     # first: is the reader even on this build
+```
+
+then walk `getBoundingClientRect()` and `paddingLeft` from a paragraph up to
+`body`. Three paddings that do not cancel is the signature.
+
 ## Research pointers
 - WARN scraping: https://github.com/biglocalnews/warn-scraper (Big Local News)
 - GDELT DOC 2.0 API: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ (keyless; ~gentle rate limits, 429s happen)

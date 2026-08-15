@@ -9,7 +9,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** the digest's third consent box (articles subscribers were confirmed and never mailed), the manage-subscriptions footer, and the surfaces those touch
+- **WORKING ON:** the digest's third consent box (articles subscribers were confirmed and never mailed), the manage-subscriptions footer, and the surfaces those touch; and the blog's reading surface (2.20.57: headings 420px left of their own text, a 26-character column on a phone)
 
 **Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
 had gone stale: it still named the US incident close, which landed, so a session

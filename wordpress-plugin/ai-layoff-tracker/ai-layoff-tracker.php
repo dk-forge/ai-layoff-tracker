@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.56
+ * Version: 2.20.57
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.56');
+define('ALT_VERSION', '2.20.57');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -44,6 +44,18 @@ require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
+// The blog's reading surface (single posts only). GUARDED with is_readable for
+// the same reason build-stamp.php and the WARN partial are: this file is NEW,
+// so on the deploy that introduces it this main file can land BEFORE it does,
+// and a hard require of a not-yet-uploaded include fatals the ENTIRE plugin on
+// every request until it arrives (2.19.20). Its absence must degrade to
+// "articles keep the old type", never to a white screen. Nothing outside the
+// file calls into it - it wires itself to wp_enqueue_scripts - so there is no
+// stub accessor to declare here.
+$alt_blog_typography = ALT_PLUGIN_DIR . 'includes/blog-typography.php';
+if (is_readable($alt_blog_typography)) {
+    require_once $alt_blog_typography;
+}
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
 // GUARDED: FTP deploys upload files one at a time, so this main plugin file can
 // land BEFORE the generated partial does (the mid-upload race the iron rules
