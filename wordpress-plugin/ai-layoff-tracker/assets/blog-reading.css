@@ -170,7 +170,13 @@ body.single-post .wp-block-post-content p {
   letter-spacing: 0 !important;
   color: var(--alt-read-ink) !important;
   margin-block-start: 0 !important;
-  margin-block-end: calc(var(--alt-read-unit) * 1.45) !important;
+  /* In `em`, so the gap between paragraphs scales with the type instead of
+     being pinned to the root. At 20px this is 29px against a 32.4px line,
+     which reads as just under one blank line: visible separation without the
+     text breaking into slabs. A rem-based gap measured 23.2px against the
+     same line, which is 0.76 of it and too tight to work as a paragraph
+     break. */
+  margin-block-end: 1.45em !important;
   /* A serif at 20px hyphenates badly in a 339px column if left to chance and
      looks ragged if not allowed to break at all. Break long words only. */
   overflow-wrap: break-word;
@@ -422,6 +428,12 @@ body.single-post .entry-content #ez-toc-container {
   border-radius: 8px !important;
   padding: 0.9rem 1.1rem !important;
   box-shadow: none !important;
+  /* easy-table-of-contents renders its container as a shrink-to-fit box, so
+     `width: auto` alone leaves it narrower than the article and centred inside
+     it: measured live at 1280 as 508px sitting at x=386 while the text ran
+     317-962. A box that neither matches the column nor clearly sits outside it
+     reads as a mistake. display:block makes it take the measure. */
+  display: block !important;
   width: auto !important;
 }
 
