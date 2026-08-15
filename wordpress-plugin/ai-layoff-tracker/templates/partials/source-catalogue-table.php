@@ -395,9 +395,39 @@
 <tr><td>United Arab Emirates</td><td><b>وام</b></td><td>ar/en</td><td><span class="alt-cat-status alt-cat-researched">Researched, watched through its market sweep</span></td><td>Named in the local-language market table: its stories reach the tracker through this country&#39;s own Google News edition, asked in the country&#39;s own language. No direct feed of this publisher is read.</td></tr>
 </tbody></table></div>
 <style>
+  /* THE CHIP FOREGROUND IS A TOKEN, NOT A LITERAL, BECAUSE THE CHIP GROUND
+     MOVES AND THE TEXT USED NOT TO. These pills tint their background with an
+     alpha over the PAGE ground, so in dark mode the ground drops to roughly
+     rgb(24,35,57) while a hard-coded #1d4ed8 stayed put: 2.33:1, and 1,608
+     violations on the rendered-contrast audit of 2026-08-15, nearly all of
+     them this one selector repeated once per catalogue row.
+
+     Every pair below is computed against the ACTUAL blended ground, not the
+     page ground, and every one clears AA (4.5) with margin rather than
+     sitting on it - the old light values were 4.45 and 4.46, which is to say
+     they were already failing while looking deliberate. Measured ratios:
+     wired 6.80 light / 10.04 dark, researched 6.83 / 8.92,
+     refused 6.24 / 5.20.
+
+     The dark values are declared twice on purpose. prefers-color-scheme
+     carries the OS preference, and the site's own toggle stamps
+     data-theme="dark" on the root, so a page whose reader chose dark against
+     a light OS gets nothing from the media query alone. */
   .alt-cat-status { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
-  .alt-cat-wired { background:rgba(34,197,94,.14); color:#15803d; }
-  .alt-cat-researched { background:rgba(59,130,246,.14); color:#1d4ed8; }
-  .alt-cat-refused { background:rgba(148,163,184,.18); color:var(--alt-muted); }
+  .alt-cat-wired      { background:rgba(34,197,94,.14);   color:var(--alt-cat-fg-wired,      #12602f); }
+  .alt-cat-researched { background:rgba(59,130,246,.14);  color:var(--alt-cat-fg-researched, #1a45bd); }
+  .alt-cat-refused    { background:rgba(148,163,184,.18); color:var(--alt-cat-fg-refused,    #53575f); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --alt-cat-fg-wired: #8fe8b3;
+      --alt-cat-fg-researched: #a8c4fa;
+      --alt-cat-fg-refused: #aab0bc;
+    }
+  }
+  :root[data-theme="dark"] {
+    --alt-cat-fg-wired: #8fe8b3;
+    --alt-cat-fg-researched: #a8c4fa;
+    --alt-cat-fg-refused: #aab0bc;
+  }
   .alt-catalogue-table td:nth-child(5) { max-width: 520px; }
 </style>
