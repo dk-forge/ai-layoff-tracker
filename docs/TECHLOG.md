@@ -249,6 +249,78 @@ ceiling, and `digest_mailer`'s 3 is correct because it is posted daily by
 WP-Cron, not by the weekly digest.
 
 
+## 2026-08-14 - the digest can finally be sent, and still cannot be sent by accident (2.20.53)
+
+The signup half had been complete for weeks and the sending half was `wp_mail`
+on shared Bluehost: no DKIM alignment worth having, a shared sending IP, and no
+bounce feedback at all. Built the relay. It is dormant, and dormant is the
+default rather than a state you fall into.
+
+**The provider is a config choice, not a rewrite.** The owner asked what is
+cheaper than Resend, and the honest answer is that the question cannot be
+settled yet: at this list size every free tier is free. What would cost money
+is welding the digest to one vendor. So `railway/digest_transport.py` is a
+`send(message)` seam with `DIGEST_TRANSPORT=dryrun|resend|smtp`. Resend is
+built because it is the least setup; the generic SMTP path covers Brevo,
+SES-SMTP, Postmark and Mailgun with no new code. SES's own API is deliberately
+NOT built: it would need AWS request signing to reach a service SES-SMTP
+already reaches. Verified on the day: Resend free is 3,000/month but **capped
+at 100 per day**, which bites first; SES a la carte is $0.10 per 1,000. Brevo's
+page would not render, so the RUNBOOK says UNVERIFIED rather than repeating a
+number nobody checked.
+
+**The privacy promise is enforced on the MESSAGE, so no provider can break
+it.** The published note says "No images, no tracking pixels".
+`assert_message_is_clean` refuses any of `img/picture/video/svg/iframe/script/
+style/link/object/embed`, any `src`/`background`/`poster` attribute, and any
+CSS `url()`, and it requires a real plain-text part plus RFC 8058
+`List-Unsubscribe` and `List-Unsubscribe-Post` headers with the link reachable
+in BOTH bodies. It is called by `Transport.send`, which is the base class, and
+a test asserts no provider overrides `send`. A provider added in five years
+cannot skip the check by forgetting to call it.
+
+**The one thing this cannot enforce is the provider rewriting our message
+afterwards.** Resend and most relays offer account-level open and click
+tracking, which injects exactly the pixel we promised not to send. That switch
+lives in their dashboard. It is an owner step in the RUNBOOK and
+`tracking_note()` states it as a requirement, not a verdict, because nothing
+here can read it.
+
+**Two senders on one list would send everything twice**, which is the fastest
+route to a spam label, so it is prevented twice over. A lease: the external
+relay stamps a claim and the `wp_mail` cron stands down for
+`ALT_DIGEST_CLAIM_HOURS` (36), which ages out so a dead Action hands sending
+back rather than leaving the list silent. And a per-period guard: BOTH senders
+now read one `alt_digest_due_rows`, which excludes anyone whose `last_sent_at`
+falls inside the current period. Even two senders racing in the same minute
+cannot put two copies in one inbox.
+
+**Addresses stay on the host except at the moment of relay.** The keyed
+`/digest-recipients` is the only route in the plugin that returns one, the
+recording call back takes row IDS, log lines carry `redacted()`, and a
+provider's own error is scrubbed of any address before it can reach a run log.
+
+**Bounces and complaints** land on `/digest-webhook`, which cannot be key
+gated (a provider cannot send our key) so it verifies the Svix HMAC signature,
+rejects a timestamp outside five minutes, and **fails closed with no secret
+configured**. A permanent bounce becomes `bounced`, a complaint becomes
+`unsubscribed`, both stop sending and both are erased on the same 30-day
+retention promise. A soft bounce changes nothing. Until the owner adds the
+webhook secret this is UNKNOWN rather than working, and it says so.
+
+**Dormancy is tested, not asserted in a comment.** `DIGEST_TRANSPORT=resend`
+with no `RESEND_API_KEY` falls back to dry run, names the exact secret, and
+exits 0. A typo in the transport name sends nothing rather than falling back to
+a default provider. 56 new tests, each verified red by mutation before green:
+removing the dormancy fallback fails with "Expected '_deliver' to not have been
+called"; disabling the tag check fails with "DigestPolicyError not raised";
+substituting a zero for a missing section fails with "Lists differ:
+[('layoff', '<p>x</p>', '0 entries this period.')] != []".
+
+No new dependency: Resend is plain HTTPS and SMTP is stdlib, so the locks are
+untouched and no package was added to a runner holding `WP_API_KEY`.
+
+
 ## 2026-08-14 - closing the incident our own correction opened, and the containment pair it left split
 
 The 42,000-job correction (3ec3f3a) did exactly what its TECHLOG entry predicted
