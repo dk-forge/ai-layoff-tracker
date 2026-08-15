@@ -223,9 +223,29 @@ def _have(binary):
     return shutil.which(binary) is not None
 
 
-@unittest.skipUnless(_have("php") and _have("node"),
-                     "php and node are needed to EXECUTE both renderers; they are present on "
-                     "ubuntu-latest, so this runs in CI. A skip here is UNKNOWN, not a pass")
+def _interpreters_missing():
+    """'' when both renderers can be executed, else why not.
+
+    IN CI THIS IS NEVER A SKIP. ubuntu-latest ships php and node, so a missing
+    one there means the runner image changed under us, and quietly skipping the
+    only test that EXECUTES the two renderers would leave the promise unchecked
+    while the suite went green. Locally it skips, because a contributor without
+    php should not see a red suite for it -- and the skip says so out loud
+    rather than being invisible in a dot.
+    """
+    missing = [b for b in ("php", "node") if not _have(b)]
+    if not missing:
+        return ""
+    why = f"{' and '.join(missing)} not installed, so both renderers cannot be executed"
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        raise AssertionError(
+            f"{why}. On CI this is a FAILURE, not a skip: this is the only test that runs "
+            "db.php and layoffs.js for real, and a silent skip would leave the archive "
+            "promise unverified behind a green suite. Install php and node in tests.yml.")
+    return why + " (local skip; CI fails instead)"
+
+
+@unittest.skipIf(_interpreters_missing(), _interpreters_missing() or "interpreters present")
 class ThreeStatesSayThreeDifferentTrueThings(unittest.TestCase):
     """One flattened sentence told a URL nothing had looked at that it had been
     re-checked. Before 2.20.51 all three archive states printed "No archive
