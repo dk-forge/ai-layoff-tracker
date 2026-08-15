@@ -1,86 +1,6 @@
 {
   "entries": [
     {
-      "attempts": 1,
-      "key": "resolve:tests:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-15T07:22:30+00:00",
-      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
-      "payload": {
-        "body": "'Tests' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871409355\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "tests:main",
-        "subject": "RECOVERED: Tests is green again"
-      },
-      "raised_at": "2026-08-15T07:22:30+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871409355",
-      "scope": "tests:main",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "deploy-wordpress-plugin:main:9d5276030025b73c",
-      "kind": "alert",
-      "last_attempt_at": "2026-08-15T07:23:31+00:00",
-      "last_error": "HTTP 500 from /alert: ",
-      "payload": {
-        "body": "The workflow 'Deploy WordPress plugin' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Deploy WordPress plugin\n  branch:   main\n  trigger:  push\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025\n\nWHAT FAILED:\n  json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Deploy WordPress plugin' is failing on main with: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0). The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
-        "dedupe_key": "deploy-wordpress-plugin:main:9d5276030025b73c",
-        "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
-      },
-      "raised_at": "2026-08-15T07:23:31+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025",
-      "scope": "deploy-wordpress-plugin:main",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "self-heal:main:1c2949974c27b624",
-      "kind": "alert",
-      "last_attempt_at": "2026-08-15T07:24:13+00:00",
-      "last_error": "HTTP 500 from /alert: ",
-      "payload": {
-        "body": "The workflow 'Self-heal' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Self-heal\n  branch:   main\n  trigger:  workflow_run\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785\n\nWHAT FAILED:\n  Action failed with error: Could not fetch an OIDC token. Did you remember to add `id-token: write` to your workflow permissions?\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Self-heal' is failing on main with: Action failed with error: Could not fetch an OIDC token. Did you remember to add `id-token: write` to your workflow permissions?. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
-        "dedupe_key": "self-heal:main:1c2949974c27b624",
-        "subject": "CI RED: Self-heal \u2014 Action failed with error: Could not fetch an OIDC token. Did you remember to add `id-token: write` to your workflow permissions?"
-      },
-      "raised_at": "2026-08-15T07:24:13+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785",
-      "scope": "self-heal:main",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "resolve:card-contract:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-15T07:25:22+00:00",
-      "last_error": "HTTP 500 from /alert: ",
-      "payload": {
-        "body": "'Card contract' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881328\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "card-contract:main",
-        "subject": "RECOVERED: Card contract is green again"
-      },
-      "raised_at": "2026-08-15T07:25:22+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881328",
-      "scope": "card-contract:main",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "resolve:style-standard:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-15T07:25:30+00:00",
-      "last_error": "HTTP 500 from /alert: ",
-      "payload": {
-        "body": "'Style standard' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881313\n\nWhatever was failing is no longer failing. Nothing to do.",
-        "resolve_scope": "style-standard:main",
-        "subject": "RECOVERED: Style standard is green again"
-      },
-      "raised_at": "2026-08-15T07:25:30+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881313",
-      "scope": "style-standard:main",
-      "state": "pending"
-    },
-    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -300,8 +220,73 @@
       "settled_at": "2026-08-14T20:06:50+00:00",
       "settled_because": "delivered late: not emailed: nothing was open for this scope",
       "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:tests:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-15T07:22:30+00:00",
+      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "raised_at": "2026-08-15T07:22:30+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871409355",
+      "scope": "tests:main",
+      "settled_at": "2026-08-15T07:38:18+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "deploy-wordpress-plugin:main:9d5276030025b73c",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-15T07:23:31+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "raised_at": "2026-08-15T07:23:31+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871578025",
+      "scope": "deploy-wordpress-plugin:main",
+      "settled_at": "2026-08-15T07:38:19+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "self-heal:main:1c2949974c27b624",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-15T07:24:13+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "raised_at": "2026-08-15T07:24:13+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871808785",
+      "scope": "self-heal:main",
+      "settled_at": "2026-08-15T07:38:20+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:card-contract:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-15T07:25:22+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "raised_at": "2026-08-15T07:25:22+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881328",
+      "scope": "card-contract:main",
+      "settled_at": "2026-08-15T07:38:21+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:style-standard:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-15T07:25:30+00:00",
+      "last_error": "HTTP 500 from /alert: ",
+      "raised_at": "2026-08-15T07:25:30+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31871881313",
+      "scope": "style-standard:main",
+      "settled_at": "2026-08-15T07:38:22+00:00",
+      "settled_because": "delivered late: not emailed: nothing was open for this scope",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-15T07:25:30+00:00",
+  "updated_at": "2026-08-15T07:38:22+00:00",
   "version": 1
 }
