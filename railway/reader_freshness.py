@@ -87,6 +87,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 from collections import namedtuple
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,10 +97,28 @@ PAGE_URL = f"{BASE}/ai-layoff-tracker/"
 # `?build=1` asks /status to hash the plugin's files and report the build stamp.
 # It is opt-in because that route is polled by the live badge in every open tab
 # every 60s and is deliberately uncached; hashing 2MB for each of those would be
-# a tax on readers to answer a question only this file asks. The query string is
-# safe HERE and nowhere near the reader's page: /status is no-store, so it has no
-# cache entry for anything to be keyed on. See PAGE_URL, which must stay bare.
-STATUS_URL = f"{BASE}/wp-json/layoffs/v1/status?build=1"
+# a tax on readers to answer a question only this file asks.
+#
+# THE FIXED KEY WAS THE BUG, AND IT COULD FAKE A PASS. This line used to read
+# `?build=1` and nothing else, on the stated assumption that "/status is
+# no-store, so it has no cache entry for anything to be keyed on." Measured
+# 2026-08-15, that assumption is false: Cloudflare returns
+# `cf-cache-status: HIT` with a live `age` for `?build=1` despite
+# `no-store, no-cache, must-revalidate`. And because the key was FIXED, this
+# check was itself the thing keeping that entry hot, once per run forever.
+#
+# The consequence is the precise failure this file exists to prevent. When the
+# cached /status answer and the cached reader page go stale TOGETHER, the two
+# sides agree on the OLD build and the verdict prints PASS while every reader
+# is on the previous version. It is self-correcting once the entry ages out,
+# so the window is bounded - but the window sits immediately after a deploy,
+# which is the only moment this check matters.
+#
+# A per-run random key cannot be held by anything, so /status always answers
+# from PHP. This is the one request in this file that carries a query string:
+# see PAGE_URL, which must stay bare, because the bare URL is the key readers
+# actually request and the only one worth measuring.
+STATUS_URL = f"{BASE}/wp-json/layoffs/v1/status?build=1&cb={uuid.uuid4().hex}"
 
 # A reader is a browser. ModSecurity blocks `python-requests`, and more to the
 # point a bot User-Agent is not the surface we are trying to measure.
