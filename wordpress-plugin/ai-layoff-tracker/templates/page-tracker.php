@@ -265,6 +265,51 @@ $alt_hero_basis  = 'counted by filing date';
                 <a class="alt-btn alt-btn-primary" id="alt-hero-search" href="#alt-search">Search the record</a>
                 <a class="alt-btn" href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count</a>
                 <a class="alt-btn alt-btn-press" id="alt-hero-press" href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>"><span class="alt-btn-tag">For press</span> Press kit and soundbites</a>
+                <?php /* THE FOURTH ROUTE, AND THE PRESS DEFECT REPEATING ON A
+                         SECOND SURFACE. The digest signup has been live,
+                         working and reachable only by scrolling to the end of
+                         the page. Measured live, bare URL, browser UA, no
+                         cache buster, 2026-08-14 at ver=2.20.50:
+
+                             viewport     signup top   document
+                             1280 x 900   17,731px     18,849px
+                              375 x 812   40,744px     42,483px
+
+                         Nineteen screens and fifty. The press kit at least
+                         had a text link aimed at it from the data strip; this
+                         had no route of any kind above it.
+
+                         THE LABEL IS THE SIGNUP'S OWN H2, "Email digest",
+                         behind a "Weekly or daily" tag that answers the first
+                         question anybody asks of a signup, in the same words
+                         the form's own radio buttons use. Not "Subscribe to
+                         our newsletter": nobody wants a newsletter, and the
+                         thing on offer is a digest.
+
+                         IT IS A SAME-PAGE JUMP, SO SHIPPING THE BUTTON IS
+                         HALF OF IT. The press page's own jump menu ended
+                         847px down an 812px screen and was called fixed. The
+                         landing is asserted in
+                         test_digest_route_is_findable.py: after the hash is
+                         followed, the heading, the email field and the submit
+                         button are all on screen at 375 and at 1280. The
+                         signup's intro paragraph was shedding that budget to
+                         a theme override and now holds its own size, which is
+                         where the room came from.
+
+                         COST TO THE FIRST SCREEN, measured rather than
+                         claimed: 0px at 1280 (the four buttons still share
+                         one flex row, ending at x=907 of 1110) and 52.0px at
+                         375 and at 414, which is one 44px target plus the 8px
+                         gap. That is the floor, not a choice: 44px is the tap
+                         minimum this page already holds, and it is the same
+                         52px the press button pays. Do not "save" it by
+                         shrinking the button under 44, and do not save it by
+                         moving the route back down the page, which is the
+                         defect. It sits BELOW the hero figure, so the
+                         number this page exists to publish does not move at
+                         any width. */ ?>
+                <a class="alt-btn alt-btn-digest" id="alt-hero-digest" href="#alt-digest"><span class="alt-btn-tag">Weekly or daily</span> Email digest</a>
             </p>
             <?php /* THE RECONCILING LINE, DEMOTED BUT NOT HIDDEN. to-date + later =
                      the hero figure, so a reader can add up what is on screen, and

@@ -165,7 +165,23 @@ function alt_digest_subscribe_form($context = '') {
     <style>
     .alt-digest { margin: 40px 0; padding: 20px; border: 1px solid var(--alt-border); border-radius: 12px; }
     .alt-digest h2 { margin: 0 0 8px; }
-    .alt-digest-intro { margin: 0 0 14px; font-size: 14px; }
+    /* !important, and it is not decoration. Both trackers render inside a
+       theme that sets `.entry-content p { font-size:1.05rem !important;
+       line-height:1.78 !important; margin-bottom:1.2rem !important }`, so
+       this paragraph shipped at 16.8px on a 29.9px line and this rule was
+       being ignored. On a 375px screen that is eleven lines and 348px of the
+       first thing a reader sees after arriving here from the hero button. At
+       the size it always asked for, the email field lands on screen instead
+       of ending 852px down an 812px screen, which is where it was measured
+       before this rule started applying. Restoring the component's own
+       intent, not shrinking it.
+
+       The selector is `.alt-digest p.alt-digest-intro` and the extra element
+       is load-bearing: !important alone loses here, because between two
+       !important declarations specificity still decides and `.entry-content
+       p` (0,1,1) outranks `.alt-digest-intro` (0,1,0). The first attempt at
+       this fix moved the paragraph by exactly zero pixels. */
+    .alt-digest p.alt-digest-intro { margin: 0 0 12px !important; font-size: 14px !important; line-height: 1.55 !important; }
     .alt-digest-form fieldset { border: none; margin: 0 0 12px; padding: 0; }
     .alt-digest-form legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
     .alt-digest-lists label { display: block; margin: 4px 0; font-size: 14px; }
@@ -177,6 +193,21 @@ function alt_digest_subscribe_form($context = '') {
     .alt-digest-status-error { border-color: var(--alt-crit-border); background: var(--alt-red-tint); color: var(--alt-crit); }
     .alt-digest-privacy { margin-top: 14px; font-size: 13px; }
     .alt-digest-privacy p { margin: 8px 0; }
+    /* THE LANDING BUDGET ON A PHONE. Both trackers now carry a hero button
+       that jumps here, and a jump that puts the email field below the fold is
+       the defect wearing the fix's clothes (the press page's own jump menu
+       ended 847px down an 812px screen and shipped as a fix). At 375x812 the
+       heading, the field and the Subscribe button have 720px between them,
+       once the 92px anchor offset is paid. Without these the Subscribe button
+       ended 809.7px down that 812px screen: it fitted, by 2.3px, which is
+       "it fits until somebody adds a word". With them the email row stops
+       wrapping and the whole signup ends 741.7px down, with 70px to spare. */
+    @media (max-width: 560px) {
+        .alt-digest { padding: 14px; }
+        .alt-digest-form fieldset { margin-bottom: 10px; }
+        .alt-digest-lists label { margin: 3px 0; }
+        .alt-digest-privacy { margin-top: 12px; }
+    }
     </style>
     <section class="alt-digest" id="alt-digest">
         <h2>Email digest</h2>

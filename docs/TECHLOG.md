@@ -1,6 +1,72 @@
 # Tech Log
 
 
+## 2026-08-14 - the digest signup had no route, and the hero got one (2.20.52)
+
+The press-kit defect, a second time, on a second surface. The email-digest
+signup has been live and working, and the only way to reach it was to scroll
+to the bottom of the page. Measured off the live page, bare URL, browser
+User-Agent, no cache buster, at ver=2.20.50:
+
+| viewport | signup section top | document height |
+|---|---|---|
+| 1280 x 900 | 17,731px | 18,849px |
+| 375 x 812 | 40,744px | 42,483px |
+
+Nineteen screens on a desktop and fifty on a phone. The press kit at least had
+a text link pointing at it from the data strip; this had no route of any kind
+above it. Same fix as 2.20.32, because that one worked: a fourth control in
+`.alt-hero-actions`, reading **"WEEKLY OR DAILY Email digest"** and jumping to
+`#alt-digest`.
+
+- **The label is the destination's own h2**, read out of `includes/subscribe.php`
+  by the test rather than typed as a constant, behind a tag answering the first
+  question anybody asks of a signup in the words its own radio buttons use. Not
+  "Subscribe to our newsletter".
+- **A fourth shape.** A plain `.alt-btn` beside "How we count" is the same
+  control twice and the green tint is spoken for by the press route, so this
+  takes the blue FAMILY without the primary's weight: `--alt-blue-tint` fill,
+  `--alt-control-border` edge. Its hover holds fill and edge and moves only the
+  shadow, because `.alt-btn:hover` repaints the edge in `--alt-chart-dim`, which
+  on this fill is ~1.2:1 and would have dissolved the outline at the exact
+  moment a pointer was on it, with every text check still green.
+- **Cost to the first screen, measured rather than claimed:** 0px at 1280 (the
+  four buttons still share one flex row, ending at x=907 of 1110) and 52.0px at
+  375 and at 414, which is one 44px target plus the 8px gap, the same floor the
+  press button pays. The hero figure is above it and does not move at any width.
+
+**AND THE JUMP HAD TO LAND, WHICH IS HALF THE CHANGE.** The press page shipped
+a jump menu that ended 847px down an 812px screen and was called fixed. Before
+this, following `#alt-digest` at 375x812 left the email field ending at
+**852.2px** on that same 812px screen: the identical defect, three pixels apart.
+The cause was one CSS rule losing an argument. `.alt-digest-intro` declares
+`font-size: 14px`, and the theme's `.entry-content p { font-size:1.05rem
+!important; line-height:1.78 !important }` beat it, so the paragraph shipped at
+16.8px on a 29.9px line, eleven lines and 348px of the first thing a reader
+sees on arriving. `!important` alone did not fix it either - between two
+`!important` declarations specificity still decides, and `.entry-content p`
+(0,1,1) outranks `.alt-digest-intro` (0,1,0), so the first attempt moved the
+paragraph by exactly zero pixels. The selector is now `.alt-digest
+p.alt-digest-intro`, plus a small `max-width: 560px` compaction of the
+component. After: the email row stops wrapping and the whole signup ends
+**741.7px** down that 812px screen, with 70px to spare, and 464.4px at 1280x900.
+
+`railway/tests/test_digest_route_is_findable.py` is the guard: 13 assertions off
+a real headless Chrome render of the real template with the real signup
+component spliced in at the point the template calls it (both read from their
+own files with PHP stripped, neither hand-written). Controls are found by
+rendered `innerText`, never by class. **Proven RED on the pre-fix tree**: 11
+failed, including `at 375x812 the jump leaves the signup's field 852px down a
+812px screen`. Contrast resolved from the tokens the rules name: worst edge pair
+3.16:1 light and 3.57:1 dark against a floor of 3.0, label 16.05:1 / 13.37:1 and
+the cadence tag 5.99:1 / 9.18:1 against 4.5, hover included.
+
+The signup component is shared with the Talent Intelligence Tracker, so the
+paragraph fix lands on both pages; the sibling repo got its own hero route in
+the same session (TIT 1.82.2) and the two labels are deliberately identical.
+
+---
+
 ## 2026-08-15 - the archive promise stays at 7 days, and three states stop telling one story (2.20.51)
 
 **The promise did not move. The measurement said it did not need to.** A

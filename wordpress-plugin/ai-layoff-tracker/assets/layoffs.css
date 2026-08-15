@@ -879,6 +879,43 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     margin-right: 8px;
     white-space: nowrap;
 }
+/* THE DIGEST ROUTE. The press defect a second time, and the same fix.
+
+   The signup has been live and working with no route to it at all. Measured
+   on the live page, bare URL, browser User-Agent, no cache buster, 2026-08-14
+   at ver=2.20.50, the section began 17,731px down at 1280 and 40,744px down
+   at 375, which is nineteen screens and fifty. The press kit at least had a
+   text link pointing at it; this had nothing.
+
+   A FOURTH SHAPE, NOT A FOURTH COPY OF ONE OF THE THREE. A plain .alt-btn
+   beside "How we count" would be the same control twice, and the green tint
+   is spoken for by the press route. This one takes the blue FAMILY without
+   taking the primary's weight: a blue-tinted fill, so it reads as related to
+   "Search the record" rather than competing with it, and the neutral control
+   edge, so the boundary is the page's own and not another accent.
+
+   1.4.11 IS AGAIN THE BAR THAT BITES, AND THE HOVER IS WHERE IT WOULD HAVE
+   BEEN LOST. .alt-btn:hover repaints the edge in --alt-chart-dim, which on
+   this fill measures ~1.2:1: the stock hover would have dissolved this
+   button's outline at the exact moment a pointer was on it, with every text
+   check on the page still green. So the hover holds fill and edge and moves
+   only the shadow, which is what the press button does for the same reason.
+
+   Resolved from the tokens actually shipped, the worst edge pair is 3.16:1
+   in light (against the hero gradient's --alt-red-tint top stop) and 3.57:1
+   in dark, against a floor of 3.0. The label is 16.05:1 / 13.37:1 and the
+   cadence tag 5.99:1 / 9.18:1, against a floor of 4.5. */
+.alt-btn-digest {
+    background: var(--alt-blue-tint);
+    border-color: var(--alt-control-border);
+    color: var(--alt-ink);
+}
+.alt-btn-digest:hover { background: var(--alt-blue-tint); border-color: var(--alt-control-border); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+/* The tag is a label, not a badge: no pill, no fill, no glyph. It answers the
+   first question anyone asks of a signup, and the answer is a choice the form
+   itself offers. */
+.alt-btn-digest .alt-btn-tag { color: var(--alt-blue-dark); }
+
 .alt-btn-active, .alt-btn-active:hover { background: var(--alt-blue); border-color: var(--alt-blue); color: var(--alt-on-accent); }
 
 /* ===========================================================================
