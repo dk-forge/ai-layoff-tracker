@@ -3902,6 +3902,12 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
    Scoped to <=767px on purpose. At a desk these are hit with a pointer, the
    page is denser by design, and 2.5.8's 24px AA floor is already met. The
    guard (railway/tests/test_tap_targets.py) asserts the same 375px scope.
+
+   SCOPED TO .alt-wrap, WHICH IS EVERY PAGE, and it used to say
+   .alt-tracker-wrap, which is one. That was invisible in a diff and in every
+   test, because the tests measured the tracker page, which was the page that
+   was right. Section 8 at the bottom carries the controls the other six pages
+   have and the tracker does not.
    =========================================================================== */
 @media (max-width: 767px) {
 
@@ -3980,12 +3986,12 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     /* Written with the wrapper in the selector on purpose: these have to beat
        the generic in-a-sentence rule in section 4, which reaches every anchor
        inside a <p> or an <li> and would otherwise pad these too. */
-    .alt-tracker-wrap .alt-citeline-links > a,
-    .alt-tracker-wrap .alt-lead-links > a,
-    .alt-tracker-wrap .alt-provenance > a,
-    .alt-tracker-wrap .alt-browse-list a,
-    .alt-tracker-wrap .alt-card-src > a,
-    .alt-tracker-wrap .alt-archived > a {
+    .alt-wrap .alt-citeline-links > a,
+    .alt-wrap .alt-lead-links > a,
+    .alt-wrap .alt-provenance > a,
+    .alt-wrap .alt-browse-list a,
+    .alt-wrap .alt-card-src > a,
+    .alt-wrap .alt-archived > a {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -3995,9 +4001,9 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     }
     /* "CSV", "JSON" and "API" are three and four characters wide. Height
        alone leaves them 25 to 43px across, so the other axis is stated too. */
-    .alt-tracker-wrap .alt-citeline-links > a,
-    .alt-tracker-wrap .alt-lead-links > a,
-    .alt-tracker-wrap .alt-provenance > a {
+    .alt-wrap .alt-citeline-links > a,
+    .alt-wrap .alt-lead-links > a,
+    .alt-wrap .alt-provenance > a {
         min-width: 44px;
     }
     .alt-browse-list { gap: 8px; }
@@ -4024,11 +4030,11 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
        it is not a word in a sentence, it has its own padding, and this rule
        would have taken it away. That is not hypothetical, it happened: the
        two hero actions lost their 16px sides and arrived 2px apart. */
-    .alt-tracker-wrap p a:not(.alt-btn),
-    .alt-tracker-wrap li a:not(.alt-btn),
-    .alt-tracker-wrap td a:not(.alt-btn),
-    .alt-tracker-wrap dd a:not(.alt-btn),
-    .alt-tracker-wrap .alt-chart-sub a:not(.alt-btn),
+    .alt-wrap p a:not(.alt-btn),
+    .alt-wrap li a:not(.alt-btn),
+    .alt-wrap td a:not(.alt-btn),
+    .alt-wrap dd a:not(.alt-btn),
+    .alt-wrap .alt-chart-sub a:not(.alt-btn),
     .alt-why-quality a,
     .alt-hero-asof-more,
     .alt-log-anchor,
@@ -4097,4 +4103,47 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
        excluded because section 5 gives it a hit area instead of a size. */
     details > summary { min-height: 44px; box-sizing: border-box; }
     .alt-stat-i > summary { min-height: 0; }
+
+    /* --- 8. THE OTHER SIX PAGES --------------------------------------- */
+    /* Everything above was written against the tracker page and SCOPED to
+       .alt-tracker-wrap, so it reached exactly one of this plugin's seven
+       reader-facing pages. A device sweep on 2026-08-14 walked the rest at
+       375 and 414 and found the floor had simply stopped at the door:
+
+         press, the link that opens each statement's filtered view   x21
+         press, the "on this page" jump nav                          x23
+         press, the digest sign-up fields                            x36
+         health, its own jump nav                                    x32
+         health, the run-window select                               x19
+
+       Sections 1 to 7 now carry .alt-wrap, which every page of this plugin
+       has and which .alt-tracker-wrap already sits beside, so the tracker
+       page is byte-identical and the other six inherit the standard rather
+       than each growing their own. The rules below are the controls those
+       pages have and the tracker page does not. */
+    .alt-press-toc,
+    .alt-health-toc {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+    }
+    .alt-wrap .alt-press-toc a,
+    .alt-wrap .alt-health-toc a,
+    .alt-wrap .alt-sb-actions > .alt-sb-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+    /* "About" is five characters. Height alone leaves it 38.8px across, and
+       the citeline links needed the same second axis stated for the same
+       reason. */
+    .alt-wrap .alt-press-toc a,
+    .alt-wrap .alt-health-toc a { min-width: 44px; justify-content: center; }
+    /* A 19px select is the smallest control on any of these pages, and it is
+       the one that decides what the health page is showing. The sign-up
+       fields are the only place a reader types. */
+    .alt-wrap #alt-health-run-days,
+    .alt-wrap .alt-sub-form input,
+    .alt-wrap .alt-sub-form button { min-height: 44px; box-sizing: border-box; }
 }

@@ -69,6 +69,16 @@ PLUGIN = ROOT / "wordpress-plugin/ai-layoff-tracker"
 CSS = PLUGIN / "assets/layoffs.css"
 JS = PLUGIN / "assets/layoffs.js"
 TEMPLATE = PLUGIN / "templates/page-tracker.php"
+# The other reader-facing pages this plugin ships. Every rule above section 8
+# of the tap-target block used to be scoped to .alt-tracker-wrap, which is the
+# first of these seven and none of the rest, and no test here had ever loaded
+# one of the others. See TheOtherPagesClearTheSameFloor below.
+SECONDARY_TEMPLATES = (
+    ("press", PLUGIN / "templates/page-press.php"),
+    ("health", PLUGIN / "templates/page-health.php"),
+    ("methodology", PLUGIN / "templates/page-methodology.php"),
+    ("sources", PLUGIN / "templates/page-sources.php"),
+)
 
 TAP_MIN = 44.0
 GAP_MIN = 8.0
@@ -332,7 +342,17 @@ def is_a_fixture_artifact(row):
     readable text at all qualifies, so a real icon-only button (which has an
     explicit size in the stylesheet) is never excused by this.
     """
-    return row["tag"] == "a" and not row["text"] and not row["aria"]
+    if row["tag"] != "a" or row["aria"]:
+        return False
+    if not row["text"]:
+        return True
+    # The same defect with the decoration left behind. Several links are
+    # `<a>&#128202; <?php echo $label ?> &rarr;</a>`, so stripping PHP leaves
+    # "chart arrow" and a 31px box where the live page has a sentence. A label
+    # with no letter and no digit in it is not a label a reader was given, so
+    # it is the fixture talking, not the page. An icon-only control is a
+    # <button> with a size in the stylesheet and is never excused here.
+    return not any(ch.isalnum() for ch in row["text"])
 
 
 def is_inline_in_sentence(row):
@@ -521,6 +541,108 @@ class AdjacentTargetsAreFarEnoughApart(_Rendered):
             % (len(bad), GAP_MIN,
                "\n  ".join("%.1fpx: %s  |  %s" % (d, describe(a), describe(b))
                            for d, a, b in bad[:20])))
+
+
+class TheOtherPagesClearTheSameFloor(_Rendered):
+    """THE FLOOR STOPPED AT THE DOOR OF THE TRACKER PAGE.
+
+    Every rule in the tap-target block was scoped to `.alt-tracker-wrap`,
+    which is one of this plugin's seven reader-facing pages, and every test in
+    this file loaded that same page. Both halves were right about the page
+    they were looking at, and neither could see the other six. A device sweep
+    on 2026-08-14, on the LIVE pages at 375 and 414, measured what was left
+    behind:
+
+      press,  the link that opens each statement's filtered view   21px  x30
+      press,  the "on this page" jump nav                          23px  x11
+      press,  the digest sign-up fields                            36px   x3
+      health, its own jump nav                                     32px   x6
+      health, the run-window select                                19px
+
+    So the block now carries `.alt-wrap` (which `.alt-tracker-wrap` sits
+    beside, leaving that page byte-identical) and a section 8 for the controls
+    only these pages have. This class is the half that would have caught it:
+    it renders the OTHER templates, at 375 and at 414, because a phone is not
+    one width.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TheOtherPagesClearTheSameFloor, cls).setUpClass()
+        cls._pages = []
+        for name, path in SECONDARY_TEMPLATES:
+            html = re.sub(r"<\?php.*?\?>", "", path.read_text(), flags=re.S)
+            cls._pages.append((name, html))
+
+    def _measure(self, name, markup, width, css=None):
+        """The same fixture, minus the tracker wrapper: these pages carry
+        `.alt-wrap` and their own page class, and the template already brings
+        its own <main class="alt-wrap ...">."""
+        html = FIXTURE % {
+            "plugin": css if css is not None else CSS.read_text(),
+            "theme": THEME_SHIM, "site": SITE_OVERRIDE,
+            "freeze": contrast_audit.FREEZE_CSS,
+            "markup": markup, "built": "",
+        }
+        html = html.replace('<div class="alt-wrap alt-tracker-wrap">',
+                            '<div class="alt-secondary-host">')
+        height = 812 if width < 768 else 900
+        try:
+            with Browser(width=width, height=height) as page:
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                page.eval_js(contrast_audit.REVEAL_JS)
+                page.eval_js("(function(){document.querySelectorAll('details')"
+                             ".forEach(function(d){d.open=true;});return 1;})()")
+                return page.eval_js(PROBE)
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
+
+    def _undersized(self, rows):
+        return [r for r in rows
+                if not is_inline_in_sentence(r)
+                and not is_a_fixture_artifact(r)
+                # The sign-up form's honeypot is parked at -9999px so a bot
+                # fills it and a reader never sees it. A control no thumb can
+                # reach has no tap target to hold to a floor.
+                and r["x"] + r["w"] > 0
+                and (r["w"] < TAP_MIN or r["h"] < TAP_MIN)]
+
+    def test_the_other_pages_rendered_something_to_measure(self):
+        """An empty measurement is UNKNOWN, and UNKNOWN is not a pass."""
+        for name, markup in self._pages:
+            rows = self._measure(name, markup, 375)
+            self.assertGreater(
+                len(rows), 8,
+                "only %d interactive targets laid out on the %s page, so this "
+                "measured almost nothing. UNKNOWN, not a pass."
+                % (len(rows), name))
+
+    def test_no_boxed_control_is_under_44_on_a_phone(self):
+        for width in (375, 414):
+            for name, markup in self._pages:
+                bad = self._undersized(self._measure(name, markup, width))
+                self.assertFalse(
+                    bad,
+                    "%d control(s) below %.0fx%.0f on the %s page at %dpx:\n  %s"
+                    % (len(bad), TAP_MIN, TAP_MIN, name, width,
+                       "\n  ".join(describe(r) for r in bad[:15])))
+
+    def test_the_guard_fails_on_the_pages_as_they_were(self):
+        """The half that makes the half above evidence. With the tap-target
+        section taken back out, these pages have to measure as broken."""
+        stripped = remove_the_tap_target_section(CSS.read_text())
+        seen = 0
+        for name, markup in self._pages:
+            seen += len(self._undersized(self._measure(name, markup, 375,
+                                                       css=stripped)))
+        self.assertGreater(
+            seen, 0,
+            "the pre-fix stylesheet produced no undersized control on any of "
+            "the other pages, so this guard cannot see the defect it was "
+            "written for")
 
 
 class TheFixtureStillDescribesTheRealPage(unittest.TestCase):

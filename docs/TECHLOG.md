@@ -1,5 +1,58 @@
 # Tech Log
 
+
+## 2026-08-14 - a device sweep at five widths: the tap floor stopped at the tracker page (2.20.48)
+
+Every reader-facing page of both trackers rendered in real headless Chrome at
+375, 414, 768, 1024 and 1280, in light and dark, from a reader's view (live
+bare URL, browser User-Agent, no cache buster), with geometry read off the
+rendered tree and never off markup.
+
+**This plugin's layout came through clean.** No horizontal document overflow at
+any width or scheme, no clipped or overlapping text, no chart or stat tile
+collapsed, no sticky element covering content. The two newest surfaces were
+given the hardest look: the two-tier headline (2.20.45) sits inside the
+viewport at 375 and 768 with the second tier and the as-of line intact, the
+freshness strip and its tiles (2.20.46) stack to one column and never bleed,
+and the monthly survey table scrolls INSIDE `.alt-health-table-wrap` at 375
+(621px of table in a 337px box, `overflow-x:auto`, document overflow zero)
+rather than pushing the page sideways.
+
+**What did fail was the 44px floor, on six of the seven pages.** The
+tap-target block from 2.20.11 was scoped to `.alt-tracker-wrap`, and every
+test in `test_tap_targets.py` loaded that same page. Both were right about the
+page they were looking at and neither could see the others. Measured live at
+375 and 414:
+
+| control | page | measured |
+|---|---|---|
+| the link opening each statement's filtered view (`.alt-sb-link`, 30 of them) | press | 21px |
+| the "on this page" jump nav | press | 23px |
+| the digest sign-up fields | press | 36px |
+| its own jump nav | health | 32px |
+| the run-window select | health | 19px |
+
+The block now carries `.alt-wrap`, which every page of this plugin has and
+which `.alt-tracker-wrap` already sits beside, so the tracker page renders
+byte-identical and the other six inherit the standard instead of each growing
+their own. A section 8 adds the controls only those pages have. The floor
+stays scoped to <=767px for the reason it always was.
+
+**The guard.** `TheOtherPagesClearTheSameFloor` renders the press, health,
+methodology and sources templates at 375 AND at 414, because a phone is not
+one width, and it fails with the tap-target section taken back out. Two
+measurement rules were needed to keep it honest: an anchor whose label comes
+from PHP renders in the fixture as its decoration alone ("chart arrow", 31px)
+where the live page carries a sentence, so a label with no letter and no digit
+in it is read as the fixture talking; and the sign-up honeypot is parked at
+-9999px, where no thumb can reach it and no floor applies.
+
+Not fixed, and noted rather than touched: `i.alt-sb-again` contrast is owned by
+another session. Under 768px the floor is deliberately not applied, so an iPad
+in portrait still meets the 24px AA minimum but not the 44px one; that is the
+2.20.11 decision, unchanged here, and worth a deliberate look rather than a
+silent widening.
+
 ## 2026-08-14 - the US WARN reference set is adjudicated: 99/100 primary, 32/33 census, and the two misses are the dedup hash
 
 **The owner signed off the US WARN adjudication (reviewer `Dakotta`), adopting
