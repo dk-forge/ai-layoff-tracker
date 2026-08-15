@@ -1,6 +1,103 @@
 # Tech Log
 
 
+## 2026-08-15 - the archive promise stays at 7 days, and three states stop telling one story (2.20.51)
+
+**The promise did not move. The measurement said it did not need to.** A
+proposal reached the owner to widen the archive re-check promise from 7 days to
+60, off this table: 3,471 URLs due at "~80/day measured throughput", so weekly
+needs 496/day and is impossible, 45 days needs 77/day and just fits, 60 days
+needs 58/day and fits comfortably. The owner chose 60. Re-deriving it before
+implementing showed the table answers a different question than the promise
+asks, so nothing was changed. Recording the confusion, because the number that
+caused it is still in every run log.
+
+**SAVE-PAGE-NOW CAPTURES ARE NOT RE-CHECKS.** These are two different
+operations against the Internet Archive and the daily run does both:
+
+  * A **re-check** asks the availability API "do you have a snapshot of this
+    URL yet". It is free, unmetered, and it is what stamps `checked_at`. It is
+    the operation the published sentence promises.
+  * A **capture** asks Save Page Now to go and fetch the page. It is
+    rate-limited, it is what `ARCHIVE_SPN_MAX` caps, and that cap is **80**
+    (`archive-backfill.yml`). Hence the "80 Save-Page-Now captures" on the tail
+    line of run after run.
+
+The 80/day in the table was that cap. Divided into the pool it yields "how long
+to newly ARCHIVE the backlog", assuming every URL eventually captures, which
+these mostly do not - being uncapturable is why they are in the pool. The
+promise is about re-checking, and re-checks have no such ceiling.
+
+**What the re-check rate actually is.** Candidate URLs handed out per daily
+run: 08-10 **2,000**, 08-11 **1,230**, 08-12 **448**, 08-13 **14**, 08-14
+**17**. The first three days alone are 3,678 against a pool of ~3,480: one full
+pass in about three days. The two near-zero runs are not a slowdown, they are
+the convoy trough behind the 4-day eligibility gate (URLs stamped 08-10 07:36
+came due 08-14 07:36; the 08-14 run fired at 06:49, 47 minutes early). Live
+`/archive-coverage` at 2026-08-15 06:04Z: `unarchived_live` 3,462,
+`oldest_unarchived_checked_at` 2026-08-10 07:36:24 = **4.9 days**. Every
+un-archived URL was attempted within 4.9 days, against a 7-day promise. The
+cycle is structurally capped at `ALT_ARCHIVE_RECHECK_DAYS` (4) + 1 day of run
+granularity = 5 days.
+
+`archive_recheck_cadence` **PASSES today at the existing bound**, so there was
+no red to answer. It is also not decorative there - probed against the live
+payload with only the failure variable moved: 7.5d age at 50/day FAIL, 8.5d
+FAIL, 11d FAIL, stopped cron FAIL. At `PROMISE_DAYS = 60` the projected bound
+becomes 61d and every one of those goes green; with the gate holding the pool
+at ~5 days, a 60-day bound could only fire after the cron had been dead about
+two months. It would also have silently voided
+`assertLessEqual(ALT_ARCHIVE_RECHECK_DAYS, 7)`, which is what pins the
+structural fact (gate 4 < promise 7) that makes the promise keepable at all.
+**`PROMISE_DAYS`, `PROJECTED_MAX_AGE_DAYS` and `MAX_AGE_DAYS` are untouched at
+7 / 8 / 10.** The next session reading an "80/day" in a log should read this
+paragraph before doing arithmetic with it.
+
+**What DID change: one sentence became three.** Independent of the number, and
+a real defect. Every un-archived row printed the same line whatever its state:
+
+```
+queued       No archive snapshot yet. We re-check weekly; next check by 2026-08-16.
+pending      No archive snapshot yet. We re-check weekly; next check by 2026-08-18.
+unavailable  No archive snapshot yet. We re-check weekly; next check by 2026-08-16.
+```
+
+A `queued` URL has no archive index row at all and has never been attempted, so
+"we re-check" was false about it, and `queued` and `unavailable` were
+indistinguishable. Now:
+
+```
+queued       No archive snapshot yet. This source has not been checked yet; first check by 2026-08-16.
+pending      No archive snapshot yet. We re-check weekly; next check by 2026-08-18.
+unavailable  Not in the Internet Archive yet. We keep checking weekly; next check by 2026-08-16.
+```
+
+**`unavailable` says we keep checking, and that is not softening.** The brief
+that reached this session asked for it to announce that we had stopped, after
+`ALT_ARCHIVE_MAX_ATTEMPTS`. We do not stop. That constant moves a URL off the
+72h `pending` retry and **onto** the re-check gate; nothing takes it off, and
+the 4.9d measurement above is the proof the checking continues. Announcing a
+stop we do not make would be false in the reader's favour, which is the worse
+direction to be wrong in. `STOP_WORDS` in the test holds that. The same brief
+also treated "not yet in Wayback" and "recorded unavailable" as two counts;
+they are one field, `unavailable`, 3,381 at time of writing.
+
+The date is still `alt_archive_next_check_date()`'s in all three states, so one
+definition still feeds the constant, the public sentence and every per-row
+date. `alt_archive_note_text()` (db.php) and `archiveNoteText()` (layoffs.js)
+are the two renderers, and `archivePendingTitle()` now shares them so a
+tooltip cannot contradict the cell beside it.
+
+**The new test EXECUTES both renderers rather than grepping them.**
+`ThreeStatesSayThreeDifferentTrueThings` shells out to php and node, renders
+all three states at the live cadence and again at a mutated one, and fails if
+any state's date sits still - the guard that catches a renderer which starts
+printing a literal, or a JS mirror left behind when the PHP moves. A regex
+could not tell those apart. php and node are both on ubuntu-latest so it really
+runs in CI; if they are ever absent it SKIPS loudly rather than passing, since
+a check that could not run is UNKNOWN.
+
+
 ## 2026-08-14 - closing the incident our own correction opened, and the containment pair it left split
 
 The 42,000-job correction (3ec3f3a) did exactly what its TECHLOG entry predicted

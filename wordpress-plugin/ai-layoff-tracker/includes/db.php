@@ -3347,11 +3347,53 @@ function alt_archive_note_html(array $row) {
             . 'title="A copy saved by the Internet Archive, for when the original page has moved or gone">'
             . 'Archived copy (Wayback Machine)</a>';
     }
-    $next = alt_archive_next_check_date(
-        (string) ($row['archive_status'] ?? 'queued'),
-        (string) ($row['archive_checked_at'] ?? ''));
+    $status = (string) ($row['archive_status'] ?? 'queued');
+    $next = alt_archive_next_check_date($status, (string) ($row['archive_checked_at'] ?? ''));
     return '<span class="alt-muted alt-archive-note">'
-        . 'No archive snapshot yet. We re-check weekly; next check by ' . esc_html($next) . '.</span>';
+        . alt_archive_note_text($status, $next) . '</span>';
+}
+
+/**
+ * The sentence beside a row with no snapshot, for ONE archive state. Three
+ * states, three different true things — flattened into one sentence until
+ * 2.20.51, which made a URL nothing had ever looked at claim it had been
+ * re-checked.
+ *
+ *   queued      no archive row at all. Nothing has been attempted, so this
+ *               says so. The date is still real (the next daily run), it is
+ *               just a FIRST check rather than a re-check.
+ *   pending     a capture has been requested and is retried on the spacing
+ *               window. Unchanged wording: this is the row the published
+ *               "we re-check weekly" promise was written for.
+ *   unavailable the Internet Archive has no copy yet. We keep checking,
+ *               forever, on ALT_ARCHIVE_RECHECK_DAYS.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT SAY. 'unavailable' is not a retirement and
+ * must never be described as one. ALT_ARCHIVE_MAX_ATTEMPTS moves a URL from
+ * the 72h 'pending' retry ONTO the re-check gate; it does not stop the
+ * checking. Measured 2026-08-15: the oldest un-archived attempt in the whole
+ * pool was 4.9 days old, so the promise is kept early, and the live
+ * archive_recheck_cadence invariant is what keeps that honest. A sentence
+ * announcing a stop we do not make would be false in the reader's favour,
+ * which is the worse direction.
+ *
+ * The DATE is always alt_archive_next_check_date()'s, never typed, so all
+ * three states move together when a cadence constant moves. Only the words
+ * around it differ. railway/tests/test_archive_promise.py executes both
+ * renderers against a mutated constant and fails if any state's date sits
+ * still.
+ */
+function alt_archive_note_text($status, $next_date) {
+    if ($status === 'unavailable') {
+        return 'Not in the Internet Archive yet. We keep checking weekly; next check by '
+            . esc_html($next_date) . '.';
+    }
+    if ($status === 'pending') {
+        return 'No archive snapshot yet. We re-check weekly; next check by '
+            . esc_html($next_date) . '.';
+    }
+    return 'No archive snapshot yet. This source has not been checked yet; first check by '
+        . esc_html($next_date) . '.';
 }
 
 /**
