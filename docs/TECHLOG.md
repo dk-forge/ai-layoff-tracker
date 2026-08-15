@@ -1,5 +1,64 @@
 # Tech Log
 
+## 2026-08-14 - the US WARN reference set is adjudicated: 99/100 primary, 32/33 census, and the two misses are the dedup hash
+
+**The owner signed off the US WARN adjudication (reviewer `Dakotta`), adopting
+the session's recommendation: accept every event the machine proposed a matching
+row for, Wood Group included.** The pack was rebuilt from live data first (132
+pending events, 714 candidate rows, 1 with no candidate row), then 133 decisions
+went through `railway/warn_adjudicate.py` - 131 accepts, 2 rejects - each naming
+the tracker row it is about and carrying a reason composed from that event's own
+evidence block (what the count matched exactly or by how much it differed, and
+which published date basis the row agreed on: effective in 121 accepts, the
+notice/posting date in 11, all Tennessee, where that is what TN publishes). No
+template string was pasted 132 times; the reasons quote the pack's per-row
+verdicts. `--verify` passes; ledger is `railway/warn_recall_adjudications.json`.
+
+**Editor-confirmed recall: 99/100 = 99.0% (Wilson 95% CI [94.6%, 99.8%]) on the
+primary sample; 32/33 = 97.0% ([84.7%, 99.5%]) on the large-event census, never
+pooled.** The confirmed figure met the machine's ceiling, which the results doc
+explains structurally (same-species matching, near-`dedup_hash` identity) rather
+than treating as luck.
+
+**The two rejects are one finding: identical sibling notices collapse to one
+stored row.** `dedup_hash` = `warn + company + date + jobs + state`, so when a
+state publishes two notices agreeing on all four - SMBC MANUBANK's several
+one-worker FL filings of 2026-01-08 (Bradenton, Marco Island, Bonita Springs),
+Spirit's two 796-worker Orlando notices of 2026-05-04 (the airport and the OOC)
+- the second upsert lands on the first's row. One row may not count for two
+reference events: the row was claimed for the notice appearing first in the
+state's own list and the sibling recorded as the miss, both times. That is a
+documented design decision scored honestly, not a collector failure.
+
+**Wood Group is CAUGHT, and recording it exposed a recorder defect.** Row
+`140104` holds the notice exactly (180 jobs = the notice total, `layoff_date`
+2025-01-05 exactly as TWC publishes); the 317-day gap between that date and the
+same record's 2025-11-18 notice date is Texas's own record inconsistency, noted
+in the accept reason as a recorded source anomaly - the frozen match window was
+NOT widened. But `adjudication_ledger.pack_entry` scanned only the pack's
+`entries` list, so the accept the sheet's own no-candidate section prescribes
+was Refused as "not in the adjudication pack". Fixed once in the shared core
+(both recorders benefit): `pack_entry` now also scans `no_candidate`, and the
+WARN profile's `pack_ids` reads `rows_for_this_employer_at_any_date` for those
+entries - the unknown-row-id refusal still holds, with tests
+(`NoCandidateEventsAreAdjudicableTests`).
+
+**The SEC figures are byte-untouched**, as the tests assert:
+`railway/recall_measurement.json`, `railway/recall_adjudications.json` and the
+SEC manifest show no diff. Nothing here is published to any public surface; the
+set remains internal per its definition (§9), and the tracker page's measured
+paragraph still renders the SEC set's 56/57. One measurement run hit a Bluehost
+503 burst and resolved the Spirit OOC census event to UNREACHABLE/UNKNOWN
+rather than a miss (the designed behaviour); the re-run scored all 33.
+
+**And the census summary was hiding its own confirmed miss.**
+`summarise()["large_event_census"]` recorded only the machine-any bound, so the
+adjudicated measurement said `33/33 = 100%` while its own results list held the
+rejected Spirit OOC event. The key now carries `editor_confirmed` and
+`machine_any` side by side (the by_state shape), and `--measure` prints the
+census's editor-confirmed figure instead of not printing the census at all -
+which is how the 33/33 went unnoticed in the first place.
+
 ## 2026-08-14 - self-heal: red CI can now propose its own fix, as a draft a human merges
 
 **`.github/workflows/self-heal.yml` + `railway/self_heal.py` + tests.** When a
@@ -20,8 +79,31 @@ healer at a time, one open PR per cause fingerprint, ceiling of 3 open drafts.
 **A prompt is a request; the guard is the fact.** The `guard` job diffs the
 healer's branch against `self_heal.FORBIDDEN` (spend.py, headline_incidents,
 the outbox, both locks, HANDOFF.md, the healer itself) and goes red on a
-violation — which ci-alert then emails. Dormant until the owner adds
-`CLAUDE_CODE_OAUTH_TOKEN`; kill switch `SELF_HEAL_DISABLED=true`. RUNBOOK "The
+violation — which ci-alert then emails.
+
+**THE HEALER MERGES ITS OWN DRAFT, under conditions it cannot relax** (owner
+authorization 2026-08-14: "a human clicks merge — I want you to click merge,
+I'm okay with that"). `merge-gate` requires all four and resolves every
+UNKNOWN to "stay a draft": the guard job passed; the reviewer's verdict is
+exactly `SELF-HEAL-REVIEW-VERDICT: LOOKS SOUND` (absent or ambiguous is not);
+the diff is source/test only, never `.github/` and never a FORBIDDEN path;
+and the MERGED PREVIEW introduces no test failure main does not already have.
+That last one is the honest form of "green except the documented live-data
+reds" — a standing red fails both the baseline and the preview and subtracts
+out, while anything new blocks — and it also closes the gap where a branch
+pushed with GITHUB_TOKEN triggers no checks at all. A blocked merge is a
+decision, not a red run.
+
+**Every heal writes its own revert index.** `docs/HEALING-LOG.md` (new) gets
+a terse entry per auto-merge — UTC stamp, workflow, run URL, one-line cause,
+PR, merge SHA, files, reviewer verdict, and the literal
+`git revert <merge sha>` — and `docs/TECHLOG.md` gets the narrative under the
+same date. Both are appended AFTER the merge, best-effort: a failure to
+record warns loudly and never fails a heal, so an empty stretch in the log is
+not proof nothing merged (`git log --grep 'self-heal: auto-merged'` is).
+Kill switches: `SELF_HEAL_AUTOMERGE_DISABLED=true` keeps the drafts and
+returns the click to a human; `SELF_HEAL_DISABLED=true` stops the healer.
+Dormant until the owner adds `CLAUDE_CODE_OAUTH_TOKEN`. RUNBOOK "The
 self-healer" is the operating doc.
 
 ## 2026-08-14 - the freshness strip says its facts at first paint (2.20.46)

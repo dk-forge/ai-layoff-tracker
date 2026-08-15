@@ -65,6 +65,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     <a href="#alt-src-gaps">States not in the feed yet</a> &middot;
     <a href="#alt-src-global">Why most countries appear through news</a> &middot;
     <a href="#alt-src-news">Worldwide news outlets</a> &middot;
+    <a href="#alt-src-catalogue">Every publisher we researched</a> &middot;
     <a href="#alt-src-verify">How verification works</a> &middot;
     <a href="#alt-ai-rubric">AI rubric</a>
   </nav>
@@ -132,6 +133,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td>Five regional publishers' own RSS feeds, read twice daily, covering countries too small for a dedicated sweep. <b>RNZ Pacific</b> and the <b>Pacific Island Times</b> cover the Pacific islands (Fiji, Papua New Guinea, Samoa, Tonga, Vanuatu, Solomon Islands, Guam, Palau, Micronesia and more). <b>Financial Afrik</b> and <b>Jeune Afrique</b> cover Francophone Africa in French (Senegal, Ivory Coast, Cameroon, Morocco, Tunisia, Mali and more). <b>Caribbean News Global</b> covers the Caribbean (Saint Lucia, Jamaica, Barbados, Guyana and more). Only stories carrying collective-layoff language in English or French are read further. The publication decides nothing: the article text itself determines the country and count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
         <td>Verified (named report)</td>
         <td><a href="https://www.rnz.co.nz/international/pacific" target="_blank" rel="noopener">RNZ Pacific &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>National publisher feeds</b><br><span class="alt-muted">15 countries, one publisher each</span></td><td>Egypt · Colombia · Ethiopia · Kazakhstan · Ghana · Pakistan · Jordan · Iraq · Jamaica · Nepal · Papua New Guinea · Paraguay · Sri Lanka · Serbia · Peru</td>
+        <td>The leading business or national publisher in each of fifteen mid-sized economies, read twice daily from the publisher's own feed. These are countries where a national news edition returns the worldwide English feed and no regional service covers them, so nothing local was ever being requested. One publisher per country, chosen by measurement: every candidate was fetched first hand and ten of twenty-five were unusable, each for a reason printed in the publisher catalogue below. Only stories carrying collective-layoff language in English, Spanish, Russian or Serbian are read further. The publication decides nothing: the article text itself determines the country and the count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
+        <td>Verified (named report)</td>
+        <td><a href="#alt-src-catalogue">See the catalogue &darr;</a></td>
       </tr>
       <tr>
         <td><b>International news feeds</b><br><span class="alt-muted">NewsData.io · Marketaux · Finnhub</span></td><td>Worldwide, Europe-weighted</td>
@@ -251,6 +258,16 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
   <?php else : ?>
   <p class="alt-muted">The full country &amp; outlet list is being generated and will appear on the next update.</p>
+  <?php endif; ?>
+
+  <?php /* The publisher research, connected and not. Generated from
+       railway/data/source_catalogue.json by generate_source_catalogue.py, so
+       a refusal keeps its measured evidence instead of living in a chat log. */ ?>
+  <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/source-catalogue-table.php')) : ?>
+  <?php include ALT_PLUGIN_DIR . 'templates/partials/source-catalogue-table.php'; ?>
+  <?php else : ?>
+  <h2 id="alt-src-catalogue">Every publisher we researched, connected or not</h2>
+  <p class="alt-muted">The publisher catalogue is being generated and will appear on the next update.</p>
   <?php endif; ?>
 
   <h2 id="alt-src-verify">How verification works</h2>

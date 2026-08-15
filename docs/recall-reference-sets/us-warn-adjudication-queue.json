@@ -2,7 +2,7 @@
   "note": "Adjudication queue for the US WARN reference set. Every statement is attributed to the ONE candidate row it describes, by id; no line in the sheet summarises more than one row. See the module docstring for why. Nothing here is a decision and no field states a preferred outcome.",
   "reference_set_id": "us-warn-ca-tx-fl-tn-2025-07_2026-06",
   "definition_document": "docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md",
-  "built_at": "2026-08-13T23:43:00Z",
+  "built_at": "2026-08-14T19:17:22Z",
   "measured_at": "2026-08-13T06:50:31Z",
   "pending_events": 132,
   "pending_candidate_rows": 714,
@@ -1628,7 +1628,15 @@
             "row date equals this notice's earliest published effective date"
           ],
           "live_now": {
-            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
+            "company_name": "OP Mobility",
+            "job_count": 82,
+            "layoff_date": "2025-11-21",
+            "announcement_date": "2025-10-07",
+            "state": "TN",
+            "source_type": "warn",
+            "source_name": "TN WARN notice",
+            "source_url": "https://www.tn.gov/workforce/general-resources/major-publications0/major-publications-redirect/reports.html",
+            "excerpt": "Layoff at OP Mobility. 82 employees affected, effective 2025-11-21. Filed under the TN WARN Act."
           }
         }
       ]
@@ -4019,15 +4027,7 @@
             "row date equals this notice's earliest published effective date"
           ],
           "live_now": {
-            "company_name": "Holiday Inn Club Vacations Incorporated-The Villages Resort",
-            "job_count": 82,
-            "layoff_date": "2025-11-28",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Holiday Inn Club Vacations Incorporated-The Villages Resort in Flint. 82 employees affected, effective 2025-11-28. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           }
         }
       ]
@@ -16571,15 +16571,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Franklin)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Franklin)",
-            "job_count": 1,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Franklin) in El Paso. 1 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -16636,15 +16628,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Norma Linda)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Norma Linda)",
-            "job_count": 3,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Norma Linda) in Los Fresnos. 3 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -16701,15 +16685,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Rio Grande)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Rio Grande)",
-            "job_count": 3,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Rio Grande) in San Benito. 3 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -16766,15 +16742,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Canutillo)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Canutillo)",
-            "job_count": 3,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Canutillo) in Canutillo. 3 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -16829,15 +16797,7 @@
             "row date equals this notice's earliest published effective date"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casa Canutillo",
-            "job_count": 2,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casa Canutillo in Canutillo. 2 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -16894,15 +16854,7 @@
             "stored name 'Southwest Key Programs-Casa Houston Reliant' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casa Houston Reliant",
-            "job_count": 1,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casa Houston Reliant in Houston. 1 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -16959,15 +16911,7 @@
             "stored name 'Southwest Key Programs-Casa Montezuma' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casa Montezuma",
-            "job_count": 1,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casa Montezuma in Channelview. 1 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17024,15 +16968,7 @@
             "stored name 'Southwest Key Programs-Casa Norma Linda' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casa Norma Linda",
-            "job_count": 3,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casa Norma Linda in Los Fresnos. 3 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17089,15 +17025,7 @@
             "stored name 'Southwest Key Programs-Casa Nueva Esperanza' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casa Nueva Esperanza",
-            "job_count": 8,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casa Nueva Esperanza in Brownsville. 8 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17154,15 +17082,7 @@
             "stored name 'Southwest Key Programs-Casa Rio Grande' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casa Rio Grande",
-            "job_count": 3,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casa Rio Grande in San Benito. 3 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17219,15 +17139,7 @@
             "stored name 'Southwest Key Programs-National Headquarters (Austin)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-National Headquarters (Austin)",
-            "job_count": 3,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-National Headquarters (Austin) in Austin. 3 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17285,15 +17197,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Houston Reliant)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Houston Reliant)",
-            "job_count": 211,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Houston Reliant) in Houston. 211 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17351,15 +17255,7 @@
             "stored name 'Southwest Key Programs, Inc. (Houston HQ)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Houston HQ)",
-            "job_count": 11,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Houston HQ) in Houston. 11 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17417,15 +17313,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Quetzal)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Quetzal)",
-            "job_count": 309,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Quetzal) in Houston. 309 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17483,15 +17371,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Sunzal)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Sunzal)",
-            "job_count": 223,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Sunzal) in Houston. 223 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17549,15 +17429,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Oasis)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Oasis)",
-            "job_count": 128,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Oasis) in McAllen. 128 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17615,15 +17487,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Sueno)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Sueno)",
-            "job_count": 93,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Sueno) in Weslaco. 93 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17681,15 +17545,7 @@
             "stored name 'Southwest Key Programs, Inc. (Casa Montezuma)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (Casa Montezuma)",
-            "job_count": 238,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (Casa Montezuma) in Channelview. 238 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17747,15 +17603,7 @@
             "stored name 'Southwest Key Programs, Inc. La Esperanza)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. La Esperanza)",
-            "job_count": 4,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. La Esperanza) in Brownsville. 4 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17813,15 +17661,7 @@
             "stored name 'Southwest Key Programs, Inc.(Casa Nueva Esperanza)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc.(Casa Nueva Esperanza)",
-            "job_count": 9,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc.(Casa Nueva Esperanza) in Brownsville. 9 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17879,15 +17719,7 @@
             "stored name 'Southwest Key Programs, Inc.(South Texas HQ)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc.(South Texas HQ)",
-            "job_count": 13,
-            "layoff_date": "2025-10-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc.(South Texas HQ) in Brownsville. 13 employees affected, effective 2025-10-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -17945,15 +17777,7 @@
             "stored name 'Southwest Key Programs, Inc. (SWK National Headquarters)' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs, Inc. (SWK National Headquarters)",
-            "job_count": 45,
-            "layoff_date": "2025-10-06",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs, Inc. (SWK National Headquarters) in Austin. 45 employees affected, effective 2025-10-06. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -18010,15 +17834,7 @@
             "stored name 'Southwest Key Programs-Casita Del Valle' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Casita Del Valle",
-            "job_count": 5,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Casita Del Valle in Clint. 5 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -18075,15 +17891,7 @@
             "stored name 'Southwest Key Programs-STX Regional Headquarters' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-STX Regional Headquarters",
-            "job_count": 12,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-STX Regional Headquarters in Brownsville. 12 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",
@@ -18140,15 +17948,7 @@
             "stored name 'Southwest Key Programs-Houston Headquarters' differs from the published 'Southwest Key Programs-Casa Canutillo'"
           ],
           "live_now": {
-            "company_name": "Southwest Key Programs-Houston Headquarters",
-            "job_count": 10,
-            "layoff_date": "2025-11-05",
-            "announcement_date": "",
-            "state": "TX",
-            "source_type": "warn",
-            "source_name": "TX WARN notice",
-            "source_url": "https://data.texas.gov/d/8w53-c4f6",
-            "excerpt": "Layoff at Southwest Key Programs-Houston Headquarters in Houston. 10 employees affected, effective 2025-11-05. Filed under the TX WARN Act."
+            "refetch_error": "HTTPError: HTTP Error 503: Service Unavailable"
           },
           "also_proposed_for": [
             "warn-tx-2025-07-31-southwest-key-programs",

@@ -165,7 +165,12 @@ def live_entries(ledger, reference_row_id):
 
 
 def pack_entry(pack, profile, reference_row_id):
-    for entry in pack.get("entries") or []:
+    # A pack may keep the events its rule proposes nothing for in a separate
+    # `no_candidate` list (the WARN sheet renders them above the index, as their
+    # own section). They are still adjudicable — the sheet prints accept/reject
+    # commands for them — so a recorder that only scanned `entries` refused
+    # exactly the decision the sheet asked for (found 2026-08-14, Wood Group).
+    for entry in (pack.get("entries") or []) + (pack.get("no_candidate") or []):
         if entry.get("reference_row_id") == reference_row_id:
             return set(profile.pack_ids(entry) or []), entry
     return None, None

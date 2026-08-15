@@ -14,6 +14,7 @@ from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
 from sources.local_news import pull_local_news
 from sources.regional_feeds import pull_regional_feeds
+from sources.national_feeds import pull_national_feeds
 from sources.press_releases import pull_press_releases, reviewed_feed_count
 import extractor
 from extractor import extract_layoff_data, spend_deferral_count
@@ -209,6 +210,23 @@ def _pull_regional_feeds_rows():
     return rows
 
 
+def _pull_national_feeds_rows():
+    """Adapter: pull_national_feeds returns (rows, stats); this loop wants rows.
+
+    Per-feed tallies are printed for the same reason as regional_feeds: a dead
+    national feed hidden inside a healthy total is the Quebec failure shape,
+    and most runs will honestly keep 0 candidates, so the fetched counts are
+    the liveness signal.
+    """
+    rows, stats = pull_national_feeds()
+    for key in sorted(stats):
+        st = stats[key]
+        print(f"national_feeds[{key}]: kept={st['kept']} "
+              f"fetched={st['fetched']} aggregator={st['aggregator']} "
+              f"dropped={st['dropped']} errors={st['errors']}")
+    return rows
+
+
 def _spend_preflight():
     """Decide, before any paid call, whether this run may spend.
 
@@ -280,6 +298,14 @@ def run():
         # default (measured under $1/month worst case; see ARMED_BY_DEFAULT in
         # sources/regional_feeds.py). Most runs honestly keep 0 candidates.
         ("regional_feeds", _pull_regional_feeds_rows),
+        # National publisher feeds: the top VERIFIED business or national
+        # publisher in each of fifteen mid-sized economies where the national
+        # news edition returns the worldwide English feed and no regional
+        # service reaches. Direct RSS, robots-checked, one publisher per
+        # country, armed by committed default (measured $2.27/month worst
+        # case; see ARMED_BY_DEFAULT in sources/national_feeds.py). Most runs
+        # honestly keep 0 candidates.
+        ("national_feeds", _pull_national_feeds_rows),
         # newsapi RETIRED 2026-07-25: the free tier is dev-only and the paid tier
         # is ~$449/mo, so it perpetually reported degraded (dead/exhausted key)
         # while contributing nothing. Google News RSS (keyless) replaced it and
@@ -330,17 +356,19 @@ def run():
                     print(f"::warning::{source} returned 0 items")
                 else:
                     report_source_health(source, "ok", len(pulled))
-            elif source == "regional_feeds":
+            elif source in ("regional_feeds", "national_feeds"):
                 # 0 rows is NORMAL here (layoff events are rare in these
                 # regions), so unlike google_news an empty pull is not
                 # degradation. A feed-level failure IS: pull_regional_feeds
                 # sets last_error on a non-200, a timeout, or a 200 whose body
                 # is no longer an RSS document (the changed-scheme shape).
-                err = getattr(pull_regional_feeds, "last_error", None)
+                fn = (pull_regional_feeds if source == "regional_feeds"
+                      else pull_national_feeds)
+                err = getattr(fn, "last_error", None)
                 if err:
                     report_source_health(source, "degraded", len(pulled),
-                                         f"regional feed broke: {err}")
-                    print(f"::warning::regional_feeds degraded: {err}")
+                                         f"feed broke: {err}")
+                    print(f"::warning::{source} degraded: {err}")
                 else:
                     report_source_health(source, "ok", len(pulled))
             else:

@@ -125,7 +125,13 @@ PROFILE = AL.Profile(
     label_field="employer_published",
     mutable_fields=MUTABLE_FIELDS,
     ledger_note=LEDGER_NOTE,
-    pack_ids=lambda entry: [c["tracker_row_id"] for c in entry.get("candidates") or []],
+    # A no-candidate entry proposes no row in the ordinary way; the rows a
+    # decision on it may name are the ones its own section shows — every row we
+    # hold for that employer at any date.
+    pack_ids=lambda entry: [c["tracker_row_id"] for c in
+                            (entry.get("candidates")
+                             or entry.get("rows_for_this_employer_at_any_date")
+                             or [])],
     dump_manifest=_dump_manifest,
     dump_ledger=_dump_ledger,
     pre_tool_matched=frozenset(),          # nothing here was decided before the ledger
