@@ -1,5 +1,39 @@
 # Tech Log
 
+## 2026-08-15 - one sentence of copy put the Subscribe button below the fold, twice (2.20.58)
+
+2.20.55 added a clause to the digest signup's intro paragraph. The paragraph
+got taller, the section got taller, and
+`test_digest_route_is_findable.test_the_jump_lands_the_whole_signup_on_screen_on_a_phone`
+went red in CI with `831.8 not less than or equal to 812`. That is the 2.20.53
+defect exactly: a reader who follows the hero's digest button lands on a form
+whose email field is off the bottom of a 375x812 screen.
+
+2.20.56 was supposed to fix it. It split the sentence to satisfy the 30-word
+style ceiling, and made the height WORSE: `853.4 not less than or equal to
+812`. Four short sentences wrap to more lines than three long ones at 375px.
+Both versions reached readers before either failure was known.
+
+**Why the local run said OK both times.** `python3 -m unittest
+test_digest_route_is_findable` passed on this machine at BOTH heights, while
+the same test in CI failed at both. The local headless measurement of this
+fixture does not agree with the runner's, so a green local run of this
+particular test is not evidence about the page, and it was read as one twice.
+CI is the authority for the fold checks, which means a copy edit inside
+`alt_digest_subscribe_form()` is not verified until the Tests workflow has run
+on the pushed commit.
+
+**The fix is a revert, not a third rewrite.** The intro paragraph is now
+byte-identical to its pre-2.20.55 text. The articles list never needed a
+sentence there: the checkbox beside it already reads "Occasional articles and
+product news", which is the thing a reader ticks, and the manage link is
+discovered in the email rather than on this page. The copy bought nothing and
+cost the fold twice.
+
+**The rule this leaves.** Copy inside the signup section is height-critical.
+Anything added there has to come out of somewhere else, and the only check that
+can tell you is the Tests workflow on the pushed commit.
+
 ## 2026-08-15 - the headings were 420px from their own text, and the phone column was 26 characters wide (2.20.57)
 
 The blog was asked to read like long-form. Two defects were in the way and

@@ -262,11 +262,9 @@ function alt_digest_subscribe_form($context = '') {
             </div>
         <?php endif; ?>
         <p class="alt-digest-intro">A plain email summary of what changed on these trackers: the period's
-            headline numbers and the largest new entries, with links back to the source pages. Ask for the
-            articles list and it also carries anything we published on the blog in that period. No images,
-            no tracking pixels. You confirm your address by clicking a link we email you. Every email
-            carries a one-click unsubscribe and a link back here to change what you get. Details in the
-            <a href="#alt-digest-privacy">privacy note</a> below.</p>
+            headline numbers and the largest new entries, with links back to the source pages. No images,
+            no tracking pixels. You confirm your address by clicking a link we email you, and every email
+            carries a one-click unsubscribe. Details in the <a href="#alt-digest-privacy">privacy note</a> below.</p>
         <form class="alt-digest-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <input type="hidden" name="action" value="alt_digest_subscribe">
             <?php wp_nonce_field('alt_digest_subscribe', 'alt_digest_nonce'); ?>
