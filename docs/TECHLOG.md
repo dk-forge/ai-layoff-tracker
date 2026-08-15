@@ -1,6 +1,57 @@
 # Tech Log
 
 
+## 2026-08-14 - closing the incident our own correction opened, and the containment pair it left split
+
+The 42,000-job correction (3ec3f3a) did exactly what its TECHLOG entry predicted
+and opened a headline incident. Closed it, verified first.
+
+**ai_all_time is exact to the job.** Four AI-flagged rows trashed as non-events
+(70900 Xbox 3,200, 70563 Elastic 7, 70051 Klarna 1,000, 176694 BNP Paribas
+Fortis 1,000) = -5,207 / -4 entries, plus 176814 Meta corrected 7,000 to 8,000 =
++1,000. Net **-4,207 jobs / -4 entries**, which is the observed 215,365/100 ->
+211,158/96 with **zero residual**.
+
+**The complement is explained to 91.3%.** Worldwide minus AI moved -49,269 on
++60 entries; -45,000 of that is 176454 IRS 31,000, 70169 Dell 11,000 and 176751
+(the LA Times roundup, 3,000, double-counting rows already held separately).
+The remaining **-4,269 on +63 net arrivals** is same-window churn: dedupe_llm
+merged 2 clusters at 15:18Z and reconcile-supersets re-scoped after the Meta and
+Xbox edits, both flagged UNVERIFIED in 3ec3f3a. It is 8.7% of the finding and
+one sixth of the 25,000 containment floor. Recorded in the close reason rather
+than rounded away.
+
+**A CONTAINMENT FAIL PINS THE SUPERSET AND NOTHING CAN CLOSE IT.** This is the
+defect this entry exists for. At the 18:26Z run the ai pair failed and held
+BOTH `ai_all_time` and `worldwide_all_time`; the us pair passed *under the
+floor* (-20,159, against 25,000) so `us_all_time` advanced to 18:26Z. That left
+the pair straddling the correction: worldwide pinned at 05:06Z pre-correction,
+US at 18:26Z post. Their difference is now -53,476 and permanently FAIL, and it
+is an **artifact of the split, not a finding** - US itself has not moved a job.
+
+There is no way out with the tools that exist. `record_baseline` opens an
+incident only under the SUBSET of a failing pair, so `worldwide_all_time` is
+held with nothing to close, and closing `us_all_time` advances a baseline that
+is already current. `MAX_PAIR_SKEW_DAYS = 1.0` was sized on the assumption that
+"ordinary drift over that gap is a few thousand jobs against a 25,000 floor" - a
+42,000-job signed-off correction landing inside a 13-hour skew is exactly the
+case it does not cover. The pair self-clears in 14 days when worldwide's
+baseline passes `MAX_BASELINE_AGE_DAYS` and the pair goes UNKNOWN, which is 14
+days of red CI, so this wants a real fix and not a wider bound. **Left FAILING
+and left to the owner. Do not answer it by editing headline_baseline.json.**
+
+**archive_recheck_cadence cleared itself, and the convoy theory is CONFIRMED.**
+Inside one session the oldest un-archived attempt went from 7.9d (127 pending,
+3,392 not in Wayback) to 4.9d (129 / 3,381) - a three-day jump in about twenty
+minutes, which is a convoy of re-checks landing at once behind the eligibility
+gate and cannot be anything else. The check now passes and says so itself: the
+whole pool completed a pass in 4.9d, 5.9d worst age, inside the 8d projected
+bound, and the 48h throughput sample (3,462 due at 93/day = 37.2d cycle) "is not
+believed: a rate sampled over 2d cannot measure a 4.9d cycle whose re-checks
+arrive in convoys". No bound was widened and no throughput was raised. The
+earlier 80/day-against-8d finding was the sampler landing between convoys.
+
+
 ## 2026-08-14 - a device sweep at five widths: the tap floor stopped at the tracker page (2.20.48)
 
 Every reader-facing page of both trackers rendered in real headless Chrome at

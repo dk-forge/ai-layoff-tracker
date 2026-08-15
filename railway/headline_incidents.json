@@ -28,16 +28,24 @@
         "jobs": 6978103
       },
       "reviewed_by": "dak"
-    }
-  ],
-  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {
-    "ai_all_time": {
+    },
+    {
+      "affected_row_ids": [
+        "176454",
+        "70169",
+        "176751",
+        "70900",
+        "70563",
+        "70051",
+        "176694",
+        "176814"
+      ],
       "baseline_at_open": {
         "captured_at": "2026-08-14T05:05:59Z",
         "entries": 100,
         "jobs": 215365
       },
+      "closed_at": "2026-08-15T06:04:44Z",
       "detail": "Worldwide jobs, all time minus AI-attributed jobs, all time moved -49,269 jobs on +60 entries. A row can only arrive with its jobs or leave with its jobs, so nothing that arrived or left moved these 49,269 jobs into AI-attributed jobs, all time: rows that were ALREADY PUBLISHED were re-scored across the boundary between these two slices. This is true however many entries arrived, which is why the movement guard's allowance cannot see it. Check the last reconcile-supersets run, any country/AI relabel job, and the corrections log",
       "label": "AI-attributed jobs, all time",
       "observed_at_open": {
@@ -46,8 +54,17 @@
         "jobs": 211158
       },
       "opened_at": "2026-08-14T18:26:36Z",
+      "reason": "Fully explained by this session own signed-off corrections (commit 3ec3f3a, 2026-08-14 10:34 PT), applied between the 05:06Z baseline and the 18:26Z reading that opened this incident. AI SLICE, exact to the job: four AI-flagged rows trashed as non-events -- 70900 Xbox 3,200 (duplicate of 176369), 70563 Elastic 7 (a \"7 percent\" misparsed as 7 jobs), 70051 Klarna 1,000 (a 2030 headcount projection), 176694 BNP Paribas Fortis 1,000 (the bank states attrition, no plan for large-scale cuts) = -5,207 jobs / -4 entries; plus 176814 Meta corrected 7,000 (the REASSIGNED population) to the 8,000 actually notified 2026-05-20 = +1,000 jobs. Net -4,207 jobs / -4 entries, which is the observed move 215,365/100 -> 211,158/96 with ZERO residual. COMPLEMENT (worldwide minus AI) moved -49,269 on +60 entries; -45,000 of that is three trashed non-AI rows: 176454 IRS 31,000 (a cumulative attrition stock scraped from a 2026-07-23 CNBC article and floored to 2026-01-01) and 70169 Dell 11,000 (a fiscal-year headcount decline from a 10-K, attrition included), which together move US 2026 strict 444,327 -> 402,327 exactly as TECHLOG records, and 176751 LA Times multi-company roundup 3,000 double-counting Visa/Intel/Uber/Patreon rows already held separately. Residual after the documented corrections is -4,269 jobs on +63 net arriving entries, which is 8.7 percent of the finding and one sixth of the 25,000 containment floor, and is accounted for by ordinary same-window churn: dedupe_llm merged 2 clusters at 15:18Z and reconcile-supersets re-scoped after the Meta and Xbox edits (both flagged UNVERIFIED in the TECHLOG entry). Verified live: all five non-events gone, zero blank-country AI rows in 2026, zero ai_explicit rows with ai_causation unknown, US 2026 strict now 403,360 (402,327 plus one day of arrivals). NOTE FOR THE OWNER: closing this does NOT clear headline_containment. worldwide_all_time baseline is pinned at 05:06Z pre-correction by the containment hold and no incident ever opens under a SUPERSET, so --close-incident has nothing to target there; the us_all_time containment FAIL is a split-baseline artifact (us advanced to 18:26Z when its pair passed under the floor, worldwide did not).",
+      "replacement_baseline": {
+        "captured_at": "2026-08-15T06:04:44Z",
+        "entries": 96,
+        "jobs": 211158
+      },
+      "reviewed_by": "Dakotta",
       "slice": "ai_all_time"
     }
-  },
-  "written_at": "2026-08-14T18:26:36Z"
+  ],
+  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
+  "open": {},
+  "written_at": "2026-08-15T06:04:44Z"
 }
