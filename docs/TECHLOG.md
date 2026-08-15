@@ -1,6 +1,36 @@
 # Tech Log
 
 
+## 2026-08-15 - a redeclared function took the whole site down for nine minutes (2.20.54)
+
+2.20.53 shipped `alt_digest_due_rows()` and `alt_digest_period_seconds()` in
+BOTH `includes/subscribe.php` and `includes/digest-api.php`. PHP fatals on a
+redeclared function, and these are plugin includes, so every request to
+asktherecruiter.com/blog returned 500 from 07:22 UTC until 2.20.54 landed at
+about 07:31. The deploy workflow caught it correctly and went red on its own
+"Verify the deployed tracker API" step, which is the only reason it was nine
+minutes and not longer.
+
+**Why nothing caught it before the deploy.** `php -l` checks one file at a
+time and reported both files clean, because each is individually valid. The
+digest harness loads `subscribe.php` alone, so it never had both declarations
+in one process either. Every guard was looking at one file, and the defect only
+exists in the pair.
+
+**The fix is not "remember not to do that".** `tests/test_digest_sender.py`
+now reads every plugin include the way PHP does, as one namespace, and fails on
+any top level function name declared twice. It is deliberately NOT scoped to the
+digest files: the defect is a property of PHP includes, not of this feature.
+Verified red against the shipped code with the real message,
+`{'alt_digest_period_seconds': ['digest-api.php', 'subscribe.php']} != {}`.
+
+**The honest read on how it shipped.** The function was written into
+`digest-api.php` first, then moved to `subscribe.php` so the harness could
+exercise it, and the original was never deleted. The rebase and the version race
+with three other sessions is where the attention went, and the file that had
+already been reviewed was not read again. A test is the right answer to that
+rather than more care.
+
 ## 2026-08-15 - the fixture had no gutters, so the Subscribe button shipped 15px below the fold (2.20.53)
 
 2.20.52's landing check passed in the harness and failed on the page. Verified
