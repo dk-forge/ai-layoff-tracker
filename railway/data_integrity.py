@@ -586,7 +586,14 @@ def close_incident(name, reviewed_by, reason, rows, replacement_jobs,
     bpath = Path(baseline_path or BASELINE_PATH)
     base = load_baseline(bpath) or {}
     slices = dict(base.get("slices") or {})
-    slices[name] = {"jobs": jobs, "entries": entries, "captured_at": now}
+    # A close installs a replacement baseline for ONE slice, so it gets its own
+    # epoch and any containment pair this slice belongs to reports UNKNOWN —
+    # named, never a pass — until the next recorder run advances the whole group
+    # together. That is the honest reading: the reviewer's figure and the other
+    # half's pinned figure describe different instants, which is exactly the
+    # condition that used to be subtracted anyway.
+    slices[name] = {"jobs": jobs, "entries": entries, "captured_at": now,
+                    BASELINE_EPOCH_KEY: f"close:{name}:{now}"}
     base["slices"] = slices
     base["written_at"] = now
     bpath.write_text(json.dumps(base, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1154,13 +1161,59 @@ CONTAINMENTS = (
 #: corrections on standing rows, which is what the corrections log is for.
 CONTAINMENT_FLOOR_JOBS = 25000
 
-#: The two baselines of a pair are written by the same daily recorder run, so
-#: they are normally seconds apart. Closing an incident installs a replacement
-#: baseline for one slice alone, which can put a pair a few hours out of step —
-#: real, bounded, and worth judging, since ordinary drift over that gap is a
-#: few thousand jobs against a 25,000 floor. Beyond one recorder cycle the two
-#: readings are not a complement any more and the pair reports UNKNOWN.
-MAX_PAIR_SKEW_DAYS = 1.0
+# ---------------------------------------------------------------------------
+# THE PAIR IS ONE OBSERVATION OR IT IS NOTHING
+# ---------------------------------------------------------------------------
+#
+# A containment finding is a subtraction between two baselines. It is only a
+# complement if both readings describe the same instant of the data. Until
+# 2026-08-15 that was enforced by a TIME WINDOW — `MAX_PAIR_SKEW_DAYS = 1.0`,
+# sized on the written assumption that "ordinary drift over that gap is a few
+# thousand jobs against a 25,000 floor".
+#
+# THE DEFECT THAT ASSUMPTION HAS. On 2026-08-14 a signed-off editorial
+# correction removed ~42,000 jobs from published rows between 05:06Z and
+# 18:26Z. At the 18:26Z run the ai pair FAILED, which held both `ai_all_time`
+# and `worldwide_all_time` at their pre-correction figures; the us pair passed
+# UNDER ITS FLOOR (-20,159 against 25,000), so `us_all_time` alone advanced to
+# the post-correction reading. The pair now straddled the correction: 13 hours
+# of skew, inside the one-day window, so the check went right on subtracting
+# and asserted -53,476 jobs of re-scoring, every run, forever. No incident could
+# be closed against it (nothing opens under a SUPERSET) and the only exit was
+# worldwide's baseline ageing past MAX_BASELINE_AGE_DAYS — fourteen days of red
+# CI for a defect that did not exist. A magnitude assumption cannot be sized
+# for a human correction; it is a step change, and one signed correction can be
+# any size at all.
+#
+# THE RULE THAT REPLACED IT, which is an identity test rather than a bound:
+# both baselines of a pair must carry the same `recorded_in` stamp — the id of
+# the recorder run that wrote them. Same run, or the pair is not a complement
+# and reports UNKNOWN naming both stamps. No correction, of any size, can defeat
+# an equality check on a run id, and nothing here widens with the clock.
+#
+# It is one half of a mechanism; `containment_groups` below is the other. This
+# half stops a straddled pair asserting a number. That half stops the recorder
+# manufacturing a straddle in the first place, which is what keeps the UNKNOWN
+# rare — one recorder cycle after a human close — instead of the check's normal
+# resting state.
+BASELINE_EPOCH_KEY = "recorded_in"
+
+
+def containment_groups(pairs=CONTAINMENTS):
+    """slice -> the set of slices whose baselines must advance TOGETHER.
+
+    The connected components of the containment graph. `worldwide_all_time` is
+    the superset of both declared pairs, so all three published slices are one
+    group: holding worldwide for the ai pair's sake while the us slice advances
+    is precisely how the 2026-08-14 straddle was manufactured, and a per-PAIR
+    rule would have permitted it (the us pair was passing at the time).
+    """
+    groups = {}
+    for a, b in pairs:
+        merged = set(groups.get(a, {a})) | set(groups.get(b, {b}))
+        for name in merged:
+            groups[name] = merged
+    return {name: frozenset(members) for name, members in groups.items()}
 
 
 def containment_problem(sub, sup):
@@ -1204,9 +1257,10 @@ class ContainmentInvariant:
     CONTAINMENT_FLOOR_JOBS.
 
     MISSING DATA. No baseline for either side, a baseline too old to bound a
-    movement, the two baselines captured more than MAX_PAIR_SKEW_DAYS apart, a
-    pair that does not structurally nest, or a live read that failed -> UNKNOWN,
-    never a pass.
+    movement, two baselines written by different recorder runs (see
+    BASELINE_EPOCH_KEY — a pair that straddles anything is UNJUDGED, not clean),
+    a pair that does not structurally nest, or a live read that failed ->
+    UNKNOWN, never a pass.
 
     IT CANNOT LAUNDER ITSELF. A FAIL names both slices to `record_baseline`,
     which refuses to advance either of them and opens the sticky incident under
@@ -1274,7 +1328,7 @@ class ContainmentInvariant:
                 return bad
             now[h.name] = reading
 
-        priors, ages = {}, {}
+        priors = {}
         for h in (sub, sup):
             prior = slices.get(h.name)
             if not isinstance(prior, dict) or "jobs" not in prior or "entries" not in prior:
@@ -1292,14 +1346,28 @@ class ContainmentInvariant:
                             f"{h.label}'s baseline is {age:.0f} days old (max "
                             f"{MAX_BASELINE_AGE_DAYS}) — too stale to bound a movement",
                             pending=True)
-            priors[h.name], ages[h.name] = prior, age
+            priors[h.name] = prior
 
-        skew = abs(ages[sub.name] - ages[sup.name])
-        if skew > MAX_PAIR_SKEW_DAYS:
+        epochs = {h.name: priors[h.name].get(BASELINE_EPOCH_KEY) for h in (sub, sup)}
+        if not all(epochs.values()):
+            missing = [h.label for h in (sub, sup) if not epochs[h.name]]
+            whose = (f"neither baseline carries a recorder-run stamp"
+                     if len(missing) == 2 else
+                     f"{missing[0]}'s baseline carries no recorder-run stamp")
             return _out(UNKNOWN,
-                        f"the two baselines were captured {skew:.1f} days apart (max "
-                        f"{MAX_PAIR_SKEW_DAYS}) — their difference is not a complement, so "
-                        f"this pair is UNJUDGED rather than clean", pending=True)
+                        f"{whose}, so nothing here can tell whether these two readings "
+                        f"describe the same instant of the data. This pair is UNJUDGED "
+                        f"rather than clean; the next data-integrity.yml run stamps both "
+                        f"and re-arms it", pending=True)
+        if epochs[sub.name] != epochs[sup.name]:
+            return _out(UNKNOWN,
+                        f"the two baselines come from DIFFERENT recorder runs "
+                        f"({sub.label} from {epochs[sub.name]}, {sup.label} from "
+                        f"{epochs[sup.name]}), so anything applied to the data between them "
+                        f"— an editorial correction is the measured case — sits inside their "
+                        f"difference and their difference is not a complement. This pair is "
+                        f"UNJUDGED rather than clean; the next run that advances both "
+                        f"together re-arms it", pending=True)
 
         # The claim itself, before any arithmetic that assumes it.
         for when, sub_r, sup_r in (("now", now[sub.name], now[sup.name]),
@@ -2128,6 +2196,9 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
     # gets one incident.
     c_holds = getattr(ctx, "containment_holds", None) or set()
     c_incidents = getattr(ctx, "containment_incidents", None) or {}
+    # PASS 1: open the incidents this reading earns, and decide per slice
+    # whether its own baseline may advance.
+    held = {}
     for name, (state, observed, suppressed) in sorted(ctx.observations.items()):
         if name in c_incidents and observed is not None:
             if open_incident(ledger, name, labels.get(name, name), c_incidents[name],
@@ -2145,34 +2216,63 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
                 notes.append(f"{name}: INCIDENT OPENED — it now reports FAIL until a "
                              f"human closes it, not until the numbers drift back")
         if name in c_holds:
-            notes.append(f"{name}: CONTAINMENT FAILED on a pair this slice is part of, "
-                         f"baseline deliberately NOT advanced (the finding is the "
-                         f"difference between the two readings; recording either "
-                         f"erases it)")
-            continue
-        if name in open_before or name in (ledger.get("open") or {}):
-            notes.append(f"{name}: OPEN INCIDENT, baseline NOT advanced. Only "
-                         f"`--close-incident {name}` (reviewer + reason + row IDs + an "
-                         f"explicit replacement baseline) can advance it")
-            continue
-        if observed is None:
-            notes.append(f"{name}: nothing observed, baseline untouched")
-            continue
-        if state == FAIL:
-            notes.append(f"{name}: FAILING, baseline deliberately NOT advanced "
-                         f"(recording it would make the defect tomorrow's normal)")
-            continue
-        if suppressed:
+            held[name] = ("CONTAINMENT FAILED on a pair this slice is part of, "
+                          "baseline deliberately NOT advanced (the finding is the "
+                          "difference between the two readings; recording either "
+                          "erases it)")
+        elif name in open_before or name in (ledger.get("open") or {}):
+            held[name] = (f"OPEN INCIDENT, baseline NOT advanced. Only "
+                          f"`--close-incident {name}` (reviewer + reason + row IDs + an "
+                          f"explicit replacement baseline) can advance it")
+        elif observed is None:
+            held[name] = "nothing observed, baseline untouched"
+        elif state == FAIL:
+            held[name] = ("FAILING, baseline deliberately NOT advanced "
+                          "(recording it would make the defect tomorrow's normal)")
+        elif suppressed:
             # An UNKNOWN that stood in for a verdict this reading was not
             # entitled to render (the partial-cycle case). Recording it would
             # launder exactly the number the check declined to judge, so it is
             # held to the same rule as a FAIL.
-            notes.append(f"{name}: verdict SUPPRESSED, baseline deliberately NOT advanced "
-                         f"(recording an unjudged reading is the same laundering as "
-                         f"recording a failing one)")
+            held[name] = ("verdict SUPPRESSED, baseline deliberately NOT advanced "
+                          "(recording an unjudged reading is the same laundering as "
+                          "recording a failing one)")
+
+    # PASS 2: a containment pair advances as ONE OBSERVATION or not at all.
+    #
+    # Whatever the reason one member is held for, advancing the others leaves
+    # the pair's two baselines on opposite sides of it, and the difference
+    # between two readings taken either side of an event is not a complement —
+    # it is the -53,476 the check asserted for a day after the 2026-08-14
+    # correction landed between a held worldwide baseline and an advanced US
+    # one. The straddle is not detectable after the fact from the numbers, so
+    # it is made unconstructible instead: the group moves together or waits
+    # together. See containment_groups() for why the unit is the whole
+    # connected component and not the pair.
+    groups = containment_groups()
+    spread = {}
+    for name in list(held):
+        for peer in groups.get(name, ()):            # peers of a held slice
+            if peer in ctx.observations and peer not in held:
+                spread[peer] = (f"HELD WITH ITS PAIR: {name} could not advance this run, "
+                                f"and a containment pair whose halves are recorded on "
+                                f"opposite sides of an event is not a complement. Both "
+                                f"advance together on the first run that can advance "
+                                f"{name}")
+    held.update(spread)
+
+    # PASS 3: write. Everything recorded in this call carries ONE epoch stamp,
+    # which is what the containment check reads to know two readings were taken
+    # together. It is deliberately not a timestamp comparison: run ids are equal
+    # or they are not, and no correction of any size can blur that.
+    epoch = _utc_now_iso()
+    for name, (state, observed, suppressed) in sorted(ctx.observations.items()):
+        if name in held:
+            notes.append(f"{name}: {held[name]}")
             continue
         slices[name] = {"jobs": observed["jobs"], "entries": observed["entries"],
-                        "captured_at": observed["captured_at"]}
+                        "captured_at": observed["captured_at"],
+                        BASELINE_EPOCH_KEY: epoch}
         notes.append(f"{name}: recorded {observed['jobs']:,} jobs / "
                      f"{observed['entries']:,} entries")
     payload = {
@@ -2180,7 +2280,11 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
                  "data_integrity.MovementInvariant. Written by data-integrity.yml "
                  "after the checks run. A slice whose movement check FAILED is "
                  "deliberately left at its previous value — do not hand-edit this "
-                 "file to clear a failing guard."),
+                 "file to clear a failing guard. `recorded_in` is the recorder run "
+                 "that wrote the entry: headline_containment subtracts two slices "
+                 "only when both carry the SAME stamp, so a pair whose halves were "
+                 "written either side of an editorial correction reports UNKNOWN "
+                 "instead of asserting the correction as a finding."),
         "written_at": _utc_now_iso(),
         "slices": slices,
     }

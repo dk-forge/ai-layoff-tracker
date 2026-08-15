@@ -50,6 +50,11 @@ MAX_AGE_DAYS = {
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
     "press_releases": 3, "warn_hi_ocr": 3, "warn_mazowieckie": 3,
     "data_integrity": 2, "warn_quebec": 3, "federal_rif": 35, "digest_mailer": 3,
+    # source_audit: MONTHLY (source-verification-audit.yml, `0 13 1 * *`), and
+    # nothing else posts under that id. 31 (longest month) + 4 days of slack, so
+    # one missed run is reported on day 35 instead of a healthy 31-day-old run
+    # reading STALE for two weeks in every three. Same derivation as federal_rif.
+    "source_audit": 35,
 }
 DEFAULT_MAX_AGE = 10
 # Sources whose 0/degraded is expected-by-design or transient, so a DEGRADED

@@ -98,6 +98,91 @@ runs in CI; if they are ever absent it SKIPS loudly rather than passing, since
 a check that could not run is UNKNOWN.
 
 
+## 2026-08-15 - a containment pair is one observation or it is nothing
+
+The artifact left open by "closing the incident our own correction opened"
+(2026-08-14, below) is closed, by mechanism. Two changes, because the defect has
+two halves and either alone leaves it reachable.
+
+**THE FINDING WAS THE CORRECTION.** `headline_containment` subtracts two
+committed baselines. That difference is a complement only if both readings
+describe the same instant of the data. Between 05:06Z and 18:26Z on 08-14 a
+signed-off editorial correction removed ~42,000 jobs from already-published
+rows; the ai pair failed at 18:26Z and held `ai_all_time` and
+`worldwide_all_time` at pre-correction figures while `us_all_time`, whose own
+pair passed under the floor, advanced to a post-correction one. The check then
+subtracted across the correction and reported it as a re-scoring: **-53,476 jobs
+on +56 entries, every run**, with no incident to close (nothing opens under a
+superset) and no exit but worldwide's baseline ageing out 14 days later. US had
+not moved a single job.
+
+**1. The guard is now an identity test, not a time window.** `MAX_PAIR_SKEW_DAYS
+= 1.0` is gone. It was sized on the written assumption that "ordinary drift over
+that gap is a few thousand jobs against a 25,000 floor", and a human correction
+is a step change that can be any size at all - no window can be sized for it.
+Every baseline entry now carries `recorded_in`, the id of the recorder run that
+wrote it, and a pair is judged only when both halves carry the SAME stamp.
+Different stamps, or a stamp missing (the migration case), resolve to **UNKNOWN
+naming both**, never a pass. Run ids are equal or they are not; no correction
+defeats that, and nothing in it widens with the clock.
+
+**2. A containment group advances together or waits together.** UNKNOWN alone
+would have made the check dark for the whole life of any incident: a held
+worldwide plus an advancing US straddles again the next day, and every day
+after. So `record_baseline` now holds the whole connected component of the
+containment graph - all three published slices, since worldwide is the superset
+of both pairs - whenever any member cannot advance, for any reason (containment
+hold, open incident, FAIL, suppressed verdict, nothing observed). The straddle
+is unconstructible rather than detected after the fact, so the UNKNOWN is one
+recorder cycle after a human close, not the check's resting state. The cost is
+named: an incident on one slice now pins its group's baselines, which is the
+same pinning a containment FAIL already imposed on both halves of a pair,
+extended to the third slice, and it is bounded by a human closing the incident.
+
+**Why not the two alternatives.** Re-baselining a pair as a unit under a
+reviewer was considered and rejected as the primary fix: it needs a human for a
+condition no human caused, and closing one slice at a time is what produced the
+split. Resolving against a corrections LOG was rejected because no
+machine-readable corrections log exists - the 08-14 corrections are prose in
+this file - so the check would depend on a human remembering to log, and the
+straddle can be opened by anything that lands between two runs, not only by a
+correction. The stamp needs neither.
+
+**A real breach still FAILs, and that is tested with the same numbers.**
+`tests/test_headline_containment.py` runs the live 08-15 readings against the
+committed straddled baselines two ways: as written (different stamps) it is
+UNKNOWN and does not print 53,476; with the stamps made common and nothing else
+changed, the identical figures FAIL with the identical detail. The 2026-08-10
+load-bearing FAIL is untouched, and a new recorder test asserts that a failing
+AI pair no longer lets `us_all_time` advance alone. Against the pre-change
+module the five new tests fail with the live text, "moved -53,476 jobs on +56
+entries".
+
+**It self-healed with no hand edit.** The committed baselines carried no stamp,
+so the pair read UNKNOWN (exit 3, unverified - not a pass), nothing was FAILING,
+nothing was held, and `data_integrity.py --record-baseline` - the same command
+the daily workflow runs, run once here so the first scheduled run is not a red
+"could not verify" and an email about it - wrote all three slices together under
+one stamp. Live verdict immediately after: **PASS**, "the complement's jobs did
+not move", on both pairs. Neither JSON was touched by hand and no incident was
+closed, because there was never anything to close.
+
+**`source_audit` was a permanent false alarm, and the class is now closed.**
+`source-verification-audit.yml` is `0 13 1 * *` - monthly - and the id was in
+NEITHER staleness map, so both judged it against `DEFAULT_MAX_AGE = 10` and it
+read STALE for roughly two weeks in every three, forever. Ceiling is now **35
+days in both maps**: 31 (the longest month, the longest legitimate gap between
+two runs) + 4 days of slack, so one MISSED run is reported on day 35 instead of
+a healthy 31-day-old run being reported permanently. That is the same arithmetic
+as `federal_rif`, which was the same defect one rung down, which was `newsapi`
+before it. Three is a class: `test_source_registry_parity` now reads the cadence
+out of each workflow's own cron, maps it to the health ids the modules that
+workflow runs post under, and fails when a ceiling is tighter than the cadence.
+It found no other mismatch - every remaining weekly job sits under a 9 or 10 day
+ceiling, and `digest_mailer`'s 3 is correct because it is posted daily by
+WP-Cron, not by the weekly digest.
+
+
 ## 2026-08-14 - closing the incident our own correction opened, and the containment pair it left split
 
 The 42,000-job correction (3ec3f3a) did exactly what its TECHLOG entry predicted

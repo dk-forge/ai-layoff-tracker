@@ -150,6 +150,17 @@ the end check.
   age into a recordable UNKNOWN. Two other clocks widen the same way — `floor =
   move_floor * span` and `allowance = |Δentries| * base_mean * mean_factor` — so
   waiting was never neutral. Never close one by editing either JSON by hand.
+- **A containment pair is ONE observation or it is nothing.** `headline_containment`
+  subtracts two committed baselines, so that difference is only a complement if
+  both readings describe the same instant. Every baseline entry carries
+  `recorded_in` (the recorder run that wrote it) and the pair is judged only when
+  both stamps match; different or missing stamps read **UNKNOWN naming both**,
+  never a pass. `record_baseline` holds the whole connected component of the
+  containment graph whenever any member cannot advance, so a straddle cannot be
+  built. This replaced `MAX_PAIR_SKEW_DAYS = 1.0`, a window sized on "ordinary
+  drift is a few thousand jobs" that a 42,000-job signed correction walked
+  straight through on 2026-08-14, leaving a -53,476 artifact and 14 days of red
+  CI with nothing to close. Do not answer a UNJUDGED pair with a new tolerance.
 - **Retiring a source takes THREE steps**, and skipping the third silently voids the second: (1) drop it from `cron.py`, (2) add it to `alt_retired_sources()` in db.php, (3) **stop every remaining path that posts health under that id**. `alt_retired_sources()` deliberately refuses to mask a row whose last run postdates the retirement, so one forgotten weekly job keeps a retired collector looking live forever. Also: a staleness ceiling must match the job's REAL cadence — a 2-day ceiling on a weekly job is permanent noise that hides real breakage.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 

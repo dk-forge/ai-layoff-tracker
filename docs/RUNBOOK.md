@@ -477,6 +477,26 @@ standing next to it. On success, commit BOTH `railway/headline_incidents.json`
 and `railway/headline_baseline.json`; the guard is armed against your figure
 from the next run.
 
+**`headline_containment` says UNJUDGED — the pair is not one observation**
+
+The detail reads "the two baselines come from DIFFERENT recorder runs" (or
+"carries no recorder-run stamp"). That is UNKNOWN, not a pass and not a
+breach: each baseline entry carries `recorded_in`, the recorder run that wrote
+it, and the check subtracts two slices only when both stamps match. Anything
+applied to the data between two runs — a signed-off correction is the measured
+case — otherwise sits inside their difference and gets reported as a re-scoring
+that never happened (2026-08-14: -53,476 jobs asserted every run while the US
+slice had not moved a job).
+
+**Do nothing.** It clears itself on the next `data-integrity.yml` run, which
+records the whole containment group together under one stamp. If it does NOT
+clear, something in the group is being held — read the recorder's notes
+(`python3 railway/data_integrity.py --record-baseline` output, or the workflow log) for
+`HELD WITH ITS PAIR`, find the member that cannot advance, and resolve that:
+usually an open incident, closed the normal way above. Never hand-edit
+`railway/headline_baseline.json`, and never re-add a skew tolerance — a window
+cannot be sized for a human correction, which is the bound that failed.
+
 **`recall_floor` is the one invariant that works the other way round.** Every
 other check asks whether a published number is WRONG; this one asks whether a
 number is MISSING, and it is the only one that reads a committed file rather

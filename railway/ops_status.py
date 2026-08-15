@@ -83,7 +83,16 @@ MAX_AGE = {"edgar": 2, "news_catchup": 9, "google_news": 2, "regional_feeds": 2,
            "gdelt": 2, "warn_us": 3,
            "eurofound_erm": 3, "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
            "press_releases": 3, "warn_quebec": 3, "federal_rif": 35, "warn_hi_ocr": 3,
-           "warn_mazowieckie": 3, "data_integrity": 2, "digest_mailer": 3}
+           "warn_mazowieckie": 3, "data_integrity": 2, "digest_mailer": 3,
+           # source_audit is the third instance of the same defect, and it had
+           # been reading STALE for ~2 weeks in 3, every month, since it shipped.
+           # source-verification-audit.yml is `0 13 1 * *` — the 1st of each
+           # month — and nothing else posts under that id. DERIVATION: the
+           # longest legitimate gap between two runs is the longest month, 31
+           # days, plus 4 days of slack so ONE missed monthly run is reported on
+           # day 35 rather than a healthy 31-day-old run being reported forever.
+           # Identical arithmetic to federal_rif above (6th of the month).
+           "source_audit": 35}
 
 
 def _get(url, browser=False):
