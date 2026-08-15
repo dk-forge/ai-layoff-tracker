@@ -9,7 +9,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
+- **WORKING ON:** (landed as 2.20.60, this holder continues) putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
 
 **Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
 had gone stale: it still named the US incident close, which landed, so a session
@@ -130,6 +130,52 @@ entry in the log below has an UNVERIFIED line. That is not hedging; it is the
 only thing that tells the next session where to look first.
 
 ## Handoff log (newest first — what each session did + what's next)
+
+## #32 - the signup was on two URLs, and could not have survived being on more (2026-08-15, 2.20.60)
+
+Placed `alt_digest_subscribe_form()` on single blog posts (via `the_content`,
+gated exactly as `blog-typography.php` gates its stylesheet), the company
+profile pages, the country/state/industry pages and the entry permalinks. One
+placement per page, through one helper, `includes/subscribe-placements.php`.
+No second form, table or route.
+
+**The placement was the small half.** The component's comment claimed it
+depended on nothing outside itself; every colour was a bare `var(--alt-*)` and
+the submit button wore `.alt-btn-primary`, all of which live in `layoffs.css`,
+which is not enqueued on a blog post. Measured in headless Chrome on the blog
+fixture, pre-change: *"the signup's outer box has no border width at all"* and
+*"the field is 33.0px tall, under the 44px floor"*. Every colour is now a
+component token reading the site token with the site's own literal as its
+fallback, so tracker surfaces are unchanged to the byte.
+
+**Verified live at 2.20.60**, deploy and Tests both green on the commit SHA,
+`reader_freshness.py` PASS. Real Chrome on the live pages, 375x812 and
+1280x900: zero horizontal overflow; field, button and privacy summary each
+44.0px on all three surfaces; the blog post's block is 668.3px with the submit
+ending 593.7px down an 812px screen. Rendered contrast audit PASS on the three
+standard surfaces AND on a live company page, facet page and blog post, all
+four theme combinations.
+
+**The both-signups state, measured rather than assumed.** The third-party
+Mailjet `.atr-capture` box is still on the live post at y=804 (659px tall,
+early in the article); ours is at y=8646 (668px) at the end. They are ~7,800px
+apart in an 11,732px document, same 339px column, so they never share a screen.
+Nothing in this change styles, hides or depends on that box, and a test asserts
+our geometry is identical with and without it.
+
+**UNVERIFIED / know before you build on it.** (a) The blog has NO dark mode:
+`blog-reading.css` declares no dark palette and the component deliberately ships
+no `prefers-color-scheme` block, so the signup's fallback literals are light
+only. If anyone gives the blog a dark mode, the signup needs a dark half and a
+test will tell them so. (b) Seven test modules error locally on missing
+dependencies (`test_extractor_guards`, `test_ssrf_safe_fetch`,
+`test_job_deferrals` and four others); they fail identically on the unchanged
+tree and are green in CI, which installs the lock. (c) `single-layoff.php` was
+included on my own judgement, not by the brief's enumeration: ~1,800 indexable
+entry permalinks are a landing surface. It still renders the legacy
+`theme-compat/header.php` (HANDOFF item 2b), which this change does not fix.
+(d) Section 8 of `blog-reading.css` styles `.atr-capture`; it predates this
+change and was left alone rather than removed.
 
 ## #31 - the board's cells linked to a page that recounted them (2026-08-12, bumped 2.20.14, shipped inside 2.20.15)
 
