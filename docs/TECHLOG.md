@@ -64,9 +64,35 @@ injected from wp-admin and the owner is deleting it there. The layout is
 measured twice, with it and without it, and a test asserts the paragraph, the
 hero and the contents box do not move between the two.
 
-**Measured on the fixture, before deploy** (the live post is measured in the
-follow-up entry below, on the bare URL with a browser UA and no cache buster;
-the fixture renders the Charter/Georgia fallback rather than Vollkorn, so its
+**Measured live, before and after**, on the bare URL with a browser UA and no
+cache buster, in headless Chrome. `reader_freshness.py` returned PASS on
+2.20.61 with build aced0c71d9f447c8 before these were taken:
+
+| viewport | paragraph x / width | chars per line | featured image | header to headline |
+|---|---|---|---|---|
+| 375 before | 18 / 339 | 36.1 | 339 | 60 |
+| 375 after | 18 / 339 | 36.1 | 339 | 60 |
+| 414 before | 18 / 378 | 40.2 | 378 | 60 |
+| 414 after | 18 / 378 | 40.2 | 378 | 60 |
+| 768 before | 61.5 / 645 | 68.7 | 645 | 107.5 |
+| 768 after | 61.5 / 645 | 68.7 | **732** | 107.5 |
+| 1280 before | 317.5 / 645 | 65.2 | 645 | 140 |
+| 1280 after | 317.5 / 645 | 65.2 | **820** | **56** |
+| 1600 before | 477.5 / 645 | 65.2 | 645 | 140 |
+| 1600 after | **450 / 700** | 67.4 | **960** | **56** |
+| 2000 before | 677.5 / 645 | 65.2 | 645 | 140 |
+| 2000 after | **650 / 700** | 67.4 | **1040** | **56** |
+
+The phone is byte-identical before and after, which was the hard bar. Document
+overflow is 0 at all six widths. The contents box draws 0px side borders and
+1px top and bottom, its links start on the article's own left edge (x=18 at
+375px, was 36.6px), every one of them still measures 44.0px tall, and it sets
+in two columns at 1280 and above. Our own signup keeps its geometry: the email
+field and the Subscribe button are both 44.0px tall at 375px and the form's
+right edge is 337.6px inside a 375px screen.
+
+**Measured on the fixture** (the same numbers one layer down; the fixture
+renders the Charter/Georgia fallback rather than Vollkorn, so its
 characters-per-line differ slightly from the live page by design):
 
 | viewport | paragraph x / width | chars per line | featured image | contents |
