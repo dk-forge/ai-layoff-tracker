@@ -1,17 +1,25 @@
 name: Send email digest
 
 # The sending half of the email digest. DORMANT until the owner adds a
-# transport secret: with no RESEND_API_KEY (and DIGEST_TRANSPORT unset) the job
-# resolves to the dry run transport, prints the exact messages it WOULD send,
-# and exits 0. A missing key is a state, not a failure, and a red run for it
-# would teach everyone to ignore red runs.
+# transport credential: with none set the job resolves to the dry run
+# transport, prints the exact messages it WOULD send, and exits 0. A missing
+# key is a state, not a failure, and a red run for it would teach everyone to
+# ignore red runs.
 #
-# To arm it, after the Resend domain is verified (see docs/RUNBOOK.md
-# "the email digest is not sending"):
-#   1. add RESEND_API_KEY as a repository secret
-#   2. change DIGEST_TRANSPORT below from dryrun to resend
-# Changing providers later is that same one variable: smtp covers Brevo,
-# SES-SMTP and most others with no code change at all.
+# ARMED 2026-08-16 on Brevo SMTP. The five DIGEST_SMTP_* / DIGEST_FROM secrets
+# are set and DIGEST_TRANSPORT below reads `smtp`. Changing providers later is
+# that same one variable: smtp covers Brevo, SES-SMTP and most others with no
+# code change at all.
+#
+# ARMING IS A CODE CHANGE ON PURPOSE, not a secret appearing. If this read an
+# env var, the act of adding a password would start sending to real people with
+# nothing in the history saying so and nobody having decided it. The transport
+# is written here, in a reviewed commit, so turning it on is deliberate and
+# turning it off is one word.
+#
+# The transport still refuses to send without its credentials: an smtp
+# transport with no host or password falls back to the dry run, names the
+# missing secret and exits 0. A missing key stays a state, not a failure.
 #
 # 13:10 UTC daily, ten minutes after the site's own WP-Cron slot, so if this
 # job is armed it claims the tier and the built in wp_mail sender stands down
@@ -59,7 +67,7 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           # The one line that chooses a provider. dryrun sends nothing.
-          DIGEST_TRANSPORT: dryrun
+          DIGEST_TRANSPORT: smtp
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DIGEST_SMTP_HOST: ${{ secrets.DIGEST_SMTP_HOST }}
           DIGEST_SMTP_PORT: ${{ secrets.DIGEST_SMTP_PORT }}
