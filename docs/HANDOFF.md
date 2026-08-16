@@ -9,7 +9,19 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** an applause control on single blog posts. One integer per
+- **WORKING ON:** bounce and complaint handling under **Brevo**, landed as
+  **2.20.65** (`includes/digest-api.php` and
+  `tests/test_digest_brevo_feedback.py` only). `/digest-webhook` verified a
+  Svix signature and dispatched on Resend event names, so under Brevo it
+  processed no bounce and no complaint at all - which ends in a suspended relay
+  account, not in a quiet gap. **Brevo signs nothing** (no HMAC, no signing
+  header, verified against its own docs), so the boundary is a shared token in
+  a header, accepted in `Authorization: Bearer` OR `X-Alt-Webhook-Token`
+  because this host may strip the former and the two failures look identical.
+  Provider chosen by what the request carries, never a setting; the Svix path
+  is untouched and Resend still works; one suppression path. Arming it is
+  owner-only and the steps are in RUNBOOK "Bounces and complaints".
+- **AND WORKING ON:** an applause control on single blog posts. One integer per
   post in `wp_alt_post_claps`, incremented by one atomic UPDATE, read for a SET
   of posts in one query so a listing costs one round trip. Anonymous and
   aggregate by construction: the table has two integer columns and no third
