@@ -51,6 +51,20 @@ holder, so the start-of-session ritual surfaces it automatically.
   purpose: the section's own "N verified entries totalling X job cuts" reads
   `totals.jobs`, which is verified PLUS announced. The year-to-date line reads
   the same field so the two agree; correcting the label is a separate change.
+- **DONE (that separate change), landed as 2.20.71:** the label was corrected
+  in `alt_digest_compose_layoff` and nowhere else. The section now leads with
+  the VERIFIED tier (`jobs - announced_jobs`, `entries - announced_entries`),
+  which is the quantity the tracker hero publishes under that same word, and
+  states the announced-inclusive totals as a labelled companion followed by
+  `alt_announced_tier_sentence()` verbatim. `companies` moved into the
+  companion: it is `COUNT(DISTINCT company_key)` over the whole set with no
+  split shipped, so leaving it under "verified" would have traded a wrong
+  adjective for a mixed-scope sentence. The 2.20.68 year-to-date line moved
+  to the verified tier in the same edit, which is what kept it agreeing with
+  the headline. Verified on 75f4404: Tests, Style standard, Card contract and
+  Deploy green on that SHA, `reader_freshness.py` PASS on 2.20.71, and the
+  digest run `dry_run=1 freq=weekly preview=1` composed both tiers into the
+  HTML and the plain-text parts against live WordPress.
 - **AND WORKING ON:** the AI cumulative chart's gate, landed as **2.20.66**
   (`assets/layoffs.js` and `tests/test_ai_chart_gate_matches_line.py` only).
   It selected and started on `ai_jobs`, which is verified PLUS announced, and
