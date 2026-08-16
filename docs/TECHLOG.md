@@ -82,6 +82,97 @@ announced). The year-to-date line reads the same field on purpose, so the two
 numbers in the section agree with each other. Correcting the label is a
 separate change to a line this session was not asked to touch.
 
+## 2026-08-16 - the signup's consent boxes were 13px, and the floor that should have caught them was in a file the page does not load (2.20.68)
+
+The email signup renders at the end of every blog post since 2.20.60. Measured
+on the live post at 2.20.62 in headless Chrome, from a reader's view (bare URL,
+browser User-Agent, no cache buster), at 375, 414, 768 and 1280:
+
+    input:checkbox  (3, the list consents)      13.0 x 13.0
+    input:radio     (weekly, daily)             13.0 x 13.0
+    a "privacy note", inside the intro          84.2 x 18.0   at 1280
+    a "contact page", inside the privacy note   85.1 x 17.0   at 1280
+
+The email field (44.0) and the Subscribe button (105.4 x 44.0) were already
+right, and horizontal overflow was 0px at all four widths.
+
+**The floor for those two selectors already existed and could never have
+applied here.** `assets/layoffs.css` section 5 carries `.alt-digest-lists
+label, .alt-digest-freq label { display:flex; align-items:center; gap:10px;
+min-height:44px }` - the correct treatment, written for these exact controls.
+It is enqueued by `alt_page_needs_assets()` on tracker surfaces, and a blog
+post is not one. It is also scoped `@media (max-width: 767px)`, so even on the
+tracker page those three consent boxes were 13px at a desk. A component that
+declares itself self-carried was carrying its layout and borrowing its tap
+targets.
+
+**So the floor moved inside the component, and it is unconditional.** That is a
+deliberate difference from the tracker's own phone-scoped floor, not an
+oversight: `includes/subscribe.php` already gives the email field and the
+submit button `min-height:44px` at every width, on its own stated reasoning
+that owning a control's size makes it one size everywhere, and WCAG 2.5.5 is
+not width-scoped. A 44px field above a 13px consent box in one panel is that
+reasoning applied to half the form. **The cost is stated rather than buried:
+the tracker page's own signup grows by about 70px at a desk.** The rules in
+layoffs.css were left alone; on a tracker phone both now say the same thing.
+
+Spacing moved from `margin: 4px 0` to a `gap: 8px` on the fieldset. Collapsed
+margins put two rows 4px apart, and two 44px targets 4px apart still take the
+wrong tap - on the one control in the block where a wrong tap is a consent
+record.
+
+**The links inside its sentences got a hit area, not a size.** 44px is the
+wrong answer for a word in a paragraph; WCAG 2.5.5 and 2.5.8 both carry the
+exception for a target constrained by the line-height of non-target text.
+Vertical padding on a `display:inline` box hit-tests and does not enter the
+line-box calculation, so 18.0px became 32.0px and the paragraph did not move.
+The test asserts both halves.
+
+**THE HONEYPOT IS NOT A DEFECT, AND THE MEASUREMENT IS WHY.** It lays out at
+153.0 x 21.0, which reads as a control under the floor until you look at where
+it is: `getBoundingClientRect` reports a box's size regardless of what clips
+it, and this one is at **x = -9999** inside a 1x1 `overflow:hidden` wrapper. A
+real Tab sweep through the form, driven by dispatched key events rather than
+read off the `tabindex` attribute, walks intro link -> three checkboxes ->
+radio -> email -> Subscribe -> privacy summary -> contact link and never lands
+on it. Both properties are now pinned, because the consequence if either ever
+stopped holding is specific: `alt_digest_subscribe_submit()` fails a filled
+honeypot as `spam`, so a keyboard reader who tabbed into it and typed would be
+refused a signup made in good faith.
+
+**The new coverage is a sweep, not a list.** `test_the_field_and_the_button_
+clear_the_tap_floor` named three parts of the block by hand, and those three
+were the three that were already right; a hand-written list cannot report the
+part nobody thought to add to it. The new classes in
+`railway/tests/test_signup_reaches_landing_pages.py` read EVERY interactive
+target inside `#alt-digest` on the real blog fixture at all four widths, hold
+boxed controls to 44x44, inline links to 30px, neighbours to 8px, and assert
+the intro paragraph did not move.
+
+**Proven to fail on the pre-change tree**, with the component's previous two
+declarations put back rather than a hole left where they were:
+
+    19 control(s) in the signup below 44x44
+      375px: label 'AI Layoff Tracker digest: verifi'  300.2x43.5 at (37,3950)
+    8 neighbouring pair(s) in the signup under 8px apart
+      375px, 2.9px apart: label 'Talent Intelligence Tracker dige'  |  label 'Occasional articles and product '
+    2 link(s) inside one of the signup's sentences hit-test under 30px tall
+      1280px: a 'privacy note'  84.2x18.0 at (558,3471)
+
+After, at 375x812 on the blog fixture: every consent row and both radios 44.0,
+zero horizontal overflow at all four widths, and the Subscribe button ends
+711.5px down an 812px screen (the phone-fold budget the block is held to).
+
+**UNVERIFIED / know before you build on it.** (a) NOT DEPLOYED and therefore
+not measured on the live post: this landed on a branch because the handoff
+baton is HELD by another local session working on `includes/blog-claps.*`. The
+numbers above are the blog fixture, which reproduces the live measurement in
+the brief to the pixel, plus the live 2.20.62 sweep that opened this entry.
+(b) The ~70px desktop growth of the tracker page's signup is reasoned about
+above and has not been looked at on the live tracker page. (c)
+`test_style_standard.SharedStandardDoesNotDrift` fails on the unchanged tree
+and is unrelated; the seven dependency errors are the ones HANDOFF #32 already
+names.
 ## 2026-08-16 - the reading measure was sized against a font a third of readers do not have (2.20.67)
 
 2.20.64 widened the blog measure and grew the type with it, and the
@@ -495,7 +586,6 @@ grey that reads well on white is still a mid grey once the background is black.
 Outlook 2016 or in Gmail's own pipeline, and no test in this repo can. The
 forwarding property is checked structurally, which is the part that is
 checkable; how a specific client draws it is an owner step with a real inbox.
-
 ## 2026-08-15 - applause on a blog post, and the two columns that make the promise checkable (2.20.63)
 
 A reader taps a button at the end of an article and a number goes up. The whole
