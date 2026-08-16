@@ -297,8 +297,59 @@ function alt_digest_subscribe_form($context = '') {
     .alt-digest p.alt-digest-intro { margin: 0 0 12px !important; font-size: 14px !important; line-height: 1.55 !important; }
     .alt-digest-form fieldset { border: none; margin: 0 0 12px; padding: 0; }
     .alt-digest-form legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
-    .alt-digest-lists label { display: block; margin: 4px 0; font-size: 14px; }
-    .alt-digest-freq label { margin-right: 16px; font-size: 14px; }
+    /* THE CONSENT ROWS ARE 44px, AND THEY ARE 44px EVERYWHERE.
+       A browser-drawn checkbox is 13x13 and cannot be resized without
+       replacing it, so the LABEL is the target: it already wraps the box and
+       its own sentence, and giving the label the height gives the box a 44px
+       row to be hit in. Same treatment layoffs.css section 5 applies to these
+       exact two selectors, brought inside the component.
+
+       IT HAD TO COME INSIDE, because layoffs.css is where it lived and
+       layoffs.css is not on a blog post. Measured on the blog fixture at 375,
+       414, 768 and 1280 before this rule: every checkbox and every radio
+       13.0 x 13.0, while the email field beside them was already 44.0. The
+       floor in layoffs.css is also scoped `@media (max-width: 767px)`, so
+       even on a tracker page these three consent boxes were 13px at a desk.
+
+       UNCONDITIONAL, unlike the tracker's own floor, and that is a deliberate
+       difference rather than an oversight. This component already gives the
+       email field and the Subscribe button min-height:44px at every width, on
+       the reasoning that owning a control's size makes it one size everywhere;
+       a 44px field sitting above a 13px consent box in the same panel is that
+       reasoning applied to half the form. WCAG 2.5.5 is not width-scoped
+       either. The cost is that the tracker page's own signup grows by about
+       70px at a desk, which is stated here because it is a visible change to a
+       surface this brief was not about.
+
+       margin goes to 0 and the spacing becomes `gap`: two 44px rows sharing a
+       collapsed 4px margin is the mis-tap the height was bought to prevent,
+       and a consent box is the worst place on the site to take a wrong tap. */
+    .alt-digest-lists { display: flex; flex-direction: column; gap: 8px; }
+    .alt-digest-lists label {
+        display: flex; align-items: center; gap: 10px;
+        min-height: 44px; margin: 0; font-size: 14px;
+    }
+    /* The frequency pair stays on ONE line, so this is inline-flex on the
+       labels rather than a flex column on the fieldset: a <legend> is a flex
+       item like any other and turning the fieldset into a row would seat
+       "How often for the digests?" beside the two choices. 16px between them
+       clears the 8px adjacency floor twice over. */
+    .alt-digest-freq label {
+        display: inline-flex; align-items: center; gap: 10px;
+        min-height: 44px; margin: 0 16px 0 0; font-size: 14px;
+    }
+    /* A 13px box in a flex row is a flex item, and flex items shrink. */
+    .alt-digest-lists input, .alt-digest-freq input { flex: none; }
+    /* THE LINKS INSIDE THE SENTENCES, which are the other thing a thumb aims
+       at in here: the "privacy note" jump in the intro and the contact-page
+       link in the privacy note. 44px is the wrong answer for a word inside a
+       paragraph (it opens a 44px hole in the sentence), and WCAG 2.5.5 and
+       2.5.8 both carry the exception for a target "constrained by the
+       line-height of non-target text". Vertical padding on a display:inline
+       box hit-tests and does NOT enter the line-box calculation, so the hit
+       area grows and the copy does not move. Measured at 18.0px tall at
+       1280px before this; 32px after, clearing 2.5.8's 24px AA minimum. */
+    .alt-digest a { padding: 7px 0; }
     .alt-digest-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .alt-digest-row label { font-weight: 600; flex-basis: 100%; margin: 0; }
     /* border-box, declared by the component rather than inherited.
@@ -363,7 +414,11 @@ function alt_digest_subscribe_form($context = '') {
            grows to ~197px on that screen. */
         .alt-digest-row input[type="email"] { flex-basis: 140px; }
         .alt-digest-form fieldset { margin-bottom: 10px; }
-        .alt-digest-lists label { margin: 3px 0; }
+        /* NOT `.alt-digest-lists label { margin: 3px 0 }`, which is what stood
+           here. The rows are spaced by the fieldset's 8px gap now, and a
+           margin on top of it would push two 44px consent rows 14px apart in
+           the one place on the page with the least room. */
+        .alt-digest-lists { gap: 8px; }
         .alt-digest-privacy { margin-top: 12px; }
     }
     </style>

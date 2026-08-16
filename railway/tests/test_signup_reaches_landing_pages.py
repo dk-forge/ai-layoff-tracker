@@ -46,7 +46,14 @@ WHAT IS PINNED HERE:
     sideways bleed at 375/414/768/1280, and AA contrast on the text and 3:1 on
     the control edges;
   * removing .atr-capture changes the signup's geometry by nothing, which is
-    the machine-checkable form of "it does not depend on the box above it".
+    the machine-checkable form of "it does not depend on the box above it";
+  * EVERY interactive target inside #alt-digest, swept rather than listed,
+    against the 44px floor the rest of the plugin is held to. Added 2.20.68,
+    after the three consent checkboxes and both frequency radios shipped at
+    13.0 x 13.0 on the live post: the floor for those exact selectors existed
+    in assets/layoffs.css, which a blog post does not load. The honeypot is
+    part of that sweep and is answered by measurement, not exemption - it is
+    at x = -9999 and a real Tab sweep never lands on it.
 
 THE PHONE FOLD IS THE REPEATED DEFECT. Twice on 2026-08-14 the submit button
 landed below 812px on a 375x812 screen, and a local pass is not evidence: the
@@ -679,6 +686,415 @@ class ItDoesNotDependOnTheThirdPartyBox(_Rendered):
                         "by whether the third-party box is there. The owner is "
                         "deleting it in wp-admin and this repo cannot see it "
                         "happen." % (part, prop, a[prop], b[prop]))
+
+
+# ------------------------------------------- the whole block, not two controls
+#
+# WHAT test_the_field_and_the_button_clear_the_tap_floor COULD NOT SEE. It
+# names three parts of the signup by hand - field, submit, summary - and those
+# three were the three that were already right. Everything else in the block
+# went unmeasured, and a hand-written list of parts cannot report the part
+# nobody thought to add to it. Measured on the LIVE blog post at 2.20.62
+# (bare URL, browser User-Agent, no cache buster) at 375, 414, 768 and 1280,
+# and reproduced on this fixture to the pixel:
+#
+#   input:checkbox  (the three list consents)   13.0 x 13.0
+#   input:radio     (weekly, daily)             13.0 x 13.0
+#   a "privacy note", inside the intro          84.2 x 18.0   at 1280
+#   a "contact page", inside the privacy note   85.1 x 17.0   at 1280
+#
+# The floor for these two selectors DID exist, in assets/layoffs.css section 5,
+# and it could never have applied here: layoffs.css is enqueued on tracker
+# surfaces and a blog post is not one, and the rule is scoped
+# @media (max-width: 767px) besides. So the sweep below reads EVERY interactive
+# target inside #alt-digest rather than a list, which is the only shape that
+# covers a control added tomorrow.
+
+SWEEP_SEL = ('a[href], button, input:not([type="hidden"]), select, textarea,'
+             ' summary, [tabindex]:not([tabindex="-1"]), label:has(input)')
+
+# The two rules as they stood before this change, copied out of the file's own
+# history rather than invented, so "the guard fails on the page as it was" is
+# measuring the page as it was.
+PRE_FIX_ROWS = """
+.alt-digest-lists label { display: block; margin: 4px 0; font-size: 14px; }
+.alt-digest-freq label { margin-right: 16px; font-size: 14px; }
+"""
+PRE_FIX_PHONE_ROW = ".alt-digest-lists label { margin: 3px 0; }"
+
+FLOOR_MARKER = "THE CONSENT ROWS ARE 44px"
+FLOOR_LAST_RULE = ".alt-digest a { padding: 7px 0; }"
+PHONE_FLOOR_RULE = ".alt-digest-lists { gap: 8px; }"
+
+INLINE_HIT_MIN = 30.0   # WCAG 2.5.8 asks 24; this is what the padding reaches
+GAP_MIN = 8.0
+
+
+def without_the_consent_floor(html):
+    """The rendered page with this change's rules taken back out.
+
+    Not a stylesheet with a section deleted and a hole left behind: the rules
+    that stood in their place go back in, so the pre-fix render is the one that
+    was measured on the live post and not an invented third state.
+    """
+    at = html.find(FLOOR_MARKER)
+    assert at > 0, "the consent-row floor is gone from the component's style"
+    start = html.rfind("/*", 0, at)
+    end = html.find(FLOOR_LAST_RULE, at)
+    assert end > start, "the floor block no longer ends where this test expects"
+    out = html[:start] + PRE_FIX_ROWS + html[end + len(FLOOR_LAST_RULE):]
+    assert PHONE_FLOOR_RULE in out, "the phone gap rule moved out of reach"
+    out = out.replace(PHONE_FLOOR_RULE, PRE_FIX_PHONE_ROW, 1)
+    assert out != html, "removing the floor changed nothing"
+    return out
+
+
+SWEEP_PROBE = r"""
+(function () {
+  var SEL = %s;
+  var sec = document.querySelector('#alt-digest');
+  if (!sec) return JSON.stringify({missing: true});
+  var out = [];
+  Array.prototype.forEach.call(sec.querySelectorAll(SEL), function (el) {
+    var cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    var r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    // A control INSIDE another control is not a separate target: the 13px
+    // checkbox is hit by hitting the 44px label that wraps it, and reporting
+    // both would invent a failure the page does not have.
+    var p = el.parentElement, nested = false;
+    while (p && p !== sec) { if (p.matches(SEL)) nested = true; p = p.parentElement; }
+    if (nested) return;
+    out.push({
+      tag: el.tagName.toLowerCase(),
+      type: el.getAttribute('type') || '',
+      // A wrapping <label> IS the control's target, so it answers to the
+      // control's name: without this every consent row reports as an
+      // anonymous `label` and an assertion about which one broke cannot be
+      // written.
+      name: el.getAttribute('name')
+            || ((el.querySelector('input') || {}).name || ''),
+      field: el.closest('.alt-digest-lists') ? 'lists'
+             : (el.closest('.alt-digest-freq') ? 'freq' : ''),
+      cls: (typeof el.className === 'string') ? el.className : '',
+      display: cs.display,
+      // innerText, never textContent: a closed <details> still carries
+      // textContent for text no reader can read.
+      text: (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40),
+      w: +r.width.toFixed(1), h: +r.height.toFixed(1),
+      x: +(r.left + scrollX).toFixed(1), y: +(r.top + scrollY).toFixed(1)});
+  });
+  var intro = sec.querySelector('.alt-digest-intro');
+  var ir = intro ? intro.getBoundingClientRect() : null;
+  return JSON.stringify({
+    rows: out,
+    intro: ir ? {h: +ir.height.toFixed(1),
+                 text: (intro.innerText || '').trim().slice(0, 60)} : null});
+})()
+""" % json.dumps(SWEEP_SEL)
+
+
+def sweep_is_inline_in_sentence(row):
+    """A word inside a paragraph, which 44px is the wrong answer for.
+
+    Both halves have to agree, as in test_tap_targets.py: an anchor, AND laid
+    out by the browser as an inline box. A BUTTON is never a word in a
+    sentence, and neither is a block-level anchor.
+    """
+    return row["tag"] == "a" and row["display"] == "inline"
+
+
+def sweep_is_off_screen(row):
+    """The honeypot, and nothing else. See TheHoneypotIsOutOfReach below: a
+    control parked at -9999px has no tap target to hold to a floor."""
+    return row["x"] + row["w"] <= 0
+
+
+def sweep_describe(row):
+    return "%s%s%s %r  %.1fx%.1f at (%.0f,%.0f)" % (
+        row["tag"],
+        (":" + row["type"]) if row["type"] else "",
+        ("." + row["cls"].split()[0]) if row["cls"] else "",
+        row["text"][:32], row["w"], row["h"], row["x"], row["y"])
+
+
+def sweep_adjacent_pairs(rows):
+    """Pairs sharing a row or a column, edge to edge. Diagonal neighbours are
+    not a mis-tap risk; a thumb that misses low and left lands on the page."""
+    out = []
+    for i, a in enumerate(rows):
+        for b in rows[i + 1:]:
+            dx = max(0.0, max(a["x"] - (b["x"] + b["w"]),
+                              b["x"] - (a["x"] + a["w"])))
+            dy = max(0.0, max(a["y"] - (b["y"] + b["h"]),
+                              b["y"] - (a["y"] + a["h"])))
+            if dx > 0 and dy > 0:
+                continue
+            out.append((dx + dy, a, b))
+    return out
+
+
+class _Swept(unittest.TestCase):
+    """The same blog fixture the class above renders, with a knob for putting
+    the component back the way it was."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not find_chrome():
+            raise unittest.SkipTest(
+                "no Chrome/Chromium on this machine, so the signup's tap "
+                "targets could not be measured. This is UNKNOWN, not a pass.")
+        cls._swept = {}
+
+    def swept(self, width, pre_fix=False):
+        key = (width, pre_fix)
+        if key in self._swept:
+            return self._swept[key]
+        html = blog_page_with_signup(True)
+        if pre_fix:
+            html = without_the_consent_floor(html)
+        try:
+            with Browser(width=width, height=812 if width < 768 else 900) as page:
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                # A closed <details> hides the privacy note's own link. Open
+                # them: a reader who opens the disclosure has to be able to hit
+                # what is inside it.
+                page.eval_js("(function(){document.querySelectorAll('details')"
+                             ".forEach(function(d){d.open=true;});return 1;})()")
+                data = json.loads(page.eval_js(SWEEP_PROBE))
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
+        self.assertFalse(data.get("missing"),
+                         "the signup did not render at %dpx" % width)
+        self._swept[key] = data
+        return data
+
+
+class EveryControlInTheSignupClearsTheFloor(_Swept):
+    """44x44 for anything with a box of its own, at every width the fixture
+    renders. WCAG 2.5.5."""
+
+    def test_the_sweep_found_enough_to_be_a_measurement(self):
+        """An empty sweep is UNKNOWN, and UNKNOWN is not a pass."""
+        for width in WIDTHS:
+            rows = self.swept(width)["rows"]
+            self.assertGreater(
+                len(rows), 8,
+                "only %d interactive targets laid out inside the signup at "
+                "%dpx, so this run measured almost nothing. Treat it as "
+                "UNKNOWN, not as a pass." % (len(rows), width))
+
+    def test_no_boxed_control_is_under_44_at_any_width(self):
+        bad = []
+        for width in WIDTHS:
+            for r in self.swept(width)["rows"]:
+                if sweep_is_inline_in_sentence(r) or sweep_is_off_screen(r):
+                    continue
+                if r["w"] < TAP_MIN - 0.05 or r["h"] < TAP_MIN - 0.05:
+                    bad.append("%dpx: %s" % (width, sweep_describe(r)))
+        self.assertEqual(
+            [], bad,
+            "%d control(s) in the signup below %.0fx%.0f. The label that wraps "
+            "a browser-drawn checkbox is the target, and it is what carries "
+            "the height:\n  %s" % (len(bad), TAP_MIN, TAP_MIN, "\n  ".join(bad)))
+
+    def test_the_links_inside_its_sentences_have_a_real_hit_area(self):
+        """44px is the wrong answer for a word in a paragraph (it opens a 44px
+        hole in the sentence), so it is not the answer applied."""
+        bad = []
+        for width in WIDTHS:
+            rows = [r for r in self.swept(width)["rows"]
+                    if sweep_is_inline_in_sentence(r)]
+            self.assertTrue(
+                rows, "no inline link rendered inside the signup at %dpx, so "
+                      "nothing was checked" % width)
+            for r in rows:
+                if r["h"] < INLINE_HIT_MIN - 0.05:
+                    bad.append("%dpx: %s" % (width, sweep_describe(r)))
+        self.assertEqual(
+            [], bad,
+            "%d link(s) inside one of the signup's sentences hit-test under "
+            "%.0fpx tall. The fix is vertical padding on an inline box, which "
+            "grows the hit area without entering the line-box "
+            "calculation:\n  %s" % (len(bad), INLINE_HIT_MIN, "\n  ".join(bad)))
+
+    def test_the_sentences_around_those_links_did_not_move(self):
+        """The other half of the padding treatment. A hit area bought by
+        inflating a line box is a worse block than the defect."""
+        for width in WIDTHS:
+            before = self.swept(width, pre_fix=True)["intro"]
+            after = self.swept(width)["intro"]
+            self.assertIsNotNone(after, "the signup's intro paragraph is gone")
+            self.assertAlmostEqual(
+                before["h"], after["h"], delta=1.0,
+                msg="at %dpx the intro paragraph changed height from %.1fpx to "
+                    "%.1fpx. On a display:inline box vertical padding does not "
+                    "enter the line box, so a height change means the link "
+                    "stopped being inline." % (width, before["h"], after["h"]))
+            self.assertEqual(
+                before["text"], after["text"],
+                "the intro sentence itself changed at %dpx, which is not this "
+                "change's business" % width)
+
+    def test_no_two_neighbouring_controls_are_closer_than_8px(self):
+        """Two 44px targets 2px apart still take the wrong tap, and a consent
+        box is the worst place on this site to take one."""
+        bad = []
+        for width in WIDTHS:
+            rows = [r for r in self.swept(width)["rows"]
+                    if not sweep_is_inline_in_sentence(r)
+                    and not sweep_is_off_screen(r)]
+            pairs = sorted(sweep_adjacent_pairs(rows), key=lambda t: t[0])
+            for dist, a, b in pairs:
+                if dist >= GAP_MIN - 0.2:
+                    continue
+                bad.append("%dpx, %.1fpx apart: %s  |  %s"
+                           % (width, dist, sweep_describe(a), sweep_describe(b)))
+        self.assertEqual(
+            [], bad,
+            "%d neighbouring pair(s) in the signup under %.0fpx apart:\n  %s"
+            % (len(bad), GAP_MIN, "\n  ".join(bad[:20])))
+
+    def test_the_guard_fails_on_the_component_as_it_was(self):
+        """The half that makes every assertion above evidence. With this
+        change's rules replaced by the ones they succeeded, the block has to
+        measure as broken - and it has to break on the CHECKBOXES, not merely
+        somewhere, or this guard is passing for the wrong reason."""
+        seen = []
+        for width in WIDTHS:
+            for r in self.swept(width, pre_fix=True)["rows"]:
+                if sweep_is_inline_in_sentence(r) or sweep_is_off_screen(r):
+                    continue
+                if r["w"] < TAP_MIN - 0.05 or r["h"] < TAP_MIN - 0.05:
+                    seen.append((width, r))
+        self.assertTrue(
+            seen,
+            "the pre-change component produced no undersized control, so this "
+            "guard cannot see the defect it was written for")
+        where = set(r["field"] for _, r in seen)
+        for fieldset, what in (("lists", "the three list consents"),
+                               ("freq", "the weekly/daily radios")):
+            self.assertIn(
+                fieldset, where,
+                "the pre-change sweep found undersized controls but none in "
+                "the %s fieldset (%s), so this guard is failing for some other "
+                "reason than the one it was written for. Found: %s"
+                % (fieldset, what,
+                   ", ".join(sorted("%dpx %s" % (w, sweep_describe(r))
+                                    for w, r in seen)) or "nothing"))
+
+
+class TheHoneypotIsOutOfReach(_Swept):
+    """THE QUESTION IS NOT WHETHER IT IS SMALL, IT IS WHETHER IT IS REACHABLE.
+
+    The spam trap lays out at 153.0 x 21.0, which reads as a control under the
+    floor until you look at where it is. getBoundingClientRect reports the size
+    of a box regardless of what clips it, and this one sits at x = -9999 inside
+    a 1x1 overflow:hidden wrapper. Measured, not read off the attribute:
+
+      input[name=alt_website]   153.0 x 21.0   at (-9999.0, -9981.0)
+
+    So it is genuinely off-screen and not merely visually small, and it has no
+    tap target to hold to a floor.
+
+    The consequence that WOULD be real if it were reachable is in
+    subscribe.php's own handler: a filled honeypot fails the submission as
+    'spam'. A keyboard reader who tabbed into it and typed would be refused a
+    signup they made in good faith. So this class asserts the two properties
+    that keep that from happening - it is off-screen, and a real Tab sweep
+    through the form never lands on it - rather than asserting the attribute
+    that is supposed to cause them.
+    """
+
+    def test_it_is_parked_off_screen_rather_than_shrunk(self):
+        for width in WIDTHS:
+            html = blog_page_with_signup(True)
+            hp = self._honeypot_box(html, width)
+            self.assertIsNotNone(
+                hp, "the honeypot is gone from the form at %dpx; a signup with "
+                    "no spam trap is a change, not a fix" % width)
+            self.assertLessEqual(
+                hp["x"] + hp["w"], 0.0,
+                "at %dpx the honeypot's right edge is at %.1fpx, so part of it "
+                "is on screen. It is a %.1fx%.1f text input with no visible "
+                "label, and a reader who fills it is refused as spam."
+                % (width, hp["x"] + hp["w"], hp["w"], hp["h"]))
+
+    def test_a_real_tab_sweep_through_the_form_never_lands_on_it(self):
+        """Pressed keys, not tabindex read out of the markup. The attribute is
+        the mechanism; this is the outcome, and only the outcome is the
+        promise."""
+        order = self._tab_order(1280, steps=12)
+        self.assertNotIn(
+            "alt_website", order,
+            "tabbing forward through the signup lands on the honeypot: %s"
+            % " -> ".join(order))
+        # And the sweep has to have WALKED the form, or "never landed on it" is
+        # a statement about a walk that did not happen.
+        for name in ("alt_list_layoff", "alt_list_talent", "alt_list_articles",
+                     "alt_freq", "alt_email"):
+            self.assertIn(
+                name, order,
+                "the Tab sweep never reached %r, so it did not walk the form "
+                "and cannot say what it did or did not land on: %s"
+                % (name, " -> ".join(order)))
+
+    # -- the two measurements above, taken in the browser ---------------------
+
+    def _honeypot_box(self, html, width):
+        probe = r"""
+        (function () {
+          var el = document.querySelector('#alt-digest input[name="alt_website"]');
+          if (!el) return JSON.stringify(null);
+          var r = el.getBoundingClientRect();
+          return JSON.stringify({w: +r.width.toFixed(1), h: +r.height.toFixed(1),
+                                 x: +(r.left + scrollX).toFixed(1),
+                                 y: +(r.top + scrollY).toFixed(1)});
+        })()
+        """
+        try:
+            with Browser(width=width, height=812 if width < 768 else 900) as page:
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                return json.loads(page.eval_js(probe))
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
+
+    def _tab_order(self, width, steps):
+        html = blog_page_with_signup(True)
+        who = ("(function(){var a=document.activeElement;return a?"
+               "(a.getAttribute('name')||a.className||a.tagName.toLowerCase())"
+               ":'none';})()")
+        try:
+            with Browser(width=width, height=900) as page:
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                page.eval_js("(function(){document.querySelectorAll('details')"
+                             ".forEach(function(d){d.open=true;});return 1;})()")
+                # Start ON the signup's heading, so the walk begins at the top
+                # of the block instead of at the top of a 4,000px article.
+                page.eval_js(
+                    "(function(){var h=document.querySelector('#alt-digest h2');"
+                    "h.setAttribute('tabindex','0');h.focus();return 1;})()")
+                out = []
+                for _ in range(steps):
+                    for kind in ("rawKeyDown", "char", "keyUp"):
+                        page.call("Input.dispatchKeyEvent", {
+                            "type": kind, "key": "Tab", "code": "Tab",
+                            "windowsVirtualKeyCode": 9,
+                            "nativeVirtualKeyCode": 9, "text": "\t"})
+                    out.append(page.eval_js(who))
+                return out
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
 
 
 class TheCopyPassesTheHouseStandard(unittest.TestCase):
