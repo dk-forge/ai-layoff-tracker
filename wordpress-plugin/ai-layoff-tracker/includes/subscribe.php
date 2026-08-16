@@ -811,6 +811,24 @@ function alt_api_digest_click($request) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * A date a reader can read, out of the ISO date the endpoints return.
+ *
+ * Returns '' for anything that is not a plain YYYY-MM-DD, and every caller
+ * treats that as "print no date". A row whose date we do not have prints
+ * nothing there: not a zero, not today, not the period's edge.
+ */
+function alt_digest_short_date($iso) {
+    $iso = substr(trim((string) $iso), 0, 10);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $iso, $m)) return '';
+    $month = (int) $m[2];
+    $day = (int) $m[3];
+    if ($month < 1 || $month > 12 || $day < 1 || $day > 31) return '';
+    $names = array('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+    return $day . ' ' . $names[$month - 1] . ' ' . $m[1];
+}
+
+/**
  * Compose the layoff-tracker section for the period. Reads the plugin's own
  * public /aggregate endpoint through the REST layer (rest_do_request), so the
  * digest can never disagree with what the tracker page itself serves.
@@ -822,7 +840,32 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
     $req->set_param('from', $from);
     $req->set_param('to', $to);
-    $req->set_param('include', 'leaders');
+    /*
+      WHICH DATE THIS SECTION IS ABOUT, written down instead of inherited.
+
+      This composer sent no date_basis, so alt_db_date_col() gave it the
+      server default, `layoff_date`, the date the cuts take effect. The
+      tracker PAGE defaults to `notice`, COALESCE(announcement_date,
+      layoff_date), the filing date. So the digest and the page it links to
+      have always meant different windows, and the digest named neither.
+
+      Naming the effective basis is not a coin toss. leaders[] carries
+      layoff_date and no announcement_date, so asking for the notice basis
+      would select rows by one date and then print another. alt_db_date_col()
+      records what that costs: a view labelled 2026 that drew 2027 buckets.
+      Here the window and the printed dates are the same quantity, and the
+      copy below says which one it is.
+    */
+    $req->set_param('date_basis', 'layoff_date');
+    /*
+      `include` is an OPT-IN allowlist (alt_aggregate_blocks). `include=leaders`
+      alone therefore returned `top_countries` as an empty array, which is why
+      the country block at the foot of this section could not be built. Both
+      blocks this section reads have to be named. `totals` is always computed
+      and is not a nameable block, so it does not go here, and an unrecognised
+      name falls back to all ~31 statements: do not tidy these into one word.
+    */
+    $req->set_param('include', 'leaders,top_countries');
     $res = rest_do_request($req);
     if (!$res || $res->is_error()) return null;
     $data = $res->get_data();
@@ -841,15 +884,115 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $leaders = array_slice(is_array($data['leaders'] ?? null) ? $data['leaders'] : array(), 0, 5);
     if ($leaders) {
         $html .= '<ul style="margin:0 0 8px;padding-left:20px;">';
+        $dated = false;
         foreach ($leaders as $l) {
             $l = (array) $l;
+            // The date was in the payload all along and never printed, so an
+            // entry read as though it happened at some point in the window.
+            // A row carrying no date simply shows none.
+            $when = alt_digest_short_date($l['layoff_date'] ?? '');
+            if ($when !== '') $dated = true;
             $line = ($l['company_name'] ?? '') . ': ' . number_format_i18n((int) ($l['job_count'] ?? 0)) . ' jobs'
-                  . (!empty($l['location']) ? ', ' . $l['location'] : '');
+                  . (!empty($l['location']) ? ', ' . $l['location'] : '')
+                  . ($when !== '' ? ', takes effect ' . $when : '');
             $html .= '<li>' . esc_html($line) . '</li>';
             $text .= '  - ' . $line . "\n";
         }
         $html .= '</ul>';
+        if ($dated) {
+            $basis = 'Dates above are when the job cuts take effect, and this period uses the same basis. '
+                   . 'The tracker page counts by filing date, so its figures for these dates differ.';
+            $html .= '<p style="margin:0 0 8px;">' . esc_html($basis) . '</p>';
+            $text .= $basis . "\n";
+        }
     }
+
+    /*
+      ONE YEAR-TO-DATE LINE, AND DELIBERATELY NO PERIOD-OVER-PERIOD DELTA.
+
+      This data revises upward for weeks. Filings and WARN notices arrive
+      after the event, so the newest period is always the least complete one
+      we hold. A week-on-week or month-on-month line would therefore turn a
+      reporting lag into a fall that never happened, which is exactly the
+      defect the trend charts already had: an incomplete month drew as a
+      collapse. A year-to-date total only grows, so a late arrival corrects
+      it rather than inverting it. Do not add a delta here later.
+
+      The year comes from the period's own end date, not from the clock, so a
+      run that composes a window is never labelled with a different year. The
+      basis matches the section above for the same reason it is named there.
+    */
+    $year = substr((string) $to, 0, 4);
+    if (preg_match('/^\d{4}$/', $year)) {
+        $ytd_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
+        $ytd_req->set_param('from', $year . '-01-01');
+        $ytd_req->set_param('to', $to);
+        $ytd_req->set_param('date_basis', 'layoff_date');
+        // One real block name, because naming none of them costs all of them.
+        // Nothing below reads it; `totals` is what this call is for.
+        $ytd_req->set_param('include', 'leaders');
+        $ytd_res = rest_do_request($ytd_req);
+        if ($ytd_res && !$ytd_res->is_error()) {
+            $ytd_data = $ytd_res->get_data();
+            $ytd_totals = is_array($ytd_data) ? ($ytd_data['totals'] ?? null) : null;
+            if (!is_array($ytd_totals) && is_object($ytd_totals)) $ytd_totals = (array) $ytd_totals;
+            $ytd_jobs = is_array($ytd_totals) ? (int) ($ytd_totals['jobs'] ?? 0) : 0;
+            if ($ytd_jobs > 0) {
+                $ytd_line = $year . ' so far: ' . number_format_i18n($ytd_jobs) . ' job cuts.';
+                $html .= '<p style="margin:0 0 8px;">' . esc_html($ytd_line) . '</p>';
+                $text .= $ytd_line . "\n";
+            }
+        }
+    }
+
+    /*
+      WHERE THE JOBS WERE, PLUS THE BUCKET THAT IS NOT A PLACE.
+
+      "Multiple countries" is a real stored value: a global cut announced with
+      no per-country split. On the 2026 window it is the second largest line
+      on this list and about a sixth of the total. Folding it into a region
+      would invent a location for jobs nobody located, and dropping it would
+      quietly shrink the world, so it sits on its own line outside the five
+      and says what it is.
+
+      This composer sends no country_basis, so these are strict job locations,
+      the `country` column rather than the employer's domicile. The list is
+      also a top five over rows that carry a country at all, so it does not
+      add up to the headline. Both facts are in the copy: a reader who adds
+      the lines and finds a gap must be able to see why without asking.
+    */
+    $top_countries = is_array($data['top_countries'] ?? null) ? $data['top_countries'] : array();
+    $named = array();
+    $multi = 0;
+    foreach ($top_countries as $row) {
+        $row = array_values((array) $row);
+        $name = trim((string) ($row[0] ?? ''));
+        $value = (int) ($row[1] ?? 0);
+        if ($name === '' || $value <= 0) continue;
+        if (strcasecmp($name, 'Multiple countries') === 0) { $multi = $value; continue; }
+        if (count($named) < 5) $named[$name] = $value;
+    }
+    if ($named) {
+        $lead = 'Where the jobs were, by job location:';
+        $html .= '<p style="margin:0 0 8px;">' . esc_html($lead) . '</p>'
+               . '<ul style="margin:0 0 8px;padding-left:20px;">';
+        $text .= $lead . "\n";
+        foreach ($named as $name => $value) {
+            $line = $name . ': ' . number_format_i18n($value) . ' jobs';
+            $html .= '<li>' . esc_html($line) . '</li>';
+            $text .= '  - ' . $line . "\n";
+        }
+        $html .= '</ul>';
+        $note = '';
+        if ($multi > 0) {
+            $note = 'Multiple countries: ' . number_format_i18n($multi) . ' jobs. '
+                  . 'That line is global cuts announced with no country split. ';
+        }
+        $note .= 'These are job locations only, so the list does not add up to the total above.';
+        $html .= '<p style="margin:0 0 8px;">' . esc_html($note) . '</p>';
+        $text .= $note . "\n";
+    }
+
     // Counted link. The plain URL stays in the text part: a text reader should
     // not be handed a machine-shaped URL to squint at, and one counted copy per
     // send is enough to know whether the section is read at all.
@@ -895,18 +1038,53 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         $rows = array_slice(is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 0, 5);
         if ($rows) {
             $html .= '<ul style="margin:0 0 8px;padding-left:20px;">';
+            $dated = false;
             foreach ($rows as $row) {
                 $row = (array) $row;
                 $line = trim((string) ($row['company'] ?? ''));
                 $head = trim((string) ($row['headline'] ?? ''));
                 $line = $line !== '' ? ($head !== '' ? $line . ': ' . $head : $line) : $head;
                 if ($line === '') continue;
+                // The signal's own publication date, which is also what the
+                // since/until window selects on. Some signals reach us with
+                // no date on the source; those show none rather than borrow
+                // the day we captured them.
+                $when = alt_digest_short_date($row['published_date'] ?? '');
+                if ($when !== '') { $dated = true; $line .= ' (' . $when . ')'; }
                 $html .= '<li>' . esc_html($line) . '</li>';
                 $text .= '  - ' . $line . "\n";
             }
             $html .= '</ul>';
+            if ($dated) {
+                $basis = 'Dates above are when the source published. '
+                       . 'A signal whose source carries no date shows none.';
+                $html .= '<p style="margin:0 0 8px;">' . esc_html($basis) . '</p>';
+                $text .= $basis . "\n";
+            }
         }
     }
+
+    // One year-to-date line, for the reason spelled out in
+    // alt_digest_compose_layoff: this data revises upward, so any
+    // period-over-period delta manufactures a fall out of a reporting lag.
+    // Year to date only grows. Do not add a delta here later either.
+    $year = substr((string) $to, 0, 4);
+    if (preg_match('/^\d{4}$/', $year)) {
+        $ytd_req = new WP_REST_Request('GET', '/talent/v1/aggregate');
+        $ytd_req->set_param('since', $year . '-01-01');
+        $ytd_req->set_param('until', $to);
+        $ytd_req->set_param('include', 'fresh');
+        $ytd_res = rest_do_request($ytd_req);
+        if ($ytd_res && !$ytd_res->is_error()) {
+            $ytd_total = (int) (((array) $ytd_res->get_data())['total'] ?? 0);
+            if ($ytd_total > 0) {
+                $ytd_line = $year . ' so far: ' . number_format_i18n($ytd_total) . ' signals.';
+                $html .= '<p style="margin:0 0 8px;">' . esc_html($ytd_line) . '</p>';
+                $text .= $ytd_line . "\n";
+            }
+        }
+    }
+
     $click = alt_digest_track_link($send_id, $url);
     $html .= '<p style="margin:0;"><a href="' . esc_url($click) . '">Open the Talent Intelligence Tracker</a></p>';
     $text .= "Open the tracker: {$url}\n";

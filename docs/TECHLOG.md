@@ -1,5 +1,87 @@
 # Tech Log
 
+## 2026-08-16 - the digest printed no dates, and an opt-in allowlist had been quietly deleting the country block (2.20.68)
+
+Three content additions the owner asked for, all of which had to happen in
+`alt_digest_compose_layoff` and `alt_digest_compose_talent`
+(`includes/subscribe.php`). The Python side receives finished section HTML and
+text and never sees a row, and deriving a figure there is the one thing
+`digest_send.py` is grep-tested against, so none of this could be done from the
+sender.
+
+**1. A date on every entry, and the basis named out loud.**
+
+`leaders[]` has carried `layoff_date` since db.php:5555 and the composer simply
+never printed it, so an entry read as though it happened at some point inside
+the window. It prints now. The interesting half is the label.
+
+The composer sent no `date_basis`, so it inherited `alt_db_date_col()`'s
+default, `layoff_date`, the date the cuts take effect. The tracker PAGE
+defaults to `notice`, `COALESCE(announcement_date, layoff_date)`, the filing
+date. So the digest's window and the page it links to have always meant
+different things, and the digest named neither.
+
+The effective basis is kept, and that is not a coin toss: `leaders[]` carries
+`layoff_date` and no `announcement_date`, so asking for the notice basis would
+have selected rows by one date and then printed another. That is the mismatch
+`alt_db_date_col`'s own comment was written about, the one that drew 2027
+buckets inside a view labelled 2026. The basis is now sent explicitly rather
+than inherited, and two sentences under the list say which date it is and that
+the page counts differently. The word "announced" is not used: `announced` is a
+tier column on this tracker and already means something else.
+
+**2. One year-to-date line per tracker, and no delta, ever.**
+
+A second `rest_do_request` per section, from 1 January of the period's own end
+year to the period end. This data revises UPWARD for weeks, because filings and
+WARN notices arrive after the event, so the newest period is always the least
+complete one held. Any week-over-week or month-over-month line would turn that
+reporting lag into a fall that never happened, which is precisely the defect
+the trend charts already had, where an incomplete month drew as a collapse. A
+year-to-date total only grows, so a late arrival corrects it instead of
+inverting it. The reasoning is in the code, not only here, so the next session
+does not "improve" it into a delta.
+
+**3. The country block, and the bug that was hiding it.**
+
+`include` on `/aggregate` is an OPT-IN allowlist (`alt_aggregate_blocks`), and
+the composer sent `include=leaders`. Measured live before the fix, on the
+2026-08-08 to 2026-08-15 window:
+
+    include=leaders               -> "top_countries": []
+    include=leaders,top_countries -> [["United States", 8239, ...], ...]
+
+The key was present and the array was empty, which is why nothing looked
+broken. Both blocks are named now, and `totals` is not: it is always computed
+and is not a nameable block. An unrecognised name falls back to all ~31
+statements, so these must stay real names.
+
+The block is the top five job locations plus a separate line for **Multiple
+countries**, which is a real stored value: a global cut announced with no
+per-country split. Measured on the full 2026 window, `/aggregate` reports it at
+**164,957 jobs across 54 countries**, about a sixth of the period total. It is
+not folded into a region, because that would invent a location for jobs nobody
+located, and it is not dropped, because that would quietly shrink the world.
+The composer sends no `country_basis`, so these are strict job locations, and
+the copy says both that and the fact that a top five does not add up to the
+headline.
+
+**What did not change.** No figure is derived in this file that the endpoints
+did not supply: a row with no date prints no date, a country list that comes
+back empty prints no block, and a year-to-date call that fails prints no line.
+No zero ever stands in for a missing figure. No image, no `url()`, no external
+asset, so `assert_message_is_clean` passes unmodified. Both the HTML and the
+plain-text part carry all three additions, and the plain text is what many
+recipients actually read. `style_check.py`'s `email` surface went from 91 to 95
+segments and stayed inside every bar, at grade 6.5 and 15% passive.
+
+**Known and deliberately left alone:** the section's own summary line reads
+"N verified entries totalling X job cuts" while X is `totals.jobs`, which is
+verified PLUS announced (979,979 for 2026 to date, of which 469,348 are
+announced). The year-to-date line reads the same field on purpose, so the two
+numbers in the section agree with each other. Correcting the label is a
+separate change to a line this session was not asked to touch.
+
 ## 2026-08-16 - the reading measure was sized against a font a third of readers do not have (2.20.67)
 
 2.20.64 widened the blog measure and grew the type with it, and the

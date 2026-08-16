@@ -34,6 +34,16 @@ holder, so the start-of-session ritual surfaces it automatically.
   under the layoff section) all live in `alt_digest_compose_layoff` in
   `includes/subscribe.php`, which another session holds. Reported with a
   ready-to-apply patch rather than edited into a contended file.
+- **AND WORKING ON (this session, picking up that BLOCKED item):** the three
+  content additions, inside `alt_digest_compose_layoff` and
+  `alt_digest_compose_talent` in `includes/subscribe.php` and nowhere else.
+  A date on every entry, one year-to-date line per tracker, and a
+  top-countries block at the foot of the layoff section. Two findings that
+  change the shape: `include` on `/aggregate` is an opt-in allowlist, so the
+  old `include=leaders` returned `top_countries` EMPTY, and the composer sent
+  no `date_basis`, so it inherited `layoff_date` while the tracker page
+  defaults to `notice`. The basis is now named in the request and named in
+  the copy. No signup markup is touched.
 - **AND WORKING ON:** the AI cumulative chart's gate, landed as **2.20.66**
   (`assets/layoffs.js` and `tests/test_ai_chart_gate_matches_line.py` only).
   It selected and started on `ai_jobs`, which is verified PLUS announced, and
