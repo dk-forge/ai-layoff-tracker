@@ -21,6 +21,14 @@ holder, so the start-of-session ritual surfaces it automatically.
   Provider chosen by what the request carries, never a setting; the Svix path
   is untouched and Resend still works; one suppression path. Arming it is
   owner-only and the steps are in RUNBOOK "Bounces and complaints".
+- **AND WORKING ON:** the AI cumulative chart's gate, landed as **2.20.66**
+  (`assets/layoffs.js` and `tests/test_ai_chart_gate_matches_line.py` only).
+  It selected and started on `ai_jobs`, which is verified PLUS announced, and
+  then drew the verified value, so a month with only announced AI cuts opened
+  the series on a flat zero. The gate, the start scan and every plot site now
+  read `aiVerifiedJobs()` / `aiAnnouncedJobs()`, the only two definitions.
+  Running totals accumulate over the whole series and are sliced for display,
+  so no plotted number moves; the announced band stays and stays labelled.
 - **AND WORKING ON:** an applause control on single blog posts. One integer per
   post in `wp_alt_post_claps`, incremented by one atomic UPDATE, read for a SET
   of posts in one query so a listing costs one round trip. Anonymous and
