@@ -1,5 +1,149 @@
 # Tech Log
 
+## 2026-08-16 - the second width arrived and the first one never moved (2.20.64)
+
+Pass three on the blog reading surface. 2.20.57 put the headings over their own
+text; 2.20.61 gave the page a second width. The owner read the result on
+https://asktherecruiter.com/blog/how-long-should-a-resume-be/ and named four
+things, and they turn out to be one thing seen from four sides: everything
+around the reading column moved, and the reading column did not.
+
+Measured live on 2.20.62, bare URL, browser UA, headless Chrome:
+
+| | 375 | 414 | 768 | 1280 | 2000 |
+|---|---|---|---|---|---|
+| paragraph x / width | 18 / 339 | 18 / 378 | 61.5 / 645 | 317.5 / 645 | 650 / 700 |
+| body size | 19 | 19 | 19 | 20 | 21 |
+| chars per line | 36.1 | 40.2 | 68.7 | 65.2 | 67.4 |
+| featured image | 339 | 378 | 732 | 820 | 1040 |
+| image : text | 1.00 | 1.00 | 1.14 | 1.27 | **1.49** |
+| h2 / body | 24 / 19 | 24 / 19 | 24 / 19 | 30 / 20 | 31 / 21 |
+| air above an h2 | 48px | 48px | 48px | 48px | 48px |
+| contents | 16px sans | 16px sans | 16px sans | 16px sans, 2 col | 16px sans, 2 col |
+| article frame | 339 | 378 | 732 | 1280 | **2000** |
+
+**1. The text was starved beside its own illustration.** 700px of text against
+a 1040px image is 1.49x, and it was 1.49x because the media kept stepping after
+the measure stopped. Both move now, in three steps, and the type moves with the
+column because characters per line is the constraint and pixels never were:
+
+| step | measure | body | chars/line | media | image : text |
+|---|---|---|---|---|---|
+| base | 645px | 20px | 66.9 | 820px | 1.27 |
+| >= 1200px | 720px | 21px | 71.1 | 880px | 1.22 |
+| >= 1500px | 780px | 22px | 73.5 | 980px | 1.26 |
+| >= 1800px | 820px | 23px | 73.9 | 1040px | 1.27 |
+
+Chars per line are the fixture's Charter fallback metric, which is what the
+test renders and therefore what the bar is set against. The image still leads
+the column, which is what gives the page two widths at all; it no longer leaves
+it behind. Nothing upscales: the source hero is 1288px wide.
+
+**2. The contents read as a plugin widget.** Not because of the rule above it,
+which 2.20.61 got right, but because of 16px grey sans set in two columns. Two
+columns is a layout no article uses and every sidebar module does. It is one
+column at every width now, in the article's own serif at three pixels under the
+body size, and the label above it is 15px sentence case instead of 13px
+uppercase letterspaced grey.
+
+The two columns were **reversed at their cause rather than overruled**. They
+existed to halve a 525px slab, and the slab existed because every link carried
+a 44px tap floor at every width. A desktop pointer does not need a 44px row.
+The floor is now scoped to 781px and below, where it is a real requirement, and
+above it the links set on their own leading: about 380px for eleven entries,
+shorter than the two-column block it replaces.
+
+**3. The page read as one flat block.** h2 was 30px over a 20px body, 1.50x,
+with 48px above it. Size and space are different signals and only one of them
+had been thought about. Both moved: 1.70x on a desktop, and 80px of air, which
+is two and a half blank lines. The scale still steps rather than leaps, and the
+existing test holds that unchanged: every neighbouring ratio stays inside
+1.05-1.45 and the h1 stays under 2.25x the body.
+
+**The phone takes a smaller h2 and that is a position, not a shortfall.** On a
+375px screen a section heading is the full width of the reader's view with
+nothing beside it; inside an 820px column on a 2000px screen it is a short line
+in a lot of white. The phone h2 is 1.47x. Raising it to 1.60x would drag the h1
+up with it, because the step ratios forbid them converging, and the reference
+post's 57-character headline wraps to a **fourth line above 32px** - measured at
+30, 31, 32, 33 and 34px, three lines up to 32 and four from 33. 37px was tried
+first and cost that line, pushing the hero 53px down the opening screen to buy
+a phone reader nothing. The test carries two bars and says why.
+
+**4. The article was a thin strip floating in white.** Two answers were on the
+table, cap the frame or give the column a ground, and this commits to both
+halves of one of them, because **a cap on its own is invisible**. Everything on
+the page was already narrower than the frame, so clamping the frame moves no
+pixel until the frame is a surface with an edge. `main` is now the ground
+(#eef1f5) and the article group is a white card on it, capped at 1300px and
+centred, with a 14px radius and two nearly invisible shadows. At 2000px that is
+a 1300px document with 350px of ground each side, instead of 820px of text with
+590px of nothing.
+
+Two mechanical notes, both of which cost a red run first. The card needs
+`box-sizing: border-box`: it carries 50px of global padding and the site sets
+box-sizing only below 1024px, so a content-box cap of 1300px renders a 1400px
+card. And `main`'s 28px top gap had to become **padding rather than margin** -
+the same number either way, but a margin sits outside the paint and would have
+left a 28px band of the old white between the site header and the ground.
+
+**None of 1 to 4 reaches a phone.** Below 1024px there is no card and no
+ground; below 1200px the measure and the type are exactly what they were. A
+phone has no screen to spend on a margin around the reading column, and a card
+there would be the stacked-gutter defect with better manners.
+
+**Measured on the fixture, after:**
+
+| | 375 | 414 | 768 | 1280 | 1600 | 2000 |
+|---|---|---|---|---|---|---|
+| paragraph x / width | 18 / 339 | 18 / 378 | 61.5 / 645 | 280 / 720 | 410 / 780 | 590 / 820 |
+| body size | 19 | 19 | 19 | 21 | 22 | 23 |
+| chars per line | 37.0 | 41.2 | 70.4 | 71.1 | 73.5 | 73.9 |
+| featured image | 339 | 378 | 732 | 880 | 980 | 1040 |
+| image : text | 1.00 | 1.00 | 1.14 | 1.22 | 1.26 | 1.27 |
+| h1 / h2 / h3 | 32/28/23 | 32/28/23 | 32/28/23 | 46/36/27 | 48/37/28 | 50/39/29 |
+| air above an h2 | 64px | 64px | 64px | 80px | 80px | 80px |
+| contents | 16px serif, 1 col | 16px serif, 1 col | 16px serif, 1 col | 18px, 1 col | 19px, 1 col | 20px, 1 col |
+| article frame | 339 | 378 | 732 | 1180 | 1300 | 1300 |
+| card on ground | no | no | no | yes | yes | yes |
+| header to headline | 30 | 30 | 30 | 56 | 56 | 56 |
+| horizontal overflow | 0 | 0 | 0 | 0 | 0 | 0 |
+
+**The phone is unchanged where it had to be.** 18px in, 339px wide, 37.0 chars
+per line at 375px and 41.2 at 414px, identical to 2.20.61 and to 2.20.57.
+Contents links still measure 50.4px tall against the 44px floor, and document
+overflow is 0 at every width.
+
+**What the test holds.** Nine assertions in
+`railway/tests/test_blog_reading_surface.py` were RED against 2.20.63 before
+any CSS moved, and they name the numbers they saw: "at 2000px the featured
+image is 1.49x the text (1040px against 700px), over 1.35: the image is running
+away from the column it illustrates"; "at 1280px the H2 is 30px over a 20px
+body (1.50x), under 1.60: it reads as bold body text"; "at 1600px there are
+48px above the H2, 1.41 body lines, under 2.00: the section does not begin, it
+continues"; "at 2000px the article frame is 2000px wide, over the 1320px cap";
+"at 2000px the article and the page around it are the same colour (rgba(0, 0,
+0, 0)), so the column has no ground and the cap is invisible"; "at 2000px the
+contents is 16px against 21px of body text, 5px under it (max 4)". The suite is
+45 tests and green.
+
+**The body-size band moved from 19-21 to 19-23, deliberately.** The measure is
+only allowed to widen because the type widens with it, so a band that stopped
+at 21px would have forbidden the fix rather than guarded it. The thing being
+guarded is characters per line, and that is still asserted at every width.
+
+**NOT DEPLOYED BY THIS SESSION, AND THEREFORE UNKNOWN LIVE.** A second local
+session was committing to this same working tree while this work was in
+progress: `2022961` (2.20.63) landed mid-session, and that session still holds
+uncommitted `assets/layoffs.js` changes plus an untracked test file. Neither
+`2022961` nor this commit is on `origin/main`, and pushing would have deployed
+another session's unpushed commit and raced its version bump, which is the
+exact collision `docs/HANDOFF.md` exists to prevent. Everything above is
+measured on the live 2.20.62 page (before) and on the fixture (after). The live
+after-numbers, the reader-freshness check on this build and the rendered
+contrast audit for this version are **UNKNOWN, not passes**.
+
+
 ## 2026-08-15 - applause on a blog post, and the two columns that make the promise checkable (2.20.63)
 
 A reader taps a button at the end of an article and a number goes up. The whole

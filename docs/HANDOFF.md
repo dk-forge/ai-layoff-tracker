@@ -17,6 +17,22 @@ holder, so the start-of-session ritual surfaces it automatically.
   `assets/blog-claps.{css,js}`); `assets/blog-reading.css` and
   `includes/blog-typography.php` belong to a concurrent session and are not
   touched here.
+- **ALSO WORKING ON (that concurrent session):** pass three on the blog reading
+  surface, committed locally as **2.20.64**, not pushed and not deployed. The
+  measure now climbs with the type to 820px at 23px, the media comes back to
+  about 1.25x it instead of 1.49x, the h2 is 1.70x the body with 80px above it,
+  the contents is one serif column, and the article sits on a capped 1300px
+  card over a ground. 45 tests green; the phone is byte-identical at 18/339 and
+  37.0 characters per line. It touches only `assets/blog-reading.css`,
+  `railway/tests/test_blog_reading_surface.py`, `docs/TECHLOG.md` and the
+  plugin version.
+- **TWO SESSIONS, ONE WORKING TREE, SO READ THE VERSION BEFORE YOU BUMP IT.**
+  The blog commit took **2.20.64**, so the claps and digest work needs
+  **2.20.65**, not the 2.20.64 that was sitting in the working tree. Neither
+  session's commit is on `origin/main`. Whoever pushes is publishing and
+  deploying BOTH; confirm the other is finished, then push, wait on the commit
+  SHA, run `reader_freshness.py`, and re-run the rendered contrast audit. Until
+  that happens the live state of both changes is UNKNOWN, not a pass.
 - **PREVIOUS SUBJECT:** the ceiling that never reached the ledger. `[2a]`'s two
   "brake is not holding" lines are pre-fix history (8e976ca, 2026-08-14T07:42Z,
   is after both runs) and will age out of the 14d window on their own. What is

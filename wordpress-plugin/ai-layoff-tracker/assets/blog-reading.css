@@ -78,6 +78,43 @@
  * includes the classic scrollbar, so a vw-based cap overflows by ~15px on the
  * narrow-desktop widths where it binds. 100% is the constrained child's own
  * containing block, which is already the right number.
+ *
+ * ------------------------------------------------------------------------
+ * PASS THREE, SAME DAY. THE SECOND WIDTH ARRIVED AND THE FIRST ONE DID NOT
+ * MOVE WITH IT.
+ *
+ * The owner read the result and named four things. They are one thing seen
+ * from four sides: the page above got a media step, a frame it never had and
+ * a heading scale, and the READING COLUMN was left exactly where it started.
+ *
+ *   1. THE TEXT WAS STARVED BESIDE ITS OWN ILLUSTRATION. 700px of text against
+ *      a 1040px image at 2000px, 1.49x. The measure now climbs in three steps
+ *      with the type - 720/21, 780/22, 820/23 - and the media comes back down
+ *      toward it, so the ratio is about 1.25x at every step instead of 1.49x
+ *      at the last one. Characters per line is still the only constraint that
+ *      decides this; the table under "the measure climbs" shows the working.
+ *
+ *   2. THE CONTENTS READ AS A PLUGIN WIDGET. Not because of the rule above it
+ *      - that part of 2.20.61 was right - but because of 16px grey sans set in
+ *      two columns. It is one column at every width now, in the article's own
+ *      serif at three pixels under the body. The two columns existed to hide a
+ *      525px slab made by a 44px tap floor applied at every width; the floor
+ *      is scoped to touch and the slab is gone, so the workaround goes too.
+ *
+ *   3. THE PAGE READ AS ONE FLAT BLOCK. h2 was 30px over a 20px body, 1.50x,
+ *      with 48px above it. Size and space are different signals and both
+ *      moved: 1.70x on a desktop, and 80px of air, which is two and a half
+ *      blank lines. The scale still steps - every neighbouring ratio is inside
+ *      1.05-1.45 and the h1 is still under 2.25x the body.
+ *
+ *   4. THE ARTICLE WAS A THIN STRIP FLOATING IN WHITE. Section 2d caps the
+ *      frame at 1300px AND puts it on a ground, because a cap alone is
+ *      invisible on a page whose contents were already narrower than it.
+ *
+ * NONE OF 1-4 REACHES A PHONE. Below 1024px there is no card and no ground;
+ * below 1200px the measure and the type are what they were. The phone's
+ * paragraph is 18px in and 339px wide at 375, byte-identical across all three
+ * passes, and that is the bar every one of these was designed under.
  */
 
 /* ------------------------------------------------------------------ scale */
@@ -87,13 +124,20 @@ body.single-post {
      to reason about. */
   --alt-read-body: 20px;
   --alt-read-lh: 1.62;
-  --alt-read-h1: 40px;
-  --alt-read-h2: 30px;
-  --alt-read-h3: 24px;
+  --alt-read-h1: 44px;
+  --alt-read-h2: 34px;
+  --alt-read-h3: 26px;
   --alt-read-h4: 20px;
 
   /* Rhythm. One unit, everything is a multiple of it. */
   --alt-read-unit: 1rem;
+
+  /* Space above an h2, in units. This is a token rather than a number in the
+     rule because it is one of the two things that make a section begin, and
+     the phone wants less of it than a 2000px screen does. 5 units is 80px
+     against a 32.4px line: two and a half blank lines, which is what the eye
+     reads as "a new section" from a scroll. */
+  --alt-read-h2-air: 5;
 
   /* The SECOND width. Media is deliberately wider than the measure on any
      screen that has the room, and exactly the measure on one that does not.
@@ -101,6 +145,14 @@ body.single-post {
      minus the theme's own 50px gutters, so the cap is the only thing that can
      bind and nothing can overflow. */
   --alt-read-media: min(820px, 100%);
+
+  /* The FRAME and its GROUND. The article stops spreading at 1300px and sits
+     on a surface that is not the page, so a 2000px screen shows a document
+     rather than a strip of text in an empty room. Both are inert below
+     1024px: a phone has no room for a margin around the reading column, and
+     inventing one is the stacked-gutter defect wearing better clothes. */
+  --alt-read-frame: 1300px;
+  --alt-read-ground: #eef1f5;
 
   --alt-read-ink: #23272b;      /* body text */
   --alt-read-ink-strong: #14171a; /* headings */
@@ -117,10 +169,28 @@ body.single-post {
   body.single-post {
     --alt-read-body: 19px;
     --alt-read-lh: 1.6;
-    --alt-read-h1: 30px;
-    --alt-read-h2: 24px;
-    --alt-read-h3: 20px;
-    --alt-read-h4: 18px;
+    /* The h2 is what pass three was asked to fix and it takes most of the
+       increase, 24 -> 28px. The h1 moves only as far as it can without
+       costing a line: a headline is already the largest thing on a 375px
+       screen and the reference post's is 57 characters, so it wraps to three
+       lines at 30, 31 and 32px and to FOUR at 33. Measured, not guessed. 37px
+       was tried first and cost that line, which pushed the hero 53px down the
+       opening screen to buy nothing a phone reader needed. 32px it is.
+
+       The h2 therefore lands at 1.47x the body here against 1.70x on a
+       desktop, and that difference is real rather than a shortfall. On a
+       375px screen a section heading is the full width of the reader's view
+       with nothing beside it; on a 2000px screen it is a short line inside a
+       820px column, and it needs the extra size to be seen at all. The test
+       holds the two bars separately and says so. */
+    --alt-read-h1: 32px;
+    --alt-read-h2: 28px;
+    --alt-read-h3: 23px;
+    --alt-read-h4: 19px;
+    /* 4 units is 64px against a 30.4px line, so a section still announces
+       itself, but a phone does not pay two and a half blank lines for every
+       heading in an eleven-section article. */
+    --alt-read-h2-air: 4;
     /* A phone has one width and that is correct: a hero narrower or wider
        than the 339px of text it introduces would only be a mistake. 100% is
        the article's own box, which at 375 and 414 IS the measure. Between
@@ -131,30 +201,64 @@ body.single-post {
   }
 }
 
-/* The measure grows ONCE, and the type grows with it. 645px at 20px is about
-   67 characters in Vollkorn; 700px at 21px is about 69. The reading band is
-   unchanged, which is the point: the extra 55px buys presence on a large
-   screen without buying a longer line to track back along. Scoped to `main`
-   rather than `body` so the site header and footer keep the content-size they
-   were designed against. */
-@media (min-width: 1400px) {
+/* THE MEASURE CLIMBS IN THREE STEPS, AND THE TYPE CLIMBS WITH IT.
+ *
+ * 2.20.61 moved it once, 645 -> 700px, and stopped. The media kept going, to
+ * 1040px, so at 2000px the page showed 700px of text beside an image half
+ * again as wide and the column looked starved beside its own illustration.
+ * That is the owner's first note and it was a real proportion, not a taste.
+ *
+ * Pixels are not the constraint; characters per line is. Every step below
+ * moves the column and the body size together so the line a reader tracks
+ * back along stays the same length, measured in the fallback metric the test
+ * renders (Charter) and quoted for live Vollkorn in the TECHLOG:
+ *
+ *   step        measure   body   chars/line   media    media:text
+ *   base        645px     20px   66.9         820px    1.27x
+ *   >= 1200     720px     21px   71.1         880px    1.22x
+ *   >= 1500     780px     22px   73.5         980px    1.26x
+ *   >= 1800     820px     23px   73.9         1040px   1.27x
+ *
+ * The media:text ratio is the point of the table. It was 1.49x and is now
+ * about 1.25x at every step: the image still leads the column, which is what
+ * gives the page two widths, but it no longer leaves it behind. Nothing
+ * upscales - the source hero is 1288px wide.
+ *
+ * Scoped to `main` rather than `body` so the site header and footer keep the
+ * content-size they were designed against.
+ */
+@media (min-width: 1200px) {
   body.single-post main {
-    --wp--style--global--content-size: 700px;
+    --wp--style--global--content-size: 720px;
     --alt-read-body: 21px;
-    --alt-read-h1: 42px;
-    --alt-read-h2: 31px;
-    --alt-read-h3: 25px;
+    --alt-read-h1: 46px;
+    --alt-read-h2: 36px;
+    --alt-read-h3: 27px;
     --alt-read-h4: 21px;
-    --alt-read-media: min(960px, 100%);
+    --alt-read-media: min(880px, 100%);
   }
 }
 
-/* At this width the article is a 700px column in the middle of a very large
-   screen, so the media step widens again rather than the text. 1040 against
-   700 is 1.49x: the eye reads two widths, which is one more than the page had
-   before this change. The source image is 1288px wide, so nothing upscales. */
+@media (min-width: 1500px) {
+  body.single-post main {
+    --wp--style--global--content-size: 780px;
+    --alt-read-body: 22px;
+    --alt-read-h1: 48px;
+    --alt-read-h2: 37px;
+    --alt-read-h3: 28px;
+    --alt-read-h4: 22px;
+    --alt-read-media: min(980px, 100%);
+  }
+}
+
 @media (min-width: 1800px) {
   body.single-post main {
+    --wp--style--global--content-size: 820px;
+    --alt-read-body: 23px;
+    --alt-read-h1: 50px;
+    --alt-read-h2: 39px;
+    --alt-read-h3: 29px;
+    --alt-read-h4: 23px;
     --alt-read-media: min(1040px, 100%);
   }
 }
@@ -278,14 +382,71 @@ body.single-post .wp-block-post-featured-image {
  * the headline 56px under the header, which still reads as a clear break.
  * Below 782px the same two numbers are already 0 and 30, so this leaves the
  * phone exactly as it is.
+ *
+ * The 28px on `main` is PADDING rather than margin, which is not cosmetic:
+ * section 2d paints `main` as the page's ground, and a margin would leave a
+ * 28px band of the old white between the site header and the ground. Padding
+ * and margin measure the same gap; only one of them is inside the paint.
  */
 @media (min-width: 782px) {
   body.single-post .wp-site-blocks > main {
-    margin-block-start: calc(var(--alt-read-unit) * 1.75) !important;
+    margin-block-start: 0 !important;
+    padding-block-start: calc(var(--alt-read-unit) * 1.75) !important;
   }
   body.single-post .wp-site-blocks > main
     > .wp-block-group.alignfull.has-global-padding {
     padding-block-start: calc(var(--alt-read-unit) * 1.75) !important;
+  }
+}
+
+/* ------------------------------- 2d. the frame, and the ground under it
+ *
+ * The owner's fourth note: "at 2000px the article is a thin strip floating in
+ * white". Two answers were on the table - cap the frame, or give the column a
+ * ground - and this commits to both halves of one answer, because a cap on its
+ * own changes nothing a reader can see. Everything on the page was ALREADY
+ * narrower than the frame, so clamping the frame to 1300px moves no pixel; it
+ * only becomes visible once the frame is a surface with an edge.
+ *
+ * So: `main` is the ground, the article group is a white card on it, capped at
+ * 1300px and centred. At 2000px that is a 1300px document with 350px of ground
+ * each side, instead of 820px of text with 590px of nothing each side. The
+ * card is the thing the eye now measures the column against, which is the same
+ * job the wide media does horizontally, done by the page frame.
+ *
+ * BELOW 1024px NONE OF THIS APPLIES. A phone has no screen to spend on a
+ * margin around the reading column, and a card there would be the stacked
+ * gutter defect with better manners. The page stays one edge-to-edge white
+ * surface exactly as it shipped, and a test asserts that at 375, 414 and 768.
+ *
+ * The card takes `margin-left/right: auto`, which also cancels core's
+ * `.has-global-padding > .alignfull { margin-inline: -50px }`. That is
+ * deliberate: the negative margin exists to let a full-bleed child escape the
+ * parent's gutter, and a capped card is the opposite intent. `.entry-content`
+ * inside it still carries its own -50/+50 pair, so the text column is
+ * unaffected and only the card's own edges move.
+ */
+@media (min-width: 1024px) {
+  body.single-post .wp-site-blocks > main {
+    background-color: var(--alt-read-ground) !important;
+    padding-block-end: calc(var(--alt-read-unit) * 3) !important;
+  }
+  body.single-post .wp-site-blocks > main
+    > .wp-block-group.alignfull.has-global-padding {
+    max-width: var(--alt-read-frame) !important;
+    /* The group carries 50px of global padding and the site does not set
+       box-sizing above 1024px, so a content-box cap of 1300px renders a
+       1400px card. The cap has to mean the card, not the card's contents. */
+    box-sizing: border-box !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    background-color: #ffffff !important;
+    border-radius: 14px !important;
+    /* Two shadows, both nearly invisible: a 1px seat so the card has an edge
+       even where the ground is pale, and a wide soft one so it reads as
+       resting on the page rather than cut out of it. No image, no asset. */
+    box-shadow: 0 1px 2px rgba(20, 23, 26, 0.05),
+                0 10px 34px rgba(20, 23, 26, 0.055) !important;
   }
 }
 
@@ -334,10 +495,25 @@ body.single-post .entry-content > p:first-of-type {
 }
 
 /* ---------------------------------------------------------- 4. the headings
- * A scale that steps: 40 / 30 / 24 / 20 over a 20px body on desktop, which is
- * 2.00x, 1.50x, 1.20x and 1.00x. The site shipped 47px over a 16.8px body with
+ * A scale that steps: 44 / 34 / 26 / 20 over a 20px body on desktop, which is
+ * 2.20x, 1.70x, 1.30x and 1.00x. The site shipped 47px over a 16.8px body with
  * the next stop at 23.2px, so h1 was 2.8x the text and 2.0x the section
  * heading under it. That gap is most of why it did not read as long-form.
+ *
+ * PASS THREE RAISED THE MIDDLE OF THE SCALE, NOT THE TOP. 2.20.61 shipped
+ * 40 / 30 / 24, and the owner's third note was that the page read as one flat
+ * block. h2 at 30px over a 20px body is 1.50x - large enough to be a heading
+ * and not large enough to be a SECTION - so the step from h2 down to the text
+ * is what moved: 1.50x to 1.70x, while every neighbouring ratio stays inside
+ * the 1.05-1.45 band the test holds. The h1 came up with it only enough to
+ * keep leading the h2; it is still under 2.25x the body, which is the ceiling
+ * that stops a headline detaching from the article under it.
+ *
+ * SIZE IS HALF OF IT AND SPACE IS THE OTHER HALF, and they are not
+ * interchangeable. Size says "this is a heading". Space says "a section
+ * begins here", and that is the one a reader gets from a scroll without
+ * reading a word. The room above an h2 goes from 48px to 80px, expressed as
+ * --alt-read-h2-air units so the phone can take four instead of five.
  */
 body.single-post .wp-block-post-title,
 body.single-post h1.wp-block-post-title {
@@ -360,7 +536,7 @@ body.single-post .wp-block-post-content h2 {
   font-weight: 700 !important;
   letter-spacing: -0.018em !important;
   color: var(--alt-read-ink-strong) !important;
-  margin-block-start: calc(var(--alt-read-unit) * 3) !important;
+  margin-block-start: calc(var(--alt-read-unit) * var(--alt-read-h2-air)) !important;
   margin-block-end: calc(var(--alt-read-unit) * 0.9) !important;
   /* The site draws a 2px #eef3ee rule under every h2. At this scale the space
      above already says "new section" and the rule only adds noise. */
@@ -377,7 +553,7 @@ body.single-post .wp-block-post-content h3 {
   font-weight: 700 !important;
   letter-spacing: -0.014em !important;
   color: var(--alt-read-ink-strong) !important;
-  margin-block-start: calc(var(--alt-read-unit) * 2.2) !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2.9) !important;
   margin-block-end: calc(var(--alt-read-unit) * 0.55) !important;
   text-wrap: balance;
 }
@@ -551,9 +727,27 @@ body.single-post .entry-content a:where(:not(.wp-element-button)):focus-visible 
 
 /* -------------------------------------------- 7. the table of contents
  * easy-table-of-contents ships its own screen.min.css. This does not fight it,
- * it dresses it: a quiet sans-serif aside inside the reading column, which is
- * what stops it competing with the article's own headings now that those are
- * 30px.
+ * it dresses it.
+ *
+ * PASS THREE: IT READ AS A PLUGIN WIDGET, AND TWO OF THE THREE REASONS WERE
+ * SHIPPED BY 2.20.61. The owner's second note. What made it a widget was not
+ * the rule above it, it was the TYPE and the COLUMNS: 16px grey sans under a
+ * 21px serif is four sizes down from the prose it indexes, and setting it in
+ * two columns is a layout no article uses and every sidebar module does.
+ *
+ * Both are reversed here, and the two-column decision is reversed at its
+ * cause rather than overruled. Two columns existed to halve a 525px slab, and
+ * the slab existed because every link carried a 44px tap floor at every width.
+ * A desktop pointer does not need a 44px row. The floor is now scoped to
+ * 781px and below, where it is a real requirement, and above it the links set
+ * on their own leading - one column, about 380px for eleven entries, which is
+ * shorter than the two-column block it replaces was tall plus the gap it left.
+ *
+ * The links are set in the ARTICLE'S OWN SERIF at three pixels under the body
+ * size. That is the whole "article-shaped" instruction taken literally: these
+ * strings are the article's headings quoted back to the reader, so they are
+ * set in the face the article is set in. The label above them stays sans,
+ * because it is the one string on the block that is not the article's words.
  *
  * IT IS NO LONGER A BOX, AND THAT IS THE POINT. It shipped with a 1px border
  * on all four sides, and on a 2000px screen those two vertical edges are
@@ -594,20 +788,23 @@ body.single-post .entry-content #ez-toc-container {
 body.single-post .entry-content .ez-toc-title-container,
 body.single-post .entry-content .ez-toc-title {
   font-family: var(--alt-read-sans) !important;
-  font-size: 13px !important;
+  /* 15px, sentence case, no tracking. 13px uppercase letterspaced grey is the
+     house style of every plugin module ever shipped, and it was announcing
+     this block as one. */
+  font-size: 15px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  color: var(--alt-read-ink-soft) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--alt-read-ink-strong) !important;
 }
 
 body.single-post .entry-content .ez-toc-list,
 body.single-post .entry-content nav.ez-toc-nav ul,
 body.single-post .entry-content #ez-toc-container ul {
-  font-family: var(--alt-read-sans) !important;
-  font-size: 16px !important;
-  line-height: 1.45 !important;
-  margin-block-start: 0.5rem !important;
+  font-family: var(--alt-read-serif) !important;
+  font-size: calc(var(--alt-read-body) - 3px) !important;
+  line-height: 1.5 !important;
+  margin-block-start: 0.55rem !important;
   margin-block-end: 0 !important;
   padding-inline-start: 0 !important;
 }
@@ -619,15 +816,27 @@ body.single-post .entry-content .ez-toc-list li {
 
 body.single-post .entry-content #ez-toc-container a,
 body.single-post .entry-content .ez-toc-list a {
-  font-family: var(--alt-read-sans) !important;
-  font-size: 16px !important;
+  font-family: var(--alt-read-serif) !important;
+  font-size: calc(var(--alt-read-body) - 3px) !important;
+  line-height: 1.5 !important;
   color: var(--alt-read-ink) !important;
   text-decoration: none !important;
   display: block;
-  /* A nav list is not a sentence, so the 44px floor applies to it in full. */
-  min-height: 44px;
-  display: flex;
-  align-items: center;
+  padding-block: 0.2em;
+}
+
+/* A nav list is not a sentence, so the 44px floor applies to it in full - on
+ * a touch screen. It is scoped here rather than applied at every width
+ * because that floor, applied to eleven links on a desktop, is what made the
+ * block 525px tall and sent 2.20.61 looking for a second column to hide the
+ * height in. Fix the cause, delete the workaround. */
+@media (max-width: 781px) {
+  body.single-post .entry-content #ez-toc-container a,
+  body.single-post .entry-content .ez-toc-list a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
 }
 
 body.single-post .entry-content #ez-toc-container a:hover,
@@ -635,22 +844,17 @@ body.single-post .entry-content .ez-toc-list a:hover {
   text-decoration: underline !important;
 }
 
-/* Eleven links at the 44px tap floor is a 525px slab, taller than the hero
-   image, in the middle of the opening screen. Two columns halve that and give
-   the page a third texture next to the wide media and the narrow text. Only
-   where there is room: below 1100px it stays a single list, because two
-   columns of 300px is a worse read than one of 645px. `break-inside: avoid`
-   keeps a heading and its sub-items together when a post has nesting. */
-@media (min-width: 1100px) {
-  body.single-post .entry-content #ez-toc-container > nav > ul,
-  body.single-post .entry-content nav.ez-toc-nav > ul.ez-toc-list {
-    columns: 2 !important;
-    column-gap: 2.5rem !important;
-  }
-  body.single-post .entry-content #ez-toc-container > nav > ul > li,
-  body.single-post .entry-content nav.ez-toc-nav > ul.ez-toc-list > li {
-    break-inside: avoid;
-  }
+/* ONE COLUMN AT EVERY WIDTH. 2.20.61 set this in two above 1100px to halve a
+   525px slab; the slab is gone now that the 44px floor is scoped to touch, and
+   what two columns bought instead was the single most module-looking thing on
+   the page. The declaration is written out rather than deleted because the
+   easy-table-of-contents stylesheet is not ours and a future version of it
+   could arrive with columns of its own. */
+body.single-post .entry-content #ez-toc-container > nav > ul,
+body.single-post .entry-content nav.ez-toc-nav > ul.ez-toc-list,
+body.single-post .entry-content #ez-toc-container ul.ez-toc-list {
+  columns: auto !important;
+  column-count: auto !important;
 }
 
 /* --------------------------------------------- 8. the inline email capture

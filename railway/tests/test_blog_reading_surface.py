@@ -88,6 +88,43 @@ TAP_MIN = 44.0
 DESKTOP_CPL = (60.0, 78.0)
 PHONE_CPL = (36.0, 48.0)
 
+# PASS THREE, 2026-08-15. The owner read the 2.20.61 page and named four things.
+# Each number below is one of them, stated as a threshold so the stylesheet
+# cannot drift back under it.
+#
+#   1. The text was starved beside its own illustration: 700px of text against
+#      a 1040px image at 2000px, a ratio of 1.49. Characters per line is still
+#      the constraint, so the measure only widens with the type, and the media
+#      comes back toward it rather than the text stretching to meet it.
+MEASURE_FLOOR_AT_2000 = 800.0   # px of text on the largest screen measured
+MEASURE_CEILING = 860.0         # px, past which no type size rescues the line
+MEDIA_TO_TEXT_MAX = 1.35        # the image may lead the text, not leave it
+#
+#   2/3. Headings read as body text in bold. h2 was 30px over a 20px body
+#      (1.50x) with 48px above it, on a page whose sections have to announce
+#      themselves from a scroll.
+# Two bars, not one, and the split is a design position rather than a dodge.
+# On a 375px screen a section heading is the full width of the reader's view
+# with nothing beside it; inside an 820px column on a 2000px screen it is a
+# short line in a lot of white and needs the size to register. Raising the
+# phone h2 to 1.60x would also drag the h1 up with it (the step ratios below
+# forbid them converging), and the reference post's 57-character headline
+# wraps to a fourth line above 32px. Mobile wins that trade.
+H2_TO_BODY_MIN = 1.60           # at GROUND_FROM and above
+H2_TO_BODY_MIN_PHONE = 1.45     # below it
+H2_AIR_IN_LINES = 2.0           # space above an h2, in body line-heights
+#
+#   4. At 2000px the article was a thin strip in white. The frame is capped and
+#      the reading column is given a ground to sit on.
+FRAME_CEILING = 1320.0
+GROUND_FROM = 1024              # below this the page stays edge-to-edge white
+#
+#   2 (again). The contents box read as a plugin widget: two columns of 16px
+#      grey sans under a rule. One column, on the article's own face, at a size
+#      that belongs to the body it indexes.
+TOC_BODY_GAP_MAX = 4.0          # px the contents may sit under the body size
+TOC_FLOOR = 16.0                # px, and never smaller than this
+
 
 # ----------------------------------------------------------------- fixture
 
@@ -370,6 +407,27 @@ MEASURE_JS = r"""
       const ul = document.querySelector('#ez-toc-container nav > ul');
       return ul ? getComputedStyle(ul).columnCount : null;
     })(),
+    // The contents as TYPE rather than as a box: a nav set four sizes under
+    // the prose it indexes is a widget however it is framed.
+    tocType: (() => {
+      const a = document.querySelector('#ez-toc-container a.ez-toc-link');
+      if (!a) return null;
+      const cs = getComputedStyle(a);
+      return {fs: parseFloat(cs.fontSize), ff: cs.fontFamily, color: cs.color};
+    })(),
+    // The page frame, and whether the reading column sits on anything. `main`
+    // is the full-width band; the group inside it is the article itself.
+    frame: (() => {
+      const g = document.querySelector('.wp-site-blocks > main > .wp-block-group');
+      if (!g) return null;
+      const r = g.getBoundingClientRect(), cs = getComputedStyle(g);
+      return {x: +r.x.toFixed(1), w: +r.width.toFixed(1),
+              bg: cs.backgroundColor};
+    })(),
+    ground: (() => {
+      const m = document.querySelector('.wp-site-blocks > main');
+      return m ? getComputedStyle(m).backgroundColor : null;
+    })(),
     tocLinkX: (() => {
       const a = document.querySelector('#ez-toc-container a.ez-toc-link');
       return a ? +a.getBoundingClientRect().x.toFixed(1) : null;
@@ -501,8 +559,13 @@ class TheTypeIsSizedForReading(ChromeBackedTest):
         bad = []
         for w in WIDTHS:
             p = self.m[w]["p"]
-            if not (19.0 <= p["fs"] <= 21.0):
-                bad.append("at %dpx the body is %.1fpx, outside 19-21"
+            # 19-23. The ceiling moved with pass three: the measure is only
+            # allowed to widen because the type widens with it, so a band that
+            # stopped at 21px would have forbidden the fix rather than guarded
+            # it. The thing being guarded is characters per line, and that is
+            # asserted separately at every width in TheMeasureIsComfortable.
+            if not (19.0 <= p["fs"] <= 23.0):
+                bad.append("at %dpx the body is %.1fpx, outside 19-23"
                            % (w, p["fs"]))
             ratio = p["lh"] / p["fs"]
             if not (1.5 <= ratio <= 1.75):
@@ -695,26 +758,53 @@ class ThePageHasMoreThanOneWidth(ChromeBackedTest):
                               d["clientWidth"]))
         self.assertEqual(bad, [], "\n".join(bad))
 
-    def test_the_measure_grows_once_and_stays_in_the_reading_band(self):
-        """645px is on the narrow side above 1400px, but characters per line
-        is the constraint, not pixels: the type grows with the column, so the
-        line a reader tracks back along is the same length it always was.
-        The band itself is asserted by TheMeasureIsComfortable at every width.
+    def test_the_measure_grows_with_the_type_and_stays_in_the_reading_band(self):
+        """PASS THREE. 700px of text beside a 1040px image looked starved, and
+        it was: the column had stopped growing two steps before the media did.
+
+        The measure now climbs to 820px at 2000px, and it is allowed to only
+        because the type climbs with it. Characters per line is the constraint,
+        never pixels - the band itself is asserted by TheMeasureIsComfortable
+        at every width, and this asserts the pixel move that band permits.
         """
         narrow, wide = self.m[1280], self.m[2000]
         self.assertGreater(
             wide["p"]["w"], narrow["p"]["w"] + 20.0,
             "the measure does not grow on a large screen: %.0fpx at 1280 and "
             "%.0fpx at 2000" % (narrow["p"]["w"], wide["p"]["w"]))
+        self.assertGreaterEqual(
+            wide["p"]["w"], MEASURE_FLOOR_AT_2000,
+            "at 2000px the text is %.0fpx wide against a %.0fpx image; that is "
+            "the starved column the owner saw, and %.0fpx is the floor"
+            % (wide["p"]["w"], wide["hero"]["w"] if wide["hero"] else -1,
+               MEASURE_FLOOR_AT_2000))
         self.assertLess(
-            wide["p"]["w"], 780.0,
+            wide["p"]["w"], MEASURE_CEILING,
             "the measure grew to %.0fpx, which is a long line whatever the "
             "type size" % wide["p"]["w"])
-        self.assertGreaterEqual(
+        self.assertGreater(
             wide["p"]["fs"], narrow["p"]["fs"],
             "the column grew but the type did not, so the line got longer to "
             "read: %.1fpx at 1280 and %.1fpx at 2000"
             % (narrow["p"]["fs"], wide["p"]["fs"]))
+
+    def test_the_media_leads_the_text_without_leaving_it(self):
+        """The other half of the same complaint. A hero the width of the
+        paragraph reads as another paragraph (asserted above); a hero half
+        again as wide reads as a different page. 1.49x was the second one."""
+        bad = []
+        for w in self.LARGE:
+            d = self.m[w]
+            if d["hero"] is None:
+                continue
+            ratio = d["hero"]["w"] / d["p"]["w"]
+            if ratio > MEDIA_TO_TEXT_MAX:
+                bad.append("at %dpx the featured image is %.2fx the text "
+                           "(%.0fpx against %.0fpx), over %.2f: the image is "
+                           "running away from the column it illustrates"
+                           % (w, ratio, d["hero"]["w"], d["p"]["w"],
+                              MEDIA_TO_TEXT_MAX))
+        self.assertEqual(bad, [], "\n".join(bad))
 
     def test_the_hero_image_is_never_upscaled(self):
         """The source is 1288px wide. A media step past that is a blurry hero,
@@ -788,19 +878,126 @@ class TheContentsIsNoLongerABox(ChromeBackedTest):
                            % (w, d["tocLinkX"], d["p"]["x"]))
         self.assertEqual(bad, [], "\n".join(bad))
 
-    def test_it_sets_in_two_columns_only_where_there_is_room(self):
-        for w in (375, 414, 768):
-            self.assertEqual(
-                self.m[w]["tocColumns"], "auto",
-                "at %dpx the contents is set in %s columns; a 300px column of "
-                "link text is a worse read than one full-width list"
+    def test_it_is_one_column_at_every_width(self):
+        """PASS THREE, and a reversal of 2.20.61. Two columns solved a height
+        problem the 44px tap floor created, and bought a widget: a reader on a
+        desktop pointer does not need a 44px row, and two columns of 300px grey
+        sans is the single most plugin-looking thing on the page. The height is
+        solved where it came from - the floor is now scoped to the phone - and
+        the list reads as one column of the article's own type."""
+        bad = [("at %dpx the contents is set in %s columns; an editorial "
+                "contents is one column at every width"
                 % (w, self.m[w]["tocColumns"]))
+               for w in WIDTHS if self.m[w]["tocColumns"] != "auto"]
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_it_is_set_at_a_size_that_belongs_to_the_body(self):
+        """16px sans under a 21px serif is a widget's type, not an article's.
+        The gap closes and the face is the reading face, because these strings
+        are the article's own headings quoted back."""
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            t = d["tocType"]
+            if t is None:
+                bad.append("at %dpx there are no contents links to measure" % w)
+                continue
+            gap = d["p"]["fs"] - t["fs"]
+            if gap > TOC_BODY_GAP_MAX:
+                bad.append("at %dpx the contents is %.0fpx against %.0fpx of "
+                           "body text, %.0fpx under it (max %.0f)"
+                           % (w, t["fs"], d["p"]["fs"], gap, TOC_BODY_GAP_MAX))
+            if t["fs"] < TOC_FLOOR:
+                bad.append("at %dpx the contents is %.0fpx, under the %.0fpx "
+                           "floor" % (w, t["fs"], TOC_FLOOR))
+            if "Vollkorn" not in t["ff"]:
+                bad.append("at %dpx the contents font stack is %r, which is "
+                           "not the article's reading face" % (w, t["ff"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+
+class TheHeadingsAnnounceASection(ChromeBackedTest):
+    """PASS THREE. "Headings do not stand out enough" - h2 was 30px over a
+    20px body, 1.50x, with 48px above it. At that ratio a section heading is
+    body text in bold, and a 6000px article reads as one flat block.
+
+    Two numbers do the work, and they are different numbers: SIZE says this is
+    a heading, SPACE says a section begins here. The scale still steps rather
+    than leaps - TheTypeIsSizedForReading holds the 1.05-1.45 ratios between
+    each level and the 2.25x ceiling on the h1, and both suites must pass.
+    """
+
+    def test_an_h2_is_materially_larger_than_the_text_under_it(self):
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            ratio = d["h2"]["fs"] / d["p"]["fs"]
+            floor = (H2_TO_BODY_MIN if w >= GROUND_FROM
+                     else H2_TO_BODY_MIN_PHONE)
+            if ratio < floor:
+                bad.append("at %dpx the H2 is %.0fpx over a %.0fpx body "
+                           "(%.2fx), under %.2f: it reads as bold body text"
+                           % (w, d["h2"]["fs"], d["p"]["fs"], ratio, floor))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_a_section_visibly_begins(self):
+        """Space above an h2, counted in body lines rather than pixels, so the
+        threshold means the same thing at 19px on a phone and 23px at 2000."""
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            above = float(d["h2"]["mts"].rstrip("px"))
+            lines = above / d["p"]["lh"]
+            if lines < H2_AIR_IN_LINES:
+                bad.append("at %dpx there are %.0fpx above the H2, %.2f body "
+                           "lines, under %.2f: the section does not begin, it "
+                           "continues" % (w, above, lines, H2_AIR_IN_LINES))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+
+class TheColumnSitsOnAGround(ChromeBackedTest):
+    """PASS THREE, the fourth thing. "At 2000px the article is a thin strip
+    floating in white." Two answers were offered and this commits to both
+    halves of one of them: the article frame is CAPPED so it cannot spread
+    further, and it is given a ground so the cap is something a reader can see.
+    A cap alone changes no pixel on a page that was already narrower than it.
+
+    Below 1024px there is no ground and no card. A phone has no room for a
+    margin around the reading column, and inventing one is the stacked-gutter
+    defect with a nicer name.
+    """
+
+    def test_the_frame_stops_spreading_on_a_very_wide_screen(self):
+        bad = [("at %dpx the article frame is %.0fpx wide, over the %.0fpx cap"
+                % (w, self.m[w]["frame"]["w"], FRAME_CEILING))
+               for w in (1600, 2000)
+               if self.m[w]["frame"] and self.m[w]["frame"]["w"] > FRAME_CEILING]
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_article_is_a_different_surface_from_the_page_around_it(self):
+        bad = []
         for w in (1280, 1600, 2000):
-            self.assertEqual(
-                self.m[w]["tocColumns"], "2",
-                "at %dpx the contents is set in %s columns; eleven links at "
-                "the 44px tap floor is a 525px slab on the opening screen"
-                % (w, self.m[w]["tocColumns"]))
+            d = self.m[w]
+            if d["frame"] is None or d["ground"] is None:
+                bad.append("at %dpx the frame or the ground is not measurable" % w)
+                continue
+            if d["frame"]["bg"] == d["ground"]:
+                bad.append("at %dpx the article and the page around it are the "
+                           "same colour (%s), so the column has no ground and "
+                           "the cap is invisible" % (w, d["ground"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_phone_keeps_one_edge_to_edge_surface(self):
+        bad = []
+        for w in (375, 414, 768):
+            d = self.m[w]
+            if d["frame"] is None or d["ground"] is None:
+                continue
+            if d["frame"]["bg"] != d["ground"]:
+                bad.append("at %dpx the article is on a card (%s on %s); below "
+                           "%dpx the page must stay one surface"
+                           % (w, d["frame"]["bg"], d["ground"], GROUND_FROM))
+        self.assertEqual(bad, [], "\n".join(bad))
 
 
 class TheLayoutHoldsWithoutTheThirdPartyBox(ChromeBackedTest):
