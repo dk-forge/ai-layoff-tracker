@@ -1700,7 +1700,7 @@
         setText('alt-stat-all-sub', whenAnnounced);
         // AI-attributed is the VERIFIED subset; announced-AI is the ANNOUNCED
         // subset. Each card says which parent number it belongs to.
-        var aiJ = (t.ai_verified_jobs != null) ? t.ai_verified_jobs : t.ai_jobs;
+        var aiJ = aiVerifiedJobs(t);
         setText('alt-stat-ai', fmt(aiJ));
         setText('alt-hero-ai', fmt(aiJ));
         // The hero's second tier (owner decision 2026-08-14): the
@@ -1743,9 +1743,7 @@
         setText('alt-stat-ai-broad-share-line', aiFiltered
             ? 'Equals the specific total in this filtered view: the broad lens can only widen an UNfiltered set. Clear the AI filter to see it.'
             : (shareB ? shareB + ' of all cuts in this view have an AI link' : ''));
-        var aiAnnJ = (t.ai_announced_jobs != null)
-            ? t.ai_announced_jobs
-            : Math.max(0, (t.ai_jobs || 0) - aiJ);
+        var aiAnnJ = aiAnnouncedJobs(t);
         setText('alt-stat-ai-announced', fmt(aiAnnJ));
         setText('alt-stat-ai-announced-sub', whenAnnounced);
         // Strict AI total = verified + announced (these DO add up; the broad
@@ -2660,6 +2658,43 @@
         });
     }
 
+    /*
+      THE ONE DEFINITION OF A MONTH'S AI NUMBERS.
+
+      `ai_jobs` is verified PLUS announced. Every AI surface here draws the two
+      APART: a verified line or card, and an announced band or card beside it.
+      So `ai_jobs` is the value nothing plots, and reading it is always a bug.
+
+      Until 2.20.66 the cumulative chart SELECTED and STARTED on `ai_jobs` and
+      then DREW the verified value, which is the defect these two functions
+      exist to make unrepeatable. Live on /aggregate?from=2024-01-01: January
+      2024 carries ai_jobs 8,000, ai_verified_jobs 0, ai_announced_jobs 8,000,
+      so it passed the gate, became the start of the series, and drew the
+      verified trend beginning on a flat zero point.
+
+      There were five hand-written copies of these two accessors at five call
+      sites (renderStats twice, renderCompareAiShare, renderAiShare,
+      renderCompareAiCumulative, renderAiCumulative). Two copies of one rule
+      drifting apart is this repo's recurring defect, so these are the
+      definitions and there are no others: the gate, the start scan and every
+      plot site read them.
+
+      The announced fallback is `ai_jobs - verified`, not `|| 0`, because that
+      is what renderStats has always used for the announced card and a payload
+      old enough to lack the split must not report a month as having no
+      announced plans when it plainly has some.
+    */
+    function aiVerifiedJobs(s) {
+        if (!s) return 0;
+        return (s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0);
+    }
+    function aiAnnouncedJobs(s) {
+        if (!s) return 0;
+        return (s.ai_announced_jobs != null)
+            ? s.ai_announced_jobs
+            : Math.max(0, (s.ai_jobs || 0) - aiVerifiedJobs(s));
+    }
+
     // Jobs in the charted data that have not taken effect yet: whole months
     // after this one (announced plans, future WARN effective dates), PLUS the
     // rest of the month the clock is inside. That second part used to be
@@ -3521,7 +3556,7 @@
             if (seq !== CMP_SHARE_SEQ) return;
             var share = function (srow) {
                 var v = (srow.verified_jobs != null) ? srow.verified_jobs : srow.jobs;
-                var ai = (srow.ai_verified_jobs != null) ? srow.ai_verified_jobs : (srow.ai_jobs || 0);
+                var ai = aiVerifiedJobs(srow);
                 return v > 0 ? Math.round(1000 * ai / v) / 10 : null;
             };
             var labels, datasets;
@@ -3566,7 +3601,7 @@
         series = fillMonths(series);
         var pts = (series || []).map(function (s) {
             var v = (s.verified_jobs != null) ? s.verified_jobs : s.jobs;
-            var ai = (s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0);
+            var ai = aiVerifiedJobs(s);
             return { month: s.month, v: v > 0 ? Math.round(1000 * ai / v) / 10 : null };
         });
         if (!pts.some(function (p) { return p.v > 0; })) { clearChart('alt-chart-ai-share-trend'); return; }
@@ -3605,7 +3640,6 @@
             return apiGet('aggregate', params).then(function (a) { return toDateMonths((a && a.series) || []); });
         })).then(function (lists) {
             if (seq !== CMP_AI_SEQ) return;
-            var aiVal = function (s) { return (s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0); };
             var labels, datasets;
             var nowYearNum = new Date().getFullYear();
             var nowKey = pad2(new Date().getMonth() + 1);
@@ -3614,7 +3648,7 @@
                 labels = mm.map(function (m) { return monthLabel('2000-' + m).split(' ')[0]; });
                 datasets = cmp.values.map(function (yr, i) {
                     var by = {};
-                    lists[i].forEach(function (s) { by[s.month.slice(5)] = aiVal(s); });
+                    lists[i].forEach(function (s) { by[s.month.slice(5)] = aiVerifiedJobs(s); });
                     var run = 0;
                     return { label: String(yr),
                         data: mm.map(function (m) { if (parseInt(yr, 10) === nowYearNum && m > nowKey) return null; run += by[m] || 0; return run; }),
@@ -3622,12 +3656,12 @@
                 });
             } else {
                 var monthSet = {};
-                lists.forEach(function (l) { l.forEach(function (s) { if (aiVal(s) > 0) monthSet[s.month] = 1; }); });
+                lists.forEach(function (l) { l.forEach(function (s) { if (aiVerifiedJobs(s) > 0) monthSet[s.month] = 1; }); });
                 var months = Object.keys(monthSet).sort().filter(function (m) { return m <= nowYearNum + '-' + nowKey; });
                 labels = months.map(monthLabel);
                 datasets = cmp.values.map(function (c, i) {
                     var by = {};
-                    lists[i].forEach(function (s) { by[s.month] = aiVal(s); });
+                    lists[i].forEach(function (s) { by[s.month] = aiVerifiedJobs(s); });
                     var run = 0;
                     return { label: c, data: months.map(function (m) { run += by[m] || 0; return run; }),
                         borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: months.length <= 2 ? 4 : 0, pointHitRadius: 12, fill: false, tension: 0.25 };
@@ -3655,19 +3689,38 @@
         var cmpAi = compareSelections();
         if (cmpAi) { renderCompareAiCumulative(cmpAi); return; }
         series = fillMonths(series);
-        var ai = (series || []).filter(function (s) { return s.ai_jobs > 0; });
-        var range = document.getElementById('alt-cum-range');
-        if (range) range.textContent = ai.length
-            ? 'since ' + monthLabel(ai[0].month) : '';
-        if (!ai.length) { clearChart('alt-chart-ai-cumulative'); return; }
+        var rows = series || [];
         // Two labeled lines mirroring the stat cards: the verified subset and
         // the announced-plan subset accumulate separately, never summed.
-        var start = null;
-        (series || []).forEach(function (s, i) { if (start === null && s.ai_jobs > 0) start = i; });
-        var charted = (series || []).slice(start === null ? 0 : start);
+        //
+        // Both run over the WHOLE series and are sliced for display
+        // afterwards, so where the chart STARTS cannot change what any point
+        // on it SAYS. Accumulating from the window start instead would have
+        // moved the announced band down by every announced job that preceded
+        // the first verified month, which is a published number moving
+        // because a start index moved.
         var runV = 0, runA = 0;
-        var cumV = charted.map(function (s) { runV += (s.ai_verified_jobs != null) ? s.ai_verified_jobs : s.ai_jobs; return runV; });
-        var cumA = charted.map(function (s) { runA += s.ai_announced_jobs || 0; return runA; });
+        var cum = rows.map(function (s) {
+            runV += aiVerifiedJobs(s);
+            runA += aiAnnouncedJobs(s);
+            return { v: runV, a: runA };
+        });
+        // The gate is the value that gets DRAWN. The verified line begins at
+        // its own first month, not at the first month with any AI number of
+        // any kind. A view holding only announced plans still draws its band,
+        // beginning at the band's own first month, rather than vanishing.
+        var startV = null, startA = null;
+        rows.forEach(function (s, i) {
+            if (startV === null && aiVerifiedJobs(s) > 0) startV = i;
+            if (startA === null && aiAnnouncedJobs(s) > 0) startA = i;
+        });
+        var start = (startV !== null) ? startV : startA;
+        var range = document.getElementById('alt-cum-range');
+        if (range) range.textContent = (start === null) ? '' : 'since ' + monthLabel(rows[start].month);
+        if (start === null) { clearChart('alt-chart-ai-cumulative'); return; }
+        var charted = rows.slice(start);
+        var cumV = cum.slice(start).map(function (c) { return c.v; });
+        var cumA = cum.slice(start).map(function (c) { return c.a; });
         var options = cloneOptions();
         options.plugins.tooltip.callbacks = { label: function (ctx) { return (ctx.dataset.label || 'Cumulative AI-attributed') + ': ' + fmt(ctx.parsed.y); } };
         var dots = charted.length <= 2 ? 4 : 0;

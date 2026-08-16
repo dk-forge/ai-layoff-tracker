@@ -1,5 +1,59 @@
 # Tech Log
 
+## 2026-08-16 - the AI chart selected on one number and drew another (2.20.66)
+
+`/aggregate` reports three AI figures per month and `ai_jobs` is the sum of the
+other two: verified plus announced. The cumulative AI chart drew the two APART,
+a verified line with an announced band stacked on it, and then gated and
+started itself on `ai_jobs`. So a month whose AI cuts were only announced
+passed the gate, became the first point of the series, and opened the verified
+trend on a flat zero.
+
+**Measured on the live origin before touching anything.**
+`/aggregate?from=2024-01-01&to=2024-12-31` returns January 2024 as `ai_jobs`
+8,000, `ai_verified_jobs` **0**, `ai_announced_jobs` 8,000, and February as
+700/700/0. The chart's caption read *"since Jan 2024"* and its verified line
+began on a point with nothing verified behind it. It now reads *"since Feb
+2024"* and begins at 700. The default 2026 view was never affected - its first
+AI month is verified - and is unchanged to the point.
+
+**No published number moved, and that was a design constraint rather than a
+hope.** Both running totals are accumulated over the WHOLE series and sliced
+for display afterwards, so where the chart starts cannot change what any point
+on it says. Restarting the totals at the window would have been the obvious
+implementation and would have moved the announced band down by every announced
+job preceding the first verified month - in the 2024 view, by all 8,000 of
+them. `PlottedNumbersDoNotMove` checks every drawn point against the running
+total taken from the start of the series; it passes on the PRE-change tree too,
+which is the evidence that only the window moved.
+
+**The announced band stays, labelled as announced.** A view that holds only
+announced plans still draws its band, beginning at the band's own first month,
+because a gate that read the verified value and stopped there would have
+cleared the card and published "no AI cuts" over 8,000 announced ones.
+
+**One definition, five copies collapsed.** The accessor
+`(s.ai_verified_jobs != null) ? s.ai_verified_jobs : (s.ai_jobs || 0)` had been
+hand-written at four call sites and the announced one at a fifth
+(`renderStats` twice, `renderAiShare`, `renderCompareAiShare`,
+`renderCompareAiCumulative`, `renderAiCumulative`). Two copies of one rule
+drifting apart is this repo's recurring defect and the drift here was already
+real: the two cumulative renderers disagreed about their own gate, the compare
+path having quietly been correct. There are now exactly two definitions,
+`aiVerifiedJobs()` and `aiAnnouncedJobs()`, and a test fails if either split
+field is read anywhere else in `layoffs.js`.
+
+**Deliberately NOT changed:** the signal board's `ai_jobs` row
+(`layoffs.js:5469`, `:5516`). That surface publishes ONE number under
+"Explicitly AI-attributed" rather than drawing the two apart, so `ai_jobs` is
+the figure it means, and moving it would move a published number.
+
+**Tests:** `railway/tests/test_ai_chart_gate_matches_line.py`, 12 assertions
+through `jsrun.py` (the real renderer, in node, real live payloads as
+fixtures). 5 fail and 1 errors on the pre-change tree, on the actual months it
+draws: *"'Jan 2024' != 'Feb 2024' : the first month with any verified AI cuts
+is Feb 2024 (700); the chart starts on Jan 2024"*.
+
 ## 2026-08-16 - the bounce handler spoke a provider we no longer use (2.20.65)
 
 `/digest-webhook` verified a **Svix** signature and dispatched on **Resend**
