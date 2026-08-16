@@ -929,13 +929,69 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     if (!$totals || (int) ($totals['entries'] ?? 0) === 0) return null;
 
     $url = home_url('/ai-layoff-tracker/');
-    $jobs = number_format_i18n((int) ($totals['jobs'] ?? 0));
-    $entries = number_format_i18n((int) ($totals['entries'] ?? 0));
+    /*
+      WHICH TIER THIS SENTENCE COUNTS, and why it is now two sentences.
+
+      This read "{entries} verified entries totalling {jobs} job cuts across
+      {companies} companies", off `totals.entries` and `totals.jobs`. Both of
+      those are verified PLUS announced. Measured on 2026-08-16 over
+      2026-01-01..2026-08-15: jobs 971,479 against announced_jobs 463,348, so
+      the word "verified" sat on a figure that was 48% announced, and entries
+      3,384 against announced_entries 604. The tracker page's hero publishes
+      `jobs - announced_jobs` under the label "verified job cuts", so the
+      digest and the page it links to printed different quantities under the
+      same word, and the digest's was the larger one.
+
+      The fix is the shape the hero already uses (owner decision 2026-08-14):
+      the VERIFIED figure leads, the announced-inclusive total follows as a
+      labelled companion, and alt_announced_tier_sentence() says what the
+      second tier is, verbatim and shared with page-tracker, page-press and
+      page-report. So a reader meeting an announcement estimate elsewhere
+      meets both tiers here rather than neither.
+
+      COMPANIES MOVED TO THE SECOND SENTENCE, and that is not cosmetic.
+      `companies` is COUNT(DISTINCT company_key) over the whole filtered set
+      (db.php), with no announced/verified split shipped, so it is an
+      announced-INCLUSIVE count. Leaving it in the first sentence would put a
+      two-tier number inside a clause the word "verified" governs, which is
+      the mixed-scope defect this file keeps logging. Do not move it back
+      without a verified_companies field to move it with.
+
+      When the window holds no announced rows the two tiers are the same
+      number, so the companion is DROPPED and companies rejoins the first
+      sentence: the same figure twice under two labels is noise, which is
+      why the hero hides its own wrapper on that condition.
+    */
+    $all_jobs = (int) ($totals['jobs'] ?? 0);
+    $all_entries = (int) ($totals['entries'] ?? 0);
+    $ann_jobs = (int) ($totals['announced_jobs'] ?? 0);
+    $ann_entries = (int) ($totals['announced_entries'] ?? 0);
+    $ver_jobs = max(0, $all_jobs - $ann_jobs);
+    $ver_entries = max(0, $all_entries - $ann_entries);
     $companies = number_format_i18n((int) ($totals['companies'] ?? 0));
+    $has_announced = ($ann_jobs > 0 || $ann_entries > 0);
+
+    if ($has_announced) {
+        $lede = number_format_i18n($ver_entries) . ' verified entries totalling '
+              . number_format_i18n($ver_jobs) . ' job cuts in this period.';
+        $tier = 'Including announced cuts, ' . number_format_i18n($all_entries) . ' entries and '
+              . number_format_i18n($all_jobs) . ' job cuts across ' . $companies . ' companies.';
+        if (function_exists('alt_announced_tier_sentence')) {
+            $tier .= ' ' . alt_announced_tier_sentence();
+        }
+    } else {
+        $lede = number_format_i18n($ver_entries) . ' verified entries totalling '
+              . number_format_i18n($ver_jobs) . ' job cuts across ' . $companies
+              . ' companies in this period.';
+        $tier = '';
+    }
     $html = '<h2 style="font-size:16px;margin:24px 0 8px;">AI Layoff Tracker</h2>'
-          . '<p style="margin:0 0 8px;">' . esc_html($entries) . ' verified entries totalling '
-          . esc_html($jobs) . ' job cuts across ' . esc_html($companies) . ' companies in this period.</p>';
-    $text = "AI Layoff Tracker\n{$entries} verified entries totalling {$jobs} job cuts across {$companies} companies in this period.\n";
+          . '<p style="margin:0 0 8px;">' . esc_html($lede) . '</p>';
+    $text = "AI Layoff Tracker\n{$lede}\n";
+    if ($tier !== '') {
+        $html .= '<p style="margin:0 0 8px;">' . esc_html($tier) . '</p>';
+        $text .= $tier . "\n";
+    }
     $leaders = array_slice(is_array($data['leaders'] ?? null) ? $data['leaders'] : array(), 0, 5);
     if ($leaders) {
         $html .= '<ul style="margin:0 0 8px;padding-left:20px;">';
@@ -976,6 +1032,15 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       The year comes from the period's own end date, not from the clock, so a
       run that composes a window is never labelled with a different year. The
       basis matches the section above for the same reason it is named there.
+
+      THE TIER MATCHES THE SECTION ABOVE TOO, and has to keep matching. This
+      line read `totals.jobs` on purpose, because the headline above read the
+      same field: two figures from one quantity agree by construction. That
+      headline now prints the VERIFIED tier, so this line prints
+      `jobs - announced_jobs` and says "verified", and the property is
+      preserved rather than broken. A reader who watches the period figure
+      grow into the year-to-date figure is watching one series. If either
+      figure ever changes tier again, change BOTH in the same edit.
     */
     $year = substr((string) $to, 0, 4);
     if (preg_match('/^\d{4}$/', $year)) {
@@ -991,9 +1056,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             $ytd_data = $ytd_res->get_data();
             $ytd_totals = is_array($ytd_data) ? ($ytd_data['totals'] ?? null) : null;
             if (!is_array($ytd_totals) && is_object($ytd_totals)) $ytd_totals = (array) $ytd_totals;
-            $ytd_jobs = is_array($ytd_totals) ? (int) ($ytd_totals['jobs'] ?? 0) : 0;
+            $ytd_all = is_array($ytd_totals) ? (int) ($ytd_totals['jobs'] ?? 0) : 0;
+            $ytd_ann = is_array($ytd_totals) ? (int) ($ytd_totals['announced_jobs'] ?? 0) : 0;
+            $ytd_jobs = max(0, $ytd_all - $ytd_ann);
             if ($ytd_jobs > 0) {
-                $ytd_line = $year . ' so far: ' . number_format_i18n($ytd_jobs) . ' job cuts.';
+                $ytd_line = $year . ' so far: ' . number_format_i18n($ytd_jobs) . ' verified job cuts.';
                 $html .= '<p style="margin:0 0 8px;">' . esc_html($ytd_line) . '</p>';
                 $text .= $ytd_line . "\n";
             }

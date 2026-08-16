@@ -1,5 +1,67 @@
 # Tech Log
 
+## 2026-08-16 - the digest called a figure "verified" that was half announced, and disagreed with the page it links to (2.20.71)
+
+`alt_digest_compose_layoff` opened every layoff section with "{entries}
+verified entries totalling {jobs} job cuts across {companies} companies in
+this period", reading `totals.entries` and `totals.jobs` off
+`/layoffs/v1/aggregate`. Both of those fields are verified PLUS announced.
+
+Measured live on 2026-08-16 over 2026-01-01..2026-08-15: `jobs` 971,479
+against `announced_jobs` 463,348, so the verified half was 508,131 and the
+word "verified" sat on a number that was 48% announced plans. `entries` was
+3,384 against `announced_entries` 604.
+
+The reason this is worse than a loose adjective is the second surface. The
+tracker page's hero publishes `jobs - announced_jobs` under the exact label
+"verified job cuts", per the owner decision of 2026-08-14 that the verified
+figure leads everywhere. The digest links to that page. A reader who opened
+it found the same word over a number roughly half the size, with nothing on
+either surface explaining the gap.
+
+**Landed: the digest prints the verified tier and keeps the word**, in the
+shape `page-tracker.php` already uses. The lede is verified entries and
+verified jobs. A companion sentence states the announced-inclusive totals,
+followed by `alt_announced_tier_sentence()` verbatim, the same string the
+tracker, press and report pages render, so four surfaces cannot drift one
+edit at a time.
+
+**`companies` moved into the companion sentence, and that is the load-bearing
+detail.** `totals.companies` is `COUNT(DISTINCT company_key)` over the whole
+filtered set (db.php), with no announced/verified split shipped in the
+payload. It is therefore an announced-INCLUSIVE count. Printing it inside a
+clause the word "verified" governs would have swapped a wrong adjective for a
+mixed-scope sentence, which is the same defect wearing better clothes. It now
+sits with the tier it actually counts. Moving it back requires shipping a
+`verified_companies` field to move it back with; the comment in the composer
+says so.
+
+When a window holds no announced rows the two tiers are one number, so the
+companion is dropped entirely and `companies` rejoins the lede, where it is
+then correct. The hero hides its own wrapper on the same condition and for
+the same reason: the same figure twice under two labels is noise.
+
+**The year-to-date line moved with it.** That line was added in 2.20.68
+reading `totals.jobs` *on purpose*, because the headline above it read the
+same field, so the two agreed by construction. It now reads
+`jobs - announced_jobs` and says "verified job cuts", which preserves that
+property rather than breaking it. Both figures are one series and a reader
+watches the period total grow into the year total. Whichever tier they print,
+they print the same one.
+
+Not touched, and worth naming: that line says "so far" while counting the
+whole calendar window, which for an effective-date basis includes notices
+already filed for later in the year. `to_date_jobs` / `to_date_announced_jobs`
+exist for exactly that caption. It is a separate wording defect from this one
+and is not fixed here.
+
+Verified: `style_check.py` 0 findings (email page grade 6.4), 187 digest and
+stage-tier tests green, full suite 2,401 tests with only the 7 pre-existing
+local import errors (`requests`, `urllib3` absent on this machine; CI installs
+from the lock). Digest workflow run `dry_run=1 freq=weekly preview=1` composed
+the section against live WordPress with both tiers present in the HTML and the
+plain-text parts.
+
 ## 2026-08-16 - the digest printed no dates, and an opt-in allowlist had been quietly deleting the country block (2.20.68)
 
 Three content additions the owner asked for, all of which had to happen in
