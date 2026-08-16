@@ -44,6 +44,40 @@
  * on a constrained child is the bug at the top of this comment. Set
  * margin-block-start / margin-block-end and leave margin-inline alone (or set
  * it to auto explicitly).
+ *
+ * ------------------------------------------------------------------------
+ * THE THIRD DEFECT, ADDED 2026-08-15: THE PAGE HAD EXACTLY ONE WIDTH.
+ *
+ * Measured at 2000px on the live post at ver=2.20.60: the paragraph sat at
+ * x=677.5 and was 645px wide, correctly centred, 677.5px of air each side. So
+ * was the h1. So was the featured image. So was the table of contents. So was
+ * every signup box. A 6317px-tall article in which every single element is
+ * clamped to the same 645px reads, zoomed out, as one narrow ribbon down the
+ * middle of a very wide screen, and the owner described it exactly that way.
+ *
+ * Nothing was misaligned. There was simply no second width for the eye to
+ * measure the first against, so the column had no scale and the page had no
+ * rhythm. The answer is not a wider column - 645px at 20px is already the
+ * right measure - it is to stop the page being ONE column of one width:
+ *
+ *   --alt-read-media   media sits WIDER than the text. The featured image and
+ *                      any in-article figure run to 820px on a desktop and
+ *                      1040px on a very wide screen against a 645-700px
+ *                      measure. That contrast is what says "designed".
+ *   the measure        grows once, modestly, at 1400px: 645 -> 700px with the
+ *                      body at 21px. Characters per line is the constraint,
+ *                      not pixels, so the two move together and the measure
+ *                      stays inside the same reading band it always was.
+ *   the contents box   stops being a bordered box. Its 1px border was one of
+ *                      the vertical lines the ribbon was made of; it is now a
+ *                      quiet band ruled top and bottom (horizontal lines cut
+ *                      the ribbon, vertical ones draw it) and set in two
+ *                      columns on a wide screen, which is a third texture.
+ *
+ * Widths are expressed as `min(<cap>, 100%)`, never `calc(100vw - x)`: 100vw
+ * includes the classic scrollbar, so a vw-based cap overflows by ~15px on the
+ * narrow-desktop widths where it binds. 100% is the constrained child's own
+ * containing block, which is already the right number.
  */
 
 /* ------------------------------------------------------------------ scale */
@@ -60,6 +94,13 @@ body.single-post {
 
   /* Rhythm. One unit, everything is a multiple of it. */
   --alt-read-unit: 1rem;
+
+  /* The SECOND width. Media is deliberately wider than the measure on any
+     screen that has the room, and exactly the measure on one that does not.
+     `100%` here is the constrained child's containing block, i.e. the article
+     minus the theme's own 50px gutters, so the cap is the only thing that can
+     bind and nothing can overflow. */
+  --alt-read-media: min(820px, 100%);
 
   --alt-read-ink: #23272b;      /* body text */
   --alt-read-ink-strong: #14171a; /* headings */
@@ -80,6 +121,41 @@ body.single-post {
     --alt-read-h2: 24px;
     --alt-read-h3: 20px;
     --alt-read-h4: 18px;
+    /* A phone has one width and that is correct: a hero narrower or wider
+       than the 339px of text it introduces would only be a mistake. 100% is
+       the article's own box, which at 375 and 414 IS the measure. Between
+       about 684px and 781px the article is wider than the 645px measure and
+       the hero takes the extra: an image that runs to the gutters on a tablet
+       is the same idea as the desktop step, at the width that screen has. */
+    --alt-read-media: 100%;
+  }
+}
+
+/* The measure grows ONCE, and the type grows with it. 645px at 20px is about
+   67 characters in Vollkorn; 700px at 21px is about 69. The reading band is
+   unchanged, which is the point: the extra 55px buys presence on a large
+   screen without buying a longer line to track back along. Scoped to `main`
+   rather than `body` so the site header and footer keep the content-size they
+   were designed against. */
+@media (min-width: 1400px) {
+  body.single-post main {
+    --wp--style--global--content-size: 700px;
+    --alt-read-body: 21px;
+    --alt-read-h1: 42px;
+    --alt-read-h2: 31px;
+    --alt-read-h3: 25px;
+    --alt-read-h4: 21px;
+    --alt-read-media: min(960px, 100%);
+  }
+}
+
+/* At this width the article is a 700px column in the middle of a very large
+   screen, so the media step widens again rather than the text. 1040 against
+   700 is 1.49x: the eye reads two widths, which is one more than the page had
+   before this change. The source image is 1288px wide, so nothing upscales. */
+@media (min-width: 1800px) {
+  body.single-post main {
+    --alt-read-media: min(1040px, 100%);
   }
 }
 
@@ -99,10 +175,12 @@ body.single-post {
 }
 
 /* ------------------------------------------------ 2. the measure, and only
- * the measure. The theme's content-size is already 645px, which at 20px
- * Vollkorn is about 67 characters: the right answer, and nothing here changes
- * it on desktop. What this restores is the CENTRING that the heading rules
- * broke, for every block-level child of the article.
+ * the measure. The theme's content-size is 645px, which at 20px Vollkorn is
+ * about 67 characters: the right answer, and it is what this ships below
+ * 1400px. Above 1400px the token block above moves it to 700px at 21px, which
+ * is the same number of characters. What this section restores is the
+ * CENTRING that the heading rules broke, for every block-level child of the
+ * article.
  */
 body.single-post .entry-content
   > :where(:not(.alignfull):not(.alignleft):not(.alignright):not(.alignwide)) {
@@ -147,6 +225,68 @@ body.single-post .entry-content blockquote,
 body.single-post .entry-content pre,
 body.single-post .entry-content table {
   box-sizing: border-box;
+}
+
+/* -------------------------------------------- 2b. media steps OUTSIDE the
+ * measure. This is the single change that stops the page reading as one
+ * ribbon: the featured image and any in-article figure are noticeably wider
+ * than the paragraphs, so the column has something to be measured against.
+ *
+ * The featured image is NOT inside .entry-content - it is a sibling of the
+ * post title inside the article group - so it needs its own selector and gets
+ * no help from the entry-content rules above. Both selectors are scoped
+ * `body.single-post` and carry !important because the WPCode database sheet
+ * pins `max-width:100% !important` on several of these containers below
+ * 782px; 100% is the right answer there anyway, and the token says so.
+ */
+body.single-post .wp-block-post-featured-image,
+body.single-post .entry-content > figure,
+body.single-post .entry-content > .wp-block-image,
+body.single-post .entry-content > .wp-block-embed,
+body.single-post .entry-content > .wp-block-video {
+  max-width: var(--alt-read-media) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* A table is media by width and text by content: it may exceed the measure
+   when it needs to, but it still scrolls inside its own box rather than the
+   document (section 5 sets that). */
+body.single-post .entry-content > .wp-block-table,
+body.single-post .entry-content > figure.wp-block-table {
+  max-width: var(--alt-read-media) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+body.single-post .wp-block-post-featured-image img,
+body.single-post .entry-content > figure img {
+  width: 100%;
+  height: auto;
+}
+
+/* The hero earns a little more air under it than a mid-article figure, and
+   the theme's own 32px is not enough once the image is 1040px wide. */
+body.single-post .wp-block-post-featured-image {
+  margin-block-end: calc(var(--alt-read-unit) * 2.6) !important;
+}
+
+/* ----------------------------------------- 2c. the gap above the headline
+ * Measured live at 2000px: the site header ended at y=89 and the h1 began at
+ * y=229. 140px of nothing, from `main`'s 70px margin plus the article group's
+ * 70px padding, on a page whose first job is to start reading. 28 + 28 puts
+ * the headline 56px under the header, which still reads as a clear break.
+ * Below 782px the same two numbers are already 0 and 30, so this leaves the
+ * phone exactly as it is.
+ */
+@media (min-width: 782px) {
+  body.single-post .wp-site-blocks > main {
+    margin-block-start: calc(var(--alt-read-unit) * 1.75) !important;
+  }
+  body.single-post .wp-site-blocks > main
+    > .wp-block-group.alignfull.has-global-padding {
+    padding-block-start: calc(var(--alt-read-unit) * 1.75) !important;
+  }
 }
 
 /* ------------------------------------------------------------- 3. the body */
@@ -409,11 +549,22 @@ body.single-post .entry-content a:where(:not(.wp-element-button)):focus-visible 
   }
 }
 
-/* -------------------------------------------- 7. the table of contents box
+/* -------------------------------------------- 7. the table of contents
  * easy-table-of-contents ships its own screen.min.css. This does not fight it,
- * it dresses it: the box becomes a quiet sans-serif aside inside the reading
- * column, which is what stops it competing with the article's own headings now
- * that those are 30px.
+ * it dresses it: a quiet sans-serif aside inside the reading column, which is
+ * what stops it competing with the article's own headings now that those are
+ * 30px.
+ *
+ * IT IS NO LONGER A BOX, AND THAT IS THE POINT. It shipped with a 1px border
+ * on all four sides, and on a 2000px screen those two vertical edges are
+ * literally two of the lines that made the page read as a ribbon - one of the
+ * few elements on the page tall enough to draw a long one. It stays INLINE and
+ * it stays on the reading column, because a phone reader needs it in the flow
+ * and a floated aside would be a second column this layout has no room for.
+ * What changes is what it is made of: horizontal rules top and bottom, which
+ * cut across the column instead of running down it, no fill, and no side
+ * padding, so its links sit on the article's own left edge instead of 17.6px
+ * inside it.
  */
 body.single-post .entry-content div[class*="ez-toc-v"],
 body.single-post .entry-content #ez-toc-container {
@@ -421,12 +572,15 @@ body.single-post .entry-content #ez-toc-container {
   max-width: var(--wp--style--global--content-size, 645px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
-  margin-block-start: calc(var(--alt-read-unit) * 2) !important;
-  margin-block-end: calc(var(--alt-read-unit) * 2.4) !important;
-  background: #fafbfb !important;
-  border: 1px solid var(--alt-read-rule) !important;
-  border-radius: 8px !important;
-  padding: 0.9rem 1.1rem !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2.4) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 2.8) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-top: 1px solid var(--alt-read-rule) !important;
+  border-bottom: 1px solid var(--alt-read-rule) !important;
+  border-radius: 0 !important;
+  padding-block: 1rem !important;
+  padding-inline: 0 !important;
   box-shadow: none !important;
   /* easy-table-of-contents renders its container as a shrink-to-fit box, so
      `width: auto` alone leaves it narrower than the article and centred inside
@@ -479,6 +633,24 @@ body.single-post .entry-content .ez-toc-list a {
 body.single-post .entry-content #ez-toc-container a:hover,
 body.single-post .entry-content .ez-toc-list a:hover {
   text-decoration: underline !important;
+}
+
+/* Eleven links at the 44px tap floor is a 525px slab, taller than the hero
+   image, in the middle of the opening screen. Two columns halve that and give
+   the page a third texture next to the wide media and the narrow text. Only
+   where there is room: below 1100px it stays a single list, because two
+   columns of 300px is a worse read than one of 645px. `break-inside: avoid`
+   keeps a heading and its sub-items together when a post has nesting. */
+@media (min-width: 1100px) {
+  body.single-post .entry-content #ez-toc-container > nav > ul,
+  body.single-post .entry-content nav.ez-toc-nav > ul.ez-toc-list {
+    columns: 2 !important;
+    column-gap: 2.5rem !important;
+  }
+  body.single-post .entry-content #ez-toc-container > nav > ul > li,
+  body.single-post .entry-content nav.ez-toc-nav > ul.ez-toc-list > li {
+    break-inside: avoid;
+  }
 }
 
 /* --------------------------------------------- 8. the inline email capture

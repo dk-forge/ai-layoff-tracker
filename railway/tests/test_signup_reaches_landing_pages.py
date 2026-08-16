@@ -413,15 +413,25 @@ def blog_page_with_signup(with_capture=True):
     marker = "</div>\n      </div>\n    </div>\n  </main>"
     assert html.count("</div>") > 3
     # Append inside .entry-content, immediately before it closes.
-    idx = html.find('<h2 class="wp-block-heading" id="b">')
+    # Anchor on the LAST heading of the article rather than on one heading's
+    # id: the blog fixture's ids changed when it grew a real eleven-item
+    # contents list (2.20.61) and this assertion reddened seven tests in a
+    # file that has nothing to do with contents lists.
+    idx = html.rfind('<h2 class="wp-block-heading"')
     assert idx >= 0, "the blog fixture changed shape"
     close = html.find("</div>", html.find("</p>", idx))
     assert close >= 0
     html = html[:close] + block + html[close:]
     if not with_capture:
-        start = html.find('<div class="atr-capture">')
+        # Search the BODY only. `atr-capture-msg` also appears in the
+        # stylesheets in <head>, and matching that occurrence makes `end`
+        # smaller than `start`, which silently DUPLICATES the markup between
+        # them instead of deleting anything.
+        body_at = html.find("<body")
+        start = html.find('<div class="atr-capture">', body_at)
         assert start >= 0, "the blog fixture no longer carries .atr-capture"
-        end = html.find("</div>", html.find("atr-capture-msg")) + len("</div>")
+        end = html.find("</div>", html.find("atr-capture-msg", start)) + len("</div>")
+        assert end > start, "the .atr-capture removal found no closing tag"
         html = html[:start] + html[end:]
     return html.replace("</head>",
                         "<style>%s</style></head>" % contrast_audit.FREEZE_CSS)

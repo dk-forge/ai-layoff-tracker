@@ -75,8 +75,11 @@ CSS = PLUGIN / "assets/blog-reading.css"
 INCLUDE = PLUGIN / "includes/blog-typography.php"
 MAIN = PLUGIN / "ai-layoff-tracker.php"
 
-# Widths the brief names, plus 1280 for the desktop measure.
-WIDTHS = (375, 414, 768, 1280)
+# Widths the brief names, plus 1280 for the desktop measure and 1600/2000 for
+# the large screens where the owner saw "one column": the page shipped with a
+# single 645px width at every one of these, and nothing below 1400px can
+# demonstrate that, because nothing below 1400px has the room to.
+WIDTHS = (375, 414, 768, 1280, 1600, 2000)
 
 TAP_MIN = 44.0
 
@@ -107,6 +110,27 @@ body { margin: 0; font-family: Manrope, sans-serif; background: #fff; }
 :root :where(.is-layout-constrained) > :first-child { margin-block-start: 0; }
 h1, h2, h3, h4, h5, h6 { font-weight: 400; }
 a:where(:not(.wp-element-button)) { color: currentColor; }
+"""
+
+# The article's vertical frame, measured live at 2000px and at 375px on
+# 2026-08-15: `main` carries a 70px top margin and the article group a 70px top
+# padding on a desktop (30px below 782px), which is the 140px hole between the
+# site header and the headline. The site header itself is 89.2px tall at 2000px
+# and 64px on a phone; the fixture reproduces it as a fixed block so the gap is
+# a measurable number rather than a judgement.
+SITE_FRAME = """
+header.wp-block-template-part { height: 89.2px; background: #fff; border-bottom: 1px solid #eee; }
+.wp-site-blocks > main { margin-top: 70px; }
+main > .wp-block-group.alignfull.has-global-padding { padding-top: 70px; padding-bottom: 70px; }
+.wp-block-post-title { margin-bottom: 22.4px; }
+.wp-block-post-featured-image { margin-bottom: 32px; }
+.wp-block-post-featured-image img { width: 100%; height: auto; display: block; }
+img { max-width: 100%; height: auto; }
+@media (max-width: 781px) {
+  header.wp-block-template-part { height: 64px; }
+  .wp-site-blocks > main { margin-top: 0; }
+  main > .wp-block-group.alignfull.has-global-padding { padding-top: 30px; padding-bottom: 30px; }
+}
 """
 
 # `main` carries 18px rather than the root padding BELOW 782px on this site.
@@ -178,13 +202,17 @@ _PARA = ("Most recruiters surveyed on the topic agree that length matters far le
          "to a rule somebody repeated at a careers fair. What follows is the test "
          "they actually apply when a document lands in the pile on a Tuesday.")
 
-BODY = """
-<div class="wp-site-blocks">
-  <main id="wp--skip-link--target" class="wp-block-group has-global-padding is-layout-constrained">
-    <div class="wp-block-group alignfull has-global-padding is-layout-constrained">
-      <h1 class="wp-block-post-title">How Long Should a Resume Be? Recruiters Answer the Debate</h1>
-      <div class="entry-content alignfull wp-block-post-content has-global-padding is-layout-constrained">
-        <p>%(p)s</p>
+# The featured image, at the live post's real intrinsic size (1288x943), drawn
+# as an inline SVG so the fixture stays offline and contacts no host. Its
+# intrinsic width is what makes "the media is wider than the text" a real
+# measurement rather than an upscale: 1040px is inside 1288px.
+_HERO_SRC = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' "
+             "width='1288' height='943'><rect width='1288' height='943' "
+             "fill='rgb(206,212,218)'/></svg>")
+
+# The third-party Mailjet block. The owner is removing it in wp-admin, so the
+# layout is measured BOTH with it and without it and nothing may depend on it.
+CAPTURE_HTML = """
         <div class="atr-capture">
           <p class="atr-capture-title">Get recruiter-backed job search tips</p>
           <form class="atr-capture-form">
@@ -193,31 +221,72 @@ BODY = """
           </form>
           <span class="atr-capture-msg">No spam. Unsubscribe any time.</span>
         </div>
+"""
+
+# The table of contents as easy-table-of-contents actually emits it on the live
+# post: eleven links, a CLASSLESS <nav> (the plugin's own markup - a fixture
+# that gives it `nav.ez-toc-nav` would let a selector pass here and miss live),
+# and no nesting.
+_TOC_ITEMS = [
+    "Mid-Career Professionals: One to Two Pages",
+    "Senior and Executive Candidates",
+    "What Recruiters Actually Object To",
+    "Early Career and Graduates",
+    "Academic and Federal Applications",
+    "Formatting That Buys You Space",
+    "What to Cut First",
+    "Keywords and the Screening Layer",
+    "Two Pages Is Not a Licence",
+    "How Recruiters Actually Skim",
+    "The Short Answer",
+]
+
+TOC_HTML = ("""
         <div id="ez-toc-container" class="ez-toc-v2_0_86 counter-hierarchy ez-toc-counter ez-toc-grey">
           <div class="ez-toc-title-container"><p class="ez-toc-title">Table of Contents</p></div>
-          <nav class="ez-toc-nav"><ul class="ez-toc-list">
-            <li><a href="#a">Mid-Career Professionals: One to Two Pages</a></li>
-            <li><a href="#b">Senior and Executive Candidates</a></li>
-            <li><a href="#c">What Recruiters Actually Object To</a></li>
+          <nav><ul class="ez-toc-list">
+"""
+            + "\n".join("            <li class='ez-toc-page-1'>"
+                        "<a class='ez-toc-link' href='#s%d'>%s</a></li>"
+                        % (i, t) for i, t in enumerate(_TOC_ITEMS))
+            + """
           </ul></nav>
         </div>
-        <h2 class="wp-block-heading" id="a">Mid-Career Professionals: One to Two Pages</h2>
+""")
+
+
+def build_body(with_capture=True):
+    return """
+<div class="wp-site-blocks">
+  <header class="wp-block-template-part"></header>
+  <main id="wp--skip-link--target" class="wp-block-group has-global-padding is-layout-constrained">
+    <div class="wp-block-group alignfull has-global-padding is-layout-constrained">
+      <h1 class="wp-block-post-title">How Long Should a Resume Be? Recruiters Answer the Debate</h1>
+      <figure class="wp-block-post-featured-image">
+        <img class="wp-post-image" src="%(hero)s" width="1288" height="943" alt="">
+      </figure>
+      <div class="entry-content alignfull wp-block-post-content has-global-padding is-layout-constrained">
+        <p>%(p)s</p>
+%(capture)s%(toc)s
+        <h2 class="wp-block-heading" id="s0">Mid-Career Professionals: One to Two Pages</h2>
         <p>%(p)s</p>
         <h3 class="wp-block-heading">A shorter step inside the section</h3>
         <p>%(p)s</p>
         <ul><li>%(p)s</li><li>A shorter item.</li></ul>
         <blockquote class="wp-block-quote"><p>Length is a byproduct of relevance done well.</p></blockquote>
-        <h2 class="wp-block-heading" id="b">Senior and Executive Candidates</h2>
+        <figure class="wp-block-image"><img src="%(hero)s" width="1288" height="943" alt=""></figure>
+        <h2 class="wp-block-heading" id="s1">Senior and Executive Candidates</h2>
         <p>%(p)s</p>
       </div>
     </div>
   </main>
 </div>
-""" % {"p": _PARA}
+""" % {"p": _PARA, "hero": _HERO_SRC, "toc": TOC_HTML,
+       "capture": CAPTURE_HTML if with_capture else ""}
 
 
-def build_page(with_fix=True):
-    sheets = [WP_CORE, SITE_MAIN_GUTTER, DB_SHEET_BLOCK_LIBRARY,
+def build_page(with_fix=True, with_capture=True):
+    sheets = [WP_CORE, SITE_FRAME, SITE_MAIN_GUTTER, DB_SHEET_BLOCK_LIBRARY,
               DB_SHEET_GLOBAL_STYLES, DB_SHEET_WPCODE, DB_SHEET_CAPTURE]
     if with_fix:
         sheets.append(CSS.read_text(encoding="utf-8"))
@@ -226,7 +295,7 @@ def build_page(with_fix=True):
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             + styles + "</head>"
             "<body class='wp-singular post-template-default single single-post'>"
-            + BODY + "</body></html>")
+            + build_body(with_capture) + "</body></html>")
 
 
 def data_url(html):
@@ -276,13 +345,46 @@ MEASURE_JS = r"""
     bq: box(firstOf('BLOCKQUOTE')),
     toc: box(document.querySelector('#ez-toc-container')),
     capture: box(document.querySelector('.atr-capture')),
+    hero: box(document.querySelector('.wp-block-post-featured-image')),
+    heroImg: box(document.querySelector('.wp-block-post-featured-image img')),
+    figure: box(document.querySelector('.entry-content > figure.wp-block-image')),
+    // The gap the reader sees before the article starts.
+    headerGap: (() => {
+      const h = document.querySelector('header.wp-block-template-part');
+      const t = document.querySelector('.wp-block-post-title');
+      if (!h || !t) return null;
+      return +(t.getBoundingClientRect().top - h.getBoundingClientRect().bottom).toFixed(1);
+    })(),
+    // The contents box, as edges rather than as taste: a 1px left/right border
+    // is a vertical line down a 6000px page, which is what "one column" is
+    // made of.
+    tocEdges: (() => {
+      const c = document.querySelector('#ez-toc-container');
+      if (!c) return null;
+      const cs = getComputedStyle(c);
+      return {l: parseFloat(cs.borderLeftWidth), r: parseFloat(cs.borderRightWidth),
+              t: parseFloat(cs.borderTopWidth), b: parseFloat(cs.borderBottomWidth),
+              pl: parseFloat(cs.paddingLeft), bg: cs.backgroundColor};
+    })(),
+    tocColumns: (() => {
+      const ul = document.querySelector('#ez-toc-container nav > ul');
+      return ul ? getComputedStyle(ul).columnCount : null;
+    })(),
+    tocLinkX: (() => {
+      const a = document.querySelector('#ez-toc-container a.ez-toc-link');
+      return a ? +a.getBoundingClientRect().x.toFixed(1) : null;
+    })(),
     tocLinks: [...document.querySelectorAll('#ez-toc-container a')].map(a => {
       const r = a.getBoundingClientRect(); return {w:+r.width.toFixed(1), h:+r.height.toFixed(1)};
     }),
+    // Null when the third-party box is absent, which is a page this layout
+    // must also be correct on: the owner is deleting it in wp-admin.
     controls: ['.atr-capture-input', '.atr-capture-btn'].map(sel => {
-      const e = document.querySelector(sel); const r = e.getBoundingClientRect();
+      const e = document.querySelector(sel);
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
       return {sel, w:+r.width.toFixed(1), h:+r.height.toFixed(1)};
-    }),
+    }).filter(Boolean),
   };
   return out;
 })()
@@ -302,12 +404,12 @@ def measure(browser, html, widths=WIDTHS):
 _MEASURED = {}
 
 
-def measured(with_fix=True):
+def measured(with_fix=True, with_capture=True):
     """Render once per variant per process. Raises CDPUnavailable upward."""
-    key = bool(with_fix)
+    key = (bool(with_fix), bool(with_capture))
     if key not in _MEASURED:
         with Browser(width=WIDTHS[0], height=900) as b:
-            _MEASURED[key] = measure(b, build_page(with_fix))
+            _MEASURED[key] = measure(b, build_page(with_fix, with_capture))
     return _MEASURED[key]
 
 
@@ -382,7 +484,8 @@ class TheMeasureIsComfortable(ChromeBackedTest):
 
     def test_characters_per_line_land_in_the_reading_band(self):
         bands = {375: PHONE_CPL, 414: PHONE_CPL,
-                 768: DESKTOP_CPL, 1280: DESKTOP_CPL}
+                 768: DESKTOP_CPL, 1280: DESKTOP_CPL,
+                 1600: DESKTOP_CPL, 2000: DESKTOP_CPL}
         bad = []
         for w, (lo, hi) in bands.items():
             got = self.m[w]["cpl"]
@@ -495,6 +598,254 @@ class ThereIsVerticalRhythm(ChromeBackedTest):
         self.assertEqual(bad, [], "\n".join(bad))
 
 
+class ThePageHasMoreThanOneWidth(ChromeBackedTest):
+    """Defect 3, the owner's own words: "zoomed out you see it's constructed
+    to one column".
+
+    Measured at 2000px on 2026-08-15: paragraph x=677.5 w=645, h1 w=645,
+    featured image w=645, contents box w=645, signup w=645. Nothing was
+    misaligned and nothing was too narrow. There was one width on the page,
+    over 6317px of article, so there was no rhythm and no scale.
+    """
+
+    LARGE = (1280, 1600, 2000)
+
+    def test_media_runs_wider_than_the_text_on_a_large_screen(self):
+        """The one contrast that does most of the work. A hero the same width
+        as the paragraph under it reads as another paragraph."""
+        bad = []
+        for w in self.LARGE:
+            d = self.m[w]
+            hero, p = d["hero"], d["p"]
+            if hero is None:
+                bad.append("at %dpx there is no featured image to measure" % w)
+                continue
+            if hero["w"] - p["w"] < 100.0:
+                bad.append("at %dpx the featured image is %.0fpx wide and the "
+                           "text is %.0fpx: %.0fpx of contrast, under the "
+                           "100px a reader can see"
+                           % (w, hero["w"], p["w"], hero["w"] - p["w"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_an_in_article_figure_is_wider_than_the_text_too(self):
+        bad = []
+        for w in self.LARGE:
+            d = self.m[w]
+            fig, p = d["figure"], d["p"]
+            if fig is None:
+                bad.append("at %dpx there is no in-article figure" % w)
+                continue
+            if fig["w"] - p["w"] < 100.0:
+                bad.append("at %dpx the article figure is %.0fpx against "
+                           "%.0fpx of text (%.0fpx of contrast)"
+                           % (w, fig["w"], p["w"], fig["w"] - p["w"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_media_stays_centred_on_the_same_axis_as_the_text(self):
+        """Wider is only right if it is wider around the SAME centre. A hero
+        that widens to one side is the two-column defect again."""
+        bad = []
+        for w in self.LARGE:
+            d = self.m[w]
+            if d["hero"] is None:
+                continue
+            hc = d["hero"]["x"] + d["hero"]["w"] / 2
+            pc = d["p"]["x"] + d["p"]["w"] / 2
+            if abs(hc - pc) > 1.0:
+                bad.append("at %dpx the featured image is centred on x=%.1f "
+                           "and the text on x=%.1f" % (w, hc, pc))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_phone_has_exactly_one_width(self):
+        """A hero wider or narrower than the text at 375px would only be a
+        mistake: below 782px the token is 100%, and at phone widths 100% of
+        the article IS the measure. (At 768px the article is 732px wide while
+        the measure is still 645px, so the hero runs to the gutters there and
+        the next test covers that case.)"""
+        bad = []
+        for w in (375, 414):
+            d = self.m[w]
+            if d["hero"] is None:
+                bad.append("at %dpx there is no featured image" % w)
+                continue
+            if abs(d["hero"]["w"] - d["p"]["w"]) > 1.0:
+                bad.append("at %dpx the featured image is %.0fpx and the text "
+                           "%.0fpx; on a phone they must be one width"
+                           % (w, d["hero"]["w"], d["p"]["w"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_media_never_runs_narrower_than_the_text_or_past_the_gutters(self):
+        """The two ways a media token goes wrong at a width nobody looked at:
+        an image narrower than the paragraph beside it, or one that pushes
+        past the article's own gutters and takes the document sideways."""
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            if d["hero"] is None:
+                continue
+            if d["hero"]["w"] < d["p"]["w"] - 1.0:
+                bad.append("at %dpx the featured image (%.0fpx) is narrower "
+                           "than the text (%.0fpx)"
+                           % (w, d["hero"]["w"], d["p"]["w"]))
+            if d["hero"]["x"] < 0 or \
+                    d["hero"]["x"] + d["hero"]["w"] > d["clientWidth"] + 1.0:
+                bad.append("at %dpx the featured image spans %.0f-%.0f, "
+                           "outside the %dpx viewport"
+                           % (w, d["hero"]["x"], d["hero"]["x"] + d["hero"]["w"],
+                              d["clientWidth"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_measure_grows_once_and_stays_in_the_reading_band(self):
+        """645px is on the narrow side above 1400px, but characters per line
+        is the constraint, not pixels: the type grows with the column, so the
+        line a reader tracks back along is the same length it always was.
+        The band itself is asserted by TheMeasureIsComfortable at every width.
+        """
+        narrow, wide = self.m[1280], self.m[2000]
+        self.assertGreater(
+            wide["p"]["w"], narrow["p"]["w"] + 20.0,
+            "the measure does not grow on a large screen: %.0fpx at 1280 and "
+            "%.0fpx at 2000" % (narrow["p"]["w"], wide["p"]["w"]))
+        self.assertLess(
+            wide["p"]["w"], 780.0,
+            "the measure grew to %.0fpx, which is a long line whatever the "
+            "type size" % wide["p"]["w"])
+        self.assertGreaterEqual(
+            wide["p"]["fs"], narrow["p"]["fs"],
+            "the column grew but the type did not, so the line got longer to "
+            "read: %.1fpx at 1280 and %.1fpx at 2000"
+            % (narrow["p"]["fs"], wide["p"]["fs"]))
+
+    def test_the_hero_image_is_never_upscaled(self):
+        """The source is 1288px wide. A media step past that is a blurry hero,
+        which is a worse page than a narrow one."""
+        bad = [("at %dpx the featured image renders %.0fpx wide, past the "
+                "1288px source" % (w, self.m[w]["heroImg"]["w"]))
+               for w in WIDTHS
+               if self.m[w]["heroImg"] and self.m[w]["heroImg"]["w"] > 1288.0]
+        self.assertEqual(bad, [], "\n".join(bad))
+
+
+class TheArticleDoesNotOpenWithAHole(ChromeBackedTest):
+    """Measured live at 2000px: the site header ended at y=89 and the headline
+    began at y=229. 140px of nothing above the one line that has to be read.
+    """
+
+    def test_the_headline_sits_close_under_the_site_header(self):
+        bad = []
+        for w in WIDTHS:
+            gap = self.m[w]["headerGap"]
+            if gap is None:
+                bad.append("at %dpx the header/headline gap is not measurable" % w)
+                continue
+            if gap > 80.0:
+                bad.append("at %dpx there are %.0fpx between the site header "
+                           "and the headline, over 80" % (w, gap))
+            if gap < 16.0:
+                bad.append("at %dpx the headline sits %.0fpx under the site "
+                           "header, which is not a break at all" % (w, gap))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+
+class TheContentsIsNoLongerABox(ChromeBackedTest):
+    """Its 1px left and right borders were two of the vertical lines the
+    "one column" read was made of, on the tallest element of the opening
+    screen. It stays inline and on the reading column; it stops being a box.
+    """
+
+    def test_the_contents_draws_no_vertical_edges(self):
+        bad = []
+        for w in WIDTHS:
+            e = self.m[w]["tocEdges"]
+            if e is None:
+                bad.append("at %dpx there is no contents box to measure" % w)
+                continue
+            if e["l"] > 0 or e["r"] > 0:
+                bad.append("at %dpx the contents box still draws %.0fpx/%.0fpx "
+                           "side borders" % (w, e["l"], e["r"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_it_is_still_ruled_off_from_the_article(self):
+        """Removing the edges must not leave an unmarked list floating in the
+        prose: horizontal rules cut the column instead of drawing it."""
+        bad = []
+        for w in WIDTHS:
+            e = self.m[w]["tocEdges"]
+            if e and (e["t"] <= 0 or e["b"] <= 0):
+                bad.append("at %dpx the contents has no top/bottom rule "
+                           "(%.0f/%.0f)" % (w, e["t"], e["b"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_its_links_sit_on_the_articles_own_left_edge(self):
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            if d["tocLinkX"] is None:
+                continue
+            if abs(d["tocLinkX"] - d["p"]["x"]) > 1.0:
+                bad.append("at %dpx the contents links start at x=%.1f and "
+                           "the text at x=%.1f"
+                           % (w, d["tocLinkX"], d["p"]["x"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_it_sets_in_two_columns_only_where_there_is_room(self):
+        for w in (375, 414, 768):
+            self.assertEqual(
+                self.m[w]["tocColumns"], "auto",
+                "at %dpx the contents is set in %s columns; a 300px column of "
+                "link text is a worse read than one full-width list"
+                % (w, self.m[w]["tocColumns"]))
+        for w in (1280, 1600, 2000):
+            self.assertEqual(
+                self.m[w]["tocColumns"], "2",
+                "at %dpx the contents is set in %s columns; eleven links at "
+                "the 44px tap floor is a 525px slab on the opening screen"
+                % (w, self.m[w]["tocColumns"]))
+
+
+class TheLayoutHoldsWithoutTheThirdPartyBox(ChromeBackedTest):
+    """div.atr-capture is a Mailjet block injected from wp-admin and the owner
+    is deleting it. Nothing in this layout may depend on it being there, and
+    the page must be right on both sides of that deletion.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        try:
+            cls.without = measured(True, False)
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("UNKNOWN, NOT A PASS: %s" % exc)
+
+    def test_the_box_is_really_gone_from_the_variant(self):
+        self.assertIsNone(self.without[1280]["capture"],
+                          "the without-capture fixture still renders one, so "
+                          "this class is measuring the same page twice")
+
+    def test_nothing_overflows_without_it(self):
+        bad = [("at %dpx the document scrolls sideways without the third-party "
+                "box: scrollWidth %d vs clientWidth %d"
+                % (w, self.without[w]["scrollWidth"], self.without[w]["clientWidth"]))
+               for w in WIDTHS
+               if self.without[w]["scrollWidth"] > self.without[w]["clientWidth"]]
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_geometry_that_matters_is_unchanged(self):
+        bad = []
+        for w in WIDTHS:
+            a, b = self.m[w], self.without[w]
+            for name in ("p", "hero", "toc"):
+                if a[name] is None or b[name] is None:
+                    continue
+                if abs(a[name]["w"] - b[name]["w"]) > 1.0 or \
+                        abs(a[name]["x"] - b[name]["x"]) > 1.0:
+                    bad.append("at %dpx the %s moves when the third-party box "
+                               "is removed: %.0f@%.0f -> %.0f@%.0f"
+                               % (w, name, a[name]["w"], a[name]["x"],
+                                  b[name]["w"], b[name]["x"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+
 class NothingOverflowsAndEverythingIsTappable(ChromeBackedTest):
 
     def test_no_horizontal_document_overflow(self):
@@ -560,6 +911,28 @@ class TheFixtureReproducesTheDefect(ChromeBackedTest):
             d375["cpl"], 32.0,
             "the fixture does not reproduce the unreadable phone measure: "
             "%.1f characters per line" % d375["cpl"])
+
+    def test_without_the_stylesheet_the_page_has_exactly_one_width(self):
+        """Defect 3, proved on the fixture rather than remembered from the
+        screenshot: strip the sheet and the hero, the figure, the contents box
+        and the text are all the same 645px, which is the page the owner
+        described."""
+        try:
+            before = measured(False)
+        except CDPUnavailable as exc:
+            self.skipTest("UNKNOWN, NOT A PASS: %s" % exc)
+
+        d = before[2000]
+        widths = {name: d[name]["w"] for name in ("p", "hero", "figure", "toc")
+                  if d[name] is not None}
+        self.assertEqual(
+            len(set(round(v) for v in widths.values())), 1,
+            "the fixture does not reproduce the one-width page: %r" % widths)
+
+        self.assertGreater(
+            d["headerGap"], 120.0,
+            "the fixture does not reproduce the 140px hole above the "
+            "headline: %.0fpx" % d["headerGap"])
 
 
 # ------------------------------------------------------- source-level guards

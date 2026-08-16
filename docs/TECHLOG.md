@@ -1,5 +1,96 @@
 # Tech Log
 
+## 2026-08-15 - the blog had exactly one width, and one width is not a layout (2.20.61)
+
+The owner, on https://asktherecruiter.com/blog/how-long-should-a-resume-be/:
+"blog format doesn't look good - zoomed out you see it's constructed to one
+column". Measured in headless Chrome at 2000px on ver=2.20.60, that is exactly
+what it was, and nothing was broken:
+
+| element | width at 2000px |
+|---|---|
+| paragraph | 645px at x=677.5 |
+| headline | 645px |
+| featured image | 645px |
+| table of contents | 645px |
+| both signup blocks | 645px |
+
+Every element on a 6317px-tall article was clamped to the same 645px, centred,
+with 677.5px of empty screen on each side. The 2.20.57 fix holds: the page is
+centred and the headings sit over their own text. There was simply no second
+width, so the column had nothing to be measured against, and a very tall
+document with one width reads as a ribbon rather than as a page.
+
+**The fix gives the page three widths instead of one**, in
+`assets/blog-reading.css`. All of it is CSS in the same gated, `body.single-post`
+scoped stylesheet; no markup changed and no asset was added.
+
+1. **Media steps outside the measure.** `--alt-read-media` puts the featured
+   image and any in-article figure at 820px on a desktop, 960px past 1400px and
+   1040px past 1800px, against 645-700px of text. The source image is 1288px
+   wide, so nothing upscales, and a test asserts that. This one contrast is
+   most of what makes a page read as designed. The featured image is NOT inside
+   `.entry-content` - it is a sibling of the post title - so it needed its own
+   selector and got no help from any existing rule.
+2. **The measure grows once, at 1400px**, from 645px to 700px with the body
+   from 20px to 21px. Characters per line is the constraint, not pixels: 66.9
+   at 1280 and 69.1 at 1600 and 2000, both inside the same 60-78 band the page
+   already sat in. The content-size override is scoped to `main` so the site
+   header and footer keep the 645px they were designed against.
+3. **The table of contents stopped being a box.** Its 1px left and right
+   borders were two of the vertical lines the ribbon was made of, on the
+   tallest element of the opening screen. It stays inline and on the reading
+   column, because a phone reader needs it in the flow. It is now ruled top and
+   bottom instead (horizontal lines cut a column, vertical ones draw it), has
+   no fill and no side padding, so its links sit on the article's own left edge
+   rather than 17.6px inside it, and it sets in two columns above 1100px: 337.9px
+   tall instead of 711.6px, for eleven links that each still clear the 44px tap
+   floor.
+
+**And the hole above the headline.** The site header ended at y=89 and the h1
+began at y=229: 140px of nothing above the one line that has to be read, from
+`main`'s 70px top margin plus the article group's 70px top padding. Both are
+28px now, so the headline sits 56px under the header. The phone was already 30px
+and is untouched.
+
+**Widths are `min(<cap>, 100%)`, never `calc(100vw - x)`.** 100vw includes the
+classic scrollbar, so a vw-based cap overflows by about 15px at exactly the
+narrow-desktop widths where it binds, which is a horizontal scroll nobody would
+see until a reader without overlay scrollbars opened it. 100% is the constrained
+child's own containing block and is already the right number.
+
+**`div.atr-capture` was not touched.** It is a third-party Mailjet block
+injected from wp-admin and the owner is deleting it there. The layout is
+measured twice, with it and without it, and a test asserts the paragraph, the
+hero and the contents box do not move between the two.
+
+**Measured on the fixture, before deploy** (the live post is measured in the
+follow-up entry below, on the bare URL with a browser UA and no cache buster;
+the fixture renders the Charter/Georgia fallback rather than Vollkorn, so its
+characters-per-line differ slightly from the live page by design):
+
+| viewport | paragraph x / width | chars per line | featured image | contents |
+|---|---|---|---|---|
+| 375 | 18 / 339 | 37.0 | 339 | 339, one column |
+| 414 | 18 / 378 | 41.2 | 378 | 378, one column |
+| 768 | 61.5 / 645 | 70.4 | 732 | 645, one column |
+| 1280 | 317.5 / 645 | 66.9 | 820 | 645, two columns |
+| 1600 | 450 / 700 | 69.1 | 960 | 700, two columns |
+| 2000 | 650 / 700 | 69.1 | 1040 | 700, two columns |
+
+**What the test holds.** `railway/tests/test_blog_reading_surface.py` now
+renders at 1600 and 2000 as well, because nothing below 1400px can demonstrate
+the defect: the page only has room for a second width on a screen that has one.
+Its fixture carries the site header, `main`'s margin, the article group's
+padding and the real featured image at its live 1288x943 intrinsic size, so the
+top gap and the media step are measurements rather than judgements. Seven
+assertions were RED against 2.20.60 before the change and name the numbers they
+saw, including "at 2000px the featured image is 645px wide and the text is
+645px: 0px of contrast". `test_without_the_stylesheet_the_page_has_exactly_one_width`
+proves the fixture reproduces the one-width page, so the fix cannot be measured
+against a fixture that never had the defect.
+
+
 ## 2026-08-15 - the signup was on two URLs, and it could not have survived being on more (2.20.60)
 
 `alt_digest_subscribe_form()` rendered on this repo's tracker page and on the
