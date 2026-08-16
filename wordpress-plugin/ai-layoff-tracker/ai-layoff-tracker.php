@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.69
+ * Version: 2.20.70
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.69');
+define('ALT_VERSION', '2.20.70');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -66,6 +66,20 @@ if (is_readable($alt_subscribe_placements)) {
 $alt_blog_typography = ALT_PLUGIN_DIR . 'includes/blog-typography.php';
 if (is_readable($alt_blog_typography)) {
     require_once $alt_blog_typography;
+}
+// The site CSS rescued out of a plugin masquerading as Hello Dolly, which
+// WordPress would overwrite on the next update to the real Hello Dolly, taking
+// the blog card grid, the article typography and the mobile fixes with it. Same
+// is_readable guard as the file above and for the same reason.
+//
+// LOAD ORDER IS LOAD-BEARING HERE. It attaches to `wp-block-library` at
+// priority 99 exactly as the original did, because blog-reading.css above is
+// enqueued at priority 20 as its own later sheet and OVERRIDES this. Print this
+// any later and the two-column heading defect returns. See the file's own
+// header and docs/LEGACY-hello-dolly-css.md.
+$alt_blog_legacy_css = ALT_PLUGIN_DIR . 'includes/blog-legacy-css.php';
+if (is_readable($alt_blog_legacy_css)) {
+    require_once $alt_blog_legacy_css;
 }
 // The applause control on single blog posts. GUARDED with is_readable for the
 // same reason as the two files above: this file is NEW, so the deploy that
