@@ -53,6 +53,14 @@ The floor is now scoped to 781px and below, where it is a real requirement, and
 above it the links set on their own leading: about 380px for eleven entries,
 shorter than the two-column block it replaces.
 
+**And the markers were outside the column, which nothing had noticed.** The
+block sets `padding-inline-start: 0` so its links sit on the article's own left
+edge, and a `list-style: outside` marker renders outside the padding box: the
+bullets were landing 20px left of every paragraph on the page. The existing
+assertion measured the `<a>`, which was correctly placed, so it saw nothing.
+There is now one that measures the `<li>` and the marker type, and it fails
+with "at 375px the contents list draws disc markers" when the fix is removed.
+
 **3. The page read as one flat block.** h2 was 30px over a 20px body, 1.50x,
 with 48px above it. Size and space are different signals and only one of them
 had been thought about. Both moved: 1.70x on a desktop, and 80px of air, which
@@ -114,7 +122,7 @@ per line at 375px and 41.2 at 414px, identical to 2.20.61 and to 2.20.57.
 Contents links still measure 50.4px tall against the 44px floor, and document
 overflow is 0 at every width.
 
-**What the test holds.** Nine assertions in
+**What the test holds.** Ten assertions in
 `railway/tests/test_blog_reading_surface.py` were RED against 2.20.63 before
 any CSS moved, and they name the numbers they saw: "at 2000px the featured
 image is 1.49x the text (1040px against 700px), over 1.35: the image is running
@@ -125,7 +133,7 @@ continues"; "at 2000px the article frame is 2000px wide, over the 1320px cap";
 "at 2000px the article and the page around it are the same colour (rgba(0, 0,
 0, 0)), so the column has no ground and the cap is invisible"; "at 2000px the
 contents is 16px against 21px of body text, 5px under it (max 4)". The suite is
-45 tests and green.
+46 tests and green.
 
 **The body-size band moved from 19-21 to 19-23, deliberately.** The measure is
 only allowed to widen because the type widens with it, so a band that stopped
@@ -203,6 +211,16 @@ what an article is. The count is server-rendered text and the button ships
 `disabled`, enabled by the script on load: with scripting off the page is right
 and the control is honestly inert, rather than announcing itself as available
 and doing nothing.
+
+**`style_check.py` was NOT edited, and that is the finding.** Registering the
+new file in its target list is the obvious move and it reddens
+`test_style_standard.SharedStandardDoesNotDrift`: the scorer is byte-identical
+in this repo and the talent tracker, pinned by SHA256, so a two-line edit here
+is a coordinated two-repo change with a digest update in both. One feature does
+not get to make that change on its way past. The copy is measured instead by
+importing the scorer from `tests/test_blog_claps.py` and running
+`extract_file()` + `check_segments()` over the two files: **0 findings**, three
+reader segments, grade 0.5 / 9.1 / 4.8, zero passive sentences.
 
 `assets/blog-claps.css` is self-carried for the reason `subscribe.php` records:
 `layoffs.css` is not enqueued on a blog post, so every colour is a component

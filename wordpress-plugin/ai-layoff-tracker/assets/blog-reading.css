@@ -807,6 +807,12 @@ body.single-post .entry-content #ez-toc-container ul {
   margin-block-start: 0.55rem !important;
   margin-block-end: 0 !important;
   padding-inline-start: 0 !important;
+  /* No markers. Two reasons, and the second is a bug rather than a taste: a
+     bulleted list of the article's own headings is the widget look this pass
+     was asked to remove, AND with padding-inline-start at 0 the markers
+     render OUTSIDE the reading column - measured 20px left of the link text,
+     which is 20px left of every paragraph on the page. */
+  list-style: none !important;
 }
 
 body.single-post .entry-content #ez-toc-container li,

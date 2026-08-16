@@ -428,6 +428,16 @@ MEASURE_JS = r"""
       const m = document.querySelector('.wp-site-blocks > main');
       return m ? getComputedStyle(m).backgroundColor : null;
     })(),
+    // The LIST's own left edge, not the link's. With padding-inline-start at
+    // 0 a marker renders outside the padding box, so a contents whose links
+    // are correctly on the column can still hang bullets 20px left of every
+    // paragraph on the page.
+    tocListEdge: (() => {
+      const li = document.querySelector('#ez-toc-container nav > ul > li');
+      if (!li) return null;
+      return {x: +li.getBoundingClientRect().x.toFixed(1),
+              marker: getComputedStyle(li).listStyleType};
+    })(),
     tocLinkX: (() => {
       const a = document.querySelector('#ez-toc-container a.ez-toc-link');
       return a ? +a.getBoundingClientRect().x.toFixed(1) : null;
@@ -876,6 +886,28 @@ class TheContentsIsNoLongerABox(ChromeBackedTest):
                 bad.append("at %dpx the contents links start at x=%.1f and "
                            "the text at x=%.1f"
                            % (w, d["tocLinkX"], d["p"]["x"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_it_hangs_no_markers_outside_the_reading_column(self):
+        """A bulleted list of the article's own headings is the widget look
+        this pass exists to remove, and it is also a real misalignment: the
+        block sets padding-inline-start to 0 so its links sit on the article's
+        left edge, and a marker rendered outside that padding box lands 20px
+        left of every paragraph on the page."""
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            e = d["tocListEdge"]
+            if e is None:
+                bad.append("at %dpx there is no contents list to measure" % w)
+                continue
+            if e["marker"] != "none":
+                bad.append("at %dpx the contents list draws %s markers"
+                           % (w, e["marker"]))
+            if e["x"] < d["p"]["x"] - 1.0:
+                bad.append("at %dpx the contents list starts at x=%.1f, left "
+                           "of the article's own %.1f"
+                           % (w, e["x"], d["p"]["x"]))
         self.assertEqual(bad, [], "\n".join(bad))
 
     def test_it_is_one_column_at_every_width(self):

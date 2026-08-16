@@ -457,6 +457,45 @@ class TheControlOnThePage(HarnessMixin):
                              "em-dash in %s, which UI copy may not use" % name)
 
 
+class ReaderCopyMeetsTheStandard(unittest.TestCase):
+    """docs/STYLE.md, scored by the real scorer, without editing it.
+
+    railway/style_check.py is byte-digest-pinned across both products
+    (test_style_standard.SharedStandardDoesNotDrift), so adding this file to its
+    target list is a coordinated two-repo change and not something one feature
+    should do on its way past. The scorer is importable, so the copy is measured
+    here with the same functions instead of being taken on trust.
+    """
+
+    FILES = ("wordpress-plugin/ai-layoff-tracker/includes/blog-claps.php",
+             "wordpress-plugin/ai-layoff-tracker/assets/blog-claps.js")
+
+    @classmethod
+    def setUpClass(cls):
+        import sys
+        sys.path.insert(0, str(ROOT / "railway"))
+        import style_check
+        cls.sc = style_check
+
+    def test_the_copy_a_reader_sees_has_no_style_findings(self):
+        for rel in self.FILES:
+            with self.subTest(file=rel):
+                segs = self.sc.extract_file(str(ROOT / rel), "post", str(ROOT))
+                findings, stats = self.sc.check_segments(segs)
+                self.assertEqual(findings, [], (
+                    "%s carries reader copy that fails docs/STYLE.md: %r"
+                    % (rel, findings)))
+                page = stats.get("post")
+                if not page or not page["grades"]:
+                    continue
+                mean = sum(page["grades"]) / len(page["grades"])
+                self.assertLessEqual(mean, 11.0, (
+                    "%s reads at grade %.1f, over the 11.0 bar" % (rel, mean)))
+                self.assertLessEqual(page["passive"], page["sent"] * 0.25, (
+                    "%s is %d of %d sentences passive, over the 25%% ceiling"
+                    % (rel, page["passive"], page["sent"])))
+
+
 class Assets(unittest.TestCase):
     """Shape rules read off the shipped files, with no PHP needed."""
 

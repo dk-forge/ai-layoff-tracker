@@ -22,7 +22,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   measure now climbs with the type to 820px at 23px, the media comes back to
   about 1.25x it instead of 1.49x, the h2 is 1.70x the body with 80px above it,
   the contents is one serif column, and the article sits on a capped 1300px
-  card over a ground. 45 tests green; the phone is byte-identical at 18/339 and
+  card over a ground. 46 tests green; the phone is byte-identical at 18/339 and
   37.0 characters per line. It touches only `assets/blog-reading.css`,
   `railway/tests/test_blog_reading_surface.py`, `docs/TECHLOG.md` and the
   plugin version.
