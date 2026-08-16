@@ -9,16 +9,19 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** (2.20.61, current) the blog article had exactly one width.
-  Measured at 2000px on 2.20.60: the paragraph, the headline, the featured
-  image, the contents box and both signup blocks were all 645px, centred, on a
-  6317px-tall page, which is the "constructed to one column" the owner saw. The
-  page now has three widths: media steps out to 820/960/1040px, the measure
-  grows once at 1400px to 700px at 21px type (same characters per line), and
-  the contents box stops being a box and sets in two columns above 1100px. The
-  140px hole between the site header and the headline is 56px. `div.atr-capture`
-  is untouched and the layout is measured with and without it.
-- **PREVIOUS SUBJECT:** (landed as 2.20.60) putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
+- **WORKING ON:** the ceiling that never reached the ledger. `[2a]`'s two
+  "brake is not holding" lines are pre-fix history (8e976ca, 2026-08-14T07:42Z,
+  is after both runs) and will age out of the 14d window on their own. What is
+  still live is the second half: `record_job_run()` writes `ceiling_usd`, but
+  the Railway round trip drops it at BOTH ends — `db.php`'s `add_spend_run`
+  whitelist and `spend.harvest_railway_runs()`'s key list — so `railway-cron`,
+  the largest metered job in the table, records a cost with no record of what
+  it was allowed to spend, permanently and by construction. Fixing the drop and
+  pinning the three field lists against each other.
+- **PREVIOUS SUBJECT:** (landed as 2.20.61) the blog article had exactly one
+  width; the page now has three (media to 820/960/1040px, the measure to 700px
+  at 1400px, the contents box in two columns above 1100px).
+- **BEFORE THAT:** (landed as 2.20.60) putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
 
 **Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
 had gone stale: it still named the US incident close, which landed, so a session
