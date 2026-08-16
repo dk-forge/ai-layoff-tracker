@@ -26,10 +26,20 @@
  *                             the loop cannot leak one.
  *
  *   POST /digest-webhook      NOT key gated, because a provider cannot send
- *                             our key. Verified by the provider's own HMAC
- *                             signature and FAILS CLOSED when no signing
- *                             secret is configured. A hard bounce or a spam
- *                             complaint stops sending to that address at once.
+ *                             our key. Verified by the provider's own
+ *                             credential and FAILS CLOSED when none is
+ *                             configured. A hard bounce or a spam complaint
+ *                             stops sending to that address at once.
+ *
+ *                             TWO PROVIDERS, CHOSEN BY WHAT THE REQUEST
+ *                             CARRIES. Resend signs with the Svix scheme and
+ *                             sends svix-id / svix-timestamp / svix-signature.
+ *                             Brevo sends a plain JSON event and no signature
+ *                             at all. The dispatcher reads the request, not an
+ *                             environment variable someone has to remember to
+ *                             set, so moving provider does not need a code
+ *                             change here and running both during a migration
+ *                             works.
  *
  * ONE SENDER AT A TIME, ENFORCED TWO WAYS. A list with two senders sends
  * everything twice, which is the fastest way to be marked as spam:
@@ -293,6 +303,173 @@ function alt_digest_webhook_verified($request, $raw) {
     return false;
 }
 
+/* ------------------------------------------------------------------ */
+/* Brevo                                                               */
+/* ------------------------------------------------------------------ */
+
+/*
+ * BREVO DOES NOT SIGN ITS WEBHOOKS. Say it plainly, because every other
+ * provider this file has ever spoken to does, and a reader who assumes
+ * otherwise will think this endpoint is stronger than it is.
+ *
+ * Checked against Brevo's own documentation on 2026-08-15: the transactional
+ * webhook is a plain JSON POST, and the whole of "Secure webhook calls" offers
+ * four things, none of them a signature.
+ *
+ *   1. a bearer token, from the webhook's `auth` object, sent as
+ *      `Authorization: Bearer <token>`;
+ *   2. arbitrary custom request headers, from the webhook's `headers` array;
+ *   3. basic auth credentials embedded in the webhook URL itself;
+ *   4. allowlisting Brevo's published sending CIDR ranges.
+ *
+ * There is no HMAC, no signing header and no JWT, so there is nothing to
+ * verify the BODY against. A shared secret in a header is what is available,
+ * and it is what this uses.
+ *
+ * WHAT THAT BUYS AND WHAT IT DOES NOT. A signature proves a specific payload
+ * came from the provider. A bearer token proves only that the caller knows the
+ * token, so it is replayable by anyone who has ever seen one request, and TLS
+ * is doing all of the confidentiality work. That is a genuinely weaker
+ * position than the Svix path below and it is a property of Brevo, not of this
+ * code. It is still enormously better than an open endpoint: without it, this
+ * URL is a stranger's button for unsubscribing anyone whose address they can
+ * guess.
+ *
+ * THE THREE THINGS DONE ABOUT THE WEAKNESS.
+ *
+ *   (a) The token is compared with hash_equals, so the comparison does not
+ *       leak its length or its prefix to a timing attack.
+ *   (b) It is read from a HEADER and never from the query string or the path,
+ *       though putting it in the URL is the trick most guides recommend.
+ *       Bluehost writes the full request line to an access log, so a secret in
+ *       a URL is a secret written to a file we do not control, forever, and
+ *       CLAUDE.md's own rule against personal data in query strings is the
+ *       same rule for the same reason.
+ *   (c) Replay is not defended with a timestamp window, deliberately. Every
+ *       action this route can take is idempotent: suppressing an address that
+ *       is already suppressed changes nothing and alt_digest_stop_sending
+ *       returns false for it. A window tight enough to matter would instead
+ *       drop Brevo's own retries and its five minute batch delay, which is a
+ *       real harm traded for a theoretical one. The Svix path keeps its window
+ *       because there the timestamp is signed and costs nothing.
+ */
+
+/** The header name for the token when the bearer header cannot be used. */
+if (!defined('ALT_DIGEST_BREVO_TOKEN_HEADER')) {
+    define('ALT_DIGEST_BREVO_TOKEN_HEADER', 'x-alt-webhook-token');
+}
+
+/**
+ * The Brevo webhook token, from wp-config or an option. Absent means this
+ * provider's path refuses everything, exactly as an absent Svix secret does.
+ */
+function alt_digest_brevo_token() {
+    if (defined('ALT_DIGEST_BREVO_WEBHOOK_TOKEN') && ALT_DIGEST_BREVO_WEBHOOK_TOKEN) {
+        return (string) ALT_DIGEST_BREVO_WEBHOOK_TOKEN;
+    }
+    return (string) get_option('alt_digest_brevo_webhook_token', '');
+}
+
+/**
+ * Does this request carry the configured token?
+ *
+ * TWO ACCEPTED PLACES, and that is not belt and braces. Apache with PHP as
+ * CGI or FastCGI drops the Authorization header before PHP ever sees it, which
+ * is a well known and silent failure on exactly this kind of shared hosting.
+ * If the bearer header were the only route, arming this on Bluehost could fail
+ * with a 401 that looks identical to a wrong token, and the operator would
+ * have no way to tell those two apart. Brevo can send either an `auth` bearer
+ * token or an arbitrary custom header, so both are accepted and the RUNBOOK
+ * tells the operator to use the custom header if the bearer one 401s.
+ */
+function alt_digest_brevo_authenticated($request) {
+    $token = alt_digest_brevo_token();
+    if ($token === '') return false;
+
+    $presented = array();
+    $auth = (string) $request->get_header('authorization');
+    if ($auth !== '' && stripos($auth, 'bearer ') === 0) {
+        $presented[] = trim(substr($auth, 7));
+    }
+    $custom = (string) $request->get_header(ALT_DIGEST_BREVO_TOKEN_HEADER);
+    if ($custom !== '') $presented[] = trim($custom);
+
+    $ok = false;
+    foreach ($presented as $candidate) {
+        // No early return: every candidate is compared so the number of
+        // comparisons does not depend on which one matched.
+        if ($candidate !== '' && hash_equals($token, $candidate)) $ok = true;
+    }
+    return $ok;
+}
+
+/**
+ * One Brevo event name to one suppression status, by exact lookup.
+ *
+ * AN EXACT MAP, NEVER A SUBSTRING TEST. `strpos($event, 'bounce')` reads as
+ * obviously right and catches soft_bounce, which is the single most expensive
+ * mistake available here: it deletes people whose mailbox was briefly full.
+ * Every name below was read from Brevo's transactional webhook event list, and
+ * a name that is not in this map changes nothing.
+ *
+ * The events that deliberately map to NOTHING, with the reason:
+ *   soft_bounce, deferred  a transient failure. Not evidence of anything.
+ *   blocked                Brevo declined to send because the address is on
+ *                          ITS blocklist. That is a consequence of some
+ *                          earlier suppression, not new evidence about the
+ *                          mailbox, so it must not create a suppression here.
+ *   error                  a failure on Brevo's side.
+ *   request, delivered     the message went out. Nothing to do.
+ *   opened, unique_opened, proxy_open, unique_proxy_open, click
+ *                          engagement. NOT recorded, not counted, not stored
+ *                          anywhere, per the published privacy note. They fall
+ *                          through this map to no action, which is the whole
+ *                          of the handling they get.
+ *
+ * Brevo spells an event one way in the API that SUBSCRIBES to it (hardBounce)
+ * and another way in the payload it then DELIVERS (hard_bounce). The lookup is
+ * normalised so both spellings resolve, because that asymmetry is exactly the
+ * kind of thing that silently stops working after a provider tidies its docs.
+ */
+function alt_digest_brevo_action($event) {
+    $key = strtolower(str_replace(array('_', '-', ' '), '', (string) $event));
+    $map = array(
+        'hardbounce'   => 'bounced',
+        // A permanently undeliverable address: Brevo could not route it at
+        // all. Same fact as a hard bounce, recorded as the same status.
+        'invalidemail' => 'bounced',
+        'invalid'      => 'bounced',
+        'spam'         => 'unsubscribed',   // a withdrawal of consent
+        'unsubscribed' => 'unsubscribed',   // asked to stop, via Brevo's link
+        'unsubscribe'  => 'unsubscribed',
+    );
+    return isset($map[$key]) ? $map[$key] : '';
+}
+
+/**
+ * Pull the event objects out of a Brevo body.
+ *
+ * Brevo delivers one event per POST by default, and the RUNBOOK says to leave
+ * it that way. Its optional `batched` mode is real but its delivered payload
+ * shape is NOT documented, so all three plausible shapes are accepted rather
+ * than guessing one: a bare object, a top level array, and an object wrapping
+ * an array. Accepting a shape that never arrives costs nothing. Rejecting the
+ * one that does arrive drops bounces silently, which is the failure this whole
+ * change exists to prevent.
+ */
+function alt_digest_brevo_events($body) {
+    if (!is_array($body)) return array();
+    if (isset($body['event'])) return array($body);
+    foreach (array('items', 'events') as $key) {
+        if (isset($body[$key]) && is_array($body[$key])) $body = $body[$key];
+    }
+    $out = array();
+    foreach ($body as $item) {
+        if (is_array($item) && isset($item['event'])) $out[] = $item;
+    }
+    return $out;
+}
+
 /**
  * Stop sending to an address the provider told us is dead or angry.
  *
@@ -321,8 +498,64 @@ function alt_digest_stop_sending($email, $status) {
     ), array('id' => $row['id']));
 }
 
+/**
+ * The one public entry point. Decides WHICH provider is talking from what the
+ * request actually carries, never from configuration.
+ *
+ * A provider selected by an environment variable is a provider that is wrong
+ * every time somebody forgets to change it, and the symptom is silent: bounces
+ * stop being processed and nothing anywhere goes red. The request already
+ * says who sent it, so it is read rather than assumed. It also means both
+ * providers work at once, which is what a migration actually looks like.
+ */
 function alt_api_digest_webhook($request) {
     $raw = $request->get_body();
+
+    // Svix, and therefore Resend, is identified by its three headers. They are
+    // required by the scheme, so their presence is the provider's own claim
+    // about itself, and a request carrying them is verified as Svix or refused
+    // as Svix. It never falls through to the weaker path on a bad signature.
+    if ((string) $request->get_header('svix-signature') !== ''
+        || (string) $request->get_header('svix-id') !== '') {
+        return alt_digest_webhook_resend($request, $raw);
+    }
+
+    $body = json_decode((string) $raw, true);
+    if (alt_digest_brevo_events($body)) {
+        return alt_digest_webhook_brevo($request, $body);
+    }
+
+    // Neither provider. Nothing is acted on and nothing is disclosed.
+    return new WP_REST_Response(array('ok' => false), 401);
+}
+
+/**
+ * Brevo: a plain JSON event, authenticated by the shared token and nothing
+ * else, because Brevo offers nothing else. See the long note above
+ * alt_digest_brevo_authenticated for what that does and does not prove.
+ */
+function alt_digest_webhook_brevo($request, $body) {
+    if (!alt_digest_brevo_authenticated($request)) {
+        // As terse as the Svix refusal, and for the same reason: a failure
+        // must not tell a caller whether an address is on the list.
+        return new WP_REST_Response(array('ok' => false), 401);
+    }
+    $stopped = 0;
+    foreach (alt_digest_brevo_events($body) as $event) {
+        $action = alt_digest_brevo_action($event['event'] ?? '');
+        if ($action === '') continue;      // soft bounces and engagement
+        $address = sanitize_email((string) ($event['email'] ?? ''));
+        if (alt_digest_stop_sending($address, $action)) $stopped++;
+    }
+    // Counts only, here and in anything that could be logged.
+    return new WP_REST_Response(array('ok' => true, 'stopped' => $stopped), 200);
+}
+
+/**
+ * Resend, via the Svix signature scheme. Unchanged behaviour: this path
+ * predates Brevo and Resend remains a supported transport.
+ */
+function alt_digest_webhook_resend($request, $raw) {
     if (!alt_digest_webhook_verified($request, $raw)) {
         // Deliberately terse. A verification failure tells a caller nothing
         // about whether an address is on the list.

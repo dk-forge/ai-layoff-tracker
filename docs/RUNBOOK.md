@@ -1228,21 +1228,73 @@ money on.
 ### Bounces and complaints
 
 `POST /wp-json/layoffs/v1/digest-webhook` handles them. It is not key gated,
-because a provider cannot send our key, so it verifies the provider's own
-HMAC signature (the Svix scheme Resend uses) and **fails closed when no signing
-secret is configured**. To arm it: add the webhook in the Resend dashboard for
-`email.bounced` and `email.complained`, then put the signing secret in
-`wp-config.php` as `ALT_DIGEST_WEBHOOK_SECRET`.
+because a provider cannot send our key. It **fails closed when no credential is
+configured**, and it supports **two providers at once, chosen by what the
+request carries** rather than by a setting, so a migration does not need a code
+change and cannot silently stop processing bounces because somebody forgot to
+flip a variable.
 
-A **permanent** bounce sets the row to `bounced`; a complaint sets it to
-`unsubscribed`. Both stop sending at once and both carry `unsubscribed_at`, so
-the 30-day retention purge erases them on the same promise as any other
-departure. A **soft** bounce changes nothing: dropping someone because their
-inbox was full for an hour is data loss dressed up as hygiene.
+| provider | how it authenticates | what you configure |
+|---|---|---|
+| Brevo | a shared token in a request header. **Brevo does not sign webhooks** | `ALT_DIGEST_BREVO_WEBHOOK_TOKEN` |
+| Resend | Svix HMAC signature over the body | `ALT_DIGEST_WEBHOOK_SECRET` |
+
+A **hard** bounce sets the row to `bounced`; a **spam complaint** or an
+unsubscribe sets it to `unsubscribed`. Both stop sending at once and both carry
+`unsubscribed_at`, so the 30-day retention purge erases them on the same
+promise as any other departure. A **soft** bounce changes nothing: dropping
+someone because their inbox was full for an hour is data loss dressed up as
+hygiene. `blocked` also changes nothing, on purpose - that is Brevo refusing to
+send to an address on ITS blocklist, which is a consequence of an earlier
+suppression and not new evidence about the mailbox.
+
+#### Arming it under Brevo
+
+**Read this first: Brevo does not sign its webhooks.** No HMAC, no signing
+header, no JWT (checked against Brevo's own "Secure webhook calls" page,
+2026-08-15). There is nothing to verify the body against, so the endpoint
+cannot be as strong as the Resend path is, and that is the provider's property
+rather than a gap in this code. The strongest thing Brevo offers is a shared
+secret in a header, which is what this uses. Treat that token as a password:
+it is replayable by anyone who ever sees one request, and TLS is doing all of
+the confidentiality work.
+
+1. **Generate a long random token** and put it in `wp-config.php`:
+   `define('ALT_DIGEST_BREVO_WEBHOOK_TOKEN', '<48+ random chars>');`
+2. **Create the webhook in Brevo**, Transactional, URL
+   `https://asktherecruiter.com/blog/wp-json/layoffs/v1/digest-webhook`, and
+   subscribe to `hardBounce`, `softBounce`, `spam`, `unsubscribed`, `blocked`
+   and `invalid`. Brevo spells events one way when you SUBSCRIBE (`hardBounce`)
+   and another way in the payload it then DELIVERS (`hard_bounce`); both
+   spellings resolve, so do not be alarmed by the mismatch.
+3. **Attach the token.** Either the webhook's bearer token
+   (`"auth": {"type": "bearer", "token": "<token>"}`) or a custom header named
+   `X-Alt-Webhook-Token`. **If the bearer token 401s, switch to the custom
+   header** - Apache with PHP as CGI strips `Authorization` before PHP ever
+   sees it, and on this host that is a live possibility. A wrong token and a
+   stripped header produce the identical 401, which is exactly why both are
+   accepted.
+4. **Never put the token in the URL**, though most guides suggest it. Bluehost
+   logs the full request line, so a secret in a path or query string is written
+   permanently to a file we do not control. A test enforces this.
+5. **Leave `batched` OFF.** Brevo's batched payload shape is not documented;
+   all three plausible shapes are accepted here defensively, but none of them
+   has been seen from a real delivery.
+
+Optional extra hardening, not built and not checked: allowlist Brevo's
+published sending CIDR ranges at the host. Their list is behind a page that
+returned 403 to the session that wrote this, so it is a suggestion rather than
+a verified step.
+
+To rotate the token: change it in Brevo first, then in `wp-config.php`. The gap
+between the two drops bounces for its duration, which is harmless and
+self-correcting.
 
 Until the webhook is armed, bounce handling is UNKNOWN rather than working, and
 `ops_status.py [4c]` will report `bounced 0` because nothing has told us
-otherwise. That is a real gap, not a passing check.
+otherwise. That is a real gap, not a passing check. **A 200 from the endpoint
+is not proof it works either** - the honest test is to send to Brevo's own
+bounce simulator address and then read the subscriber row.
 
 ### Two senders, one list
 

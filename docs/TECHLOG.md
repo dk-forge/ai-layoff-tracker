@@ -1,5 +1,84 @@
 # Tech Log
 
+## 2026-08-16 - the bounce handler spoke a provider we no longer use (2.20.65)
+
+`/digest-webhook` verified a **Svix** signature and dispatched on **Resend**
+event names (`email.bounced`, `email.complained`). That was right when Resend
+was the intended relay. The provider is now **Brevo**, which sends neither: a
+plain JSON POST, its own event names, no signature of any kind.
+
+So under Brevo this route processed **no bounce and no complaint at all**. It
+failed closed, which is safe, and the consequence is not. Hard bounces keep
+being retried and spam complaints keep being mailed, and a relay suspends an
+account past roughly 5% bounces or 0.1% complaints. The failure mode of an
+unattended pipeline was "quietly suspended, owner has to intervene", which is
+the exact outcome the digest was built to avoid.
+
+**Brevo does not sign its webhooks.** Verified against Brevo's own docs on
+2026-08-15, not assumed: the transactional webhook is plain JSON, and "Secure
+webhook calls" offers a bearer token (`auth`), arbitrary custom request
+headers (`headers`), basic-auth embedded in the webhook URL, and IP
+allowlisting. No HMAC, no signing header, no JWT. **There is nothing to verify
+the body against**, so no amount of care here can reach Svix's strength. That
+is a property of the provider and it is written into the file in those words,
+because a reader who assumes otherwise will not think to rotate the token.
+
+The strongest thing available is a shared secret in a header, and that is what
+this uses, with three decisions worth keeping:
+
+- **`hash_equals`**, so the comparison does not leak the token's prefix.
+- **Header only, never the URL.** Every guide recommends a secret in the path
+  or the query string. Bluehost writes the full request line to an access log,
+  so that is a secret written permanently to a file we do not control. A test
+  fails on `get_param`, `$_GET`, `get_query_params` or `REQUEST_URI` appearing
+  in the auth function.
+- **Two accepted headers, and that is not belt and braces.** Apache with PHP as
+  CGI drops `Authorization` before PHP sees it, silently, on exactly this class
+  of shared hosting. Bearer-only would 401 in a way indistinguishable from a
+  wrong token, with no way for the operator to tell those apart. Brevo can send
+  either, so `Authorization: Bearer` and `X-Alt-Webhook-Token` both work.
+- **No replay window, deliberately.** Every action here is idempotent, and
+  `alt_digest_stop_sending` already returns false for an already-suppressed
+  row. A window tight enough to matter would drop Brevo's own retries and its
+  five-minute batch delay: a real harm traded for a theoretical one. The Svix
+  path keeps its 300s window because there the timestamp is signed.
+
+**The provider is chosen by what the request carries, never by a setting.** A
+provider selected by an env var is wrong every time somebody forgets to change
+it, and the symptom is silent. Svix headers present means the request is
+verified as Svix **or refused as Svix** - it never falls through to the weaker
+path on a bad signature, which would make the strong check optional. Both
+providers work at once, which is what a migration actually looks like. The
+Svix path is unchanged and Resend remains supported.
+
+**The mapping is an exact lookup, never a substring test.** `strpos($event,
+'bounce')` reads as obviously right and catches `soft_bounce`, which deletes
+people whose mailbox was full for an hour. `hard_bounce` and `invalid_email`
+become `bounced`; `spam` and `unsubscribed` become `unsubscribed`; everything
+else changes nothing. `blocked` is in the nothing list on purpose: it is Brevo
+declining to send to an address on ITS blocklist, a consequence of some earlier
+suppression rather than new evidence, so acting on it would let the relay's
+state overwrite ours. Opens and clicks fall through to no action and are
+stored nowhere, which is the whole of the handling they get.
+
+One suppression path still: everything goes through `alt_digest_stop_sending`,
+and a test counts the writers of the subscriber table and fails at anything but
+exactly one. Both providers therefore carry the same `unsubscribed_at` and the
+same 30-day erase.
+
+**Tests run the PHP rather than grepping it** (`test_digest_brevo_feedback.py`,
+29 cases): the real handler under stubbed WordPress, reporting every write that
+reached the table. 18 of the 29 fail on the pre-change file. A mapping table is
+exactly the code that reads correct and behaves wrong.
+
+**UNVERIFIED.** (a) Brevo's **batched** payload shape is not documented
+anywhere I could find; all three plausible shapes are accepted rather than
+guessing one, and the RUNBOOK says leave `batched` off. (b) Brevo's sending
+CIDR ranges returned 403 to this session, so no IP allowlist was built; it is
+listed as optional host-level hardening, not as a check. (c) Nothing here is
+exercised against a real Brevo delivery - that needs the account, and it is the
+first item in the operator list in the RUNBOOK.
+
 ## 2026-08-16 - the second width arrived and the first one never moved (2.20.64)
 
 Pass three on the blog reading surface. 2.20.57 put the headings over their own
