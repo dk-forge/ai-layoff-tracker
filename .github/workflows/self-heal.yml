@@ -126,7 +126,14 @@ jobs:
         uses: anthropics/claude-code-action@e63208cb983318a44e3f945e959ef894b707dcfa # v1.0.192
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # anthropic_api_key is deliberately NOT passed. No ANTHROPIC_API_KEY
+          # secret exists in this repo, so the line that used to sit here handed
+          # the action an EMPTY string every run, which still puts
+          # ANTHROPIC_API_KEY="" into the CLI's environment. Actions cannot omit
+          # a `with:` key conditionally, so the only way not to pass it is not to
+          # write it. If a real key is ever added, add this back and drop the
+          # OAuth line. Never carry both: two credentials is an ambiguity, not a
+          # fallback.
           claude_args: >-
             --allowedTools "Read,Grep,Glob,Edit,Write,Bash(git:*),Bash(gh run view:*),Bash(gh run download:*),Bash(gh api repos/dk-forge/ai-layoff-tracker/actions/*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(gh pr view:*),Bash(python3:*),Bash(python:*),Bash(pytest:*),Bash(ls:*),Bash(cat:*),Bash(sed -n:*),Bash(head:*),Bash(tail:*)"
           prompt: |
@@ -182,6 +189,25 @@ jobs:
       # The action does not output the PR number; the branch name is the
       # ledger. No PR (the healer judged it unfixable, or was not armed) is a
       # valid, green outcome.
+      # WHY THIS EXISTS: claude-code-action reports `is_error: true` and throws
+      # the reason away. On 2026-08-16 the healer failed three times carrying
+      # nothing but `duration_ms: 98, num_turns: 1, total_cost_usd: 0` - no
+      # message and no stderr - so every diagnosis was a guess, and rotating the
+      # owner's OAuth token was one of the guesses it cost. The CLI writes its
+      # own log into the runner's temp dir and nothing preserves it. Print it on
+      # failure so the NEXT failure arrives with a cause attached.
+      - name: What did the CLI actually say?
+        if: failure()
+        run: |
+          F="${RUNNER_TEMP}/claude-execution-output.json"
+          if [ -f "$F" ]; then
+            echo "----- $F -----"
+            head -c 20000 "$F"
+          else
+            echo "no CLI log at $F; listing the temp dir instead:"
+            ls -la "${RUNNER_TEMP}" || true
+          fi
+
       - name: Find the draft PR
         id: pr
         if: steps.gate.outputs.heal == 'yes'
@@ -245,7 +271,14 @@ jobs:
         uses: anthropics/claude-code-action@e63208cb983318a44e3f945e959ef894b707dcfa # v1.0.192
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # anthropic_api_key is deliberately NOT passed. No ANTHROPIC_API_KEY
+          # secret exists in this repo, so the line that used to sit here handed
+          # the action an EMPTY string every run, which still puts
+          # ANTHROPIC_API_KEY="" into the CLI's environment. Actions cannot omit
+          # a `with:` key conditionally, so the only way not to pass it is not to
+          # write it. If a real key is ever added, add this back and drop the
+          # OAuth line. Never carry both: two credentials is an ambiguity, not a
+          # fallback.
           claude_args: >-
             --allowedTools "Read,Grep,Glob,Bash(git:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh run view:*),Bash(python3:*),Bash(python:*),Bash(pytest:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*)"
           prompt: |
