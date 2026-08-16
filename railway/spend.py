@@ -1554,11 +1554,19 @@ def harvest_railway_runs() -> list[dict]:
     for rec in (meta.get("spend_runs") or []) if isinstance(meta, dict) else []:
         if not isinstance(rec, dict) or not rec.get("date"):
             continue
+        # This list and db.php's add_spend_run whitelist are the two halves of
+        # one road, and they are hand-written separately. Both were missing
+        # `ceiling_usd` from the day record_job_run() started writing it
+        # (2026-08-14) until 2026-08-15, so every railway-cron entry in the
+        # committed ledger recorded a cost with no record of what the run was
+        # allowed to spend — permanently, and without an error anywhere. Adding
+        # a field to the ledger means adding it in BOTH places;
+        # tests/test_spend_ceiling_is_recorded.py is what says so out loud.
         entry = {k: rec.get(k) for k in
                  ("job", "date", "cost_usd", "calls", "prompt_tokens",
                   "completion_tokens", "cached_prompt_tokens", "items",
                   "stored", "changed", "run_id", "sources", "gate_mode",
-                  "gate_false_drops", "truncated", "complete")
+                  "gate_false_drops", "truncated", "complete", "ceiling_usd")
                  if rec.get(k) is not None}
         entry.setdefault("job", "railway-cron")
         out.append(entry)

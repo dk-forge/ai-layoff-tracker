@@ -4760,6 +4760,25 @@ function alt_api_tracker_meta(WP_REST_Request $r) {
         if (!empty($in['gate_mode'])) {
             $rec['gate_mode'] = sanitize_text_field((string) $in['gate_mode']);
         }
+        // The ceiling this run ACTUALLY ran under, and whether it finished.
+        // Dropped here until 2026-08-15, which cost the largest metered job in
+        // ops_status [2a] its entire audit: railway-cron is deliberately absent
+        // from JOB_RUN_CEILINGS_USD (it keeps the global RUN_CEILING_USD
+        // default), so with no named ceiling AND no recorded one there was
+        // nothing to judge its cost against and [2a] skipped it in silence.
+        // 'complete'/'truncated' are the same class of loss: a Railway run cut
+        // short by the brake reached the committed ledger looking finished.
+        // A brake whose limit is missing from its own ledger cannot be audited.
+        if (isset($in['ceiling_usd']) && is_numeric($in['ceiling_usd'])) {
+            $rec['ceiling_usd'] = round((float) $in['ceiling_usd'], 6);
+        }
+        if (isset($in['complete'])) {
+            $rec['complete'] = (bool) $in['complete'];
+        }
+        if (isset($in['truncated']) && $in['truncated'] !== null
+            && $in['truncated'] !== '') {
+            $rec['truncated'] = sanitize_text_field((string) $in['truncated']);
+        }
         if ($rec['run_id'] === '') $rec['run_id'] = $rec['date'] . 'T' . gmdate('Hi');
         if (!empty($in['sources']) && is_array($in['sources'])) {
             $sources = array();

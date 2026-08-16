@@ -484,6 +484,7 @@ def _report_run_cost():
                   f"Not a pass.")
             unverified.append("per-job LLM cost attribution")
         else:
+            unjudged: dict[str, list] = {}
             print(f"    per-job (last {window_days}d, railway/spend_jobs.json; "
                   f"$/row over stored+changed):")
             print(f"      {'job':26} {'runs':>4} {'$/day':>8} {'$/run':>8} "
@@ -521,7 +522,21 @@ def _report_run_cost():
                     cost = float(e.get("cost_usd") or 0)
                     own = e.get("ceiling_usd")
                     ran_under = float(own) if own is not None else ceiling
-                    if ran_under is None or cost <= ran_under * 1.25:
+                    if ran_under is None:
+                        # Neither a named ceiling nor a recorded one, so this
+                        # run cannot be judged against anything. Skipping it in
+                        # silence is the absence of a signal being read as a
+                        # pass — the exact thing CLAUDE.md forbids. Collect it
+                        # and say so below. railway-cron lived here: it keeps
+                        # the global RUN_CEILING_USD default (no named ceiling)
+                        # and the Railway round trip dropped the recorded one,
+                        # so the biggest metered job in this table was never
+                        # once compared to a limit.
+                        unjudged.setdefault(job, [0, 0.0])
+                        unjudged[job][0] += 1
+                        unjudged[job][1] = max(unjudged[job][1], cost)
+                        continue
+                    if cost <= ran_under * 1.25:
                         continue
                     if worst is None or cost > worst:
                         worst, basis, recorded = cost, ran_under, own is not None
@@ -532,6 +547,20 @@ def _report_run_cost():
                         f"{job} spent ${worst:.3f} in one run, past its "
                         f"${basis:.3f} ceiling{named} — the per-job brake is "
                         f"not holding")
+            if unjudged:
+                # UNKNOWN, printed. Deliberately NOT an ACTION item: a run
+                # nobody can audit is not evidence of an overshoot, and putting
+                # it in the same list as a measured overshoot is how the one
+                # place that reports real overshoot stops being read. It is
+                # also self-clearing — entries written since 2026-08-15 carry
+                # their own ceiling, so these age out of the window rather than
+                # needing to be closed.
+                print(f"    not judged  run(s) that recorded no ceiling AND "
+                      f"whose job has no named one — UNKNOWN, not a pass:")
+                for job in sorted(unjudged):
+                    n, worst = unjudged[job]
+                    print(f"      {job:26} {n:>4} run(s), dearest ${worst:.4f}, "
+                          f"compared against nothing")
             # Per-collector split, for entries that carry one (the Railway
             # cron posts its breakdown via /tracker-meta). This is the table
             # that replaces attributing the cron's burn by subtraction.

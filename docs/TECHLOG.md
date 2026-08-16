@@ -1,5 +1,72 @@
 # Tech Log
 
+## 2026-08-15 - the ceiling never reached the ledger, on the one road nobody tested (2.20.62)
+
+`ops_status.py [2a]` had been reporting two lines for days:
+
+```
+ai-evidence-sweep spent $0.020 in one run, past its $0.015 ceiling
+  (its named ceiling; that run recorded none) - the per-job brake is not holding
+edgar-history-sweep spent $0.272 in one run, past its $0.150 ceiling
+  (its named ceiling; that run recorded none) - the per-job brake is not holding
+```
+
+**Both accused runs are pre-fix history and neither is a live defect.** 8e976ca
+landed at 2026-08-14T07:42Z; the ai-evidence-sweep run is 2026-08-07 and the
+edgar run is 2026-08-12. Measured out of `railway/spend_jobs.json`:
+
+| job | worst pre-fix run | worst post-fix run | its ceiling | overshoot |
+|---|---|---|---|---|
+| ai-evidence-sweep | $0.019570 (08-07) | $0.015031, $0.015008 | $0.015 | $0.0046 → **$0.00003** |
+| edgar-history-sweep | $0.272093 (08-12) | $0.068168 (08-15) | $0.150 (run had an authorised $0.40) | never real |
+
+The ai-evidence-sweep overshoot was the once-per-item gate read, and
+`metered_call()` closed it: post-fix runs land $0.00003 over, which is inside
+the one-call bound a per-run ceiling can honestly promise. The edgar run was
+never an overshoot at all — it carried an operator's `run_ceiling_usd: 0.40`.
+Both lines will leave `[2a]` when they leave the 14-day window on 2026-08-21
+and 2026-08-26. Nothing was cleared by hand and no ceiling moved.
+
+**What was still live is the second half, and it was worse than the first.**
+`record_job_run()` writes `ceiling_usd`. The Railway cron's entry does not take
+the same road as every other job's: Railway can neither commit nor be
+log-harvested, so cron.py POSTs it to `/tracker-meta`, `db.php`'s
+`add_spend_run` stores a whitelisted subset, and `spend.harvest_railway_runs()`
+copies a **second, separately hand-written** key list back into the committed
+ledger. Three field lists, written at three different times, that nothing made
+agree. Neither of the last two had ever heard of `ceiling_usd`, so it was
+dropped twice, silently, on every run.
+
+The consequence is not a delay, it is a permanent blind spot on the biggest
+line in the table. `railway-cron` is deliberately absent from
+`JOB_RUN_CEILINGS_USD` — it keeps the global `RUN_CEILING_USD` — so with no
+named ceiling AND no recorded one, `[2a]` had nothing to compare it against and
+skipped it in silence. **18 of 18 railway-cron runs in the window, $0.0862/day,
+the largest metered job in the repo, had never once been compared to a limit.**
+And the dearest of them, `railway-20260806T1410` at $0.200664 against the
+$0.200 default, is a run that hit its brake and stopped one call over: the
+brake was working perfectly and nothing could see it. That entry also records
+`truncated: null` — because `truncated` and `complete` were dropped by the same
+whitelist, so a Railway run cut short by the brake reached the committed ledger
+looking finished.
+
+**The fix, in three parts.** `db.php` persists `ceiling_usd`, `complete` and
+`truncated` (ALT_VERSION 2.20.62); `harvest_railway_runs()` reads `ceiling_usd`
+back. `ops_status [2a]` no longer skips an unjudgeable run in silence — it
+prints a **"not judged"** block naming the job, the count and the dearest run,
+as UNKNOWN and deliberately NOT an ACTION item, because a run nobody can audit
+is not evidence of an overshoot and filing it beside a measured one is how the
+one place that reports real overshoot stops being read.
+
+`tests/test_spend_ceiling_is_recorded.py` is the part that matters. It does not
+check for `ceiling_usd`: it builds the entry `cron.py` actually posts, takes its
+keys, and fails if any of them is missing from either whitelist. Written first,
+it went red on three fields — `ceiling_usd`, plus `complete` and `truncated`,
+which nobody had gone looking for. The next audit field added to the ledger
+takes the same road, and a silent drop is exactly how this one arrived.
+
+No ceiling value and no `MONTHLY_ALLOWANCE_USD` moved. This is a mechanism.
+
 ## 2026-08-15 - the blog had exactly one width, and one width is not a layout (2.20.61)
 
 The owner, on https://asktherecruiter.com/blog/how-long-should-a-resume-be/:
