@@ -53,6 +53,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import digest_layout
 from digest_transport import (DigestPolicyError, Message, TransportError,
                               resolve_transport, sender_identity)
 
@@ -146,6 +147,20 @@ def _same_site(url: str, reference: str) -> bool:
     return bool(a.hostname) and a.hostname.lower() == (b.hostname or "").lower()
 
 
+def _kicker(payload: dict) -> str:
+    """The masthead's second line: which tier this is, and for what window.
+
+    Both facts come from the payload the site sent. When it carries a date
+    this cannot read, the line is omitted rather than filled in.
+    """
+    phrase = digest_layout.period_phrase(payload)
+    if not phrase:
+        return ""
+    freq = str(payload.get("freq") or "").strip().lower()
+    tier = {"weekly": "Weekly digest", "daily": "Daily digest"}.get(freq, "Digest")
+    return f"{tier}, {phrase}"
+
+
 def build_message(payload: dict, recipient: dict, from_addr: str,
                   reply_to: str) -> Message | None:
     """One rendered digest, or None when this person has nothing due.
@@ -160,9 +175,6 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     if not parts:
         return None
 
-    body_html = "".join(html for _, html, _ in parts)
-    body_text = "\n".join(text for _, _, text in parts)
-
     # A way to change WHAT you get, beside the way to stop everything. One
     # click unsubscribe is a blunt instrument: a reader who wants one of three
     # lists and receives three has exactly one button, and pressing it costs us
@@ -174,35 +186,20 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     manage = str(payload.get("manage_url") or "").strip()
     if not (manage.startswith("https://") and _same_site(manage, unsub)):
         manage = ""
-    manage_html = (f' You can also <a href="{manage}">Manage your subscriptions</a> '
-                   'to change which of these you get.') if manage else ""
-    manage_text = ("\nManage your subscriptions (change which of these you "
-                   "get):\n" + manage) if manage else ""
-
-    # Text first HTML: no images, no stylesheet link, no remote anything. The
-    # inline styles are literal values for the same reason, since a CSS url()
-    # is a remote fetch wearing a stylesheet.
-    html = ('<div style="font-family:sans-serif;max-width:600px;color:#1a1a1a;">'
-            + body_html
-            + '<hr style="border:none;border-top:1px solid #ddd;margin:24px 0 12px;">'
-            + '<p style="font-size:12px;color:#555;">You get this because you '
-              'confirmed a digest subscription at asktherecruiter.com. '
-            + f'<a href="{unsub}">Unsubscribe with one click</a> '
-              '(stops everything at once).'
-            + manage_html
-            + ' We send no images and no tracking '
-              'pixels, so we cannot tell whether you opened this.</p></div>')
-    text = (body_text.rstrip()
-            + "\n\n----\nYou get this because you confirmed a digest "
-              "subscription at asktherecruiter.com.\nUnsubscribe with one "
-              "click (stops everything at once):\n" + unsub
-            + manage_text
-            + "\nWe send no images and no tracking pixels, so we cannot tell "
-              "whether you opened this.\n")
+    # Presentation lives in digest_layout: a table shell, every rule inline on
+    # the element, and no style block at all, because a forward deletes the
+    # head and every style block with it. No figure is composed there either.
+    subject = digest_layout.subject_line(payload, parts)
+    kicker = _kicker(payload)
+    html = digest_layout.render_html(
+        parts, subject=subject, preheader=digest_layout.preheader_text(parts),
+        kicker=kicker, unsub_url=unsub, manage_url=manage)
+    text = digest_layout.render_text(parts, kicker=kicker, unsub_url=unsub,
+                                     manage_url=manage)
 
     return Message(
         to=str(recipient.get("email") or ""),
-        subject=str(payload.get("subject") or "Tracker digest"),
+        subject=subject,
         html=html,
         text=text,
         from_addr=from_addr,

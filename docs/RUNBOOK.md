@@ -1181,6 +1181,36 @@ Then run the workflow by hand once with `dry_run: 1` and read the rendered
 email, then once with `dry_run` blank and `limit: 1` before letting the
 schedule take over.
 
+### The email design has one rule: it must survive a forward
+
+`railway/digest_layout.py` owns everything about how the message looks. The
+site still composes every figure and every entry through its own endpoints,
+and the layout module is not allowed to derive one.
+
+**Gmail and most webmail delete `<head>` and every `<style>` block when a
+message is forwarded or quoted.** A digest read by recruiters and journalists
+gets forwarded constantly, so a design that lives in a stylesheet is a design
+that exists only in the first inbox it reaches. Everything is therefore inline
+on the element, the message carries no style block at all, and the layout is
+nested presentational tables because Outlook on Windows draws mail with Word,
+which has no flexbox, no grid and no CSS positioning. The width is
+`width="100%"` capped by `max-width:600px`, so it is fluid on a phone with no
+media query, because media queries die on a forward too.
+
+`tests/test_digest_email_layout.py` deletes the head and every style block and
+asserts the message is byte for byte the same one. If you add a style block,
+a class, a media query or a flexbox rule, that test fails and it is right.
+`assert_message_is_clean` in `digest_transport.py` already refuses `<style>`
+outright, along with every tag or attribute that fetches from a server, so
+there is no image, no pixel and no CSS `url()` to add either. Do not weaken
+that check to make a design fit.
+
+Two things this cannot check from a runner: how Outlook 2016 and Gmail's own
+renderers actually draw it, and how a client that inverts the message treats
+the palette. The palette is checked for 4.5:1 upright AND inverted by
+arithmetic, and every colour is declared rather than inherited, but a real
+client test is an owner step with a real inbox.
+
 ### Changing provider is one variable
 
 `DIGEST_TRANSPORT` is the whole switch, and the seam lives in

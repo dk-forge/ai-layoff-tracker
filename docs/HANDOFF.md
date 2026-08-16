@@ -21,6 +21,19 @@ holder, so the start-of-session ritual surfaces it automatically.
   Provider chosen by what the request carries, never a setting; the Svix path
   is untouched and Resend still works; one suppression path. Arming it is
   owner-only and the steps are in RUNBOOK "Bounces and complaints".
+- **AND WORKING ON:** the digest's presentation, Python side only
+  (`railway/digest_layout.py`, `railway/digest_send.py`,
+  `tests/test_digest_email_layout.py`). The property is that a FORWARD does
+  not break it: webmail deletes `<head>` and every `<style>` block when a
+  message is forwarded, so every rule is inline on the element and the
+  message carries no style block at all. Nested tables, not flexbox, because
+  Outlook draws mail with Word. Plus a preheader and a subject that says what
+  changed. No figure is composed here; the site still composes every section.
+  **BLOCKED, not done:** three content additions the owner asked for later (a
+  date on each entry, one year-to-date line per tracker, a top-countries block
+  under the layoff section) all live in `alt_digest_compose_layoff` in
+  `includes/subscribe.php`, which another session holds. Reported with a
+  ready-to-apply patch rather than edited into a contended file.
 - **AND WORKING ON:** the AI cumulative chart's gate, landed as **2.20.66**
   (`assets/layoffs.js` and `tests/test_ai_chart_gate_matches_line.py` only).
   It selected and started on `ai_jobs`, which is verified PLUS announced, and

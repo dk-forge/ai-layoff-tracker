@@ -285,6 +285,53 @@ after-numbers, the reader-freshness check on this build and the rendered
 contrast audit for this version are **UNKNOWN, not passes**.
 
 
+## 2026-08-15 - the digest was designed for one inbox and forwarded to others
+
+The email digest rendered as a single `div` with a sans-serif stack, a 600px
+max width and three small inline styles. It read acceptably in the inbox it was
+sent to. The thing a data digest read by recruiters and journalists actually
+does is get forwarded, and that is where it fell apart: Gmail and most webmail
+delete `<head>` and every `<style>` block when a message is forwarded or
+quoted, so any design that is not on the element itself does not travel.
+
+`railway/digest_layout.py` now owns presentation. Nested presentational tables,
+`width="100%"` capped at `max-width:600px` so it is fluid on a phone with no
+media query, and every rule inline on the element it applies to. **The message
+carries no style block at all**, so there is nothing for a forward to take.
+`tests/test_digest_email_layout.py` deletes the head and every style block and
+asserts the result is byte for byte the same message, then walks every heading,
+paragraph, list item and link and fails any one that declares no colour of its
+own. Word is the engine behind Outlook on Windows, so flexbox, grid, CSS
+positioning and media queries are all asserted absent rather than avoided by
+habit.
+
+**Nothing here composes a figure.** The site still renders every section
+through its own endpoints, and the layout module receives the finished parts.
+The one test that matters more than it looks is the one that greps this module
+for the same banned tokens `digest_send.py` is checked for: a second place that
+derives a headline number is a second place that can be wrong.
+
+**Two additions the message did not have.** A preheader, which is the snippet
+the inbox shows beside the subject: with none, the client grabs the first text
+it finds, which in a careful email is the unsubscribe line. It is the leading
+section's own summary sentence, verbatim, and a sentence too long for the slot
+is REPLACED rather than truncated, because a snippet cut mid figure is a wrong
+number in the one line most people read. And a subject that says what changed:
+the site's own section headings plus the period, collapsing to "and N more"
+when the list would run past 78 characters, and falling back to the subject the
+site sent whenever it cannot do better. It carries no figure. A number in a
+subject line is a number nobody can correct once it is sent.
+
+**Inversion is checked by arithmetic, not by eye.** Many clients invert a light
+email, so each colour pair is asserted at 4.5:1 against the card AND against
+the inverted card. That is why the muted grey is darker than it looks: a mid
+grey that reads well on white is still a mid grey once the background is black.
+
+**What was NOT verified, and is therefore UNKNOWN.** Nothing here renders in
+Outlook 2016 or in Gmail's own pipeline, and no test in this repo can. The
+forwarding property is checked structurally, which is the part that is
+checkable; how a specific client draws it is an owner step with a real inbox.
+
 ## 2026-08-15 - applause on a blog post, and the two columns that make the promise checkable (2.20.63)
 
 A reader taps a button at the end of an article and a number goes up. The whole
