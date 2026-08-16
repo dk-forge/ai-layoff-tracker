@@ -1,5 +1,74 @@
 # Tech Log
 
+## 2026-08-15 - applause on a blog post, and the two columns that make the promise checkable (2.20.63)
+
+A reader taps a button at the end of an article and a number goes up. The whole
+feature is one integer per post. The interesting part is what is NOT stored, and
+the reason it is worth a log entry is that "we store nothing about you" is a
+sentence anybody can write and almost nobody can check.
+
+**The store is `wp_alt_post_claps`: `post_id BIGINT UNSIGNED PRIMARY KEY`,
+`claps INT UNSIGNED`.** Two columns, both integers. There is no third column an
+id, an address or a timestamp could be dropped into by a later session in a
+hurry, so the privacy claim is enforced by the schema rather than by everyone
+remembering. Post meta would have worked and was rejected for three reasons: the
+atomic increment would lean on an implicit LONGTEXT-to-number cast for the one
+operation that must never be approximate; a counter in meta arrives inside every
+`get_post_meta()` payload on every surface that touches the post, which is how a
+"harmless" field grows into a record; and a two-column integer table is a claim
+a reader can verify.
+
+**The increment is one statement.** `UPDATE ... SET claps = claps + %d WHERE
+post_id = %d`, resolved by the database under a row lock, after an `INSERT
+IGNORE` that creates the row at zero and reads nothing. The same shape
+`alt_digest_track_link()` uses. `railway/tests/test_blog_claps.py` runs sixteen
+real PHP processes at one row, 25 taps each, and asserts 400. It then runs a
+read-modify-write version through the same harness and asserts that it LOSES
+counts: measured at **59 of 400**. That control is not decoration. A concurrency
+test that has quietly lost its ability to fail is worse than no concurrency
+test, because it gets quoted.
+
+**The batch helper exists before its caller does.** `alt_claps_counts($ids)`
+takes a set and issues ONE query, and the single-post render calls it with one
+id so there is no second read path. Asserted by statement count, not by timing:
+the mutation that turns it into a loop reports "issued 40 statements for 40
+ids". A listing page was the stated future use, and one query per card is the
+standard way a counter becomes a performance incident.
+
+**What an attacker can still do, said plainly here and on the page.** There are
+no accounts, so the number can be inflated. The browser ceiling of 50 per
+article lives in localStorage, which the reader owns. The server clamps a single
+request to 10 and throttles one address to 60 increments per five minutes, with
+the key hashed into a transient that expires and touches no durable store. That
+stops a held button, a refresh and an impatient reader. It does not stop a
+script that waits, or rotates addresses, and no anonymous counter can. So the
+copy under the control reads "Anonymous and approximate", the number is never
+presented as a metric, and nothing downstream reads it.
+
+**The public write is one route that can write one thing.** `POST
+/layoffs/v1/clap` takes an id and an amount. The id must be a PUBLISHED post of
+type `post`: not a page, not a layoffs entry, not an attachment, not a draft,
+not private, not password protected. A refused id gets a 404 and **no row**,
+because a counter row is itself a small disclosure that an id exists. A test
+asserts the file registers exactly one route.
+
+Rendered by `the_content` at priority 24, one ahead of the signup at 25, gated
+on `is_singular('post')` with the same three gates
+`includes/subscribe-placements.php` uses, so the surfaces cannot disagree about
+what an article is. The count is server-rendered text and the button ships
+`disabled`, enabled by the script on load: with scripting off the page is right
+and the control is honestly inert, rather than announcing itself as available
+and doing nothing.
+
+`assets/blog-claps.css` is self-carried for the reason `subscribe.php` records:
+`layoffs.css` is not enqueued on a blog post, so every colour is a component
+token reading the site token with the site's own light literal as its fallback.
+No `prefers-color-scheme` block, same judgement as the signup: the article is
+pinned to white, and a dark box on a white page is a hole. Measured contrast,
+recomputed by the test from the shipped values, light and dark: button label and
+edge 4.95 / 7.70, count 17.76 / 15.31, note 5.18 / 7.01, focus outline 6.63 /
+10.51. The icon is inline SVG, so no image and no third-party request.
+
 ## 2026-08-15 - the ceiling never reached the ledger, on the one road nobody tested (2.20.62)
 
 `ops_status.py [2a]` had been reporting two lines for days:

@@ -1,0 +1,141 @@
+/* The applause control at the end of a blog post. See includes/blog-claps.php.
+ *
+ * SELF CARRIED, FOR THE REASON includes/subscribe.php SPELLS OUT. This renders
+ * on single posts, where assets/layoffs.css is not enqueued, so a bare
+ * var(--alt-ink) would resolve to nothing and leave an unstyled control. Every
+ * colour below is a component token that READS the site token and carries the
+ * site's own light literal as its fallback. A surface that loads layoffs.css is
+ * unchanged to the byte, because the var resolves and the fallback is never
+ * reached. A surface that does not gets the light palette those literals came
+ * from.
+ *
+ * THERE IS DELIBERATELY NO prefers-color-scheme BLOCK HERE, and it is the same
+ * judgement subscribe.php records. The surfaces that have a dark mode all load
+ * layoffs.css and are therefore served by the var() half of every token below.
+ * The one surface relying on the literals is the blog, where the theme pins the
+ * article to white. A dark control on a permanently white page is not dark
+ * mode, it is a hole. Both palettes are measured for contrast in
+ * railway/tests/test_blog_claps.py, light literal against white and dark token
+ * against the dark page, so the component is AA either way it resolves.
+ *
+ * MEASURED RATIOS, recomputed by that test from the values shipped here rather
+ * than quoted from a commit message, because a contrast claim in a comment rots:
+ *
+ *                                  light      dark    AA floor
+ *   button label and its edge     4.95:1    7.70:1    4.5:1
+ *   the count                    17.76:1   15.31:1    4.5:1
+ *   the note under the control    5.18:1    7.01:1    4.5:1
+ *   focus outline                 6.63:1   10.51:1    3.0:1  (1.4.11)
+ *   the hovered, filled button    4.95:1    7.70:1    4.5:1
+ */
+
+.alt-clap {
+    --alt-cl-page: var(--alt-page, #ffffff);
+    --alt-cl-ink: var(--alt-ink, #16181d);
+    --alt-cl-note: var(--alt-muted, #696d77);
+    --alt-cl-accent: var(--alt-blue, #1f6fd0);
+    --alt-cl-accent-strong: var(--alt-blue-dark, #1c5cab);
+    --alt-cl-on-accent: var(--alt-on-accent, #ffffff);
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0;
+    padding: 0;
+    background: var(--alt-cl-page);
+    color: var(--alt-cl-ink);
+}
+
+/* The component owns its box model. A theme that sets border-box or
+   content-box globally must not move the 44px floor below. */
+.alt-clap, .alt-clap *, .alt-clap *::before, .alt-clap *::after { box-sizing: border-box; }
+
+.alt-clap-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* 44px on both axes, the floor railway/tests/test_tap_targets.py holds the
+       rest of the plugin to. min-height rather than height so a reader with a
+       larger text size gets a taller button and never a clipped label. */
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 18px;
+    border: 1px solid var(--alt-cl-accent);
+    border-radius: 999px;
+    background: var(--alt-cl-page);
+    color: var(--alt-cl-accent);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.alt-clap-btn:hover:not([disabled]) {
+    background: var(--alt-cl-accent);
+    color: var(--alt-cl-on-accent);
+}
+
+/* Visible focus, and not the browser's default outline colour: on the accent
+   fill above, a UA outline can land at the same lightness as the button. */
+.alt-clap-btn:focus-visible {
+    outline: 2px solid var(--alt-cl-accent-strong);
+    outline-offset: 2px;
+}
+
+/* Disabled is the no-JavaScript state, so it must read as "not available" and
+   not as "broken". Reduced opacity only, no colour change, so the label stays
+   legible; the count beside it is the part that carries the information. */
+.alt-clap-btn[disabled] { opacity: .55; cursor: default; }
+
+.alt-clap-icon { flex: none; }
+
+.alt-clap-count {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--alt-cl-ink);
+    white-space: nowrap;
+}
+
+.alt-clap-note {
+    /* Its own line under the control on every width. */
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--alt-cl-note);
+}
+
+/* The announcement is for assistive technology. Not display:none, which is not
+   announced, and not a zero size box, which some engines skip: the standard
+   visually-hidden clip. */
+.alt-clap-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* The tap acknowledgement. A 120ms nudge on the icon, nothing on the layout, so
+   a reader tapping quickly is never waiting on an animation to finish. */
+.alt-clap-btn[data-alt-clap-pulse] .alt-clap-icon {
+    animation: alt-clap-pulse 120ms ease-out;
+}
+
+@keyframes alt-clap-pulse {
+    from { transform: scale(1); }
+    50%  { transform: scale(1.18); }
+    to   { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .alt-clap-btn[data-alt-clap-pulse] .alt-clap-icon { animation: none; }
+}

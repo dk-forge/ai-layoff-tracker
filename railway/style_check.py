@@ -992,6 +992,8 @@ LAYOFF_TARGETS = [
     ("wordpress-plugin/ai-layoff-tracker/assets/health.js", "health"),
     ("wordpress-plugin/ai-layoff-tracker/assets/widget.js", "widget"),
     ("wordpress-plugin/ai-layoff-tracker/includes/subscribe.php", "email"),
+    ("wordpress-plugin/ai-layoff-tracker/includes/blog-claps.php", "post"),
+    ("wordpress-plugin/ai-layoff-tracker/assets/blog-claps.js", "post"),
     ("wordpress-plugin/ai-layoff-tracker/includes/contact.php", "contact"),
     ("wordpress-plugin/ai-layoff-tracker/includes/shortcodes.php", "tracker"),
     ("wordpress-plugin/ai-layoff-tracker/includes/export.php", "export"),

@@ -9,7 +9,15 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** the ceiling that never reached the ledger. `[2a]`'s two
+- **WORKING ON:** an applause control on single blog posts. One integer per
+  post in `wp_alt_post_claps`, incremented by one atomic UPDATE, read for a SET
+  of posts in one query so a listing costs one round trip. Anonymous and
+  aggregate by construction: the table has two integer columns and no third
+  place to put a person. New files only (`includes/blog-claps.php`,
+  `assets/blog-claps.{css,js}`); `assets/blog-reading.css` and
+  `includes/blog-typography.php` belong to a concurrent session and are not
+  touched here.
+- **PREVIOUS SUBJECT:** the ceiling that never reached the ledger. `[2a]`'s two
   "brake is not holding" lines are pre-fix history (8e976ca, 2026-08-14T07:42Z,
   is after both runs) and will age out of the 14d window on their own. What is
   still live is the second half: `record_job_run()` writes `ceiling_usd`, but
@@ -18,10 +26,10 @@ holder, so the start-of-session ritual surfaces it automatically.
   the largest metered job in the table, records a cost with no record of what
   it was allowed to spend, permanently and by construction. Fixing the drop and
   pinning the three field lists against each other.
-- **PREVIOUS SUBJECT:** (landed as 2.20.61) the blog article had exactly one
+- **BEFORE THAT:** (landed as 2.20.61) the blog article had exactly one
   width; the page now has three (media to 820/960/1040px, the measure to 700px
   at 1400px, the contents box in two columns above 1100px).
-- **BEFORE THAT:** (landed as 2.20.60) putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
+- **AND BEFORE THAT:** (landed as 2.20.60) putting our OWN email signup on the pages readers actually land on. `alt_digest_subscribe_form()` renders on the two tracker pages only; it now also renders at the end of single blog posts, on the company profile pages (`/company-layoffs/`), on the country/state/industry facet pages and on the layoff entry permalinks. One placement per page. The component is being made genuinely self-carried (it declared `var(--alt-border)` and `.alt-btn-primary` with no fallback, and neither exists on a blog post, where `layoffs.css` is not enqueued). The third-party Mailjet `.atr-capture` box stays untouched: it lives in WordPress, not this repo.
 
 **Same holder, refreshed 2026-08-13, not a takeover.** The WORKING ON line above
 had gone stale: it still named the US incident close, which landed, so a session

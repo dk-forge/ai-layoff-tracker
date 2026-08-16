@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.62
+ * Version: 2.20.63
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.62');
+define('ALT_VERSION', '2.20.63');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -66,6 +66,18 @@ if (is_readable($alt_subscribe_placements)) {
 $alt_blog_typography = ALT_PLUGIN_DIR . 'includes/blog-typography.php';
 if (is_readable($alt_blog_typography)) {
     require_once $alt_blog_typography;
+}
+// The applause control on single blog posts. GUARDED with is_readable for the
+// same reason as the two files above: this file is NEW, so the deploy that
+// introduces it can land this main file first, and a hard require of a
+// not-yet-uploaded include fatals the ENTIRE plugin on every request until it
+// arrives (2.19.20). Its absence must degrade to "articles carry no applause
+// control", which is where they were yesterday, and never to a white screen. It
+// wires itself to the_content, rest_api_init and wp_enqueue_scripts, so nothing
+// outside it calls in and there is no stub accessor to leave behind.
+$alt_blog_claps = ALT_PLUGIN_DIR . 'includes/blog-claps.php';
+if (is_readable($alt_blog_claps)) {
+    require_once $alt_blog_claps;
 }
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
 // GUARDED: FTP deploys upload files one at a time, so this main plugin file can
