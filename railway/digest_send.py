@@ -41,6 +41,10 @@ Env:
   DIGEST_FREQ                      daily | weekly | auto (default auto)
   DIGEST_DRY_RUN=1                 render everything, send nothing
   DIGEST_LIMIT                     stop after N recipients (a first live send)
+  DIGEST_PREVIEW=1                 when NOBODY is due, render the live sections
+                                   once against a placeholder address so the
+                                   email can be read. Ignored by any transport
+                                   that sends.
 """
 from __future__ import annotations
 
@@ -282,6 +286,59 @@ def _record_health(status: str, entries: int, detail: str) -> None:
         print(f"(digest health post skipped: {exc})")
 
 
+PREVIEW_ADDRESS = "preview@example.invalid"
+
+
+def _preview_payload(payload: dict, transport):
+    """Render the LIVE sections once when the list has nobody due.
+
+    WHY THIS EXISTS. The RUNBOOK tells the owner to read the rendered email
+    before arming the sender, and until now that instruction could not be
+    followed: with no confirmed subscriber due, the site composes every
+    section from the live endpoints and then the job renders nothing, because
+    a message is built per recipient. So the one run that exists to be read
+    printed a count and no email.
+
+    IT CANNOT SEND. Two independent reasons: it only substitutes when the
+    transport does not put anything on the wire, and the address is on
+    `.invalid`, a reserved suffix that resolves nowhere. Nothing about the
+    sections is faked. The only invented values are the address and the
+    unsubscribe token, both of which are presentation for a reader of the log.
+
+    Returns None when this is not a preview run, and the caller keeps the real
+    payload untouched.
+    """
+    if os.environ.get("DIGEST_PREVIEW", "").strip().lower() not in {"1", "true", "yes"}:
+        return None
+    if transport.sends:
+        print("::warning::DIGEST_PREVIEW is set but this transport SENDS, so "
+              "the preview was skipped entirely. A preview recipient must "
+              "never reach a provider.")
+        return None
+    if payload.get("recipients"):
+        return None
+    # The site's OWN order, not alphabetical. Sorting put "From the blog"
+    # above both trackers and made an article title the inbox snippet.
+    sections = list((payload.get("sections") or {}).keys())
+    if not sections:
+        print("DIGEST_PREVIEW: the site composed no section, so there is "
+              "nothing to preview. That is the live state, not a failure.")
+        return None
+    print(f"DIGEST_PREVIEW: nobody is due, so the live sections are rendered "
+          f"once against a placeholder recipient at {PREVIEW_ADDRESS}. "
+          f"Nothing is sent and no send is recorded.")
+    preview = dict(payload)
+    preview["send_id"] = 0
+    preview["recipients"] = [{
+        "id": 0,
+        "email": PREVIEW_ADDRESS,
+        "unsub_url": f"{_site()}/wp-admin/admin-post.php"
+                     f"?action=alt_digest_unsub&t=preview",
+        "lists": sections,
+    }]
+    return preview
+
+
 def main() -> int:
     if not (_site() and _key()):
         print("WP_SITE_URL and WP_API_KEY are required; nothing attempted")
@@ -315,6 +372,11 @@ def main() -> int:
         reason = payload.get("reason") or "the site reported no subscriber table"
         print(f"nothing sent: {reason}. This is not a zero subscriber count.")
         return 0
+
+    preview = _preview_payload(payload, transport)
+    is_preview = preview is not None
+    if is_preview:
+        payload = preview
 
     send_id = int(payload.get("send_id") or 0)
     eligible = len(payload.get("recipients") or [])
@@ -351,9 +413,15 @@ def main() -> int:
                   f"guard is what stops a second copy, so investigate before "
                   f"the next run.")
 
-    detail = (f"{freq}: {len(sent_ids)} sent of {eligible} eligible via "
-              f"{transport.describe()}, {len(failures)} failed")
-    _record_health("degraded" if failures else "ok", len(sent_ids), detail)
+    # A preview stays out of the ledger. Its one placeholder recipient is not
+    # a delivery, and a health row that counted it would read as a send.
+    if is_preview:
+        print("DIGEST_PREVIEW: nothing recorded, because a placeholder is not "
+              "a recipient.")
+    else:
+        detail = (f"{freq}: {len(sent_ids)} sent of {eligible} eligible via "
+                  f"{transport.describe()}, {len(failures)} failed")
+        _record_health("degraded" if failures else "ok", len(sent_ids), detail)
 
     # A failed delivery is not a red run on its own: one refused address among
     # hundreds is normal mail, and reddening for it is how a real outage stops

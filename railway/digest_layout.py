@@ -134,10 +134,28 @@ def section_heading(text_part: str) -> str:
 
 
 def section_lead(text_part: str) -> str:
-    """The section's own summary sentence: the line under its heading."""
-    lines = [line.strip() for line in (text_part or "").splitlines()]
-    lines = [line for line in lines if line]
-    return lines[1] if len(lines) > 1 else ""
+    """The section's own summary sentence: the line under its heading.
+
+    A list item is NOT a summary, and neither is the continuation line under
+    one. The blog section is a heading followed straight by bullets, and
+    reading into that list put one article title, and then one article's
+    blurb, into the inbox snippet as though it were the digest's headline. So
+    this takes only an UNINDENTED prose line, which is the shape a summary
+    has in every section that writes one. A section without one has no lead,
+    and that is a real answer.
+    """
+    lines = (text_part or "").splitlines()
+    seen_heading = False
+    for line in lines:
+        if not line.strip():
+            continue
+        if not seen_heading:
+            seen_heading = True
+            continue
+        if line[:1].isspace() or line.lstrip().startswith(("-", "*", "\u2022")):
+            continue
+        return line.strip()
+    return ""
 
 
 def period_phrase(payload: dict) -> str:
@@ -204,8 +222,8 @@ def preheader_text(parts) -> str:
     for _, _, text in (parts or []):
         heading = section_heading(text)
         if heading:
-            return f"{heading}: this period's verified figures, inside."
-    return "This period's verified figures, inside."
+            return f"{heading}: what changed this period."
+    return "What changed on the trackers this period."
 
 
 # ---------------------------------------------------------------------------

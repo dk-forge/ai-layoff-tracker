@@ -34,6 +34,10 @@ on:
         description: 'Stop after N recipients. Use for a first live send.'
         required: false
         default: ''
+      preview:
+        description: 'Set to 1 to render the live sections when nobody is due. Never sends.'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -65,4 +69,8 @@ jobs:
           DIGEST_DRY_RUN: ${{ github.event.inputs.dry_run }}
           DIGEST_FREQ: ${{ github.event.inputs.freq }}
           DIGEST_LIMIT: ${{ github.event.inputs.limit }}
+          # Reads the rendered email when the list has nobody due. It is
+          # ignored by any transport that sends, so it cannot mail a
+          # placeholder.
+          DIGEST_PREVIEW: ${{ github.event.inputs.preview }}
         run: python digest_send.py

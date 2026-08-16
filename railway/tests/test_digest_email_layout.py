@@ -271,6 +271,14 @@ class ThePreheader(unittest.TestCase):
         self.assertNotIn("48,910", snippet)
         self.assertTrue(snippet.strip())
 
+    def test_a_bullet_is_never_read_as_the_summary_sentence(self):
+        """The blog section is a heading and then bullets. Taking its first
+        bullet put one article title in the inbox snippet as if it were the
+        digest's headline."""
+        snippet = layout.preheader_text([("articles", ARTICLES_HTML, ARTICLES_TEXT)])
+        self.assertNotIn("What a WARN notice", snippet)
+        self.assertIn("From the blog", snippet)
+
     def test_it_is_not_repeated_in_the_visible_body(self):
         html = message().html
         self.assertEqual(html.count("312 verified entries"), 2,
@@ -359,6 +367,113 @@ class ThePromisesAreUnchanged(unittest.TestCase):
             plain = re.sub(r"<[^>]+>", "", label).strip().lower()
             self.assertNotIn(plain, ("click here", "here", "read more", "link"))
             self.assertGreater(len(plain), 4, label)
+
+
+class ReadingTheEmailWhenNobodyIsDue(unittest.TestCase):
+    """The RUNBOOK tells the owner to read the rendered digest before arming
+    the sender. With no confirmed subscriber due, the site composes every
+    section from the live endpoints and the job then renders nothing, because
+    a message is built per recipient. So the one run that exists to be read
+    printed a count and no email.
+
+    A preview may never become a send, and these are the two independent
+    reasons it cannot.
+    """
+
+    ENV = {"WP_SITE_URL": "https://asktherecruiter.com/blog", "WP_API_KEY": "k",
+           "DIGEST_PREVIEW": "1", "DIGEST_FREQ": "weekly"}
+
+    def _run(self, env=None, transport=None):
+        import io
+        from unittest import mock
+        live = payload(("layoff", "talent", "articles"), recipients=[])
+        buf = io.StringIO()
+        chosen = transport or dt.DryRunTransport("test", buf)
+        log = io.StringIO()
+        with mock.patch.dict(os.environ, dict(self.ENV, **(env or {})), clear=True), \
+                mock.patch.object(digest_send, "_call", return_value=live) as call, \
+                mock.patch.object(digest_send, "_record_health") as health, \
+                mock.patch.object(digest_send, "resolve_transport",
+                                  return_value=(chosen, "test")), \
+                mock.patch.object(digest_send.time, "sleep"), \
+                mock.patch("sys.stdout", log):
+            code = digest_send.main()
+        return code, buf.getvalue() + log.getvalue(), call, health
+
+    def test_the_live_sections_render_against_a_placeholder(self):
+        code, out, call, _ = self._run()
+        self.assertEqual(code, 0)
+        self.assertIn("312 verified entries", out)
+        self.assertLess(out.index("AI Layoff Tracker"), out.index("From the blog"),
+                        "the preview reordered the sections; the site's own "
+                        "order is the one a reader sees")
+        self.assertIn("Talent Intelligence Tracker", out)
+        self.assertIn("DRY RUN, nothing sent", out)
+        self.assertEqual([c.args[0] for c in call.call_args_list],
+                         ["digest-recipients"],
+                         "a preview must never record a send")
+
+    def test_a_transport_that_sends_refuses_the_preview_outright(self):
+        class Sending(dt.Transport):
+            name, sends = "sending", True
+
+            def __init__(self):
+                self.delivered = []
+
+            def _deliver(self, message):
+                self.delivered.append(message)
+                return "sent"
+
+        transport = Sending()
+        code, out, _, _ = self._run(transport=transport)
+        self.assertEqual(code, 0)
+        self.assertEqual(transport.delivered, [],
+                         "a placeholder address reached a transport that sends")
+        self.assertIn("this transport SENDS", out or "")
+
+    def test_the_placeholder_can_never_be_a_real_mailbox(self):
+        self.assertTrue(digest_send.PREVIEW_ADDRESS.endswith(".invalid"),
+                        "a preview address on a routable domain is one "
+                        "misconfiguration away from mailing a stranger")
+
+    def test_a_preview_is_kept_out_of_the_health_ledger(self):
+        _, out, _, health = self._run()
+        health.assert_not_called()
+        self.assertIn("not a recipient", out)
+
+    def test_a_real_recipient_is_never_replaced_by_the_placeholder(self):
+        import io
+        from unittest import mock
+        live = payload(("layoff",))
+        buf = io.StringIO()
+        with mock.patch.dict(os.environ, self.ENV, clear=True), \
+                mock.patch.object(digest_send, "_call", return_value=live), \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send, "resolve_transport",
+                                  return_value=(dt.DryRunTransport("t", buf), "t")), \
+                mock.patch.object(digest_send.time, "sleep"):
+            digest_send.main()
+        self.assertNotIn(digest_send.PREVIEW_ADDRESS, buf.getvalue())
+
+    def test_nothing_to_compose_previews_nothing_rather_than_an_empty_shell(self):
+        import io
+        from unittest import mock
+        live = payload((), recipients=[])
+        buf = io.StringIO()
+        with mock.patch.dict(os.environ, self.ENV, clear=True), \
+                mock.patch.object(digest_send, "_call", return_value=live), \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send, "resolve_transport",
+                                  return_value=(dt.DryRunTransport("t", buf), "t")):
+            code = digest_send.main()
+        self.assertEqual(code, 0)
+        self.assertEqual(buf.getvalue(), "")
+
+    def test_the_workflow_exposes_it_and_the_names_agree(self):
+        body = open(os.path.join(RAILWAY, "..", ".github", "workflows",
+                                 "digest-send.yml"), encoding="utf-8").read()
+        self.assertIn("preview:", body)
+        self.assertIn("DIGEST_PREVIEW: ${{ github.event.inputs.preview }}", body)
 
 
 class HouseStyle(unittest.TestCase):
