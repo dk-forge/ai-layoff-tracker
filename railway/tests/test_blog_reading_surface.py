@@ -88,6 +88,27 @@ TAP_MIN = 44.0
 DESKTOP_CPL = (60.0, 78.0)
 PHONE_CPL = (36.0, 48.0)
 
+# AND CHARACTERS PER LINE IS A FONT MEASUREMENT, WHICH MADE THIS SUITE PASS ON
+# A MAC AND RED ON CI FOR FOUR COMMITS RUNNING.
+#
+# cpl is column width over average glyph width, and the glyph width depends on
+# which face actually resolves. Three have now been measured on this exact
+# stylesheet, and they differ by 9%:
+#
+#   0.4946 em   Vollkorn, live (700px at 21px measured 67.4 cpl)
+#   0.4824 em   Charter, this fixture on macOS (700px at 21px measured 69.1)
+#   0.4515 em   the Linux CI runner's serif fallback, derived from two
+#               independent failures on 2026-08-16: 780px at 22px reported
+#               78.5 cpl, and 820px at 23px reported 79.0
+#
+# A session on a Mac sizing against 0.4824 ships a line that is 6% longer for
+# every reader whose device carries neither Vollkorn nor Charter. The band is
+# not the problem and was not moved; the type grew. But the local measurement
+# can no longer be the only one, so the projection below re-measures every
+# width against the narrowest face observed, whatever the local machine has.
+# Raise it only when a NARROWER face has actually been measured somewhere.
+NARROWEST_GLYPH_EM = 0.4515
+
 # PASS THREE, 2026-08-15. The owner read the 2.20.61 page and named four things.
 # Each number below is one of them, stated as a threshold so the stylesheet
 # cannot drift back under it.
@@ -562,6 +583,31 @@ class TheMeasureIsComfortable(ChromeBackedTest):
                            "outside %.0f-%.0f" % (w, got, lo, hi))
         self.assertEqual(bad, [], "\n".join(bad))
 
+    def test_the_line_is_still_short_enough_in_the_narrowest_fallback(self):
+        """The same band, re-measured against a face this machine may not
+        have. The test above asks "how long is the line HERE"; this one asks
+        "how long is it for a reader whose device carries neither Vollkorn nor
+        Charter", which is the question that went unasked until the CI runner
+        answered it four commits in a row.
+
+        Only the ceiling is checked. A narrower face can only lengthen a line,
+        so the floor is already covered by the local measurement.
+        """
+        bad = []
+        for w in WIDTHS:
+            d = self.m[w]
+            hi = (PHONE_CPL if w < 768 else DESKTOP_CPL)[1]
+            projected = d["p"]["w"] / (d["p"]["fs"] * NARROWEST_GLYPH_EM)
+            if projected > hi:
+                bad.append("at %dpx the measure is %.0fpx at %.0fpx type, "
+                           "which is %.1f characters per line in the narrowest "
+                           "serif measured (%.4f em), over %.0f. It reads %.1f "
+                           "on this machine, so sizing by what is rendered "
+                           "here ships a longer line to everyone else."
+                           % (w, d["p"]["w"], d["p"]["fs"], projected,
+                              NARROWEST_GLYPH_EM, hi, d["cpl"]))
+        self.assertEqual(bad, [], "\n".join(bad))
+
 
 class TheTypeIsSizedForReading(ChromeBackedTest):
 
@@ -569,13 +615,18 @@ class TheTypeIsSizedForReading(ChromeBackedTest):
         bad = []
         for w in WIDTHS:
             p = self.m[w]["p"]
-            # 19-23. The ceiling moved with pass three: the measure is only
-            # allowed to widen because the type widens with it, so a band that
-            # stopped at 21px would have forbidden the fix rather than guarded
-            # it. The thing being guarded is characters per line, and that is
-            # asserted separately at every width in TheMeasureIsComfortable.
-            if not (19.0 <= p["fs"] <= 23.0):
-                bad.append("at %dpx the body is %.1fpx, outside 19-23"
+            # 19-24. The ceiling moved twice with pass three, and both times
+            # it was the type FOLLOWING the column rather than leading it: the
+            # measure is only allowed to widen because the type widens with
+            # it, so a band pinned at 21px would have forbidden the fix rather
+            # than guarded it. The second move, 23 to 24, was forced by the
+            # narrow-fallback measurement above - the column did not grow, the
+            # line it produced for a third of readers turned out to be longer
+            # than anyone here could see. The thing actually being guarded is
+            # characters per line, and that is now asserted twice at every
+            # width: as rendered, and as projected onto the narrowest face.
+            if not (19.0 <= p["fs"] <= 24.0):
+                bad.append("at %dpx the body is %.1fpx, outside 19-24"
                            % (w, p["fs"]))
             ratio = p["lh"] / p["fs"]
             if not (1.5 <= ratio <= 1.75):

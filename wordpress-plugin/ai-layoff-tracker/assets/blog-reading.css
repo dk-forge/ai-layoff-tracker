@@ -210,14 +210,30 @@ body.single-post {
  *
  * Pixels are not the constraint; characters per line is. Every step below
  * moves the column and the body size together so the line a reader tracks
- * back along stays the same length, measured in the fallback metric the test
- * renders (Charter) and quoted for live Vollkorn in the TECHLOG:
+ * back along stays the same length.
  *
- *   step        measure   body   chars/line   media    media:text
- *   base        645px     20px   66.9         820px    1.27x
- *   >= 1200     720px     21px   71.1         880px    1.22x
- *   >= 1500     780px     22px   73.5         980px    1.26x
- *   >= 1800     820px     23px   73.9         1040px   1.27x
+ * AND "CHARACTERS PER LINE" IS A FONT MEASUREMENT, NOT A PIXEL ONE, WHICH IS
+ * WHAT REDDENED CI FOR FOUR COMMITS. The first cut of this table was sized
+ * against the two serifs a session can see from a Mac: live Vollkorn at
+ * 0.4946em average glyph width, and the Charter the offline fixture falls back
+ * to at 0.4824em. The Linux CI runner has neither, falls back a third time,
+ * and that face is 0.4515em - about 9% narrower, so about 9% MORE characters
+ * fit on the same column. 780px at 22px read 73.5 here and 78.5 there, and
+ * 78.5 is past the top of the band.
+ *
+ * That is not a bad runner, it is a reader we had not measured. Anyone whose
+ * device carries neither Vollkorn nor Charter gets the third face, and they
+ * were being served a 79-character line. So the TYPE grew rather than the band
+ * moving, and every step is now sized against the NARROWEST glyph metric
+ * observed, not the widest:
+ *
+ *   step        measure   body   0.4515em   0.4824em   0.4946em   media   ratio
+ *   base        645px     20px   71.4       66.9       65.2       820px   1.27x
+ *   >= 1200     720px     22px   72.5       67.8       66.1       880px   1.22x
+ *   >= 1500     780px     23px   75.1       70.3       68.5       980px   1.26x
+ *   >= 1800     820px     24px   75.7       70.8       69.1       1040px  1.27x
+ *
+ * All twelve are inside 60-78. Size the next step against the LEFT column.
  *
  * The media:text ratio is the point of the table. It was 1.49x and is now
  * about 1.25x at every step: the image still leads the column, which is what
@@ -230,11 +246,11 @@ body.single-post {
 @media (min-width: 1200px) {
   body.single-post main {
     --wp--style--global--content-size: 720px;
-    --alt-read-body: 21px;
-    --alt-read-h1: 46px;
-    --alt-read-h2: 36px;
-    --alt-read-h3: 27px;
-    --alt-read-h4: 21px;
+    --alt-read-body: 22px;
+    --alt-read-h1: 48px;
+    --alt-read-h2: 37px;
+    --alt-read-h3: 28px;
+    --alt-read-h4: 22px;
     --alt-read-media: min(880px, 100%);
   }
 }
@@ -242,11 +258,11 @@ body.single-post {
 @media (min-width: 1500px) {
   body.single-post main {
     --wp--style--global--content-size: 780px;
-    --alt-read-body: 22px;
-    --alt-read-h1: 48px;
-    --alt-read-h2: 37px;
-    --alt-read-h3: 28px;
-    --alt-read-h4: 22px;
+    --alt-read-body: 23px;
+    --alt-read-h1: 50px;
+    --alt-read-h2: 39px;
+    --alt-read-h3: 29px;
+    --alt-read-h4: 23px;
     --alt-read-media: min(980px, 100%);
   }
 }
@@ -254,11 +270,11 @@ body.single-post {
 @media (min-width: 1800px) {
   body.single-post main {
     --wp--style--global--content-size: 820px;
-    --alt-read-body: 23px;
-    --alt-read-h1: 50px;
-    --alt-read-h2: 39px;
-    --alt-read-h3: 29px;
-    --alt-read-h4: 23px;
+    --alt-read-body: 24px;
+    --alt-read-h1: 52px;
+    --alt-read-h2: 41px;
+    --alt-read-h3: 31px;
+    --alt-read-h4: 24px;
     --alt-read-media: min(1040px, 100%);
   }
 }

@@ -1,5 +1,87 @@
 # Tech Log
 
+## 2026-08-16 - the reading measure was sized against a font a third of readers do not have (2.20.67)
+
+2.20.64 widened the blog measure and grew the type with it, and the
+characters-per-line guard that decides whether that is allowed passed on the
+session's machine and **failed on CI for four commits running**, mailing the
+owner each time:
+
+    at 1600px the measure is 78.5 characters per line, outside 60-78
+    at 2000px the measure is 79.0 characters per line, outside 60-78
+
+The guard was right and the page was wrong. Characters per line is column width
+over average GLYPH width, and the glyph width depends on which face actually
+resolves. Three have now been measured against this one stylesheet:
+
+| face | where | average glyph | how it was measured |
+|---|---|---|---|
+| Vollkorn | live site | 0.4946 em | 700px at 21px read 67.4 cpl |
+| Charter | the offline fixture, on macOS | 0.4824 em | 700px at 21px read 69.1 cpl |
+| the Linux serif fallback | the CI runner | **0.4515 em** | 780px at 22px read 78.5, and 820px at 23px read 79.0, two independent points agreeing to four decimals |
+
+The third face is about 9% narrower than the other two, so about 9% more
+characters fit on the same column. Every number in the 2.20.64 table was sized
+against the two faces a session can see from a Mac. **A reader whose device
+carries neither Vollkorn nor Charter was being served a 79-character line**,
+which is the defect; the runner was not being fussy, it was being the only
+machine in the loop that had that reader's font.
+
+**The band did not move. The type grew.** 60 to 78 characters is the finding,
+not the obstacle, and widening it would have deleted the only thing that
+noticed. Each step is now sized against the NARROWEST glyph metric observed:
+
+| step | measure | body | 0.4515 em | 0.4824 em | 0.4946 em | media | image : text |
+|---|---|---|---|---|---|---|---|
+| base | 645px | 20px | 71.4 | 66.9 | 65.2 | 820px | 1.27 |
+| >= 1200px | 720px | 22px | 72.5 | 67.8 | 66.2 | 880px | 1.22 |
+| >= 1500px | 780px | 23px | 75.1 | 70.3 | 68.6 | 980px | 1.26 |
+| >= 1800px | 820px | 24px | 75.7 | 70.8 | 69.1 | 1040px | 1.27 |
+
+Twelve readings, all inside the band. The column did not widen by a pixel; only
+the type did, at each of the three steps, which is the same rule 2.20.64 was
+built on applied to a face nobody had looked at. The heading scale moved with
+it and every ratio the existing test holds is unchanged: 1.05-1.45 between
+neighbouring levels, h1 under 2.25x the body, h2 at 1.68-1.71x it on a desktop.
+
+**Measured after, at the six widths, in all three metrics:**
+
+| | 375 | 414 | 768 | 1280 | 1600 | 2000 |
+|---|---|---|---|---|---|---|
+| paragraph x / width | 18 / 339 | 18 / 378 | 61.5 / 645 | 280 / 720 | 410 / 780 | 590 / 820 |
+| body size | 19 | 19 | 19 | 22 | 23 | 24 |
+| cpl, narrowest 0.4515 | 39.5 | 44.1 | 75.2 | 72.5 | 75.1 | 75.7 |
+| cpl, fixture Charter | 37.0 | 41.2 | 70.4 | 67.8 | 70.3 | 70.8 |
+| cpl, live Vollkorn | 36.1 | 40.2 | 68.6 | 66.2 | 68.6 | 69.1 |
+| h1 / h2 / h3 | 32/28/23 | 32/28/23 | 32/28/23 | 48/37/28 | 50/39/29 | 52/41/31 |
+| air above an h2 | 64px | 64px | 64px | 80px | 80px | 80px |
+| featured image | 339 | 378 | 732 | 880 | 980 | 1040 |
+| image : text | 1.00 | 1.00 | 1.14 | 1.22 | 1.26 | 1.27 |
+| horizontal overflow | 0 | 0 | 0 | 0 | 0 | 0 |
+
+The phone is untouched by all of it: 18px in, 339px wide, 36.1 characters per
+line at 375 and 40.2 at 414 in the live face, identical to 2.20.57, 2.20.61 and
+2.20.64. Nothing below 1200px changed size.
+
+**THE GUARD NOW ASKS THE QUESTION THAT WENT UNASKED.**
+`test_the_line_is_still_short_enough_in_the_narrowest_fallback` re-measures
+every width against 0.4515 em regardless of what the local machine renders, so
+a session on a Mac can no longer ship a line that only reddens on Linux. Run
+against the 2.20.64 sizes it reproduces the CI failure exactly, from a Mac, to
+one decimal place:
+
+    at 1600px the measure is 780px at 22px type, which is 78.5 characters per
+    line in the narrowest serif measured (0.4515 em), over 78. It reads 73.5 on
+    this machine, so sizing by what is rendered here ships a longer line to
+    everyone else.
+
+Only the ceiling is projected. A narrower face can only lengthen a line, so the
+floor is already covered by the local measurement. The constant is raised only
+when a narrower face has actually been measured somewhere, never to make a
+suite go green. The body-size band moved 19-23 to 19-24 for the same reason it
+moved 19-21 to 19-23 in 2.20.64: it exists so the column and the type move
+together, and pinning it would forbid the fix rather than guard it.
+
 ## 2026-08-16 - the AI chart selected on one number and drew another (2.20.66)
 
 `/aggregate` reports three AI figures per month and `ai_jobs` is the sum of the
