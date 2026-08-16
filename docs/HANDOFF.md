@@ -34,7 +34,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   under the layoff section) all live in `alt_digest_compose_layoff` in
   `includes/subscribe.php`, which another session holds. Reported with a
   ready-to-apply patch rather than edited into a contended file.
-- **AND WORKING ON (this session, picking up that BLOCKED item):** the three
+- **DONE (this session, picking up that BLOCKED item), landed as 2.20.68:** the three
   content additions, inside `alt_digest_compose_layoff` and
   `alt_digest_compose_talent` in `includes/subscribe.php` and nowhere else.
   A date on every entry, one year-to-date line per tracker, and a
@@ -43,7 +43,14 @@ holder, so the start-of-session ritual surfaces it automatically.
   old `include=leaders` returned `top_countries` EMPTY, and the composer sent
   no `date_basis`, so it inherited `layoff_date` while the tracker page
   defaults to `notice`. The basis is now named in the request and named in
-  the copy. No signup markup is touched.
+  the copy. No signup markup is touched. Verified on d21d281: Tests, Style
+  standard, Card contract, Deploy and the rendered contrast audit all green on
+  that SHA, `reader_freshness.py` PASS on 2.20.68, and the digest workflow run
+  with `dry_run=1 freq=weekly preview=1` composed all three sections against
+  live WordPress with every addition present in BOTH body parts. Left alone on
+  purpose: the section's own "N verified entries totalling X job cuts" reads
+  `totals.jobs`, which is verified PLUS announced. The year-to-date line reads
+  the same field so the two agree; correcting the label is a separate change.
 - **AND WORKING ON:** the AI cumulative chart's gate, landed as **2.20.66**
   (`assets/layoffs.js` and `tests/test_ai_chart_gate_matches_line.py` only).
   It selected and started on `ai_jobs`, which is verified PLUS announced, and
