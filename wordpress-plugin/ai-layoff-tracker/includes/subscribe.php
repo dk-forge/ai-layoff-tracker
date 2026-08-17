@@ -1890,9 +1890,14 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
               case a reader happens to check.
             */
             if ($undated > 0) {
-                $basis = $undated . ' of the signals listed for ' . $range . ' show no '
-                       . 'date, because the source carries none. We do not substitute the '
-                       . 'day we captured them.';
+                // Agreement, because "1 of the signals show no date" is the
+                // same carelessness as "1 jobs" and lands on the same reader.
+                $basis = ($undated === 1)
+                    ? ('One signal listed for ' . $range . ' shows no date, because the '
+                       . 'source carries none. We do not substitute the day we captured it.')
+                    : ($undated . ' signals listed for ' . $range . ' show no date, because '
+                       . 'the source carries none. We do not substitute the day we '
+                       . 'captured them.');
                 $html .= '<p data-alt="note">' . esc_html($basis) . '</p>';
                 $text .= $basis . "\n";
             }
