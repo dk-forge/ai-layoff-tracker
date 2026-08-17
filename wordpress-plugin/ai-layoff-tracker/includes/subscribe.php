@@ -19,9 +19,17 @@
  *     headers. One click unsubscribes from everything.
  *   - Tokens come from random_bytes() and are compared with hash_equals().
  *     The email address itself NEVER appears in a URL.
- *   - No tracking pixels and no images, deliberately. We cannot tell whether
- *     you opened the email, on purpose: open tracking needs a per-person image
- *     URL, which is the individual-level record we promised not to keep.
+ *   - THIS FILE embeds no tracking pixel and no image, and that has not
+ *     changed. What DID change on 2026-08-16 is what happens after the
+ *     message leaves us: the owner turned on open and click tracking at the
+ *     mail provider, and Brevo injects its own pixel and rewrites links at
+ *     the relay. So the provider CAN tell whether an email was opened, and we
+ *     can read that. Every reader-facing string that used to promise
+ *     otherwise has been corrected; docs/RUNBOOK.md "Open and click tracking"
+ *     lists them, because they are coupled to a dashboard setting no code
+ *     here can read. Keep our own message clean anyway: it is what makes the
+ *     tracking removable by changing provider rather than by unpicking
+ *     templates, and assert_message_is_clean enforces it.
  *   - Link clicks are counted in AGGREGATE only: one integer per (send, link),
  *     with no subscriber id, no IP and no user agent stored. The counter
  *     cannot say who clicked, only how many times a link was followed. See
@@ -688,9 +696,10 @@ function alt_digest_subscribe_form($context = '') {
                  - the form - which is what the rendered tests measure. */ ?>
         <?php if ($panel !== '') : echo $panel; else : ?>
         <p class="alt-digest-intro"><?php if ($lead !== '') echo esc_html($lead) . ' '; ?>A plain email summary of what changed on these trackers: the period's
-            headline numbers and the largest new entries, with links back to the source pages. No images,
-            no tracking pixels. You confirm your address by clicking a link we email you, and every email
-            carries a one-click unsubscribe. Details in the <a href="#alt-digest-privacy">privacy note</a> below.</p>
+            headline numbers and the largest new entries, with links back to the source pages. No images. Our mail
+            provider records whether you open an email and which links you follow, and we read that to see
+            which sections are worth keeping. You confirm your address by clicking a link we email you, and
+            every email carries a one-click unsubscribe that stops the email and the measuring together. Details in the <a href="#alt-digest-privacy">privacy note</a> below.</p>
         <?php /* The context rides on the FORM, not on the <section>. The
                  section's opening tag is matched by a regex in
                  tests/test_digest_route_is_findable.py that reads the signup's
@@ -733,8 +742,12 @@ function alt_digest_subscribe_form($context = '') {
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>
             <p><strong>What we store:</strong> your email address, the choices above, and timestamps
-                (signed up, confirmed, last sent). Nothing else about you. There is no open tracking
-                and no tracking pixel, so we cannot tell whether you opened an email.</p>
+                (signed up, confirmed, last sent). Nothing else about you.</p>
+            <p><strong>What our mail provider records:</strong> whether you opened an email and which
+                links you followed, tied to your address. That is Brevo, the service that delivers these
+                emails, and it works by adding a small invisible image and by routing links through its
+                own address. We read it to see which sections people use. Unsubscribing stops the sending
+                and the measuring at the same time, and erasing your row removes it from our side.</p>
             <p><strong>About the links:</strong> links in the digest pass through a counter on this
                 site that adds 1 to a total for that link and sends you straight on. It records no
                 identifier, no IP address and no browser details, so it counts how many times a link
