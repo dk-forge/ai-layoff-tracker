@@ -64,7 +64,21 @@ FONT = ("-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',"
 
 WIDTH_PX = 600
 TEXT_WIDTH = 72
-BRAND = "AskTheRecruiter Trackers"
+# THE ONE NAME, and it is the same string the sender identity uses. The owner
+# saw the masthead read "AskTheRecruiter Trackers" in iCloud while the From
+# line read "AskTheRecruiter.com", which is two names for one brand inside a
+# single message. digest_transport.SENDER_NAME is the authority; this reads it
+# so the two cannot drift, and the import is local to keep the layout module
+# free of a hard dependency on the transport at import time.
+def _brand():
+    try:
+        from digest_transport import SENDER_NAME
+        return SENDER_NAME
+    except Exception:
+        return "AskTheRecruiter.com"
+
+
+BRAND = _brand()
 
 MONTHS = ("January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December")

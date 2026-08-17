@@ -1241,7 +1241,7 @@ add_action('admin_post_nopriv_alt_digest_unsub', 'alt_digest_unsubscribe');
  * rewritten to claim that.
  */
 if (!defined('ALT_DIGEST_FROM_EMAIL')) define('ALT_DIGEST_FROM_EMAIL', 'newsletter@asktherecruiter.com');
-if (!defined('ALT_DIGEST_FROM_NAME'))  define('ALT_DIGEST_FROM_NAME', 'AskTheRecruiter Trackers');
+if (!defined('ALT_DIGEST_FROM_NAME'))  define('ALT_DIGEST_FROM_NAME', 'AskTheRecruiter.com');
 if (!defined('ALT_DIGEST_REPLY_TO'))   define('ALT_DIGEST_REPLY_TO', 'info@asktherecruiter.com');
 
 function alt_digest_from_header() {
