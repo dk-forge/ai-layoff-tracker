@@ -254,6 +254,40 @@ class RelevanceFilterTests(unittest.TestCase):
         keep, why = nf.relevance("ru", "Boeing to cut 900 jobs at its plant", "")
         self.assertTrue(keep, f"English story in a Russian feed dropped ({why})")
 
+    def test_the_english_half_cannot_be_bought_with_playoff(self):
+        """Every non-English feed is ALSO read with the English vocabulary, so
+        a hole in the English set is a hole in all four languages at once.
+        MEASURED 2026-08-17 while pricing the researched publishers: six of the
+        ten items that passed this gate across 57 publishers' own feeds were
+        Spanish-language football stories kept on `term:en:layoff` matching
+        'playoffs'. Each would have bought a paid extraction."""
+        for lang, title, snippet in (
+            ("es", "Sporting Cristal venció 4-1 a Sport Huancayo",
+             "se mete en la pelea por los playoffs"),
+            ("en", "Tabla del Torneo Clausura", "playoff race"),
+            ("ru", "Плей-офф чемпионата", "the playoffs continue"),
+        ):
+            with self.subTest(title=title):
+                keep, why = nf.relevance(lang, title, snippet)
+                self.assertFalse(keep, f"sports story kept on {why}")
+
+    def test_a_body_with_bytes_after_the_closing_tag_still_parses(self):
+        """The Kathmandu Post is WIRED and its /rss began serving a Cloudflare
+        beacon <script> after </rss> on 2026-08-17, which made a perfectly
+        good channel a counted error on every run."""
+        good = rss(("Mill lays off 400 workers", "https://example.org/a",
+                    "400 redundancies confirmed."))
+        items, is_feed = nf._parse_items(
+            good + '<script src="https://cdn.example/beacon.js"></script>')
+        self.assertTrue(is_feed)
+        self.assertEqual(len(items), 1)
+
+    def test_an_html_page_at_a_feed_path_is_still_an_error(self):
+        """The trailing-junk trim must not soften the changed-scheme guard."""
+        items, is_feed = nf._parse_items("<!doctype html><html><body>x</body></html>")
+        self.assertFalse(is_feed)
+        self.assertEqual(items, [])
+
     def test_an_english_feed_does_not_widen_into_other_vocabularies(self):
         """The reverse must NOT hold: widening every feed to every language
         buys noise, and the per-language sets are precision-tuned."""

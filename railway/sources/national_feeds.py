@@ -105,7 +105,8 @@ from sources.local_news import is_aggregator
 # English collective-layoff vocabulary is also ONE definition, shared with the
 # regional feeds. A correction to the English terms must land in both places
 # at the same time or the two collectors disagree about what a layoff story is.
-from sources.regional_feeds import EN_PATTERNS, EN_TERMS, PAIRED_TERMS
+from sources.regional_feeds import (EN_PATTERNS, EN_TERMS, PAIRED_TERMS,
+                                    trim_trailing_junk)
 
 # requests is imported LAZILY inside the default fetcher, so tests and the
 # dry-run planner can import this module without the dependency and without
@@ -373,7 +374,11 @@ def _parse_items(xml_text):
     ([], True): a quiet feed is honest absence, not breakage."""
     out = []
     try:
-        root = ET.fromstring(xml_text)
+        # Bytes outside the document (a Cloudflare beacon tag after </rss>,
+        # which The Kathmandu Post's wired feed began serving on 2026-08-17)
+        # are dropped first. See trim_trailing_junk: it removes what is outside
+        # the document and repairs nothing inside it.
+        root = ET.fromstring(trim_trailing_junk(xml_text))
     except Exception:
         return out, False
     if root.tag.split("}")[-1] != "rss" or root.find("channel") is None:

@@ -847,6 +847,35 @@ free. Steps:
 6. Document it: add a row to the workflow table + dormant-key table above, and a
    TECHLOG entry.
 
+**Before proposing a publisher that a market sweep already covers, measure the
+marginal value. This has been measured once and the answer was zero.**
+
+`railway/data/source_catalogue.json` holds 335 `researched` publishers across
+the 25 `local_news` markets, and "can we wire them?" is a reasonable-sounding
+question that costs money and buys nothing. Measured first-hand on 2026-08-17
+(full working in TECHLOG, same date):
+
+- The 335 carry **no feed URL and no domain** — they are outlet name tokens.
+  Connecting them starts with per-publisher discovery, 335 times.
+- Only 130 of the 335 could be resolved to a real domain at all (from the
+  sweep's own `<source url>`), and of the 128 unique hosts those resolve to,
+  **47% exposed a usable feed**; 5% refused us on robots.txt, and the rest
+  served HTML at the feed path, 403'd or 404'd.
+- Across **2,586 items from 57 of those publishers' own feeds in 20 countries**,
+  the number of layoff-relevant stories the country's own sweep had missed was
+  **zero**. Ten items passed the free gate and all ten were false positives.
+- The ledger already said the same: in one run the 25 market sweeps stored 14
+  rows and the 15 wired direct national feeds stored 0 — and those 15 exist only
+  for countries where the sweep does NOT work.
+
+So a direct feed is worth building when a market sweep for that country
+**does not work or does not exist** (that is what `national_feeds` and
+`regional_feeds` are for), and is worth nothing when one already runs. The rule
+those two modules already state — **one publisher per country, no aggregators**
+— is not a stylistic preference; five of the catalogue's existing refusals are
+working feeds declined under it. If you want to revisit this, re-run the
+measurement rather than the argument.
+
 ## How to FINE-TUNE (env knobs, no code change)
 - **Extraction quality**: the AI rubric + guards live in `railway/extractor.py`
   (`_count_in_text` verbatim guard, the timeline/subset prompt). AI precision is

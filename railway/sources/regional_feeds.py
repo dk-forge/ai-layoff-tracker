@@ -209,8 +209,20 @@ def armed_feeds():
 # ---------------------------------------------------------------------------
 # RELEVANCE: the free cost gate. Collective-reduction vocabulary only, in the
 # two languages these feeds publish in. Substring match on lowercased text.
+# "layoff" AND "lay off" ARE DELIBERATELY NOT IN THIS TUPLE. Every term here is
+# matched as a bare substring, and "playoff"/"playoffs" contains "layoff", so a
+# bare "layoff" term admits the entire sports desk of any general-interest feed.
+# Measured 2026-08-17 while pricing the researched publishers: of ten items that
+# passed this gate across 57 publishers' own feeds, six were football fixtures
+# and league tables, every one of them kept on `term:en:layoff` with no layoff
+# word anywhere in the text. Each would have bought a paid extraction. The two
+# terms moved into EN_PATTERNS below, where \b refuses "playoffs" and still
+# takes "layoff", "layoffs" and "lay-offs".
+#
+# The other stems ("redundanc", "retrench", "downsiz") stay substrings on
+# purpose - they are stems with no common word wrapping them.
 EN_TERMS = (
-    "layoff", "lay off", "lays off", "laid off", "redundanc", "retrench",
+    "lays off", "laid off", "redundanc", "retrench",
     "job cuts", "jobs cut", "downsiz", "workforce reduction", "staff cut",
     "jobs to go", "positions eliminated",
 )
@@ -220,7 +232,8 @@ EN_TERMS = (
 # sentence a substring would not already catch.
 EN_PATTERNS = re.compile(
     r"\b(cut|cuts|cutting|axe|axes|axed|shed|sheds|shedding)\s+"
-    r"(?:[\d][\d,.\s]*\s*)?jobs\b", re.I)
+    r"(?:[\d][\d,.\s]*\s*)?jobs\b"
+    r"|\blay[- ]?offs?\b", re.I)
 FR_PATTERNS = re.compile(
     r"suppressions?\s+d[e'’]\s*(?:[\d][\d\s.,]*\s*)?(postes|emplois)", re.I)
 FR_TERMS = (
@@ -253,7 +266,9 @@ def relevance(title, snippet):
         if term in t:
             return True, f"term:{term}"
     if EN_PATTERNS.search(t):
-        return True, "pattern:en-jobs-verb"
+        # The label stopped naming one shape when the boundary-matched
+        # lay-off alternation moved in beside the verb+jobs one.
+        return True, "pattern:en"
     if FR_PATTERNS.search(t):
         return True, "pattern:fr-suppression"
     for term, partners in PAIRED_TERMS:
@@ -276,6 +291,29 @@ def _iso_date(pubdate):
         return ""
 
 
+def trim_trailing_junk(xml_text):
+    """Drop anything a publisher appends AFTER the closing </rss>.
+
+    NOT a leniency knob and not a repair of a third party's XML. It removes
+    bytes that are outside the document, which an XML parser is required to
+    reject ("junk after document element") and which say nothing about whether
+    the feed itself is well-formed. The measured case is The Kathmandu Post
+    (wired): on 2026-08-17 its /rss began serving a Cloudflare
+    `<script src=".../beacon.min.js">` tag after </rss>, so every run of the
+    national-feeds collector counted that feed as an error and the whole
+    collector degraded, on a feed whose channel parses perfectly.
+
+    Anything wrong INSIDE the document still fails, which is the property that
+    matters: Abidjan.net's malformed body and an HTML page at a former feed
+    path are still refusals, and we still never hand-repair a broken feed.
+    """
+    if isinstance(xml_text, bytes):
+        end = xml_text.rfind(b"</rss>")
+        return xml_text[:end + 6] if end != -1 else xml_text
+    end = str(xml_text or "").rfind("</rss>")
+    return xml_text[:end + 6] if end != -1 else xml_text
+
+
 def _parse_items(xml_text):
     """Returns (items, is_feed). is_feed is False when the body is not an RSS
     document at all - the changed-scheme shape (an HTML page at a former feed
@@ -283,7 +321,7 @@ def _parse_items(xml_text):
     items is ([], True): a quiet feed is honest absence, not breakage."""
     out = []
     try:
-        root = ET.fromstring(xml_text)
+        root = ET.fromstring(trim_trailing_junk(xml_text))
     except Exception:
         return out, False
     if root.tag.split("}")[-1] != "rss" or root.find("channel") is None:

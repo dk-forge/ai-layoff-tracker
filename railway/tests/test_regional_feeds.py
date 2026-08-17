@@ -211,6 +211,64 @@ class RelevanceFilterTests(unittest.TestCase):
             "Tribunal : le licenciement du directeur juge abusif", "")
         self.assertFalse(keep)
 
+    def test_the_sports_desk_cannot_buy_an_extraction_on_playoff(self):
+        """MEASURED 2026-08-17: six of the ten items that passed this gate
+        across 57 publishers' own feeds were football fixtures and league
+        tables, every one kept on the bare substring 'layoff' inside
+        'playoffs'. A gate that admits the sports desk is not a cost gate."""
+        for title, snippet in (
+            ("Sporting Cristal into the playoffs", "the playoff race tightens"),
+            ("Tabla del Torneo Clausura", "los playoffs definen al campeon"),
+            ("Season ends with a playoff berth", ""),
+        ):
+            with self.subTest(title=title):
+                keep, why = rf.relevance(title, snippet)
+                self.assertFalse(keep, f"sports story kept on {why}")
+
+    def test_the_real_layoff_word_is_still_kept_in_every_form(self):
+        """The boundary fix must not cost recall: these are the forms the
+        removed substrings used to catch."""
+        for title in (
+            "Bank confirms layoffs at its Suva branch",
+            "Airline announces a layoff of 150 staff",
+            "Cannery to lay off 90 workers",
+            "Resort confirms lay-offs after the season",
+        ):
+            with self.subTest(title=title):
+                keep, why = rf.relevance(title, "")
+                self.assertTrue(keep, f"real layoff story dropped: {title}")
+
+
+class TrailingJunkTests(unittest.TestCase):
+    """A publisher appending bytes AFTER </rss> broke a wired feed.
+
+    The Kathmandu Post's /rss began serving a Cloudflare beacon <script> tag
+    after the closing tag on 2026-08-17, so a feed whose channel parses
+    perfectly was counted as an error on every run.
+    """
+    GOOD = ("<?xml version='1.0'?><rss version='2.0'><channel>"
+            "<item><title>Mill lays off 400 workers</title>"
+            "<link>https://example.org/a</link>"
+            "<description>400 redundancies confirmed.</description>"
+            "</item></channel></rss>")
+
+    def test_a_beacon_tag_after_the_closing_tag_does_not_kill_the_feed(self):
+        body = self.GOOD + '<script src="https://cdn.example/beacon.js"></script>'
+        items, is_feed = rf._parse_items(body)
+        self.assertTrue(is_feed)
+        self.assertEqual(len(items), 1)
+
+    def test_an_html_page_at_a_feed_path_is_still_a_refusal(self):
+        items, is_feed = rf._parse_items("<!doctype html><html><body>x</body></html>")
+        self.assertFalse(is_feed)
+        self.assertEqual(items, [])
+
+    def test_a_body_malformed_INSIDE_the_document_is_still_a_refusal(self):
+        """Abidjan.net's shape. We never hand-repair a third party's XML."""
+        broken = self.GOOD.replace("</item>", "<unclosed>")
+        _items, is_feed = rf._parse_items(broken)
+        self.assertFalse(is_feed)
+
 
 class AggregatorGuardTests(unittest.TestCase):
     def test_a_tally_product_never_becomes_a_raw_dict(self):

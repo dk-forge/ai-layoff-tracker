@@ -153,6 +153,152 @@ speaking.**
 Fold stamp unchanged; no string above the Subscribe button moved. **UNKNOWN:**
 no mail client render was tested, because this environment has none.
 
+## 2026-08-17 - the 335 researched publishers: measured, and the answer is do not wire them
+
+A session characterised connecting the catalogue's 335 `researched` publishers
+as "incremental connection work, no discovery needed". That was a
+characterisation, not a measurement, and measuring it refutes it in three
+separate ways. **Nothing was wired. Two real defects fell out of the
+measurement and those were fixed.**
+
+**Measurement 1 - the 335 have no addresses.** Every `researched` row carries
+`feed_url: ""`. They are the publisher NAME TOKENS out of `local_news_markets`
+(`"bilanz"`, `"business daily"`, `"the standard"`), matched as substrings
+against a Google News `<source>` label. There is no domain anywhere in the
+repo for any of them, so "connect them" begins with per-publisher domain
+discovery: 335 of them, by hand, in 25 countries and a dozen scripts.
+
+Resolved 130 of the 335 to a real domain WITHOUT guessing, by reading the
+`url` attribute Google News puts on each item's `<source>` element during a
+live sweep. The other 205 published nothing the layoff-targeted sweep returned
+in this window, so they have no measured address at all.
+
+**Measurement 2 - about half of the addressable ones have no usable feed.**
+Probed the 128 unique hosts those 130 resolve to, first-hand (robots.txt read
+first and obeyed, no paywall or bot wall bypassed, TLS never disabled, the
+homepage's own `<link rel=alternate>` asked before any path guessing):
+
+    60  a usable feed          47%
+    62  no usable feed         48%   - 41 serve HTML at the feed path,
+                                       14 answer 403 to an ordinary GET,
+                                        4 404 on every path, 3 other
+     6  refused on robots       5%   - 4 answer 403 to robots.txt itself,
+                                       2 disallow the feed paths outright
+
+That 47% is a FLOOR on feed existence, not a ceiling: a publisher that hides
+its feed at a non-standard path and does not declare it in its homepage head
+reads as "no feed" here. Which is the point - finding it is human time per
+publisher, and human time per publisher is the thing the "incremental" framing
+assumed away.
+
+**Measurement 3 - and the feeds that work add nothing. This is the number that
+matters.** Read all 60 working feeds (57 answered on the read, 3 had gone to a
+404/500/timeout in the intervening hour), applied the SAME free relevance gate
+the wired collectors apply, and compared what survived against what that
+country's own Google News edition returned over the same window (6,656 items
+across the 25 markets, harvested with the production queries).
+
+    2,586 feed items read, from 57 publishers in 20 countries
+       36 publishers, 1,588 items, testable with today's vocabulary (en/es/ru/sr)
+       10 items passed the layoff gate
+        0 of those 10 were layoff stories
+
+All ten were false positives. Six were **football fixtures and league tables**
+(see the defect below), and the remainder were a labour-market survey
+("percepción de despidos aumentó este año"), a university opinion column and a
+story about a Cambridge academic. Marginal genuine coverage: **zero**. What
+those ten would have bought is ten paid extractions storing nothing.
+
+The overlap detector was validated rather than trusted - run over feed items of
+any topic it does find stories the sweep also returned, so the zero above is a
+property of the data, not a broken comparison.
+
+**Measurement 4 - the repo had already priced this and the ledger says the same
+thing.** `spend_jobs.json`, one run carrying a per-source breakdown: the 25
+market sweeps produced 273 candidates and **14 stored rows**; the 15 wired
+direct national feeds produced 2 candidates and **0 stored rows** - and those
+15 exist only for countries where the sweep does NOT work. In the 25 countries
+where it does, a direct feed is competing with a working sweep, not filling a
+hole.
+
+**And the catalogue already forbids it.** Five of the 27 existing refusals read
+"verified working but NOT wired: one publisher per country is the rule"
+(Portafolio, Jamaica Observer, The Astana Times, El Comercio, Nova Ekonomija).
+Wiring 335 is not an extension of the design; it is a reversal of a decision
+already taken with evidence.
+
+**Cost, had it been wired anyway.** 21 of the 57 feeds read publish in a
+language with NO collective-layoff vocabulary in this repo: Arabic, German,
+Persian, French, Portuguese, Turkish, Ukrainian. Each needs
+a reviewed phrase set built to the standard the existing ones meet - collective
+vocabulary only, homographs paired - before it may gate anything, or it runs
+ungated and pays for everything.
+
+Priced two ways, both against a $14/month allowance already projecting $6.68
+and a SHARED key with ~7 days of runway:
+
+  worst case   60 feeds x MAX_PER_FEED 8 x 2 runs/day x 30d x $0.000315
+               = $9.07/month, the same arithmetic ARMED_BY_DEFAULT uses
+  measured     10 of the 1,588 gated items passed (0.63%), so the realistic
+               figure is a small fraction of that
+
+The measured figure being small is not the argument for doing it. All ten of
+those items were junk, so the honest description of the realistic cost is "a
+little money for nothing", not "cheap coverage" - and the worst case is what
+the allowance has to survive.
+
+**Verdict: wire none of the 335.** Not 40, not 15. The `researched` status is
+already the true and useful statement about them - they are watched through
+their country's own edition, in its own language - and the public catalogue
+says exactly that today. The six robots refusals were NOT moved to `refused`
+either: those publishers are still reached through the sweep, so calling them
+refused would understate our coverage to make a table tidier.
+
+### The two defects the measurement found, which were fixed
+
+**1. `layoff` matched `playoff`, so the sports desk could buy an extraction.**
+`EN_TERMS` in `sources/regional_feeds.py` is matched as a bare substring and
+carried `"layoff"`, and `"playoffs"` contains it. Six of the ten items above
+were kept on `term:en:layoff` with no layoff word anywhere in them. This is not
+hypothetical for wired code: `national_feeds` imports that tuple, and **every
+non-English feed is also read with the English set**, so one hole in English is
+a hole in all four languages at once. `"layoff"` and `"lay off"` moved out of
+the substring tuple into `EN_PATTERNS` as `\blay[- ]?offs?\b`, which refuses
+"playoffs" and still takes layoff, layoffs and lay-offs. The stems that are
+genuinely stems (`redundanc`, `retrench`, `downsiz`) stay substrings.
+
+Measured on the live wired set the day of the fix: 551 items, 0 playoff false
+positives - those five regional and fifteen national feeds are business desks.
+The hole was latent there and would have opened the moment a general-interest
+publisher was wired, which is precisely what "wire the 335" proposed.
+
+**2. A wired feed had been failing on bytes outside its own document.**
+The Kathmandu Post's `/rss` now appends a Cloudflare
+`<script src=".../beacon.min.js">` AFTER `</rss>`, so `ET.fromstring` raises
+"junk after document element" and `national_feeds` counted that feed as an
+error on every run - a channel that parses perfectly, reported as breakage.
+`trim_trailing_junk()` drops what is outside the document and repairs nothing
+inside it: an HTML page at a feed path is still a refusal, and a body malformed
+INSIDE the document (Abidjan.net's shape) is still a refusal. Both properties
+have tests.
+
+Both new tests were checked against the pre-change tree: the football story is
+KEPT and the trailing-junk feed is a REFUSAL there, so they are regression bars
+rather than decoration.
+
+**Also observed, not fixed here.** `economynext_lk` answers HTTP 202 to the
+GitHub runner and a clean 200 with a valid RSS body to this machine - the
+RUNBOOK's "works locally, not in CI" shape, i.e. a bot wall on the runner's IP,
+not a broken parser. It is what `national_feeds` is currently degraded on, and
+it needs a decision from CI, not a code change from here. Worth noting that
+this is the ongoing maintenance cost of a direct feed - one per publisher,
+forever - which the "incremental" framing also assumed away.
+
+No plugin file changed, no source was added or removed, so the sources page,
+`health.js` `meta{}` and the catalogue counts (20 wired / 335 researched / 27
+refused) are all still exactly true and were deliberately left alone. That also
+kept this clear of the version-bump race with the session holding the baton.
+
 ## 2026-08-16 - federal RIF: the collector read one file out of thirty
 
 `/aggregate?years=2026&country=United States` put `federal_rif` at **79 jobs**
