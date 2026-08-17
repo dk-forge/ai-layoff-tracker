@@ -42,39 +42,70 @@ REPLY = "info@asktherecruiter.com"
 # alt_digest_compose_layoff / _talent / _articles). Copied rather than
 # imagined, because a layout that only survives invented input survives
 # nothing.
+#
+# UPDATED 2026-08-17 to the shape the composers emit AFTER the scope rewrite.
+# Two things changed and both matter to this file. The site now marks a line
+# with `data-alt` instead of choosing a size, and the ranked lists are two
+# column tables rather than bullet lists, because a bullet list cannot align a
+# column of figures. So the fixtures carry a `data-alt`, a `<table>` and an
+# `align` attribute, and the tests below check that all three survive a
+# forward with their styling attached.
 LAYOFF_HTML = (
-    '<h2 style="font-size:16px;margin:24px 0 8px;">AI Layoff Tracker</h2>'
-    '<p style="margin:0 0 8px;">312 verified entries totalling 48,910 job cuts '
-    'across 274 companies in this period.</p>'
-    '<ul style="margin:0 0 8px;padding-left:20px;">'
-    '<li>Acme Robotics: 1,200 jobs, Austin, TX</li>'
-    '<li>Northwind Health: 940 jobs, Ohio</li>'
-    '<li>Contoso Cloud: 610 jobs, Dublin</li>'
-    '</ul>'
-    '<p style="margin:0;"><a href="https://asktherecruiter.com/blog/r/1">'
+    '<h2>AI Layoff Tracker</h2>'
+    '<p data-alt="kicker">Verified job cuts</p>'
+    '<p data-alt="stat">48,910</p>'
+    '<p data-alt="scope">7 to 14 August 2026, counted by the date the cuts '
+    'take effect.</p>'
+    '<p data-alt="note">312 entries are verified. Including announced '
+    'estimates, 7 to 14 August 2026 holds 374 entries and 61,000 job cuts '
+    'across 274 companies.</p>'
+    '<h3>Biggest cuts</h3>'
+    '<p data-alt="caption">7 to 14 August 2026, verified and announced '
+    'together, ranked by job count.</p>'
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+    '<tr><td data-alt="label"><a href="https://asktherecruiter.com/blog/r/9">'
+    'Acme Robotics (Austin, TX, takes effect 9 Aug 2026)</a></td>'
+    '<td data-alt="figure" align="right" width="34%">1,200 jobs</td></tr>'
+    '<tr><td data-alt="label-last">Northwind Health (Ohio)</td>'
+    '<td data-alt="figure-last" align="right" width="34%">940 jobs</td></tr>'
+    '</table>'
+    '<p><a href="https://asktherecruiter.com/blog/r/1">'
     'Open the AI Layoff Tracker</a></p>')
 LAYOFF_TEXT = ("AI Layoff Tracker\n"
-               "312 verified entries totalling 48,910 job cuts across 274 "
-               "companies in this period.\n"
-               "  - Acme Robotics: 1,200 jobs, Austin, TX\n"
-               "  - Northwind Health: 940 jobs, Ohio\n"
-               "  - Contoso Cloud: 610 jobs, Dublin\n"
-               "Open the tracker: https://asktherecruiter.com/blog/ai-layoff-tracker/\n")
+               "48,910 verified job cuts, 7 to 14 August 2026, counted by the "
+               "date the cuts take effect.\n"
+               "312 entries are verified. Including announced estimates, 7 to "
+               "14 August 2026 holds 374 entries and 61,000 job cuts across "
+               "274 companies.\n"
+               "\nBiggest cuts\n"
+               "7 to 14 August 2026, verified and announced together, ranked "
+               "by job count.\n"
+               "  Acme Robotics (Austin, TX, takes effect 9 Aug 2026): 1,200 jobs\n"
+               "    https://asktherecruiter.com/blog/layoff/acme-robotics-2026-08-09/\n"
+               "  Northwind Health (Ohio): 940 jobs\n"
+               "\nOpen the tracker: https://asktherecruiter.com/blog/ai-layoff-tracker/\n")
 
 TALENT_HTML = (
-    '<h2 style="font-size:16px;margin:24px 0 8px;">Talent Intelligence Tracker</h2>'
-    '<p style="margin:0 0 8px;">88 new signals from 61 companies in this '
-    'period, 54 verified against primary documents.</p>'
-    '<ul style="margin:0 0 8px;padding-left:20px;">'
-    '<li>Fabrikam: opens a 400 seat engineering hub in Warsaw</li>'
+    '<h2>Talent Intelligence Tracker</h2>'
+    '<p data-alt="kicker">New hiring signals</p>'
+    '<p data-alt="stat">88</p>'
+    '<p data-alt="scope">7 to 14 August 2026, counted by the date the source '
+    'published.</p>'
+    '<p data-alt="note">From 61 companies, 7 to 14 August 2026. 54 of the 88 '
+    'are verified against primary documents.</p>'
+    '<ul>'
+    '<li>Fabrikam: opens a 400 seat engineering hub in Warsaw (9 Aug 2026)</li>'
     '</ul>'
-    '<p style="margin:0;"><a href="https://asktherecruiter.com/blog/r/2">'
+    '<p><a href="https://asktherecruiter.com/blog/r/2">'
     'Open the Talent Intelligence Tracker</a></p>')
 TALENT_TEXT = ("Talent Intelligence Tracker\n"
-               "88 new signals from 61 companies in this period, 54 verified "
-               "against primary documents.\n"
-               "  - Fabrikam: opens a 400 seat engineering hub in Warsaw\n"
-               "Open the tracker: https://asktherecruiter.com/blog/talent-intelligence-tracker/\n")
+               "88 new hiring signals, 7 to 14 August 2026, counted by the "
+               "date the source published.\n"
+               "From 61 companies, 7 to 14 August 2026. 54 of the 88 are "
+               "verified against primary documents.\n"
+               "  - Fabrikam: opens a 400 seat engineering hub in Warsaw "
+               "(9 Aug 2026)\n"
+               "\nOpen the tracker: https://asktherecruiter.com/blog/talent-intelligence-tracker/\n")
 
 ARTICLES_HTML = (
     '<h2 style="font-size:16px;margin:24px 0 8px;">From the blog</h2>'
@@ -129,7 +160,7 @@ def forwarded(html):
 
 
 def _visible_tags(html):
-    return re.findall(r"<\s*(h1|h2|h3|p|li|a)\b([^>]*)>", html, re.I)
+    return re.findall(r"<\s*(h1|h2|h3|p|li|a|td)\b([^>]*)>", html, re.I)
 
 
 class ForwardingSurvival(unittest.TestCase):
@@ -253,7 +284,7 @@ class ThePreheader(unittest.TestCase):
     def test_it_leads_with_the_sites_own_sentence_and_is_hidden(self):
         html = message().html
         snippet = layout.preheader_text([("layoff", LAYOFF_HTML, LAYOFF_TEXT)])
-        self.assertIn("312 verified entries", snippet)
+        self.assertIn("48,910 verified job cuts", snippet)
         self.assertIn(snippet, html)
         block = html[:html.index(snippet)]
         self.assertIn("display:none", block.split("<div")[-1],
@@ -261,7 +292,8 @@ class ThePreheader(unittest.TestCase):
 
     def test_it_sits_before_anything_else_a_client_could_grab(self):
         html = message().html
-        self.assertLess(html.index("312 verified entries"), html.index("Unsubscribe"))
+        self.assertLess(html.index("48,910 verified job cuts"),
+                        html.index("Unsubscribe"))
 
     def test_a_sentence_too_long_to_show_is_replaced_not_truncated(self):
         """Cutting a snippet mid figure publishes a wrong number in the inbox."""
@@ -281,8 +313,9 @@ class ThePreheader(unittest.TestCase):
 
     def test_it_is_not_repeated_in_the_visible_body(self):
         html = message().html
-        self.assertEqual(html.count("312 verified entries"), 2,
-                         "once hidden in the preheader and once in the section")
+        self.assertEqual(html.count("48,910 verified job cuts"), 1,
+                         "the preheader sentence is the text part's, so the "
+                         "HTML carries it once, hidden")
 
 
 class TheSubjectSaysWhatChanged(unittest.TestCase):
@@ -314,21 +347,23 @@ class ThePlainTextAlternative(unittest.TestCase):
 
     def test_it_carries_the_figures_the_html_carries(self):
         text = message(("layoff", "talent", "articles")).text
-        for figure in ("312 verified entries", "48,910 job cuts", "274 companies",
-                       "88 new signals", "54 verified"):
+        for figure in ("48,910 verified job cuts", "312 entries are verified",
+                       "274 companies", "88 new hiring signals",
+                       "54 of the 88 are verified"):
             self.assertIn(figure, text)
 
     def test_it_carries_the_entries_not_only_the_totals(self):
         text = message(("layoff", "talent", "articles")).text
-        for entry in ("Acme Robotics: 1,200 jobs", "Northwind Health: 940 jobs",
-                      "Fabrikam", "What a WARN notice actually tells you"):
+        for entry in ("Acme Robotics", "1,200 jobs", "Northwind Health",
+                      "940 jobs", "Fabrikam",
+                      "What a WARN notice actually tells you"):
             self.assertIn(entry, text)
 
     def test_it_carries_both_ways_out(self):
         text = message().text
         self.assertIn(UNSUB, text)
         self.assertIn(MANAGE, text)
-        self.assertIn("no tracking pixels", text)
+        self.assertIn("records whether you open this email", text)
 
     def test_it_is_not_a_stripped_tag_byproduct(self):
         text = message(("layoff", "talent")).text
@@ -403,7 +438,7 @@ class ReadingTheEmailWhenNobodyIsDue(unittest.TestCase):
     def test_the_live_sections_render_against_a_placeholder(self):
         code, out, call, _ = self._run()
         self.assertEqual(code, 0)
-        self.assertIn("312 verified entries", out)
+        self.assertIn("48,910", out)
         self.assertLess(out.index("AI Layoff Tracker"), out.index("From the blog"),
                         "the preview reordered the sections; the site's own "
                         "order is the one a reader sees")
@@ -474,6 +509,107 @@ class ReadingTheEmailWhenNobodyIsDue(unittest.TestCase):
                                  "digest-send.yml"), encoding="utf-8").read()
         self.assertIn("preview:", body)
         self.assertIn("DIGEST_PREVIEW: ${{ github.event.inputs.preview }}", body)
+
+
+class TheVariantMechanism(unittest.TestCase):
+    """The site says WHAT a line is; this module says how it looks.
+
+    The composer marks a headline figure `data-alt="stat"` and never picks a
+    size. So there is one place that decides what a stat looks like and one
+    place that decides which figure is one, and neither can drift into the
+    other's job.
+    """
+
+    def test_the_marker_is_consumed_and_never_reaches_a_reader(self):
+        html = message(("layoff", "talent")).html
+        self.assertNotIn("data-alt", html,
+                         "the variant marker was left in the message, so a "
+                         "mail client gets to decide what it means")
+
+    def test_the_headline_figure_is_larger_than_the_prose_around_it(self):
+        html = message().html
+        stat = layout.VARIANT_STYLES[("p", "stat")]
+        self.assertIn(stat, html, "the stat line did not get the stat style")
+        self.assertIn("font-size:34px", stat)
+        self.assertIn("font-size:15px", layout.TAG_STYLES["p"])
+
+    def test_an_unknown_variant_falls_back_to_the_plain_tag_style(self):
+        """A typo in the site's markup costs a design detail, never a
+        paragraph's readability in a forwarded copy."""
+        out = layout.restyle('<p data-alt="not-a-real-variant">Hello</p>')
+        self.assertNotIn("data-alt", out)
+        self.assertIn(layout.TAG_STYLES["p"], out)
+
+    def test_the_ranked_table_aligns_its_figures_with_an_attribute(self):
+        """Word ignores half of CSS and honours `align`, so the alignment
+        that makes a column of figures readable cannot be a property."""
+        body = forwarded(message().html)
+        self.assertIn('align="right"', body)
+        self.assertIn("white-space:nowrap", body,
+                      "a figure that wraps is a figure that stops lining up")
+
+    def test_every_content_cell_carries_its_own_style_after_a_forward(self):
+        """The shell's own cells paint the page and are checked elsewhere.
+        These are the cells the SITE emitted, which is where a forward would
+        otherwise strip the typography off a column of figures."""
+        styled = layout.restyle(LAYOFF_HTML)
+        cells = re.findall(r"<\s*td\b([^>]*)>", styled, re.I)
+        self.assertTrue(cells, "the fixture has no table cell to check")
+        body = forwarded(message().html)
+        for attrs in cells:
+            self.assertIn("style=", attrs)
+            self.assertIn("font-family:", attrs)
+            self.assertIn("color:", attrs)
+            self.assertIn(attrs.strip(), body,
+                          "the cell reached the message with different styling "
+                          "than restyle produced")
+
+
+class TheTrackingSentenceIsTrue(unittest.TestCase):
+    """The footer used to promise no pixel and no open tracking. The owner
+    turned open and click tracking ON in Brevo on 2026-08-16, and Brevo adds
+    both at the relay, after this code has handed the message over. So the
+    email carried a promise its own delivery broke.
+
+    Our message still embeds nothing. The check that enforces that is
+    deliberately untouched, and these tests hold both halves of the position
+    at once: the message is clean, and the copy no longer claims more.
+    """
+
+    def test_the_old_promise_is_gone_from_both_parts(self):
+        built = message(("layoff", "talent"))
+        for part in (built.html, built.text):
+            self.assertNotIn("no tracking pixels", part)
+            self.assertNotIn("cannot tell whether you opened", part)
+
+    @staticmethod
+    def _flat(part):
+        """The plain text part is wrapped to a terminal width, so a sentence
+        crosses a line break. Compare on the words, not on the line endings."""
+        return " ".join(part.split())
+
+    def test_both_parts_say_plainly_that_opens_and_clicks_are_measured(self):
+        built = message(("layoff", "talent"))
+        for part in (built.html, built.text):
+            flat = self._flat(part)
+            self.assertIn("records whether you open this email", flat)
+            self.assertIn("which links you follow", flat)
+            self.assertIn("Unsubscribing stops the email and the measuring", flat)
+
+    def test_the_two_parts_cannot_disagree(self):
+        """One source of the words, so a fix to one is a fix to both."""
+        built = message()
+        for sentence in layout.TRACKING_SENTENCES:
+            self.assertIn(sentence, self._flat(built.text))
+            self.assertIn(sentence, self._flat(built.html))
+
+    def test_our_own_message_still_embeds_nothing_that_fetches(self):
+        """The tracking is the relay's. Do not weaken this to match the copy."""
+        built = message(("layoff", "talent", "articles"))
+        dt.assert_message_is_clean(built)
+        lowered = built.html.lower()
+        for token in ("<img", "url(", "src=", "background="):
+            self.assertNotIn(token, lowered)
 
 
 class HouseStyle(unittest.TestCase):

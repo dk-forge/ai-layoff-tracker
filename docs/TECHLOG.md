@@ -1,5 +1,233 @@
 # Tech Log
 
+## 2026-08-16 - the page that thanks you for subscribing was showing you an empty subscribe form (2.20.72)
+
+The owner completed the double opt-in for real, end to end: form, confirmation
+email through Brevo, link click, address confirmed. The mechanism worked. What
+he landed on printed "Your subscription is confirmed. The next digest will
+include you." and then **rendered the whole empty signup form directly
+underneath it**, blank email field and Subscribe button included.
+
+To someone who has just subscribed, a blank subscribe form is not neutral. It
+reads as "it did not work, do it again". The ones who believe it submit again,
+which parks a fresh `pending_prefs` row and mails a second confirmation for an
+address that is already confirmed, so the empty form manufactures exactly the
+traffic it looks like it is asking for.
+
+**FOUR STATES NOW REPLACE THE FORM, AND THE OTHER SIX KEEP IT.** The split is
+one question: is this a thing the reader has to do again? `check`, `confirmed`,
+`updated` and `unsubscribed` are not, so they get a panel. `expired`, `lists`,
+`email`, `rate`, `spam` and `mail` are, so nothing about them changes.
+
+**THE CONFIRMATION READS THE ROW BACK, WITHOUT KNOWING WHO THEY ARE.** The
+handler holds the row; the page it redirects to does not, and must not - the
+address may never travel in a URL. So the handler leaves a RECEIPT: a random
+64-hex token in `alt_r`, and a transient holding the list flags, the frequency
+and the row's unsubscribe token, for thirty minutes. No address, no row id,
+nothing that names a person; the test asserts the transient's key set exactly.
+A reader who reads that URL out of their own history learns which digests they
+picked and can unsubscribe, both of which the email they just clicked already
+let them do.
+
+A MISSING OR EXPIRED RECEIPT IS NOT AN ERROR AND NEVER A GUESS. The panel then
+states the fact ("Your subscription is confirmed", "Your choices are stored and
+the next digest will include you"), drops the readout it cannot honestly
+produce, and drops the unsubscribe link it has no token for.
+
+**WHEN THE FIRST ONE ARRIVES, FROM THE SCHEDULE RATHER THAN INVENTED.**
+`digest-send.yml` runs 13:10 UTC daily and picks the weekly tier on Mondays, so
+the panel says "Weekly digests go out on Monday mornings, so your first one
+arrives on the next Monday." If that cron moves, that sentence moves with it,
+and the comment above `alt_digest_cadence_sentence()` says so.
+
+**THE STALE LINK STOPPED READING AS A FAILURE.** It said "That link has already
+been used or has expired. Subscribing again sends a fresh one.", in the red
+error box. A confirm token is cleared the instant it is spent, so the ordinary
+way to land there is clicking the same link twice, or clicking it after a mail
+scanner followed it first. That is success described as a fault. It now says
+"That link has already been used, which usually means you are confirmed
+already", in the ok box, and keeps the form for the minority who really do need
+a fresh link.
+
+**THE PANEL HIT THE SAME CASCADE TRAP AS EVERYTHING ELSE ON THIS PAGE**, and
+was measured rather than assumed. It declares 14px sans. On an article it
+rendered:
+
+    .alt-digest-panel-lead    19.0 / 22.0px  Manrope
+    .alt-digest-panel li      19.0 / 22.0px  VOLLKORN
+    .alt-digest-panel p       19.0 / 22.0px  Manrope
+
+because `.entry-content p` and `.entry-content li` are (0,2,2) `!important` in
+`blog-reading.css`, and section 8b's older rule listed p, label, legend and
+summary and no LIST ITEM - which is why the two digests a reader just
+subscribed to came out in the article's serif between two lines of sans.
+Section 8b now names the panel and its list. 15px, the size the intro it
+replaces already uses on this page.
+
+**THE LANDING PAGE STAYS THE TRACKER, and that is a decision rather than an
+omission.** Two things were weighed. A dedicated confirmation page would need a
+WordPress page to exist on the host, and this repo has been bitten before by
+page creation racing an FTPS deploy (CLAUDE.md: it needs a retry-until-verified
+hook, not a one-shot). And `alt_digest_back_url()` reads the referer, which a
+click from an email does not have, so the only way to return someone to the
+article they signed up from is to record which page that was - a piece of
+behaviour about a person, stored to improve a redirect, on a feature whose
+whole argument is that it stores none. The empty form was the defect; it is
+fixed, and the confirmation now sits at the top of the thing they subscribed
+to.
+
+**PROVEN TO FAIL ON THE PRE-CHANGE TREE**, by running the new suite against
+`git show HEAD:includes/subscribe.php`. Verbatim:
+
+    check still renders a form (we have just emailed them; submitting again
+      sends nothing new)
+    'alt-digest-panel' not found in ... Your subscription is confirmed ...
+    'confirmed already' not found in "Email digest That link has already been
+      used or has expired. Subscribing again sends a fresh one. ..."
+
+**NEW: `railway/tests/test_signup_terminal_states.py`.** The markup is the REAL
+renderer's output - `digest_harness.php` drives `alt_digest_subscribe_form()`
+with a real `$_GET` after a real signup and a real confirm - because every
+other rendered test in this repo strips PHP out of the file, and stripping PHP
+cannot answer a question about which BRANCH ran. Each state is then rendered in
+headless Chrome on the blog fixture and measured: 44px on every standalone
+control at 375/414/768/1280, the adjacency floor between "Change your choices"
+and "Unsubscribe", no sideways bleed, AA on every line, the panel on the
+component's scale, and the confirmation fitting one phone screen.
+
+## 2026-08-16 - the confirmation email's subject did not carry the brand (2.20.72)
+
+`Confirm your tracker digest subscription` became
+`AskTheRecruiter.com: confirm your tracker digest subscription`.
+
+This is the whole funnel. Nobody is sent a digest until they click the link
+inside this message, so a subject a reader does not recognise produces no
+complaint and no error: it produces a list that quietly stays empty while every
+check in this repo reads green.
+
+It is now `alt_digest_confirm_subject()` rather than a literal at the call site,
+and `test_digest_subscription.py` reads THAT function out of the file and
+asserts the sent subject equals it. The check it replaced was
+`assertIn("Confirm", subject)`, which would have passed on "Confirmation" and
+on any subject that had lost the brand entirely. One tracked copy of the string
+existed before this and one exists now; the other twenty greps are stale
+`.claude/worktrees` checkouts, none of them tracked.
+
+The owner typed a space before the colon. Read as a slip and not shipped: a
+space before a colon is wrong in English and would be the first thing a reader
+sees.
+
+## 2026-08-16 - the signup had no edge, the applause button spoke Medium's language, and the quietest sentence on the page was rendering larger than the button it explains (2.20.72)
+
+Three things the owner named reading a live blog post, and the third turned
+out not to be a taste at all.
+
+**1. THE SIGNUP READ AS MORE ARTICLE.** His words: "Should we put a box around
+it so it's more obvious? it gets mixed in with the article text." Measured on
+the live post at 2.20.71, bare URL, browser User-Agent:
+
+    .alt-digest background   rgba(0, 0, 0, 0)      the article's own
+    .alt-digest border       rgb(226,230,233)      1.26:1 against white
+
+A transparent box behind a 1.26:1 hairline, at the end of six thousand pixels
+of continuous serif column, is not an object. Landed: two tokens in
+`assets/blog-reading.css` (`--alt-read-panel`, `--alt-read-panel-edge`) and a
+ground plus a stronger edge plus a 12px radius on section 8b. The fill is the
+same value as `--alt-read-ground` deliberately: above 1024px the article is a
+white card on that colour, so the panel reads as a window through the card to
+the page under it rather than as a new colour. Measured after: fill 1.13:1
+against the white it sits on, edge 1.54:1. Both are quiet on purpose -
+`layoffs.css` states the rule where `--alt-control-border` is defined, a panel
+edge may be quiet and a CONTROL edge may not, and the controls inside are held
+to 3:1 separately and still are.
+
+**2. THE BUTTON SAID "APPLAUD" AND THE COUNT SAID "N CLAPS".** The readers here
+are people mid job search, plus recruiters and journalists. Now "This helped"
+and "12 people found this helpful", with "1 person" for one and NOTHING at
+zero: most articles are at zero the day they go up and "0 people found this
+helpful" is a worse thing to publish under a piece of work than silence.
+
+The sentence is rendered twice, in PHP on the server and in JavaScript after a
+tap, and two languages cannot share a string literal. They share a TEMPLATE
+instead. `alt_claps_count_phrase($count, $number = null)` is the only place the
+words exist; `alt_claps_render()` calls it with `'{n}'` to emit
+`data-count-one` / `data-count-many`, and `blog-claps.js` substitutes the
+number. The script now holds no copy of the words and a test asserts it holds
+none. The count also carries `data-total` as an integer, so the script never
+parses a number back out of a string the server formatted for the reader's
+locale - a thousands separator is a decimal point in half of Europe.
+
+**3. THE PRIVACY NOTE WAS TOO LOUD, AND IT WAS NOT A COLOUR CHOICE.**
+`assets/blog-claps.css` asks for a 13px note in `--alt-cl-note` (#696d77). The
+note is a `<p>` inside `.entry-content`, and `assets/blog-reading.css` section
+3 declares `body.single-post .entry-content p { font-size: ... !important }` at
+specificity (0,3,1). A component rule of (0,1,0) does not enter that argument.
+Measured on the live post at 2.20.71:
+
+                      375px viewport         1280px viewport
+    button label      15.0px                 15.0px
+    the count         15.0px                 15.0px
+    the note          19.0px, 91.2px tall    22.0px, 71.3px tall
+    the note's ink    rgb(35,39,43)          rgb(35,39,43)
+
+So the sentence written to be a quiet aside was rendering LARGER than the
+button it explains, in the article's serif and the article's ink. Same class of
+defect section 8b was written for one block further down the page, and the same
+answer: section 8c, rules that can win, in the file doing the winning. The
+words are untouched - that sentence is what makes the counter allowable - and
+its colour is read straight out of the component's own token
+(`var(--alt-cl-note, #696d77)`), so there is one definition of "muted" and the
+contrast arithmetic in `test_blog_claps.py` is about the colour that paints.
+`p.alt-clap-note` and not `.alt-clap-note`: between two `!important`
+declarations specificity still decides, and the element selector is what wins
+it. The same trap the signup's intro fell into at 2.20.52, where the first
+attempt moved the text by zero pixels.
+
+**BELOW THE CONTROL, NOT BESIDE IT.** At 375 the note is a 96-character
+sentence and the space beside a 44px button is about 200px. It keeps
+`flex-basis: 100%` and takes a -4px block-start against the container's 12px
+row gap, so it tucks under the control rather than sitting a full row away from
+it.
+
+**PROVEN TO FAIL ON THE PRE-CHANGE TREE.** The assertion text, verbatim:
+
+    375px: the note is 19.0px against a 15.0px button label (1.27x, ceiling 0.90x)
+    375px: the note is 19.0px against 21.0px of article body text (0.90x, ceiling 0.75x)
+    375px: the count (15.0px) is not larger than the note (19.0px)
+    375px: the signup is painted rgb(255,255,255), which is exactly the article
+           behind it, so the box has no ground
+    the markup carries no data-count-one / data-count-many templates, so
+    assets/blog-claps.js has to hold its own copy of the sentence and the two
+    will drift
+
+The blog fixture reproduces the live page to the pixel on the numbers above
+(19.0/22.0px note, 15.0px button), which is the evidence that it carries the
+opposition rather than a friendlier version of it.
+
+**NEW: `railway/tests/test_blog_applause_surface.py`.** Real headless Chrome,
+the real blog fixture (ancestor chain plus all three database stylesheets), and
+the REAL markup from `alt_claps_render()` through the PHP harness. It measures
+the note at 375/414/768/1280/2000 against the button, against the article body
+and against an absolute 12-14px band; it runs `blog-claps.js` in the browser
+with `fetch` stubbed, clicks the button, and compares the sentence the reader
+ends up with against what `alt_claps_count_phrase()` returns for that number,
+so a PHP/JS divergence fails with both strings printed. It carries its own
+RED-first control: with section 8c lifted back out, the note must measure as
+LARGER than the button and equal to the article body, or the file is passing
+for the wrong reason.
+
+**The blog post is now a contrast-audit surface.** `contrast_audit.py` audited
+three tracker URLs and no article, while this plugin renders three pieces of UI
+on a post (typography, signup, applause). The note is small muted text, which
+is exactly where AA gets failed, and the only evidence about it was arithmetic
+over two literals in a stylesheet a database rule was overruling. One FIXED
+post, the reference article the test fixtures are built from, so a red run is
+never ambiguous between a regression and an editor's new paragraph.
+
+Verified: `style_check.py` 0 findings; the applause, signup and reading-surface
+suites green; the audit PASS on the article across four theme combinations and
+two viewports before the change and after.
+
 ## 2026-08-16 - the digest called a figure "verified" that was half announced, and disagreed with the page it links to (2.20.71)
 
 `alt_digest_compose_layoff` opened every layoff section with "{entries}

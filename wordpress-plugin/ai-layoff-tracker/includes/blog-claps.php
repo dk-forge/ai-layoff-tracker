@@ -293,10 +293,36 @@ function alt_claps_register_routes() {
 }
 add_action('rest_api_init', 'alt_claps_register_routes');
 
-/** "1 clap" / "12 claps", so the label is never wrong for one. */
-function alt_claps_label($count) {
+/**
+ * THE COUNT SENTENCE, AND IT IS DEFINED HERE ONLY.
+ *
+ * "12 people found this helpful", "1 person found this helpful", and nothing
+ * at all at zero. The readers of this blog are people mid job search, plus
+ * recruiters and journalists; "claps" is Medium's word for Medium's audience
+ * and it asks a reader to know a convention from another site before the
+ * number means anything.
+ *
+ * ZERO RENDERS AS SILENCE, which is a decision rather than an omission. Most
+ * articles are at zero on the day they go up, and "0 people found this
+ * helpful" is a worse thing to publish under a piece of work than no sentence
+ * at all. The button is still there and still says what it does.
+ *
+ * THE SECOND ARGUMENT IS WHAT KEEPS THIS THE ONLY DEFINITION. The sentence is
+ * written once on the server and then rewritten in the browser every time a
+ * reader taps, and two languages cannot share a string literal. So they share
+ * a TEMPLATE instead: alt_claps_render() calls this with '{n}' to produce the
+ * two forms, ships them as attributes, and assets/blog-claps.js substitutes
+ * the number into them. The script holds no copy of the words, and
+ * railway/tests/test_blog_applause_surface.py runs the real script in a real
+ * browser and compares what a reader ends up with against what this function
+ * returns for the same number.
+ */
+function alt_claps_count_phrase($count, $number = null) {
     $count = (int) $count;
-    return $count === 1 ? 'clap' : 'claps';
+    if ($count < 1) return '';
+    $n = ($number === null) ? number_format_i18n($count) : (string) $number;
+    $who = ($count === 1) ? 'person' : 'people';
+    return $n . ' ' . $who . ' found this helpful';
 }
 
 /**
@@ -313,7 +339,6 @@ function alt_claps_render($post_id) {
     $post_id = (int) $post_id;
     if (!alt_claps_post_is_eligible($post_id)) return '';
     $count = alt_claps_count($post_id);
-    $label = alt_claps_label($count);
     $out  = '<div class="alt-clap" data-alt-clap data-post="' . esc_attr($post_id) . '"'
           . ' data-max="' . esc_attr(ALT_CLAPS_READER_MAX) . '"'
           . ' data-per-request="' . esc_attr(ALT_CLAPS_PER_REQUEST) . '">';
@@ -334,11 +359,16 @@ function alt_claps_render($post_id) {
           . 'c-1.9 0-3.1-.8-4-2.2l-2.5-4.3a1.3 1.3 0 0 1 2-1.6l1.6 1.6"/>'
           . '<path d="M4.7 4.3 3.5 3.1M7.3 2.7 7 1.3M2.7 7.5 1.3 7.3"/>'
           . '</g></svg>';
-    $out .= '<span class="alt-clap-btn-text">Applaud</span>';
+    $out .= '<span class="alt-clap-btn-text">This helped</span>';
     $out .= '</button>';
-    $out .= '<span class="alt-clap-count" data-alt-clap-count>'
-          . '<span class="alt-clap-num" data-alt-clap-num>' . esc_html(number_format_i18n($count)) . '</span> '
-          . '<span class="alt-clap-word" data-alt-clap-word>' . esc_html($label) . '</span>'
+    // One element, one sentence, and the two templates the script substitutes
+    // into. data-total is the number as an integer so the script never has to
+    // parse a formatted string back out of the reader's own locale.
+    $out .= '<span class="alt-clap-count" data-alt-clap-count'
+          . ' data-count-one="' . esc_attr(alt_claps_count_phrase(1, '{n}')) . '"'
+          . ' data-count-many="' . esc_attr(alt_claps_count_phrase(2, '{n}')) . '"'
+          . ' data-total="' . esc_attr($count) . '">'
+          . esc_html(alt_claps_count_phrase($count))
           . '</span>';
     $out .= '<p class="alt-clap-note" id="alt-clap-note-' . esc_attr($post_id) . '">'
           . 'Anonymous and approximate. We store one number for this article and nothing about you.'

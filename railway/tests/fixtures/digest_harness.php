@@ -295,6 +295,12 @@ $out['send_while_pending'] = array($sent, $eligible, count($mails));
 $_REQUEST = array('t' => $r['confirm_token']);
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $out['confirm_redirect'] = drive('alt_digest_confirm');
+// The WHOLE redirect URL, before anything else overwrites it. The receipt
+// token rides here, and so would an address if one ever leaked into it.
+$out['confirm_redirect_url'] = (string) $GLOBALS['__redirect'];
+$out['confirm_receipt'] = preg_match('/alt_r=([a-f0-9]{64})/',
+    $out['confirm_redirect_url'], $__rm) ? $__rm[1] : '';
+$out['confirm_receipt_store'] = $GLOBALS['__transients']['alt_dg_r_' . $out['confirm_receipt']] ?? null;
 $r2 = row('reader@example.com');
 $out['status_after_confirm'] = $r2['status'];
 $out['confirm_token_cleared'] = $r2['confirm_token'] === null || $r2['confirm_token'] === '';
@@ -575,6 +581,41 @@ if (function_exists('alt_api_digest_recipients')) {
     // down for the checks that follow.
     unset($GLOBALS['__options']['alt_digest_external_claim']);
 }
+
+// 11b. WHAT THE PAGE ACTUALLY RENDERS IN EVERY alt_dg STATE.
+//
+// The real renderer, not a slice of the file with PHP stripped: the whole
+// point of the terminal-state work is which BRANCH runs, and a fixture that
+// strips PHP sees both branches or neither. Rendered before the tables are
+// dropped below, because a state panel may read a row.
+// The receipt PAYLOAD the confirm handler actually wrote, re-seeded under a
+// known token. The scenarios above clear $__transients between them, so the
+// original token is long gone by here; what is replayed is the handler's own
+// data through the real reader, not a payload this fixture invented.
+$__receipt = str_repeat('c', 64);
+if (is_array($out['confirm_receipt_store'])) {
+    set_transient('alt_dg_r_' . $__receipt, $out['confirm_receipt_store'], 1800);
+} else {
+    $__receipt = '';
+}
+$out['rendered'] = array();
+foreach (array('default', 'check', 'confirmed', 'updated', 'unsubscribed',
+               'expired', 'lists', 'email') as $__state) {
+    $_GET = array();
+    $_SERVER['REQUEST_URI'] = '/blog/ai-layoff-tracker/'
+        . ($__state === 'default' ? '' : '?alt_dg=' . $__state);
+    if ($__state !== 'default') $_GET['alt_dg'] = $__state;
+    // Only the two states the handler actually issues a receipt for.
+    if (($__state === 'confirmed' || $__state === 'updated') && $__receipt !== '') {
+        $_GET['alt_r'] = $__receipt;
+    }
+    $out['rendered'][$__state] = alt_digest_subscribe_form('layoff');
+}
+// And the confirmed state with the receipt gone, which is what a reader who
+// comes back to the URL half an hour later gets.
+$_GET = array('alt_dg' => 'confirmed', 'alt_r' => str_repeat('a', 64));
+$out['rendered']['confirmed_no_receipt'] = alt_digest_subscribe_form('layoff');
+$_GET = array();
 
 // 12. No table, no numbers: UNKNOWN, never a zero.
 $wpdb->pdo->exec('DROP TABLE wp_alt_subscribers');

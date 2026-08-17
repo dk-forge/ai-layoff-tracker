@@ -19,20 +19,29 @@ through the smtp path with no new code, and a speculative second AWS client is
 code nobody has run. Add it when a measured bill says it is worth an AWS
 signing implementation, not before.
 
-THE PRIVACY PROMISE IS A PROPERTY OF THE MESSAGE, NOT OF THE PROVIDER.
+WHAT THE MESSAGE CARRIES, AND WHAT THE RELAY ADDS.
 
-The published privacy note says "No images, no tracking pixels", and it says we
-cannot tell whether you opened an email. That is a promise about what leaves
-here, so it is enforced on the MESSAGE, in `assert_message_is_clean`, called by
-the base class immediately before any transport does its work. A new provider
-cannot opt out of it: `Transport.send` is not the method a provider overrides.
+The message that leaves here embeds no image, no pixel, no url() and no remote
+fetch of any kind. That is enforced on the MESSAGE, in
+`assert_message_is_clean`, called by the base class immediately before any
+transport does its work. A new provider cannot opt out of it: `Transport.send`
+is not the method a provider overrides. Do not weaken that check.
 
-The one thing this file cannot enforce is a provider rewriting our message
-after we hand it over. Resend and most relays offer account-level open and
-click tracking, which injects exactly the pixel we promised not to send. That
-switch lives in their dashboard, so it is an owner step in the RUNBOOK, not a
-line of code here. Nothing in this repo can verify it, so nothing here claims
-to: `tracking_note()` states the requirement rather than a verdict.
+WHAT CHANGED ON 2026-08-16. The owner turned open and click tracking ON in
+Brevo. Brevo injects its pixel and rewrites the links at the relay, after we
+have handed the message over, so a reader IS measured even though our template
+measures nobody. The footer used to promise the opposite, in the very email
+that was being tracked, so the footer now says plainly what happens
+(`digest_layout.TRACKING_SENTENCES`).
+
+The distinction between our message and the relay's rewrite is worth keeping
+rather than collapsing. Because the tracking is entirely the provider's,
+changing provider removes it. If we baked a pixel into our own templates we
+would have to unpick every one of them instead.
+
+Nothing in this repo can read that dashboard setting, so nothing here claims a
+verdict about it: `tracking_note()` states what is believed to be on and names
+the copy that has to change if it is ever turned off.
 """
 from __future__ import annotations
 

@@ -42,10 +42,17 @@
         if (!postId) return;
 
         var btn = root.querySelector('[data-alt-clap-btn]');
-        var numEl = root.querySelector('[data-alt-clap-num]');
-        var wordEl = root.querySelector('[data-alt-clap-word]');
+        var countEl = root.querySelector('[data-alt-clap-count]');
         var liveEl = root.querySelector('[data-alt-clap-live]');
-        if (!btn || !numEl || !wordEl) return;
+        if (!btn || !countEl) return;
+
+        // THE SENTENCE IS NOT WRITTEN HERE. It is written once, in
+        // alt_claps_count_phrase() in includes/blog-claps.php, and arrives as
+        // two templates on the element. A literal in this file would be the
+        // second definition of a string that also exists in PHP, and the two
+        // would disagree the first time one of them was edited.
+        var oneTpl = countEl.getAttribute('data-count-one') || '';
+        var manyTpl = countEl.getAttribute('data-count-many') || '';
 
         var storeKey = 'alt-clap-' + postId;
         var given = 0;
@@ -58,7 +65,11 @@
             given = 0;
         }
 
-        var shown = parseInt((numEl.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0;
+        // The integer, off its own attribute. Reading it back out of the
+        // rendered sentence would mean parsing a number the server formatted
+        // for the reader's locale, and a thousands separator is a decimal
+        // point in half of Europe.
+        var shown = parseInt(countEl.getAttribute('data-total'), 10) || 0;
         var pending = 0;
         var timer = null;
 
@@ -68,15 +79,28 @@
             return total.toLocaleString();
         }
 
+        // Zero is silence on the server, so it is silence here too: a reader
+        // who taps and then hears the server say zero (the throttle declined,
+        // and nobody else has tapped) sees the sentence go away rather than
+        // read a nought.
+        function phrase(total) {
+            if (total < 1) return '';
+            return (total === 1 ? oneTpl : manyTpl).replace('{n}', pretty(total));
+        }
+
         function render(total) {
             shown = total;
-            numEl.textContent = pretty(total);
-            wordEl.textContent = total === 1 ? 'clap' : 'claps';
+            countEl.textContent = phrase(total);
+            countEl.setAttribute('data-total', String(total));
         }
 
         function announce(total) {
             if (!liveEl) return;
-            liveEl.textContent = pretty(total) + ' ' + (total === 1 ? 'clap' : 'claps') + '.';
+            // A throttled first tap comes back with the true total, which can
+            // still be zero. Announcing a lone full stop is worse than
+            // announcing nothing.
+            var said = phrase(total);
+            liveEl.textContent = said ? said + '.' : '';
         }
 
         function remember() {

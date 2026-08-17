@@ -296,6 +296,14 @@ case 'throttle':
               'transients' => $GLOBALS['__transients']));
     break;
 
+// phrase <count> [placeholder]: the count sentence, straight from the shipped
+// function. The wording has ONE definition and the test compares the markup's
+// templates against it rather than against a copy written in Python.
+case 'phrase':
+    $ph = isset($argv[5]) && $argv[5] !== '' ? $argv[5] : null;
+    out(array('phrase' => alt_claps_count_phrase((int) $argv[4], $ph)));
+    break;
+
 // render <post_id>: the markup, plus the whole database afterwards.
 case 'render':
     alt_harness_add_post(101, 'post', 'publish');

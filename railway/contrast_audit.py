@@ -54,6 +54,20 @@ SURFACES = [
     ('tracker', SITE + '/ai-layoff-tracker/'),
     ('health', SITE + '/ai-layoff-tracker/ai-tracker-health/'),
     ('sources', SITE + '/ai-layoff-tracker/sources/'),
+    # A BLOG POST, added 2026-08-16, and it is a plugin surface now whether or
+    # not it looks like one. includes/blog-typography.php styles the article,
+    # includes/subscribe-placements.php appends the signup and
+    # includes/blog-claps.php appends the applause control, so three pieces of
+    # this plugin's own UI render here and none of them were measured. The
+    # applause control's privacy note is the reason: it is small muted text,
+    # which is exactly where AA gets failed, and until this line the only
+    # evidence about it was arithmetic over two literals in a stylesheet that
+    # a database rule was overruling anyway.
+    #
+    # One fixed post rather than "the latest": a moving target makes a red run
+    # ambiguous between a regression and an editor's new paragraph. This one is
+    # the reference article the blog fixtures in railway/tests are built from.
+    ('article', SITE + '/how-long-should-a-resume-be/'),
 ]
 
 # Four reader-realistic combinations, not two. `data-theme` is the reader's

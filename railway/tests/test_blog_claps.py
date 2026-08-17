@@ -59,6 +59,12 @@ def _php():
 
 PHP = _php()
 
+# Read off the shipped file rather than repeated here: a test that hard-codes
+# 10 keeps working while the server clamps at something else.
+ALT_CLAPS_PER_REQUEST = int(re.search(
+    r"define\('ALT_CLAPS_PER_REQUEST',\s*(\d+)\)",
+    CLAPS_PHP.read_text()).group(1))
+
 
 def _strip_php_comments(path):
     """The file's source with every comment removed, via PHP's own tokenizer.
@@ -408,10 +414,88 @@ class TheControlOnThePage(HarnessMixin):
         super().setUp()
         self.html = self.harness("render", 101)["html"]
 
+    def render_with(self, claps):
+        """The markup for a post that already has `claps` on it."""
+        left = int(claps)
+        while left > 0:                       # one call may carry at most ten
+            step = min(left, ALT_CLAPS_PER_REQUEST)
+            self.harness("bump", 101, 1, step)
+            left -= step
+        return self.harness("render", 101)["html"]
+
+    @staticmethod
+    def count_text(html):
+        m = re.search(r'<span class="alt-clap-count"[^>]*>(.*?)</span>\s*$',
+                      html, re.S)
+        if m is None:
+            m = re.search(r'<span class="alt-clap-count"[^>]*>(.*?)</span>',
+                          html, re.S)
+        assert m is not None, "no count element in:\n%s" % html
+        return re.sub(r"<[^>]+>", "", m.group(1)).strip()
+
     def test_the_count_renders_without_javascript(self):
-        self.assertRegex(self.html, r'data-alt-clap-num[^>]*>0<', (
-            "the count must be server rendered text so the page is right with "
-            "scripting off. Markup was:\n%s" % self.html))
+        self.assertIn(
+            "12 people found this helpful", self.render_with(12), (
+                "the count must be server rendered text so the page is right "
+                "with scripting off"))
+
+    def test_the_button_speaks_to_this_audience(self):
+        """The readers here are mid job search, plus recruiters and
+        journalists. "Applaud" is Medium's word for Medium's readers."""
+        self.assertIn(
+            ">This helped<", self.html,
+            "the button does not say 'This helped'. Markup was:\n%s" % self.html)
+        self.assertNotIn(
+            "Applaud", self.html,
+            "the button still says 'Applaud' somewhere in the markup")
+
+    def test_one_is_a_person_and_the_rest_are_people(self):
+        cases = ((1, "1 person found this helpful"),
+                 (2, "2 people found this helpful"),
+                 (12, "12 people found this helpful"))
+        for claps, want in cases:
+            with self.subTest(claps=claps):
+                self.setUp()
+                got = self.count_text(self.render_with(claps))
+                self.assertEqual(got, want, (
+                    "with %d on the row the page says %r, expected %r. A "
+                    "count that says '1 people' is the first thing a reader "
+                    "notices about a number." % (claps, got, want)))
+
+    def test_zero_says_nothing_rather_than_saying_zero(self):
+        got = self.count_text(self.html)
+        self.assertEqual(got, "", (
+            "an article nobody has marked yet renders %r. '0 people found "
+            "this helpful' is a worse thing to publish under an article than "
+            "silence, and it is the state most articles are in on the day "
+            "they go up." % got))
+
+    def test_the_sentence_reaches_the_script_as_a_template(self):
+        """One definition, in PHP, carried to the browser as markup.
+
+        Two languages cannot share a string literal, so what they share is the
+        template: the singular and plural forms are emitted as attributes and
+        blog-claps.js substitutes the number. This asserts the attributes are
+        the SAME function's output, so PHP cannot say one thing on load and
+        the script another after a tap.
+        """
+        m = re.search(r'data-count-one="([^"]*)"', self.html)
+        n = re.search(r'data-count-many="([^"]*)"', self.html)
+        self.assertTrue(m and n, (
+            "the markup carries no data-count-one / data-count-many "
+            "templates, so assets/blog-claps.js has to hold its own copy of "
+            "the sentence and the two will drift. Markup was:\n%s" % self.html))
+        for name, got, count in (("data-count-one", m.group(1), 1),
+                                 ("data-count-many", n.group(1), 2)):
+            want = self.harness("phrase", count, "{n}")["phrase"]
+            self.assertEqual(got, want, (
+                "%s is %r but alt_claps_count_phrase(%d) says %r. The "
+                "attribute must BE that function's output, not a second copy "
+                "of the words." % (name, got, count, want)))
+        self.assertIn("{n}", m.group(1),
+                      "the singular template has no {n} placeholder")
+        self.assertIn("{n}", n.group(1),
+                      "the plural template has no {n} placeholder")
 
     def test_the_button_is_a_real_button_and_ships_inert(self):
         self.assertRegex(self.html, r"<button[^>]*type=\"button\"", (

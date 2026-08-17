@@ -82,10 +82,10 @@ PREHEADER_MAX = 130
 # the presentation is touched: no text, no figure and no href is rewritten.
 # ---------------------------------------------------------------------------
 TAG_STYLES = {
-    "h2": (f"margin:0 0 10px;font-family:{FONT};font-size:19px;line-height:1.25;"
+    "h2": (f"margin:0 0 12px;font-family:{FONT};font-size:19px;line-height:1.25;"
            f"font-weight:700;letter-spacing:-0.01em;color:{INK};"),
-    "h3": (f"margin:18px 0 8px;font-family:{FONT};font-size:15px;line-height:1.3;"
-           f"font-weight:700;color:{INK};"),
+    "h3": (f"margin:22px 0 2px;font-family:{FONT};font-size:14px;line-height:1.3;"
+           f"font-weight:700;letter-spacing:0.01em;color:{INK};"),
     "p": (f"margin:0 0 14px;font-family:{FONT};font-size:15px;line-height:1.6;"
           f"color:{INK};"),
     "ul": "margin:0 0 16px;padding:0 0 0 20px;",
@@ -95,11 +95,74 @@ TAG_STYLES = {
     "a": f"color:{LINK};text-decoration:underline;font-weight:600;",
     "strong": f"font-weight:700;color:{INK};",
     "em": f"font-style:italic;color:{INK};",
+    # The ranked lists. A bullet list cannot align a column of figures, and an
+    # unaligned column is the thing a reader has to work at. Two cells, the
+    # number right aligned by the `align` ATTRIBUTE rather than by CSS, because
+    # Word honours the attribute and ignores half the properties.
+    "table": ("width:100%;border-collapse:collapse;margin:0 0 14px;"
+              "mso-table-lspace:0;mso-table-rspace:0;"),
+    "tr": "",
+    "td": (f"padding:7px 0;font-family:{FONT};font-size:15px;line-height:1.4;"
+           f"color:{INK};border-bottom:1px solid {RULE};vertical-align:top;"),
+}
+
+# ---------------------------------------------------------------------------
+# Variants: the site says WHAT a line is, this file says how it looks
+#
+# The composer marks a line with `data-alt="stat"` and never with a colour or
+# a size. So the one place that decides what a headline figure looks like is
+# this file, and the one place that decides which figure is a headline is the
+# site. The attribute is REMOVED once it has been read: it has no meaning in a
+# mail client, and an attribute nobody consumes is a loose end a reader's
+# client gets to interpret.
+#
+# `tabular-nums` is a hint, not a mechanism. Word ignores it and the columns
+# still line up, because the alignment is done by the table.
+# ---------------------------------------------------------------------------
+VARIANT_STYLES = {
+    # The eyebrow over a headline figure. Uppercase and letterspaced is how a
+    # newspaper marks a label without a rule, a weight change or an image.
+    ("p", "kicker"): (f"margin:0 0 4px;font-family:{FONT};font-size:11px;"
+                      f"line-height:1.3;font-weight:700;letter-spacing:0.09em;"
+                      f"text-transform:uppercase;color:{MUTED};"),
+    # The number itself. Nothing else in the message is this size.
+    ("p", "stat"): (f"margin:0 0 5px;font-family:{FONT};font-size:34px;"
+                    f"line-height:1.1;font-weight:700;letter-spacing:-0.02em;"
+                    f"color:{INK};font-variant-numeric:tabular-nums;"),
+    # What that number covers. Never optional, because a figure whose scope
+    # sits somewhere else stops being true the moment somebody quotes it.
+    ("p", "scope"): (f"margin:0 0 16px;font-family:{FONT};font-size:13px;"
+                     f"line-height:1.5;color:{MUTED};"),
+    # A caption directly under a block heading, same job at list scale.
+    ("p", "caption"): (f"margin:0 0 10px;font-family:{FONT};font-size:12px;"
+                       f"line-height:1.5;color:{MUTED};"),
+    # The small print a block earns: a reconciliation, a definition, a basis.
+    ("p", "note"): (f"margin:0 0 14px;font-family:{FONT};font-size:13px;"
+                    f"line-height:1.55;color:{MUTED};"),
+    # The row label and the row figure. Same cell style, different weight and
+    # a narrower measure, so a long company name wraps and the number does not.
+    ("td", "label"): (f"padding:7px 10px 7px 0;font-family:{FONT};font-size:15px;"
+                      f"line-height:1.4;color:{INK};border-bottom:1px solid "
+                      f"{RULE};vertical-align:top;"),
+    ("td", "figure"): (f"padding:7px 0;font-family:{FONT};font-size:15px;"
+                       f"line-height:1.4;font-weight:700;color:{INK};"
+                       f"border-bottom:1px solid {RULE};vertical-align:top;"
+                       f"white-space:nowrap;font-variant-numeric:tabular-nums;"),
+    # The last row of a table drops its rule, so the block does not end on a
+    # line that looks like the start of another one.
+    ("td", "label-last"): (f"padding:7px 10px 7px 0;font-family:{FONT};"
+                           f"font-size:15px;line-height:1.4;color:{INK};"
+                           f"vertical-align:top;"),
+    ("td", "figure-last"): (f"padding:7px 0;font-family:{FONT};font-size:15px;"
+                            f"line-height:1.4;font-weight:700;color:{INK};"
+                            f"vertical-align:top;white-space:nowrap;"
+                            f"font-variant-numeric:tabular-nums;"),
 }
 
 _OPEN_TAG = re.compile(r"<\s*([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>")
 _STYLE_ATTR = re.compile(r"\s*style\s*=\s*(\"[^\"]*\"|'[^']*')", re.I)
 _DEAD_ATTR = re.compile(r"\s*(class|id)\s*=\s*(\"[^\"]*\"|'[^']*')", re.I)
+_VARIANT_ATTR = re.compile(r"\s*data-alt\s*=\s*\"([^\"]*)\"", re.I)
 
 
 def restyle(fragment: str) -> str:
@@ -107,13 +170,23 @@ def restyle(fragment: str) -> str:
 
     Also drops `class` and `id`: in an email neither can be styled except from
     a block a forward deletes, so carrying one is carrying the promise of a
-    design that will not arrive.
+    design that will not arrive. `data-alt` is read for its variant and then
+    dropped for the same reason.
+
+    An UNKNOWN variant falls back to the plain style for the tag rather than to
+    no style at all. A typo in the site's markup should cost a design detail,
+    never the readability of a paragraph in a forwarded copy.
     """
     def rewrite(match):
         tag = match.group(1).lower()
-        attrs = _DEAD_ATTR.sub("", _STYLE_ATTR.sub("", match.group(2)))
-        attrs = attrs.strip()
-        style = TAG_STYLES.get(tag)
+        raw = match.group(2)
+        variant = ""
+        found = _VARIANT_ATTR.search(raw)
+        if found:
+            variant = found.group(1).strip().lower()
+            raw = _VARIANT_ATTR.sub("", raw)
+        attrs = _DEAD_ATTR.sub("", _STYLE_ATTR.sub("", raw)).strip()
+        style = VARIANT_STYLES.get((tag, variant), TAG_STYLES.get(tag))
         head = f"<{tag}" + (f" {attrs}" if attrs else "")
         return head + (f' style="{style}">' if style else ">")
 
@@ -248,6 +321,43 @@ def _masthead(kicker: str) -> str:
                     f'{escape(kicker)}</p>')
 
 
+# ---------------------------------------------------------------------------
+# What we tell a reader about measurement
+#
+# THE SENTENCE THAT WAS FALSE. Until 2026-08-16 the footer said "We send no
+# images and no tracking pixels, so we cannot tell whether you opened this."
+# That was true of the message this file builds, and untrue of the message the
+# reader received. The owner turned open and click tracking ON in Brevo, and
+# Brevo injects its pixel and rewrites the links AT THE RELAY, after we have
+# handed the message over. So the digest carried a promise its own delivery
+# broke, in the footer, under our name.
+#
+# The answer is not to delete the sentence. A reader who was told we could not
+# measure them is owed the correction, and a service that measures opens and
+# clicks should say so in the email doing the measuring. Deleting it would
+# leave us tracking people and volunteering nothing, which is worse than
+# either honest position.
+#
+# WHY assert_message_is_clean IS UNCHANGED AND MUST STAY UNCHANGED. Our own
+# message still embeds no image, no pixel, no url() and no remote fetch of any
+# kind, and that check still refuses to send one that does. The distinction is
+# worth keeping: because the tracking is entirely the provider's, switching
+# provider removes it, rather than sending us back through our own templates
+# unpicking pixels we baked in.
+#
+# THIS COPY IS COUPLED TO A SETTING NOBODY IN THIS REPO CAN READ. If the owner
+# turns tracking off again in the Brevo dashboard, these strings become false
+# in the other direction. The places that have to change together are listed
+# in docs/RUNBOOK.md under "Open and click tracking".
+# ---------------------------------------------------------------------------
+TRACKING_SENTENCES = (
+    "Our mail provider records whether you open this email and which links "
+    "you follow.",
+    "We read it to see which sections are worth keeping.",
+    "Unsubscribing stops the email and the measuring together.",
+)
+
+
 def _footer(unsub_url: str, manage_url: str) -> str:
     small = (f'margin:0 0 8px;font-family:{FONT};font-size:12px;'
              f'line-height:1.6;color:{MUTED};')
@@ -263,8 +373,8 @@ def _footer(unsub_url: str, manage_url: str) -> str:
             f'Unsubscribe with one click</a>, which stops everything at once.'
             f'{manage}</p>'
             f'<p style="margin:0;font-family:{FONT};font-size:12px;'
-            f'line-height:1.6;color:{MUTED};">We send no images and no '
-            f'tracking pixels, so we cannot tell whether you opened this.</p>')
+            f'line-height:1.6;color:{MUTED};">'
+            + escape(" ".join(TRACKING_SENTENCES)) + '</p>')
 
 
 def render_html(parts, *, subject: str, preheader: str, kicker: str,
@@ -372,6 +482,5 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str) -> str:
                       "you get:")
         footer.append(manage_url)
     footer.append("")
-    footer.append(_reflow("We send no images and no tracking pixels, so we "
-                          "cannot tell whether you opened this."))
+    footer.append(_reflow(" ".join(TRACKING_SENTENCES)))
     return "\n".join(head + [rule, ""] + body + [""] + footer) + "\n"

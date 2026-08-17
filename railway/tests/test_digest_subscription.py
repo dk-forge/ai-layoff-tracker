@@ -44,6 +44,22 @@ def _php():
     return which("php")
 
 
+def confirm_subject():
+    """The confirmation email's subject, read out of the shipped source.
+
+    Not repeated here as a literal: a test that hard-codes the words is a
+    second definition of the highest-stakes string this system sends, and it
+    goes green while the two disagree.
+    """
+    src = open(SUBSCRIBE, encoding="utf-8").read()
+    m = re.search(r"function alt_digest_confirm_subject\(\)\s*\{\s*"
+                  r"return\s*'([^']*)';", src)
+    assert m, ("includes/subscribe.php has no alt_digest_confirm_subject() "
+               "returning a single literal, so the confirmation subject is "
+               "written at its call site and this test cannot read it")
+    return m.group(1)
+
+
 # Strip PHP comments with PHP's OWN tokenizer before matching source facts.
 # A test that greps raw source proves nothing about behaviour: a sentence in a
 # docblock saying a route is key gated matches exactly as well as the route
@@ -322,7 +338,24 @@ class BehaviouralGuards(unittest.TestCase):
         self.assertEqual(self.o["status_after_signup"], "pending")
         self.assertEqual(self.o["consents"], [1, 0, 1])
         self.assertEqual(self.o["mails_after_signup"], 1)
-        self.assertIn("Confirm", self.o["confirm_mail_subject"])
+        # The exact subject the file ships, read out of the file rather than
+        # copied here. assertIn("Confirm", ...) was the whole check until
+        # 2026-08-16, and it would have passed on "Confirmation" or on a
+        # subject that had lost the brand entirely.
+        want = confirm_subject()
+        self.assertEqual(
+            self.o["confirm_mail_subject"], want,
+            "the confirmation email went out with the subject %r, not the one "
+            "alt_digest_confirm_subject() defines (%r). This is the only "
+            "message a pending address ever gets and clicking it is the whole "
+            "funnel, so its subject has exactly one definition."
+            % (self.o["confirm_mail_subject"], want))
+        self.assertTrue(
+            want.lower().startswith("asktherecruiter.com:"),
+            "the confirmation subject is %r. The brand has to lead: a reader "
+            "who just typed their address is scanning an inbox for that name, "
+            "and a subject they do not recognise produces no complaint and no "
+            "error, only a list that quietly stays empty." % want)
         self.assertTrue(self.o["confirm_mail_has_token"])
 
     def test_the_address_never_travels_in_a_url(self):

@@ -154,6 +154,30 @@ body.single-post {
   --alt-read-frame: 1300px;
   --alt-read-ground: #eef1f5;
 
+  /* A PANEL INSIDE THE READING COLUMN, which is a different thing from the
+     ground above and needs to exist at EVERY width rather than only where
+     there is room for a frame. The signup at the end of an article had a
+     transparent background and a 1.26:1 hairline, so on a 6000px serif column
+     it read as a paragraph with a faint rectangle near it. The owner's words:
+     "it gets mixed in with the article text".
+
+     The fill is the same value as --alt-read-ground on purpose rather than by
+     accident: above 1024px the article is a white card sitting on that
+     colour, so a panel painted in it reads as a window cut through the card
+     to the page underneath, and the block is of a piece with the frame
+     instead of being a new colour nobody has seen before. Below 1024px there
+     is no frame and it is simply a quiet tint.
+
+     Measured, in the browser, at 375/414/768/1280/2000 (the numbers are held
+     by railway/tests/test_signup_reaches_landing_pages.py, not quoted here):
+     the fill is 1.13:1 against the white it sits on and the edge is 1.54:1,
+     against 1.00 and 1.26 before. Both are deliberately quiet - layoffs.css
+     states the rule where --alt-control-border is defined: a panel edge
+     separates two regions and may be quiet, a CONTROL edge must reach 3:1,
+     and the controls inside this panel are held to that separately. */
+  --alt-read-panel: #eef1f5;
+  --alt-read-panel-edge: #c9d1da;
+
   --alt-read-ink: #23272b;      /* body text */
   --alt-read-ink-strong: #14171a; /* headings */
   --alt-read-ink-soft: #55606a;   /* captions, meta, TOC */
@@ -969,9 +993,17 @@ body.single-post .entry-content .alt-digest {
   margin-right: auto !important;
   margin-block-start: calc(var(--alt-read-unit) * 2.6) !important;
   margin-block-end: calc(var(--alt-read-unit) * 1.2) !important;
-  border-color: var(--alt-read-rule) !important;
-  border-radius: 8px !important;
-  padding: 1.1rem 1.15rem !important;
+  /* THE BOX A READER CAN SEE, 2026-08-16. It had --alt-read-rule (1.26:1 on
+     white) and no fill, which is a hairline in a serif column and not an
+     object. Ground plus a stronger edge plus a slightly larger radius: three
+     small moves that together say "this is a different kind of thing" from a
+     scroll, without turning a signup into a slab. The padding goes up with
+     the fill, because a tint with 1.1rem of air reads as cramped in a way the
+     same 1.1rem did not when the box was invisible. */
+  background: var(--alt-read-panel) !important;
+  border-color: var(--alt-read-panel-edge) !important;
+  border-radius: 12px !important;
+  padding: 1.35rem 1.3rem !important;
   color: var(--alt-read-ink) !important;
 }
 
@@ -1016,12 +1048,126 @@ body.single-post .entry-content .alt-digest-freq label {
   line-height: 1.45 !important;
 }
 
+/* THE TERMINAL-STATE PANEL ON AN ARTICLE, and it is the same trap twice in one
+ * file. The panel that stands where the form stands (includes/subscribe.php,
+ * alt_digest_state_panel) asks for 14px sans. Measured on this fixture before
+ * these rules, at 375 and 1280:
+ *
+ *     .alt-digest-panel-lead     19.0 / 22.0px   Manrope
+ *     .alt-digest-panel li       19.0 / 22.0px   VOLLKORN
+ *     .alt-digest-panel p        19.0 / 22.0px   Manrope
+ *     .alt-digest-panel a        19.0 / 22.0px   Manrope
+ *
+ * Section 3 sets `.entry-content p` at (0,2,2) !important, and section 5 does
+ * the same for `ul`/`li`. The rule above catches `.alt-digest p` and never
+ * mentioned `li`, which is why the two list items came out in the article's
+ * serif while the paragraphs around them did not. Both are named here.
+ *
+ * 15px, the size the intro this panel replaces already uses on this page, so
+ * the block is the same weight of thing whichever state it is in.
+ */
+body.single-post .entry-content .alt-digest-panel p,
+body.single-post .entry-content .alt-digest-panel li,
+body.single-post .entry-content .alt-digest-panel a {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+body.single-post .entry-content .alt-digest-panel p {
+  margin-block-start: 0 !important;
+  margin-block-end: 0.6rem !important;
+}
+
+/* The article's own list rule adds 1.35em of indent and 1.3rem of air above.
+   Inside a confirmation panel that reads as a quotation rather than as two
+   things a reader is being told. */
+body.single-post .entry-content .alt-digest-panel ul {
+  font-size: 15px !important;
+  margin-block-start: 0 !important;
+  margin-block-end: 0.6rem !important;
+  padding-inline-start: 1.15em !important;
+}
+
+body.single-post .entry-content .alt-digest-panel li {
+  margin-block-end: 0.1rem !important;
+}
+
 body.single-post .entry-content .alt-digest-privacy p {
   font-size: 14px !important;
   line-height: 1.5 !important;
   margin-block-start: 0.5rem !important;
   margin-block-end: 0.5rem !important;
   color: var(--alt-read-ink-soft) !important;
+}
+
+/* ------------------------------------------ 8c. OUR OWN APPLAUSE CONTROL
+ * .alt-clap is this plugin's markup, from includes/blog-claps.php, appended to
+ * the end of an article at priority 24 - one ahead of the signup, so the order
+ * down the page is article, applause, signup.
+ *
+ * IT ARRIVES WITH ITS OWN STYLESHEET AND THE ONE RULE THAT MATTERS LOSES.
+ * assets/blog-claps.css asks for a 13px note in --alt-cl-note. The note is a
+ * <p> inside .entry-content, and section 3 of THIS file declares
+ *
+ *     body.single-post .entry-content p { font-size: var(--alt-read-body)
+ *                                         !important; color: ... !important }
+ *
+ * at (0,3,1). A component rule of (0,1,0) does not enter that argument, so the
+ * sentence that exists to be a quiet aside rendered at the ARTICLE BODY size,
+ * in the article body's ink, in the article's serif. Measured on the live post
+ * at 2.20.71: 19.0px at 375 and 22.0px at 1280, against a 15.0px button label,
+ * 91.2px tall on a phone. The owner read it and said the note was too loud. It
+ * was not a colour choice, it was this stylesheet overruling the component and
+ * nobody noticing, and it is the same class of defect section 8b was written
+ * for one block further down the page.
+ *
+ * SO THE ANSWER IS THE SAME SHAPE AS 8b: rules that CAN win, in the file that
+ * is doing the winning, restoring the component's own intent rather than
+ * inventing a second one. The note's colour is read straight out of the
+ * component's token (--alt-cl-note, defined on .alt-clap and inherited), so
+ * there is one definition of what "muted" means here and the contrast
+ * arithmetic in railway/tests/test_blog_claps.py stays about the colour that
+ * actually paints.
+ *
+ * THE SIZE IS THE ONE NUMBER THAT IS STATED TWICE, because CSS has no way to
+ * read another rule's font-size. 13px is what blog-claps.css declares, and
+ * railway/tests/test_blog_applause_surface.py fails if the two ever disagree.
+ *
+ * NOTHING HERE TOUCHES THE CONTROL'S SIZE. The button keeps min-height and
+ * min-width 44px from the component, measured at 375/414/768/1280/2000: making
+ * a note quiet is not licence to shrink the thing a thumb aims at.
+ */
+body.single-post .entry-content .alt-clap {
+  font-family: var(--alt-read-sans) !important;
+  max-width: var(--wp--style--global--content-size, 645px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-block-start: calc(var(--alt-read-unit) * 2.4) !important;
+  margin-block-end: calc(var(--alt-read-unit) * 1.6) !important;
+}
+
+/* The button and the count inherit `font: inherit` from the component, which
+   on a tracker page is the right answer and on an article resolves to
+   Vollkorn: a serif label inside a pill button, which is the one place on this
+   page that should read as interface rather than as prose. */
+body.single-post .entry-content .alt-clap-btn,
+body.single-post .entry-content .alt-clap-count {
+  font-family: var(--alt-read-sans) !important;
+}
+
+/* `p.alt-clap-note` and not `.alt-clap-note`: the extra element selector is
+   load-bearing. Between two !important declarations specificity still decides,
+   and `.entry-content p` is (0,1,1) while a class on its own is (0,1,0). The
+   same trap the signup's intro paragraph fell into at 2.20.52, where the first
+   attempt at the fix moved the text by exactly zero pixels. */
+body.single-post .entry-content p.alt-clap-note {
+  font-family: var(--alt-read-sans) !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  color: var(--alt-cl-note, #696d77) !important;
+  margin-block-start: -4px !important;
+  margin-block-end: 0 !important;
 }
 
 /* --------------------------------------------------------- 9. print + motion */

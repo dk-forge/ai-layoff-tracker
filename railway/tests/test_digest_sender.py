@@ -220,7 +220,14 @@ class ThePrivacyPromise(unittest.TestCase):
         dt.assert_message_is_clean(message)
         self.assertNotIn("<img", message.html.lower())
         self.assertNotIn("url(", message.html.lower())
-        self.assertIn("no tracking pixels", message.text)
+        # OUR message embeds nothing that fetches, and that is what the two
+        # lines above check. The footer no longer claims the reader is
+        # unmeasured, because Brevo adds open and click tracking at the relay
+        # after we hand the message over (2026-08-16). Both facts are true at
+        # once and the copy now says the second one.
+        flat = " ".join(message.text.split())
+        self.assertNotIn("no tracking pixels", flat)
+        self.assertIn("records whether you open this email", flat)
 
     def test_the_address_may_not_appear_in_the_body(self):
         leaky = _message(text=_message().text + "sent to reader@example.com\n")

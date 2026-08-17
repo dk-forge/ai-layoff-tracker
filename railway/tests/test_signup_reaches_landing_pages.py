@@ -501,11 +501,18 @@ PROBE = contrast_audit._COLOR_JS + r"""
     overflow: +(document.documentElement.scrollWidth
                 - document.documentElement.clientWidth).toFixed(1),
     section: box(sec),
+    // The reading column itself, so "the panel sits on the measure" is a
+    // comparison against the text rather than against a number in this file.
+    bodyPara: (function () {
+      var ps = [].slice.call(document.querySelectorAll('.entry-content > p'));
+      return box(ps.length > 1 ? ps[1] : ps[0]);
+    })(),
     heading: box(sec.querySelector('h2')),
     field: box(sec.querySelector('input[type="email"]')),
     submit: box(sec.querySelector('button[type="submit"]')),
     summary: box(sec.querySelector('summary')),
     sectionEdge: edge(sec, sec.parentElement),
+    sectionFill: fill(sec, sec.parentElement),
     fieldEdge: edge(sec.querySelector('input[type="email"]'), sec),
     submitFill: fill(sec.querySelector('button[type="submit"]'), sec),
     texts: texts
@@ -594,6 +601,98 @@ class TheSignupFitsAPhoneScreen(_Rendered):
                            "viewport" % (width, sec["left"], sec["right"], d["vw"]))
         self.assertEqual([], bad, "the article bleeds sideways:\n  "
                                   + "\n  ".join(bad))
+
+
+class TheSignupReadsAsAnObjectAndNotAsMoreArticle(_Rendered):
+    """THE OWNER'S REPORT, 2026-08-16: "it gets mixed in with the article text".
+
+    He is right, and the reason is measurable rather than a matter of taste.
+    Measured on the live post at 2.20.71, bare URL, browser User-Agent:
+
+        the signup's background   rgba(0, 0, 0, 0)   i.e. the article's own
+        its border                rgb(226, 230, 233) on white = 1.26:1
+
+    A transparent box behind a 1.26:1 hairline, inside a serif reading column
+    that has just spent six thousand pixels being one continuous surface, is
+    not an object. It is a paragraph with a faint rectangle near it, and at a
+    scroll it does not register as a different KIND of thing at all.
+
+    So the block needs a ground of its own, and this measures both halves of
+    that: the fill has to be a real colour that is not the page behind it, and
+    the edge has to be visibly stronger than the hairline it replaces. Neither
+    is a WCAG bar - assets/layoffs.css states plainly that a panel edge may be
+    quiet where a control edge may not, and 1.4.11 is asked of the controls in
+    the class below. This is the separate question of whether a reader can see
+    where the article stops.
+    """
+
+    # The fill only has to be a step off the page, not a slab: this sits
+    # inside a reading column and a heavy panel would be its own defect. 1.05
+    # is about the smallest difference that survives an uncalibrated laptop
+    # screen at an angle; the page's own frame ground (#eef1f5 on white)
+    # measures 1.10.
+    PANEL_FILL_MIN = 1.05
+    # And the edge, against the page rather than against the fill: the border
+    # is what draws the corner radius, and 1.26:1 is what "invisible" measured
+    # as. 1.35 is a real step up while staying quiet enough for a panel.
+    PANEL_EDGE_MIN = 1.35
+
+    def test_the_block_sits_on_a_ground_of_its_own(self):
+        bad = []
+        for width in WIDTHS:
+            d = self.rendered(width, 812 if width < 768 else 900)
+            f = d["sectionFill"]
+            if f["color"] == f["against"]:
+                bad.append(
+                    "%dpx: the signup is painted %s, which is exactly the "
+                    "article behind it, so the box has no ground"
+                    % (width, f["color"]))
+            elif f["ratio"] < self.PANEL_FILL_MIN - 0.005:
+                bad.append(
+                    "%dpx: the signup's ground is %s on %s = %.3f:1, under the "
+                    "%.2f:1 this needs to read as a separate surface"
+                    % (width, f["color"], f["against"], f["ratio"],
+                       self.PANEL_FILL_MIN))
+        self.assertEqual(
+            [], bad,
+            "the signup has no ground of its own, so on an article it reads "
+            "as more article. It needs a tinted surface, not only a "
+            "border:\n  " + "\n  ".join(bad))
+
+    def test_its_edge_is_stronger_than_the_hairline_that_disappeared(self):
+        bad = []
+        for width in WIDTHS:
+            d = self.rendered(width, 812 if width < 768 else 900)
+            e = d["sectionEdge"]
+            if e["ratio"] < self.PANEL_EDGE_MIN - 0.005:
+                bad.append(
+                    "%dpx: %s on %s = %.2f:1, under %.2f:1"
+                    % (width, e["color"], e["against"], e["ratio"],
+                       self.PANEL_EDGE_MIN))
+        self.assertEqual(
+            [], bad,
+            "the signup's edge is still about as visible as the 1.26:1 "
+            "hairline the owner could not see:\n  " + "\n  ".join(bad))
+
+    def test_the_ground_does_not_reach_past_the_reading_measure(self):
+        """A panel wider than the column it interrupts is a second defect.
+        The block sits ON the measure, which is what makes it read as part of
+        the page rather than as something bolted to the side of it."""
+        bad = []
+        for width in WIDTHS:
+            d = self.rendered(width, 812 if width < 768 else 900)
+            sec, para = d["section"], d.get("bodyPara")
+            if para is None:
+                continue
+            if sec["left"] < para["left"] - 0.5 or sec["right"] > para["right"] + 0.5:
+                bad.append(
+                    "%dpx: the signup spans %.1f-%.1f against a reading "
+                    "column of %.1f-%.1f" % (width, sec["left"], sec["right"],
+                                             para["left"], para["right"]))
+        self.assertEqual(
+            [], bad,
+            "the signup's new ground runs outside the reading measure:\n  "
+            + "\n  ".join(bad))
 
 
 class TheSignupIsReadableOnAnArticle(_Rendered):
