@@ -1224,6 +1224,50 @@ carries nothing that fetches. There is still no equivalent test on the FORM
 copy: the rows above are verified by reading, and if the owner turns tracking
 off in Brevo they have to be changed by hand, together.
 
+### The confirmation email's From line
+
+**Measured 2026-08-17, by sending a real confirmation from the live form and
+reading the received message.** The address was already
+`newsletter@asktherecruiter.com`. It was never `wordpress@`, even though
+`alt_digest_from_header()` returned `array()` and wp_mail's own default is
+`WordPress <wordpress@...>`. The Brevo WordPress plugin (`mailin/v1`, live in
+the install's REST namespaces) routes wp_mail and substitutes its configured
+sender. The alert emails date the changeover: 13:31 UTC on 2026-08-16 they came
+from `wordpress@`, and by 23:54 the same job's mail came from `newsletter@`.
+
+So the address was never the defect. **The display name was**: the received
+message carried a bare address and no name, beside a subject that leads with
+the brand. 2.20.77 sets `From: AskTheRecruiter Trackers
+<newsletter@asktherecruiter.com>` plus `Reply-To: info@asktherecruiter.com`.
+Same mailbox the digest sends as through `DIGEST_FROM`, because a From on any
+other mailbox breaks DKIM and SPF alignment and makes deliverability worse
+rather than better.
+
+**Whether Brevo lets that header through is a measurement, not a belief.** The
+plugin already replaces the address, so it may replace the whole line, and a
+header we set that is silently discarded is worse than no header because the
+file then looks configured. The check is one Gmail search of a received
+confirmation:
+
+```
+from:Trackers newer_than:2d in:anywhere
+```
+
+`Trackers` appears in the display name and in no address on this domain, so a
+hit means the header survived and a miss means Brevo overwrote it. Verified
+on 2026-08-17 against the deploy of 2.20.77; the result is recorded in
+docs/TECHLOG.md under that version.
+
+**If it does not survive, set the sender name in the Brevo dashboard and record
+here that this function cannot win.** Do not try a different header, and do not
+change the address to something Brevo will accept: an unaligned From is a worse
+outcome than an unnamed one.
+
+**Never put an emoji or any graphical character in that display name.** Gmail
+treats one there as interface spoofing, and the display name is the single
+placement with a documented hard block. `tests/test_digest_link_identity.py`
+holds that, by codepoint rather than by a list of characters.
+
 ### The email design has one rule: it must survive a forward
 
 `railway/digest_layout.py` owns everything about how the message looks. The

@@ -930,13 +930,129 @@ function alt_digest_signup($email, array $prefs) {
 /* Confirm + unsubscribe (token links, no login, email never in a URL) */
 /* ------------------------------------------------------------------ */
 
+/**
+ * THE TWO LINKS THAT LIVE INSIDE AN EMAIL, AND WHY THEY LEFT wp-admin.
+ *
+ * Until 2.20.77 both were
+ * `/blog/wp-admin/admin-post.php?action=alt_digest_confirm&t=<64 hex>`.
+ * Nothing was wrong with it mechanically, and everything was wrong with it as
+ * the only link in a first-contact message. A person reads `wp-admin` in an
+ * email from a sender they have never heard from as administrative at best and
+ * as phishing at worst. A filter reads an admin path plus a long opaque token
+ * in a first-contact message as a shape it has seen before, and plenty of
+ * corporate filters rewrite or strip links to admin paths outright. The
+ * confirmation IS the funnel: nobody is ever sent a digest until they click
+ * that one link, so a link a reader does not trust and a filter does not pass
+ * produces no complaint and no error, only a list that quietly stays empty.
+ *
+ * The new shape is a path on the page the reader was just standing on:
+ *
+ *   https://asktherecruiter.com/blog/ai-layoff-tracker/confirm/<token>/
+ *   https://asktherecruiter.com/blog/ai-layoff-tracker/unsubscribe/<token>/
+ *
+ * WHY A PATH AND NOT A REWRITE RULE. Both are "pretty". A rewrite rule only
+ * exists once the rewrite table has been flushed, and FTP deploys here bypass
+ * every WordPress hook that would flush it. The company and facet pages solve
+ * that with a version-gated self-healing flush, which is right for a page that
+ * can be a few minutes late. It is not right for a link that has already been
+ * emailed: the window where the rule is missing is a window where a real
+ * reader's confirmation link 404s, and that reader is not coming back. So
+ * alt_digest_public_route_dispatch() reads REQUEST_URI itself, on
+ * `parse_request`, before WordPress decides the URL is a 404. It needs no
+ * rewrite rule, no flush and no activation hook, and it is therefore correct
+ * on the first request after an upload rather than the first request after a
+ * flush. tests/test_digest_link_identity.py holds that.
+ *
+ * THE OLD URLS KEEP WORKING FOREVER, and that matters more than the new ones.
+ * Confirmation links of the old shape were emailed to real addresses, and the
+ * old unsubscribe URL is in the `List-Unsubscribe` header of every digest
+ * already delivered, where Gmail and Yahoo POST to it with no human present.
+ * A link that 404s because we prettified the route is strictly worse than an
+ * ugly link that works. The admin_post_ hooks below stay registered, both
+ * shapes reach the same two handlers, and a test exercises the old one.
+ */
+/**
+ * The one place the route's base is written. The builder below and the matcher
+ * in alt_digest_public_route_dispatch() have to agree about it forever, and two
+ * literals that must agree is how a link gets minted at one path and answered
+ * at another.
+ */
+function alt_digest_link_base() {
+    return 'ai-layoff-tracker';
+}
+
+function alt_digest_link_path($verb, $token) {
+    return '/' . alt_digest_link_base() . '/' . $verb . '/' . rawurlencode((string) $token) . '/';
+}
+
 function alt_digest_confirm_url($token) {
-    return add_query_arg(array('action' => 'alt_digest_confirm', 't' => $token), admin_url('admin-post.php'));
+    return home_url(alt_digest_link_path('confirm', $token));
 }
 
 function alt_digest_unsub_url($token) {
+    return home_url(alt_digest_link_path('unsubscribe', $token));
+}
+
+/**
+ * The pre-2.20.77 shapes. Nothing MINTS these any more. They exist so the
+ * tests can drive the exact URL that is sitting in somebody's inbox, rather
+ * than a copy of it written out again in the test and free to drift.
+ */
+function alt_digest_legacy_confirm_url($token) {
+    return add_query_arg(array('action' => 'alt_digest_confirm', 't' => $token), admin_url('admin-post.php'));
+}
+
+function alt_digest_legacy_unsub_url($token) {
     return add_query_arg(array('action' => 'alt_digest_unsub', 't' => $token), admin_url('admin-post.php'));
 }
+
+/**
+ * The request path with the WordPress install's own prefix removed, so the
+ * matcher below reads `ai-layoff-tracker/confirm/...` on an install at /blog
+ * and on one at the root. Query string dropped: the token is in the path.
+ */
+function alt_digest_route_request_path() {
+    $uri = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '';
+    $path = (string) parse_url($uri, PHP_URL_PATH);
+    $path = rawurldecode($path);
+    $home = (string) wp_parse_url(home_url('/'), PHP_URL_PATH);
+    if ($home !== '' && $home !== '/' && strpos($path, $home) === 0) {
+        $path = substr($path, strlen($home));
+    }
+    return trim($path, '/');
+}
+
+/**
+ * Hand a public confirm/unsubscribe URL to the same handler admin-post.php
+ * would have reached.
+ *
+ * The token is matched loosely on purpose. A mail client that wraps or
+ * truncates the URL should land on the plain "that link has already been used"
+ * message, which is almost always true and reads as reassurance. A 404 page
+ * tells the same reader nothing and looks like the site is broken.
+ */
+function alt_digest_public_route_dispatch() {
+    $pattern = '#^' . preg_quote(alt_digest_link_base(), '#')
+             . '/(confirm|unsubscribe)(?:/(.*))?$#';
+    if (!preg_match($pattern, alt_digest_route_request_path(), $m)) {
+        return;
+    }
+    $token = isset($m[2]) ? trim($m[2], '/') : '';
+    // Only when the path carries one: a legacy-style `?t=` on this path is
+    // then still honoured, because the handlers read $_REQUEST.
+    if ($token !== '') $_REQUEST['t'] = $token;
+    // Every token is unique, so nothing here is ever a cache hit. Say so
+    // anyway: a cached confirmation page would confirm the wrong person.
+    if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
+    nocache_headers();
+    if ($m[1] === 'confirm') {
+        alt_digest_confirm();
+    } else {
+        alt_digest_unsubscribe();
+    }
+    exit;   // unreachable: both handlers end the request themselves
+}
+add_action('parse_request', 'alt_digest_public_route_dispatch', 0);
 
 function alt_digest_confirm() {
     global $wpdb;
@@ -993,13 +1109,22 @@ function alt_digest_unsubscribe() {
             'confirm_token'   => null,
         ), array('id' => $row['id']));
     }
-    if (!$row) alt_digest_redirect('expired');
+    // THE MACHINE CASE IS ANSWERED FIRST, AND THAT ORDER IS THE POINT.
+    //
+    // RFC 8058: the provider POSTs to the List-Unsubscribe URL with no human
+    // present, no browser session, and no obligation to follow a redirect. It
+    // wants a 2xx and nothing else. Until 2.20.77 an unknown token fell into
+    // alt_digest_redirect('expired') BEFORE this branch, so a provider POSTing
+    // a token the 30 day purge had already deleted got a 302 to a web page.
+    // It cannot act on that, it may record it as a failed unsubscribe, and a
+    // failed unsubscribe is counted against the sending domain by the two
+    // providers that require this header in the first place. There is also
+    // nothing to tell it: whether the row is gone or was never there, the
+    // outcome it asked for is already true.
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-        // RFC 8058 one-click: a mailbox provider POSTs; no redirect wanted.
-        status_header(200);
-        echo 'Unsubscribed.';
-        exit;
+        wp_die('Unsubscribed.', 'Unsubscribed', array('response' => 200));
     }
+    if (!$row) alt_digest_redirect('expired');
     alt_digest_redirect('unsubscribed');
 }
 add_action('admin_post_alt_digest_unsub', 'alt_digest_unsubscribe');
@@ -1009,8 +1134,55 @@ add_action('admin_post_nopriv_alt_digest_unsub', 'alt_digest_unsubscribe');
 /* Mail                                                                */
 /* ------------------------------------------------------------------ */
 
+/**
+ * WHO THE CONFIRMATION EMAIL COMES FROM.
+ *
+ * This returned array() until 2.20.77, so wp_mail used its own default. What
+ * that default RESOLVED to on this install was not the WordPress default:
+ * measured on 2026-08-17 by sending a real confirmation and reading the
+ * received message, the address was already `newsletter@asktherecruiter.com`,
+ * not `wordpress@asktherecruiter.com`. The Brevo plugin routes wp_mail here
+ * and substitutes its own configured sender. The alert emails show the moment
+ * it started: 13:31 UTC on 2026-08-16 they came from `wordpress@`, and by
+ * 23:54 the same job's mail came from `newsletter@`.
+ *
+ * So the address was never the defect. THE DISPLAY NAME IS. The received
+ * message carried a bare address and no name at all, beside a subject that
+ * leads with the brand. A reader scanning an inbox for a name they recognise
+ * gets an address, and a bare address on first contact is one of the cheapest
+ * signals a filter has.
+ *
+ * WHY THIS ADDRESS AND NOT ANOTHER. It is the one the mail provider has
+ * authenticated, and it is the one the digest itself sends as through
+ * DIGEST_FROM. A From on any other mailbox breaks DKIM and SPF alignment,
+ * which makes the deliverability problem worse rather than better, and it
+ * teaches a subscriber to recognise a sender the digest does not use.
+ *
+ * NO EMOJI AND NO GRAPHICAL CHARACTER IN THE DISPLAY NAME, ever. Gmail treats
+ * one there as interface spoofing and it is the single placement with a
+ * documented hard block. tests/test_digest_link_identity.py holds that.
+ *
+ * WHETHER THIS HEADER SURVIVES THE RELAY IS AN OPEN QUESTION, AND IT HAS TO BE
+ * ANSWERED BY MEASUREMENT, NOT BY READING THIS COMMENT. The Brevo plugin
+ * already replaces the address, so it may replace the whole line. A header we
+ * set that is silently discarded is worse than no header, because the file
+ * then looks configured. The check is one search of a received message for the
+ * word "Trackers", which appears in this display name and in no address:
+ * RUNBOOK "the confirmation email's From line". If it does not survive, the
+ * answer is to set the sender in the Brevo dashboard and to record here that
+ * this function cannot win, NOT to try a different header.
+ */
+if (!defined('ALT_DIGEST_FROM_EMAIL')) define('ALT_DIGEST_FROM_EMAIL', 'newsletter@asktherecruiter.com');
+if (!defined('ALT_DIGEST_FROM_NAME'))  define('ALT_DIGEST_FROM_NAME', 'AskTheRecruiter Trackers');
+if (!defined('ALT_DIGEST_REPLY_TO'))   define('ALT_DIGEST_REPLY_TO', 'info@asktherecruiter.com');
+
 function alt_digest_from_header() {
-    return array();   // wp_mail defaults; kept as a hook point for a From: override
+    return array(
+        'From: ' . ALT_DIGEST_FROM_NAME . ' <' . ALT_DIGEST_FROM_EMAIL . '>',
+        // A reply to a confirmation reaches a person. newsletter@ is a relay
+        // mailbox; info@ is the address the contact page already publishes.
+        'Reply-To: ' . ALT_DIGEST_REPLY_TO,
+    );
 }
 
 /**

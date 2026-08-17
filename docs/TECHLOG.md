@@ -1,5 +1,124 @@
 # Tech Log
 
+## 2026-08-17 - the only link in the only email a pending address ever gets pointed at wp-admin, and the sender had no name (2.20.77)
+
+Two faults in one message, both about trust rather than function. The
+confirmation email IS the funnel: nobody is ever sent a digest until they click
+one link inside it, so a link a reader does not trust and a filter does not
+pass produces no complaint and no error, only a list that quietly stays empty
+while every check in this repo reads green.
+
+**The link was**
+`https://asktherecruiter.com/blog/wp-admin/admin-post.php?action=alt_digest_confirm&t=<64 hex>`.
+A person reads `wp-admin` in a first-contact email as administrative at best
+and phishing at worst. A filter reads an admin path plus a long opaque token in
+a first-contact message as a shape it has seen before, and plenty of corporate
+filters rewrite or strip links to admin paths outright.
+
+**The From line was not what anyone assumed, and this is the part worth
+keeping.** `alt_digest_from_header()` returned `array()`, so the expectation was
+wp_mail's default, `WordPress <wordpress@asktherecruiter.com>`. It was not.
+Measured by sending a real confirmation from the live form and reading the
+received message, the address was already `newsletter@asktherecruiter.com`. The
+Brevo plugin routes wp_mail here and substitutes its own configured sender. The
+alert emails date the changeover to the afternoon of 2026-08-16: 13:31 UTC they
+came from `wordpress@`, by 23:54 from `newsletter@`. **So the address was never
+the defect. The missing display name was**: a bare address beside a subject that
+leads with the brand, in the one message that has to be recognised.
+
+### The route, and why it is not a rewrite rule
+
+    /blog/ai-layoff-tracker/confirm/<token>/
+    /blog/ai-layoff-tracker/unsubscribe/<token>/
+
+`add_rewrite_rule` was the obvious answer and it is the wrong one here. A
+rewrite only exists once the rewrite table has been flushed, and FTP deploys
+bypass every WordPress hook that would flush it. The company and facet pages
+answer that with a version-gated self-healing flush, which is right for a page
+that can be a few minutes late. It is not right for a link that has ALREADY
+been emailed: the window where the rule is missing is a window where a real
+reader's confirmation link 404s, and that reader is not coming back. So
+`alt_digest_public_route_dispatch()` reads `REQUEST_URI` itself on
+`parse_request`, before WordPress decides the URL is a 404. No rewrite rule, no
+flush, no activation hook, correct on the first request after an upload rather
+than the first request after a flush.
+
+### The old URLs keep working forever, and that matters more than the new ones
+
+Confirmation links of the old shape were emailed to real addresses today, and
+the old unsubscribe URL is in the `List-Unsubscribe` header of every digest
+already delivered, where Gmail and Yahoo POST to it with no human present. A
+link that 404s because we prettified the route is strictly worse than an ugly
+link that works. The `admin_post_` hooks stay registered, both shapes reach the
+same two handlers, and the old builders are kept as named functions so the
+tests drive the actual old URL rather than a copy of it free to drift.
+
+### One-click unsubscribe now answers the machine first, and that order is the fix
+
+The POST branch sat AFTER `if (!$row) alt_digest_redirect('expired')`. So a
+mailbox provider POSTing a token the 30 day purge had already deleted got a 302
+to a web page. It cannot act on that, it may record it as a failed unsubscribe,
+and a failed unsubscribe is counted against the sending domain by the two
+providers that require the header in the first place. There is also nothing to
+tell it: whether the row is gone or was never there, the outcome it asked for is
+already true. POST now returns 200 in every case, through `wp_die()` rather than
+`echo`+`exit` so the harness can observe it.
+
+### The From identity, and the one thing about it that is still a measurement
+
+`From: AskTheRecruiter Trackers <newsletter@asktherecruiter.com>`, plus
+`Reply-To: info@asktherecruiter.com` so a reply to a confirmation reaches a
+person. Same mailbox the digest already sends as through `DIGEST_FROM`: a From
+on any other mailbox breaks DKIM and SPF alignment and makes the deliverability
+problem worse rather than better.
+
+**Whether Brevo passes that header through could not be known before deploying,
+and a header we set that is silently discarded is worse than no header, because
+the file then looks configured.** So the display name was chosen to be its own
+probe: `Trackers` appears in the display name and in no address on this domain,
+so one Gmail search of a received confirmation decides it. Verified after
+deploy; the result is at the foot of this entry. RUNBOOK "the confirmation
+email's From line" carries the check and says what to do if it ever stops
+being true: set the sender name in the Brevo dashboard, and record here that
+the function cannot win. Never a different header, and never a different
+address.
+
+No emoji and no graphical character in that display name, ever. Gmail treats
+one there as interface spoofing and it is the single placement with a
+documented hard block. The test asserts it by codepoint rather than against a
+list of characters.
+
+### Tests
+
+`tests/test_digest_link_identity.py`, 22 assertions, RED first, confirmed with
+`Call to undefined function alt_digest_legacy_confirm_url()`. The harness gained
+a section that drives each URL as a REQUEST, not as a function call, because
+what has to be proved is that a link in an inbox arrives somewhere: the new
+route confirms, the legacy `admin-post.php` route confirms, unsubscribe works
+from both by GET and by POST, an unknown token POSTed still gets a 200, a spent
+token says "already been used" styled as success rather than error, and a
+truncated link reaches that message instead of a 404.
+
+One existing assertion changed rather than being worked around.
+`test_signup_terminal_states` pinned the literal `alt_digest_unsub` to prove the
+confirmation panel's Unsubscribe was a control and not a word. That names one
+spelling of the URL and fails the day the spelling improves while proving
+nothing about whether the link works, so it now reads the href and asserts it
+names the action and carries a token.
+
+### What this did not touch
+
+Nothing above the Subscribe button, so the fold stamp from 2.20.76 still
+matches and `signup_fold.py` needed no re-record. The double opt-in mechanism,
+the tokens, the throttle and the retention window are all unchanged.
+
+**Found while reading the message as a stranger, and NOT fixed here:** Brevo is
+injecting its open-tracking pixel into the confirmation email itself, which
+goes to an address in `status=pending` that has consented to nothing yet. Our
+own code embeds no image and `assert_message_is_clean` still passes, because
+the pixel is added after we hand the message over, so no test in this repo can
+see it. Tracked separately.
+
 ## 2026-08-17 - the signup stopped fitting a phone for the fourth time in a week, and the guard that keeps catching it is the only thing that worked (2.20.76)
 
 Main went red on `da17bf9`. Two rendered tests, one assertion:

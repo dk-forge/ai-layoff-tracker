@@ -20,6 +20,10 @@ $GLOBALS['__transients'] = array();
 $GLOBALS['__redirect'] = null;
 
 class AltRedirect extends Exception {}
+class AltDie extends Exception {
+    public $body;
+    public function __construct($body, $code) { parent::__construct($body, $code); $this->body = $body; }
+}
 
 function add_action(...$a) {}
 function add_shortcode(...$a) {}
@@ -52,6 +56,16 @@ function remove_query_arg($keys, $url) {
     return rtrim(str_replace('?&', '?', $url), '?&');
 }
 function wp_safe_redirect($url) { $GLOBALS['__redirect'] = $url; throw new AltRedirect($url); }
+/**
+ * The one-click unsubscribe POST ends the request without redirecting, so it
+ * cannot be observed the way alt_digest_redirect() is. Same trick: the
+ * terminal call throws instead of exiting, and the driver catches it.
+ */
+function wp_die($message = '', $title = '', $args = array()) {
+    $code = is_array($args) ? (int) ($args['response'] ?? 500) : 500;
+    throw new AltDie((string) $message, $code);
+}
+function nocache_headers() { $GLOBALS['__nocache'] = true; }
 function get_option($k, $d = false) { return array_key_exists($k, $GLOBALS['__options']) ? $GLOBALS['__options'][$k] : $d; }
 function update_option($k, $v, $autoload = null) { $GLOBALS['__options'][$k] = $v; return true; }
 function get_transient($k) { return array_key_exists($k, $GLOBALS['__transients']) ? $GLOBALS['__transients'][$k] : false; }
@@ -616,6 +630,141 @@ foreach (array('default', 'check', 'confirmed', 'updated', 'unsubscribed',
 $_GET = array('alt_dg' => 'confirmed', 'alt_r' => str_repeat('a', 64));
 $out['rendered']['confirmed_no_receipt'] = alt_digest_subscribe_form('layoff');
 $_GET = array();
+
+/* ------------------------------------------------------------------ */
+/* 14. THE TWO LINKS INSIDE AN EMAIL: the public route AND the legacy   */
+/*     admin-post.php one, driven as a real request each time.          */
+/* ------------------------------------------------------------------ */
+
+$wpdb->pdo->exec('DELETE FROM wp_alt_subscribers');
+$GLOBALS['__transients'] = array();
+$routes = array();
+
+/**
+ * One request at a URL, through the front-end dispatcher rather than by
+ * calling the handler directly. This is the whole point: a link in an inbox is
+ * a URL, and what has to be proved is that the URL arrives somewhere.
+ */
+$request = function ($url, $method = 'GET', $post = array()) {
+    $_GET = array(); $_POST = $post; $_REQUEST = $post;
+    $parts = parse_url($url);
+    $_SERVER['REQUEST_URI'] = $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+    $_SERVER['REQUEST_METHOD'] = $method;
+    if (isset($parts['query'])) {
+        parse_str($parts['query'], $q);
+        $_GET = $q;
+        $_REQUEST = array_merge($q, $_REQUEST);
+    }
+    $GLOBALS['__redirect'] = null;
+    $result = array('code' => 0, 'redirected' => false, 'state' => '', 'body' => '');
+    try {
+        // admin-post.php URLs never reach the front-end dispatcher; WordPress
+        // fires the admin_post_* action for them. Both are exercised here the
+        // way the live install would reach them.
+        if (strpos($_SERVER['REQUEST_URI'], 'admin-post.php') !== false) {
+            $action = $_REQUEST['action'] ?? '';
+            if ($action === 'alt_digest_confirm') alt_digest_confirm();
+            elseif ($action === 'alt_digest_unsub') alt_digest_unsubscribe();
+        } else {
+            alt_digest_public_route_dispatch();
+        }
+    } catch (AltRedirect $e) {
+        $result['redirected'] = true;
+        $result['code'] = 302;
+        $result['state'] = preg_match('/alt_dg=([a-z]+)/', (string) $e->getMessage(), $m) ? $m[1] : '';
+    } catch (AltDie $e) {
+        $result['code'] = (int) $e->getCode();
+        $result['body'] = $e->body;
+    }
+    return $result;
+};
+
+$seed_pending = function ($email) use ($wpdb) {
+    $GLOBALS['__transients'] = array();
+    $wpdb->pdo->exec('DELETE FROM wp_alt_subscribers WHERE email = ' . $wpdb->pdo->quote($email));
+    post_signup($email, array('layoff'));
+    return row($email);
+};
+
+// The shapes themselves, read from the shipped builders.
+$probe = str_repeat('b', 64);
+$routes['confirm_url'] = alt_digest_confirm_url($probe);
+$routes['unsub_url'] = alt_digest_unsub_url($probe);
+$routes['legacy_confirm_url'] = alt_digest_legacy_confirm_url($probe);
+$routes['legacy_unsub_url'] = alt_digest_legacy_unsub_url($probe);
+
+// (a) The NEW public path confirms.
+$p = $seed_pending('newroute@example.com');
+$r = $request(alt_digest_confirm_url($p['confirm_token']));
+$routes['public_confirm_result'] = $r['state'];
+$routes['public_confirm_status'] = row('newroute@example.com')['status'];
+// And the same link a second time is the polite "already used", not an error.
+$routes['public_confirm_reuse_result'] = $request(alt_digest_confirm_url($p['confirm_token']))['state'];
+// A truncated link with no token at all still reaches the message.
+$routes['confirm_without_token_result'] = $request('https://example.test/blog/ai-layoff-tracker/confirm/')['state'];
+
+// (b) The LEGACY admin-post.php path confirms. Same handler, same outcome.
+$p = $seed_pending('oldroute@example.com');
+$r = $request(alt_digest_legacy_confirm_url($p['confirm_token']));
+$routes['legacy_confirm_result'] = $r['state'];
+$routes['legacy_confirm_status'] = row('oldroute@example.com')['status'];
+
+// (c) Unsubscribe: public path, by GET.
+$p = $seed_pending('unsubget@example.com');
+$routes['public_unsub_get_result'] = $request(alt_digest_unsub_url($p['unsub_token']))['state'];
+$routes['public_unsub_get_status'] = row('unsubget@example.com')['status'];
+
+// (d) Unsubscribe: public path, by the RFC 8058 one-click POST.
+$p = $seed_pending('unsubpost@example.com');
+$r = $request(alt_digest_unsub_url($p['unsub_token']), 'POST',
+              array('List-Unsubscribe' => 'One-Click'));
+$routes['public_unsub_post_code'] = $r['code'];
+$routes['public_unsub_post_redirected'] = $r['redirected'];
+$routes['public_unsub_post_status'] = row('unsubpost@example.com')['status'];
+
+// (e) Unsubscribe: LEGACY path, by POST. This is the URL sitting in the
+//     List-Unsubscribe header of every digest already delivered.
+$p = $seed_pending('unsuboldpost@example.com');
+$r = $request(alt_digest_legacy_unsub_url($p['unsub_token']), 'POST',
+              array('List-Unsubscribe' => 'One-Click'));
+$routes['legacy_unsub_post_code'] = $r['code'];
+$routes['legacy_unsub_post_status'] = row('unsuboldpost@example.com')['status'];
+
+// (f) And the legacy GET.
+$p = $seed_pending('unsuboldget@example.com');
+$routes['legacy_unsub_result'] = $request(alt_digest_legacy_unsub_url($p['unsub_token']))['state'];
+$routes['legacy_unsub_status'] = row('unsuboldget@example.com')['status'];
+
+// (g) A token the purge already deleted, POSTed by a provider. Nothing to do,
+//     and saying so with a 4xx would be recorded against the sending domain.
+$r = $request(alt_digest_unsub_url(str_repeat('f', 64)), 'POST',
+              array('List-Unsubscribe' => 'One-Click'));
+$routes['post_unknown_token_code'] = $r['code'];
+$routes['post_unknown_token_redirected'] = $r['redirected'];
+
+// (h) The From: identity, taken off a real confirmation and a real digest.
+$GLOBALS['__transients'] = array();
+$wpdb->pdo->exec('DELETE FROM wp_alt_subscribers');
+$before = count($mails);
+post_signup('fromline@example.com', array('layoff'));
+$confirm_mail = end($mails);
+$routes['confirm_mail_headers'] = $confirm_mail['headers'];
+$from_of = function ($headers) {
+    foreach ((array) $headers as $h) {
+        if (stripos($h, 'from:') === 0) return $h;
+    }
+    return '';
+};
+$routes['confirm_from_line'] = $from_of($confirm_mail['headers']);
+$fr = row('fromline@example.com');
+$_REQUEST = array('t' => $fr['confirm_token']);
+$_SERVER['REQUEST_METHOD'] = 'GET';
+drive('alt_digest_confirm');
+alt_digest_send('weekly');
+$routes['digest_from_line'] = $from_of(end($mails)['headers']);
+
+$out['routes'] = $routes;
+$_GET = array(); $_POST = array(); $_REQUEST = array();
 
 // 12. No table, no numbers: UNKNOWN, never a zero.
 $wpdb->pdo->exec('DROP TABLE wp_alt_subscribers');

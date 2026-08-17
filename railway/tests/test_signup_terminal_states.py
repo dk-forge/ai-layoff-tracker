@@ -223,10 +223,25 @@ class TheConfirmationSaysWhatTheyActuallyGet(unittest.TestCase):
         html = body_of(self.r["confirmed"])
         self.assertIn("Change your choices", html)
         self.assertIn(">Unsubscribe<", html)
-        self.assertIn(
-            "alt_digest_unsub", html,
-            "the Unsubscribe link on the confirmation does not point at the "
-            "unsubscribe handler, so it is a word rather than a control")
+        # Asserted as "a URL that carries a token and names the action",
+        # not as one spelling of it. This pinned `alt_digest_unsub`, the
+        # query-arg shape, until 2.20.76 moved the link off admin-post.php,
+        # and a test that names one shape fails the day the shape improves
+        # while proving nothing about whether the link works. What makes it a
+        # control rather than a word is the href and the token in it.
+        m = re.search(r'href="([^"]*)"[^>]*>Unsubscribe<', html)
+        self.assertTrue(
+            m, "the Unsubscribe text on the confirmation is not a link at "
+               "all, so it is a word rather than a control")
+        href = m.group(1)
+        self.assertRegex(
+            href, r"(unsubscribe|alt_digest_unsub)",
+            "the Unsubscribe link points at %r, which does not name the "
+            "unsubscribe action" % href)
+        self.assertRegex(
+            href, r"[a-f0-9]{64}",
+            "the Unsubscribe link %r carries no token, so it cannot identify "
+            "the row it is meant to stop" % href)
 
     def test_without_a_receipt_it_states_the_fact_and_invents_nothing(self):
         """Thirty minutes later, or on a hand-typed URL. It must not guess."""
