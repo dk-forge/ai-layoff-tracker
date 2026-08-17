@@ -394,5 +394,59 @@ class CommittedMeasurementTests(unittest.TestCase):
                 self.assertGreaterEqual(s["judged"], rr.MIN_DENOMINATOR)
 
 
+class WiredIntoTheOneRegistry(unittest.TestCase):
+    """The invariant is registered, and it actually reads the measurement.
+
+    `test_dedup_live.InvariantCoverage` requires every registered invariant to
+    be claimed by a test case, and then MUTATION-TESTS the claim: it blinds the
+    invariant to an unconditional PASS and demands this case redden. So these
+    assertions have to exercise `run()` rather than describe it — a test that
+    only checked registration would go green against a blinded check, which is
+    exactly the "ops_status reports it but CI cannot fail on it" gap the guard
+    exists to close.
+    """
+
+    def _invariant(self):
+        import data_integrity
+        found = [i for i in data_integrity.INVARIANTS
+                 if i.key == "rolling_recall_fresh"]
+        self.assertEqual(len(found), 1,
+                         "rolling_recall_fresh is not registered exactly once")
+        return data_integrity, found[0]
+
+    def test_a_missing_measurement_reports_unknown_not_a_pass(self):
+        data_integrity, inv = self._invariant()
+        result = type(inv)(measurement_path=Path("/nonexistent/rolling.json")).run(None)
+        self.assertEqual(result.state, data_integrity.UNKNOWN)
+        self.assertTrue(getattr(result, "pending", False),
+                        "a measurement that has never been written is PENDING, so a "
+                        "fresh checkout does not redden a push — but it is still UNKNOWN")
+
+    def test_a_stale_measurement_reports_unknown(self):
+        import json as _json
+        import tempfile
+        data_integrity, inv = self._invariant()
+        old = (datetime.now(timezone.utc)
+               - timedelta(days=rr.MAX_MEASUREMENT_AGE_DAYS + 2))
+        doc = {"measured_at": old.strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "declared_slices": [], "slices": {}}
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            _json.dump(doc, fh)
+            path = fh.name
+        result = type(inv)(measurement_path=Path(path)).run(None)
+        self.assertEqual(result.state, data_integrity.UNKNOWN)
+        self.assertIn("UNVERIFIED", result.detail)
+
+    def test_the_committed_measurement_passes_the_registered_check(self):
+        data_integrity, inv = self._invariant()
+        if rr.load_measurement() is None:
+            self.skipTest("no measurement committed yet")
+        result = inv.run(None)
+        self.assertIn(result.state, (data_integrity.PASS, data_integrity.UNKNOWN))
+        # Whatever it says, it must say it with the slice detail attached — a
+        # verdict with no readable cause is not actionable in an alert email.
+        self.assertTrue(result.detail)
+
+
 if __name__ == "__main__":
     unittest.main()

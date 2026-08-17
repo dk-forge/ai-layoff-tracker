@@ -333,6 +333,7 @@ class InvariantCoverage(unittest.TestCase):
         "comparison_basis_is_visible": ("test_published_figure_guards", "ComparisonBasisTest"),
         "headline_containment": ("test_headline_containment", "TheIncidentItWasWrittenFor"),
         "erm_provenance": ("test_erm_provenance_check", "WiredIntoTheOneRegistry"),
+        "rolling_recall_fresh": ("test_rolling_recall", "WiredIntoTheOneRegistry"),
     }
 
     @staticmethod
