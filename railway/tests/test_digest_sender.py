@@ -340,7 +340,7 @@ class OmittedNeverInvented(unittest.TestCase):
         payload = _payload(sections={
             "layoff": {"html": "<p>L</p>", "text": "L text"},
             "talent": {"html": "<p>T</p>", "text": "T text"}})
-        names = [n for n, _, _ in digest_send.usable_sections(payload, ["talent"])]
+        names = [part[0] for part in digest_send.usable_sections(payload, ["talent"])]
         self.assertEqual(names, ["talent"])
 
     def test_the_run_says_so_out_loud_when_nothing_could_be_composed(self):

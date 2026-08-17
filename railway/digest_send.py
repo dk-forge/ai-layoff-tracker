@@ -129,7 +129,12 @@ def usable_sections(payload: dict, wanted) -> list:
         html = (section.get("html") or "").strip()
         text = (section.get("text") or "").strip()
         if html and text:
-            out.append((name, html, text))
+            # The fourth member is the section's own inbox snippet, composed
+            # by the site for the 130-character ceiling. An older plugin build
+            # sends no such field, and '' is the honest value for that: it
+            # means "fall back", and digest_layout falls back to a line that
+            # still describes THIS section rather than walking to another one.
+            out.append((name, html, text, (section.get("preheader") or "").strip()))
     return out
 
 

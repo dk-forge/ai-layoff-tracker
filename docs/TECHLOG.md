@@ -1,5 +1,76 @@
 # Tech Log
 
+## 2026-08-17 - the subject named one tracker and the snippet quoted another (2.20.83)
+
+The inbox line and the subject are the two things every recipient sees before
+deciding whether to open. On the send of 2026-08-17 they described different
+products: the subject led "AI Layoff Tracker" and the snippet read "1,332 new
+hiring signals". That mismatch is a reason not to open, so this is a
+reader-facing defect and not a cosmetic one.
+
+**Nothing was broken. The mechanism was wrong.** `preheader_text` walked every
+section and took the first summary sentence that fitted 130 characters. The
+layoff lede grew the geography clause 2.20.79 added and reached **143**, so
+the walk stepped past it and took the talent section's sentence. It did
+exactly what it said it did.
+
+The compromise was in the design, and it predates the clause that exposed it:
+**the preheader borrowed a line written for a different job, in a different
+place, under no length budget at all.** A body sentence has no ceiling and
+should not acquire one because something else borrows it. The obvious repair,
+trimming the geography clause, would have been the wrong one twice over: it
+shortens the body to serve the inbox, and it silently undoes another session's
+measured decision.
+
+**So the section composes its own snippet, for its own ceiling, from the same
+figures.** `alt_digest_fit_preheader()` takes a required part that may never be
+dropped, the figure with its tier and its window, and optional clauses dropped
+from the TAIL until the line fits. A figure with no scope is not an acceptable
+snippet at any length; a shorter true qualifier is fine. Live, the layoff
+snippet is 100 characters and keeps the full geography clause, dropping the
+date basis; the talent one is 99 and keeps both.
+
+**Geography outranks the basis in that ladder, deliberately.** "Where" was the
+owner's own question about this figure, and a snippet naming only which date
+it counts is easier to misread than one naming only the geography. The clause
+is `$geo`, the string the body already uses, so there is no second geography
+vocabulary here to drift from that one.
+
+**Tail-dropping and not skipping**, because skipping a middle clause and
+keeping a later one produces a sentence nobody wrote. Measured in CHARACTERS
+and not bytes: the ceiling is a character count on the Python side and country
+names carry accents, so counting an "a" with an acute as two would tighten the
+ceiling on exactly the lines most likely to need the room.
+
+**THE SECTION IS NO LONGER A CHOICE.** `leading_part()` is now asked by BOTH
+`subject_line` and `preheader_text`, so the snippet cannot describe a
+different section than the subject names first. That property is structural
+rather than a coincidence holding until somebody edits one of them.
+
+**The ladder, and no figure is composed in Python at any rung.** The site's
+own snippet; failing that this section's summary sentence, which is what an
+older plugin build gives us and is still a good line; failing that its heading
+plus a plain clause carrying no number at all. It never walks to another
+section and it never truncates, because a snippet cut mid figure publishes a
+wrong number in the one line of the message most people ever read.
+
+**The assertion that would have caught it**, and it was confirmed RED against
+the old implementation before the new one was written: build a message whose
+leading section has an over-long lede, and assert the subject's leading
+section and the snippet's section agree. Old code returns "1,332 new hiring
+signals"; new code returns the layoff tracker. Five more hold the ceiling, the
+site-composed snippet winning over a body sentence, a site snippet that is
+itself too long still being refused, the three-member part an older plugin
+sends, and the last rung naming its own section.
+
+**Parts gained a fourth member and every reader of them is arity-tolerant.**
+`part_text()` and `part_preheader()` read by index, so the three-member shape
+still works and an older plugin build sending no `preheader` is a missing
+member rather than a crash.
+
+**Verified:** 327 digest tests green, 12 new. `style_check.py` 0 findings. Fold
+stamp unchanged. **UNKNOWN:** no mail client render; this environment has none.
+
 ## 2026-08-17 - two defects the tests could not see, found by reading the render (2.20.82)
 
 Both shipped in 2.20.81, both passed 314 tests, and both were obvious the

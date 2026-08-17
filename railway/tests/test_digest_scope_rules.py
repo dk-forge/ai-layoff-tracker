@@ -869,5 +869,75 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
         self.assertNotIn("newest first", self.text)
 
 
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
+    """A preheader has one purpose and one hard ceiling, so it is composed for
+    that ceiling rather than borrowed from a body sentence.
+
+    The body lede reached 143 characters against a ceiling of 130 once the
+    geography clause was added, and digest_layout walked past it to the next
+    section, so a live send carried "AI Layoff Tracker" in the subject beside
+    "1,332 new hiring signals" in the snippet. The lede was not too long. A
+    body sentence has no length budget and should not acquire one because
+    something else borrows it.
+    """
+
+    PREHEADER_MAX = 130
+
+    def test_the_layoff_snippet_fits_the_ceiling(self):
+        snippet = compose(layoff_fixture())["preheader"]
+        self.assertTrue(snippet)
+        self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
+
+    def test_the_body_lede_is_free_to_be_longer_than_the_snippet(self):
+        """The point of the whole change: the clause stays in the body where
+        there is room, and the snippet is composed separately."""
+        section = compose(layoff_fixture())
+        lede = section["text"].splitlines()[1]
+        self.assertGreater(len(lede), self.PREHEADER_MAX,
+                           "this fixture no longer reproduces the condition "
+                           "that broke the preheader, so it proves nothing")
+        self.assertLessEqual(len(section["preheader"]), self.PREHEADER_MAX)
+
+    def test_the_snippet_carries_the_figure_its_tier_and_its_window(self):
+        """A figure with no scope is not an acceptable snippet at any length.
+        These three are the part the fitter may never drop."""
+        snippet = compose(layoff_fixture())["preheader"]
+        self.assertIn("13,710", snippet)
+        self.assertIn("verified job cuts", snippet)
+        self.assertIn("9 to 16 August 2026", snippet)
+
+    def test_geography_outranks_the_date_basis_when_only_one_fits(self):
+        """Both will not fit beside the full geography clause. "Where" was the
+        owner's own question about this figure, and a snippet naming only the
+        date basis is easier to misread than one naming only the geography."""
+        snippet = compose(layoff_fixture())["preheader"]
+        self.assertIn("worldwide", snippet)
+        self.assertNotIn("take effect", snippet)
+
+    def test_both_clauses_survive_when_the_geography_is_short(self):
+        """A window where every verified cut carries a country says just
+        "worldwide", and then there is room for the basis too."""
+        fixture = layoff_fixture()
+        verified = (fixture["layoff"]["totals"]["jobs"]
+                    - fixture["layoff"]["totals"]["announced_jobs"])
+        fixture["layoff"]["top_countries"] = [
+            _tuple("United States", verified, verified)]
+        snippet = compose(fixture)["preheader"]
+        self.assertIn("worldwide", snippet)
+        self.assertIn("counted by the date the cuts take effect", snippet)
+        self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
+
+    def test_the_talent_section_composes_one_too(self):
+        """It fits today. Composing it anyway is what stops it breaking the
+        next time somebody adds a clause to that lede, which is exactly how
+        the layoff one broke."""
+        snippet = compose(talent_fixture())["preheader"]
+        self.assertTrue(snippet)
+        self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
+        self.assertIn("1,332 new hiring signals", snippet)
+        self.assertIn("9 to 16 August 2026", snippet)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -303,6 +303,82 @@ class ThePreheader(unittest.TestCase):
         self.assertNotIn("48,910", snippet)
         self.assertTrue(snippet.strip())
 
+    def test_the_snippet_describes_the_section_the_subject_leads_with(self):
+        """THE ASSERTION THAT WOULD HAVE CAUGHT IT.
+
+        The old preheader walked EVERY section and took the first summary
+        sentence that fitted 130 characters. On 2026-08-17 the layoff lede
+        grew a measured geography clause and reached 143, so the walk went
+        past it and took the talent section's sentence. The live digest went
+        out with a subject leading "AI Layoff Tracker" beside a snippet
+        reading "1,332 new hiring signals".
+
+        The subject and the snippet are the two things every recipient sees
+        before deciding whether to open. Describing different trackers is
+        precisely the mismatch that stops someone opening.
+        """
+        over = "AI Layoff Tracker\n" + "48,910 verified job cuts, " + "y" * 140 + "\n"
+        talent = "Talent Intelligence Tracker\n1,332 new hiring signals, this week.\n"
+        parts = [("layoff", LAYOFF_HTML, over), ("talent", LAYOFF_HTML, talent)]
+
+        subject = layout.subject_line({"to": "2026-08-17", "freq": "weekly"}, parts)
+        snippet = layout.preheader_text(parts)
+
+        self.assertTrue(subject.startswith("AI Layoff Tracker"), subject)
+        self.assertNotIn("1,332", snippet,
+                         "the subject leads with the layoff tracker and the "
+                         "snippet is quoting the talent tracker's figure")
+        self.assertNotIn("hiring signals", snippet)
+        self.assertIn("AI Layoff Tracker", snippet,
+                      "the snippet does not name the section the subject "
+                      "leads with")
+
+    def test_the_two_lines_are_built_from_one_definition_of_leading(self):
+        """Not a coincidence that holds until somebody edits one of them:
+        subject_line and preheader_text ask the same function which section
+        leads, so they cannot drift apart."""
+        # An empty text part is the one shape that cannot name itself. Any
+        # non-empty first line IS the heading, by section_heading's definition.
+        parts = [("layoff", LAYOFF_HTML, "   \n\n"),
+                 ("talent", LAYOFF_HTML, "Talent Intelligence Tracker\nA lead.\n")]
+        self.assertEqual(layout.section_heading(
+            layout.part_text(layout.leading_part(parts))),
+            "Talent Intelligence Tracker",
+            "a section that cannot name itself is skipped by the subject, so "
+            "it must be skipped by the snippet too")
+
+    def test_the_sites_own_snippet_is_preferred_over_a_body_sentence(self):
+        """A preheader has one purpose and one hard ceiling, so the site
+        composes one for that ceiling. The body sentence is then free to be as
+        long as it needs to be where there is room for it."""
+        composed = "48,910 verified job cuts, 10 to 17 August 2026, worldwide."
+        over = "AI Layoff Tracker\n" + "48,910 verified job cuts, " + "y" * 140 + "\n"
+        snippet = layout.preheader_text([("layoff", LAYOFF_HTML, over, composed)])
+        self.assertEqual(snippet, composed)
+
+    def test_a_snippet_the_site_composed_too_long_is_still_not_used(self):
+        """The ceiling is the ceiling. A composer that hands us 200 characters
+        has a bug, and honouring it would put the bug in the inbox."""
+        snippet = layout.preheader_text(
+            [("layoff", LAYOFF_HTML, LAYOFF_TEXT, "z" * 200)])
+        self.assertNotIn("zzz", snippet)
+        self.assertIn("48,910 verified job cuts", snippet,
+                      "it should have fallen back to this section's own lead")
+
+    def test_an_older_plugin_build_sending_no_snippet_still_works(self):
+        """The three-member part is the shape before 2026-08-17. A missing
+        member is a real state, not a crash."""
+        snippet = layout.preheader_text([("layoff", LAYOFF_HTML, LAYOFF_TEXT)])
+        self.assertIn("48,910 verified job cuts", snippet)
+
+    def test_a_section_with_nothing_usable_still_names_itself(self):
+        """The last rung carries no figure, which is the point: a snippet with
+        a number in it that this module derived would be a second place a
+        figure can be wrong."""
+        over = "AI Layoff Tracker\n" + "y" * 200 + "\n"
+        snippet = layout.preheader_text([("layoff", LAYOFF_HTML, over)])
+        self.assertEqual(snippet, "AI Layoff Tracker: what changed this period.")
+
     def test_a_bullet_is_never_read_as_the_summary_sentence(self):
         """The blog section is a heading and then bullets. Taking its first
         bullet put one article title in the inbox snippet as if it were the

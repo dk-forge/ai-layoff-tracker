@@ -255,6 +255,42 @@ def section_lead(text_part: str) -> str:
     return ""
 
 
+def part_text(part) -> str:
+    """The plain-text half of a section, whatever arity the tuple has.
+
+    Parts gained a fourth member (the section's own preheader) on 2026-08-17.
+    Everything here reads by INDEX rather than by unpacking, so a caller
+    holding the old three-member shape still works and an older plugin build
+    that sends no preheader is a missing member rather than a crash.
+    """
+    return part[2] if len(part) > 2 else ""
+
+
+def part_preheader(part) -> str:
+    """The one-line inbox snippet the SITE composed for this section.
+
+    Empty when the plugin predates it, which is a real state and not an error:
+    preheader_text falls back deliberately.
+    """
+    return (part[3] if len(part) > 3 else "") or ""
+
+
+def leading_part(parts):
+    """The section the subject names first.
+
+    THIS EXISTS SO TWO THINGS CANNOT DISAGREE. The subject line names sections
+    in order and skips any that cannot name themselves; the preheader has to
+    describe the section the subject leads with, or the inbox shows a heading
+    about one tracker beside a figure from another. Both callers now ask this
+    function, so the property is structural rather than a coincidence that
+    holds until somebody edits one of them.
+    """
+    for part in (parts or []):
+        if section_heading(part_text(part)):
+            return part
+    return None
+
+
 def period_phrase(payload: dict) -> str:
     """A reader facing date for the window the site already chose.
 
@@ -285,7 +321,7 @@ def subject_line(payload: dict, parts) -> str:
     Falls back to the subject the site sent whenever it cannot do better.
     """
     fallback = str((payload or {}).get("subject") or "Tracker digest").strip()
-    names = [section_heading(text) for _, _, text in (parts or [])]
+    names = [section_heading(part_text(part)) for part in (parts or [])]
     names = [name for name in names if name]
     phrase = period_phrase(payload)
     if not names or not phrase:
@@ -306,21 +342,55 @@ def subject_line(payload: dict, parts) -> str:
 def preheader_text(parts) -> str:
     """The snippet the inbox shows beside the subject.
 
-    With none, the client grabs the first text it finds, which in a careful
-    email is usually the unsubscribe line. This uses the leading section's own
-    summary sentence, verbatim. When that sentence is too long for the slot it
-    is REPLACED by a plain line rather than truncated, because a snippet cut
-    mid figure is a wrong number in the inbox.
+    WHY THIS NO LONGER BORROWS A SENTENCE FROM THE BODY. It used to walk every
+    section and take the first summary sentence that fitted 130 characters.
+    That was always a compromise: it borrows a line written for a different
+    job, in a different place, under no length budget at all. On 2026-08-17 it
+    failed exactly the way a compromise does. The layoff lede grew a measured
+    geography clause and reached 143 characters, so this walked past it and
+    took the TALENT section's sentence, and the live digest went out with the
+    subject leading "AI Layoff Tracker" beside a snippet reading "1,332 new
+    hiring signals". The subject and the snippet are the two things every
+    recipient sees before deciding whether to open, and they described
+    different trackers.
+
+    Nothing was wrong with the fallback: it did what it says. The mechanism
+    was wrong. A preheader has one purpose and one hard ceiling, so the SITE
+    now composes one for that ceiling out of the same figures the lede uses,
+    and the body clause is free to be as long as it needs to be where there is
+    room for it.
+
+    THE SECTION IS NOT A CHOICE. It is leading_part(), the same function the
+    subject line uses, so the snippet cannot describe a different tracker than
+    the subject names first.
+
+    NO FIGURE IS COMPOSED HERE, which is this module's standing rule. Every
+    rung of the ladder below is either a string the site handed us or a
+    sentence with no number in it at all.
+
+    The ladder, in order, and each rung is deliberate:
+      1. the section's own purpose-built preheader;
+      2. its summary sentence, when that fits, which is what an older plugin
+         build gives us and is still a good line;
+      3. its heading plus a plain clause, which carries no figure but does
+         name the right tracker.
+    A snippet is never truncated: cutting one mid figure publishes a wrong
+    number in the one line of the message most people ever read.
     """
-    for _, _, text in (parts or []):
-        lead = section_lead(text)
-        if lead and len(lead) <= PREHEADER_MAX:
-            return lead
-    for _, _, text in (parts or []):
-        heading = section_heading(text)
-        if heading:
-            return f"{heading}: what changed this period."
-    return "What changed on the trackers this period."
+    part = leading_part(parts)
+    if part is None:
+        return "What changed on the trackers this period."
+
+    composed = part_preheader(part).strip()
+    if composed and len(composed) <= PREHEADER_MAX:
+        return composed
+
+    text = part_text(part)
+    lead = section_lead(text)
+    if lead and len(lead) <= PREHEADER_MAX:
+        return lead
+
+    return f"{section_heading(text)}: what changed this period."
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +475,8 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
                 unsub_url: str, manage_url: str) -> str:
     """The whole message. Inline styles only, tables only, no style block."""
     rows = []
-    for index, (_, section_html, _) in enumerate(parts):
+    for index, part in enumerate(parts):
+        section_html = part[1]
         padding = "22px 28px 8px" if index else "24px 28px 8px"
         rows.append(_cell(restyle(section_html), padding=padding,
                           top_rule=bool(index)))
@@ -490,10 +561,10 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str) -> str:
     if kicker:
         head.append(kicker)
     body = []
-    for index, (_, _, section_text) in enumerate(parts):
+    for index, part in enumerate(parts):
         if index:
             body.append(thin)
-        body.append(_reflow(section_text))
+        body.append(_reflow(part_text(part)))
     footer = [rule]
     footer.append(_reflow("You get this because you confirmed a digest "
                           "subscription at asktherecruiter.com."))

@@ -142,7 +142,18 @@ function alt_api_digest_recipients($request) {
                    'articles' => 'alt_digest_compose_articles') as $name => $fn) {
         $part = function_exists($fn) ? $fn($from_date, $to_date, $send_id) : null;
         if (is_array($part) && !empty($part['html']) && !empty($part['text'])) {
-            $sections[$name] = array('html' => $part['html'], 'text' => $part['text']);
+            $sections[$name] = array(
+                'html' => $part['html'],
+                'text' => $part['text'],
+                /*
+                  The section's own inbox snippet, composed by the composer
+                  for the 130-character ceiling. Passed through as '' when a
+                  composer does not supply one, which digest_layout treats as
+                  "fall back", never as "no snippet". See
+                  alt_digest_fit_preheader and digest_layout.preheader_text.
+                */
+                'preheader' => isset($part['preheader']) ? (string) $part['preheader'] : '',
+            );
         }
     }
 

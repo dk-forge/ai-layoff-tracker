@@ -1649,6 +1649,51 @@ function alt_digest_jobs_phrase($n) {
 }
 
 /**
+ * THE INBOX SNIPPET, COMPOSED FOR ITS CEILING INSTEAD OF BORROWED.
+ *
+ * WHAT WENT WRONG. digest_layout.py used to build the preheader by walking
+ * the sections and taking the first summary sentence that fitted 130
+ * characters. On 2026-08-17 the layoff lede grew a measured geography clause
+ * and reached 143, so the walk went past it and took the TALENT section's
+ * sentence. The digest went out with a subject leading "AI Layoff Tracker"
+ * beside a snippet reading "1,332 new hiring signals". Those two lines are
+ * everything a recipient sees before deciding whether to open, and they
+ * described different trackers.
+ *
+ * The lede was not too long. A body sentence has no length budget and should
+ * not acquire one just because something else borrows it. The mechanism was
+ * wrong: a preheader has ONE purpose and ONE hard ceiling, so it is composed
+ * here, from the same figures, for that ceiling.
+ *
+ * HOW IT DEGRADES, AND WHY EVERY RUNG IS STILL TRUE. $required is the part
+ * that may never be dropped: the figure, its tier and its window. A figure
+ * with no scope is not an acceptable snippet at any length. $optional is
+ * dropped from the TAIL until the line fits, so a long window eats the basis
+ * clause before it eats the geography, and a line that still will not fit
+ * returns '' so digest_layout falls back deliberately rather than by
+ * accident. Tail-dropping rather than skipping, because skipping a middle
+ * clause and keeping a later one produces a sentence nobody wrote.
+ *
+ * Measured in CHARACTERS and not bytes. PREHEADER_MAX is a character count on
+ * the Python side, company and country names carry accents, and counting an
+ * "á" as two would silently tighten the ceiling on exactly the lines most
+ * likely to need the room.
+ */
+function alt_digest_fit_preheader($required, $optional, $max = 130) {
+    $len = function ($s) {
+        return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen($s);
+    };
+    $optional = array_values(is_array($optional) ? $optional : array());
+    for ($keep = count($optional); $keep >= 0; $keep--) {
+        $line = $required;
+        for ($i = 0; $i < $keep; $i++) $line .= ', ' . $optional[$i];
+        $line .= '.';
+        if ($len($line) <= $max) return $line;
+    }
+    return '';
+}
+
+/**
  * THE FIVE TALENT SIGNALS WORTH THE SLOT, out of the forty we asked for.
  *
  * THE RULE IS ONE LINE: a signal that names a number of jobs outranks one
@@ -2138,6 +2183,24 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     // The text part leads with the same three facts as ONE sentence, because
     // that line is also the inbox preheader and a snippet has to stand alone.
     $lede = number_format_i18n($ver_jobs) . ' verified job cuts, ' . $scope;
+    /*
+      THE INBOX SNIPPET, composed for its own ceiling rather than borrowed
+      from the line above. The lede is 143 characters once the geography
+      clause is on it, and the ceiling is 130, which is how a live send ended
+      up with this tracker's name in the subject and the talent tracker's
+      figure in the snippet. See alt_digest_fit_preheader.
+
+      The geography clause is FIRST in the optional list, so the basis clause
+      is what gets dropped when the window is long. That ordering is not
+      arbitrary: "where" was the owner's own question about this figure, and a
+      snippet that says worldwide-including-unplaced is harder to misread than
+      one that says only which date it counts. The clause itself is $geo, the
+      measured string the body already uses, so there is no second geography
+      vocabulary here to drift from that one.
+    */
+    $preheader = alt_digest_fit_preheader(
+        number_format_i18n($ver_jobs) . ' verified job cuts, ' . $range,
+        array($geo, 'counted by the date the cuts take effect'));
     $text = "AI Layoff Tracker\n{$lede}\n";
 
     /*
@@ -2654,7 +2717,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                . '<p data-alt="note">' . esc_html($cite_note) . '</p>';
         $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n" . $cite_note . "\n";
     }
-    return array('html' => $html, 'text' => $text);
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
 }
 
 /**
@@ -2703,6 +2766,13 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
           . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
     $lede = $totalf . ' new hiring signals, ' . $scope;
+    // The same rule as the layoff section, same reason. This lede happens to
+    // fit today; composing the snippet anyway means it keeps fitting when
+    // somebody adds a clause to the body, which is exactly how the other one
+    // broke. See alt_digest_fit_preheader.
+    $preheader = alt_digest_fit_preheader(
+        $totalf . ' new hiring signals, ' . $range,
+        array('worldwide', 'counted by the date the source published'));
     $text = "Talent Intelligence Tracker\n{$lede}\n";
     $detail = 'From ' . $companies . ' companies, ' . $range . '. '
             . $verified . ' of the ' . $totalf . ' are verified against primary documents.';
@@ -2832,7 +2902,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $click = alt_digest_track_link($send_id, $url);
     $html .= '<p><a href="' . esc_url($click) . '">Open the Talent Intelligence Tracker</a></p>';
     $text .= "\nOpen the tracker: {$url}\n";
-    return array('html' => $html, 'text' => $text);
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
 }
 
 /**
@@ -3010,6 +3080,15 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         $html .= '<p data-alt="caption">' . esc_html($caption) . '</p>';
         $text .= $caption . "\n";
     }
+    /*
+      An articles-only subscriber exists and gets a message whose FIRST and
+      only section is this one, so this section has to be able to write the
+      inbox snippet too. The caption already states the count and the window,
+      which is the whole job, so it is reused rather than reworded. It is
+      still passed through the fitter: a caption is written for a body and
+      this is the one place a ceiling applies.
+    */
+    $preheader = $range === '' ? '' : alt_digest_fit_preheader(rtrim($caption, '.'), array());
     $html .= '<ul>';
     foreach ($items as $item) {
         // Counted the same way the other two sections count theirs: a
@@ -3029,7 +3108,7 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         $text .= '    ' . $item['link'] . "\n";
     }
     $html .= '</ul>';
-    return array('html' => $html, 'text' => $text);
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
 }
 
 /* ------------------------------------------------------------------ */
