@@ -2,6 +2,16 @@
   "entries": [
     {
       "consecutive": 1,
+      "first_deferred_at": "2026-08-17T05:04:48+00:00",
+      "job": "enrich-roles",
+      "last_deferred_at": "2026-08-17T05:04:48+00:00",
+      "last_key": "31996520545:1",
+      "last_reason": "POST https://asktherecruiter.com/blog/wp-json/layoffs/v1/enrich-roles: HTTP 503 from the host: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/31996520545",
+      "state": "pending"
+    },
+    {
+      "consecutive": 1,
       "first_deferred_at": "2026-08-13T23:59:11+00:00",
       "job": "archive-backfill",
       "last_deferred_at": "2026-08-13T23:59:11+00:00",
@@ -12,6 +22,6 @@
       "state": "resolved"
     }
   ],
-  "updated_at": "2026-08-15T06:42:34+00:00",
+  "updated_at": "2026-08-17T05:04:48+00:00",
   "version": 1
 }
