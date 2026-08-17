@@ -1,5 +1,158 @@
 # Tech Log
 
+## 2026-08-17 - every figure was scoped and none of them meant anything (2.20.81)
+
+Five things, and the first is a live correctness defect in the most-read
+block. The owner wants all three sections better; the previous entry did the
+sourcing, this one does the rest.
+
+**1. The "Biggest cuts" table was the last block still mixing tiers.** Every
+other ranked block moved to the verified column when it was found they printed
+the announced-inclusive tier under a verified headline. This one was skipped,
+and not by oversight: `db.php`'s leaders query selected company, job_count,
+layoff_date, ai_explicit, state, country and post_id, and **no `announced`
+column**, so the composer had no way to tell. Live on 2026-08-17 the SECOND
+row of that table, Paramount Skydance at 2,500, is announced and is not inside
+the 13,658 stated above it. "Verified and announced together" labelled that
+correctly and it was still wrong: a reader who adds the top rows gets a number
+that cannot reconcile, and cannot see which row to subtract.
+
+**The choice was NOT the one the other blocks made, deliberately.** Country and
+industry BREAK DOWN the headline, so they must sum to it. This table answers
+"what were the biggest cuts this week", and filtering it to verified would
+hide the largest cut of the week whenever that cut is an announcement, which
+is often. A ranked list is not a total. So `leaders` gained an additive
+`announced` key, the row is marked, and the caption counts them. **An absent
+field reads UNKNOWN, not "none":** an /aggregate from an older plugin build
+returns leaders without the key, and "verified only" printed over an announced
+row would be a worse lie than the caption it replaced.
+
+**2. The click meant to prove a figure was the click that contradicted it.**
+The email shipped an honest caveat: the tracker page counts by filing date,
+not effective date, so its totals differ. On a product whose pitch is
+verifiability that is the worst possible link. The page takes `from`, `to` and
+a basis as query parameters, so the link now carries the window and the basis
+the email counted on.
+
+**Verified in a real browser, and curl could not have done it.** A deep-linked
+load is server-rendered without figures and computed by JS, so fetching the
+HTML proves nothing and would have been a false pass. Driven live against the
+week to 2026-08-16: `/aggregate` gives 16,726 minus 3,016 announced = 13,710,
+and the page loaded on this URL shows **13,710**, the range label "Aug 9, 2026
+to Aug 16, 2026", and the basis toggle reading "counted by effective date".
+
+Two traps are written into the code because both are silent. **The parameter
+names differ from the API's**: /aggregate takes `date_basis=layoff_date`, the
+PAGE accepts only `effective` or `notice` and silently ignores anything else,
+which would leave the reader on the filing basis, delivering the exact
+discrepancy the link exists to remove. And **the empty parameters are not
+clutter**: the page restores a returning visitor's sessionStorage filters
+BEFORE it reads the URL, so a key present-but-empty clears that control while
+a key absent leaves their old filter ANDed into our number.
+
+**What is still not guaranteed, and why no sentence claims otherwise.** The
+page can be told to SET `ai`, `ai_broad` and `stage` from a URL but not to
+clear them, so a reader who ticked "AI only" earlier in the same session lands
+on a smaller number. That cannot be fixed from here. So the false caveat is
+gone and **nothing replaces it**: a silent correct link beats a promise with
+an exception hiding in it.
+
+**3. One derived line, because nothing in the email had a point of view.**
+Every figure states its window, tier, basis and geography, and no figure says
+what it MEANS. "The biggest cuts this week are aerospace, food and retail, not
+technology" was already sitting in the industry table and no line said it.
+`alt_digest_composition_note()` computes it from the same rows the table
+prints and **returns nothing when the period has no shape worth naming**: three
+floors, fewer than four ranked industries ("the three largest" out of three is
+the list read aloud), classified rows under 60% of the headline (the
+composition of the classified part is not the composition of the period), and
+a top three under half of what was classified (a top three that is a third of
+a long tail is not a shape). The technology clause is a documented editorial
+rule, not a hidden one: this is the AI Layoff Tracker, so technology is the
+sector its reader is asking about. It fires only when technology is outside
+the top three, prints its real rank and real share, and asserts nothing about
+what anybody expected. Live on 2026-08-17 it reads: three largest 67%,
+technology ninth at 2%.
+
+**4. The talent section: the obvious diagnosis was wrong.** "Latest signals"
+looked like a recency dump, and `/talent/v1/query` **already defaults to
+`sort=notable`**, so it was already getting materiality first. Measured live
+over the week to 2026-08-16: 1,349 signals graded **264 high, 1,082 medium, 3
+routine**. A grade 99.8% of rows pass is not a ranking, so the tiebreak
+decided the list, and the tiebreak is recency, which is close to random when
+every row is from the same week by construction. `sort=largest` IS honoured
+but only **64 of 1,349 rows (4.7%)** carry a headcount and MySQL sorts NULLs
+last, so it returns five headcount stories and nothing else can compete. So
+the ranking is done in the composer over a wider fetch: a signal naming jobs
+outranks one that does not, larger first, endpoint order as the tiebreak. **No
+weighted score**, because ranking dollars against people needs an exchange
+rate nobody here can defend, and a weighted score is a figure this file
+invented.
+
+**The language answer was wrong first and the live data said so.** The
+reasoning was that ranking by jobs would push the untranslated headline down.
+Rendered against the real week it did the opposite: a Thai headline naming
+2,000 jobs came SECOND and a Spanish one naming 80 came third, because they
+are genuinely material. So one row is excluded, **on script and never on
+language**: the schema has no language column, so detecting language is a
+guess and detecting script is not. The first attempt asked whether a headline
+held ANY Latin letter and "...คิกออฟ True Customer Day 2026" walked straight
+through it, so it is a SHARE of the letters, half or better. A Latin-script
+headline in another language still ships: dropping those would narrow this
+summary to the English-speaking world while the tracker underneath it is not
+narrow.
+
+**5. The articles section printed a blurb and the blurb was never there.** The
+code read `$post->post_excerpt`, the excerpt an editor types by hand, and
+nobody on this blog ever has. Measured live: **10 of 10 recent posts have a
+rendered excerpt of 320 to 410 characters, and 0 of them reached the email**,
+so the section a general reader is most likely to read was a bare list of
+links while the code looked correct. It now falls back to
+`get_the_excerpt()`, WordPress's own answer, and takes the FIRST SENTENCE
+because 340 characters per item is a wall. Neither branch writes a sentence:
+one is the editor's words, the other a verbatim trim of the author's. Five
+items became three, and the caption names the true total rather than implying
+three was all there was. Recency is still the sort and is named as such: there
+is no engagement signal in this repo, and inventing a relevance score would be
+the thing this file refuses to do with figures. It also stopped choosing its
+own font sizes and margins, which is the rule the layoff composer was already
+held to.
+
+**THE QUOTE FEATURE IS CLOSED, WITH THE MEASUREMENT THAT CLOSED IT.** The ask
+was to print the employer's own words beside the figure they explain. Sampled
+95 AI-attributed rows from the live `/query`:
+
+| | |
+|---|---|
+| carry `ai_language` at all | **95 of 95, 100%** |
+| complete-sentence shaped | **13 of 95, 13.7%** |
+| first-person company voice (we/our/us) | **18 of 95, 18.9%** |
+| start lower case, a clause cut out of a sentence | **35 of 95, 36.8%** |
+| carry an outlet name inside the string, e.g. "(Hotel Dive)" | **22 of 95, 23.2%** |
+| already wrapped in quotation marks as stored | **3 of 95, 3.2%** |
+| under 40 characters | **22 of 95, 23.2%** |
+| median length | **87 characters, 14 words** |
+
+Real values: `"due partly to automation"`, `"AI is changing how work gets
+done"`, `"TikTok is looking to replace the moderators with
+artificial intelligence-driven systems"`. The field **mixes three registers**,
+company statement, journalist paraphrase and bare classifier fragment, and
+there is no stored flag distinguishing them. `announcement_evidence` is
+populated on 13 of 95 and its first value is a headline with an outlet name
+glued on. `roles_evidence` is populated on 11 of 95 and reads "laid off
+hundreds of IT workers".
+
+So printing any of it in quotation marks beside a company name would assert
+the employer said those words, and **on the majority of rows that assertion is
+false**. The data supports LINKING and not QUOTING. The fragment already
+appears on each row's own public entry page, which has the context an email
+does not. **Closed. Do not reopen without a stored field that marks who is
+speaking.**
+
+**Verified:** 314 digest tests green, 26 new. `style_check.py` 0 findings.
+Fold stamp unchanged; no string above the Subscribe button moved. **UNKNOWN:**
+no mail client render was tested, because this environment has none.
+
 ## 2026-08-16 - federal RIF: the collector read one file out of thirty
 
 `/aggregate?years=2026&country=United States` put `federal_rif` at **79 jobs**
