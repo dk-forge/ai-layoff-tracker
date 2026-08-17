@@ -149,7 +149,12 @@ class Dormancy(unittest.TestCase):
             {"DIGEST_TRANSPORT": "resend", "RESEND_API_KEY": "re_live"})
         self.assertIsInstance(transport, dt.ResendTransport)
         self.assertTrue(transport.sends)
-        self.assertIn("tracking must be OFF", notice)
+        # The notice states what the dashboard is BELIEVED to be set to and
+        # says it is a belief. It used to state a requirement ("must be OFF")
+        # that stopped being the policy on 2026-08-16, and a stale requirement
+        # in a run log reads like a passing check to whoever scans the output.
+        self.assertIn("tracking is ON", notice)
+        self.assertIn("not a passing check", notice)
 
     def test_a_dormant_run_exits_zero_and_puts_nothing_on_the_wire(self):
         """The whole point: a missing key is a state, not a red run."""

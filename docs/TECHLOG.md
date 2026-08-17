@@ -1,5 +1,138 @@
 # Tech Log
 
+## 2026-08-17 - the digest said "in this period" and let the line above answer for it (2.20.72)
+
+The first live digest went out on 16 August. Every number in it was right.
+The owner read it, asked "math isn't right? do we have timeframes on this?",
+and he was correct to: the country block sat directly under the year-to-date
+line, stated no window of its own, and so read as a breakdown of 508,254 when
+it was a breakdown of 729.
+
+**The fault is not the arithmetic and not the ordering. It is that meaning
+came from adjacency.** Adjacency fails the moment somebody quotes one line,
+forwards a fragment, or reads on a phone narrow enough that the grouping stops
+being visible, which for a digest aimed at reporters is most of its life. The
+owner's instruction was "we need to be super specific", and the shape he named
+was Statista: a chart you can lift into someone else's deck because the claim,
+the scope, the source and the date travel with the number.
+
+**So every figure now names its own window, its tier, its date basis and its
+geography basis, in its own words.** `alt_digest_date_range()` renders "9 to
+16 August 2026" and every caption and every prose figure carries it. A section
+that cannot date itself returns null rather than going out; the caller always
+builds valid dates, so that branch is a statement of the rule, not a path.
+
+**The second fault was the same one wearing different clothes: fixed prose
+around variable data.** The country block always ended "so the list does not
+add up to the total above". On that send it added up exactly. A caveat that is
+false whenever the data is clean is the worst kind of wrong, because the only
+reader who ever sees it is the one who checked. `alt_digest_reconcile_note()`
+now computes the shortfall, prints nothing when there is none, and when there
+is one says how much of it is ranked below the lines shown and how much is on
+entries carrying no value at all. Three more instances of the same pattern
+were found while in there and fixed: "each company links to its own entry
+page" (two of five had no page), the talent section's "a signal whose source
+carries no date shows none" (printed whenever ANY row was dated), and
+"Multiple countries: 1 jobs".
+
+**A real tier bug fell out of the rewrite.** The country and industry blocks
+read column [1] of the `top_*` tuples, which is verified PLUS announced, and
+printed it under a headline counting verified only. Measured on the live week
+of 2026-08-16 that was 2,501 against 1 on the "Multiple countries" line alone.
+They read column [4] now. That exposed a second one: the endpoint SORTS on
+column [1], so taking its first five gave a list titled "the largest" that was
+not ordered by the number beside it, with Media and Entertainment second on 75
+verified jobs above Food and Hospitality on 2,505. The rows are re-sorted on
+the printed column before being cut to five.
+
+**What the email gained, and who for.** The tracker is named after AI and the
+digest had never once printed an AI figure; `ai_verified_jobs` was in the
+payload the whole time. The leaders carried a `permalink` that was never
+printed, which is the one field a reporter needs to check us before quoting
+us. `top_industries` is the only block that speaks to a recruiter, and
+`source_types` is the provenance line an analyst reads first. All four come
+out of the same response as the headline, so none of them can describe a
+different filter set than the number they sit under.
+
+A measured zero on the AI line is PRINTED, and that is not the zero-filling
+this repo bans. Zero-filling is substituting a zero for a figure we do not
+have. This is a figure we have, from a query that succeeded, and omitting it
+would leave a reader unable to tell "none this week" from "not checked".
+
+**Emoji: researched, and declined.** The owner asked for emoji. The evidence
+says no, and says something better instead. The two largest studies with
+disclosed methodology both found emoji raise complaint rates, which is a
+reputation input at Gmail and Microsoft: Return Path measured 0.11% to 0.49%
+on one campaign, and Search Engine Journal, over 3.89 million emails on an
+established list, found more unsubscribes with emoji in 70.59% of campaigns.
+Nielsen Norman found emoji increase negative sentiment 26% and only win
+attention against neighbours that lack them, which is not the situation a
+subscribed recurring digest is in. Classic Outlook renders mail through Word,
+which pairs with a monochrome fallback font, so colour emoji arrive grey.
+Verified against `unicode.org` `emoji-data.txt`: the geometric characters
+(U+2191 arrows, U+25B2/U+25BC triangles, U+25CF, U+2022) carry no emoji
+property at all, so they render as text in the font we set and take CSS
+`color:` in every client including Word. They are strictly better on
+rendering, colour and screen-reader verbosity. **None are used here anyway,
+because the only honest use for an up-or-down arrow is a delta, and this data
+revises upward for weeks so there are no deltas.** The hierarchy is done with
+size, weight, uppercase letterspaced kickers, hairline rules and right-aligned
+tabular figures in a two-column table, which Word draws correctly.
+
+**The presentation mechanism changed.** The composer marks a line
+`data-alt="stat"` and never picks a size or a colour;
+`digest_layout.VARIANT_STYLES` turns that into an inline style and strips the
+attribute. One place decides what a headline figure looks like, one place
+decides which figure is one. Ranked lists are two-column tables with
+`align="right"` on the figure cell, because Word honours the attribute and
+ignores half the properties, and a bullet list cannot align a column of
+numbers.
+
+`tests/test_digest_scope_rules.py` drives the real PHP composers through a new
+`tests/fixtures/digest_compose_harness.php` and holds all of it: no unindented
+line states a figure without a four-digit year, every indented row sits under
+a caption that carries one, a list that reconciles carries no caveat, a list
+that does not says by how much, the ranked lists are sorted by the column they
+print, and the composer chooses no font size or colour. **The honest gap: the
+rule is enforced per LINE, not per sentence.** Two sentences inside short
+notes take their window from the sentence beside them, and forcing a date into
+every clause produced copy nobody would read. The line is the unit a reader
+actually quotes, so that is the unit under test, and it is named in the test's
+own docstring rather than left to be discovered.
+
+## 2026-08-16 - the footer promised no tracking while Brevo was tracking (2.20.72)
+
+The digest footer said "We send no images and no tracking pixels, so we cannot
+tell whether you opened this." The owner had enabled open and click tracking
+in Brevo. Brevo injects its pixel and rewrites links at the relay, after
+`digest_send.py` hands the message over, so the sentence was false in the very
+email that carried it. His instruction: "We do as brevo does! so remove this".
+
+**Deleting it would have been worse.** Readers who saw the promise are owed
+the correction, and a service that measures opens and clicks should say so in
+the email doing the measuring. Removing the sentence silently would leave us
+tracking people and volunteering nothing. So it is replaced with what happens:
+what is recorded, why, and that unsubscribing stops both.
+
+**`assert_message_is_clean` is deliberately unchanged.** Our own message still
+embeds no image, no pixel, no `url()` and no remote fetch, and that check
+still refuses to send one that does. The distinction is worth keeping rather
+than collapsing: because the tracking is entirely the provider's, changing
+provider removes it, instead of requiring us to unpick our own templates.
+
+`tracking_note()` was stale in the other direction and is fixed too. It told
+every run log that tracking "must be OFF", which reads like a passing check to
+the next person scanning the output.
+
+**Two strings are still wrong and are recorded as outstanding**, not fixed,
+because they live in the signup FORM rendering in `includes/subscribe.php`
+which another session held: the form intro ("no tracking pixels") and the
+privacy note under it ("no tracking pixel, so we cannot tell whether you
+opened an email"), plus the same claim in that file's docblock. RUNBOOK "Open
+and click tracking" carries the exact strings and the table of every place
+that has to move together if the setting is ever turned off. **Do not leave
+the state where the email is honest and the form is not.**
+
 ## 2026-08-16 - the page that thanks you for subscribing was showing you an empty subscribe form (2.20.72)
 
 The owner completed the double opt-in for real, end to end: form, confirmation

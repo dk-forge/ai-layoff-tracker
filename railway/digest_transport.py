@@ -194,11 +194,18 @@ def _header(message: Message, name: str) -> str:
 
 
 def tracking_note() -> str:
-    """What we cannot check from here, stated as a requirement not a verdict."""
-    return ("Open and click tracking must be OFF in the provider's dashboard. "
-            "Nothing in this repo can read that setting, so this is a stated "
-            "requirement and not a passing check. A provider that injects a "
-            "pixel makes the published privacy note false.")
+    """What the run log says about measurement. Believed, never verified.
+
+    This used to read "tracking must be OFF", which was the policy until the
+    owner turned it on. A stale requirement in a run log is worse than none:
+    it reads like a passing check to the next person scanning the output.
+    """
+    return ("Open and click tracking is ON in the provider's dashboard by the "
+            "owner's decision (2026-08-16), so the relay adds a pixel and "
+            "rewrites links after we hand the message over. Our own message "
+            "still embeds neither. Nothing here can read that setting, so this "
+            "is a stated belief and not a passing check. If it is ever turned "
+            "off, RUNBOOK 'Open and click tracking' lists the copy to change.")
 
 
 # ---------------------------------------------------------------------------

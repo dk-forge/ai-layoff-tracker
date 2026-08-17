@@ -1163,10 +1163,11 @@ provider: SPF and DKIM are how deliverability works, and a From address on an
 unverified domain lands in spam whoever relays it.
 
 1. **Create the Resend account** at resend.com and add the sending domain
-   `asktherecruiter.com`. **While in the dashboard, turn open tracking and
-   click tracking OFF.** They are the pixel and the link rewriting the
-   published privacy note promises we do not use, and nothing in this repo can
-   read that setting, so it is stated here rather than checked.
+   `asktherecruiter.com`. **Decide open and click tracking deliberately**, and
+   see "Open and click tracking" below: as of 2026-08-16 it is ON in Brevo by
+   the owner's decision, and three strings in the product say so. Nothing in
+   this repo can read that dashboard setting, so the copy is coupled to it by
+   hand and has to be changed by hand.
 2. **Add the DNS records at the registrar.** Resend shows the exact values:
    a DKIM `TXT` record on a `resend._domainkey` subdomain, an SPF `TXT` record
    on a `send` subdomain, and an MX record on that same subdomain for bounce
@@ -1180,6 +1181,38 @@ unverified domain lands in spam whoever relays it.
 Then run the workflow by hand once with `dry_run: 1` and read the rendered
 email, then once with `dry_run` blank and `limit: 1` before letting the
 schedule take over.
+
+### Open and click tracking
+
+**State as of 2026-08-16: ON, in Brevo, by the owner's decision.** Brevo
+injects its open pixel and rewrites every link at the relay, after
+`digest_send.py` has handed the message over.
+
+Our own message still embeds no image, no pixel, no `url()` and no remote
+fetch of any kind. `digest_transport.assert_message_is_clean` enforces that
+and **must not be weakened to match the copy**. Keeping the two separate is
+what makes this reversible: because the tracking is entirely the provider's,
+changing provider removes it, instead of sending somebody back through our
+templates unpicking pixels we baked in.
+
+**This copy is coupled to a setting nobody in this repo can read.** If the
+owner ever turns tracking back off, these have to change back together, and a
+half-done change leaves the email honest and the signup form lying:
+
+| Where | What it says now |
+|---|---|
+| `railway/digest_layout.py`, `TRACKING_SENTENCES` | "Our mail provider records whether you open this email and which links you follow. We read it to see which sections are worth keeping. Unsubscribing stops the email and the measuring together." |
+| `railway/digest_transport.py`, `tracking_note()` | the run-log line naming what is believed to be on |
+| `includes/subscribe.php`, the signup form intro | **OUTSTANDING at 2.20.72**, still says "no tracking pixels" |
+| `includes/subscribe.php`, the privacy note under the form | **OUTSTANDING at 2.20.72**, still says "no tracking pixel, so we cannot tell whether you opened an email" |
+| `includes/subscribe.php`, the file's own docblock | **OUTSTANDING at 2.20.72**, same claim in a comment |
+
+The footer is covered by `tests/test_digest_email_layout.py`,
+`TheTrackingSentenceIsTrue`, which asserts the old promise is gone from both
+body parts, that both say plainly what is measured, and that our message still
+carries nothing that fetches. There is no equivalent test on the form copy
+yet, which is why the three rows above are marked outstanding rather than
+assumed done.
 
 ### The email design has one rule: it must survive a forward
 
