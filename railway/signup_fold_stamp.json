@@ -1,0 +1,79 @@
+{
+  "_comment": "What the signup's copy was when the phone fold was last measured, and what it measured. Written by railway/signup_fold.py --record; read by railway/tests/test_signup_fold_stamp.py. Never edit by hand: a stamp nobody measured is worse than no stamp.",
+  "copy_chars": 814,
+  "copy_sha256": "84dd5c3ade7526e1542b675c5b5ee6a34b3147b8af64f7f8d16cb23830d00a0b",
+  "figures": {
+    "blog@375x812": {
+      "headroom_px": 162.7,
+      "parts": {
+        "email row": 70,
+        "field": 44,
+        "frequency": 68,
+        "heading": 24.7,
+        "intro": 157.5,
+        "lists": 214.5,
+        "privacy": 44,
+        "section": 815.9,
+        "submit": 44,
+        "tracking note": 84
+      },
+      "reach_px": 649.3,
+      "screen_px": 812
+    },
+    "blog@414x896": {
+      "headroom_px": 289.2,
+      "parts": {
+        "email row": 70,
+        "field": 44,
+        "frequency": 68,
+        "heading": 24.7,
+        "intro": 157.5,
+        "lists": 172,
+        "privacy": 44,
+        "section": 752.4,
+        "submit": 44,
+        "tracking note": 63
+      },
+      "reach_px": 606.8,
+      "screen_px": 896
+    },
+    "tracker@375x812": {
+      "headroom_px": 165.9,
+      "parts": {
+        "email row": 70,
+        "field": 44,
+        "frequency": 68,
+        "heading": 29,
+        "intro": 108.4,
+        "lists": 172,
+        "privacy": 44,
+        "section": 691.9,
+        "submit": 44,
+        "tracking note": 58.5
+      },
+      "reach_px": 646.1,
+      "screen_px": 812
+    },
+    "tracker@414x896": {
+      "headroom_px": 250,
+      "parts": {
+        "email row": 70,
+        "field": 44,
+        "frequency": 68,
+        "heading": 29,
+        "intro": 108.4,
+        "lists": 172,
+        "privacy": 44,
+        "section": 691.9,
+        "submit": 44,
+        "tracking note": 58.5
+      },
+      "reach_px": 646,
+      "screen_px": 896
+    }
+  },
+  "measured_at_utc": "2026-08-17T04:56Z",
+  "measured_on": "2026-08-16",
+  "measured_on_platform": "darwin",
+  "required_headroom_px": 80.0
+}

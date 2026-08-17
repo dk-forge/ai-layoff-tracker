@@ -4007,8 +4007,23 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-af-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     /* Stacked consent choices. 44px rows touching each other is the mis-tap
        this whole section is about, and a consent box is the worst place for
-       it. */
-    .alt-digest-lists, .alt-digest-freq { display: flex; flex-direction: column; gap: 8px; }
+       it.
+
+       .alt-digest-freq USED TO BE IN THIS RULE AND IT WAS WRONG TWICE OVER.
+       The component states its own intent plainly (includes/subscribe.php):
+       "The frequency pair stays on ONE line", laid out as inline-flex labels
+       16px apart, which clears the 8px adjacency floor twice over. This rule
+       is `@media (max-width: 767px)` and turned the fieldset into a column, so
+       on a phone the tracker page stacked Weekly above Daily while the SAME
+       component on a blog post - which does not load this stylesheet - put
+       them side by side. One component, two renderings, at one width, and the
+       tracker's was the taller one.
+
+       That cost 52px of the phone-fold budget on the surface with the least of
+       it: the hero button jumps to #alt-digest, and on 2026-08-16 the field
+       landed 862.4px down an 812px screen. Weekly and Daily are two words and
+       two radios. They were never what this section was written for. */
+    .alt-digest-lists { display: flex; flex-direction: column; gap: 8px; }
     .alt-barlist, .alt-mini .alt-barlist { gap: 10px; }
     /* The map scope switch is segmented: its halves SHARE an edge by design,
        the way the date-basis switch does. Splitting them would say they are
@@ -4119,12 +4134,24 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
        giving the label the height gives the checkbox a 44px row to be hit
        in. */
     .alt-claims-toggle,
-    .alt-digest-lists label,
-    .alt-digest-freq label {
+    .alt-digest-lists label {
         display: flex;
         align-items: center;
         gap: 10px;
         min-height: 44px;
+    }
+    /* The frequency pair takes the same 44px and keeps its line, which is the
+       component's own rule restated in the file that was overruling it. A
+       block-level label is the full width of the fieldset, so two of them
+       stack edge to edge with 0px between: that is the mis-tap this section
+       exists to prevent, arrived at by the rule meant to prevent it. Side by
+       side with 16px of margin they are two clear targets on one row. */
+    .alt-digest-freq label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        margin-right: 16px;
     }
 
     /* --- 6. A card headline is a link the width of the card ----------- */

@@ -1093,6 +1093,15 @@ body.single-post .entry-content .alt-digest-panel li {
   margin-block-end: 0.1rem !important;
 }
 
+/* THE TRACKING DISCLOSURE, WHICH IS A <p> IN .entry-content LIKE EVERY OTHER
+ * TRAP IN THIS SECTION. It moved out of the intro and below the form in
+ * 2.20.76 so it stops eating the phone-fold budget, and the moment it became a
+ * sibling of the <details> rather than a clause inside the intro it left the
+ * reach of the intro rule above. Section 3 declares `.entry-content p` at
+ * (0,3,1) !important, so without this it renders at the article's 20px serif
+ * scale: the quietest sentence in the block, set louder than the heading of
+ * the thing it belongs to. Same size and ink as the disclosure it leads. */
+body.single-post .entry-content .alt-digest p.alt-digest-tracking,
 body.single-post .entry-content .alt-digest-privacy p {
   font-size: 14px !important;
   line-height: 1.5 !important;

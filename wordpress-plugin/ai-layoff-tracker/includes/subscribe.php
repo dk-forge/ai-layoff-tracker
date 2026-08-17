@@ -645,7 +645,14 @@ function alt_digest_subscribe_form($context = '') {
         display: inline-flex; align-items: center; min-height: 44px;
         padding: 7px 0; text-decoration: underline;
     }
-    .alt-digest-privacy { margin-top: 14px; font-size: 13px; }
+    /* The same cascade trap the intro fell into, and the same answer. Both
+       trackers render inside a theme that declares `.entry-content p` at
+       (0,1,1) !important, so a (0,1,0) rule on this paragraph never enters the
+       argument and it comes out at the article's body size: the quietest
+       sentence in the block set louder than the heading of the thing it
+       belongs to. The extra element makes this (0,2,1). */
+    .alt-digest p.alt-digest-tracking { margin: 14px 0 0 !important; font-size: 13px !important; line-height: 1.5 !important; }
+    .alt-digest-privacy { margin-top: 8px; font-size: 13px; }
     .alt-digest-privacy p { margin: 8px 0; }
     /* A disclosure control is a control: the summary line is the whole hit
        area, not the seven words inside it. It sits BELOW the submit button, so
@@ -676,7 +683,8 @@ function alt_digest_subscribe_form($context = '') {
            margin on top of it would push two 44px consent rows 14px apart in
            the one place on the page with the least room. */
         .alt-digest-lists { gap: 8px; }
-        .alt-digest-privacy { margin-top: 12px; }
+        .alt-digest p.alt-digest-tracking { margin-top: 12px !important; }
+        .alt-digest-privacy { margin-top: 8px; }
     }
     </style>
     <section class="alt-digest" id="alt-digest">
@@ -695,11 +703,26 @@ function alt_digest_subscribe_form($context = '') {
                  that stripping PHP out of this file leaves exactly ONE branch
                  - the form - which is what the rendered tests measure. */ ?>
         <?php if ($panel !== '') : echo $panel; else : ?>
-        <p class="alt-digest-intro"><?php if ($lead !== '') echo esc_html($lead) . ' '; ?>A plain email summary of what changed on these trackers: the period's
-            headline numbers and the largest new entries, with links back to the source pages. No images. Our mail
-            provider records whether you open an email and which links you follow, and we read that to see
-            which sections are worth keeping. You confirm your address by clicking a link we email you, and
-            every email carries a one-click unsubscribe that stops the email and the measuring together. Details in the <a href="#alt-digest-privacy">privacy note</a> below.</p>
+        <?php /* WHAT THIS PARAGRAPH IS ALLOWED TO CARRY, AND WHY IT IS SHORT.
+                 It is the only prose inside the phone-fold budget. Everything
+                 from the heading to the Subscribe button has to fit one 812px
+                 screen after the #alt-digest jump, and this paragraph is the
+                 one part of the block whose height is written rather than laid
+                 out: at 2.20.75 it was eleven lines and 238.6px of a 720px
+                 budget, and the copy edit that made it eleven lines is what
+                 put the email field 862.4px down an 812px screen.
+
+                 So it says what the email IS and what confirming costs, and
+                 nothing else. THE TRACKING DISCLOSURE IS NEITHER TRIMMED NOR
+                 HIDDEN: it moved to .alt-digest-tracking below the form, in
+                 the flow, visible without opening anything, where it costs the
+                 budget nothing because the budget ends at the Subscribe
+                 button. Anything added back here is paid for in pixels from
+                 the one screen a reader gets, so measure before you write:
+                 python3 railway/signup_fold.py */ ?>
+        <p class="alt-digest-intro"><?php if ($lead !== '') echo esc_html($lead) . ' '; ?>A plain email summary of what changed on these trackers:
+            headline numbers, the largest new entries, and links to the sources. You confirm your address
+            by clicking a link we email you, and one click unsubscribes.</p>
         <?php /* The context rides on the FORM, not on the <section>. The
                  section's opening tag is matched by a regex in
                  tests/test_digest_route_is_findable.py that reads the signup's
@@ -738,6 +761,20 @@ function alt_digest_subscribe_form($context = '') {
             </div>
         </form>
         <?php endif; ?>
+
+        <?php /* THE TRACKING DISCLOSURE, IN THE FLOW AND OUT OF THE BUDGET.
+                 It carries the two facts a reader has to be told before they
+                 type an address: the mail provider records opens and link
+                 follows, and unsubscribing stops both. It renders for
+                 everyone, in every state, with nothing to open - a paragraph,
+                 not a summary - and it sits below the Subscribe button, which
+                 is where the phone-fold budget ends. It was a clause inside
+                 the intro until 2.20.76, where it was costing 96px of the one
+                 screen a phone reader gets. Moving it cost the reader nothing.
+                 The longer version stays inside the disclosure below, which is
+                 where the provider is named and the mechanism explained. */ ?>
+        <p class="alt-digest-tracking">Our mail provider records whether you open an email and which links
+            you follow. Unsubscribing stops the sending and the recording together.</p>
 
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>

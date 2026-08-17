@@ -1203,16 +1203,26 @@ half-done change leaves the email honest and the signup form lying:
 |---|---|
 | `railway/digest_layout.py`, `TRACKING_SENTENCES` | "Our mail provider records whether you open this email and which links you follow. We read it to see which sections are worth keeping. Unsubscribing stops the email and the measuring together." |
 | `railway/digest_transport.py`, `tracking_note()` | the run-log line naming what is believed to be on |
-| `includes/subscribe.php`, the signup form intro | **OUTSTANDING at 2.20.72**, still says "no tracking pixels" |
-| `includes/subscribe.php`, the privacy note under the form | **OUTSTANDING at 2.20.72**, still says "no tracking pixel, so we cannot tell whether you opened an email" |
-| `includes/subscribe.php`, the file's own docblock | **OUTSTANDING at 2.20.72**, same claim in a comment |
+| `includes/subscribe.php`, `p.alt-digest-tracking` under the form | **corrected 2.20.75, moved 2.20.76.** "Our mail provider records whether you open an email and which links you follow. Unsubscribing stops the sending and the recording together." It is a paragraph in the flow, not inside the `<details>`: a reader learns it without opening anything |
+| `includes/subscribe.php`, the privacy note under the form | **corrected 2.20.75.** "What our mail provider records" names Brevo, the pixel and the link rewriting |
+| `includes/subscribe.php`, the file's own docblock | **corrected 2.20.75** |
+
+**Where the disclosure lives is now load-bearing, so do not move it back into
+the intro.** It was a clause inside `p.alt-digest-intro` for one version and it
+cost 96px of the phone-fold budget, which is the whole reason 2.20.76 exists:
+everything from the heading to the Subscribe button has to fit one 812px screen
+after the `#alt-digest` jump, and the intro is the only prose inside that
+budget. Below the button the same sentences cost nothing. Shortening them is
+allowed if the two facts survive - the provider records opens and link follows,
+and unsubscribing stops both - and `railway/signup_fold.py` is how you find out
+what any rewrite costs.
 
 The footer is covered by `tests/test_digest_email_layout.py`,
 `TheTrackingSentenceIsTrue`, which asserts the old promise is gone from both
 body parts, that both say plainly what is measured, and that our message still
-carries nothing that fetches. There is no equivalent test on the form copy
-yet, which is why the three rows above are marked outstanding rather than
-assumed done.
+carries nothing that fetches. There is still no equivalent test on the FORM
+copy: the rows above are verified by reading, and if the owner turns tracking
+off in Brevo they have to be changed by hand, together.
 
 ### The email design has one rule: it must survive a forward
 
@@ -1383,6 +1393,45 @@ put two copies in one inbox. Do not add a recipient query anywhere else.
   breaks the published privacy note (an image, a remote fetch, a missing
   unsubscribe header). That is a defect in this repo, never a provider
   problem, and it is not retried. Fix the composer.
+
+### Changing any copy in the signup (READ THIS FIRST, it has broken four times)
+
+**The bar.** Everything from the signup's heading to its Subscribe button has
+to fit one 812px phone screen after a reader follows the hero button's
+`#alt-digest` jump. The jump pays a 92px anchor offset, so the real budget is
+about 720px from the top of the block, on both the tracker and a blog post.
+
+**The one command.**
+
+```bash
+python3 railway/signup_fold.py            # measure, print the per-element breakdown
+python3 railway/signup_fold.py --record   # ... and stamp it, once you are happy
+```
+
+It renders both fixtures in headless Chrome and prints what every part of the
+block costs. `--record` writes `railway/signup_fold_stamp.json`, which is a
+hash of the copy above the button plus the figures it measured. It REFUSES to
+record a surface that clears the fold by under 80px, because a Mac renders
+these fixtures 34 to 49px shorter than the CI runner does and "it fits by
+2.3px" is a sentence this component has already shipped once.
+
+**What goes red, and when.** `tests/test_signup_fold_stamp.py` needs no browser
+and runs in a millisecond: it fails the moment the copy stops matching the
+stamp, locally, before the push. The real pixel bars are still
+`tests/test_digest_route_is_findable.py` and
+`tests/test_signup_reaches_landing_pages.py`, they still need Chrome, and they
+are still the authority. The stamp only stops you reaching them by surprise.
+
+**Where the height actually is** (375x812, tracker, measured at 2.20.76):
+intro 108px, the three consent rows 172px, the frequency row 68px, the email
+row 70px, and about 100px of heading, padding and gaps. The intro is the only
+one of those written rather than laid out, which is why it is the one that
+breaks. **Below the Subscribe button the budget ends**, so the tracking
+disclosure and the privacy note are free: that is why they live there and why
+moving prose back up into the intro is not a neutral edit.
+
+**Do not answer a fold failure by raising 812.** It is an iPhone viewport, not
+a preference.
 
 ## The blog reading surface (and how to move it out of this plugin)
 

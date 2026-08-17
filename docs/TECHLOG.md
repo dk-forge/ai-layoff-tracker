@@ -1,5 +1,94 @@
 # Tech Log
 
+## 2026-08-17 - the signup stopped fitting a phone for the fourth time in a week, and the guard that keeps catching it is the only thing that worked (2.20.76)
+
+Main went red on `da17bf9`. Two rendered tests, one assertion:
+
+    at 375x812 the jump leaves the signup's field 862px down a 812px screen
+    ['field ends 855.7px down a 812px screen', ...]
+
+**Nothing was mysterious about the cause and nothing is interesting about the
+fix. The interesting part is that this is the fourth time.** 2.20.72 gave the
+form a container: padding, a border, a radius, measured at the time as ending
+716.8px down an 812px screen. 2.20.75 rewrote the intro and added a paragraph
+to it so the form would stop claiming "no tracking pixels" while Brevo tracks.
+That second change shipped without re-measuring the fold, **despite the brief
+for that file saying to re-measure the fold if anything the form renders
+moves**. A written instruction that four consecutive sessions did not follow
+is a missing test, not a discipline problem.
+
+**Where the height actually was**, 375x812, tracker page, offsets from the top
+of the block, measured before the fix:
+
+| part | before | after |
+|---|---:|---:|
+| heading, padding, gaps | ~100px | ~100px |
+| intro paragraph | **238.6px** | 108.4px |
+| three consent rows | 172.0px | 172.0px |
+| frequency row | **120.0px** | 68.0px |
+| email row | 70.0px | 70.0px |
+| **field bottom, after the jump** | **828.3 of 812** | **646.1 of 812** |
+
+Two findings, one of them not a copy problem at all.
+
+**The frequency pair was being stacked by a stylesheet that disagreed with the
+component.** `assets/layoffs.css` section 5 carried
+`.alt-digest-lists, .alt-digest-freq { flex-direction: column }` inside
+`@media (max-width: 767px)`, and a second rule made the freq labels
+`display: flex`. The component states the opposite intent in its own file -
+"The frequency pair stays on ONE line", inline-flex, 16px apart - and loses,
+because layoffs.css is loaded on the tracker. So the SAME component rendered
+two different heights at one width: 120px on the tracker, 68px on a blog post,
+which does not load that stylesheet. That is 52px of a 720px budget, taken
+from the surface with the least of it, by a rule written to prevent mis-taps
+between two 44px rows that were never going to touch. `.alt-digest-freq` is out
+of the column rule and has its own inline-flex rule now, so both surfaces
+render the component the way the component asks.
+
+**The tracking disclosure moved rather than shrank, and that is the structural
+half.** It is a legal and ethical statement that replaced a false one and its
+meaning is not negotiable, so trimming it to fit was the wrong instrument. What
+was actually wrong is that it was in the intro, and the intro is the only prose
+inside the fold budget. **The budget ends at the Subscribe button.** Below that
+line the same sentences cost nothing. So they are a paragraph of their own,
+`p.alt-digest-tracking`, directly under the form and above the privacy
+disclosure: in the flow, visible to every reader in every state, nothing to
+open, and worth 96px on a phone. A reader still learns both facts without
+clicking anything - the provider records opens and link follows, unsubscribing
+stops both - and the longer version stays inside the `<details>` where the
+provider is named and the mechanism explained.
+
+Blog fixture, same fix, 375x812: the field ended 806.8px down; it now ends
+649.3px down. On the CI runner those figures are 34px (tracker) and 49px (blog)
+larger than they measure on a Mac, which is a number worth writing down: local
+renders of these fixtures are systematically optimistic.
+
+**THE PART THAT MATTERS: shortening the loop.** The two pixel bars are not the
+problem. They caught this every single time. The problem is when they speak.
+Both need headless Chrome, both take a minute, and neither is the test anybody
+runs after changing a sentence, so the sequence was always edit, push, deploy,
+and twenty minutes later CI reports pixel arithmetic about a build that is
+already live.
+
+So there is now a cheap thing in front of them. `railway/signup_fold.py`
+measures the fold in Chrome and prints the per-element breakdown, which is the
+number you actually want when deciding what to cut; `--record` stamps
+`railway/signup_fold_stamp.json` with the figures and a hash of every
+reader-facing string above the Subscribe button.
+`tests/test_signup_fold_stamp.py` reads that stamp with no browser at all and
+fails in a millisecond when the copy stops matching it, with one command in the
+message. Edit copy, and the cheapest test in the suite goes red locally before
+the push.
+
+It is deliberately NOT a character budget. A budget is a guess at the
+relationship between characters and pixels, it is wrong the moment a word wraps
+differently, and it would have let this exact edit through: the 2.20.75 rewrite
+REPLACED text and was not much longer than what it replaced. The honest signal
+is not "this copy is too long", it is "this copy is not the copy the
+measurement was taken against". The recorder also refuses to stamp a surface
+with under 80px of headroom, because "it fitted, by 2.3px" is a sentence this
+component's own comments already contain, about a build that then broke.
+
 ## 2026-08-17 - the digest said "in this period" and let the line above answer for it (2.20.72)
 
 The first live digest went out on 16 August. Every number in it was right.
