@@ -46,6 +46,15 @@ found.
 
 ## 2026-08-17 - every figure was scoped and none of them meant anything (2.20.81)
 
+**Where this change actually lives, because the history is misleading.** The
+code for 2.20.81 landed in commit `4828a4c`, whose message is the literal word
+"wip": it was a temporary commit made to get past a rebase and it was pushed by
+mistake. The descriptive message above sits on `ae02e05`, which contains only
+this log entry. Nothing is missing and nothing is wrong in the tree; the two
+commits are simply the wrong way round. `main` is not force-pushed to tidy it,
+because rewriting a branch other sessions are working from costs more than a
+confusing message. Read `git show 4828a4c` for the diff this entry describes.
+
 Five things, and the first is a live correctness defect in the most-read
 block. The owner wants all three sections better; the previous entry did the
 sourcing, this one does the rest.
