@@ -452,6 +452,14 @@ def resolve_transport(env=None, stream=None):
         f"smtp, so nothing sends. Fix the value rather than adding a fallback.")
 
 
+# The human-readable half of every From line this sender produces. One
+# definition, because a brand that renders two ways across two emails reads as
+# two senders. The provider supplies its own name on messages WordPress relays,
+# so if this is ever changed the Brevo dashboard's sender name has to change
+# with it - that half is not reachable from this repo.
+SENDER_NAME = "AskTheRecruiter.com"
+
+
 def sender_identity(env=None) -> tuple[str, str]:
     """From and Reply-To, on the verified domain.
 
@@ -462,7 +470,26 @@ def sender_identity(env=None) -> tuple[str, str]:
     env = os.environ if env is None else env
     from_addr = (env.get("DIGEST_FROM") or "").strip()
     if not from_addr:
-        from_addr = formataddr(("AskTheRecruiter Trackers",
-                                "digest@asktherecruiter.com"))
+        from_addr = formataddr((SENDER_NAME, "digest@asktherecruiter.com"))
+
+    # A DISPLAY NAME IS ADDED IF THE SECRET DOES NOT CARRY ONE, AND THAT IS THE
+    # POINT. DIGEST_FROM is pasted into a secrets field by a human, and a human
+    # pastes an address. On 2026-08-17 it held a bare
+    # `newsletter@asktherecruiter.com`, so the digest arrived from an address
+    # while the confirmation email - relayed by a provider that supplies its own
+    # sender name - arrived from "Ask The Recruiter". Two messages, one brand,
+    # two identities, and the one that looked like a machine was the one asking
+    # to be trusted with a subscription.
+    #
+    # The address is NEVER touched. It is the half that has to stay on the
+    # domain the DKIM and SPF records were added for, and rewriting it would
+    # break alignment and land the mail in spam. Only the human-readable half
+    # is filled in, and only when it is missing: a secret that already carries
+    # a name is passed through exactly as written, because someone who typed a
+    # name meant it.
+    name, addr = parseaddr(from_addr)
+    if addr and not name:
+        from_addr = formataddr((SENDER_NAME, addr))
+
     reply_to = (env.get("DIGEST_REPLY_TO") or "info@asktherecruiter.com").strip()
     return from_addr, reply_to
