@@ -864,6 +864,58 @@ free. Steps:
 - **Country filter meaning**: `country_basis=any` (table/exports, employer-HQ
   inclusive) vs strict job-location (headline stats). Set in `assets/layoffs.js`.
 
+## US federal RIFs: what the number means, and why it is small
+
+`federal_rif` publishes exactly one thing: separations OPM has coded
+`separation_category_code == 'SH'`, **REDUCTION IN FORCE (RIF)** — the executed
+statutory procedure. It is a documented floor, not an estimate of federal job
+loss, and it will always look small next to a survey-based tracker's federal
+figure. That is a definition difference, not a coverage gap. Measured from the
+2026-06 OPM file set, effective-year 2025:
+
+| OPM category | 2025 separations | in `federal_rif`? |
+|---|---:|---|
+| `SH` REDUCTION IN FORCE (RIF) | **10,739** | **yes** |
+| `drp_indicator = 'Y'` Deferred Resignation Program | 138,074 | no |
+| `SE` RETIREMENT - EARLY OUT (VERA/VSIP) | 27,638 | no |
+| `SJ` TERMINATION (expired appt/other, incl. probationary) | 37,970 | no |
+
+Effective-year 2026 (Jan–Jun, all OPM has published as of the 2026-06 file):
+**164** RIF separations, of which 125 sit in agency-months at or above the
+`FEDERAL_RIF_MIN` floor of 5.
+
+**Do not widen this to close a gap.** Deferred resignations are voluntary
+separation agreements, early-outs are incentivised retirements, and most
+expired-appointment terminations are ordinary term endings. Folding any of them
+in moves the headline by two orders of magnitude on a definition change alone.
+Announced-but-not-executed federal cuts and the deferred-resignation waves reach
+the tracker through the **news** pipeline, where each carries a named report.
+To see the size of that decision without making it:
+`python sources/federal_layoffs.py --drp-dryrun` (prints only, posts nothing).
+Arming DRP is an owner decision and needs its OWN `source_type`, never this one.
+
+**How the OPM files work** (this was wrong in the code until 2026-08-16): each
+file is the batch of personnel actions *reported* in that month — its own month's
+bulk plus a long tail of late-reported earlier months. Files are INCREMENTAL, so
+an effective month's true total is the SUM of its slices across every reporting
+file. The collector previously read only the newest file, saw the trickles and
+never the bulk, and published effective-year 2025 as 47 separations.
+
+Consequences that constrain any future change:
+- The run must read the **whole window** (`FEDERAL_RIF_SINCE`, default `2024-01`)
+  and recompute every agency-month. `/bulk` field-updates on hash match, so a
+  partial sum would **overwrite a correct larger count with a short one**. A file
+  it cannot read raises `FederalRifIncomplete` and the run posts nothing.
+- Effective months **before** the window start are only partially covered by the
+  files inside it, so they are dropped rather than published short.
+- Backfill by dispatching the workflow with `since = 2005-01` (all 258 files,
+  ~200MB, free). The collector's own date guard drops anything before 2015.
+
+**Knobs:** `FEDERAL_RIF_MIN` (default 5, drops trivial agency-months),
+`FEDERAL_RIF_SINCE` (default 2024-01). Staleness ceiling is 35 days in both
+`ops_status.py` and `health_digest.py`, matching the 6th-of-the-month cadence.
+No paid model call happens anywhere in this path; the only cost is bandwidth.
+
 ## How to ENHANCE (bigger moves + their honest ceilings)
 - **US WARN**: 48 states + DC already scraped; AR/NH/WY have no public register.
   This lever is maxed.

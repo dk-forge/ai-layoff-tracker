@@ -6,11 +6,28 @@ name: Federal RIF import (OPM EHRI)
 # monthly with a lag, so this runs monthly + on manual dispatch.
 # Required secret: WP_API_KEY. pyarrow/pandas installed here only (kept out of
 # the shared requirements so the daily jobs stay lean).
+#
+# OPM files are INCREMENTAL reporting batches, so a month's true total is the SUM
+# of its slices across every file. The run therefore reads the WHOLE window
+# (FEDERAL_RIF_SINCE, default 2024-01 => ~30 files, ~26MB) and recomputes every
+# agency-month from scratch; the dedup hash excludes the count, so revisions and
+# late-reported rows upsert in place. Reading only the newest file is the
+# 2026-08-16 defect that put effective-year 2025 at 47 separations against a
+# true 10,739 — see railway/tests/test_federal_rif.py.
+#
+# BACKFILL: dispatch with `since` = 2005-01 to read all 258 files (~200MB, slow
+# but free). Anything earlier than 2015 is dropped by the collector's own date
+# guard.
 
 on:
   schedule:
     - cron: '0 14 6 * *'   # 6th of the month, ~after OPM's monthly publish
   workflow_dispatch:
+    inputs:
+      since:
+        description: 'Earliest OPM reporting file to read, YYYY-MM (default 2024-01; use 2005-01 for a full backfill)'
+        required: false
+        default: ''
 
 jobs:
   federal-rif:
@@ -34,4 +51,5 @@ jobs:
         env:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
+          FEDERAL_RIF_SINCE: ${{ inputs.since }}
         run: python federal_rif_import.py

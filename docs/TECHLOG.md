@@ -1,5 +1,81 @@
 # Tech Log
 
+## 2026-08-16 - federal RIF: the collector read one file out of thirty
+
+`/aggregate?years=2026&country=United States` put `federal_rif` at **79 jobs**
+against 266,094 from state WARN. The house rule held: a collector returning
+almost nothing had lost DISCOVERY, not parsing.
+
+**What was wrong.** `sources/federal_layoffs.py` called `_latest_file()`, which
+sorted OPM's file listing and took the last entry — one file. Its docstring
+justified that: "each monthly file is a ROLLING ~24-month window, so pull only
+the latest file and group by effective month; never sum across files
+(double-counts)". Both halves were false, and the false belief is what caused
+the defect.
+
+An OPM file is the batch of personnel actions **reported** in that month: its
+own month's bulk, plus a long tail of late-reported actions with earlier
+effective months. Files are INCREMENTAL, not snapshots. Proof, effective month
+202509 across the nine files that carry it:
+
+    reported_in=202509  all=119,807  SH=2,307     <- the bulk, in its own file
+    reported_in=202511  all=  3,447  SH=   24
+    reported_in=202512  all=  1,704  SH=    9
+    reported_in=202601  all=  4,058  SH=   33
+    ... 202602 / 202603 / 202604 / 202605 / 202606, all trickles
+
+A snapshot would repeat the 119,807. It does not. So reading one file saw every
+older month's trickle and never its bulk. Effective-year 2025 landed as **47**
+RIF separations against a true **10,739**; the July 2025 wave (5,584) was absent
+entirely. Broken, not merely narrow — though it is also narrow, and that part is
+correct and deliberate (below).
+
+**The denominator, which is the point.** Summing SH across all current files:
+
+    effective year   all separations   SH (RIF)   DRP        SE early-out
+    2024                    221,072          46        0           196
+    2025                    390,934      10,739  138,074        27,638
+    2026 (Jan-Jun)           89,920         164    2,290           852
+
+So 2026-to-date has a documented ceiling of **164** executed federal RIF
+separations — the tracker's 79 was about half of a genuinely small number. The
+big federal figure a survey competitor quotes is the **Deferred Resignation
+Program: 138,074 in 2025**, which is a different thing and is excluded on
+purpose. Reported here so nobody re-derives it under time pressure.
+
+**The definition, written down rather than tuned.** `federal_rif` = OPM
+`separation_category_code == 'SH'`, executed statutory RIF, and nothing else.
+DRP, VERA/VSIP early-outs and expired-appointment terminations stay out; they
+reach the tracker through the news pipeline with a named report attached.
+`pull_federal_drp_dryrun()` measures the DRP decision without making it — prints
+only, builds no postable entry, and a test asserts it never learns to.
+Full rule in RUNBOOK "US federal RIFs: what the number means".
+
+**The trap in fixing it.** Totals are now summed across files, and `/bulk`
+field-updates on hash match. A run that read only SOME of its window would
+compute short totals and **overwrite correct larger counts**. So any unreadable
+file raises `FederalRifIncomplete`, the importer reports degraded and posts
+nothing, and effective months before the window start are dropped rather than
+published short (the files inside the window cover them only partially). This
+is the one way the fix could have been worse than the bug.
+
+**What it returns now.** 62 agency-month events, 10,821 separations over the
+default 2024-01 window: 2026 goes 79 -> 125, 2025 goes 47 -> 10,662. The dedup
+hash excludes the count by design, so the eight existing rows correct in place
+on the next run — no purge. Cost is unchanged at $0: no model call is made
+anywhere in this path, only ~26MB of bandwidth once a month. Backfill to 2005 is
+a workflow dispatch input, not a code change.
+
+No plugin change was needed: the sources page already carried the definitional
+boundary ("Announced or deferred-resignation federal cuts arrive through the
+news feed instead") and `health.js` already had the label and Monthly cadence.
+That also kept this clear of the version-bump race with the session holding the
+baton.
+
+`railway/tests/test_federal_rif.py` pins both properties: every file in the
+window is read, and a partial window never returns a sum.
+
+
 ## 2026-08-17 - the digest stated a figure and buried where it came from (2.20.80)
 
 The owner has now said twice that the digest is not good enough, most recently
