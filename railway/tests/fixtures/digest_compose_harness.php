@@ -49,11 +49,20 @@ function get_transient($k) { return false; }
 function set_transient($k, $v, $t = 0) { return true; }
 function apply_filters($tag, $value) { return $value; }
 function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
+    /*
+      DROPS THE `=` ON AN EMPTY VALUE, because the real one does. Observed in
+      a live preview on 2026-08-17: a caller passing '' got `&years&quarters`
+      and not `&years=&quarters=`. This stub used to append `=` unconditionally
+      and so passed a test about the digest's tracker link that production
+      would have failed. A stub that is kinder than the function it stands in
+      for is worse than no stub: it makes the assertion about the wrong thing.
+    */
 function add_query_arg($k, $v = null, $url = null) {
     if (is_array($k)) { $args = $k; $url = $v; } else { $args = array($k => $v); }
     $sep = strpos((string) $url, '?') === false ? '?' : '&';
     foreach ($args as $ak => $av) {
-        $url .= $sep . rawurlencode($ak) . '=' . rawurlencode((string) $av);
+        $url .= $sep . rawurlencode($ak);
+        if ((string) $av !== '') $url .= '=' . rawurlencode((string) $av);
         $sep = '&';
     }
     return $url;

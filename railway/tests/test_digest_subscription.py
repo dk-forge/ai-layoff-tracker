@@ -493,12 +493,22 @@ class TheArticlesList(unittest.TestCase):
         for part in (html, text):
             self.assertIn("What the WARN data actually says", part)
             self.assertIn("Reading an 8-K", part)
-            self.assertIn("A standfirst an editor wrote.", part)
+            self.assertIn("A standfirst an editor wrote about", part)
             # A tracker surface is not an article, whatever type it is stored as.
             self.assertNotIn("Sources", part)
             # Outside the window, and unpublished.
             self.assertNotIn("Last month", part)
             self.assertNotIn("Half written", part)
+
+    def test_html_entities_are_decoded_and_never_reach_a_reader(self):
+        """Found in a live preview, not by reasoning. get_the_excerpt returns
+        display HTML, wp_strip_all_tags removes tags and leaves entities, and
+        the first render published `&#8220;tell me about yourself&#8221;` into
+        the plain-text part, where nothing will ever turn it back."""
+        for part in (self.o["articles_html"], self.o["articles_text"]):
+            self.assertNotIn("&#8220;", part)
+            self.assertNotIn("&#8221;", part)
+        self.assertIn("\u201ctell me about yourself\u201d", self.o["articles_text"])
 
     def test_the_section_links_through_the_first_party_counter(self):
         self.assertIn("/wp-json/layoffs/v1/click", self.o["articles_html"])
@@ -624,10 +634,21 @@ class ClickCountingAndStats(unittest.TestCase):
         # Every other filter is CLEARED, not omitted: the page restores a
         # returning visitor's saved filters before it reads the URL, and a key
         # that is absent leaves their old filter ANDed into our number.
-        for blank in ("country=", "industry=", "years=", "min_jobs="):
-            self.assertIn(blank + "&", link + "&",
+        # The trailing `=` is written by hand and asserted here. add_query_arg
+        # DROPS it on an empty value, which the first live preview emitted as
+        # `&years&quarters&months`. URLSearchParams does read a bare key as an
+        # empty value, so that URL worked by accident, and the whole point of
+        # these keys is telling "present and empty" from "absent". A link whose
+        # job is to reproduce a published figure does not rest on a parser's
+        # tolerance for a malformed pair.
+        for blank in ("country=", "industry=", "years=", "min_jobs=", "q="):
+            self.assertIn(blank, link,
                           f"{blank} is not cleared, so a returning reader's "
                           f"saved filter survives into the figure we linked")
+            self.assertNotRegex(link, r"[?&]" + blank[:-1] + r"(&|$)",
+                                f"{blank[:-1]} lost its '=' and is now a bare "
+                                f"key, which is add_query_arg's behaviour and "
+                                f"not the contract this link needs")
         self.assertTrue(self.o["link_starts_at_zero"])
 
     def test_a_click_counts_once_and_lands_on_the_stored_destination(self):

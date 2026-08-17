@@ -45,10 +45,22 @@ function admin_url($p = '') { return 'https://example.test/blog/wp-admin/' . $p;
 function wp_get_referer() { return 'https://example.test/blog/ai-layoff-tracker/'; }
 function wp_nonce_field(...$a) { echo ''; }
 function wp_verify_nonce($n, $a) { return $n === 'good-nonce'; }
+    /*
+      DROPS THE `=` ON AN EMPTY VALUE, because the real one does. Observed in
+      a live preview on 2026-08-17: a caller passing '' got `&years&quarters`
+      and not `&years=&quarters=`. This stub used to append `=` unconditionally
+      and so passed a test about the digest's tracker link that production
+      would have failed. A stub that is kinder than the function it stands in
+      for is worse than no stub: it makes the assertion about the wrong thing.
+    */
 function add_query_arg($k, $v = null, $url = null) {
     if (is_array($k)) { $args = $k; $url = $v; } else { $args = array($k => $v); }
-    $sep = strpos($url, '?') === false ? '?' : '&';
-    foreach ($args as $ak => $av) { $url .= $sep . rawurlencode($ak) . '=' . rawurlencode((string) $av); $sep = '&'; }
+    $sep = strpos((string) $url, '?') === false ? '?' : '&';
+    foreach ($args as $ak => $av) {
+        $url .= $sep . rawurlencode($ak);
+        if ((string) $av !== '') $url .= '=' . rawurlencode((string) $av);
+        $sep = '&';
+    }
     return $url;
 }
 function remove_query_arg($keys, $url) {
@@ -578,8 +590,12 @@ $mk = function ($id, $title, $slug, $excerpt, $age_days, $extra = array()) {
     ), $extra);
 };
 $GLOBALS['__posts'] = array(
+    // The curly quotation marks are the point. get_the_excerpt() returns
+    // display HTML, so they arrive as &#8220; / &#8221;, and the first live
+    // render published the entity spelling into the PLAIN TEXT part where
+    // nothing will ever turn it back into a quotation mark.
     $mk(11, 'What the WARN data actually says', 'warn-data',
-        'A standfirst an editor wrote.', 2),
+        'A standfirst an editor wrote about &#8220;tell me about yourself&#8221;.', 2),
     // No typed excerpt, so the standfirst has to come from the content. Its
     // first sentence is short; the second is there to prove only the first
     // is taken.

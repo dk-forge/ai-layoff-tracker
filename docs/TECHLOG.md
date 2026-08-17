@@ -1,5 +1,49 @@
 # Tech Log
 
+## 2026-08-17 - two defects the tests could not see, found by reading the render (2.20.82)
+
+Both shipped in 2.20.81, both passed 314 tests, and both were obvious the
+moment a live preview was read rather than reasoned about. Recording them
+together because they have the same shape: **a harness that was kinder than
+production.**
+
+**1. HTML entities reached the plain-text part.** `get_the_excerpt()` returns
+display HTML, and `wp_strip_all_tags` removes TAGS while leaving entities
+alone. So the new articles standfirst published, verbatim, into the text part
+of the live preview:
+
+    ... little more than &#8220;tell me about yourself&#8221; and a vague
+    sense...
+
+where nothing will ever turn it back into a quotation mark.
+`alt_digest_standfirst()` now decodes before it measures, so the character
+count that decides the cap counts characters a reader sees rather than entity
+spellings, and the HTML part re-escapes on the way out as every other string
+here does. The fixture gained a curly quotation mark so the branch has a test.
+
+**2. The deep link's cleared filters were bare keys.** `add_query_arg()` drops
+the `=` from an empty value, so the link emitted `&years&quarters&months`
+instead of `&years=&quarters=`. `URLSearchParams` does read a bare key as an
+empty value, so the URL worked, and it worked **by accident**. The entire
+purpose of those keys is that the page can tell "present and empty", which
+clears the control, from "absent", which leaves a returning reader's saved
+filter ANDed into our number. A link whose job is to reproduce a published
+figure does not rest on a parser's tolerance for a malformed pair, so the
+query string is now built as a string and the bytes are the bytes.
+
+**THE REASON THE TEST PASSED IS THE PART WORTH KEEPING.** Both digest
+harnesses stubbed `add_query_arg` to append `=` unconditionally, which real
+WordPress does not. So the assertion added in 2.20.81 to hold this exact
+property was written against a stub that could not fail it. **A stub kinder
+than the function it stands in for is worse than no stub**, because it makes
+the assertion about the wrong thing while looking like coverage. Both stubs
+now drop the `=` the way the real one does, and the test asserts the `=` is
+present rather than merely that the key is.
+
+**Verified:** 315 digest tests green. `style_check.py` 0 findings. Read out of
+a real preview run against live data, which is the only reason either was
+found.
+
 ## 2026-08-17 - every figure was scoped and none of them meant anything (2.20.81)
 
 Five things, and the first is a live correctness defect in the most-read

@@ -1777,19 +1777,32 @@ function alt_digest_tracker_url($from, $to) {
     $to = substr(trim((string) $to), 0, 10);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) return home_url('/ai-layoff-tracker/');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) return home_url('/ai-layoff-tracker/');
-    $args = array(
-        'from' => $from,
-        'to'   => $to,
+    $pairs = array(
+        'from=' . rawurlencode($from),
+        'to=' . rawurlencode($to),
         // The page's spelling of the composer's `layoff_date`. See above.
-        'date_basis' => 'effective',
+        'date_basis=effective',
     );
-    // Cleared, not omitted. See above.
+    /*
+      Cleared, not omitted, and the trailing `=` is written by hand.
+
+      add_query_arg() drops the `=` from an empty value, so the first live
+      preview emitted `&years&quarters&months&country` rather than
+      `&years=&quarters=`. URLSearchParams does read a bare key as an empty
+      value, so that URL happened to work, but it worked by accident: the
+      whole point of these keys is that the page can tell "present and empty",
+      which clears the control, from "absent", which leaves a returning
+      reader's saved filter ANDed into our number. A form that depends on a
+      parser's tolerance for a malformed pair is not a form to ship on a link
+      whose job is to reproduce a published figure. Built as a string so the
+      bytes are the bytes.
+    */
     foreach (array('years', 'quarters', 'months', 'country', 'industry', 'state',
                    'sources', 'reasons', 'roles', 'company', 'keyword',
                    'min_jobs', 'q') as $blank) {
-        $args[$blank] = '';
+        $pairs[] = $blank . '=';
     }
-    return add_query_arg($args, home_url('/ai-layoff-tracker/'));
+    return home_url('/ai-layoff-tracker/') . '?' . implode('&', $pairs);
 }
 
 /**
@@ -2872,7 +2885,25 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
  * not stop there.
  */
 function alt_digest_standfirst($text) {
-    $text = trim(preg_replace('/\s+/', ' ', (string) $text));
+    /*
+      ENTITIES ARE DECODED, and this was found in a live preview rather than
+      by reasoning. get_the_excerpt() returns display HTML, so a post whose
+      opening line contains a curly quotation mark arrives as `&#8220;`.
+      wp_strip_all_tags removes TAGS and leaves entities alone, so the first
+      render of this feature published:
+
+          ... little more than &#8220;tell me about yourself&#8221; and a
+          vague sense...
+
+      in the plain-text part, where nothing will ever turn it back into a
+      quotation mark. Decoding happens here, after the tags have gone and
+      before anything is measured, so the character count that decides the cap
+      counts characters a reader sees rather than entity spellings. The HTML
+      part re-escapes on the way out through esc_html, as it does for every
+      other string in this file.
+    */
+    $text = html_entity_decode((string) $text, ENT_QUOTES, 'UTF-8');
+    $text = trim(preg_replace('/\s+/', ' ', $text));
     if ($text === '') return '';
     $cap = 160;
     // The first sentence, when one ends inside a readable distance. A full
