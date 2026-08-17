@@ -1,5 +1,182 @@
 # Tech Log
 
+## 2026-08-17 - the coverage claim becomes a measurement that recomputes itself (railway + docs, no deploy)
+
+**The problem, stated as the owner would hear it.** Three stated goals - match
+a US benchmark, cover the world, be a top-three tracker - are all percentages,
+and **none of them was measurable.** The only coverage comparison in the
+project was a hand-maintained local file, 24 days stale, that cannot be
+automated and depends on a source whose robots.txt disallows AI agents. So "we
+cover X%" was an opinion, and it is the one claim that could damage him if it
+is wrong.
+
+**What already existed, and why it could not answer the question.** The frozen
+SEC Item 2.05 gold set (57 events, 2025-07-01..2026-06-30) is measured weekly
+by `recall-precision.yml`, carries `MATCHED_FLOOR`, and is read by
+`RecallFloorInvariant`. It is good at its job and its job is RETENTION: "have
+we lost events an editor confirmed we held?" Its denominator cannot move
+between runs - that immovability is what lets it carry a tripwire - so it
+cannot say what coverage is NOW. Its window closed on 2026-06-30 and extending
+it costs a human afternoon of adjudication. **None of it was touched here.**
+
+### The re-measurement the task actually asked for: 42% -> the fix landed
+
+Prior work measured Item 2.05 recall at 42% (24/57) and diagnosed a rotating
+sweep that never returned to recent months. Nobody had confirmed the fix moved
+the number. It did, twice over, and from two independent directions:
+
+| measurement | window | result |
+|---|---|---|
+| frozen gold set, editor-adjudicated (`recall_measurement.json`, 2026-08-13) | 2025-07..2026-06 | **56/57 = 98.2%** [90.7%, 99.7%] |
+| **new** rolling re-enumeration, fully automatic, no editor | same 12 months | **45/45 = 100%** [92.1%, 100%] count-confirmed |
+
+Two paths that share no matching code and no numerator agreeing to within two
+points is the strongest evidence in the repo that 42% is gone.
+
+### The new thing: `railway/rolling_recall.py`
+
+Item 2.05 is the rare denominator that does not have to be sampled. Every US
+public company recording a material charge for exit or disposal activities
+files an 8-K carrying that code in its SGML header, and EDGAR full-text search
+enumerates them for a period exactly, free and keyless. So the denominator is
+not a sample of the universe - for that slice it IS the universe, and the
+figure is falsifiable by anyone who repeats the query.
+
+The window is twelve whole calendar months ending 45 days back, and it
+**advances a month every month**. That is the entire point: the figure ages
+with the data instead of with somebody's memory.
+
+**Control on the enumeration:** the same twelve months pulled this way returned
+**215 accessions - the same count the hand-assembled manifest recorded for the
+same window** in a separate exercise sixteen days earlier.
+
+### It reports a BAND, because there is no editor in the loop
+
+On 2026-08-01 the loose alias/window matcher scored 31 of 57 against an
+editor's 24 - twelve points it awarded itself, on a Hormel Georgia WARN filed
+ten weeks early, an Italian composites maker for HP Inc, and Dow Jones for Dow.
+A machine must not promote its own recall, and an automatic job has nobody to
+appeal to. So it publishes both ends: CONFIRMED additionally requires the
+tracker row's `job_count` to AGREE with the headcount in the filing - the
+discriminator every one of those false positives failed - and PROPOSED is the
+loose rule.
+
+**The band is scored against the editor, not asserted.** `--calibrate` runs the
+matcher over the 57 adjudicated events: **53 CONFIRMED, 2 PROPOSED, 0 ABSENT of
+the editor's 56 matched, and 0 of the editor's rejected candidates reaching
+CONFIRMED.** Zero false positives is what makes the lower end a real lower
+bound; zero upper-bound misses is what makes the upper end a real upper bound.
+
+### Three defects the measurement found in itself, all before it reported anything
+
+Every one of them under-reported coverage, which is the direction that looks
+like a finding, and every one was in the MEASURER rather than the pipeline -
+the same shape as the 2026-08-13 WARN work.
+
+1. **Retrieval was built out of the matching rule.** `/query?company=` is a
+   substring LIKE and the stored name can be LONGER than the filer name
+   ("Starbucks Corporation" vs `STARBUCKS CORP`) or SHORTER ("ZoomInfo" vs
+   `ZoomInfo Technologies Inc.`). Both appeared in one run. 14 of 56
+   editor-confirmed events scored as misses. Retrieval now sends the shortest
+   distinctive leading run and the prefix rule decides afterwards; the prefix
+   rule itself became direction-blind, which is contained because it only ever
+   decides PROPOSED.
+2. **`clean_filer` stripped one trailing parenthetical, and EFTS emits two.**
+   "Elanco Animal Health Inc  (ELAN)  (CIK 0001739104)" kept "(ELAN)", which
+   tokenises as a fourth word. Elanco's 300 - a row we hold, at the exact
+   count, on the exact filing date - scored as a coverage miss.
+3. **The parser read two numbers that are not cut counts.** Atara's 15 is who
+   is RETAINED; Geron's 260 is the pre-cut BASE of a one-third reduction. The
+   editor had excluded both filings by hand for exactly that reason, and the
+   deterministic probe had never scored them because they were not in the gold
+   set. Both sat in the denominator as four points of missing recall against
+   filings the tracker is CORRECT not to hold. The refusal went into
+   `sec_205_deterministic_probe.py`, which owns the count rules - one copy, not
+   a second - and the marker list was narrowed by running it with and without
+   and reading the four filings that moved: the first draft included
+   "workforce of", which cost Cibus, because "a reduction in WORKFORCE OF
+   approximately 34" is a cut. **The retention word carries the meaning; the
+   noun phrase does not.**
+
+### The hard call: 157 of 215 filings state no headcount in the section
+
+Lumping them together made 76% of the enumeration UNKNOWN and the slice
+useless. They split on one deterministic fact - whether an EX-99 exhibit exists
+on the accession - into "no count anywhere, and extractor.py would store
+nothing from it either" (out of scope, 111) and "the count may be in the
+exhibit" (UNKNOWN, 59, listed by name). **The parser does not read the
+exhibits, on purpose:** over EX-99.1 bodies it read GitLab's "2021 Employee
+Stock Purchase Plan" as a headcount of 2021 for a 350-person cut. An honest
+UNKNOWN is worth more than a wrong denominator. Undecidable share 27%, ceiling
+40%, above which the slice reports UNKNOWN rather than a band.
+
+### The second slice is NOT MEASURABLE, and that is a result worth having
+
+We ingest every state's WARN listing, so our own collectors can never be that
+denominator. Seventeen states plus federal DOL were checked. **There is no
+national WARN aggregate at all** - US DOL keeps no database, BLS Mass Layoff
+Statistics ended 2013. **Wisconsin publishes exactly the right figure** (a
+state-computed annual affected-worker total, closed calendar years) **and its
+robots.txt sets `Disallow: /` for ClaudeBot, GPTBot, CCBot and Google-Extended,
+so it is refused** - the same reading that kept the FCA National Storage
+Mechanism out of the UK set, and the one real loss. Washington's annual
+legislative report is the only live candidate: ad hoc periods that change
+between editions, narrative prose in a PDF, one state.
+
+The slice is DECLARED and reports `not_measurable` with its date, rather than
+being left out of a report whose reader would assume US coverage had been
+measured everywhere it matters. The assessment **expires after 183 days** and
+then reports UNKNOWN, because a standing "not measurable" nobody revisits is a
+stale claim wearing a permanent exemption.
+
+### Three states everywhere, and no floor
+
+Per filing: in_scope / out_of_scope / undecidable. Per slice: measured /
+not_measurable / unknown, and a declared slice that cannot be computed makes
+the whole report UNKNOWN instead of dropping out of an average
+(`test_a_declared_slice_may_not_silently_disappear`).
+
+`RollingRecallInvariant` carries **no floor**, deliberately.
+`RecallFloorInvariant` already owns the tripwire and can, because its
+denominator is frozen; here the denominator moves every month, so a fall can be
+a quiet quarter of filings, and a floor over a moving denominator is a
+false-alarm generator - this repo knows what eight identical emails in one
+afternoon do to an alert channel. What it enforces is that the figure exists,
+is fresh, and names what it could not compute. **The failure it catches is not
+"coverage fell", it is "the coverage number stopped being computed and nobody
+noticed"** - which is precisely how a comparison file came to be 24 days stale
+with every check green.
+
+### Cost, and what was deliberately not done
+
+**$0.00 per run.** EDGAR full-text search and the Archives are free and
+keyless, `/query` is a public read, no model is called on any path, and the
+module is stdlib-only so it installs no lock. Measured cold-cache run: 12
+enumeration requests, ~215 document fetches, ~45 API lookups, about 6 minutes.
+
+**Nothing was published to a reader-facing page.** A coverage figure on a
+public page is a promise and the owner should make it deliberately. No plugin
+file changed, so no deploy and no version bump. The frozen gold set,
+`MATCHED_FLOOR`, `recall_measurement.json` and the published 98.2% are
+byte-identical to what they were.
+
+**Two honest limits, written into the definition doc rather than buried.** The
+denominator is the machine-decidable subset (45 of 215), and filings with an
+unambiguous count in the primary document are plausibly easier for the pipeline
+than those hiding one in an exhibit - so this figure may OVERSTATE recall over
+the full 2.05 corpus. And the first window is a SWEPT window: about $1.01 of
+model time was spent deliberately sweeping exactly these twelve months after
+the 2026-08-01 forensics, so a high figure here is partly a measurement of that
+repair. It becomes more informative as the window advances into months nobody
+targeted, which it does by itself.
+
+New: `railway/rolling_recall.py`, `railway/tests/test_rolling_recall.py` (36
+tests), `.github/workflows/rolling-recall.yml` (Thursdays),
+`docs/recall-reference-sets/ROLLING-SEC-205-DEFINITION.md`. Changed:
+`data_integrity.RollingRecallInvariant`, `ops_status.py [3c]`,
+`health_digest.py` COVERAGE line, `sec_205_deterministic_probe.py`
+(the not-a-cut-count refusal), RUNBOOK.
+
 ## 2026-08-17 - the subject named one tracker and the snippet quoted another (2.20.83)
 
 The inbox line and the subject are the two things every recipient sees before

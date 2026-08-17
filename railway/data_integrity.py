@@ -1548,6 +1548,52 @@ class RecallFloorInvariant:
                       pending=(state == UNKNOWN and measurement is None))
 
 
+class RollingRecallInvariant:
+    """The coverage figure is fresh, and it names the slices it could not compute.
+
+    WHAT IT ASSERTS, AND WHAT IT DELIBERATELY DOES NOT. It asserts that
+    railway/rolling_recall_measurement.json exists, is younger than
+    rolling_recall.MAX_MEASUREMENT_AGE_DAYS, and reports every slice it
+    declared. It does NOT assert a floor.
+
+    That absence is the design, not an omission. RecallFloorInvariant already
+    owns the tripwire, and it can own one because its denominator is FROZEN: a
+    fall there cannot be sampling noise. This measurement's denominator is a
+    rolling twelve months of SEC Item 2.05 filings and it changes every month,
+    so a drop can be a quiet quarter of filings rather than a coverage loss. A
+    floor over a moving denominator is a false-alarm generator, and this repo
+    already knows what eight identical emails in one afternoon do to an alert
+    channel.
+
+    WHAT IT IS FOR, THEN. The failure it exists to catch is not "coverage fell",
+    it is "the coverage number stopped being computed and nobody noticed" — the
+    exact failure that left a hand-maintained comparison file 24 days stale
+    while every check in the repo read green. A figure whose age cannot be read
+    is UNKNOWN, and UNKNOWN is not a pass.
+
+    A slice that could not be computed this run makes the whole check UNKNOWN
+    rather than dropping out of an average. See rolling_recall.judge().
+    """
+
+    key = "rolling_recall_fresh"
+    label = "The rolling coverage measurement is current"
+    reads_live_data = False        # reads the committed measurement, not the site
+
+    def __init__(self, measurement_path=None):
+        self.measurement_path = measurement_path
+
+    def run(self, ctx):
+        try:
+            import rolling_recall
+        except ImportError:                                  # pragma: no cover - path fallback
+            sys.path.insert(0, str(HERE))
+            import rolling_recall
+        measurement = rolling_recall.load_measurement(self.measurement_path)
+        state, detail = rolling_recall.judge(measurement)
+        return Result(self, state, detail=detail,
+                      pending=(state == UNKNOWN and measurement is None))
+
+
 class ErmProvenanceInvariant:
     """A published ERM row still carries the country it was imported with.
 
@@ -1952,6 +1998,12 @@ INVARIANTS = (
     # could ask before 2026-08-01, because recall_precision.py had no threshold
     # and returned 0 whatever it measured.
     RecallFloorInvariant(),
+    # RecallFloorInvariant watches a FROZEN set, so it answers "have we lost
+    # what an editor confirmed we held?" and cannot answer "what is coverage
+    # NOW" — its window closed on 2026-06-30. This one watches the rolling
+    # re-enumeration that does age with the data, and asserts only that the
+    # figure is still being computed. No floor, on purpose: see the class.
+    RollingRecallInvariant(),
     # And this one asks a third question neither of those can: has a row that is
     # ALREADY published been quietly re-scored since it was imported? It reads
     # each ERM row's own import-time excerpt back out of the published text, so
