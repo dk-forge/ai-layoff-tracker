@@ -1403,9 +1403,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       without a verified_companies field to move it with.
 
       When the window holds no announced rows the two tiers are the same
-      number, so the companion is DROPPED and companies rejoins the first
-      sentence: the same figure twice under two labels is noise, which is
-      why the hero hides its own wrapper on that condition.
+      number, so printing both would be the same figure twice under two
+      labels. That branch says so in words instead: "All N entries in RANGE
+      are verified... The window holds no announced estimates." A reader
+      learns the tier is empty, which is a fact, rather than meeting a
+      companion figure identical to the one above it.
     */
     $all_jobs = (int) ($totals['jobs'] ?? 0);
     $all_entries = (int) ($totals['entries'] ?? 0);
@@ -1572,30 +1574,6 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         }
     }
 
-    /*
-      ONE YEAR-TO-DATE LINE, AND DELIBERATELY NO PERIOD-OVER-PERIOD DELTA.
-
-      This data revises upward for weeks. Filings and WARN notices arrive
-      after the event, so the newest period is always the least complete one
-      we hold. A week-on-week or month-on-month line would therefore turn a
-      reporting lag into a fall that never happened, which is exactly the
-      defect the trend charts already had: an incomplete month drew as a
-      collapse. A year-to-date total only grows, so a late arrival corrects
-      it rather than inverting it. Do not add a delta here later.
-
-      The year comes from the period's own end date, not from the clock, so a
-      run that composes a window is never labelled with a different year. The
-      basis matches the section above for the same reason it is named there.
-
-      THE TIER MATCHES THE SECTION ABOVE TOO, and has to keep matching. This
-      line read `totals.jobs` on purpose, because the headline above read the
-      same field: two figures from one quantity agree by construction. That
-      headline now prints the VERIFIED tier, so this line prints
-      `jobs - announced_jobs` and says "verified", and the property is
-      preserved rather than broken. A reader who watches the period figure
-      grow into the year-to-date figure is watching one series. If either
-      figure ever changes tier again, change BOTH in the same edit.
-    */
     /*
       WHERE THE JOBS WERE, PLUS THE BUCKET THAT IS NOT A PLACE.
 
