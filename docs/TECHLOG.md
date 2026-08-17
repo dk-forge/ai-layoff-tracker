@@ -1,5 +1,82 @@
 # Tech Log
 
+## 2026-08-17 - three of the four dimensions reached the headline, and the reader asked for the fourth (2.20.79)
+
+The redesign's whole premise is that a quoted line survives on its own, and it
+named four things every figure has to state: the timeframe, the tier, the date
+basis, and the geography. Three of them shipped. The owner read the delivered
+weekly and asked a one-word question the email could not answer.
+
+    AI Layoff Tracker
+    Verified job cuts
+    13,658
+    10 to 17 August 2026, counted by the date the cuts take effect.
+
+"Where? USA or world or what". The country table lower down did carry a
+geography basis, "counted where the jobs were rather than where the employer is
+based", but it carried it for the table. A reader who lifts the 13,658 into a
+slide takes none of it. That is the same adjacency failure the country block
+had on 2026-08-16, one dimension over, and it applied equally to the
+year-to-date figure, the AI figure and the talent section's signal count.
+
+### What 13,658 actually covers, measured rather than inferred
+
+`alt_digest_compose_layoff` sends `from`, `to`, `date_basis` and `include`. It
+sends no `country`, so `alt_db_where()` adds no country clause at all and the
+query counts every row in the window. Read live on 2026-08-17 for
+2026-08-10..2026-08-17:
+
+| Quantity | Value |
+|---|---|
+| verified job cuts (`jobs` - `announced_jobs`) | 13,658 |
+| verified cuts on entries carrying a country | 8,989 |
+| verified cuts on entries carrying none | 4,669 |
+| distinct countries returned | 12 |
+
+So it is worldwide, and it is worldwide in a way a reader would not guess: a
+third of the total sits on entries we cannot place. A bare "worldwide" implies
+a placed total, which is quiet work the word should not be doing. Both halves
+go in the sentence:
+
+    10 to 17 August 2026, worldwide including entries with no country
+    recorded, counted by the date the cuts take effect.
+
+**The second half is MEASURED per send.** `alt_digest_geo_scope($headline,
+$covered)` compares the verified headline against the sum of the verified
+column across every country the endpoint returned, and drops the clause
+entirely when they agree. `$topN` caps at 60 values against 58 live countries,
+so that sum is the whole set rather than a top slice. Fixed prose around
+variable data is the fault this log keeps recording, and it is no better on
+this dimension than it was on the last one.
+
+To get `$covered` before the headline, the `$verified_split` closure and its
+country call moved ABOVE the headline block. The tables still print in reading
+order further down; only the computation moved. The year-to-date call now names
+`top_countries` in its `include` allowlist so its headline gets its OWN
+measurement: a week where every cut is placed says nothing about a year where
+thousands are not.
+
+### Where the clause is deliberately NOT repeated
+
+The AI lines say "worldwide" and stop. No placed/unplaced split ships for the
+AI subset, so repeating the measured clause there would assert something about
+those rows that nothing checked.
+
+The talent section says "worldwide" and stops for the same reason from the
+other direction. `/talent/v1/aggregate` returns `by_country` capped at 40
+values against 84 live countries, so a shortfall against the total cannot tell
+an unplaced signal from one below the cut-off. An unmeasured caveat is the same
+fault as a fixed one.
+
+### The test
+
+`tests/test_digest_scope_rules.py` gained
+`NoHeadlineFigureLeavesItsGeographyToBeInferred`: it pulls every
+`data-alt="scope"` line out of the HTML part and every lede line out of the
+text part, asserts the two parts carry the same NUMBER of headline figures, and
+fails any that never says where on earth it counts. Five assertions, all five
+red before the change. A talent fixture joined the file so that section is
+covered by the same rule rather than by inspection.
 ## 2026-08-17 - the message asking permission was measuring the person it asked (2.20.78)
 
 A real confirmation email was sent from the live form to a throwaway address
@@ -172,6 +249,56 @@ names the action and carries a token.
 Nothing above the Subscribe button, so the fold stamp from 2.20.76 still
 matches and `signup_fold.py` needed no re-record. The double opt-in mechanism,
 the tokens, the throttle and the retention window are all unchanged.
+
+### Verified live on 2.20.77, and one of the two answers is a no
+
+Both routes exercised against the live site with real tokens out of real
+delivered mail. The confirm link now arrives as
+`/blog/ai-layoff-tracker/confirm/<64 hex>/`.
+
+| What | Result |
+|---|---|
+| new path, confirm by GET | 302 to `alt_dg=confirmed`, row confirmed |
+| LEGACY `admin-post.php`, confirm by GET | 302 to `alt_dg=confirmed`, row confirmed |
+| new path, one-click POST | 200 |
+| LEGACY `admin-post.php`, one-click POST | 200 |
+| new path, unsubscribe by GET | 302 to `alt_dg=unsubscribed` |
+| new path, POST an unknown token | 200 |
+| new path, no token at all | 302 to `alt_dg=expired`, not a 404 |
+
+An unplanned second benefit of leaving the query string behind. The old link
+carried `&t=<hex>`, and `=` is the escape character in quoted-printable, so the
+token arrived mangled in at least one decoder. The new link contains no `=` at
+all and renders as 64 clean hex characters.
+
+**THE FROM HEADER DOES NOT REACH THE READER, and the honest thing was to say
+so in the file rather than leave it looking configured.** A real confirmation
+sent after the deploy still arrived as a bare `newsletter@asktherecruiter.com`
+with no display name. Brevo replaces the whole From line, not only the address.
+
+The measurement is only worth as much as its controls, so all three are
+recorded in RUNBOOK: `from:Trackers` returns nothing, `from:UpdraftPlus`
+matches messages whose ADDRESS contains no such word (so the operator does read
+display names), and `from:Backed`, a word in those same subjects, returns
+nothing (so it is not leaking into the subject). Without the last two, "no hit"
+would equally have meant "the operator cannot see display names".
+
+`alt_digest_from_header()` stays, with a docblock that leads on the negative
+result. It is the correct identity the moment the relay changes, which is
+exactly the reversibility the Brevo coupling is documented to preserve;
+deleting it would hand readers `WordPress <wordpress@...>` on that day. The
+only lever that changes what a reader sees today is the Brevo dashboard.
+
+**Also measured, and left alone deliberately:** a repeat GET of the SAME confirm
+URL is served from the Railway edge (`x-cache-status: STALE`) rather than the
+origin, despite `no-store, private` and `DONOTCACHEPAGE`; the giveaway was two
+requests returning an identical receipt token, which a random generator cannot
+do. With a cache-busting query string the origin answers `expired` correctly.
+That cache is not purgeable from this repo, and the effect is harmless: the
+row is already confirmed by the first request, the cache key is a URL only that
+subscriber holds, and a reader who clicks twice sees "confirmed" rather than
+"already used", which is the friendlier of the two true answers. Recorded
+because the next person to measure a replay will see it and think it is a bug.
 
 **Found while reading the message as a stranger, and NOT fixed here:** Brevo is
 injecting its open-tracking pixel into the confirmation email itself, which

@@ -1298,12 +1298,34 @@ from:Trackers newer_than:2d in:anywhere
 ```
 
 `Trackers` appears in the display name and in no address on this domain, so a
-hit means the header survived and a miss means Brevo overwrote it. Verified
-on 2026-08-17 against the deploy of 2.20.77; the result is recorded in
-docs/TECHLOG.md under that version.
+hit means the header survived and a miss means Brevo overwrote it.
 
-**If it does not survive, set the sender name in the Brevo dashboard and record
-here that this function cannot win.** Do not try a different header, and do not
+**RESULT, measured 2026-08-17 against the deploy of 2.20.77: it did NOT
+survive. Brevo replaces the whole From line, not only the address.** A real
+confirmation sent from the live form after the deploy still arrived as a bare
+`newsletter@asktherecruiter.com` with no display name.
+
+Two controls make that a fact rather than an absence of evidence, and rerun
+them before trusting a future negative:
+
+| Search | Result | What it proves |
+|---|---|---|
+| `from:Trackers` | nothing | our display name is not in the received From |
+| `from:UpdraftPlus` | matches | `from:` DOES match display names, not just addresses |
+| `from:Backed` | nothing | `from:` does NOT leak into the subject line |
+
+Without the second and third rows the first is worthless, because "no hit"
+would equally mean "the operator cannot see display names".
+
+**So the only lever that changes what a reader sees is the Brevo dashboard.**
+Set the sender name there. `alt_digest_from_header()` stays as it is: it states
+the intended identity in code, it costs nothing while the relay overrules it,
+and it becomes live the day the relay changes, which the whole Brevo coupling
+is designed to allow. Deleting it would silently hand readers `WordPress
+<wordpress@...>` on that day.
+
+Do not try a different header, do not add a `wp_mail_from_name` filter hoping
+to win a race with a plugin that replaces `wp_mail` wholesale, and do not
 change the address to something Brevo will accept: an unaligned From is a worse
 outcome than an unnamed one.
 

@@ -208,6 +208,17 @@ class AStaleLinkSaysSoPlainly(_Harness):
 
 
 class TheFromLineNamesTheSender(_Harness):
+    """WHAT WE HAND TO wp_mail, NOT WHAT THE READER SEES.
+
+    Measured 2026-08-17 on 2.20.77: Brevo replaces the whole From line at the
+    relay, so the received message carries a bare address whatever this
+    function returns. These assertions are still worth holding, because the
+    value becomes live the day the relay changes and because an unaligned
+    address or an emoji would be wrong in either world. None of them may be
+    rewritten to claim a reader sees this. See alt_digest_from_header()'s
+    docblock and RUNBOOK "the confirmation email's From line".
+    """
+
 
     def test_the_confirmation_carries_a_from_header(self):
         headers = self.routes["confirm_mail_headers"]

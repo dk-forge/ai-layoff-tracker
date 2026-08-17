@@ -1204,15 +1204,41 @@ add_action('admin_post_nopriv_alt_digest_unsub', 'alt_digest_unsubscribe');
  * one there as interface spoofing and it is the single placement with a
  * documented hard block. tests/test_digest_link_identity.py holds that.
  *
- * WHETHER THIS HEADER SURVIVES THE RELAY IS AN OPEN QUESTION, AND IT HAS TO BE
- * ANSWERED BY MEASUREMENT, NOT BY READING THIS COMMENT. The Brevo plugin
- * already replaces the address, so it may replace the whole line. A header we
- * set that is silently discarded is worse than no header, because the file
- * then looks configured. The check is one search of a received message for the
- * word "Trackers", which appears in this display name and in no address:
- * RUNBOOK "the confirmation email's From line". If it does not survive, the
- * answer is to set the sender in the Brevo dashboard and to record here that
- * this function cannot win, NOT to try a different header.
+ * THIS HEADER DOES NOT REACH THE READER. MEASURED, 2026-08-17, ON 2.20.77.
+ *
+ * Read this before you believe the three lines below do anything. A real
+ * confirmation was sent from the live form after 2.20.77 deployed, and the
+ * received message still carried a bare `newsletter@asktherecruiter.com` with
+ * no display name. Brevo replaces the whole From line, not only the address.
+ *
+ * How that was established, so the next person can redo it rather than trust
+ * it: Gmail's `from:` operator matches words in the display name as well as
+ * the address, and `from:Trackers` returns nothing, while `from:UpdraftPlus`
+ * returns messages whose ADDRESS contains no such word. The control that makes
+ * that meaningful is `from:Backed`, a word in those same subjects, which
+ * returns nothing: the operator is not leaking into the subject line, so the
+ * absence of "Trackers" is a fact about the From header.
+ *
+ * SO WHY IS IT STILL HERE, when a header that is silently discarded is worse
+ * than no header because the file looks configured? Because this docblock is
+ * what stops it looking configured, and because the value is the correct one
+ * the moment the relay changes. `assert_message_is_clean` and the RUNBOOK both
+ * treat the Brevo coupling as reversible by swapping provider; on the day that
+ * happens, deleting this would silently hand readers `WordPress
+ * <wordpress@...>` again. It states the intended identity in code, and it
+ * costs nothing while the relay overrules it.
+ *
+ * THE ONLY LEVER THAT CHANGES WHAT A READER SEES IS THE BREVO DASHBOARD. Set
+ * the sender name there. Do not try a different header, do not try a
+ * `wp_mail_from_name` filter hoping to win a race with a plugin that replaces
+ * wp_mail wholesale, and above all do not change the ADDRESS to something the
+ * relay will accept: an unaligned From is a worse outcome than an unnamed one.
+ * RUNBOOK "the confirmation email's From line" carries the check.
+ *
+ * What the test asserts is what we HAND to wp_mail, which is still worth
+ * holding: one From line, the aligned address, and no graphical character in
+ * the name. It does not claim the reader sees it, and it must never be
+ * rewritten to claim that.
  */
 if (!defined('ALT_DIGEST_FROM_EMAIL')) define('ALT_DIGEST_FROM_EMAIL', 'newsletter@asktherecruiter.com');
 if (!defined('ALT_DIGEST_FROM_NAME'))  define('ALT_DIGEST_FROM_NAME', 'AskTheRecruiter Trackers');
@@ -1553,6 +1579,44 @@ function alt_digest_rank_table($rows) {
  * $missing  what an uncovered row lacks, e.g. 'no country recorded'
  * $range    the window, because this line has to stand on its own too
  */
+/**
+ * WHERE A HEADLINE FIGURE COUNTS, in the fewest words that are true.
+ *
+ * THE DEFECT THIS FIXES, found by the owner reading the delivered email of
+ * 2026-08-16. The redesign named four things every figure must state: the
+ * window, the tier, the date basis and the geography. Three of them reached
+ * the headline. The block read:
+ *
+ *     Verified job cuts
+ *     13,658
+ *     10 to 17 August 2026, counted by the date the cuts take effect.
+ *
+ * and his question was one word long: where. The country table lower down did
+ * carry a geography basis, but it carried it for the table. A reader who
+ * quotes the 13,658 takes none of it, which is the exact adjacency failure
+ * this whole rewrite exists to remove, one dimension over.
+ *
+ * WHY "WORLDWIDE" IS NOT ALLOWED TO STAND ALONE. The composers send no
+ * `country` parameter, so alt_db_where() adds no country clause and the query
+ * counts every row in the window. That is worldwide. It is also worldwide in
+ * a way a reader would not guess: rows carrying NO country at all are in the
+ * total too. Measured on the live week of 2026-08-16, 8,989 of 13,658
+ * verified job cuts sat on entries with a country and 4,669 did not. A bare
+ * "worldwide" implies a placed total and quietly overstates what we know.
+ *
+ * SO THE SECOND HALF IS MEASURED, NOT WRITTEN DOWN. $covered is the sum of
+ * the verified column across every country the endpoint returned, and the
+ * cut-off is 60 values against 58 live countries, so it is the whole set. A
+ * window where every verified cut carries a country says "worldwide" and
+ * nothing more. Fixed prose around variable data is the fault this file keeps
+ * logging, and it is no better on this dimension than on the last one.
+ */
+function alt_digest_geo_scope($headline, $covered) {
+    return ((int) $headline > (int) $covered)
+        ? 'worldwide including entries with no country recorded'
+        : 'worldwide';
+}
+
 function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing, $range) {
     $shown = (int) $shown; $covered = (int) $covered; $headline = (int) $headline;
     if ($shown === $headline) return '';
@@ -1693,11 +1757,50 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $has_announced = ($ann_jobs > 0 || $ann_entries > 0);
 
     /*
+      THE TOP FIVE ON THE TIER WE ACTUALLY PRINT, WHICH MEANS RE-SORTING.
+
+      The endpoint orders these rows by column [1], the announced-inclusive
+      total, because that is what the tracker page's bar charts draw. This
+      block prints column [4], the verified tier, so taking the endpoint's
+      first five would label a list "the largest" that is not sorted by the
+      number beside it. On the live week of 2026-08-16 that put Media and
+      Entertainment second on 75 verified jobs, above Food and Hospitality on
+      2,505. The rows are re-sorted here, and only then cut to five.
+
+      IT IS DECLARED AND CALLED UP HERE, ABOVE THE HEADLINE, because the
+      headline needs its third return value. `$covered` is what tells
+      alt_digest_geo_scope() whether "worldwide" is the whole story for this
+      window or whether some of the total sits on entries we cannot place.
+      The tables themselves are still printed further down, in reading order.
+    */
+    $verified_split = function ($block) {
+        $all = array(); $multi = 0; $covered = 0;
+        foreach ((is_array($block) ? $block : array()) as $row) {
+            $row = array_values((array) $row);
+            $name = trim((string) ($row[0] ?? ''));
+            // Column 4 is the verified tier. Column 1 includes announced.
+            $value = (int) ($row[4] ?? 0);
+            if ($name === '' || $value <= 0) continue;
+            $covered += $value;
+            if (strcasecmp($name, 'Multiple countries') === 0) { $multi = $value; continue; }
+            $all[$name] = $value;
+        }
+        arsort($all, SORT_NUMERIC);
+        return array(array_slice($all, 0, 5, true), $multi, $covered);
+    };
+    list($named, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
+    $geo = alt_digest_geo_scope($ver_jobs, $covered);
+
+    /*
       THE HEADLINE, BUILT SO ONE SCREENSHOT OF IT IS STILL TRUE.
 
-      Three lines that travel together: a label, the figure, and the scope. A
-      reporter who lifts the block into a slide takes the window and the basis
-      with it, which is the property the owner named Statista for. It is also
+      Three lines that travel together: a label, the figure, and the scope.
+      The scope names all four dimensions in one sentence: the window, the
+      geography, the date basis, and, through the kicker above it, the tier.
+      It carried only three until 2026-08-17; see alt_digest_geo_scope().
+
+      A reporter who lifts the block into a slide takes the window and the
+      basis with it, which is the property the owner named Statista for. It is also
       the fastest thing in the email to read, and the research says that
       matters more than it looks: an opened newsletter gets tens of seconds,
       not minutes (Nielsen Norman Group, 51s average, 19% read in full), and
@@ -1706,7 +1809,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       The site says WHAT each line is with data-alt. digest_layout.py decides
       how it looks. No size, no colour and no weight is chosen here.
     */
-    $scope = $range . ', counted by the date the cuts take effect.';
+    $scope = $range . ', ' . $geo . ', counted by the date the cuts take effect.';
     $html = '<h2>AI Layoff Tracker</h2>'
           . '<p data-alt="kicker">Verified job cuts</p>'
           . '<p data-alt="stat">' . esc_html(number_format_i18n($ver_jobs)) . '</p>'
@@ -1757,12 +1860,20 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $ai_jobs = (int) ($totals['ai_verified_jobs'] ?? 0);
     $ai_entries = (int) ($totals['ai_verified_entries'] ?? 0);
+    /*
+      IT SAYS "WORLDWIDE" AND NOT THE LONGER CLAUSE, on purpose. The headline
+      above carries the measured no-country qualifier because $covered is a
+      measurement of the set that headline counts. No equivalent split ships
+      for the AI subset, so repeating the clause here would assert something
+      about these rows that nothing checked. The word that answers "where" is
+      the same word either way, and it is the one the owner asked for.
+    */
     if ($ai_jobs > 0) {
         $ai_line = 'Attributed to AI by the employer: ' . number_format_i18n($ai_jobs)
                  . ' of those verified job cuts, across ' . number_format_i18n($ai_entries)
-                 . ' entries, ' . $range . '.';
+                 . ' entries, ' . $range . ', worldwide.';
     } else {
-        $ai_line = 'No verified job cuts in ' . $range
+        $ai_line = 'No verified job cuts worldwide in ' . $range
                  . ' carry an explicit AI attribution from the employer.';
     }
     $html .= '<p data-alt="note">' . esc_html($ai_line) . '</p>';
@@ -1874,34 +1985,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       the `country` column rather than the employer's domicile. The caption
       says so, attached to this block, not floating above it.
     */
-    /*
-      THE TOP FIVE ON THE TIER WE ACTUALLY PRINT, WHICH MEANS RE-SORTING.
-
-      The endpoint orders these rows by column [1], the announced-inclusive
-      total, because that is what the tracker page's bar charts draw. This
-      block prints column [4], the verified tier, so taking the endpoint's
-      first five would label a list "the largest" that is not sorted by the
-      number beside it. On the live week of 2026-08-16 that put Media and
-      Entertainment second on 75 verified jobs, above Food and Hospitality on
-      2,505. The rows are re-sorted here, and only then cut to five.
-    */
-    $verified_split = function ($block) {
-        $all = array(); $multi = 0; $covered = 0;
-        foreach ((is_array($block) ? $block : array()) as $row) {
-            $row = array_values((array) $row);
-            $name = trim((string) ($row[0] ?? ''));
-            // Column 4 is the verified tier. Column 1 includes announced.
-            $value = (int) ($row[4] ?? 0);
-            if ($name === '' || $value <= 0) continue;
-            $covered += $value;
-            if (strcasecmp($name, 'Multiple countries') === 0) { $multi = $value; continue; }
-            $all[$name] = $value;
-        }
-        arsort($all, SORT_NUMERIC);
-        return array(array_slice($all, 0, 5, true), $multi, $covered);
-    };
-
-    list($named, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
+    // $verified_split, $named, $multi and $covered are built ABOVE the
+    // headline, because the headline's geography clause is computed from
+    // $covered. See the comment on the declaration.
     if ($named) {
         $caption = $range . ', verified only, counted where the jobs were rather than '
                  . 'where the employer is based.';
@@ -2022,9 +2108,14 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $ytd_req->set_param('from', $year . '-01-01');
         $ytd_req->set_param('to', $to);
         $ytd_req->set_param('date_basis', 'layoff_date');
-        // One real block name, because naming none of them costs all of them.
-        // Nothing below reads it; `totals` is what this call is for.
-        $ytd_req->set_param('include', 'leaders');
+        /*
+          `top_countries`, because this headline needs its OWN geography
+          measurement. Borrowing the period's would be the adjacency fault
+          again: a week where every cut is placed says nothing about a year
+          where thousands are not. `include` is an opt-in allowlist, so the
+          block has to be named or it comes back empty.
+        */
+        $ytd_req->set_param('include', 'top_countries');
         $ytd_res = rest_do_request($ytd_req);
         $ytd_range = alt_digest_date_range($year . '-01-01', $to);
         if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
@@ -2036,7 +2127,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             $ytd_ai = is_array($ytd_totals) ? (int) ($ytd_totals['ai_verified_jobs'] ?? 0) : 0;
             $ytd_jobs = max(0, $ytd_all - $ytd_ann);
             if ($ytd_jobs > 0) {
-                $ytd_scope = $ytd_range . ', counted by the date the cuts take effect.';
+                list(, , $ytd_covered) = $verified_split($ytd_data['top_countries'] ?? null);
+                $ytd_geo = alt_digest_geo_scope($ytd_jobs, $ytd_covered);
+                $ytd_scope = $ytd_range . ', ' . $ytd_geo
+                           . ', counted by the date the cuts take effect.';
                 $html .= '<h3>' . esc_html($year) . ' so far</h3>'
                        . '<p data-alt="kicker">Verified job cuts</p>'
                        . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_jobs)) . '</p>'
@@ -2045,7 +2139,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                        . number_format_i18n($ytd_jobs) . ' verified job cuts, ' . $ytd_scope . "\n";
                 if ($ytd_ai > 0) {
                     $ytd_ai_line = 'Of those, ' . number_format_i18n($ytd_ai)
-                                 . ' were attributed to AI by the employer, ' . $ytd_range . '.';
+                                 . ' were attributed to AI by the employer, '
+                                 . $ytd_range . ', worldwide.';
                     $html .= '<p data-alt="note">' . esc_html($ytd_ai_line) . '</p>';
                     $text .= $ytd_ai_line . "\n";
                 }
@@ -2088,7 +2183,21 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $companies = number_format_i18n((int) ($data['companies'] ?? 0));
     $verified = number_format_i18n((int) ($data['verified'] ?? 0));
     $totalf = number_format_i18n($total);
-    $scope = $range . ', counted by the date the source published.';
+    /*
+      WHERE, AND WHY THIS ONE SAYS LESS THAN THE LAYOFF SECTION'S.
+
+      Same defect, same fix: this composer sends no country parameter, so the
+      count is worldwide, and until 2026-08-17 the headline never said so.
+
+      It stops at "worldwide" and does not add the layoff section's measured
+      "including entries with no country recorded", because here that clause
+      would be unmeasured. The talent aggregate returns `by_country` capped at
+      40 values against 84 live countries, so a shortfall against the total
+      cannot tell an unplaced signal from one below the cut-off. An unmeasured
+      caveat is the same fault as a fixed one. If that endpoint ever ships a
+      placed/unplaced split, use alt_digest_geo_scope() here too.
+    */
+    $scope = $range . ', worldwide, counted by the date the source published.';
     $html = '<h2>Talent Intelligence Tracker</h2>'
           . '<p data-alt="kicker">New hiring signals</p>'
           . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
@@ -2171,7 +2280,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
             $ytd_total = (int) (((array) $ytd_res->get_data())['total'] ?? 0);
             if ($ytd_total > 0) {
-                $ytd_scope = $ytd_range . ', counted by the date the source published.';
+                $ytd_scope = $ytd_range
+                           . ', worldwide, counted by the date the source published.';
                 $html .= '<h3>' . esc_html($year) . ' so far</h3>'
                        . '<p data-alt="kicker">Hiring signals</p>'
                        . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_total)) . '</p>'

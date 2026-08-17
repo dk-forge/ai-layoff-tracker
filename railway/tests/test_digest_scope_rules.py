@@ -1,4 +1,4 @@
-"""Every figure in the digest names the window it covers.
+"""Every figure in the digest names the window it covers, and where it counts.
 
 WHAT WENT WRONG, AND WHY A REVIEW WOULD NOT HAVE CAUGHT IT.
 
@@ -34,6 +34,30 @@ figure and take their window from the sentence beside them inside the same
 short note, and forcing a date into every clause produced copy nobody would
 read. That is a real gap, it is named here rather than papered over, and the
 line is the unit a reader actually quotes or screenshots.
+
+THE FOURTH DIMENSION, ADDED 2026-08-17 BECAUSE IT WAS MISSING FROM THE FIRST
+THREE.
+
+The redesign named four things a figure has to state: the timeframe, the tier
+(verified or announced), the date basis, and the geography. Three of them
+reached the headline. The delivered email of 2026-08-16 read:
+
+    Verified job cuts
+    13,658
+    10 to 17 August 2026, counted by the date the cuts take effect.
+
+The owner's question was one word long: where. Nothing in that block answers
+it. The country table further down said "counted where the jobs were rather
+than where the employer is based", but that qualifier belonged to the table,
+and a reader who lifts the 13,658 carries none of it.
+
+Measured before the fix, on the live week: 13,658 verified job cuts, of which
+8,989 sit on entries carrying a country and 4,669 do not. The composer sends
+no `country` parameter, so alt_db_where applies no country clause at all. The
+figure is worldwide, and it is worldwide in a way that includes entries whose
+country we do not hold. Both halves of that go in the sentence, and the second
+half is MEASURED per send rather than written down once: a window where every
+verified cut carries a country must not claim otherwise.
 
 The composers are PHP, so this drives them through
 tests/fixtures/digest_compose_harness.php against fixture payloads whose tuple
@@ -118,8 +142,42 @@ def layoff_fixture(**over):
                 _tuple("news", 5726, 2710),
             ],
         },
-        "ytd": {"totals": {"jobs": 971602, "announced_jobs": 463348,
-                           "ai_verified_jobs": 42253}},
+        "ytd": {
+            "totals": {"jobs": 971602, "announced_jobs": 463348,
+                       "ai_verified_jobs": 42253},
+            # The year window has its own country split, so its own headline
+            # gets its own measured geography clause. Sharing the period's
+            # would be the adjacency fault again, one dimension over.
+            "top_countries": [
+                _tuple("United States", 402000, 300000),
+                _tuple("Multiple countries", 60000, 40000),
+            ],
+        },
+    }
+    data.update(over)
+    return data
+
+
+def talent_fixture(**over):
+    """The talent section's shape. The harness routes /talent/ requests by
+    `since`, so ONE fixture answers both the aggregate and the query call:
+    they read different keys off it."""
+    data = {
+        "from": "2026-08-09",
+        "to": "2026-08-16",
+        "compose": "talent",
+        "talent": {
+            "total": 1332, "companies": 1281, "verified": 568,
+            "countries": 84,
+            "rows": [
+                {"company": "Concentrix", "headline": "rolls out matched PERA",
+                 "published_date": "2026-08-16"},
+                {"company": "Northwind", "headline": "opens a Dublin hub",
+                 "published_date": ""},
+            ],
+        },
+        "talent_ytd": {"total": 41880, "companies": 20114, "verified": 9902,
+                       "countries": 141},
     }
     data.update(over)
     return data
@@ -137,6 +195,94 @@ def compose(fixture):
     if run.returncode != 0:
         raise AssertionError(f"the harness failed: {run.stderr[:2000]}")
     return json.loads(run.stdout)
+
+
+# A headline figure: the three-line stat block the sections open and close
+# with, in either body part. In HTML it is marked; in text it is the lede
+# shape, a count wearing its noun at the start of the line.
+SCOPE_P = re.compile(r"<p data-alt=\"scope\">(.*?)</p>", re.S)
+LEDE = re.compile(r"^[\d,]+ (?:verified job cuts|new hiring signals"
+                  r"|hiring signals), (.*)$")
+
+# The word that answers "where". One token, checked in both parts, so a
+# rewrite that drops it from one of them fails rather than half-ships.
+GEO = "worldwide"
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH, so the composers could not "
+                              "be run. UNKNOWN, not a pass.")
+class NoHeadlineFigureLeavesItsGeographyToBeInferred(unittest.TestCase):
+    """The defect the owner found by reading the delivered email: the headline
+    stated its window, its tier and its date basis, and not where on earth it
+    counted. "Where? USA or world or what" is the whole bug report."""
+
+    def _headlines(self, section):
+        """Every headline figure's own scope sentence, from BOTH parts."""
+        html = [re.sub(r"<[^>]+>", "", m) for m in SCOPE_P.findall(section["html"])]
+        text = [m.group(1) for m in
+                (LEDE.match(l) for l in section["text"].splitlines()) if m]
+        self.assertTrue(html, "the section emitted no scope line at all")
+        self.assertEqual(len(html), len(text),
+                         "the two body parts carry different numbers of "
+                         "headline figures, so one of them is unscoped")
+        return html + text
+
+    def test_the_layoff_headlines_say_where_they_count(self):
+        for scope in self._headlines(compose(layoff_fixture())):
+            self.assertIn(GEO, scope,
+                          f"this headline figure states its window and its "
+                          f"date basis and never says where on earth it "
+                          f"counts: {scope!r}")
+
+    def test_the_talent_headlines_say_where_they_count(self):
+        for scope in self._headlines(compose(talent_fixture())):
+            self.assertIn(GEO, scope,
+                          f"this headline figure states its window and its "
+                          f"date basis and never says where on earth it "
+                          f"counts: {scope!r}")
+
+    def test_the_ai_figure_says_where_it_counts(self):
+        """It is the one figure this tracker is named after, and it is a line
+        somebody quotes on its own more often than any other."""
+        text = compose(layoff_fixture())["text"]
+        ai = [l for l in text.splitlines() if "AI attribution" in l]
+        self.assertTrue(ai, "the measured-zero AI sentence went missing")
+        self.assertIn(GEO, ai[0], f"the AI figure names no geography: {ai[0]!r}")
+
+        fixture = layoff_fixture()
+        fixture["layoff"]["totals"]["ai_verified_jobs"] = 900
+        fixture["layoff"]["totals"]["ai_verified_entries"] = 3
+        text = compose(fixture)["text"]
+        ai = [l for l in text.splitlines() if "Attributed to AI" in l]
+        self.assertTrue(ai, "the real AI sentence went missing")
+        self.assertIn(GEO, ai[0], f"the AI figure names no geography: {ai[0]!r}")
+
+    def test_worldwide_is_not_allowed_to_do_quiet_work(self):
+        """The figure is worldwide only because no country filter is sent, and
+        on the live week 4,669 of 13,658 verified cuts sat on entries carrying
+        no country at all. A bare "worldwide" would imply a placed total."""
+        scopes = self._headlines(compose(layoff_fixture()))
+        self.assertTrue(
+            all("no country recorded" in s for s in scopes),
+            "the fixture's countries fall short of the headline, so every "
+            "headline has to say the total includes entries we cannot "
+            f"place: {scopes!r}")
+
+    def test_a_window_where_every_cut_is_placed_claims_nothing_more(self):
+        """Fixed prose around variable data, one dimension over. If the
+        countries account for the whole headline, the caveat is false."""
+        fixture = layoff_fixture()
+        verified = (fixture["layoff"]["totals"]["jobs"]
+                    - fixture["layoff"]["totals"]["announced_jobs"])
+        fixture["layoff"]["top_countries"] = [
+            _tuple("United States", verified, verified)]
+        section = compose(fixture)
+        period = section["text"].split("\n2026 so far")[0]
+        self.assertIn(GEO, period.splitlines()[1])
+        self.assertNotIn("no country recorded", period,
+                         "every verified cut in this window carries a "
+                         "country and the email still told the reader some "
+                         "of them do not")
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH, so the composers could not "
@@ -263,8 +409,8 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         checked". This is not the zero-filling the repo bans: the query
         succeeded and the number is real."""
         text = compose(layoff_fixture())["text"]
-        self.assertIn("No verified job cuts in 9 to 16 August 2026 carry an "
-                      "explicit AI attribution", text)
+        self.assertIn("No verified job cuts worldwide in 9 to 16 August 2026 "
+                      "carry an explicit AI attribution", text)
 
     def test_a_real_ai_figure_replaces_that_sentence(self):
         fixture = layoff_fixture()
