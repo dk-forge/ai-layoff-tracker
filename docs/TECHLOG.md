@@ -1,5 +1,66 @@
 # Tech Log
 
+## 2026-08-17 - the message asking permission was measuring the person it asked (2.20.78)
+
+A real confirmation email was sent from the live form to a throwaway address
+and the received message was read. It carried Brevo's open-tracking pixel
+twice, injected at the relay, both pointing at `sendibt2.com`.
+
+**This is not the digest's disclosure again wearing a new hat.** The digest's
+tracking was disclosed and corrected in 2.20.74 and 2.20.75, and a digest goes
+to somebody who ticked a box. The confirmation goes to a `status=pending` row,
+which by the design in `includes/subscribe.php` is an address that has
+consented to NOTHING. Its own docblock said "the confirmation IS the only email
+a pending address ever receives". So measuring whether that person opened the
+message asking their permission creates a per-person record before permission
+exists, and creates it for someone who never confirms at all.
+
+**No test in this repo could see it, and the green was the problem.** Our own
+code embeds no image; `assert_message_is_clean` passes; every check reads
+correct. The pixel is added after we hand the message over. Same shape as the
+`?cb=` cache-buster: a check that cannot observe the failure mode returns the
+answer to a different question.
+
+**Whether it could be exempted was checked rather than assumed, and it cannot
+be.** The confirmation is `wp_mail`, which the Brevo WordPress plugin replaces;
+that plugin exposes no per-message tracking control. Brevo's only per-recipient
+control is `contactPixelTrackingConsent`, a field on `POST /v3/smtp/email` -
+and NEITHER of our two paths makes that call: the confirmation goes through the
+WP plugin and the digest goes over the SMTP relay (`DIGEST_TRANSPORT=smtp`),
+whose envelope has nowhere to put a field. Brevo's own position is that
+disabling tracking outright is an Enterprise-plan request. Every remaining
+lever is account-wide in the dashboard and would take the digest's deliberate,
+disclosed measuring with it.
+
+**So the answer is disclosure, and the copy now distinguishes the two
+messages.** The always-visible line under the form and the privacy note both
+described tracking as something that happens to "an email", which reads as the
+digest and leaves a reader to assume the recording starts once they have
+agreed. Both now name the confirmation email and say it is measured before you
+have agreed to anything, and the note gives the only action that actually
+exists: do not open it, because nothing else is ever sent to an unconfirmed
+address and the row is deleted after 30 days.
+`test_the_privacy_note_singles_out_the_confirmation_email` pins both strings,
+which is the first test over the form copy at all; before it, the copy was
+coupled to a dashboard setting by hand and by nothing else.
+
+Landed on top of 2.20.76, which had just moved that disclosure out of the intro
+because it cost 96px of the phone-fold budget. The added clause went into the
+same below-the-button paragraph, where it costs the fold nothing, rather than
+back into the intro that version had just cleared.
+
+Also corrected: `test_digest_brevo_feedback.py`'s
+`test_engagement_events_are_not_stored_anywhere` still justified itself with
+"the published privacy note says we cannot tell whether you opened an email".
+That has been false since 2026-08-16. The assertion under it was always right
+and is unchanged; only its stated reason was stale, which is its own hazard - a
+future session reading a false premise deletes the true test that rests on it.
+
+The option that would separate the two messages (a Brevo HTTP-API transport
+passing per-recipient consent, plus per-contact consent mode in the dashboard)
+is written up in RUNBOOK "Open and click tracking" rather than half-built: it
+couples us harder to Brevo and the dashboard half is the owner's call.
+
 ## 2026-08-17 - the only link in the only email a pending address ever gets pointed at wp-admin, and the sender had no name (2.20.77)
 
 Two faults in one message, both about trust rather than function. The

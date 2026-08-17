@@ -268,8 +268,18 @@ class BrevoSuppression(unittest.TestCase):
             self.assertEqual(got["body"]["stopped"], 0, name)
 
     def test_engagement_events_are_not_stored_anywhere(self):
-        """The published privacy note says we cannot tell whether you opened an
-        email. An open event must therefore leave no trace, not a counted one."""
+        """The reason changed on 2026-08-16; the assertion did not.
+
+        This used to read "the published privacy note says we cannot tell
+        whether you opened an email". That stopped being true when open
+        tracking was turned on at Brevo, and the note was corrected to say the
+        provider records it. What still holds, and is what this test is for, is
+        that WE do not keep it: an open arrives here as a webhook event and
+        must leave no trace on our side, not a counted one. Brevo holding the
+        record is a fact we disclose; this endpoint copying it into our own
+        subscriber table would be a per-person engagement store nobody agreed
+        to, and it would put an open against a `pending` row that has consented
+        to nothing (see includes/subscribe.php on the confirmation email)."""
         got = _run(_event("opened", link="https://asktherecruiter.com/blog/x",
                           user_agent="Mozilla/5.0", device_used="DESKTOP"),
                    _auth())

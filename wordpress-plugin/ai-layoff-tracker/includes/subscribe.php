@@ -30,6 +30,31 @@
  *     here can read. Keep our own message clean anyway: it is what makes the
  *     tracking removable by changing provider rather than by unpicking
  *     templates, and assert_message_is_clean enforces it.
+ *   - THE CONFIRMATION EMAIL IS MEASURED TOO, and that is the sharpest edge
+ *     of the above. Measured 2026-08-17 on a real send: the received message
+ *     carried Brevo's open pixel twice, injected at the relay. A digest goes
+ *     to somebody who ticked a box; the confirmation goes to an address in
+ *     status=pending, which by the design in THIS FILE has consented to
+ *     nothing at all. So an open event is created against that address
+ *     BEFORE permission exists, and it is created even for a person who
+ *     never confirms. No test in this repo can see it: our own message
+ *     embeds no image and assert_message_is_clean still passes, because the
+ *     pixel is added after we hand the message over.
+ *     It cannot be exempted from here, and that was checked rather than
+ *     assumed. The confirmation goes out through wp_mail (see
+ *     alt_digest_send_confirm_email), which the Brevo WordPress plugin
+ *     replaces; that plugin exposes no per-message tracking control. Brevo's
+ *     ONLY per-recipient control is `contactPixelTrackingConsent`, a field on
+ *     the HTTP API call POST /v3/smtp/email, and neither of our two paths
+ *     makes that call: the confirmation goes through the WP plugin and the
+ *     digest goes over the SMTP relay (DIGEST_TRANSPORT=smtp), whose envelope
+ *     has nowhere to put the field. Turning tracking off outright is an
+ *     Enterprise-plan request on Brevo's side. So the only lever that exists
+ *     today is account-wide, in the dashboard, and it would take the digest's
+ *     deliberate measuring with it. The reader is therefore TOLD, in the
+ *     signup form's privacy note, that this one message is measured before
+ *     they have agreed to anything. docs/RUNBOOK.md "Open and click tracking"
+ *     holds the options and what each one costs.
  *   - Link clicks are counted in AGGREGATE only: one integer per (send, link),
  *     with no subscriber id, no IP and no user agent stored. The counter
  *     cannot say who clicked, only how many times a link was followed. See
@@ -773,8 +798,17 @@ function alt_digest_subscribe_form($context = '') {
                  screen a phone reader gets. Moving it cost the reader nothing.
                  The longer version stays inside the disclosure below, which is
                  where the provider is named and the mechanism explained. */ ?>
+        <?php /* THE CONFIRMATION CLAUSE BELONGS IN THIS SENTENCE, not only in
+                 the disclosure below. "An email" reads as the digest, so a
+                 reader assumes the recording starts once they have agreed. It
+                 starts with the message that ASKS them, which goes to a
+                 pending row that has consented to nothing (file docblock).
+                 This paragraph is below the Subscribe button, so the added
+                 clause costs the phone fold nothing; check with
+                 python3 railway/signup_fold.py before moving it up. */ ?>
         <p class="alt-digest-tracking">Our mail provider records whether you open an email and which links
-            you follow. Unsubscribing stops the sending and the recording together.</p>
+            you follow, including the confirmation email, which is measured before you have agreed to
+            anything. Unsubscribing stops the sending and the recording together.</p>
 
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>
@@ -785,6 +819,14 @@ function alt_digest_subscribe_form($context = '') {
                 emails, and it works by adding a small invisible image and by routing links through its
                 own address. We read it to see which sections people use. Unsubscribing stops the sending
                 and the measuring at the same time, and erasing your row removes it from our side.</p>
+            <p><strong>The confirmation email is measured too:</strong> the same invisible image is in the
+                one message that asks your permission. If you open it, Brevo records that against your
+                address before you have agreed to anything, and it records it even if you then never
+                confirm. We would exempt that message if we could. Brevo offers no way to switch its
+                measuring off for a single email, and the one setting that exists covers every email we
+                send or none of them. If you would rather not be measured at all, do not open it. Nothing
+                else is ever sent to an unconfirmed address, and the signup is deleted from our side after
+                <?php echo (int) ALT_DIGEST_RETENTION_DAYS; ?> days.</p>
             <p><strong>About the links:</strong> links in the digest pass through a counter on this
                 site that adds 1 to a total for that link and sends you straight on. It records no
                 identifier, no IP address and no browser details, so it counts how many times a link
@@ -1205,6 +1247,16 @@ function alt_digest_confirm_subject() {
 
 /**
  * The ONLY email a pending address ever receives.
+ *
+ * AND THE ONE WE CANNOT KEEP UNMEASURED. wp_mail here is the Brevo WordPress
+ * plugin, which injects an open pixel at the relay and offers no per-message
+ * opt-out; the field that would carry one (`contactPixelTrackingConsent`)
+ * exists only on Brevo's HTTP API, which this path does not call. So an open
+ * of THIS message is recorded against an address that has consented to
+ * nothing. The signup form's privacy note says so in those terms. Do not
+ * "fix" it by embedding anything of ours in the body: our message is clean and
+ * that is what keeps the tracking removable by changing provider. See the file
+ * docblock and docs/RUNBOOK.md "Open and click tracking".
  */
 function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token) {
     $confirm_url = alt_digest_confirm_url($confirm_token);

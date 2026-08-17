@@ -315,6 +315,38 @@ class StatsRouteShape(unittest.TestCase):
         self.assertIn("counter", note.lower())
         self.assertIn("no IP address", note)
 
+    def test_the_privacy_note_singles_out_the_confirmation_email(self):
+        """Measured 2026-08-17: Brevo injects its open pixel into the
+        confirmation email as well, and that message goes to a `pending` row,
+        which by this file's own design has consented to NOTHING. It cannot be
+        exempted (no per-message opt-out through wp_mail), so the only honest
+        answer left is to say so. A note that describes tracking as something
+        that happens to "an email" leaves a reader to assume it starts once
+        they have agreed. Nothing in the repo can catch this drift on its own:
+        our message embeds no image and assert_message_is_clean still passes,
+        because the pixel is added after we hand the message over."""
+        src = open(SUBSCRIBE, encoding="utf-8").read()
+        # From the <details> TAG, not from the first "alt-digest-privacy" in
+        # the file: that one is a CSS rule several hundred lines earlier, and
+        # slicing from it swallows the always-visible tracking paragraph too,
+        # so this test would pass on a note that says nothing.
+        note = src[src.index('<details class="alt-digest-privacy"'):src.index("</details>")]
+        self.assertIn("confirmation email", note.lower(),
+                      "the privacy note describes tracking without ever naming "
+                      "the one message sent before consent exists")
+        self.assertIn("before you have agreed to anything", note,
+                      "the note must say WHEN the measuring starts, not just "
+                      "that it happens")
+        # The always-visible tracking line carries the same warning, because a
+        # reader who never opens the <details> is the one who most needs it.
+        # It lives below the Subscribe button (.alt-digest-tracking) rather
+        # than in the intro, which is inside the phone-fold budget.
+        line = src[src.index('class="alt-digest-tracking"'):]
+        line = line[:line.index("</p>")]
+        self.assertIn("confirmation email", line.lower(),
+                      "the disclosure a reader sees without opening anything "
+                      "says 'an email', which reads as the digest")
+
 
 @unittest.skipUnless(_php(), "php not installed")
 class BehaviouralGuards(unittest.TestCase):

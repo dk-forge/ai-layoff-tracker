@@ -9,7 +9,19 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON:** bounce and complaint handling under **Brevo**, landed as
+- **WORKING ON (current subject, 2026-08-17):** the CONFIRMATION email's open
+  pixel, landed as **2.20.78** (`includes/subscribe.php` copy and comments,
+  `tests/test_digest_subscription.py`, `tests/test_digest_brevo_feedback.py`
+  docstring, RUNBOOK, TECHLOG). Measured on a real send: Brevo injects its open
+  pixel into the message that ASKS permission, which goes to a `pending` row
+  that has consented to nothing. It cannot be exempted - `wp_mail` through the
+  Brevo WP plugin has no per-message control and
+  `contactPixelTrackingConsent` lives on an API call neither of our two paths
+  makes - so the answer is disclosure, and the form copy now names that one
+  message. The lever that WOULD separate it is an owner decision, written up in
+  RUNBOOK "Open and click tracking", not half-built. The double opt-in
+  mechanism is untouched.
+- **PREVIOUSLY WORKING ON:** bounce and complaint handling under **Brevo**, landed as
   **2.20.65** (`includes/digest-api.php` and
   `tests/test_digest_brevo_feedback.py` only). `/digest-webhook` verified a
   Svix signature and dispatched on Resend event names, so under Brevo it

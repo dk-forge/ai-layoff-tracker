@@ -1203,8 +1203,8 @@ half-done change leaves the email honest and the signup form lying:
 |---|---|
 | `railway/digest_layout.py`, `TRACKING_SENTENCES` | "Our mail provider records whether you open this email and which links you follow. We read it to see which sections are worth keeping. Unsubscribing stops the email and the measuring together." |
 | `railway/digest_transport.py`, `tracking_note()` | the run-log line naming what is believed to be on |
-| `includes/subscribe.php`, `p.alt-digest-tracking` under the form | **corrected 2.20.75, moved 2.20.76.** "Our mail provider records whether you open an email and which links you follow. Unsubscribing stops the sending and the recording together." It is a paragraph in the flow, not inside the `<details>`: a reader learns it without opening anything |
-| `includes/subscribe.php`, the privacy note under the form | **corrected 2.20.75.** "What our mail provider records" names Brevo, the pixel and the link rewriting |
+| `includes/subscribe.php`, `p.alt-digest-tracking` under the form | **corrected 2.20.75, moved 2.20.76.** "Our mail provider records whether you open an email and which links you follow. Unsubscribing stops the sending and the recording together." **2.20.78 added "including the confirmation email, which is measured before you have agreed to anything"** - see the subsection below. It is a paragraph in the flow, not inside the `<details>`: a reader learns it without opening anything |
+| `includes/subscribe.php`, the privacy note under the form | **corrected 2.20.75.** "What our mail provider records" names Brevo, the pixel and the link rewriting. **2.20.78 added "The confirmation email is measured too"** |
 | `includes/subscribe.php`, the file's own docblock | **corrected 2.20.75** |
 
 **Where the disclosure lives is now load-bearing, so do not move it back into
@@ -1215,14 +1215,58 @@ after the `#alt-digest` jump, and the intro is the only prose inside that
 budget. Below the button the same sentences cost nothing. Shortening them is
 allowed if the two facts survive - the provider records opens and link follows,
 and unsubscribing stops both - and `railway/signup_fold.py` is how you find out
-what any rewrite costs.
+what any rewrite costs. The confirmation clause added in 2.20.78 sits in that
+same below-the-button paragraph for exactly this reason.
 
 The footer is covered by `tests/test_digest_email_layout.py`,
 `TheTrackingSentenceIsTrue`, which asserts the old promise is gone from both
 body parts, that both say plainly what is measured, and that our message still
-carries nothing that fetches. There is still no equivalent test on the FORM
-copy: the rows above are verified by reading, and if the owner turns tracking
-off in Brevo they have to be changed by hand, together.
+carries nothing that fetches. The FORM copy is covered since 2.20.78 by
+`tests/test_digest_subscription.py`,
+`test_the_privacy_note_singles_out_the_confirmation_email`, which pins the
+confirmation-email disclosure in both the always-visible line and the note.
+It does NOT pin the rest of the rows above: those are verified by reading, and
+if the owner turns tracking off in Brevo they have to be changed by hand,
+together.
+
+#### The confirmation email cannot be exempted, and that was checked
+
+**Measured 2026-08-17** on a real send from the live form: the received message
+carried Brevo's open pixel twice (an `<!--[if mso]>` variant and a
+`display:none` variant), injected at the relay. This is a sharper case than the
+digest. A digest goes to somebody who ticked a box; the confirmation goes to a
+`status=pending` row, which by the design in `includes/subscribe.php` has
+consented to nothing. An open event is therefore created against that address
+**before permission exists**, and for a person who never confirms.
+
+**Nothing in this repo can detect it.** Our message embeds no image and
+`assert_message_is_clean` passes, because the pixel is added after we hand the
+message over. Do not read that green as an absence.
+
+Four levers were checked and here is what each is worth:
+
+| Lever | Reachable? |
+|---|---|
+| A per-message opt-out in the Brevo WordPress plugin | **No.** The confirmation is `wp_mail` (`alt_digest_send_confirm_email`); the plugin replaces the mailer and exposes no tracking control. |
+| `contactPixelTrackingConsent` on the recipient | **Not from either of our paths.** It is a field on the HTTP API call `POST /v3/smtp/email`. The confirmation goes through the WP plugin; the digest goes over the **SMTP relay** (`DIGEST_TRANSPORT=smtp`), and an SMTP envelope has nowhere to put it. |
+| Turn tracking off in Brevo | Account-wide only, and Brevo's own position is that outright disabling is an Enterprise-plan request. It would take the digest's deliberate measuring with it. |
+| Anonymous email tracking (Brevo dashboard) | Account-wide only, same collateral. |
+
+So as of 2.20.78 the answer is **disclosure**: the always-visible tracking line
+under the form and the privacy note both say this one message is measured
+before the reader has agreed to anything, and the note tells them the only
+thing they can actually do about it (do not open it; nothing else is ever sent
+to an unconfirmed address).
+
+**The one option that would separate the two messages**, if the owner ever
+wants it, is a piece of work rather than a setting: give `digest_transport.py`
+a Brevo HTTP-API transport, pass `contactPixelTrackingConsent: true` per
+confirmed subscriber, then turn on per-contact tracking consent in Brevo with
+unknown-consent contacts anonymised. The confirmation, still going out through
+`wp_mail` with no such field, would then be anonymised by default while the
+digest keeps the tracking it discloses. That couples us harder to Brevo and
+needs an owner decision on the dashboard half, so it is written down here
+rather than half-built.
 
 ### The confirmation email's From line
 
