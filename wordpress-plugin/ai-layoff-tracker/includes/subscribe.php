@@ -196,6 +196,188 @@ function alt_digest_context_lead($context) {
     return isset($leads[$context]) ? $leads[$context] : '';
 }
 
+/* ------------------------------------------------------------------ */
+/* What a reader sees AFTER acting: the four terminal states           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * THE DEFECT THIS ANSWERS, 2026-08-16. The owner completed the double opt-in
+ * for real: form, confirmation mail through Brevo, link click, address
+ * confirmed. It worked, and the page he landed on printed "Your subscription
+ * is confirmed" AND THEN THE WHOLE EMPTY SIGNUP FORM UNDERNEATH IT, with a
+ * blank email field and a Subscribe button.
+ *
+ * To a person who has just subscribed, a blank subscribe form reads as "it did
+ * not work, do it again". The ones who believe it submit twice, which parks a
+ * new pending_prefs row and sends a second confirmation for an address that is
+ * already confirmed. So the empty form is not only confusing, it manufactures
+ * the exact traffic it looks like it is asking for.
+ *
+ * FOUR STATES REPLACE THE FORM rather than sitting above it, and they are the
+ * four where showing the form again is an instruction to repeat something that
+ * already succeeded:
+ *
+ *   check         we just emailed you. Submitting again sends nothing new
+ *                 (the per-address resend throttle holds for 15 minutes) and
+ *                 reads as though the first attempt failed.
+ *   confirmed     you are subscribed. This is the one the owner hit.
+ *   updated       same, with your changed choices applied.
+ *   unsubscribed  everything has stopped. A Subscribe button under that
+ *                 sentence is an invitation to undo an action on purpose.
+ *
+ * EVERY OTHER STATE KEEPS THE FORM, because every other state is a thing the
+ * reader has to do again: a bad address, no list ticked, a rate limit, a
+ * spam-trap hit, a mail failure, and a stale link.
+ *
+ * NOTHING ABOUT THE MECHANISM MOVES. Double opt-in is untouched, the tokens
+ * are untouched, the handlers are untouched. This is what the page shows.
+ */
+function alt_digest_terminal_states() {
+    return array('check', 'confirmed', 'updated', 'unsubscribed');
+}
+
+/**
+ * The three lists, named the way a confirmation reads them back.
+ *
+ * Shorter than the sentences on the form's own checkboxes on purpose: a
+ * checkbox has to say what you are agreeing to, and a receipt has to be
+ * scannable. Same keys as alt_digest_lists(), which is what stops a list
+ * existing in one place and not the other.
+ */
+function alt_digest_list_names() {
+    return array(
+        'layoff'   => 'AI Layoff Tracker digest',
+        'talent'   => 'Talent Intelligence Tracker digest',
+        'articles' => 'Occasional articles and product news',
+    );
+}
+
+/**
+ * HOW THE CONFIRMATION PAGE KNOWS WHAT THEY SUBSCRIBED TO, WITHOUT KNOWING WHO
+ * THEY ARE.
+ *
+ * The confirm handler holds the row. The page it redirects to does not, and it
+ * must not: the address may never travel in a URL (that is a guard in
+ * railway/tests/test_digest_subscription.py) and there is no session here.
+ *
+ * So the handler leaves a RECEIPT: a random 64-hex token in the URL, and a
+ * transient holding the three list flags, the frequency, and the row's
+ * unsubscribe token so the panel can offer a working one-click link. Thirty
+ * minutes, then it is gone.
+ *
+ * WHAT IS NOT IN IT: the address, the row id, and anything else that could
+ * name a person. Someone who reads the URL out of a browser history learns
+ * which digests were picked and can unsubscribe, which is exactly what the
+ * email they just clicked already let them do. Nothing new is exposed.
+ *
+ * A MISSING OR EXPIRED RECEIPT IS NOT AN ERROR. The panel then says the state
+ * plainly and offers the same two links, minus the readout it cannot honestly
+ * produce. It never guesses at preferences.
+ */
+function alt_digest_make_receipt($row) {
+    if (!is_array($row)) return '';
+    $lists = array();
+    foreach (alt_digest_lists() as $key => $cols) {
+        if (!empty($row[$cols['consent']])) $lists[] = $key;
+    }
+    $token = alt_digest_new_token();
+    set_transient('alt_dg_r_' . $token, array(
+        'lists' => $lists,
+        'freq'  => alt_digest_valid_freq($row['freq_layoff'] ?? 'weekly'),
+        'unsub' => (string) ($row['unsub_token'] ?? ''),
+    ), 30 * MINUTE_IN_SECONDS);
+    return $token;
+}
+
+function alt_digest_read_receipt($token) {
+    if (!is_string($token) || !preg_match('/^[a-f0-9]{64}$/', $token)) return null;
+    $data = get_transient('alt_dg_r_' . $token);
+    return is_array($data) ? $data : null;
+}
+
+/**
+ * The same page with the state parameters stripped, i.e. the plain form.
+ *
+ * Built from REQUEST_URI and left RELATIVE on purpose. home_url() plus
+ * REQUEST_URI double-prefixes on this install, where WordPress lives at
+ * /blog and REQUEST_URI already carries it, and a wrong absolute URL here
+ * would send a reader who wants to change their choices to a 404.
+ */
+function alt_digest_form_url() {
+    $here = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '';
+    if ($here === '') $here = home_url('/ai-layoff-tracker/');
+    return remove_query_arg(array('alt_dg', 'alt_r'), $here) . '#alt-digest';
+}
+
+/**
+ * When the first one lands, stated from the schedule rather than invented.
+ *
+ * .github/workflows/digest-send.yml runs at 13:10 UTC every day and picks the
+ * weekly tier on Mondays, so these two sentences are true today. If that cron
+ * moves, this moves with it.
+ */
+function alt_digest_cadence_sentence($freq) {
+    return $freq === 'daily'
+        ? 'Daily digests go out each morning, so your first one arrives tomorrow.'
+        : 'Weekly digests go out on Monday mornings, so your first one arrives on the next Monday.';
+}
+
+/**
+ * The panel that stands where the form stood.
+ *
+ * Returns finished HTML, built here rather than written inline in the
+ * template, and that is deliberate rather than stylistic: the rendered tests
+ * slice this component out of its own file and strip PHP, so a second branch
+ * of inline markup would leave BOTH branches in the fixture and every
+ * measurement after it would be of a page nobody is served.
+ */
+function alt_digest_state_panel($code, $receipt) {
+    if (!in_array($code, alt_digest_terminal_states(), true)) return '';
+    $out = '<div class="alt-digest-panel">';
+
+    if ($code === 'check') {
+        $out .= '<p>It should arrive within a minute or two. If it does not, look in '
+              . 'your spam folder: it is the first message we have sent you, so nothing '
+              . 'has taught your mail provider to trust us yet.</p>';
+        $out .= '<p class="alt-digest-panel-actions">'
+              . '<a href="' . esc_url(alt_digest_form_url()) . '">Used the wrong address?</a>'
+              . '</p>';
+        return $out . '</div>';
+    }
+
+    if ($code === 'unsubscribed') {
+        $out .= '<p>Nothing else will be sent. Every digest you were on has stopped, '
+              . 'and no other list carries your address.</p>';
+        $out .= '<p class="alt-digest-panel-actions">'
+              . '<a href="' . esc_url(alt_digest_form_url()) . '">Changed your mind?</a>'
+              . '</p>';
+        return $out . '</div>';
+    }
+
+    // confirmed / updated. Read the choices back from the receipt.
+    $names = alt_digest_list_names();
+    if ($receipt && !empty($receipt['lists'])) {
+        $out .= '<p class="alt-digest-panel-lead">Here is what you will get:</p>';
+        $out .= '<ul class="alt-digest-panel-list">';
+        foreach ($receipt['lists'] as $key) {
+            if (!isset($names[$key])) continue;
+            $out .= '<li>' . esc_html($names[$key]) . '</li>';
+        }
+        $out .= '</ul>';
+        $out .= '<p>' . esc_html(alt_digest_cadence_sentence($receipt['freq'] ?? 'weekly')) . '</p>';
+    } else {
+        // No receipt: say the state, promise nothing about the contents.
+        $out .= '<p>Your choices are stored and the next digest will include you.</p>';
+    }
+    $out .= '<p class="alt-digest-panel-actions">'
+          . '<a href="' . esc_url(alt_digest_form_url()) . '">Change your choices</a>';
+    if ($receipt && !empty($receipt['unsub'])) {
+        $out .= '<a href="' . esc_url(alt_digest_unsub_url($receipt['unsub'])) . '">Unsubscribe</a>';
+    }
+    $out .= '</p>';
+    return $out . '</div>';
+}
+
 /**
  * Render the subscription form. The Talent plugin calls this through
  * function_exists(), so the signature must stay stable.
@@ -210,15 +392,21 @@ function alt_digest_subscribe_form($context = '') {
     $context = sanitize_key((string) $context);
     $lead = alt_digest_context_lead($context);
     $notice = isset($_GET['alt_dg']) ? sanitize_key($_GET['alt_dg']) : '';
+    $receipt = alt_digest_read_receipt(isset($_GET['alt_r']) ? (string) $_GET['alt_r'] : '');
+    $panel = alt_digest_state_panel($notice, $receipt);
     $messages = array(
         'check'        => array('ok',  'Almost done. We sent you one email with a confirmation link. Nothing is sent until you click it.'),
-        'confirmed'    => array('ok',  'Your subscription is confirmed. The next digest will include you.'),
+        'confirmed'    => array('ok',  'Your subscription is confirmed.'),
         'updated'      => array('ok',  'Your updated choices are confirmed.'),
         'unsubscribed' => array('ok',  'You are unsubscribed from everything. We delete your address within 30 days.'),
         'lists'        => array('err', 'Pick at least one list before subscribing.'),
         'email'        => array('err', 'That email address does not look right. Please check it and try again.'),
         'rate'         => array('err', 'Too many signups from this connection. Please try again in an hour.'),
-        'expired'      => array('err', 'That link has already been used or has expired. Subscribing again sends a fresh one.'),
+        // NOT "expired or used", which reads as a failure for what is almost
+        // always a success. A confirm token is cleared the moment it is spent,
+        // so the overwhelming case for landing here is a link clicked twice,
+        // or clicked after a mail scanner already followed it.
+        'expired'      => array('ok',  'That link has already been used, which usually means you are confirmed already. If you are not sure, subscribing again sends a fresh one.'),
         'spam'         => array('err', 'That looked like an automated submission. Please try again.'),
         'mail'         => array('err', 'The confirmation email could not be sent. Please try again later.'),
     );
@@ -250,14 +438,47 @@ function alt_digest_subscribe_form($context = '') {
              from. The button self-carries its fill rather than borrowing a
              class, so .alt-btn:hover cannot repaint its edge either.
 
-             THERE IS DELIBERATELY NO prefers-color-scheme BLOCK HERE. It would
-             be the obvious next line and it would be wrong: the surfaces that
-             have a dark mode all load layoffs.css, so they are already served
-             by the var() half of every token above. The one surface relying on
-             these literals is the blog, and blog-reading.css declares no dark
-             palette at all, while the theme and the two database stylesheets
-             pin the article to #fff. A dark box on a permanently white page is
-             not dark mode, it is a hole. */ ?>
+             THERE IS DELIBERATELY NO prefers-color-scheme BLOCK HERE, AND
+             THAT IS STILL RIGHT, BUT IT CARRIES A CONDITION THE CONSUMING PAGE
+             HAS TO MEET.
+
+             The condition: this component is dark-safe on any surface that
+             DECLARES the --alt-* site tokens above. A surface that does not
+             declare them gets the light palette, every time, whatever the
+             reader's theme. That is correct on a page which is itself light,
+             and it is a 1.02:1 hole on a page which is dark.
+
+             Surfaces that satisfy it today:
+               - the tracker, health, sources, press, company, facet and entry
+                 pages, which load layoffs.css
+               - the SIBLING product's dashboard, which loads dashboard.css and
+                 declares the thirteen --alt-* names explicitly, pointed at its
+                 own theme-aware --tit-* tokens (talent-intelligence-tracker
+                 1.83.2)
+             Surfaces that do not, correctly:
+               - single blog posts. blog-reading.css declares no dark palette,
+                 and the theme plus the two database stylesheets pin the
+                 article to #fff. A dark box on a permanently white page is not
+                 dark mode, it is a hole.
+
+             THIS COMMENT USED TO SAY "the surfaces that have a dark mode all
+             load layoffs.css". That was true when written and false eight days
+             later: 2.20.60 put this form on the pages readers land on, which
+             includes the sibling's dashboard, a dark surface that has never
+             loaded layoffs.css. Thirteen tokens fell through to light literals
+             on a #14161b ground and the sibling's scheduled contrast audit went
+             red the next morning - seven labels, two legends and one summary at
+             1.02:1. Neither repository was wrong read on its own. The defect
+             existed only where the two plugins met, which is why it survived
+             every check either side ran.
+
+             So the reasoning is written as a CONDITION rather than a fact now,
+             and tests/test_digest_form_token_contract.py fails when a surface
+             renders this form without answering the tokens it reads. Adding a
+             prefers-color-scheme block here would still be wrong: it would
+             hard-code one dark palette into a component that is meant to take
+             the host page's, and it would paint the blog dark. The fix for a
+             new dark surface is for that surface to answer. */ ?>
     <style>
     .alt-digest {
         --alt-dg-edge: var(--alt-border, #e2e3e8);
@@ -388,6 +609,34 @@ function alt_digest_subscribe_form($context = '') {
     .alt-digest-submit:focus-visible { outline: 2px solid var(--alt-dg-btn-bg); outline-offset: 2px; }
     .alt-digest-status { border: 1px solid var(--alt-dg-ok-edge); background: var(--alt-dg-ok-bg); color: var(--alt-dg-ok-ink); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 14px; }
     .alt-digest-status-error { border-color: var(--alt-dg-err-edge); background: var(--alt-dg-err-bg); color: var(--alt-dg-err-ink); }
+    /* THE TERMINAL-STATE PANEL. It stands where the form stood, so it owns the
+       same two obligations the form has: every control it draws clears 44px,
+       and nothing in it can push the page sideways.
+
+       The actions are links, not buttons, and they are deliberately quieter
+       than the confirmation above them: the reader has finished, and the two
+       ways to change their mind are there for the minority who want one. They
+       are still full targets - a standalone action is not a word inside a
+       sentence, so the 2.5.5 exception the intro's links rely on does not
+       apply here and they take the height in full. 20px apart, well clear of
+       the 8px adjacency floor, because "Change your choices" and
+       "Unsubscribe" are the worst possible pair to mis-tap between. */
+    .alt-digest-panel { margin-top: 4px; font-size: 14px; line-height: 1.55; }
+    .alt-digest-panel p { margin: 0 0 10px; font-size: 14px; line-height: 1.55; }
+    .alt-digest-panel-lead { font-weight: 600; }
+    .alt-digest-panel-list { margin: 0 0 10px; padding-left: 1.2em; }
+    .alt-digest-panel-list li { margin: 2px 0; }
+    .alt-digest-panel-actions {
+        display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin: 0;
+    }
+    /* The component already gives every anchor 7px of vertical padding for the
+       words inside its sentences. These are not inside a sentence, so they get
+       a box: inline-flex plus the floor, which the padding rule alone cannot
+       reach because vertical padding on an inline box does not make it tall. */
+    .alt-digest-panel-actions a {
+        display: inline-flex; align-items: center; min-height: 44px;
+        padding: 7px 0; text-decoration: underline;
+    }
     .alt-digest-privacy { margin-top: 14px; font-size: 13px; }
     .alt-digest-privacy p { margin: 8px 0; }
     /* A disclosure control is a control: the summary line is the whole hit
@@ -430,6 +679,14 @@ function alt_digest_subscribe_form($context = '') {
                 <?php echo esc_html($messages[$notice][1]); ?>
             </div>
         <?php endif; ?>
+        <?php /* THE FORM IS NOT RENDERED IN A TERMINAL STATE. See
+                 alt_digest_terminal_states(): an empty Subscribe form under
+                 "your subscription is confirmed" reads as "it did not work,
+                 do it again", and the readers who believe it submit twice.
+                 The panel is built in PHP rather than written inline here so
+                 that stripping PHP out of this file leaves exactly ONE branch
+                 - the form - which is what the rendered tests measure. */ ?>
+        <?php if ($panel !== '') : echo $panel; else : ?>
         <p class="alt-digest-intro"><?php if ($lead !== '') echo esc_html($lead) . ' '; ?>A plain email summary of what changed on these trackers: the period's
             headline numbers and the largest new entries, with links back to the source pages. No images,
             no tracking pixels. You confirm your address by clicking a link we email you, and every email
@@ -471,6 +728,7 @@ function alt_digest_subscribe_form($context = '') {
                 <button type="submit" class="alt-digest-submit">Subscribe</button>
             </div>
         </form>
+        <?php endif; ?>
 
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>
@@ -500,11 +758,19 @@ add_shortcode('alt_digest_subscribe', 'alt_digest_subscribe_form');
 
 function alt_digest_back_url() {
     $back = wp_get_referer() ?: home_url('/ai-layoff-tracker/');
-    return remove_query_arg(array('alt_dg'), $back);
+    // alt_r as well as alt_dg: a stale receipt riding a resubmit would make the
+    // next page describe the PREVIOUS action.
+    return remove_query_arg(array('alt_dg', 'alt_r'), $back);
 }
 
-function alt_digest_redirect($code) {
-    wp_safe_redirect(add_query_arg('alt_dg', $code, alt_digest_back_url()) . '#alt-digest');
+/**
+ * $receipt is the opaque token from alt_digest_make_receipt(), or ''. It names
+ * no person: see that function for what the transient behind it holds.
+ */
+function alt_digest_redirect($code, $receipt = '') {
+    $args = array('alt_dg' => $code);
+    if (is_string($receipt) && $receipt !== '') $args['alt_r'] = $receipt;
+    wp_safe_redirect(add_query_arg($args, alt_digest_back_url()) . '#alt-digest');
     exit;
 }
 
@@ -646,7 +912,12 @@ function alt_digest_confirm() {
         $was_change = true;
     }
     $wpdb->update(alt_subscribers_table(), $update, array('id' => $row['id']));
-    alt_digest_redirect($was_change ? 'updated' : 'confirmed');
+    // Read the row back rather than reasoning about $update: on the change
+    // path the stored preferences are whatever the parked JSON turned out to
+    // contain, and the panel must read back what is stored, not what was sent.
+    $final = alt_digest_get_by_email($row['email']);
+    alt_digest_redirect($was_change ? 'updated' : 'confirmed',
+                        alt_digest_make_receipt($final));
 }
 add_action('admin_post_alt_digest_confirm', 'alt_digest_confirm');
 add_action('admin_post_nopriv_alt_digest_confirm', 'alt_digest_confirm');
@@ -693,6 +964,24 @@ function alt_digest_from_header() {
 }
 
 /**
+ * THE SUBJECT LINE OF THE ONLY EMAIL A PENDING ADDRESS EVER RECEIVES.
+ *
+ * The brand leads, because this message is the whole funnel. Nobody is sent a
+ * digest until they click the link inside it, so an unrecognised subject in a
+ * crowded inbox does not produce a complaint or an error: it produces a list
+ * that quietly stays empty while every check in this repo reads green. A
+ * reader who just typed their address on asktherecruiter.com is scanning for
+ * that name, and "Confirm your tracker digest subscription" does not carry it.
+ *
+ * A function rather than a literal at the call site so there is one definition
+ * and the tests read THIS rather than a copy of the words
+ * (railway/tests/test_digest_subscription.py).
+ */
+function alt_digest_confirm_subject() {
+    return 'AskTheRecruiter.com: confirm your tracker digest subscription';
+}
+
+/**
  * The ONLY email a pending address ever receives.
  */
 function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token) {
@@ -707,7 +996,7 @@ function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token) {
         $body .= "\nAlready changed your mind? One click stops everything:\n" . alt_digest_unsub_url($unsub_token) . "\n";
         $headers = array_merge($headers, alt_digest_list_unsub_headers($unsub_token));
     }
-    return wp_mail($email, 'Confirm your tracker digest subscription', $body, $headers);
+    return wp_mail($email, alt_digest_confirm_subject(), $body, $headers);
 }
 
 function alt_digest_list_unsub_headers($unsub_token) {
@@ -884,6 +1173,144 @@ function alt_digest_short_date($iso) {
 }
 
 /**
+ * The window a section is about, spelled out for a reader.
+ *
+ * WHY EVERY BLOCK CALLS THIS. Until 2026-08-17 the layoff section said "in
+ * this period" and then, four lines later, printed a year-to-date total, and
+ * then a country list scoped to the PERIOD directly underneath it. The
+ * arithmetic was right and the email still read wrong: nothing in the country
+ * block stated its own window, so adjacency answered the question, and
+ * adjacency put the block under the year figure. The owner read it as a
+ * breakdown of the year and asked whether the maths was broken.
+ *
+ * Adjacency is the wrong mechanism for a reason that outlives that one bug. It
+ * fails the moment somebody quotes a line, forwards a fragment, or reads on a
+ * phone narrow enough that the grouping stops being visible. So every figure
+ * in the digest names its own window, and this is where the words come from.
+ *
+ * Returns '' for anything that is not a pair of plain YYYY-MM-DD dates, and
+ * the composer treats that as "compose nothing". A section that cannot say
+ * what it covers does not go out.
+ */
+function alt_digest_date_range($from, $to) {
+    $a = substr(trim((string) $from), 0, 10);
+    $b = substr(trim((string) $to), 0, 10);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $a, $ma)) return '';
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $b, $mb)) return '';
+    $names = array('January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December');
+    $ay = (int) $ma[1]; $am = (int) $ma[2]; $ad = (int) $ma[3];
+    $by = (int) $mb[1]; $bm = (int) $mb[2]; $bd = (int) $mb[3];
+    if ($am < 1 || $am > 12 || $bm < 1 || $bm > 12) return '';
+    if ($ad < 1 || $ad > 31 || $bd < 1 || $bd > 31) return '';
+    if ($a === $b) return $ad . ' ' . $names[$am - 1] . ' ' . $ay;
+    if ($ay !== $by) {
+        return $ad . ' ' . $names[$am - 1] . ' ' . $ay . ' to '
+             . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+    }
+    if ($am !== $bm) {
+        return $ad . ' ' . $names[$am - 1] . ' to ' . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+    }
+    return $ad . ' to ' . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+}
+
+/**
+ * A ranked list as an aligned two-column table, in both body parts.
+ *
+ * WHY A TABLE AND NOT A BULLET LIST. A column of figures a reader has to hunt
+ * for down a ragged right edge is the thing that makes a data email feel like
+ * work. The label wraps, the figure does not, and the figure is right aligned
+ * by the `align` ATTRIBUTE rather than by CSS, because Outlook draws mail with
+ * Word and Word honours the attribute while ignoring half of the properties.
+ *
+ * NO STYLE IS WRITTEN HERE. Each cell carries a `data-alt` role and
+ * railway/digest_layout.py turns that into the inline style, so the design
+ * lives in one file and this one decides only what a line MEANS. The role is
+ * stripped once it has been read.
+ *
+ * $rows is a list of array('label', 'figure', 'url' optional). The last row
+ * loses its rule, so a block does not end on a line that looks like the start
+ * of the next one.
+ */
+function alt_digest_rank_table($rows) {
+    $rows = array_values($rows);
+    if (!$rows) return array('', '');
+    $html = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">';
+    $text = '';
+    $last = count($rows) - 1;
+    foreach ($rows as $i => $row) {
+        $edge = ($i === $last) ? '-last' : '';
+        $label = esc_html((string) $row['label']);
+        if (!empty($row['url'])) {
+            $label = '<a href="' . esc_url($row['url']) . '">' . $label . '</a>';
+        }
+        $html .= '<tr>'
+               . '<td data-alt="label' . $edge . '">' . $label . '</td>'
+               . '<td data-alt="figure' . $edge . '" align="right" width="34%">'
+               . esc_html((string) $row['figure']) . '</td></tr>';
+        $text .= '  ' . $row['label'] . ': ' . $row['figure'] . "\n";
+        // The plain destination, never the counted one: a text reader should
+        // not be handed a machine-shaped URL to squint at.
+        if (!empty($row['plain_url'])) $text .= '    ' . $row['plain_url'] . "\n";
+    }
+    return array($html . '</table>', $text);
+}
+
+/**
+ * How much of a headline a ranked list actually accounts for, said in numbers.
+ *
+ * THE DEFECT THIS REPLACES. The country block used to end with a fixed
+ * sentence: "These are job locations only, so the list does not add up to the
+ * total above." On the first live send the list added up EXACTLY, so the email
+ * told the reader something they could see was untrue, on the day the data was
+ * at its cleanest. Fixed prose around variable data is right on average and
+ * wrong in particular cases, which is the worst way for a data product to be
+ * wrong: it is only ever caught by the reader who checked.
+ *
+ * So the shortfall is computed and named. When the lines reconcile, this
+ * returns '' and the block ends with no caveat at all, because there is
+ * nothing to warn about. When they do not, the reader is told by how much and
+ * for which of the two possible reasons.
+ *
+ * $shown    total of the lines actually printed
+ * $covered  total across every value the endpoint returned for this dimension
+ * $headline the verified figure the block sits under
+ * $unit     'job cuts', for the sentence
+ * $missing  what an uncovered row lacks, e.g. 'no country recorded'
+ * $range    the window, because this line has to stand on its own too
+ */
+function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing, $range) {
+    $shown = (int) $shown; $covered = (int) $covered; $headline = (int) $headline;
+    if ($shown === $headline) return '';
+    $parts = array();
+    $parts[] = 'These lines cover ' . number_format_i18n($shown) . ' of the '
+             . number_format_i18n($headline) . ' verified ' . $unit . ' in '
+             . $range . '.';
+    $ranked = $covered - $shown;
+    if ($ranked > 0) {
+        $parts[] = number_format_i18n($ranked) . ' more sit below the lines shown.';
+    }
+    $unclassified = $headline - $covered;
+    if ($unclassified > 0) {
+        $parts[] = number_format_i18n($unclassified) . ' are on entries with '
+                 . $missing . '.';
+    }
+    return implode(' ', $parts);
+}
+
+/**
+ * "1 job", "4,320 jobs". A count and its noun, agreeing.
+ *
+ * Small, and it earns its place: the country block printed "1 jobs" on the
+ * first render of the rewrite, on the "Multiple countries" line, which is
+ * exactly the line a sceptical reader looks at hardest.
+ */
+function alt_digest_jobs_phrase($n) {
+    $n = (int) $n;
+    return number_format_i18n($n) . ($n === 1 ? ' job' : ' jobs');
+}
+
+/**
  * Compose the layoff-tracker section for the period. Reads the plugin's own
  * public /aggregate endpoint through the REST layer (rest_do_request), so the
  * digest can never disagree with what the tracker page itself serves.
@@ -919,14 +1346,32 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       blocks this section reads have to be named. `totals` is always computed
       and is not a nameable block, so it does not go here, and an unrecognised
       name falls back to all ~31 statements: do not tidy these into one word.
+
+      `top_industries` and `source_types` joined the list on 2026-08-17. They
+      are the two blocks that make this email actionable for somebody who is
+      not already watching the tracker: an industry is what a recruiter or a
+      job hunter recognises as their own patch, and the source split is the
+      provenance a reporter needs before quoting anything. Both come out of
+      the SAME response as the headline, so they cannot describe a different
+      filter set than the number they sit under.
     */
-    $req->set_param('include', 'leaders,top_countries');
+    $req->set_param('include', 'leaders,top_countries,top_industries,source_types');
     $res = rest_do_request($req);
     if (!$res || $res->is_error()) return null;
     $data = $res->get_data();
     $totals = is_array($data) ? ($data['totals'] ?? null) : null;
     if (!is_array($totals) && is_object($totals)) $totals = (array) $totals;
     if (!$totals || (int) ($totals['entries'] ?? 0) === 0) return null;
+
+    /*
+      NO SECTION WITHOUT A WINDOW. Every figure below names the dates it
+      covers, and the words come from here. The caller builds these two dates
+      itself, so this cannot fail in practice; if it ever does, the section is
+      dropped rather than sent with a figure whose scope a reader would have to
+      infer. That is the whole point of the rewrite.
+    */
+    $range = alt_digest_date_range($from, $to);
+    if ($range === '') return null;
 
     $url = home_url('/ai-layoff-tracker/');
     /*
@@ -971,50 +1416,159 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $companies = number_format_i18n((int) ($totals['companies'] ?? 0));
     $has_announced = ($ann_jobs > 0 || $ann_entries > 0);
 
-    if ($has_announced) {
-        $lede = number_format_i18n($ver_entries) . ' verified entries totalling '
-              . number_format_i18n($ver_jobs) . ' job cuts in this period.';
-        $tier = 'Including announced cuts, ' . number_format_i18n($all_entries) . ' entries and '
-              . number_format_i18n($all_jobs) . ' job cuts across ' . $companies . ' companies.';
-        if (function_exists('alt_announced_tier_sentence')) {
-            $tier .= ' ' . alt_announced_tier_sentence();
-        }
-    } else {
-        $lede = number_format_i18n($ver_entries) . ' verified entries totalling '
-              . number_format_i18n($ver_jobs) . ' job cuts across ' . $companies
-              . ' companies in this period.';
-        $tier = '';
-    }
-    $html = '<h2 style="font-size:16px;margin:24px 0 8px;">AI Layoff Tracker</h2>'
-          . '<p style="margin:0 0 8px;">' . esc_html($lede) . '</p>';
+    /*
+      THE HEADLINE, BUILT SO ONE SCREENSHOT OF IT IS STILL TRUE.
+
+      Three lines that travel together: a label, the figure, and the scope. A
+      reporter who lifts the block into a slide takes the window and the basis
+      with it, which is the property the owner named Statista for. It is also
+      the fastest thing in the email to read, and the research says that
+      matters more than it looks: an opened newsletter gets tens of seconds,
+      not minutes (Nielsen Norman Group, 51s average, 19% read in full), and
+      the first two words of a heading do most of the work.
+
+      The site says WHAT each line is with data-alt. digest_layout.py decides
+      how it looks. No size, no colour and no weight is chosen here.
+    */
+    $scope = $range . ', counted by the date the cuts take effect.';
+    $html = '<h2>AI Layoff Tracker</h2>'
+          . '<p data-alt="kicker">Verified job cuts</p>'
+          . '<p data-alt="stat">' . esc_html(number_format_i18n($ver_jobs)) . '</p>'
+          . '<p data-alt="scope">' . esc_html($scope) . '</p>';
+    // The text part leads with the same three facts as ONE sentence, because
+    // that line is also the inbox preheader and a snippet has to stand alone.
+    $lede = number_format_i18n($ver_jobs) . ' verified job cuts, ' . $scope;
     $text = "AI Layoff Tracker\n{$lede}\n";
-    if ($tier !== '') {
-        $html .= '<p style="margin:0 0 8px;">' . esc_html($tier) . '</p>';
-        $text .= $tier . "\n";
+
+    /*
+      THE SECOND TIER, AND WHY IT IS STATED EVEN WHEN IT IS EMPTY.
+
+      The site publishes that verified and announced are never mixed. A reader
+      can only rely on that if the email says which one they are looking at
+      AND what the other one holds. When the window has no announced rows at
+      all, saying so is a fact, not filler: it tells the reader the figure
+      above is the whole set rather than a slice they have to go and check.
+    */
+    if ($has_announced) {
+        $tier = $range . ' holds ' . number_format_i18n($all_entries) . ' entries, '
+              . number_format_i18n($ver_entries) . ' of them verified. '
+              . 'Including announced estimates, the same window holds '
+              . number_format_i18n($all_jobs) . ' job cuts across ' . $companies . ' companies.';
+    } else {
+        $tier = 'All ' . number_format_i18n($all_entries) . ' entries in ' . $range
+              . ' are verified, across ' . $companies . ' companies. '
+              . 'The window holds no announced estimates.';
     }
+    if (function_exists('alt_announced_tier_sentence')) {
+        $tier .= ' ' . alt_announced_tier_sentence();
+    }
+    $html .= '<p data-alt="note">' . esc_html($tier) . '</p>';
+    $text .= $tier . "\n";
+
+    /*
+      THE ONE FIGURE THIS TRACKER IS NAMED AFTER, WHICH THE DIGEST OMITTED.
+
+      Every send so far has gone out under the heading "AI Layoff Tracker"
+      without once saying how many of the cuts were attributed to AI. The
+      field was in the payload the whole time.
+
+      A MEASURED ZERO IS PRINTED, and that is not the zero-filling this repo
+      bans. Zero-filling is substituting a zero for a figure we do not have.
+      This is a figure we have, from a query that succeeded, and on an AI
+      tracker "none this week" is the answer a reader came for. Omitting it
+      would leave them unable to tell "none" from "not checked", which is the
+      exact confusion the omission rule exists to prevent.
+    */
+    $ai_jobs = (int) ($totals['ai_verified_jobs'] ?? 0);
+    $ai_entries = (int) ($totals['ai_verified_entries'] ?? 0);
+    if ($ai_jobs > 0) {
+        $ai_line = 'Attributed to AI by the employer: ' . number_format_i18n($ai_jobs)
+                 . ' of those verified job cuts, across ' . number_format_i18n($ai_entries)
+                 . ' entries, ' . $range . '.';
+    } else {
+        $ai_line = 'No verified job cuts in ' . $range
+                 . ' carry an explicit AI attribution from the employer.';
+    }
+    $html .= '<p data-alt="note">' . esc_html($ai_line) . '</p>';
+    $text .= $ai_line . "\n";
+
+    /*
+      THE ENTRIES, EACH ONE LINKED TO ITS OWN PAGE.
+
+      The permalink was in the leaders payload from the start and was never
+      printed. It is the single most useful field in this email for the two
+      audiences that need to cite us: an entry page names the filing or the
+      report the row came from, so a reporter can check us before quoting us
+      and a blogger has something to link. Adding it costs one field.
+    */
     $leaders = array_slice(is_array($data['leaders'] ?? null) ? $data['leaders'] : array(), 0, 5);
     if ($leaders) {
-        $html .= '<ul style="margin:0 0 8px;padding-left:20px;">';
+        $rows = array();
         $dated = false;
+        $linked = 0;
         foreach ($leaders as $l) {
             $l = (array) $l;
-            // The date was in the payload all along and never printed, so an
-            // entry read as though it happened at some point in the window.
-            // A row carrying no date simply shows none.
+            // The date the cuts take effect. A row carrying no date shows none
+            // rather than borrowing the window's edge.
             $when = alt_digest_short_date($l['layoff_date'] ?? '');
             if ($when !== '') $dated = true;
-            $line = ($l['company_name'] ?? '') . ': ' . number_format_i18n((int) ($l['job_count'] ?? 0)) . ' jobs'
-                  . (!empty($l['location']) ? ', ' . $l['location'] : '')
-                  . ($when !== '' ? ', takes effect ' . $when : '');
-            $html .= '<li>' . esc_html($line) . '</li>';
-            $text .= '  - ' . $line . "\n";
+            $label = trim((string) ($l['company_name'] ?? ''));
+            if ($label === '') continue;
+            $detail = array();
+            if (!empty($l['location'])) $detail[] = (string) $l['location'];
+            if ($when !== '') $detail[] = 'takes effect ' . $when;
+            if (!empty($l['ai_explicit'])) $detail[] = 'AI attributed';
+            if ($detail) $label .= ' (' . implode(', ', $detail) . ')';
+            $permalink = trim((string) ($l['permalink'] ?? ''));
+            $row = array(
+                'label'  => $label,
+                'figure' => alt_digest_jobs_phrase((int) ($l['job_count'] ?? 0)),
+            );
+            if ($permalink !== '' && alt_digest_link_allowed($permalink)) {
+                $row['url'] = alt_digest_track_link($send_id, $permalink);
+                $row['plain_url'] = $permalink;
+                $linked++;
+            }
+            $rows[] = $row;
         }
-        $html .= '</ul>';
-        if ($dated) {
-            $basis = 'Dates above are when the job cuts take effect, and this period uses the same basis. '
-                   . 'The tracker page counts by filing date, so its figures for these dates differ.';
-            $html .= '<p style="margin:0 0 8px;">' . esc_html($basis) . '</p>';
-            $text .= $basis . "\n";
+        if ($rows) {
+            $caption = $range . ', verified and announced together, ranked by job count.';
+            $html .= '<h3>Biggest cuts</h3>'
+                   . '<p data-alt="caption">' . esc_html($caption) . '</p>';
+            $text .= "\nBiggest cuts\n" . $caption . "\n";
+            list($t_html, $t_text) = alt_digest_rank_table($rows);
+            $html .= $t_html;
+            $text .= $t_text;
+            /*
+              THE SAME RULE AGAIN: SAY ONLY WHAT IS TRUE OF THIS LIST.
+
+              Not every row has a page. A WARN filing that arrived through the
+              bulk path has no `layoffs` post behind it, so it carries no
+              permalink and gets no link. Claiming "each company links to its
+              own entry page" on a list where two of five do not is the fixed
+              prose fault, and a reporter who follows the claim and finds no
+              link has caught us being careless with a smaller thing than the
+              numbers.
+            */
+            $basis = array();
+            $count = count($rows);
+            if ($linked === $count) {
+                $basis[] = 'Each company above links to its own entry page, which names '
+                         . 'the filing or report behind the row.';
+            } elseif ($linked > 0) {
+                $basis[] = $linked . ' of the ' . $count . ' companies listed for '
+                         . $range . ' link to an entry page naming the filing or report '
+                         . 'behind the row. The rest are filings with no page of their own yet.';
+            }
+            if ($dated) {
+                $basis[] = 'The tracker page counts by filing date, not by effective date, '
+                         . 'so its totals for these dates differ.';
+            }
+            if ($basis) {
+                $line = implode(' ', $basis);
+                $html .= '<p data-alt="note">' . esc_html($line) . '</p>';
+                $text .= $line . "\n";
+            }
         }
     }
 
@@ -1042,6 +1596,174 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       grow into the year-to-date figure is watching one series. If either
       figure ever changes tier again, change BOTH in the same edit.
     */
+    /*
+      WHERE THE JOBS WERE, PLUS THE BUCKET THAT IS NOT A PLACE.
+
+      "Multiple countries" is a real stored value: a global cut announced with
+      no per-country split. Folding it into a region would invent a location
+      for jobs nobody located, and dropping it would quietly shrink the world,
+      so it sits on its own line outside the five and says what it is.
+
+      TWO FAULTS FIXED HERE ON 2026-08-17.
+
+      The first is the tier. This list read column [1] of each row, which is
+      verified PLUS announced, and printed it under a headline that counts
+      verified only. On 2026-08-16 over the live week that was the difference
+      between 2,501 and 1 on the "Multiple countries" line alone. Column [4]
+      is `SUM(job_count) WHERE announced = 0`, the same quantity as the
+      headline, so the two now agree by construction rather than by luck.
+
+      The second is the caption. It said "These are job locations only, so the
+      list does not add up to the total above" on every send, including the
+      one where the list added up exactly. alt_digest_reconcile_note() now
+      computes the shortfall and names it, or says nothing when there is none.
+
+      This composer sends no country_basis, so these are strict job locations,
+      the `country` column rather than the employer's domicile. The caption
+      says so, attached to this block, not floating above it.
+    */
+    /*
+      THE TOP FIVE ON THE TIER WE ACTUALLY PRINT, WHICH MEANS RE-SORTING.
+
+      The endpoint orders these rows by column [1], the announced-inclusive
+      total, because that is what the tracker page's bar charts draw. This
+      block prints column [4], the verified tier, so taking the endpoint's
+      first five would label a list "the largest" that is not sorted by the
+      number beside it. On the live week of 2026-08-16 that put Media and
+      Entertainment second on 75 verified jobs, above Food and Hospitality on
+      2,505. The rows are re-sorted here, and only then cut to five.
+    */
+    $verified_split = function ($block) {
+        $all = array(); $multi = 0; $covered = 0;
+        foreach ((is_array($block) ? $block : array()) as $row) {
+            $row = array_values((array) $row);
+            $name = trim((string) ($row[0] ?? ''));
+            // Column 4 is the verified tier. Column 1 includes announced.
+            $value = (int) ($row[4] ?? 0);
+            if ($name === '' || $value <= 0) continue;
+            $covered += $value;
+            if (strcasecmp($name, 'Multiple countries') === 0) { $multi = $value; continue; }
+            $all[$name] = $value;
+        }
+        arsort($all, SORT_NUMERIC);
+        return array(array_slice($all, 0, 5, true), $multi, $covered);
+    };
+
+    list($named, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
+    if ($named) {
+        $caption = $range . ', verified only, counted where the jobs were rather than '
+                 . 'where the employer is based.';
+        $html .= '<h3>Where the jobs were</h3>'
+               . '<p data-alt="caption">' . esc_html($caption) . '</p>';
+        $text .= "\nWhere the jobs were\n" . $caption . "\n";
+        $rows = array();
+        $shown = 0;
+        foreach ($named as $name => $value) {
+            $rows[] = array('label' => $name, 'figure' => alt_digest_jobs_phrase($value));
+            $shown += $value;
+        }
+        if ($multi > 0) {
+            $rows[] = array('label' => 'Multiple countries, no split given',
+                            'figure' => alt_digest_jobs_phrase($multi));
+            $shown += $multi;
+        }
+        list($c_html, $c_text) = alt_digest_rank_table($rows);
+        $html .= $c_html;
+        $text .= $c_text;
+        $note = alt_digest_reconcile_note($shown, $covered, $ver_jobs, 'job cuts',
+                                          'no country recorded', $range);
+        if ($note !== '') {
+            $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
+            $text .= $note . "\n";
+        }
+    }
+
+    /*
+      WHICH INDUSTRIES, which is the block a recruiter or a job hunter reads
+      first. Same verified tier, same window, same reconciliation rule. The
+      "Multiple countries" special case cannot occur on this dimension, and
+      the closure simply returns nothing for it.
+    */
+    list($industries, , $ind_covered) = $verified_split($data['top_industries'] ?? null);
+    if (count($industries) > 1) {
+        $caption = $range . ', verified only, by the industry we classified the employer into.';
+        $html .= '<h3>Which industries</h3>'
+               . '<p data-alt="caption">' . esc_html($caption) . '</p>';
+        $text .= "\nWhich industries\n" . $caption . "\n";
+        $rows = array(); $shown = 0;
+        foreach ($industries as $name => $value) {
+            $rows[] = array('label' => $name, 'figure' => alt_digest_jobs_phrase($value));
+            $shown += $value;
+        }
+        list($i_html, $i_text) = alt_digest_rank_table($rows);
+        $html .= $i_html;
+        $text .= $i_text;
+        $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cuts',
+                                          'no industry recorded', $range);
+        if ($note !== '') {
+            $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
+            $text .= $note . "\n";
+        }
+    }
+
+    /*
+      WHERE THE NUMBERS CAME FROM, in one sentence rather than a fourth table.
+
+      This is the line a reporter needs and the one an analyst checks first.
+      Every good data publication attaches provenance to the figure rather
+      than to a footer, and here it costs one sentence because the split is
+      already in the same response. Friendly names, because "8K" is a form
+      number and "warn" is lower case in the column.
+    */
+    $source_names = array(
+        'warn' => 'state WARN filings',
+        '8K'   => 'SEC 8-K filings',
+        'news' => 'named news reports',
+    );
+    $sources = array(); $src_shown = 0;
+    foreach ((is_array($data['source_types'] ?? null) ? $data['source_types'] : array()) as $row) {
+        $row = array_values((array) $row);
+        $key = trim((string) ($row[0] ?? ''));
+        $value = (int) ($row[4] ?? 0);
+        if ($key === '' || $value <= 0) continue;
+        $label = isset($source_names[$key]) ? $source_names[$key] : $key;
+        $sources[] = number_format_i18n($value) . ' from ' . $label;
+        $src_shown += $value;
+    }
+    if ($sources) {
+        $src_line = 'Where these came from, ' . $range . ', verified only: '
+                  . implode(', ', $sources) . '.';
+        if ($src_shown !== $ver_jobs) {
+            $src_line .= ' That covers ' . number_format_i18n($src_shown) . ' of the '
+                       . number_format_i18n($ver_jobs) . ' verified job cuts above.';
+        }
+        $html .= '<p data-alt="note">' . esc_html($src_line) . '</p>';
+        $text .= "\n" . $src_line . "\n";
+    }
+
+    /*
+      THE YEAR TO DATE, AND WHY IT MOVED TO THE BOTTOM.
+
+      It used to sit in the middle of the section, directly above a country
+      list scoped to the PERIOD. The country list stated no window of its own,
+      so the year figure above it supplied one by adjacency, and the owner
+      read the block as a breakdown of the year. Every figure names its own
+      window now, so the ambiguity is already gone; putting the only
+      year-scoped line at the FOOT of a run of period-scoped ones removes the
+      chance to misread it a second way.
+
+      STILL DELIBERATELY NO PERIOD-OVER-PERIOD DELTA. This data revises upward
+      for weeks: filings and WARN notices arrive after the event, so the
+      newest period is always the least complete one we hold. A week-on-week
+      line would turn a reporting lag into a fall that never happened. A
+      year-to-date total only grows, so a late arrival corrects it rather than
+      inverting it. Do not add a delta here later.
+
+      The year comes from the period's own end date, not from the clock, so a
+      run that composes a window is never labelled with a different year, and
+      the tier matches the headline for the reason spelled out above. If
+      either figure ever changes tier, change BOTH in the same edit.
+    */
     $year = substr((string) $to, 0, 4);
     if (preg_match('/^\d{4}$/', $year)) {
         $ytd_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
@@ -1052,75 +1774,39 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         // Nothing below reads it; `totals` is what this call is for.
         $ytd_req->set_param('include', 'leaders');
         $ytd_res = rest_do_request($ytd_req);
-        if ($ytd_res && !$ytd_res->is_error()) {
+        $ytd_range = alt_digest_date_range($year . '-01-01', $to);
+        if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
             $ytd_data = $ytd_res->get_data();
             $ytd_totals = is_array($ytd_data) ? ($ytd_data['totals'] ?? null) : null;
             if (!is_array($ytd_totals) && is_object($ytd_totals)) $ytd_totals = (array) $ytd_totals;
             $ytd_all = is_array($ytd_totals) ? (int) ($ytd_totals['jobs'] ?? 0) : 0;
             $ytd_ann = is_array($ytd_totals) ? (int) ($ytd_totals['announced_jobs'] ?? 0) : 0;
+            $ytd_ai = is_array($ytd_totals) ? (int) ($ytd_totals['ai_verified_jobs'] ?? 0) : 0;
             $ytd_jobs = max(0, $ytd_all - $ytd_ann);
             if ($ytd_jobs > 0) {
-                $ytd_line = $year . ' so far: ' . number_format_i18n($ytd_jobs) . ' verified job cuts.';
-                $html .= '<p style="margin:0 0 8px;">' . esc_html($ytd_line) . '</p>';
-                $text .= $ytd_line . "\n";
+                $ytd_scope = $ytd_range . ', counted by the date the cuts take effect.';
+                $html .= '<h3>' . esc_html($year) . ' so far</h3>'
+                       . '<p data-alt="kicker">Verified job cuts</p>'
+                       . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_jobs)) . '</p>'
+                       . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
+                $text .= "\n{$year} so far\n"
+                       . number_format_i18n($ytd_jobs) . ' verified job cuts, ' . $ytd_scope . "\n";
+                if ($ytd_ai > 0) {
+                    $ytd_ai_line = 'Of those, ' . number_format_i18n($ytd_ai)
+                                 . ' were attributed to AI by the employer, ' . $ytd_range . '.';
+                    $html .= '<p data-alt="note">' . esc_html($ytd_ai_line) . '</p>';
+                    $text .= $ytd_ai_line . "\n";
+                }
             }
         }
-    }
-
-    /*
-      WHERE THE JOBS WERE, PLUS THE BUCKET THAT IS NOT A PLACE.
-
-      "Multiple countries" is a real stored value: a global cut announced with
-      no per-country split. On the 2026 window it is the second largest line
-      on this list and about a sixth of the total. Folding it into a region
-      would invent a location for jobs nobody located, and dropping it would
-      quietly shrink the world, so it sits on its own line outside the five
-      and says what it is.
-
-      This composer sends no country_basis, so these are strict job locations,
-      the `country` column rather than the employer's domicile. The list is
-      also a top five over rows that carry a country at all, so it does not
-      add up to the headline. Both facts are in the copy: a reader who adds
-      the lines and finds a gap must be able to see why without asking.
-    */
-    $top_countries = is_array($data['top_countries'] ?? null) ? $data['top_countries'] : array();
-    $named = array();
-    $multi = 0;
-    foreach ($top_countries as $row) {
-        $row = array_values((array) $row);
-        $name = trim((string) ($row[0] ?? ''));
-        $value = (int) ($row[1] ?? 0);
-        if ($name === '' || $value <= 0) continue;
-        if (strcasecmp($name, 'Multiple countries') === 0) { $multi = $value; continue; }
-        if (count($named) < 5) $named[$name] = $value;
-    }
-    if ($named) {
-        $lead = 'Where the jobs were, by job location:';
-        $html .= '<p style="margin:0 0 8px;">' . esc_html($lead) . '</p>'
-               . '<ul style="margin:0 0 8px;padding-left:20px;">';
-        $text .= $lead . "\n";
-        foreach ($named as $name => $value) {
-            $line = $name . ': ' . number_format_i18n($value) . ' jobs';
-            $html .= '<li>' . esc_html($line) . '</li>';
-            $text .= '  - ' . $line . "\n";
-        }
-        $html .= '</ul>';
-        $note = '';
-        if ($multi > 0) {
-            $note = 'Multiple countries: ' . number_format_i18n($multi) . ' jobs. '
-                  . 'That line is global cuts announced with no country split. ';
-        }
-        $note .= 'These are job locations only, so the list does not add up to the total above.';
-        $html .= '<p style="margin:0 0 8px;">' . esc_html($note) . '</p>';
-        $text .= $note . "\n";
     }
 
     // Counted link. The plain URL stays in the text part: a text reader should
     // not be handed a machine-shaped URL to squint at, and one counted copy per
     // send is enough to know whether the section is read at all.
     $click = alt_digest_track_link($send_id, $url);
-    $html .= '<p style="margin:0;"><a href="' . esc_url($click) . '">Open the AI Layoff Tracker</a></p>';
-    $text .= "Open the tracker: {$url}\n";
+    $html .= '<p><a href="' . esc_url($click) . '">Open the AI Layoff Tracker</a></p>';
+    $text .= "\nOpen the tracker: {$url}\n";
     return array('html' => $html, 'text' => $text);
 }
 
@@ -1141,14 +1827,26 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $total = (int) ($data['total'] ?? 0);
     if ($total === 0) return null;
 
+    // Same rule as the layoff section: a block that cannot state its own
+    // window does not go out. See alt_digest_date_range for why.
+    $range = alt_digest_date_range($from, $to);
+    if ($range === '') return null;
+
     $url = home_url('/talent-intelligence-tracker/');
     $companies = number_format_i18n((int) ($data['companies'] ?? 0));
     $verified = number_format_i18n((int) ($data['verified'] ?? 0));
     $totalf = number_format_i18n($total);
-    $html = '<h2 style="font-size:16px;margin:24px 0 8px;">Talent Intelligence Tracker</h2>'
-          . '<p style="margin:0 0 8px;">' . esc_html($totalf) . ' new signals from ' . esc_html($companies)
-          . ' companies in this period, ' . esc_html($verified) . ' verified against primary documents.</p>';
-    $text = "Talent Intelligence Tracker\n{$totalf} new signals from {$companies} companies in this period, {$verified} verified against primary documents.\n";
+    $scope = $range . ', counted by the date the source published.';
+    $html = '<h2>Talent Intelligence Tracker</h2>'
+          . '<p data-alt="kicker">New hiring signals</p>'
+          . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
+          . '<p data-alt="scope">' . esc_html($scope) . '</p>';
+    $lede = $totalf . ' new hiring signals, ' . $scope;
+    $text = "Talent Intelligence Tracker\n{$lede}\n";
+    $detail = 'From ' . $companies . ' companies, ' . $range . '. '
+            . $verified . ' of the ' . $totalf . ' are verified against primary documents.';
+    $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
+    $text .= $detail . "\n";
 
     $q = new WP_REST_Request('GET', '/talent/v1/query');
     $q->set_param('since', $from);
@@ -1159,8 +1857,12 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         $qdata = (array) $qres->get_data();
         $rows = array_slice(is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 0, 5);
         if ($rows) {
-            $html .= '<ul style="margin:0 0 8px;padding-left:20px;">';
-            $dated = false;
+            $caption = $range . ', newest first, by the date the source published.';
+            $html .= '<h3>Latest signals</h3>'
+                   . '<p data-alt="caption">' . esc_html($caption) . '</p>'
+                   . '<ul>';
+            $text .= "\nLatest signals\n" . $caption . "\n";
+            $undated = 0;
             foreach ($rows as $row) {
                 $row = (array) $row;
                 $line = trim((string) ($row['company'] ?? ''));
@@ -1172,15 +1874,26 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 // no date on the source; those show none rather than borrow
                 // the day we captured them.
                 $when = alt_digest_short_date($row['published_date'] ?? '');
-                if ($when !== '') { $dated = true; $line .= ' (' . $when . ')'; }
+                if ($when !== '') { $line .= ' (' . $when . ')'; } else { $undated++; }
                 $html .= '<li>' . esc_html($line) . '</li>';
                 $text .= '  - ' . $line . "\n";
             }
             $html .= '</ul>';
-            if ($dated) {
-                $basis = 'Dates above are when the source published. '
-                       . 'A signal whose source carries no date shows none.';
-                $html .= '<p style="margin:0 0 8px;">' . esc_html($basis) . '</p>';
+            /*
+              THE CAVEAT ONLY WHEN IT IS TRUE, AND COUNTED WHEN IT IS.
+
+              This used to print "A signal whose source carries no date shows
+              none" whenever ANY row was dated, which is almost always, and
+              so it appeared on sends where every row carried a date. That is
+              the same fault the layoff country block had: fixed prose around
+              variable data, correct on average and wrong in the particular
+              case a reader happens to check.
+            */
+            if ($undated > 0) {
+                $basis = $undated . ' of the signals listed for ' . $range . ' show no '
+                       . 'date, because the source carries none. We do not substitute the '
+                       . 'day we captured them.';
+                $html .= '<p data-alt="note">' . esc_html($basis) . '</p>';
                 $text .= $basis . "\n";
             }
         }
@@ -1197,19 +1910,24 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         $ytd_req->set_param('until', $to);
         $ytd_req->set_param('include', 'fresh');
         $ytd_res = rest_do_request($ytd_req);
-        if ($ytd_res && !$ytd_res->is_error()) {
+        $ytd_range = alt_digest_date_range($year . '-01-01', $to);
+        if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
             $ytd_total = (int) (((array) $ytd_res->get_data())['total'] ?? 0);
             if ($ytd_total > 0) {
-                $ytd_line = $year . ' so far: ' . number_format_i18n($ytd_total) . ' signals.';
-                $html .= '<p style="margin:0 0 8px;">' . esc_html($ytd_line) . '</p>';
-                $text .= $ytd_line . "\n";
+                $ytd_scope = $ytd_range . ', counted by the date the source published.';
+                $html .= '<h3>' . esc_html($year) . ' so far</h3>'
+                       . '<p data-alt="kicker">Hiring signals</p>'
+                       . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_total)) . '</p>'
+                       . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
+                $text .= "\n{$year} so far\n"
+                       . number_format_i18n($ytd_total) . ' hiring signals, ' . $ytd_scope . "\n";
             }
         }
     }
 
     $click = alt_digest_track_link($send_id, $url);
-    $html .= '<p style="margin:0;"><a href="' . esc_url($click) . '">Open the Talent Intelligence Tracker</a></p>';
-    $text .= "Open the tracker: {$url}\n";
+    $html .= '<p><a href="' . esc_url($click) . '">Open the Talent Intelligence Tracker</a></p>';
+    $text .= "\nOpen the tracker: {$url}\n";
     return array('html' => $html, 'text' => $text);
 }
 
