@@ -64,6 +64,7 @@ tests/fixtures/digest_compose_harness.php against fixture payloads whose tuple
 shapes were copied from a live /aggregate response. Without php on PATH the
 tests SKIP, which is not a pass.
 """
+import datetime
 import json
 import os
 import re
@@ -487,6 +488,151 @@ class TheMarkupSaysWhatALineIsAndNotHowItLooks(unittest.TestCase):
                           f"the composer marks a line {variant!r} and the "
                           f"layout has no style for it, so it silently falls "
                           f"back to the plain tag")
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class AFigureCarriesItsOwnSourcing(unittest.TestCase):
+    """A figure that cannot be traced is not a citable figure, and citability
+    is what this product is for.
+
+    The provenance sentence existed before this and was in the wrong place:
+    at the FOOT of the section, three tables below the headline it explains.
+    A reader who screenshots the headline, quotes it, or stops after the
+    first screen took the number and left its sourcing behind. That is the
+    same adjacency failure the window rules above fix, on the dimension the
+    whole product is differentiated by.
+
+    The convention is not ours. ProPublica's news-apps guide asks for sources
+    beneath the display of data rather than in a credits block at the bottom;
+    Datawrapper asks for the source name and its URL together.
+    """
+
+    def test_the_sourcing_sits_under_the_headline_and_not_at_the_foot(self):
+        text = compose(layoff_fixture())["text"]
+        source = text.index("Where these came from")
+        self.assertLess(source, text.index("Biggest cuts"),
+                        "the provenance of the headline figure is printed "
+                        "below the tables that break it down, so anyone "
+                        "quoting the headline leaves the sourcing behind")
+        # Directly under it: nothing but the headline's own scope line between.
+        head = text[:source].strip().splitlines()
+        self.assertEqual(len(head), 2, f"unexpected lines above it: {head}")
+
+    def test_the_sourcing_names_its_window_and_its_tier(self):
+        """It is now a headline-level line, so it stands alone like one."""
+        line = [l for l in compose(layoff_fixture())["text"].splitlines()
+                if l.startswith("Where these came from")][0]
+        self.assertIn("9 to 16 August 2026", line)
+        self.assertIn("verified only", line)
+        self.assertNotIn("above", line,
+                         "the shortfall clause still points at a figure that "
+                         "is no longer above this line")
+
+    def test_it_reads_the_verified_column_the_headline_counts(self):
+        line = [l for l in compose(layoff_fixture())["text"].splitlines()
+                if l.startswith("Where these came from")][0]
+        self.assertIn("2,710 from named news reports", line)
+        self.assertNotIn("5,726", line,
+                         "the source split is printing the announced-inclusive "
+                         "tier under a verified headline")
+
+    def test_the_layout_owns_the_look_of_the_new_line(self):
+        html = compose(layoff_fixture())["html"]
+        self.assertIn('data-alt="source"', html)
+        sys.path.insert(0, RAILWAY)
+        import digest_layout as layout
+        self.assertIn(("p", "source"), layout.VARIANT_STYLES)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheEmailCanBeCited(unittest.TestCase):
+    """This email is the one surface where the number and its source are
+    already separated by the time anybody quotes it.
+
+    Every page we publish is live: a reader who quotes it can re-read it.
+    This is a SNAPSHOT. The figures were read once and never move again while
+    the database behind them keeps moving. Chicago asks for an access date
+    when a source carries no revision date and prefers a last-modified stamp
+    where one exists; APA 7 asks for a retrieval date when a source "is
+    designed to change over time"; FORCE11 asks for enough specificity to
+    identify the exact timeslice. So the block carries all three: the window,
+    the read date, and the last-modified stamp.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        fixture = layoff_fixture()
+        fixture["last_updated_label"] = "Aug 17, 2026 · 6:04 AM EDT"
+        cls.text = compose(fixture)["text"]
+        cls.html = compose(fixture)["html"]
+
+    def test_the_citation_names_the_tracker_the_window_and_a_read_date(self):
+        line = [l for l in self.text.splitlines()
+                if l.startswith("AI Layoff Tracker, AskTheRecruiter.com")][0]
+        self.assertIn("Figures for 9 to 16 August 2026", line)
+        # The read date is TODAY, not the window's end: `to` is the last day
+        # the figures COVER and this is the day they were pulled. Asserted by
+        # shape plus the current UTC year rather than against a computed date,
+        # because a run that straddles midnight UTC should not go red for it.
+        year = datetime.datetime.now(datetime.timezone.utc).year
+        self.assertRegex(line, rf"accessed \d{{1,2}} [A-Z][a-z]+ {year}\.")
+        self.assertNotIn("accessed 16 August", line,
+                         "the read date is the window's end, so it claims the "
+                         "figures were read before the period closed")
+
+    def test_the_citation_url_is_pasteable_text_and_not_a_link(self):
+        """Two rules meet here and both are load-bearing.
+
+        It cannot be the counter URL: a citation is a string somebody PASTES,
+        and /wp-json/layoffs/v1/click?s=..&l=.. in a published story puts a
+        counter in the record instead of our address. It cannot be a bare
+        anchor either, which is what the first attempt was:
+        test_digest_subscription refuses an uncounted link to a destination
+        the digest also links through the counter, because then the count
+        means nothing. A reference string is not a control, so it is text.
+        """
+        cite = self.html.split("Cite this")[1]
+        self.assertIn("https://asktherecruiter.com/blog/ai-layoff-tracker/",
+                      cite)
+        self.assertNotIn("layoffs/v1/click", cite)
+        self.assertNotIn("<a ", cite,
+                         "the citation URL is an anchor, so it is a third "
+                         "uncounted route to a page the digest already links")
+        self.assertIn("https://asktherecruiter.com/blog/ai-layoff-tracker/",
+                      self.text.split("Cite this")[1])
+
+    def test_the_last_changed_stamp_is_printed_when_the_site_has_one(self):
+        self.assertIn("Our database last changed Aug 17, 2026", self.text)
+
+    def test_no_stamp_prints_no_sentence_rather_than_a_guess(self):
+        text = compose(layoff_fixture())["text"]
+        self.assertNotIn("Our database last changed", text)
+        self.assertIn("a recent window is provisional", text,
+                      "the provisional warning is true whether or not we can "
+                      "date the last write, so it must survive the absence")
+
+    def test_the_provisional_warning_does_not_promise_figures_only_rise(self):
+        """Late filings grow a window, and corrections shrink it. The public
+        corrections log has a Rhode Island notice that went 9,891 to 2."""
+        self.assertIn("a correction can lower it", self.text)
+
+    def test_the_citation_block_is_the_last_thing_in_the_section(self):
+        self.assertLess(self.text.index("2026 so far"),
+                        self.text.index("Cite this"))
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheEntryLinkClaimIsExact(unittest.TestCase):
+    """The composer already counted the rows that link. What it got wrong was
+    one word: "no page of their own YET" promises a page that is not coming.
+    alt_api_bulk() writes every row with post_id => null, by construction, so
+    a notice from the bulk import path never acquires one."""
+
+    def test_it_says_why_a_row_has_no_page_and_does_not_promise_one(self):
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("arrived through a bulk filing import, which builds no "
+                      "page", text)
+        self.assertNotIn("no page of their own yet", text)
 
 
 if __name__ == "__main__":

@@ -65,6 +65,21 @@ function alt_announced_tier_sentence() {
     return 'Announced cuts are plans companies have stated that no filing or named report verifies yet.';
 }
 
+/**
+ * api.php's "data last updated" stamp, fed from the fixture.
+ *
+ * Nothing is copied here, unlike alt_announced_tier_sentence above: the real
+ * function's job is to FORMAT a timestamp out of an option, which is api.php's
+ * business and not the composer's. What the composer has to get right is the
+ * two branches, a stamp and no stamp, so the fixture supplies the string and a
+ * fixture that omits it exercises the empty one. Absence of a stamp must print
+ * no sentence, never a guess.
+ */
+function alt_data_last_updated_label() {
+    global $FIXTURE;
+    return (string) ($FIXTURE['last_updated_label'] ?? '');
+}
+
 class WP_REST_Request {
     public $method, $route, $params = array();
     public function __construct($method, $route) { $this->method = $method; $this->route = $route; }

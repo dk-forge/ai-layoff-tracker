@@ -136,6 +136,16 @@ VARIANT_STYLES = {
     # A caption directly under a block heading, same job at list scale.
     ("p", "caption"): (f"margin:0 0 10px;font-family:{FONT};font-size:12px;"
                        f"line-height:1.5;color:{MUTED};"),
+    # WHERE THE ROWS BEHIND A FIGURE CAME FROM. Deliberately the same size and
+    # the same grey as `scope`, because it is the same kind of fact: it
+    # qualifies the figure rather than adding one. Under a headline the two
+    # stack as a pair, which is how a newspaper or a Statista chart carries a
+    # Note line and a Source line, and it is why this has a name of its own
+    # instead of borrowing `scope`: a future session can restyle the sourcing
+    # without touching what a figure covers, and the composer still chooses
+    # neither.
+    ("p", "source"): (f"margin:0 0 16px;font-family:{FONT};font-size:13px;"
+                      f"line-height:1.5;color:{MUTED};"),
     # The small print a block earns: a reconciliation, a definition, a basis.
     ("p", "note"): (f"margin:0 0 14px;font-family:{FONT};font-size:13px;"
                     f"line-height:1.55;color:{MUTED};"),

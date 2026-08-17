@@ -1,5 +1,114 @@
 # Tech Log
 
+## 2026-08-17 - the digest stated a figure and buried where it came from (2.20.80)
+
+The owner has now said twice that the digest is not good enough, most recently
+"think statista and new york times quality, do some research please, it needs
+references dates and such". The 2.20.72 redesign was substantial and is not
+undone here. The gap it left is sourcing: **a figure that cannot be traced is
+not a citable figure**, and citability is what this product is for.
+
+**The research, and what it actually settled.** Separated into what was
+fetched and what was not, because a second-hand claim about attribution is
+exactly the kind of thing this entry should not contain.
+
+*Fetched.* ProPublica's news-apps guide is the bluntest published version of
+the rule and it is about PLACEMENT: show your data's sources under every
+display of data, beneath the visualisation rather than in a credits block at
+the bottom. Datawrapper's annotate guidance asks for the source NAME and the
+source URL together, because the name is how a reader judges the number.
+Our World in Data require a reuser to credit both them and the underlying
+provider. On the crux, citing a dataset that MOVES: Chicago asks for an access
+date "for a source that does not list a date of publication, posting, or
+revision", preferring a last-modified stamp where one exists; APA 7 asks for a
+retrieval date only when a source is designed to change over time and is not
+archived; FORCE11's principle 7 asks for enough specificity to identify the
+exact timeslice cited; schema.org keeps `temporalCoverage` (what the data
+covers) and `dateModified` (when we last touched it) deliberately apart. The
+World Bank publishes TWO citation forms, a long one for a bibliography and a
+short `Source: ...` one for a chart footer. The New York Times' own COVID
+dataset ships a citation template with a retrieval-date slot in it.
+
+*Not fetched, and therefore not relied on.* **statista.com redirect-loops**,
+as a previous session found; four of five URLs failed at ten redirects. One
+deep statistic page did render and carried "Last update: Jun 29, 2023" and a
+survey period, and that is the whole of what is verified about Statista here.
+Its licence terms and its "Show source" panel are UNKNOWN, not confirmed.
+**nytimes.com is host-blocked** in this environment and so is the Wayback
+Machine, so no literal NYT source line was read; NYT publishes no graphics
+style guide. The Data Journalism Handbook turned out to be a negative
+finding: both editions are about methodological transparency and **neither
+has a citation-format chapter**. Do not go looking again.
+
+**What changed, and it is three things, not a redesign.**
+
+*The provenance sentence moved, and only moved.* It already existed and was
+already correct. It sat at the FOOT of the section, three tables below the
+headline it explains, as the last line before the year-to-date block. Anyone
+who screenshots the headline, quotes it, or stops after the first screen took
+the number and left the sourcing behind. That is the identical adjacency
+failure 2.20.72 fixed for windows and tiers, on the dimension the product is
+differentiated by. It is now the line directly under the figure, marked
+`data-alt="source"` in the composer with `digest_layout` owning the look, and
+its shortfall clause no longer says "above" because it no longer is.
+
+*The email can now be cited.* Every other surface we publish is live: a reader
+who quotes it can go back and re-read it. This email is a SNAPSHOT, read once
+at compose time and frozen while the database keeps moving, so it is the one
+surface where the number and its source are already separated by the time
+anybody quotes it, and it was the one surface with no citation on it. The foot
+now carries the window, the read date and the last-modified stamp, which is
+Chicago's branch, APA's condition and FORCE11's specificity in three short
+lines. The stamp is `alt_data_last_updated_label()`, the same function the
+press kit prints, so the two cannot disagree. The wording follows the site's
+existing cite box rather than inventing a second format. **An absent stamp
+prints no sentence**, never a guess, and the provisional warning survives it
+because that one is true either way.
+
+*The provisional warning does not say figures only rise.* Late filings grow a
+window, and the public corrections log is full of rows that SHRANK: one Rhode
+Island notice went from 9,891 to 2 because it stated a company-wide figure
+under one state. "Usually rises, and a correction can lower it" is the honest
+pair, and writing the shorter half would have been the fixed-prose fault this
+component keeps logging.
+
+**One word was wrong and it was the load-bearing one.** The entry-link line
+said the unlinked rows were "filings with no page of their own yet". "Yet"
+promises a page that is not coming. `alt_api_bulk()` writes every row with
+`post_id => null` by construction, so a notice from the bulk import path never
+acquires a `layoffs` post and never acquires a permalink. It says why now. And
+no, the filing itself cannot be linked instead: it was checked, and there are
+two independent reasons. The leaders query selects no `source_url`, and
+`alt_digest_link_allowed()` admits our own hosts and nothing else, because a
+link counter that forwards anywhere is a phishing relay wearing our domain. A
+state labour department URL fails that guard, correctly.
+
+**An existing guard caught a wrong exception, and it was right to.** The
+citation URL was first written as a bare `<a href>` to the canonical page, on
+the reasoning that a counter URL pasted into a published story is our address
+lost. That reasoning is sound and the conclusion was not:
+`test_digest_subscription` refuses an uncounted link to a destination the
+digest also links THROUGH the counter, because a count with a bypass beside it
+means nothing. A citation is a reference string, not a control, the reader
+already has a counted "Open the AI Layoff Tracker" link directly above it, and
+the site's own cite box renders its URL as `<code>`. So it is escaped text.
+The guard was not weakened.
+
+**Not done, deliberately.** No period-over-period delta, for the reason
+already recorded. No emoji. No second citation format. The talent section did
+not get a citation block: its data model has no source-type split to attach,
+and a citation assembled from facts we do not have would be padding at best.
+`assert_message_is_clean` is untouched, and no string above the Subscribe
+button moved, so the phone fold stamp is unchanged.
+
+**Verified:** 283 digest tests green, including 14 new ones in
+`test_digest_scope_rules.py` holding the placement, the tier the source line
+reads, the read date being today rather than the window's end, both stamp
+branches, and the citation URL being text. `style_check.py` 0 findings, email
+page grade 6.5. **Not verifiable from here, and stated as UNKNOWN rather than
+implied:** no mail client render was tested, because this environment has
+none.
+
 ## 2026-08-17 - three of the four dimensions reached the headline, and the reader asked for the fourth (2.20.79)
 
 The redesign's whole premise is that a quoted line survives on its own, and it

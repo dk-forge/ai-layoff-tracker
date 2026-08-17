@@ -1649,6 +1649,75 @@ function alt_digest_jobs_phrase($n) {
 }
 
 /**
+ * THE CITATION. What a reporter has to write down to quote a figure in here.
+ *
+ * WHY AN EMAIL NEEDS ONE AT ALL. Every other surface we publish is a live
+ * page: a reader who quotes it can go back and re-read it. This email is a
+ * SNAPSHOT. The figures were read once, at compose time, and they never move
+ * again, while the database behind them keeps moving. So the email is the one
+ * surface where the number and the source have already been separated by the
+ * time anybody quotes it, and it was the one surface carrying no citation.
+ *
+ * WHAT THE STANDARDS ACTUALLY ASK FOR, and why this is three facts and not a
+ * paragraph. Chicago says to include an access date "for a source that does
+ * not list a date of publication, posting, or revision", preferring a
+ * last-modified stamp where one exists. APA 7 asks for a retrieval date only
+ * when a source "is designed to change over time" and is not archived. The
+ * FORCE11 data-citation principles ask for enough specificity to identify the
+ * exact timeslice cited. The World Bank's own guidance publishes TWO forms, a
+ * long one for a bibliography and a short "Source: ..." one for a chart
+ * footer, which is the split used here: the source line lives under the
+ * figure, and this block is the bibliography entry.
+ *
+ * So a reader gets all three: the window (which timeslice), the read date
+ * (Chicago's access date, APA's retrieval date, and honest because this
+ * snapshot really was taken then), and the last-modified stamp. Publishing
+ * the last-modified stamp is what discharges the obligation properly; the
+ * read date is what makes the frozen copy in their inbox verifiable.
+ *
+ * THE URL IS PLAIN TEXT AND NOT A LINK AT ALL, which took two goes to get
+ * right. It cannot be click-wrapped: a citation is a string somebody PASTES,
+ * and /wp-json/layoffs/v1/click?s=7&l=<hash> in a published story puts a
+ * counter URL into the record instead of our address. The first attempt was
+ * therefore a bare <a href> to the canonical page, and
+ * test_digest_subscription caught it: the digest may not carry an uncounted
+ * link to a destination it also links to through the counter, because then
+ * the count means nothing. That guard is right and the exception was wrong.
+ *
+ * A citation is not a control. It is a reference string, the reader already
+ * has a counted "Open the AI Layoff Tracker" link directly above it, and the
+ * site's own cite box renders its URL in a <code> block rather than as a
+ * link for the same reason. So this is escaped text. Do not make it an
+ * anchor later: it would be the third route to one page and it would silently
+ * hollow out the click counter.
+ *
+ * $label is alt_data_last_updated_label()'s, when api.php is loaded and the
+ * table has ever been written to. An empty one prints NO last-changed
+ * sentence rather than a guess, and the provisional sentence still goes out,
+ * because that one is true whether or not we can date the last write.
+ */
+function alt_digest_cite_note($name, $range, $url, $read_date, $label) {
+    $cite = $name . ', AskTheRecruiter.com. Figures for ' . $range
+          . ', accessed ' . $read_date . '.';
+    $note = array();
+    if ((string) $label !== '') {
+        $note[] = 'Our database last changed ' . $label . '.';
+    }
+    /*
+      "Usually rises, and a correction can lower it" is the honest pair, and
+      the second half is not hedging. Late filings and WARN notices arrive for
+      weeks after the event, so a recent window grows. But the public
+      corrections log is full of rows that SHRANK: one Rhode Island notice
+      went from 9,891 to 2 because it stated a company-wide figure under one
+      state. Writing "only rises" would have been the fixed-prose fault this
+      file keeps logging, one dimension over.
+    */
+    $note[] = 'Filings and notices keep arriving, so a recent window is '
+            . 'provisional: it usually rises, and a correction can lower it.';
+    return array($cite, $url, implode(' ', $note));
+}
+
+/**
  * Compose the layoff-tracker section for the period. Reads the plugin's own
  * public /aggregate endpoint through the REST layer (rest_do_request), so the
  * digest can never disagree with what the tracker page itself serves.
@@ -1820,6 +1889,67 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $text = "AI Layoff Tracker\n{$lede}\n";
 
     /*
+      WHERE THE ROWS BEHIND THAT FIGURE CAME FROM, DIRECTLY UNDER IT.
+
+      THIS SENTENCE DID NOT MOVE BECAUSE IT READ BADLY. It moved because of
+      where it was. It used to sit at the FOOT of the section, below three
+      tables, as the last line before the year-to-date block, and it is the
+      provenance of the figure at the TOP. A reader who screenshots the
+      headline, or quotes it, or stops reading after the first screen, took
+      the number and left its sourcing behind. That is the adjacency failure
+      this section already fixed for windows and tiers, on the one dimension
+      the owner says the whole product is differentiated by: a figure that
+      cannot be traced is not a citable figure.
+
+      The convention is not ours. ProPublica's news-apps guide is the
+      bluntest published version of it: under every display of data, show the
+      sources, beneath the visualisation rather than in a credits block at
+      the bottom. Datawrapper's annotate guidance asks for the source NAME
+      and the source URL together, because the name is how a reader judges
+      how much to trust the number. Our World in Data require a reuser to
+      credit both them and the underlying provider. Naming state WARN, SEC
+      and named news reports here does both jobs at once: it says who
+      collected it and who published it first.
+
+      It is one sentence, and that is the budget. An opened newsletter gets
+      tens of seconds. Attribution that is not terse does not get read, and
+      an unread citation is worth nothing.
+
+      THE COLUMN IS [4], the verified tier, the same quantity as the headline
+      it now sits under, for the same reason the country and industry blocks
+      read it. Friendly names, because "8K" is a form number and "warn" is
+      lower case in the column. The shortfall clause no longer says "above":
+      it is above these lines now, so it names the window instead, which is
+      what every other line in this section already does.
+    */
+    $source_names = array(
+        'warn' => 'state WARN filings',
+        '8K'   => 'SEC 8-K filings',
+        'news' => 'named news reports',
+    );
+    $sources = array(); $src_shown = 0;
+    foreach ((is_array($data['source_types'] ?? null) ? $data['source_types'] : array()) as $row) {
+        $row = array_values((array) $row);
+        $key = trim((string) ($row[0] ?? ''));
+        $value = (int) ($row[4] ?? 0);
+        if ($key === '' || $value <= 0) continue;
+        $label = isset($source_names[$key]) ? $source_names[$key] : $key;
+        $sources[] = number_format_i18n($value) . ' from ' . $label;
+        $src_shown += $value;
+    }
+    if ($sources) {
+        $src_line = 'Where these came from, ' . $range . ', verified only: '
+                  . implode(', ', $sources) . '.';
+        if ($src_shown !== $ver_jobs) {
+            $src_line .= ' That covers ' . number_format_i18n($src_shown) . ' of the '
+                       . number_format_i18n($ver_jobs) . ' verified job cuts in '
+                       . $range . '.';
+        }
+        $html .= '<p data-alt="source">' . esc_html($src_line) . '</p>';
+        $text .= $src_line . "\n";
+    }
+
+    /*
       THE SECOND TIER, AND WHY IT IS STATED EVEN WHEN IT IS EMPTY.
 
       The site publishes that verified and announced are never mixed. A reader
@@ -1943,9 +2073,34 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                 $basis[] = 'Each company above links to its own entry page, which names '
                          . 'the filing or report behind the row.';
             } elseif ($linked > 0) {
+                /*
+                  "NO PAGE OF THEIR OWN YET" WAS THE WRONG WORD, and the wrong
+                  word was the load-bearing one. "Yet" promises a page is
+                  coming. None is. alt_api_bulk() writes every row with
+                  post_id => null, by construction, so a notice that arrived
+                  through the bulk import path never acquires a `layoffs` post
+                  and never acquires a permalink. That is a fact about how the
+                  row was collected, not a backlog.
+                  ("Bulk import" and not "state WARN import": the same path
+                  carries state WARN, Hawaii and California backfills, federal
+                  RIF notices and the European Restructuring Monitor.)
+
+                  AND NO, WE CANNOT LINK THE FILING ITSELF INSTEAD. It was
+                  checked. Two independent reasons, both deliberate. The
+                  leaders query (db.php) selects company, job_count,
+                  layoff_date, ai_explicit, state, country and post_id, and no
+                  source_url, so the URL is not in this payload. And
+                  alt_digest_link_allowed() admits our own hosts and nothing
+                  else, because a link counter that forwards anywhere is a
+                  phishing relay wearing our domain. A state labour
+                  department URL would fail that guard, correctly. So the
+                  honest answer is the one printed: this row has no page, and
+                  here is why.
+                */
                 $basis[] = $linked . ' of the ' . $count . ' companies listed for '
                          . $range . ' link to an entry page naming the filing or report '
-                         . 'behind the row. The rest are filings with no page of their own yet.';
+                         . 'behind the row. The rest arrived through a bulk filing '
+                         . 'import, which builds no page.';
             }
             if ($dated) {
                 $basis[] = 'The tracker page counts by filing date, not by effective date, '
@@ -2045,41 +2200,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     }
 
     /*
-      WHERE THE NUMBERS CAME FROM, in one sentence rather than a fourth table.
+      The provenance sentence used to be here, at the foot, three tables below
+      the figure it explains. It is now directly under that figure. See the
+      block above the announced-tier note for why moving it was the point.
 
-      This is the line a reporter needs and the one an analyst checks first.
-      Every good data publication attaches provenance to the figure rather
-      than to a footer, and here it costs one sentence because the split is
-      already in the same response. Friendly names, because "8K" is a form
-      number and "warn" is lower case in the column.
-    */
-    $source_names = array(
-        'warn' => 'state WARN filings',
-        '8K'   => 'SEC 8-K filings',
-        'news' => 'named news reports',
-    );
-    $sources = array(); $src_shown = 0;
-    foreach ((is_array($data['source_types'] ?? null) ? $data['source_types'] : array()) as $row) {
-        $row = array_values((array) $row);
-        $key = trim((string) ($row[0] ?? ''));
-        $value = (int) ($row[4] ?? 0);
-        if ($key === '' || $value <= 0) continue;
-        $label = isset($source_names[$key]) ? $source_names[$key] : $key;
-        $sources[] = number_format_i18n($value) . ' from ' . $label;
-        $src_shown += $value;
-    }
-    if ($sources) {
-        $src_line = 'Where these came from, ' . $range . ', verified only: '
-                  . implode(', ', $sources) . '.';
-        if ($src_shown !== $ver_jobs) {
-            $src_line .= ' That covers ' . number_format_i18n($src_shown) . ' of the '
-                       . number_format_i18n($ver_jobs) . ' verified job cuts above.';
-        }
-        $html .= '<p data-alt="note">' . esc_html($src_line) . '</p>';
-        $text .= "\n" . $src_line . "\n";
-    }
-
-    /*
       THE YEAR TO DATE, AND WHY IT MOVED TO THE BOTTOM.
 
       It used to sit in the middle of the section, directly above a country
@@ -2154,6 +2278,37 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $click = alt_digest_track_link($send_id, $url);
     $html .= '<p><a href="' . esc_url($click) . '">Open the AI Layoff Tracker</a></p>';
     $text .= "\nOpen the tracker: {$url}\n";
+
+    /*
+      THE BIBLIOGRAPHY ENTRY, AT THE FOOT, WHERE ONE BELONGS.
+
+      Read date: TODAY IN UTC, not the window's end. Those are different
+      facts and conflating them is exactly the sort of thing this section
+      keeps being wrong about. `$to` is the last day the figures COVER. The
+      read date is the day they were pulled out of the database, which for a
+      digest is the day it composes, one day after the window closes. UTC
+      because that is the zone the send cron runs in, and rendered through
+      alt_digest_date_range so it is the same "17 August 2026" shape as every
+      other date in the email rather than a second format.
+
+      The stamp comes from api.php's alt_data_last_updated_label(), the same
+      function the press kit prints, so the email and the press kit cannot
+      disagree about when the data last moved. Guarded with function_exists
+      for the same reason alt_announced_tier_sentence() is: this file is
+      loaded by harnesses that do not load api.php, and an absent stamp
+      prints nothing rather than a guess.
+    */
+    $cite_label = function_exists('alt_data_last_updated_label')
+        ? (string) alt_data_last_updated_label() : '';
+    $read_date = alt_digest_date_range(gmdate('Y-m-d'), gmdate('Y-m-d'));
+    if ($read_date !== '') {
+        list($cite, $cite_url, $cite_note) = alt_digest_cite_note(
+            'AI Layoff Tracker', $range, $url, $read_date, $cite_label);
+        $html .= '<p data-alt="kicker">Cite this</p>'
+               . '<p data-alt="note">' . esc_html($cite . ' ' . $cite_url) . '</p>'
+               . '<p data-alt="note">' . esc_html($cite_note) . '</p>';
+        $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n" . $cite_note . "\n";
+    }
     return array('html' => $html, 'text' => $text);
 }
 
