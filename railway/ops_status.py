@@ -983,6 +983,56 @@ def main():
         print(f"    UNKNOWN — could not run the integrity checks: {exc}")
         issues.append("DATA INTEGRITY: checker could not run")
 
+    # 3c. MEASURED COVERAGE — the answer to "we cover X%", with its denominator.
+    #
+    # Section [3] can only say that this check passed, and "18 checks passing"
+    # is not a coverage figure. The number itself is printed here because the
+    # question it answers — "what fraction of the events that exist do we
+    # hold?" — is the one the owner is asked in public, and until 2026-08-17 the
+    # only answer in the repo was a hand-maintained file that had been stale for
+    # 24 days. A figure a session cannot see at a glance is a figure that gets
+    # re-derived from memory.
+    #
+    # It prints the BAND and the denominator, never a bare percentage, and it
+    # prints every declared slice including the ones that are not measurable.
+    print("\n[3c] MEASURED COVERAGE  (rolling recall vs a denominator we do not ingest)")
+    try:
+        import rolling_recall
+        rr_doc = rolling_recall.load_measurement()
+        rr_state, rr_detail = rolling_recall.judge(rr_doc)
+        if rr_doc is None:
+            print("    UNKNOWN - no measurement has been written yet. Coverage is "
+                  "UNMEASURED, not fine.")
+            print("              Run: python3 railway/rolling_recall.py --write")
+            not_provisioned.append("rolling_recall (never measured)")
+        else:
+            for key in rr_doc.get("declared_slices") or []:
+                s = (rr_doc.get("slices") or {}).get(key) or {
+                    "state": rolling_recall.UNKNOWN, "detail": "absent from the report"}
+                if s.get("state") == rolling_recall.MEASURED:
+                    w = s["window"]
+                    lo = s["confirmed"] / s["judged"]
+                    hi = (s["confirmed"] + s["proposed"]) / s["judged"]
+                    print(f"    MEASURED  {key}  {lo:.1%}-{hi:.1%} of {s['judged']} events"
+                          f"  ({w['from']}..{w['to']})")
+                    print(f"              {s['enumerated_filings']} enumerated, "
+                          f"{s['out_of_scope']} out of scope, {s['undecidable']} UNKNOWN, "
+                          f"{s.get('unreachable', 0)} unreachable")
+                elif s.get("state") == rolling_recall.NOT_MEASURABLE:
+                    print(f"    NOT MEASURABLE  {key}")
+                    _print_wrapped(s.get("detail") or "", indent="              ")
+                else:
+                    print(f"    UNKNOWN   {key}:")
+                    _print_wrapped(s.get("detail") or "", indent="              ")
+            # A stale or incomplete report is UNKNOWN, and UNKNOWN is not a pass.
+            if rr_state == rolling_recall.UNKNOWN:
+                issues.append("COVERAGE: rolling recall is UNVERIFIED")
+            print(f"    measured {rr_doc.get('measured_at')} - a band, not a point, "
+                  f"because no editor adjudicated these matches")
+    except Exception as exc:
+        print(f"    UNKNOWN - could not read the rolling coverage measurement: {exc}")
+        issues.append("COVERAGE: measurement unreadable")
+
     # 4. RECENT CI — is any workflow red right now?
     #
     # Section [3] deliberately re-queries the live API instead of reading a CI

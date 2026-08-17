@@ -283,6 +283,24 @@ def main():
     except Exception as exc:
         print(f"  ::warning:: DATA INTEGRITY could not be checked ({exc}): state UNKNOWN, not ok")
 
+    # MEASURED COVERAGE, carried in the digest for one reason: this is the
+    # figure the owner is asked for in public ("what percentage do you cover?"),
+    # and until 2026-08-17 the only answer in the repo was a hand-maintained
+    # file that had been stale for 24 days. A number nobody sees on a schedule
+    # is a number that gets re-derived from memory at the moment it is quoted.
+    #
+    # It is REPORTED here and never alarmed on. The invariant does not carry a
+    # floor (the denominator moves every month, so a fall can be a quiet quarter
+    # of filings), and adding one to the digest would be a floor by the back
+    # door. A band with its denominator, or an honest UNKNOWN.
+    try:
+        import rolling_recall
+        rr_doc = rolling_recall.load_measurement()
+        rr_state, rr_detail = rolling_recall.judge(rr_doc)
+        print(f"COVERAGE: {rr_state.upper()} — {rr_detail}")
+    except Exception as exc:
+        print(f"  ::warning:: COVERAGE could not be read ({exc}): UNKNOWN, not ok")
+
     subscribers = subscriber_line()
     print(f"SUBSCRIBERS: {subscribers}")
 

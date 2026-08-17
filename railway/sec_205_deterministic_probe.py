@@ -284,6 +284,53 @@ def _to_int(s):
     return n if 0 < n <= 60000 else None      # extractor's implausible ceiling
 
 
+# A NUMBER BESIDE AN EMPLOYEE NOUN IS NOT ALWAYS THE NUMBER BEING CUT, and the
+# two shapes where it is not are stated in the sentence right in front of it:
+#
+#   RETAINED   Atara, 2025-10-07: "impact approximately 29% of its current
+#              employees, RETAINING approximately 15 employees" — 15 is who
+#              stays. The editor excluded this filing for exactly that reason.
+#   BASE       Geron, 2025-12-16: "a reduction in workforce of approximately
+#              one-third OF ITS CURRENT approximately 260 employees" — 260 is
+#              the pre-cut total, and the cut is a fraction of it.
+#
+# Both were read as cut counts by this parser until 2026-08-17, when the rolling
+# measurement put them in its denominator and scored two filings the tracker is
+# CORRECT not to hold as coverage misses. extractor.py already refuses derived
+# counts by design; this is the same refusal reached one step earlier, at the
+# point where the number is read rather than where it is stored.
+#
+# THE MARKER LIST IS DELIBERATELY NARROW and every entry was checked against the
+# cut phrasings in the same corpus by running the parser with and without it and
+# reading the four filings that moved. Two rules came out of that:
+#
+#   "of approximately" alone is NOT a marker — Elanco's "a global headcount
+#   reduction OF APPROXIMATELY 300 employees" is a real cut count and the
+#   commonest phrasing in the corpus.
+#
+#   "workforce of" is NOT a marker either, and it was in the first draft of this
+#   list. It cost Cibus: "a reduction in WORKFORCE OF approximately 34" is a cut,
+#   and the same three words appear in "retaining a workforce of 34", which is
+#   not. The retention word carries the meaning; the noun phrase does not.
+#
+# Only possessive-current and explicit retention frames qualify.
+_NOT_A_CUT_FRAME = re.compile(
+    r"(?:retain(?:ing|s|ed)?|remaining|out\s+of(?:\s+its)?|"
+    r"of\s+(?:its|the)\s+current|current(?:ly)?\s+(?:has|employs|employed)|"
+    r"end\s+the\s+year\s+with)"
+    r"[^.;]{0,30}$", re.I)
+# How far back to look for the frame. One clause, not one sentence: a sentence
+# may legitimately contain a retention clause AND a separate cut count.
+_FRAME_LOOKBACK = 60
+
+
+def _is_cut_count(section, match_start):
+    """False when the figure at `match_start` is framed as retained or as the
+    base of a proportional reduction rather than as the reduction itself."""
+    return not _NOT_A_CUT_FRAME.search(
+        section[max(0, match_start - _FRAME_LOOKBACK):match_start])
+
+
 def candidate_counts(section):
     """Every headcount the section states LITERALLY, deduped, in order.
 
@@ -303,6 +350,8 @@ def candidate_counts(section):
         for m in rx.finditer(section):
             n = _to_int(m.group(1))
             if n is None or n in uppers:
+                continue
+            if not _is_cut_count(section, m.start(1)):
                 continue
             # The production guards, imported, not re-implemented.
             if extractor._percent_only_mention(n, section):

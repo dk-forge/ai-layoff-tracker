@@ -41,6 +41,7 @@ Rollback = `git revert` + push (there is no other rollback path; FTP is the only
 | distress-watchlist | weekly Tue + manual | CourtListener bankruptcy + Companies House insolvency → distressed names → watchlist news search. Dormant per key. Inputs: dry_run |
 | foreign-filings | daily 13:30 UTC + manual | EDINET (JP) + OpenDART (KR) filing bodies → extractor (guards reject non-layoffs). Dormant per key. Low yield by design. Inputs: dry_run |
 | recall-precision | weekly Mon 16:10 UTC + manual | **The only place the recall claim can FAIL.** Re-runs the frozen SEC Item 2.05 gold set (57 events) against live data, **commits** `railway/recall_measurement.json`, and exits 2 below `recall_goldset.MATCHED_FLOOR`; also measures count precision (exits 2 when the Wilson 95% lower bound drops under 80%) and AI-attribution precision. Every rate is printed **with its interval**. Needs `contents: write` for the commit. Inputs: RP_PRECISION_SAMPLE |
+| rolling-recall | weekly Thu 16:20 UTC + manual | **The coverage figure that ages with the data, not with someone's memory.** Re-enumerates every 8-K carrying structured item 2.05 over a rolling 12 months (window ends 45 days back and advances monthly), scopes each filing deterministically into in-scope / out-of-scope / **undecidable**, matches against `/query`, and **commits** `railway/rolling_recall_measurement.json`. Reports a **band** (count-confirmed .. name+window proposed), never a point, because no editor is in the loop. No floor - `recall-precision` owns the tripwire on its frozen set; this one's denominator moves. $0.00/run, stdlib-only, keyless. Exits 3 (UNKNOWN, not a pass) when the enumeration, the scoping or the host lookups cannot be completed. Publishes to no reader-facing page, on purpose |
 | data-integrity | daily 17:30 UTC + manual | **Is the published data CORRECT?** Runs `railway/data_integrity.py` — the live invariants (known duplicate events must count once) shared with `tests/test_dedup_live.py` — and writes the verdict to the health ledger as `data_integrity`. Scheduled 50 min AFTER reconcile-supersets so it sees that pass's result. Exit 2 = failing, exit 3 = could not verify (never a silent pass) |
 | health-digest | Mondays 12:00 UTC + manual | **Autonomy tripwire.** Reads source-health ledger; fails RED and **emails info@asktherecruiter.com** (via `/alert`) when a source goes STALE or degrades, **or when a live data-integrity check is failing** (subject leads "WRONG NUMBER LIVE"). Weekly is the backstop only — the fast paths are `ops_status.py` [3] and the daily data-integrity run. Email body carries a paste-ready Claude fix instruction. Inputs: dry_run |
 | digest-send | daily 13:10 UTC + manual | **The email digest's sending half.** Pulls the due recipients from the keyed `/digest-recipients`, relays through the transport chosen by `DIGEST_TRANSPORT`, records counts to `digest_mailer`. **DORMANT: `dryrun` by default, so it prints the exact email and sends nothing, exit 0.** Arming it is three owner steps, see "The email digest: arming the sender". Inputs: dry_run, freq, limit |
@@ -1059,6 +1060,69 @@ far more than collection did.
 - Announcement-vs-effective date basis - a definitional difference, not a gap.
 - Employers who withhold headcounts. In H1 2026 media, only one US event had a
   public number; the rest deliberately withheld. That cell cannot go green.
+
+## The coverage figure is UNKNOWN (ops_status `[3c]`)
+
+`[3c] MEASURED COVERAGE` prints a band per slice. If a slice says **UNKNOWN**,
+coverage is UNVERIFIED — which is not a coverage regression and is also not a
+pass. Read the slice's own detail line first; it names which of the four causes
+it is.
+
+| what the detail says | what happened | what to do |
+|---|---|---|
+| `the rolling-recall measurement is N days old` | `rolling-recall.yml` has stopped, or this checkout is behind main | `git pull`, then check the workflow: `gh run list --workflow="Rolling recall measurement" -L 5`. If it is red, the failing assertion is in the run log and `ci_alert.py` has already mailed it |
+| `enumeration failed` | EDGAR full-text search was unreachable or a month exceeded `MAX_HITS_PER_MONTH` | Re-run. A **partial** enumeration shrinks the denominator and INFLATES recall, which is why it refuses to report rather than reporting less. Never "fix" this by letting it carry on with the months it got |
+| `could not be scoped deterministically (N%, ceiling 40%)` | too much of the corpus landed in `undecidable` | Read `undecidable_filings` in the measurement. If EDGAR changed its document markup the section anchor may be failing — check `sec_205_deterministic_probe.item_205_section` against a couple of the named accessions. **Do not answer this by parsing the EX-99 exhibits** (see below) and do not raise the ceiling |
+| `could not be looked up` | the WP host was unreachable for too much of the set | This is the 2026-07-31 rule working: a Bluehost 504 must not manufacture a recall regression. Re-run once the host is healthy; `ops_status [1]` says whether it is |
+
+**Never hand-edit `railway/rolling_recall_measurement.json`.** It is a
+measurement, not a setting. Re-run `python3 railway/rolling_recall.py --write`.
+
+**Never raise `MAX_UNDECIDABLE_SHARE` or shorten `SETTLE_DAYS` to make the
+figure look better.** The first widens what the parser is allowed to be confused
+about; the second measures ingest latency and calls the result coverage.
+
+**And never make this parse the exhibits.** Over EX-99.1 press-release bodies
+the same parser read GitLab's "2021 Employee Stock Purchase Plan" as a headcount
+of 2021 for a 350-person cut. The 59 filings whose count may be exhibit-only are
+UNKNOWN and listed by name; that is the correct answer, not a gap to close.
+
+Full definition, calibration and limits:
+[docs/recall-reference-sets/ROLLING-SEC-205-DEFINITION.md](recall-reference-sets/ROLLING-SEC-205-DEFINITION.md).
+
+### Before quoting the coverage number anywhere
+
+1. It is a **band**, not a point, because no editor adjudicated these matches.
+   Quote both ends or quote neither.
+2. It is **not "the tracker's recall"**. The honest label names the corpus:
+   *recall against enumerated SEC Item 2.05 filings with a stated headcount,
+   [window], n=[denominator]*. It says nothing about private employers, non-US
+   employers, WARN-only or news-only events.
+3. The denominator is the **machine-decidable subset** (45 of 215 in the first
+   window), which plausibly overstates recall over the full Item 2.05 corpus.
+4. Re-run `python3 railway/rolling_recall.py --calibrate` if either matching
+   rule has been touched since the figure was produced.
+
+## Is there an independent WARN denominator yet?
+
+`rolling_recall.assess_state_warn()` reports **NOT MEASURABLE** and that
+assessment expires after `WARN_ASSESSMENT_MAX_AGE_DAYS` (183 days), at which
+point the slice goes UNKNOWN and lands here. Seventeen states plus federal DOL
+were checked on 2026-08-17; the reasoning is in the definition doc. To re-check:
+
+- The question is narrow. We ingest every state's row listing, so a listing can
+  never be the denominator. What qualifies is a state's **own published period
+  total** — a notice count or affected-employee count — in a document
+  **separate** from the rows, for a **closed** period, machine-retrievable.
+- Check `robots.txt` first, every time. **Wisconsin publishes exactly the right
+  figure and disallows AI agents**; it stays refused. Do not rename the agent to
+  get round a block aimed at the agent — the same reading kept the FCA National
+  Storage Mechanism out of the UK set.
+- There is no national aggregate to find. US DOL keeps no WARN database and BLS
+  Mass Layoff Statistics ended in 2013. Do not spend an afternoon rediscovering
+  this.
+- If a state qualifies, update `WARN_ASSESSED_AT` and build the slice; do not
+  extend the expiry without re-checking, which is the whole point of the clock.
 
 ## Adjudicating the SEC Item 2.05 gold set (the only way recall moves)
 

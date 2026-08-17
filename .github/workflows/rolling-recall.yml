@@ -1,0 +1,113 @@
+name: Rolling recall measurement
+
+# WHAT FRACTION OF THE EVENTS THAT EXIST DO WE HOLD, measured this week rather
+# than remembered from a previous one.
+#
+# `recall-precision.yml` re-measures the FROZEN, editor-adjudicated SEC Item
+# 2.05 gold set every Monday and owns the regression floor. Its denominator is
+# fixed at 2025-07-01..2026-06-30 on purpose — that immovability is what lets it
+# carry a tripwire — so it can say "we have not LOST events" and it cannot say
+# "this is our coverage now". Nothing here changes that job or its floor.
+#
+# This one re-enumerates the universe. Every 8-K in a rolling twelve-month
+# window whose STRUCTURED item array carries code 2.05 is pulled from EDGAR
+# full-text search, scoped by a deterministic parser, and matched against the
+# published data. The window ends 45 days back and advances by a whole month
+# every month, so the figure ages with the DATA instead of with somebody's
+# memory of when it was last worked out. That is the failure this exists to
+# prevent: a hand-maintained coverage comparison had been stale for 24 days
+# while every check in the repo read green.
+#
+# THE RESULT IS A BAND, NOT A POINT, and the workflow must never be "simplified"
+# into publishing one number. There is no editor in this loop, and on 2026-08-01
+# the loose alias/window matcher awarded itself twelve points of recall the
+# editor did not agree with. The lower end requires the tracker row's job_count
+# to AGREE with the headcount in the filing; the upper end is the loose rule.
+#
+# COST: $0.00. EDGAR full-text search and the Archives are free and keyless, and
+# /query is a public read. No model is called on any path. Do not add one.
+#
+# WHY IT COMMITS. The data being measured changes with no commit, so a result
+# that lives only in the runner resets every night and its age can never be
+# read. data_integrity.RollingRecallInvariant and ops_status [3c] read the
+# committed file, and one older than
+# rolling_recall.MAX_MEASUREMENT_AGE_DAYS reports UNKNOWN rather than a pass.
+#
+# IT DOES NOT PUBLISH TO ANY READER-FACING PAGE, deliberately. A coverage figure
+# on a public page is a promise, and the owner should make it on purpose. The
+# number lands in the repo and in ops_status; what to claim from it is a
+# decision, not a side effect of a cron.
+
+on:
+  schedule:
+    # Thursdays 12:20 PM ET — clear of Monday's recall-precision and
+    # Wednesday's erm-provenance jobs, both of which also page the live host.
+    - cron: '20 16 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rolling-recall
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    # Measured 2026-08-17 on a cold cache: 12 enumeration requests, ~215
+    # document fetches and ~45 API lookups, all at a 0.15s courtesy delay,
+    # in about 6 minutes. 40 leaves room for a slow SEC day without letting a
+    # hung run sit all afternoon.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # No pip install and no lock: this module is stdlib-only and keyless, by
+      # design. A measurement that needs a dependency is a measurement that
+      # breaks when the lock is refreshed.
+      - name: Measure rolling recall
+        id: measure
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          # SEC fair access asks for an identifying agent; this is the one
+          # CLAUDE.md mandates for every request this project makes.
+          EDGAR_USER_AGENT: 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)'
+        # The exit code is captured rather than allowed to end the job, so the
+        # measurement is still committed before the run is failed below. A
+        # result that leaves no committed evidence is the worst of both.
+        run: |
+          set +e
+          python3 railway/rolling_recall.py --write
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit the measurement
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add railway/rolling_recall_measurement.json
+          # A quiet week legitimately produces no delta but the timestamp, and
+          # that is committed on purpose: a measurement whose age cannot be read
+          # resolves to UNKNOWN, not to a pass.
+          git diff --cached --quiet && { echo "no change to commit"; exit 0; }
+          git commit -m "recall: rolling Item 2.05 coverage $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1
+      - name: Report the verdict
+        run: |
+          rc="${{ steps.measure.outputs.rc }}"
+          case "$rc" in
+            0) echo "coverage measured; every declared slice reported" ;;
+            # UNKNOWN is the honest state when the enumeration could not be
+            # completed, when too much of the corpus could not be scoped
+            # deterministically, or when the host was unreachable for too much
+            # of the set. It is NOT a coverage regression and it must not be
+            # read as one — but it is not a pass either, so the run goes red and
+            # ci_alert.py mails the cause.
+            3) echo "::error::coverage could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."; exit 3 ;;
+            *) echo "::error::rolling recall reported a breach (exit $rc) - see the step above"; exit "$rc" ;;
+          esac
