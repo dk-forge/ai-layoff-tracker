@@ -122,10 +122,15 @@ def layoff_fixture(**over):
                 {"company_name": "Applied Aerospace", "job_count": 4320,
                  "layoff_date": "2026-08-12", "ai_explicit": False,
                  "location": "",
-                 "permalink": "https://asktherecruiter.com/blog/layoff/applied-2026-08-12/"},
+                 "permalink": "https://asktherecruiter.com/blog/layoff/applied-2026-08-12/",
+                 "announced": False},
+                # ANNOUNCED, and the second biggest cut of the week. This is
+                # the live shape of 2026-08-17 and the reason the tier had to
+                # reach the row: 2,500 of these is not inside the verified
+                # headline the table sits under.
                 {"company_name": "Paramount Skydance", "job_count": 2500,
                  "layoff_date": "2026-08-11", "ai_explicit": True,
-                 "location": "CA", "permalink": ""},
+                 "location": "CA", "permalink": "", "announced": True},
             ],
             # United States is NOT first by the verified column, on purpose.
             "top_countries": [
@@ -133,9 +138,22 @@ def layoff_fixture(**over):
                 _tuple("United States", 7862, 7862),
                 _tuple("Brazil", 476, 476),
             ],
+            # The live composition of 2026-08-17, which is the point: an AI
+            # layoff tracker whose week is aerospace, food and retail, with
+            # Technology ninth. Deliberately NOT in verified order, because
+            # the endpoint sorts on the announced-inclusive column.
             "top_industries": [
                 _tuple("Media & Entertainment", 2746, 75),
                 _tuple("Aerospace & Defense", 4320, 4320),
+                _tuple("Food & Hospitality", 2600, 2474),
+                _tuple("Retail & E-commerce", 1900, 1864),
+                _tuple("Logistics & Transport", 1000, 995),
+                _tuple("Healthcare & Pharma", 900, 866),
+                _tuple("Manufacturing", 900, 843),
+                _tuple("Energy", 500, 476),
+                _tuple("Finance & Insurance", 400, 310),
+                _tuple("Technology", 300, 247),
+                _tuple("Education", 200, 173),
             ],
             "source_types": [
                 _tuple("warn", 6060, 6060),
@@ -170,9 +188,26 @@ def talent_fixture(**over):
         "talent": {
             "total": 1332, "companies": 1281, "verified": 568,
             "countries": 84,
+            # Deliberately in the order the endpoint returns, which is
+            # materiality then RECENCY, and deliberately the wrong order for a
+            # reader: the 2,200-job signal is third and an unreadable headline
+            # is second. That is the live shape of the week to 2026-08-16.
             "rows": [
                 {"company": "Concentrix", "headline": "rolls out matched PERA",
-                 "published_date": "2026-08-16"},
+                 "published_date": "2026-08-16", "headcount": None},
+                # Latin letters are a quarter of this, and "True Customer Day"
+                # is why a "contains any Latin" test was not enough.
+                {"company": "\u0e17\u0e23\u0e39",
+                 "headline": "\u0e17\u0e23\u0e39\u0e2a\u0e48\u0e07\u0e1e\u0e25\u0e31\u0e07"
+                             "\u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19 "
+                             "\u0e04\u0e34\u0e01\u0e2d\u0e2d\u0e1f True Customer Day 2026",
+                 "published_date": "2026-08-15", "headcount": 2000},
+                {"company": "Sanad Service Centres",
+                 "headline": "create more than 2,200 jobs",
+                 "published_date": "2026-08-14", "headcount": 2200},
+                {"company": "Sudamericana de L\u00e1cteos",
+                 "headline": "vuelve a abrir sus puertas tras seis meses",
+                 "published_date": "2026-08-13", "headcount": 80},
                 {"company": "Northwind", "headline": "opens a Dublin hub",
                  "published_date": ""},
             ],
@@ -633,6 +668,205 @@ class TheEntryLinkClaimIsExact(unittest.TestCase):
         self.assertIn("arrived through a bulk filing import, which builds no "
                       "page", text)
         self.assertNotIn("no page of their own yet", text)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheBiggestCutsTableDeclaresItsTier(unittest.TestCase):
+    """The most-read block was the last one still mixing tiers.
+
+    Every other ranked block moved to the verified column when it was found
+    they printed the announced-inclusive tier under a verified headline. This
+    one could not: db.php's leaders query selected no `announced` column, so
+    the composer had no way to tell. Live on 2026-08-17 the SECOND row,
+    Paramount Skydance at 2,500, is announced and is not inside the 13,658
+    above it. "Verified and announced together" labelled that correctly and it
+    was still wrong, because a reader could not see WHICH row to subtract.
+
+    The list is deliberately NOT filtered to verified. It answers "what were
+    the biggest cuts this week", and filtering would hide the largest cut of
+    the week whenever that cut is an announcement.
+    """
+
+    def test_an_announced_row_is_marked_on_the_row(self):
+        text = compose(layoff_fixture())["text"]
+        row = [l for l in text.splitlines() if "Paramount Skydance" in l][0]
+        self.assertIn("announced", row)
+
+    def test_a_verified_row_is_not_marked(self):
+        text = compose(layoff_fixture())["text"]
+        row = [l for l in text.splitlines() if "Applied Aerospace" in l][0]
+        self.assertNotIn("announced", row,
+                         "marking both tiers puts a word on every line to "
+                         "distinguish a minority")
+
+    def test_the_caption_counts_them_and_says_they_are_outside_the_headline(self):
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("1 of these 2 are announcements, marked below, and sit "
+                      "outside the verified figure above", text)
+
+    def test_a_table_with_no_announced_row_says_verified_only(self):
+        """Fixed prose again: "verified and announced together" was false on
+        every week where the leaders happen to all be verified."""
+        fixture = layoff_fixture()
+        for leader in fixture["layoff"]["leaders"]:
+            leader["announced"] = False
+        block = (compose(fixture)["text"].split("Biggest cuts")[1]
+                 .split("\nWhere the jobs were")[0])
+        self.assertIn("verified only, ranked by job count", block)
+        self.assertNotIn("announcements, marked below", block)
+
+    def test_a_payload_without_the_field_reports_unknown_not_none(self):
+        """An /aggregate served by a plugin build older than the one that
+        added the column returns leaders with no tier. Absence of a signal is
+        not a pass, and "verified only" over an announced row would be a worse
+        lie than the mixed caption this replaced."""
+        fixture = layoff_fixture()
+        for leader in fixture["layoff"]["leaders"]:
+            leader.pop("announced", None)
+        block = (compose(fixture)["text"].split("Biggest cuts")[1]
+                 .split("\nWhere the jobs were")[0])
+        self.assertIn("This list can include announcements, which sit outside "
+                      "the verified figure above", block)
+        self.assertNotIn("verified only", block)
+
+    def test_the_basis_caveat_about_the_tracker_page_is_gone(self):
+        """It said the page counts on a different basis and would show a
+        different total, which made the click meant to PROVE the figure the
+        click that contradicted it. The link now carries the window and the
+        basis, so the caveat is not merely unnecessary, it is false."""
+        text = compose(layoff_fixture())["text"]
+        self.assertNotIn("counts by filing date", text)
+        self.assertIn("date_basis=effective", text,
+                      "the link no longer carries the basis, so the caveat "
+                      "should not have been removed")
+        self.assertRegex(text, r"[?&]from=2026-08-09")
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class ThePeriodIsAllowedToHaveAShape(unittest.TestCase):
+    """Every figure in this email states its window, tier, basis and
+    geography, and none of them says what it MEANS. This is the one derived
+    line, and the discipline is that it is DERIVED: computed from the same
+    rows the table above it prints, and silent when the period has no shape
+    worth naming. A line that always fires is decoration."""
+
+    def test_it_names_the_three_largest_and_their_share(self):
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("Aerospace & Defense, Food & Hospitality and Retail & "
+                      "E-commerce are the three largest", text)
+        self.assertRegex(text, r"are the three largest, \d+% of the [\d,]+ "
+                               r"verified job cuts we classified by industry "
+                               r"in 9 to 16 August 2026\.")
+
+    def test_it_places_technology_when_technology_is_not_in_the_top_three(self):
+        """The documented editorial rule: this is the AI Layoff Tracker, so
+        technology is the sector its reader is asking about. It prints the
+        real rank and the real share and asserts nothing about expectations."""
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("Technology is ninth, at 2%.", text)
+
+    def test_it_says_nothing_about_technology_when_technology_leads(self):
+        fixture = layoff_fixture()
+        fixture["layoff"]["top_industries"] = [
+            _tuple("Technology", 9000, 9000), _tuple("Finance & Insurance", 2000, 2000),
+            _tuple("Retail & E-commerce", 1500, 1500), _tuple("Energy", 900, 900),
+        ]
+        text = compose(fixture)["text"]
+        self.assertIn("are the three largest", text)
+        self.assertNotIn("Technology is", text)
+
+    def test_it_is_silent_when_too_little_of_the_headline_is_classified(self):
+        """The composition of the classified part is not the composition of
+        the period. Below the coverage floor this line must not appear."""
+        fixture = layoff_fixture()
+        fixture["layoff"]["top_industries"] = [
+            _tuple("Aerospace & Defense", 900, 900), _tuple("Energy", 400, 400),
+            _tuple("Retail & E-commerce", 300, 300), _tuple("Education", 200, 200),
+        ]
+        self.assertNotIn("are the three largest", compose(fixture)["text"])
+
+    def test_it_is_silent_when_there_is_no_concentration(self):
+        """A top three that is a third of a long tail is not a shape."""
+        fixture = layoff_fixture()
+        flat = 13710 // 12
+        fixture["layoff"]["top_industries"] = [
+            _tuple(f"Sector {i}", flat, flat) for i in range(12)]
+        self.assertNotIn("are the three largest", compose(fixture)["text"])
+
+    def test_it_is_silent_when_the_list_is_too_short_to_be_a_finding(self):
+        """"The three largest" out of three is the list read aloud."""
+        fixture = layoff_fixture()
+        fixture["layoff"]["top_industries"] = [
+            _tuple("Aerospace & Defense", 8000, 8000),
+            _tuple("Food & Hospitality", 4000, 4000),
+            _tuple("Energy", 1710, 1710)]
+        self.assertNotIn("are the three largest", compose(fixture)["text"])
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
+    """"Latest signals" was a feed dump, and the obvious diagnosis was wrong.
+
+    /talent/v1/query already DEFAULTS to sort=notable, so the section was
+    already getting materiality first. Measured live over the week to
+    2026-08-16: 1,349 signals graded 264 high, 1,082 medium, 3 routine. A
+    grade 99.8% of rows pass is not a ranking, so the tiebreak decided the
+    list, and the tiebreak is recency, which is close to random when every row
+    is from the same week.
+
+    sort=largest IS honoured but only 4.7% of rows carry a headcount and
+    MySQL sorts NULLs last, so it returns five headcount stories and nothing
+    else can compete. So the ranking is done in the composer.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = compose(talent_fixture())["text"]
+        cls.rows = [l for l in cls.text.splitlines() if l.strip().startswith("- ")]
+
+    def test_the_signal_naming_the_most_jobs_leads(self):
+        self.assertIn("Sanad Service Centres", self.rows[0])
+        self.assertIn("2,200 jobs", self.rows[0])
+
+    def test_a_signal_naming_no_jobs_sorts_below_every_signal_that_does(self):
+        placed = [i for i, r in enumerate(self.rows) if "jobs)" in r or "job," in r]
+        unplaced = [i for i, r in enumerate(self.rows) if "jobs" not in r]
+        if placed and unplaced:
+            self.assertLess(max(placed), min(unplaced))
+
+    def test_the_number_that_did_the_ranking_is_shown(self):
+        """A list claiming to lead with the biggest signals and printing no
+        size is asking to be taken on trust."""
+        self.assertIn("(2,200 jobs, 14 Aug 2026)", self.text)
+
+    def test_a_row_naming_no_jobs_prints_no_count_rather_than_a_zero(self):
+        """Absent, null and zero all mean "the source stated no number", and
+        none of them is a measured zero."""
+        row = [r for r in self.rows if "Concentrix" in r][0]
+        self.assertNotIn("0 jobs", row)
+        self.assertIn("16 Aug 2026", row)
+
+    def test_a_headline_that_is_mostly_not_latin_does_not_take_a_slot(self):
+        """Script, not language: the schema has no language column, so
+        detecting language would be a guess and detecting script is not. This
+        row names 2,000 jobs and would otherwise rank SECOND, which is what
+        the live render did before the test existed."""
+        self.assertNotIn("ทรู", self.text)
+
+    def test_an_embedded_english_brand_does_not_smuggle_it_back_in(self):
+        """The first version asked whether the headline held ANY Latin letter,
+        and "... True Customer Day 2026" walked through it."""
+        self.assertNotIn("True Customer Day", self.text)
+
+    def test_another_language_in_latin_script_still_ships(self):
+        """Dropping these would narrow this summary to the English-speaking
+        world while the tracker underneath it is not narrow."""
+        self.assertIn("Sudamericana de Lácteos", self.text)
+
+    def test_the_caption_says_how_the_list_is_ordered(self):
+        self.assertIn("the signals naming the most jobs first, then the "
+                      "tracker's own order", self.text)
+        self.assertNotIn("newest first", self.text)
 
 
 if __name__ == "__main__":

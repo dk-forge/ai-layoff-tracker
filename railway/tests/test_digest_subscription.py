@@ -504,6 +504,65 @@ class TheArticlesList(unittest.TestCase):
         self.assertIn("/wp-json/layoffs/v1/click", self.o["articles_html"])
         self.assertNotIn("<img", self.o["articles_html"].lower())
 
+    # --- the standfirst, and why every item has one now ----------------
+
+    def test_a_post_with_no_typed_excerpt_still_gets_a_standfirst(self):
+        """THE DEFECT. This section shipped as a bare list of titles, and the
+        code that prints a blurb was right there and looked correct. It read
+        `post_excerpt`, the excerpt an editor types by hand, and nobody on
+        this blog ever has: it is empty on every post. Measured live on
+        2026-08-17, 10 of 10 recent posts have a rendered excerpt of 320 to
+        410 characters and 0 of them reached the email. get_the_excerpt() is
+        WordPress's own answer and falls back to the post's opening words.
+
+        Nothing is invented in either branch: one is the editor's sentence,
+        the other a verbatim trim of the author's.
+        """
+        for part in (self.o["articles_html"], self.o["articles_text"]):
+            self.assertIn("An 8-K is the filing a company makes when something "
+                          "material happens.", part)
+
+    def test_only_the_first_sentence_is_taken(self):
+        """340 characters under every item is the wall the nine-second budget
+        cannot pay for, and a sentence is a unit the author chose."""
+        self.assertNotIn("share of the entries in this tracker",
+                         self.o["articles_text"])
+
+    def test_a_standfirst_with_no_sentence_end_is_cut_at_a_word_and_marked(self):
+        text = self.o["articles_text"]
+        line = [l for l in text.splitlines()
+                if l.strip().startswith("A very long opening")][0]
+        self.assertTrue(line.rstrip().endswith("..."),
+                        "a cut standfirst does not show that the author "
+                        "carried on")
+        self.assertLess(len(line.strip()), 200)
+
+    # --- three, and say so when there were more ------------------------
+
+    def test_it_prints_three_and_names_the_true_total(self):
+        """Five titles with a standfirst each is a wall, and this section sits
+        below two others. Three with a reason to click beats five without one.
+        But "the three newest" is only honest if the reader is told there were
+        more, so the query ceiling is above the print limit."""
+        for part in (self.o["articles_html"], self.o["articles_text"]):
+            self.assertIn("The 3 newest of 4 posts we published in", part)
+        self.assertNotIn("A fifth post", self.o["articles_text"],
+                         "the cut to three did not actually drop anything")
+
+    def test_the_section_states_its_window_like_every_other_block(self):
+        self.assertRegex(self.o["articles_text"],
+                         r"posts we published in .*\b20\d{2}\.")
+
+    def test_the_composer_picks_no_size_and_no_colour_here_either(self):
+        """digest_layout.py owns the design. This section used to write its
+        own font-size and margins inline, which is a second place the design
+        can drift, and the rule the layoff composer is already held to."""
+        html = self.o["articles_html"]
+        for banned in ("font-size", "color:", "padding-left", "margin:"):
+            self.assertNotIn(banned, html,
+                             f"the articles composer chose {banned}, which "
+                             f"belongs in digest_layout.py and nowhere else")
+
     def test_the_relay_composes_and_counts_the_third_list_too(self):
         self.assertIn("articles", self.o["relay_sections"],
                       "the relay never composed the articles section")
@@ -548,7 +607,27 @@ class ClickCountingAndStats(unittest.TestCase):
         self.assertFalse(self.o["digest_html_has_bare_tracker_link"],
                          "the counted link is the one in the HTML, or nothing is counted")
         self.assertEqual(self.o["links_stored"], 1)
-        self.assertEqual(self.o["link_url"], "https://example.test/blog/ai-layoff-tracker/")
+        # The counted destination is the tracker page carrying THIS window and
+        # THIS date basis, not the bare page. The email used to ship a caveat
+        # saying the page counts on a different basis and would show a
+        # different total, which made the click meant to prove the figure the
+        # click that contradicted it. `effective` is the page's spelling of the
+        # composer's `layoff_date`; the page silently ignores any other value,
+        # so pinning the literal here is what stops that regressing quietly.
+        link = self.o["link_url"]
+        self.assertTrue(
+            link.startswith("https://example.test/blog/ai-layoff-tracker/?"),
+            f"the counted link left the tracker page: {link}")
+        self.assertIn("date_basis=effective", link)
+        self.assertRegex(link, r"[?&]from=\d{4}-\d{2}-\d{2}")
+        self.assertRegex(link, r"[?&]to=\d{4}-\d{2}-\d{2}")
+        # Every other filter is CLEARED, not omitted: the page restores a
+        # returning visitor's saved filters before it reads the URL, and a key
+        # that is absent leaves their old filter ANDed into our number.
+        for blank in ("country=", "industry=", "years=", "min_jobs="):
+            self.assertIn(blank + "&", link + "&",
+                          f"{blank} is not cleared, so a returning reader's "
+                          f"saved filter survives into the figure we linked")
         self.assertTrue(self.o["link_starts_at_zero"])
 
     def test_a_click_counts_once_and_lands_on_the_stored_destination(self):

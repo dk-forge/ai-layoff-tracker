@@ -5547,7 +5547,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     */
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id, announced
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
@@ -5556,6 +5556,30 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,
             'location' => alt_short_location($row->state, $row->country),
+            /*
+              WHICH TIER THIS ROW IS. Added 2026-08-17, and it closes a real
+              defect rather than adding a field somebody might want.
+              Every ranked block in the email digest was moved to the verified
+              column when it was found that they printed the
+              announced-inclusive tier under a verified headline. `leaders`
+              was the one block that could not be: the tier is not in the
+              query, so a consumer of this payload has no way to tell an
+              announced row from a verified one. Live on 2026-08-17, the
+              SECOND biggest cut of the week (Paramount Skydance, 2,500) is
+              announced, so a reader adding the top rows of that list got a
+              number that cannot reconcile with the 13,658 above it.
+
+              The list itself is deliberately NOT filtered to verified here.
+              It answers "what were the biggest cuts this week", and dropping
+              the announced ones would hide the largest story of some weeks.
+              The site's published rule is that announced is a separate,
+              LABELLED tier never merged into a verified TOTAL, and a ranked
+              list is not a total. So the fix is to make labelling possible.
+
+              Additive key: every consumer reads leaders by name, never by
+              position, which is the same reason `permalink` above was safe.
+            */
+            'announced' => (bool) $row->announced,
             // The signal board's Largest-event cells link to the entry's own
             // permalink page (the citable unit) when one exists; rows without
             // a CPT post fall back to the company click-filter. Additive key:

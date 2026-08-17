@@ -1649,6 +1649,245 @@ function alt_digest_jobs_phrase($n) {
 }
 
 /**
+ * THE FIVE TALENT SIGNALS WORTH THE SLOT, out of the forty we asked for.
+ *
+ * THE RULE IS ONE LINE: a signal that names a number of jobs outranks one
+ * that does not, and among those the larger number wins. Everything else
+ * keeps the endpoint's own order, which is materiality then recency.
+ *
+ * WHY NOT A SCORE. The obvious next step is to weigh headcount against
+ * funding_amount_usd and confidence into one number, and it is the wrong
+ * step. Ranking dollars against people needs an exchange rate between them
+ * that nobody in this repo can defend, and a weighted score is a figure this
+ * file invented, which is the one thing it may not do. Jobs are the unit both
+ * trackers are about, so jobs are the unit that sorts. A funding round with
+ * no headcount is not demoted for being a funding round; it is ordered below
+ * a stated headcount because it states no jobs.
+ *
+ * LANGUAGE: THE FIRST ANSWER WAS WRONG AND THE LIVE DATA SAID SO. The
+ * reasoning was that the untranslated headline reached the top of the live
+ * send on recency, so ranking by jobs would push it down. Rendered against
+ * the real week to 2026-08-17 it did the opposite: a Thai headline naming
+ * 2,000 jobs came SECOND and a Spanish one naming 80 came third, because
+ * they are genuinely material and materiality is what the new ranking
+ * rewards. A worldwide tracker surfacing worldwide signals is working
+ * correctly, and the digest was still unreadable.
+ *
+ * SO ONE ROW IS EXCLUDED, ON SCRIPT AND NEVER ON LANGUAGE. The schema has no
+ * language column, so detecting language here would be a guess. Detecting
+ * SCRIPT is not a guess: a headline containing no Latin letter at all cannot
+ * be read by any subscriber to an English-language digest, so it occupies one
+ * of five slots and delivers nothing. That is a fact about the reader, not a
+ * judgement about the signal, and the signal keeps its place in the tracker
+ * and on its own page.
+ *
+ * A LATIN-SCRIPT HEADLINE IN ANOTHER LANGUAGE STILL SHIPS. Spanish,
+ * Portuguese and German lines carry the employer, the numbers and usually
+ * enough cognates to be worth a slot, and dropping them would narrow this
+ * summary to the English-speaking world while the tracker underneath it is
+ * not narrow. If the other repo ever ships a language field, revisit this on
+ * that field rather than on a regex.
+ *
+ * `headcount` is read defensively: absent, null and zero all mean "names no
+ * number", and none of them may be treated as a measured zero.
+ */
+function alt_digest_talent_rank($rows, $limit) {
+    $rows = array_values(is_array($rows) ? $rows : array());
+    $keyed = array();
+    foreach ($rows as $index => $row) {
+        $r = (array) $row;
+        /*
+          MOSTLY not Latin, not "contains no Latin at all". The first version
+          of this test asked whether the headline held any Latin letter, and
+          the live week walked straight through it: a Thai headline naming
+          2,000 jobs reads "...คิกออฟ True Customer Day 2026", so an embedded
+          English brand name made it pass while the sentence stayed
+          unreadable. So it is a SHARE of the letters, which is still script
+          and still deterministic. Latin at or above half is readable enough
+          to be worth a slot; that Thai line is about a quarter.
+
+          Checked on the headline and not the company, because the headline is
+          the part carrying the meaning: a Latin-script headline about a
+          company whose own name is not Latin still reads.
+        */
+        $head = (string) ($r['headline'] ?? '');
+        if ($head !== '') {
+            $letters = preg_match_all('/\p{L}/u', $head);
+            $latin = preg_match_all('/\p{Latin}/u', $head);
+            if ($letters > 0 && $latin < 0.5 * $letters) continue;
+        }
+        $jobs = isset($r['headcount']) ? (int) $r['headcount'] : 0;
+        // The endpoint's position is the tiebreak, so a row we cannot rank
+        // keeps exactly the standing the tracker itself gave it.
+        $keyed[] = array($jobs > 0 ? 1 : 0, $jobs, -$index, $row);
+    }
+    usort($keyed, function ($a, $b) {
+        if ($a[0] !== $b[0]) return $b[0] - $a[0];
+        if ($a[1] !== $b[1]) return $b[1] - $a[1];
+        return $b[2] - $a[2];
+    });
+    $out = array();
+    foreach (array_slice($keyed, 0, max(0, (int) $limit)) as $entry) {
+        $out[] = $entry[3];
+    }
+    return $out;
+}
+
+/**
+ * THE TRACKER, OPENED ON THE FIGURE THE READER JUST READ.
+ *
+ * THE DEFECT. The email shipped a caveat: "The tracker page counts by filing
+ * date, not by effective date, so its totals for these dates differ." That is
+ * honest, and it is also an admission that the click meant to PROVE the
+ * figure is the click that contradicts it. On a product whose pitch is that
+ * every number can be checked, that is the worst possible link.
+ *
+ * WHAT WAS VERIFIED, IN A REAL BROWSER, AND NOT BY curl. A deep-linked load
+ * is server-rendered without figures and computed by JS, so fetching the HTML
+ * proves nothing and would have been a false pass. Driven live on
+ * 2026-08-17 against the week 2026-08-09 to 2026-08-16: `/aggregate` gives
+ * jobs 16,726 minus announced 3,016 = 13,710 verified, and the page loaded on
+ * the URL this builds shows 13,710, the range label "Aug 9, 2026 to Aug 16,
+ * 2026", and the basis toggle reading "counted by effective date" with
+ * aria-pressed set on it. The page's own JS writes these same names back into
+ * the address bar as a user changes filters, so they round-trip.
+ *
+ * THE PARAMETER NAMES DIFFER FROM THE API'S, AND THAT IS THE TRAP. The
+ * /aggregate endpoint takes `date_basis=layoff_date`. The PAGE accepts only
+ * `effective` or `notice` and silently ignores anything else, which would
+ * leave the reader on the filing basis: the exact discrepancy this link
+ * exists to remove, delivered by the link that promised to remove it. They
+ * mean the same quantity. Do not "tidy" them into one spelling.
+ *
+ * WHY THE EMPTY PARAMETERS ARE NOT CLUTTER. The page restores a returning
+ * visitor's saved filters from sessionStorage BEFORE it reads the URL, and a
+ * key present-but-empty clears that control while a key absent leaves their
+ * old filter ANDed into our number. So every filter this link does not set is
+ * set to nothing on purpose. Both forms were checked live on a clean session.
+ *
+ * WHAT IS STILL NOT GUARANTEED, and why no sentence claims otherwise. The
+ * page can be told to SET `ai`, `ai_broad` and `stage` from a URL but not to
+ * clear them, so a reader who ticked "AI only" earlier in the same session
+ * lands on a smaller number. That cannot be fixed from here. The email
+ * therefore drops the false caveat and makes no claim of reconciliation in
+ * its place: a silent correct link beats a promise with an exception.
+ */
+function alt_digest_tracker_url($from, $to) {
+    $from = substr(trim((string) $from), 0, 10);
+    $to = substr(trim((string) $to), 0, 10);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) return home_url('/ai-layoff-tracker/');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) return home_url('/ai-layoff-tracker/');
+    $args = array(
+        'from' => $from,
+        'to'   => $to,
+        // The page's spelling of the composer's `layoff_date`. See above.
+        'date_basis' => 'effective',
+    );
+    // Cleared, not omitted. See above.
+    foreach (array('years', 'quarters', 'months', 'country', 'industry', 'state',
+                   'sources', 'reasons', 'roles', 'company', 'keyword',
+                   'min_jobs', 'q') as $blank) {
+        $args[$blank] = '';
+    }
+    return add_query_arg($args, home_url('/ai-layoff-tracker/'));
+}
+
+/**
+ * WHAT SHAPE THIS PERIOD HAS, DERIVED, or nothing at all.
+ *
+ * THE GAP THIS FILLS. Read cold, the digest's figures are now impeccably
+ * scoped: every number states its window, its tier, its date basis and its
+ * geography. And no number says what it MEANS. "The biggest cuts this week
+ * were food, retail and logistics, not technology" is already sitting in the
+ * industry table, and no line said it. That is the distance between a data
+ * dump and something a person forwards.
+ *
+ * THE RULE THAT MAKES IT SAFE: IT IS DERIVED, NEVER WRITTEN. A sentence like
+ * that as prose in a template is wrong the first week the data changes shape,
+ * which is the fixed-prose-around-variable-data fault this file has now
+ * logged four times. So every word of it is computed from the SAME rows the
+ * table above it prints, and it returns '' whenever the period has no shape
+ * worth naming. A line that always fires is decoration.
+ *
+ * WHEN IT SAYS NOTHING, and each floor is here for a reason:
+ *
+ *   - Fewer than MIN_RANKED industries. "The three largest" out of three is
+ *     not a finding, it is the list read aloud.
+ *   - The classified rows cover less than COVER_FLOOR of the headline. The
+ *     composition of the classified part is not the composition of the
+ *     period, and asserting it would be the one thing this file may not do.
+ *     Measured live on 2026-08-17 that coverage was 95%; on a thin window it
+ *     is a third, and on a third this line must not appear.
+ *   - The top three are less than CONCENTRATION of what was classified. A
+ *     top three that is 35% of a long tail is not a shape.
+ *
+ * THE TECHNOLOGY CLAUSE is a documented editorial rule and not a hidden one:
+ * this product is the AI Layoff Tracker, so technology is the sector its
+ * reader is actually asking about. It fires only when technology is present
+ * in the data AND ranked outside the top three, it prints technology's real
+ * rank and real share, and it asserts nothing about what anybody expected.
+ * If technology is not in the data we say nothing about it rather than
+ * reporting a zero we did not measure.
+ *
+ * $block is the raw top_industries payload, because the ranked list the
+ * caller holds has already been cut to five and a rank of ninth cannot be
+ * read off a list of five.
+ */
+function alt_digest_composition_note($block, $headline, $range) {
+    $MIN_RANKED = 4;
+    $COVER_FLOOR = 0.6;
+    $CONCENTRATION = 0.5;
+
+    $all = array();
+    foreach ((is_array($block) ? $block : array()) as $row) {
+        $row = array_values((array) $row);
+        $name = trim((string) ($row[0] ?? ''));
+        $value = (int) ($row[4] ?? 0);   // the verified tier, as everywhere
+        if ($name === '' || $value <= 0) continue;
+        $all[$name] = $value;
+    }
+    arsort($all, SORT_NUMERIC);
+    if (count($all) < $MIN_RANKED) return '';
+
+    $covered = array_sum($all);
+    $headline = (int) $headline;
+    if ($headline <= 0 || $covered < $COVER_FLOOR * $headline) return '';
+
+    $names = array_keys($all);
+    $top3 = array_slice($names, 0, 3);
+    $top3_jobs = 0;
+    foreach ($top3 as $n) $top3_jobs += $all[$n];
+    if ($top3_jobs < $CONCENTRATION * $covered) return '';
+
+    $line = $top3[0] . ', ' . $top3[1] . ' and ' . $top3[2]
+          . ' are the three largest, ' . round(100 * $top3_jobs / $covered)
+          . '% of the ' . number_format_i18n($covered)
+          . ' verified job cuts we classified by industry in ' . $range . '.';
+
+    // Rank is 1-based and read off the FULL list, which is why this function
+    // takes the raw block rather than the five rows the caller printed.
+    $rank = 0; $tech_key = '';
+    foreach ($names as $i => $n) {
+        // The stored label is matched case-insensitively and then the REAL
+        // key is kept: looking the value up by the literal 'Technology' after
+        // a case-insensitive match is how you read an undefined index.
+        if (strcasecmp($n, 'Technology') === 0) { $rank = $i + 1; $tech_key = $n; break; }
+    }
+    if ($rank > 3) {
+        $ordinals = array(4 => 'fourth', 5 => 'fifth', 6 => 'sixth', 7 => 'seventh',
+                          8 => 'eighth', 9 => 'ninth', 10 => 'tenth');
+        // Past tenth the word is worse than the numeral, so the numeral wins.
+        $place = isset($ordinals[$rank]) ? $ordinals[$rank] : ('number ' . $rank);
+        $share = 100 * $all[$tech_key] / $covered;
+        // A share that rounds to 0% would read as "technology is absent", and
+        // it is not: it is present and small. One decimal below 1%.
+        $shown = $share < 1 ? number_format($share, 1) : (string) round($share);
+        $line .= ' Technology is ' . $place . ', at ' . $shown . '%.';
+    }
+    return $line;
+}
+
+/**
  * THE CITATION. What a reporter has to write down to quote a figure in here.
  *
  * WHY AN EMAIL NEEDS ONE AT ALL. Every other surface we publish is a live
@@ -2021,20 +2260,62 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $leaders = array_slice(is_array($data['leaders'] ?? null) ? $data['leaders'] : array(), 0, 5);
     if ($leaders) {
         $rows = array();
-        $dated = false;
         $linked = 0;
+        $announced_rows = 0;
+        // Whether the payload can answer the tier question AT ALL. Absence of
+        // the field is UNKNOWN and must never render as "none are announced":
+        // an /aggregate served by a plugin build older than the one that added
+        // the column returns leaders without it, and a caption reading
+        // "verified only" over an announced row is a worse lie than the mixed
+        // caption this replaced.
+        $tier_known = false;
         foreach ($leaders as $l) {
             $l = (array) $l;
             // The date the cuts take effect. A row carrying no date shows none
             // rather than borrowing the window's edge.
             $when = alt_digest_short_date($l['layoff_date'] ?? '');
-            if ($when !== '') $dated = true;
             $label = trim((string) ($l['company_name'] ?? ''));
             if ($label === '') continue;
             $detail = array();
             if (!empty($l['location'])) $detail[] = (string) $l['location'];
             if ($when !== '') $detail[] = 'takes effect ' . $when;
             if (!empty($l['ai_explicit'])) $detail[] = 'AI attributed';
+            /*
+              THE TIER, ON THE ROW, AND WHY THIS LIST IS NOT FILTERED INSTEAD.
+
+              THE DEFECT. This table is the most-read block in the email and
+              it was the last one still mixing tiers. Every other ranked block
+              was moved to the verified column when it was found that they
+              printed the announced-inclusive tier under a verified headline.
+              This one was skipped, because the tier was not in the payload:
+              db.php's leaders query selected no `announced` column, so the
+              composer had no way to tell. Live on 2026-08-17 the SECOND row
+              of this table, Paramount Skydance at 2,500, is announced, and it
+              is not inside the 13,658 stated above it. "Verified and announced
+              together" labelled that correctly and it was still wrong: a
+              reader who adds the top rows gets a number that cannot reconcile
+              with the headline, and cannot see which row to subtract.
+
+              THE CHOICE, AND IT IS NOT THE ONE THE OTHER BLOCKS MADE. The
+              country and industry lists became verified-only. This one does
+              not. Those blocks BREAK DOWN the headline, so they have to sum
+              to it. This one answers a different question, "what were the
+              biggest cuts this week", and filtering it to verified would hide
+              the largest cut of the week whenever that cut is an announcement,
+              which is often. The site's published rule is that announced is a
+              separate, LABELLED tier never merged into a verified TOTAL. A
+              ranked list is not a total. So the row says which tier it is, the
+              caption says how many are outside the headline, and the reader
+              can do the subtraction we were previously hiding from them.
+
+              Only the announced rows are marked. Marking both would put a
+              word on every line to distinguish a minority, and the caption
+              names the default.
+            */
+            if (array_key_exists('announced', $l)) {
+                $tier_known = true;
+                if (!empty($l['announced'])) { $detail[] = 'announced'; $announced_rows++; }
+            }
             if ($detail) $label .= ' (' . implode(', ', $detail) . ')';
             $permalink = trim((string) ($l['permalink'] ?? ''));
             $row = array(
@@ -2049,7 +2330,26 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             $rows[] = $row;
         }
         if ($rows) {
-            $caption = $range . ', verified and announced together, ranked by job count.';
+            /*
+              THE CAPTION IS COMPUTED, because "verified and announced
+              together" was fixed prose around variable data: it is false on
+              any week where every leader is verified, which is most weeks.
+              Same fault, and same fix, as the country block's reconciliation
+              note. When some rows ARE announced it says how many and that
+              they sit outside the headline, so the reader can subtract.
+            */
+            if (!$tier_known) {
+                // UNKNOWN, said out loud. See $tier_known above.
+                $caption = $range . ', ranked by job count. This list can include '
+                         . 'announcements, which sit outside the verified figure above.';
+            } elseif ($announced_rows > 0) {
+                $caption = $range . ', ranked by job count. '
+                         . $announced_rows . ' of these ' . count($rows)
+                         . ' are announcements, marked below, and sit outside the '
+                         . 'verified figure above.';
+            } else {
+                $caption = $range . ', verified only, ranked by job count.';
+            }
             $html .= '<h3>Biggest cuts</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>';
             $text .= "\nBiggest cuts\n" . $caption . "\n";
@@ -2102,10 +2402,24 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                          . 'behind the row. The rest arrived through a bulk filing '
                          . 'import, which builds no page.';
             }
-            if ($dated) {
-                $basis[] = 'The tracker page counts by filing date, not by effective date, '
-                         . 'so its totals for these dates differ.';
-            }
+            /*
+              THE CAVEAT THAT USED TO BE HERE IS GONE, because it is no longer
+              true. It read "The tracker page counts by filing date, not by
+              effective date, so its totals for these dates differ", which was
+              honest and was also an admission that the link at the foot of
+              this section contradicted the figure at the top of it. The link
+              now carries this window and this basis, verified in a browser
+              against the live week, so the discrepancy it warned about does
+              not occur. See alt_digest_tracker_url.
+
+              NOTHING REPLACES IT. A sentence claiming the two now agree would
+              be a promise with an exception hiding in it: a reader who ticked
+              "AI only" earlier in the same browser session keeps that filter,
+              and the page cannot be told to clear it from a URL. A silent
+              correct link is worth more than a claim we cannot fully honour.
+              The $dated flag existed only to gate that caveat and is gone with
+              it. Restore both only if the link stops reconciling.
+            */
             if ($basis) {
                 $line = implode(' ', $basis);
                 $html .= '<p data-alt="note">' . esc_html($line) . '</p>';
@@ -2191,6 +2505,20 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         list($i_html, $i_text) = alt_digest_rank_table($rows);
         $html .= $i_html;
         $text .= $i_text;
+        /*
+          THE ONE LINE IN THIS EMAIL THAT SAYS WHAT A NUMBER MEANS. It sits
+          here, under the table it is derived from, because that table is its
+          evidence: a reader who doubts it can check it against the rows
+          immediately above. It computes itself from the raw block and returns
+          nothing when the period has no shape worth naming. See
+          alt_digest_composition_note for the three floors and why each exists.
+        */
+        $shape = alt_digest_composition_note($data['top_industries'] ?? null,
+                                             $ver_jobs, $range);
+        if ($shape !== '') {
+            $html .= '<p data-alt="note">' . esc_html($shape) . '</p>';
+            $text .= $shape . "\n";
+        }
         $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cuts',
                                           'no industry recorded', $range);
         if ($note !== '') {
@@ -2275,9 +2603,13 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     // Counted link. The plain URL stays in the text part: a text reader should
     // not be handed a machine-shaped URL to squint at, and one counted copy per
     // send is enough to know whether the section is read at all.
-    $click = alt_digest_track_link($send_id, $url);
-    $html .= '<p><a href="' . esc_url($click) . '">Open the AI Layoff Tracker</a></p>';
-    $text .= "\nOpen the tracker: {$url}\n";
+    // THE LINK LANDS ON THIS WINDOW AND THIS BASIS, so the click that is meant
+    // to prove the figure shows the figure. See alt_digest_tracker_url for what
+    // was verified in a browser and for the two spellings of the basis.
+    $open = alt_digest_tracker_url($from, $to);
+    $click = alt_digest_track_link($send_id, $open);
+    $html .= '<p><a href="' . esc_url($click) . '">Open the tracker on this week</a></p>';
+    $text .= "\nOpen the tracker on this week:\n{$open}\n";
 
     /*
       THE BIBLIOGRAPHY ENTRY, AT THE FOOT, WHERE ONE BELONGS.
@@ -2364,20 +2696,45 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
     $text .= $detail . "\n";
 
+    /*
+      ASK FOR MORE THAN FIVE, BECAUSE THE FIVE THAT ARRIVE ARE THE WRONG FIVE.
+
+      THE DEFECT. This asked for 5 rows and printed them. A live send led with
+      an untranslated Spanish headline and two funding rounds while a signal
+      naming 2,200 jobs created sat below the fold of the list. The obvious
+      diagnosis, "it is sorted by recency", is wrong and the real one matters:
+      /talent/v1/query already DEFAULTS to sort=notable, so this was already
+      getting materiality first. The problem is that materiality is saturated.
+      Measured live over the week to 2026-08-16: 1,349 signals, of which 264
+      are graded high, 1,082 medium and 3 routine. A grade that 99.8% of rows
+      pass is not a ranking, so the tiebreak, recency, decided the list. And
+      recency is close to random in a weekly digest, because every row in it
+      is from the same week by construction.
+
+      WHY NOT sort=largest, WHICH THE ENDPOINT DOES HONOUR. Only 64 of those
+      1,349 rows carry a headcount at all, and MySQL sorts NULLs last on DESC,
+      so that parameter returns five headcount stories and nothing else can
+      ever compete for a slot. It replaces one bad ranking with a narrower one.
+
+      SO THE RANKING IS DONE HERE, over a wider fetch, on a field already on
+      every row. See alt_digest_talent_rank.
+    */
     $q = new WP_REST_Request('GET', '/talent/v1/query');
     $q->set_param('since', $from);
     $q->set_param('until', $to);
-    $q->set_param('per_page', 5);
+    $q->set_param('per_page', 40);
     $qres = rest_do_request($q);
     if ($qres && !$qres->is_error()) {
         $qdata = (array) $qres->get_data();
-        $rows = array_slice(is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 0, 5);
+        $rows = alt_digest_talent_rank(
+            is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 5);
         if ($rows) {
-            $caption = $range . ', newest first, by the date the source published.';
-            $html .= '<h3>Latest signals</h3>'
+            $caption = $range . ', the signals naming the most jobs first, then the '
+                     . 'tracker\'s own order.';
+            $html .= '<h3>Biggest signals</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>'
                    . '<ul>';
-            $text .= "\nLatest signals\n" . $caption . "\n";
+            $text .= "\nBiggest signals\n" . $caption . "\n";
             $undated = 0;
             foreach ($rows as $row) {
                 $row = (array) $row;
@@ -2390,7 +2747,19 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 // no date on the source; those show none rather than borrow
                 // the day we captured them.
                 $when = alt_digest_short_date($row['published_date'] ?? '');
-                if ($when !== '') { $line .= ' (' . $when . ')'; } else { $undated++; }
+                /*
+                  THE NUMBER THAT DID THE RANKING IS SHOWN, because a list
+                  claiming to lead with the biggest signals and printing no
+                  size is asking to be taken on trust. A row naming no jobs
+                  shows none: this is the stored headcount, never a guess, and
+                  a zero here means "the source stated no number", not "zero
+                  jobs", so it is omitted rather than printed as a measurement.
+                */
+                $facts = array();
+                $jobs = isset($row['headcount']) ? (int) $row['headcount'] : 0;
+                if ($jobs > 0) $facts[] = alt_digest_jobs_phrase($jobs);
+                if ($when !== '') { $facts[] = $when; } else { $undated++; }
+                if ($facts) $line .= ' (' . implode(', ', $facts) . ')';
                 $html .= '<li>' . esc_html($line) . '</li>';
                 $text .= '  - ' . $line . "\n";
             }
@@ -2480,12 +2849,58 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
  * no heading over a "nothing published this period" line. The reader learns
  * the same thing from silence, and we do not spend their attention saying it.
  */
+/**
+ * ONE LINE THAT SAYS WHY A POST IS WORTH A CLICK, or no line at all.
+ *
+ * THE DEFECT. This section shipped as a bare list of titles and URLs, and it
+ * is the section a general reader is most likely to actually read. It DID
+ * print a blurb, from `$post->post_excerpt`, and that field is empty on every
+ * post on this blog: WordPress only fills it when an editor types one by
+ * hand, and otherwise builds the excerpt from the post's own opening words at
+ * render time. So the code looked right and the email was a list of links.
+ * Measured live on 2026-08-17: 10 of 10 recent posts have a rendered excerpt,
+ * 320 to 410 characters, and 0 of them reached the email.
+ *
+ * NOTHING HERE IS INVENTED, which is the only reason a fallback is allowed at
+ * all. An auto-built excerpt is a verbatim trim of the post's own first
+ * words, not a summary written by anything. This takes its FIRST SENTENCE,
+ * because 340 characters under every item is the wall the nine-second budget
+ * cannot pay for, and a sentence is a unit the author chose.
+ *
+ * A sentence longer than the cap is cut at a WORD boundary and marked. Never
+ * mid-word, and the ellipsis is there so a reader can see that the author did
+ * not stop there.
+ */
+function alt_digest_standfirst($text) {
+    $text = trim(preg_replace('/\s+/', ' ', (string) $text));
+    if ($text === '') return '';
+    $cap = 160;
+    // The first sentence, when one ends inside a readable distance. A full
+    // stop followed by a space and a capital is the shape; an abbreviation
+    // like "U.S. layoffs" does not match it, which is the point.
+    if (preg_match('/^(.{20,' . $cap . '}?[.!?])\s+[A-Z0-9"\']/u', $text, $m)) {
+        return trim($m[1]);
+    }
+    if (strlen($text) <= $cap) return $text;
+    $cut = substr($text, 0, $cap);
+    $space = strrpos($cut, ' ');
+    if ($space !== false && $space > 40) $cut = substr($cut, 0, $space);
+    return rtrim($cut, " ,;:.") . '...';
+}
+
 function alt_digest_compose_articles($from, $to, $send_id = 0) {
     if (!function_exists('get_posts')) return null;
+    /*
+      FETCH MORE THAN WE PRINT, so the caption can say how many there were.
+      Three items with a standfirst each is a readable block; five is a wall,
+      and this section competes with two others in a message a reader gives
+      tens of seconds to. But "the three newest" is only honest if we know
+      whether there were more, so the query ceiling is above the print limit.
+    */
     $posts = get_posts(array(
         'post_type'           => 'post',
         'post_status'         => 'publish',
-        'numberposts'         => 5,
+        'numberposts'         => 12,
         'orderby'             => 'date',
         'order'               => 'DESC',
         'has_password'        => false,
@@ -2507,23 +2922,70 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         $link = (string) get_permalink($post);
         if ($title === '' || !alt_digest_link_allowed($link)) continue;
         if (strpos($link, $surface) === 0) continue;   // a surface, not an article
+        /*
+          THE STANDFIRST, AND WHY THE FALLBACK IS NOT A GUESS.
+
+          `post_excerpt` is the excerpt an editor typed, and on this blog
+          nobody ever has: it is empty on every post, which is why this
+          section shipped as a bare list of links while the code that prints
+          a blurb sat right there looking correct. get_the_excerpt() is
+          WordPress's own answer, returning the typed one when there is one
+          and otherwise a verbatim trim of the post's opening words. Neither
+          branch writes a sentence: one is the editor's, the other is the
+          author's own first words.
+
+          Guarded, because the harness that drives this composer stubs
+          get_posts and get_permalink and need not stub everything. A missing
+          function costs the standfirst, never the item.
+        */
+        $blurb = wp_strip_all_tags(isset($post->post_excerpt) ? $post->post_excerpt : '');
+        if (trim($blurb) === '' && function_exists('get_the_excerpt')) {
+            $blurb = wp_strip_all_tags((string) get_the_excerpt($post));
+        }
         $items[] = array(
             'title' => $title,
             'link'  => $link,
-            'blurb' => wp_strip_all_tags(isset($post->post_excerpt) ? $post->post_excerpt : ''),
+            'blurb' => alt_digest_standfirst($blurb),
         );
     }
     if (!$items) return null;
 
-    $html = '<h2 style="font-size:16px;margin:24px 0 8px;">From the blog</h2>'
-          . '<ul style="margin:0 0 8px;padding-left:20px;">';
+    /*
+      THREE, AND SAY SO WHEN THERE WERE MORE.
+
+      Five titles with a standfirst each is a wall, and this section sits
+      below two others in a message a reader gives tens of seconds to. Three
+      with a reason to click beats five without one. The caption states the
+      window like every other block in this email, and it names the true
+      total rather than implying three is all there was.
+
+      RECENCY IS THE SORT, and it is named rather than dressed up. There is no
+      engagement signal in this repo to rank on, and inventing a relevance
+      score out of nothing would be exactly the thing this file refuses to do
+      with figures. "Newest first" is what it is.
+    */
+    $found = count($items);
+    $items = array_slice($items, 0, 3);
+    $range = alt_digest_date_range($from, $to);
+    $caption = $found > count($items)
+        ? 'The ' . count($items) . ' newest of ' . $found . ' posts we published in ' . $range . '.'
+        : ($found === 1
+            ? 'The one post we published in ' . $range . '.'
+            : 'All ' . $found . ' posts we published in ' . $range . ', newest first.');
+
+    $html = '<h2>From the blog</h2>';
     $text = "From the blog\n";
+    if ($range !== '') {
+        $html .= '<p data-alt="caption">' . esc_html($caption) . '</p>';
+        $text .= $caption . "\n";
+    }
+    $html .= '<ul>';
     foreach ($items as $item) {
         // Counted the same way the other two sections count theirs: a
         // destination that fails the host guard is left unwrapped, never
         // dropped, so counting can never break or relocate a link.
         $click = alt_digest_track_link($send_id, $item['link']);
-        $html .= '<li style="margin:0 0 8px;"><a href="' . esc_url($click) . '">'
+        $html .= '<li><a href="' . esc_url($click) . '">'
                . esc_html($item['title']) . '</a>';
         $text .= '  - ' . $item['title'] . "\n";
         if ($item['blurb'] !== '') {

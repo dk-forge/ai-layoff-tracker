@@ -92,8 +92,15 @@ function get_posts($args = array()) {
     $window = $args['date_query'][0] ?? array();
     $after  = (string) ($window['after'] ?? '');
     $before = (string) ($window['before'] ?? '');
+    // NEWEST FIRST, like the real get_posts() the composer asks for. This
+    // stub used to return insertion order, so "the 3 newest" was asserted
+    // against a list that was not sorted and the claim was never tested.
+    $pool = $GLOBALS['__posts'];
+    usort($pool, function ($a, $b) {
+        return strcmp((string) ($b->post_date_gmt ?? ''), (string) ($a->post_date_gmt ?? ''));
+    });
     $found = array();
-    foreach ($GLOBALS['__posts'] as $p) {
+    foreach ($pool as $p) {
         if (($p->post_type ?? 'post') !== $type) continue;
         if (($p->post_status ?? 'publish') !== $status) continue;
         $when = (string) ($p->post_date_gmt ?? '');
@@ -109,6 +116,20 @@ function get_permalink($p) {
     return 'https://example.test/blog/' . $slug . '/';
 }
 function get_the_title($p) { return is_object($p) ? (string) $p->post_title : ''; }
+/**
+ * WordPress's own excerpt: the one an editor typed, or a trim of the post's
+ * opening words when nobody did. That fallback is the whole reason this stub
+ * exists. `post_excerpt` is empty on every post on the real blog, so the
+ * digest's articles section shipped as a bare list of links while the code
+ * that prints a blurb sat there looking correct. Neither branch writes a
+ * sentence: one is the editor's words, the other the author's own first ones.
+ */
+function get_the_excerpt($p) {
+    if (!is_object($p)) return '';
+    $typed = trim((string) ($p->post_excerpt ?? ''));
+    if ($typed !== '') return $typed;
+    return trim((string) ($p->post_content ?? ''));
+}
 function wp_parse_url($url, $component = -1) { return $component === -1 ? parse_url($url) : parse_url($url, $component); }
 function rest_url($path = '') { return 'https://example.test/blog/wp-json/' . ltrim($path, '/'); }
 function register_rest_route(...$a) { $GLOBALS['__routes'][] = $a; }
@@ -559,7 +580,20 @@ $mk = function ($id, $title, $slug, $excerpt, $age_days, $extra = array()) {
 $GLOBALS['__posts'] = array(
     $mk(11, 'What the WARN data actually says', 'warn-data',
         'A standfirst an editor wrote.', 2),
-    $mk(12, 'Reading an 8-K', 'reading-an-8k', '', 3),
+    // No typed excerpt, so the standfirst has to come from the content. Its
+    // first sentence is short; the second is there to prove only the first
+    // is taken.
+    $mk(12, 'Reading an 8-K', 'reading-an-8k', '', 3, array(
+        'post_content' => 'An 8-K is the filing a company makes when '
+            . 'something material happens. It is the document behind a large '
+            . 'share of the entries in this tracker, and it is public.')),
+    // A fourth and fifth in-window post, so the section has MORE than it
+    // prints and the caption has to say so rather than implying three was all
+    // there was.
+    $mk(16, 'A fourth post', 'fourth-post', '', 4, array(
+        'post_content' => str_repeat('A very long opening clause that never reaches a full stop and just keeps going ', 6))),
+    // The oldest in the window, so it is the one the cut to three drops.
+    $mk(17, 'A fifth post', 'fifth-post', 'The fifth standfirst.', 5),
     // A tracker surface published as a post is still not an article.
     $mk(13, 'Sources', 'ai-layoff-tracker/sources', '', 1),
     // Outside the window, and a draft: neither may appear.
