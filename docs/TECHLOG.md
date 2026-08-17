@@ -49,11 +49,24 @@ property rather than breaking it. Both figures are one series and a reader
 watches the period total grow into the year total. Whichever tier they print,
 they print the same one.
 
-Not touched, and worth naming: that line says "so far" while counting the
-whole calendar window, which for an effective-date basis includes notices
-already filed for later in the year. `to_date_jobs` / `to_date_announced_jobs`
-exist for exactly that caption. It is a separate wording defect from this one
-and is not fixed here.
+**Correction, same day, before anything was built on it.** This entry first
+said the year line was a second defect: that "so far" counted the whole
+calendar window and so included notices filed for effective dates later in
+the year, the way the hero stamp did. **That was wrong, and the check is one
+request.** The line's own aggregate call sends `to => $to`, the period end,
+not December 31, so the window is 1 January to the period end and holds no
+future-dated rows at all. Measured 2026-01-01..2026-08-16: verified 508,254,
+to-date verified 508,254, remainder zero. `alt_period_split_short()` returns
+an empty string on that input, which is the codebase agreeing.
+
+"So far" is therefore accurate here, and it is NOT the hero's bug. The hero's
+window really did run to the end of the calendar year, which is what put its
+stamp 33,939 ahead of the to-date figure. A window ending today cannot have
+that gap. Relabelling this line "calendar year 2026" would have been a fresh
+error, naming a window twice the length of the one queried, and "YTD" would
+have changed nothing at all since it is a synonym for the wording already
+there. Do not "fix" this line; check `to` before believing any claim that it
+needs it.
 
 Verified: `style_check.py` 0 findings (email page grade 6.4), 187 digest and
 stage-tier tests green, full suite 2,401 tests with only the 7 pre-existing
