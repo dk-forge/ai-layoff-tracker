@@ -38,9 +38,13 @@ Env:
   RESEND_API_KEY                   required only for resend
   DIGEST_SMTP_HOST/_PORT/_USER/_PASSWORD    required only for smtp
   DIGEST_FROM, DIGEST_REPLY_TO     identity on the verified domain
-  DIGEST_FREQ                      daily | weekly | auto (default auto)
+  DIGEST_FREQ                      daily | weekly | auto (default auto).
+                                   auto sends daily every day and weekly as
+                                   well on a Monday, as two passes in one run.
+                                   Naming a tier forces that one, on any day.
   DIGEST_DRY_RUN=1                 render everything, send nothing
-  DIGEST_LIMIT                     stop after N recipients (a first live send)
+  DIGEST_LIMIT                     stop after N recipients for the whole run,
+                                   both tiers together (a first live send)
   DIGEST_PREVIEW=1                 when NOBODY is due, render the live sections
                                    once against a placeholder address so the
                                    email can be read. Ignored by any transport
@@ -92,18 +96,39 @@ def _call(path: str, params=None, payload=None, timeout: int = 45):
         return json.loads(response.read().decode("utf-8", "replace"))
 
 
-def resolve_freq(env=None, today=None) -> str:
-    """Which tier runs today.
+def _today():
+    """Today in UTC. One place to read the clock, so a test can pin the day."""
+    return datetime.datetime.now(datetime.timezone.utc).date()
+
+
+def resolve_freqs(env=None, today=None) -> tuple:
+    """Which tiers run today, in the order they are sent.
 
     `auto` mirrors the site's own cron exactly: daily every day, weekly
-    additionally on Mondays UTC. One schedule, so there is one thing to watch.
+    ADDITIONALLY on Mondays UTC. One schedule, so there is one thing to
+    watch, and two passes inside the one run on a Monday.
+
+    THE DEFECT THIS ANSWERS, 2026-08-17. This returned a single tier, and on
+    a Monday that tier was weekly rather than daily. The workflow runs once a
+    day and this function chose what it sent, so every daily subscriber
+    received nothing on a Monday. It was silent, it was weekly, and the
+    docstring above described the intended behaviour the whole time.
+
+    A subscriber who takes both tiers now receives two emails on a Monday.
+    That follows from their own two choices, and it is not merged: merging
+    would need the daily pass to know what the weekly pass is about to say.
+    The two passes cannot suppress each other either, because the server side
+    guard is per tier. See alt_digest_last_sent_column() in subscribe.php.
+
+    DIGEST_FREQ still forces exactly one tier on any day of the week. That is
+    what the workflow dispatch input is for.
     """
     env = os.environ if env is None else env
     choice = (env.get("DIGEST_FREQ") or "auto").strip().lower()
     if choice in {"daily", "weekly"}:
-        return choice
-    today = today or datetime.datetime.now(datetime.timezone.utc).date()
-    return "weekly" if today.isoweekday() == 1 else "daily"
+        return (choice,)
+    today = today or _today()
+    return ("daily", "weekly") if today.isoweekday() == 1 else ("daily",)
 
 
 # ---------------------------------------------------------------------------
@@ -344,16 +369,23 @@ def _preview_payload(payload: dict, transport):
     return preview
 
 
-def main() -> int:
-    if not (_site() and _key()):
-        print("WP_SITE_URL and WP_API_KEY are required; nothing attempted")
-        return 1
+def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
+              limit: int | None) -> dict:
+    """One tier's whole pass: ask, render, send, record what went out.
 
-    freq = resolve_freq()
-    transport, notice = resolve_transport()
-    from_addr, reply_to = sender_identity()
+    A PASS IS INDEPENDENT OF THE OTHER ONE, and that is the design. The site
+    keys the composer, the recipient query, the send row and the relay lease
+    by frequency, so a Monday's two passes share nothing but the connection.
+    Neither can consume the other's lease, and neither can mark the other's
+    subscribers as already sent to: the per period guard is per tier as well
+    (alt_digest_last_sent_column in includes/subscribe.php).
+
+    Returns a small record for the caller to sum. `halt` means stop the run
+    rather than try the next tier, because the fault is not about this tier.
+    """
+    result = {"code": 0, "sent": 0, "failed": 0, "eligible": 0, "detail": "",
+              "preview": False, "halt": False}
     print(f"digest: freq={freq} transport={transport.describe()}")
-    print(f"digest: {notice}")
 
     try:
         payload = _call("digest-recipients", {"freq": freq})
@@ -362,29 +394,36 @@ def main() -> int:
             print("::warning::the site has no /digest-recipients route yet, so "
                   "this build of the plugin is older than this job. Nothing "
                   "sent and nothing claimed.")
-            return 0
+            result["halt"] = True
+            return result
         print(f"::error::could not read the recipient list: HTTP {exc.code}")
         _record_health("degraded", 0, f"recipient route returned HTTP {exc.code}")
-        return 1
+        result["code"] = 1
+        result["halt"] = True
+        return result
     except Exception as exc:  # noqa: BLE001
         # The host is shared and 504s now and then. A call that never landed
-        # claimed no send, so tomorrow's run repeats it cleanly.
+        # claimed no send, so tomorrow's run repeats it cleanly. The other
+        # tier is not attempted either: the same host answers both.
         print(f"::warning::could not reach the recipient route ({exc}); "
               f"nothing was claimed, so the next run repeats this period")
-        return 0
+        result["halt"] = True
+        return result
 
     if not payload.get("available"):
         reason = payload.get("reason") or "the site reported no subscriber table"
         print(f"nothing sent: {reason}. This is not a zero subscriber count.")
-        return 0
+        result["halt"] = True
+        return result
 
     preview = _preview_payload(payload, transport)
-    is_preview = preview is not None
-    if is_preview:
+    result["preview"] = preview is not None
+    if preview is not None:
         payload = preview
 
     send_id = int(payload.get("send_id") or 0)
     eligible = len(payload.get("recipients") or [])
+    result["eligible"] = eligible
     composed = sorted((payload.get("sections") or {}).keys())
     print(f"digest: send_id={send_id} period {payload.get('from')} to "
           f"{payload.get('to')}, {eligible} eligible, sections composed: "
@@ -394,17 +433,17 @@ def main() -> int:
               "is nothing true to say. Sending nothing rather than an empty "
               "digest or an invented figure.")
 
-    limit = os.environ.get("DIGEST_LIMIT", "").strip()
-    sent_ids, failures = send_all(payload, transport, from_addr, reply_to,
-                                  int(limit) if limit.isdigit() else None)
+    sent_ids, failures = send_all(payload, transport, from_addr, reply_to, limit)
+    result["sent"] = len(sent_ids)
+    result["failed"] = len(failures)
 
     verb = "would send" if not transport.sends else "sent"
-    print(f"digest: {verb} {len(sent_ids)} of {eligible} eligible, "
+    print(f"digest: {freq}: {verb} {len(sent_ids)} of {eligible} eligible, "
           f"{len(failures)} failed")
 
     # Only a run that really put messages on the wire closes the send row and
-    # stamps last_sent_at. A dry run that claimed a send would make tomorrow's
-    # real run skip everyone it printed.
+    # stamps the tier's last-sent column. A dry run that claimed a send would
+    # make tomorrow's real run skip everyone it printed.
     if transport.sends and send_id > 0:
         try:
             _call("digest-complete", payload={
@@ -420,13 +459,13 @@ def main() -> int:
 
     # A preview stays out of the ledger. Its one placeholder recipient is not
     # a delivery, and a health row that counted it would read as a send.
-    if is_preview:
+    if result["preview"]:
         print("DIGEST_PREVIEW: nothing recorded, because a placeholder is not "
               "a recipient.")
     else:
-        detail = (f"{freq}: {len(sent_ids)} sent of {eligible} eligible via "
-                  f"{transport.describe()}, {len(failures)} failed")
-        _record_health("degraded" if failures else "ok", len(sent_ids), detail)
+        result["detail"] = (f"{freq}: {len(sent_ids)} sent of {eligible} "
+                            f"eligible via {transport.describe()}, "
+                            f"{len(failures)} failed")
 
     # A failed delivery is not a red run on its own: one refused address among
     # hundreds is normal mail, and reddening for it is how a real outage stops
@@ -434,8 +473,57 @@ def main() -> int:
     if failures and not sent_ids and eligible:
         print("::error::every delivery failed; the transport or its credential "
               "is wrong. Nothing reached a reader.")
-        return 2
-    return 0
+        result["code"] = 2
+    return result
+
+
+def main() -> int:
+    if not (_site() and _key()):
+        print("WP_SITE_URL and WP_API_KEY are required; nothing attempted")
+        return 1
+
+    freqs = resolve_freqs()
+    transport, notice = resolve_transport()
+    from_addr, reply_to = sender_identity()
+    print(f"digest: tiers={', '.join(freqs)}")
+    print(f"digest: {notice}")
+    if len(freqs) > 1:
+        print("digest: it is a Monday, so both tiers go out from this one "
+              "run, as two separate passes. One cron, one job, two sends.")
+
+    raw = os.environ.get("DIGEST_LIMIT", "").strip()
+    remaining = int(raw) if raw.isdigit() else None
+
+    codes, details = [], []
+    sent_rows = 0
+    failed_rows = 0
+    for freq in freqs:
+        if remaining == 0:
+            # The run's whole allowance is spent. Asking the site for this
+            # tier's list would open a send row nothing could ever fill.
+            print(f"DIGEST_LIMIT is spent, so the {freq} tier was not asked "
+                  f"for. Re-run without a limit to send it.")
+            break
+        outcome = _run_tier(freq, transport, from_addr, reply_to, remaining)
+        codes.append(outcome["code"])
+        sent_rows += outcome["sent"]
+        failed_rows += outcome["failed"]
+        if outcome["detail"]:
+            details.append(outcome["detail"])
+        if remaining is not None:
+            # ONE ceiling for the whole run, not one per tier. DIGEST_LIMIT
+            # exists for a first live send, and a Monday that quietly doubled
+            # it would defeat the only brake that send has.
+            remaining = max(0, remaining - outcome["sent"])
+        if outcome["halt"]:
+            break
+
+    # ONE health row for the run, naming every tier it covers. Two rows would
+    # overwrite each other and the survivor would describe half the job.
+    if details:
+        _record_health("degraded" if failed_rows else "ok",
+                       sent_rows, "; ".join(details))
+    return max(codes) if codes else 0
 
 
 if __name__ == "__main__":

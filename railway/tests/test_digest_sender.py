@@ -461,13 +461,95 @@ class RunWiring(unittest.TestCase):
         self.assertNotIn("reader@example.com", out,
                          "even a dry run prints a label, never the address")
 
+    def test_monday_still_runs_the_daily_tier(self):
+        """THE DEFECT, 2026-08-17. A Monday returned weekly INSTEAD OF daily.
+
+        The workflow runs once a day and this function chose one tier, so
+        every daily subscriber received nothing on a Monday, silently, every
+        week. The docstring said "daily every day, weekly additionally on
+        Mondays" the whole time. This asserts the docstring.
+        """
+        import datetime
+        monday = datetime.date(2026, 8, 17)
+        self.assertIn("daily", digest_send.resolve_freqs({}, monday),
+                      "a daily subscriber must be mailed on a Monday too")
+
     def test_auto_frequency_mirrors_the_sites_own_cron(self):
         import datetime
-        monday = datetime.date(2026, 8, 10)
-        self.assertEqual(digest_send.resolve_freq({}, monday), "weekly")
-        self.assertEqual(digest_send.resolve_freq({}, monday + datetime.timedelta(days=1)),
-                         "daily")
-        self.assertEqual(digest_send.resolve_freq({"DIGEST_FREQ": "daily"}, monday), "daily")
+        monday = datetime.date(2026, 8, 17)
+        self.assertEqual(digest_send.resolve_freqs({}, monday), ("daily", "weekly"))
+        self.assertEqual(
+            digest_send.resolve_freqs({}, monday + datetime.timedelta(days=1)),
+            ("daily",))
+        # The manual dispatch input still forces exactly one tier, on any day.
+        self.assertEqual(digest_send.resolve_freqs({"DIGEST_FREQ": "daily"}, monday),
+                         ("daily",))
+        self.assertEqual(digest_send.resolve_freqs({"DIGEST_FREQ": "weekly"}, monday),
+                         ("weekly",))
+        self.assertEqual(
+            digest_send.resolve_freqs({"DIGEST_FREQ": "weekly"},
+                                      monday + datetime.timedelta(days=1)),
+            ("weekly",))
+
+    def test_a_monday_run_asks_the_site_for_both_tiers(self):
+        """Two passes inside ONE scheduled run, each with its own send row.
+
+        The composer, the recipient query and the lease are all keyed by
+        frequency on the server, so two passes is the shape that needs no
+        new server concept. What it does need is that neither pass is
+        skipped, which is what this reads.
+        """
+        import datetime
+        env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k"}
+        transport = FakeTransport()
+        transport.sends = False
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(digest_send, "_call") as call, \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send, "resolve_transport",
+                                  return_value=(transport, "fake")), \
+                mock.patch.object(digest_send, "_today",
+                                  return_value=datetime.date(2026, 8, 17)), \
+                mock.patch("sys.stdout", io.StringIO()), \
+                mock.patch.object(digest_send.time, "sleep"):
+            call.side_effect = [_payload(freq="daily", send_id=11),
+                                _payload(freq="weekly", send_id=12)]
+            code = digest_send.main()
+        self.assertEqual(code, 0)
+        asked = [c.args[1]["freq"] for c in call.call_args_list
+                 if c.args[0] == "digest-recipients"]
+        self.assertEqual(asked, ["daily", "weekly"])
+
+    def test_the_limit_is_one_ceiling_for_the_whole_run(self):
+        """DIGEST_LIMIT exists for a first live send, so a Monday must not
+        quietly double it by giving each tier its own allowance."""
+        import datetime
+        env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k",
+               "DIGEST_LIMIT": "1"}
+        transport = FakeTransport()
+        two = [{"id": 1, "email": "one@example.com", "unsub_url": UNSUB,
+                "lists": ["layoff"]},
+               {"id": 2, "email": "two@example.com", "unsub_url": UNSUB,
+                "lists": ["layoff"]}]
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(digest_send, "_call") as call, \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send, "resolve_transport",
+                                  return_value=(transport, "fake")), \
+                mock.patch.object(digest_send, "_today",
+                                  return_value=datetime.date(2026, 8, 17)), \
+                mock.patch("sys.stdout", io.StringIO()), \
+                mock.patch.object(digest_send.time, "sleep"):
+            call.side_effect = [_payload(freq="daily", send_id=11, recipients=two),
+                                {"ok": True}]
+            digest_send.main()
+        self.assertEqual(len(transport.delivered), 1,
+                         "one ceiling for the run, not one per tier")
+        asked = [c.args[1]["freq"] for c in call.call_args_list
+                 if c.args[0] == "digest-recipients"]
+        self.assertEqual(asked, ["daily"],
+                         "a spent allowance must not open the other tier's "
+                         "send row for a message it cannot send")
 
     def test_an_install_without_the_table_reads_unknown_not_zero(self):
         env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k"}
@@ -536,7 +618,41 @@ class ServerSideGuards(unittest.TestCase):
     def test_a_row_already_sent_to_this_period_is_not_due(self):
         due = self.sub[self.sub.index("function alt_digest_due_rows"):]
         due = due[:due.index("\n}")]
-        self.assertIn("last_sent_at IS NULL OR last_sent_at < %s", due)
+        self.assertIn("$stamp IS NULL OR $stamp < %s", due)
+
+    def test_the_period_guard_is_per_tier_and_not_one_shared_stamp(self):
+        """Monday runs both tiers, so one shared stamp is one lost email.
+
+        The first pass would mark the row, and the second pass would read it
+        as already sent to. A subscriber taking one list daily and another
+        weekly then got one email on a Monday instead of two.
+        """
+        due = self.sub[self.sub.index("function alt_digest_due_rows"):]
+        due = due[:due.index("\n}")]
+        self.assertIn("alt_digest_last_sent_column($freq)", due)
+        self.assertNotIn("last_sent_at", due,
+                         "the guard must not read the shared column")
+        column = self.sub[self.sub.index("function alt_digest_last_sent_column"):]
+        column = column[:column.index("\n}")]
+        self.assertIn("last_sent_daily", column)
+        self.assertIn("last_sent_weekly", column)
+        self.assertIn("alt_digest_valid_freq($freq)", column,
+                      "the tier must be validated before it names a column")
+        # And the relay records against the same per tier column.
+        complete = self.api[self.api.index("function alt_api_digest_complete"):]
+        complete = complete[:complete.index("\n}")]
+        self.assertIn("alt_digest_last_sent_column($freq)", complete)
+
+    def test_both_new_columns_exist_in_the_schema(self):
+        db = open(os.path.join(PLUGIN, "includes", "db.php"), encoding="utf-8").read()
+        block = db[db.index("$subscribers = $wpdb->prefix"):]
+        block = block[:block.index("$digest_sends")]
+        self.assertIn("last_sent_daily DATETIME NULL", block)
+        self.assertIn("last_sent_weekly DATETIME NULL", block)
+        # A NULL after the migration would make every confirmed row due for
+        # both tiers at once, which is a duplicate on the day of the repair.
+        self.assertIn("SET last_sent_daily = last_sent_at", block)
+        self.assertIn("SET last_sent_weekly = last_sent_at", block)
 
     def test_the_built_in_sender_stands_down_when_a_relay_claimed_the_tier(self):
         sender = self.sub[self.sub.index("function alt_digest_send("):]

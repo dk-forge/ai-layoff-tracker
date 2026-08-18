@@ -102,9 +102,17 @@ class TheLegacyUrlsKeepWorkingForever(_Harness):
             "handler." % self.routes["legacy_confirm_url"])
         self.assertEqual(self.routes["legacy_confirm_status"], "confirmed")
 
-    def test_the_legacy_unsubscribe_url_still_unsubscribes(self):
-        self.assertEqual(self.routes["legacy_unsub_result"], "unsubscribed")
-        self.assertEqual(self.routes["legacy_unsub_status"], "unsubscribed")
+    def test_the_legacy_unsubscribe_url_still_reaches_the_handler(self):
+        """A GET on the old URL asks, exactly as a GET on the new one does.
+
+        It must NOT unsubscribe. That URL sits in the List-Unsubscribe header
+        of every digest already delivered, where a provider POSTs to it, and
+        the POST path is unchanged.
+        """
+        self.assertEqual(self.routes["legacy_unsub_get_code"], 200)
+        self.assertEqual(self.routes["legacy_unsub_status"], "pending",
+                         "the legacy GET wrote the row")
+        self.assertIn("Yes, unsubscribe me", self.routes["legacy_unsub_get_body"])
 
     def test_the_legacy_handlers_are_still_registered_on_admin_post(self):
         """The route survives because the hook survives, not because a comment
@@ -135,9 +143,61 @@ class TheNewRouteReachesTheSameHandler(_Harness):
             "GET %s did not confirm" % self.routes["confirm_url"])
         self.assertEqual(self.routes["public_confirm_status"], "confirmed")
 
-    def test_the_public_path_unsubscribes_by_get(self):
-        self.assertEqual(self.routes["public_unsub_get_result"], "unsubscribed")
-        self.assertEqual(self.routes["public_unsub_get_status"], "unsubscribed")
+    def test_a_get_asks_and_never_unsubscribes(self):
+        """THE DEFECT, 2026-08-17. A GET wrote the row.
+
+        The confirmation email carried this URL in its body, one line under
+        the confirm URL, and Brevo rewrites every link at the relay. A
+        corporate link scanner fetching the URLs in a delivered message
+        therefore confirmed an address and then unsubscribed it, with nobody
+        present. That reader never learns it happened and never complains.
+        A GET must not mutate.
+        """
+        self.assertEqual(self.routes["public_unsub_get_status"], "pending",
+                         "a GET unsubscribed somebody who pressed nothing")
+        self.assertEqual(self.routes["public_unsub_get_code"], 200)
+
+    def test_the_page_a_get_returns_is_one_button_and_no_javascript(self):
+        body = self.routes["public_unsub_get_body"]
+        self.assertIn("Yes, unsubscribe me", body)
+        self.assertTrue(self.routes.get("public_unsub_form_is_post"),
+                        "the button must POST")
+        self.assertEqual(body.count("<form"), 1, "one form, one button")
+        self.assertNotIn("<input type=\"text\"", body,
+                         "nothing to fill in: no address, no login")
+        for banned in ("<script", "javascript:", "onclick"):
+            self.assertNotIn(banned, body.lower(),
+                             "a reader may open this in a stripped down "
+                             "client, so the only button must work without "
+                             "any script")
+
+    def test_pressing_that_button_unsubscribes(self):
+        self.assertEqual(self.routes["public_unsub_button_status"], "unsubscribed",
+                         "the confirmation page's own button did not work")
+        self.assertEqual(self.routes["public_unsub_button_state"], "unsubscribed",
+                         "a human who pressed the button must land on the "
+                         "same panel every other terminal state uses")
+
+    def test_the_button_does_not_send_the_reader_back_into_the_handler(self):
+        """The confirmation page lives AT the unsubscribe URL, so the POST
+        carries that URL as its referer. A redirect back to the referer
+        re-enters this handler, which redirects to the referer again."""
+        to = self.routes["public_unsub_button_to"]
+        self.assertNotIn("/unsubscribe/", to,
+                         "the reader was sent back to the unsubscribe route, "
+                         "which is a redirect loop: %r" % (to,))
+        self.assertIn("alt_dg=unsubscribed", to)
+
+    def test_a_query_string_cannot_forge_the_button(self):
+        """The marker is read from $_POST alone, so no GET can dress up as a
+        press of the button."""
+        self.assertEqual(self.routes["forged_marker_get_status"], "pending")
+
+    def test_a_second_get_says_it_is_already_done(self):
+        self.assertEqual(self.routes["public_unsub_get_again_state"], "unsubscribed")
+
+    def test_a_get_on_an_unknown_token_reads_as_it_always_has(self):
+        self.assertEqual(self.routes["unknown_token_get_state"], "expired")
 
     def test_the_public_path_unsubscribes_by_post(self):
         """RFC 8058. A mailbox provider POSTs here with no human present."""
@@ -154,6 +214,36 @@ class TheNewRouteReachesTheSameHandler(_Harness):
             "the whole funnel and it must not depend on a flushed rewrite "
             "table, because an FTP deploy runs no activation hook.")
         self.assertIn("REQUEST_URI", src)
+
+
+class TheConfirmationEmailCarriesNoStopLink(_Harness):
+    """Removed 2026-08-17, to make the scanner sequence impossible.
+
+    The body used to carry the unsubscribe URL one line under the confirm
+    URL. Brevo rewrites every link at the relay, so a scanner fetching the
+    URLs in that one message confirmed an address and then unsubscribed it.
+    A GET can no longer write the row, which makes that harmless. Cutting the
+    link means the sequence cannot be attempted.
+    """
+
+    def test_the_body_carries_no_unsubscribe_url(self):
+        body = self.routes["confirm_mail_body"]
+        token = self.routes["confirm_mail_unsub_token"]
+        self.assertNotIn(token, body,
+                         "the confirmation email still carries the "
+                         "unsubscribe token in its body")
+        self.assertNotIn("unsubscribe", body.lower())
+
+    def test_the_confirm_link_is_still_there(self):
+        self.assertIn("/confirm/", self.routes["confirm_mail_body"],
+                      "cutting the stop link must not cut the funnel")
+
+    def test_the_list_unsubscribe_header_is_untouched(self):
+        headers = " ".join(self.routes["confirm_mail_headers"])
+        self.assertIn("List-Unsubscribe:", headers)
+        self.assertIn("List-Unsubscribe-Post: List-Unsubscribe=One-Click", headers)
+        self.assertIn(self.routes["confirm_mail_unsub_token"], headers,
+                      "any client offering a stop button must still have one")
 
 
 class OneClickUnsubscribeAnswersAMachine(_Harness):
