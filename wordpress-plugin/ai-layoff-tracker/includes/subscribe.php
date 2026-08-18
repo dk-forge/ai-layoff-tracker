@@ -1155,18 +1155,80 @@ add_action('admin_post_alt_digest_confirm', 'alt_digest_confirm');
 add_action('admin_post_nopriv_alt_digest_confirm', 'alt_digest_confirm');
 
 /**
- * One click, everything stops. IDEMPOTENT: the same link clicked twice (or a
- * mail client prefetching it after the first click) lands on the same
- * confirmation, never an error. The token stays valid so links in older
+ * The page a reader lands on after following an unsubscribe link in an email.
+ *
+ * ONE CLICK, AND NOTHING TO FILL IN. No address to retype, no login, no
+ * JavaScript: a reader may open this in a stripped down client, and a page
+ * whose only button needs a script is a page where nothing stops.
+ *
+ * The token is the credential and it is already in the URL the reader
+ * followed, so this carries it forward in a hidden field. There is no nonce:
+ * a logged out nonce proves nothing an attacker could not also obtain, it
+ * expires, and an expired nonce here means a reader who wanted out cannot get
+ * out. Anyone who can POST this form already knows a 64 character secret that
+ * only ever travelled to one mailbox.
+ */
+function alt_digest_unsub_confirm_page($token) {
+    $action = alt_digest_unsub_url($token);
+    $wrap = 'max-width:34em;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'
+          . '"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#15181d;';
+    $button = 'display:inline-block;padding:14px 26px;font-size:17px;font-weight:600;'
+            . 'color:#ffffff;background:#0b4f9c;border:0;border-radius:8px;cursor:pointer;';
+    $html = '<div style="' . esc_attr($wrap) . '">'
+          . '<h1 style="font-size:22px;margin:0 0 12px;">Unsubscribe from the '
+          . 'AskTheRecruiter digest?</h1>'
+          . '<p style="margin:0 0 20px;">One click stops every digest on this address. '
+          . 'We delete the address within ' . (int) ALT_DIGEST_RETENTION_DAYS . ' days.</p>'
+          . '<form method="post" action="' . esc_url($action) . '">'
+          . '<input type="hidden" name="action" value="alt_digest_unsub">'
+          . '<input type="hidden" name="t" value="' . esc_attr($token) . '">'
+          . '<input type="hidden" name="alt_unsub_confirm" value="1">'
+          . '<button type="submit" style="' . esc_attr($button) . '">Yes, unsubscribe me</button>'
+          . '</form>'
+          . '<p style="margin:20px 0 0;font-size:15px;">'
+          . '<a href="' . esc_url(home_url('/ai-layoff-tracker/')) . '">'
+          . 'No, keep sending it</a></p>'
+          . '</div>';
+    wp_die($html, 'Unsubscribe', array('response' => 200));
+}
+
+/**
+ * One click, everything stops. IDEMPOTENT: the same link followed twice lands
+ * on the same answer, never an error. The token stays valid so links in older
  * emails keep working until the purge deletes the row.
  *
- * Serves both the human GET from the email footer and the mailbox provider's
- * RFC 8058 one-click POST (List-Unsubscribe-Post).
+ * A GET NEVER CHANGES THE ROW, AND THAT IS THE WHOLE POINT OF THE SHAPE.
+ *
+ * THE DEFECT THIS ANSWERS, 2026-08-17. This wrote the row before it looked at
+ * the request method, so any GET unsubscribed. The confirmation email carried
+ * the unsubscribe URL in its body, one line under the confirm URL, and Brevo
+ * rewrites every link at the relay. A corporate link scanner that fetches the
+ * URLs in a delivered message therefore confirmed the address and then
+ * unsubscribed it, with nobody present. That reader never learns it happened,
+ * never receives what they asked for, and never complains. This file already
+ * knew scanners follow these links: the 'expired' copy says so out loud.
+ *
+ * So the two callers are separated by the only thing that tells them apart:
+ *
+ *   GET   renders a page with one button. Nothing is written.
+ *   POST  writes the row. A provider gets a bare 200, as RFC 8058 requires,
+ *         and a reader who pressed the button gets the same page every other
+ *         terminal state uses. The two are told apart by a field the button
+ *         posts, so a provider that posts nothing else keeps its 200.
  */
 function alt_digest_unsubscribe() {
     global $wpdb;
     $token = (string) ($_REQUEST['t'] ?? '');
     $row = alt_digest_get_by_token('unsub_token', $token);
+
+    if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+        // A used or purged token reads the same as it always has, and an
+        // address already unsubscribed is not asked to confirm it twice.
+        if (!$row) alt_digest_redirect('expired');
+        if ($row['status'] === 'unsubscribed') alt_digest_redirect('unsubscribed');
+        alt_digest_unsub_confirm_page($row['unsub_token']);   // ends the request
+    }
+
     if ($row && $row['status'] !== 'unsubscribed') {
         $wpdb->update(alt_subscribers_table(), array(
             'status'          => 'unsubscribed',
@@ -1175,6 +1237,7 @@ function alt_digest_unsubscribe() {
             'confirm_token'   => null,
         ), array('id' => $row['id']));
     }
+
     // THE MACHINE CASE IS ANSWERED FIRST, AND THAT ORDER IS THE POINT.
     //
     // RFC 8058: the provider POSTs to the List-Unsubscribe URL with no human
@@ -1187,7 +1250,10 @@ function alt_digest_unsubscribe() {
     // providers that require this header in the first place. There is also
     // nothing to tell it: whether the row is gone or was never there, the
     // outcome it asked for is already true.
-    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    //
+    // The marker is read from $_POST alone. A query string cannot forge it,
+    // so no GET can reach the human branch by dressing itself up as one.
+    if (empty($_POST['alt_unsub_confirm'])) {
         wp_die('Unsubscribed.', 'Unsubscribed', array('response' => 200));
     }
     if (!$row) alt_digest_redirect('expired');
@@ -1316,8 +1382,22 @@ function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token) {
           . "Nothing is sent until you confirm. If you did not request this, ignore this email: "
           . "the signup is deleted automatically after " . ALT_DIGEST_RETENTION_DAYS . " days.\n";
     $headers = alt_digest_from_header();
+    /*
+      NO UNSUBSCRIBE LINK IN THIS BODY, REMOVED 2026-08-17. It used to sit one
+      line under the confirm link: "Already changed your mind? One click stops
+      everything", and then the URL. Brevo rewrites every link at the relay,
+      so a corporate scanner fetching the URLs in this message followed the
+      confirm link and then the unsubscribe link, confirming an address and
+      immediately unsubscribing it with nobody present. A GET can no longer
+      write the row, which makes that harmless. Cutting the link makes it
+      impossible.
+
+      Nobody reading this message needs the link anyway. They have agreed to
+      nothing yet, and ignoring the email is already the way to stop: the row
+      is deleted after the retention window. The List-Unsubscribe header below
+      is untouched, so any client that offers a stop button still has one.
+    */
     if ($unsub_token !== '') {
-        $body .= "\nAlready changed your mind? One click stops everything:\n" . alt_digest_unsub_url($unsub_token) . "\n";
         $headers = array_merge($headers, alt_digest_list_unsub_headers($unsub_token));
     }
     return wp_mail($email, alt_digest_confirm_subject(), $body, $headers);

@@ -17,9 +17,11 @@ holder, so the start-of-session ritual surfaces it automatically.
   subscriber got nothing, weekly, in silence. Both tiers now run as two
   independent passes inside the one 13:10 job, and the per-period guard is per
   tier (`last_sent_daily` / `last_sent_weekly`) because a shared stamp let the
-  first pass hide everybody from the second. Schedule untouched. Open and NOT
-  fixed here: a plain GET can unsubscribe somebody who never clicked, written
-  up in TECHLOG.
+  first pass hide everybody from the second. Schedule untouched. The same version also
+  stops a plain GET from unsubscribing anybody: a GET now renders a one button
+  page and only a POST writes the row, the RFC 8058 POST path is unchanged,
+  and the unsubscribe link is out of the confirmation email's body so a link
+  scanner can no longer confirm an address and then drop it.
 - **PREVIOUSLY WORKING ON:** the CONFIRMATION email's open
   pixel, landed as **2.20.78** (`includes/subscribe.php` copy and comments,
   `tests/test_digest_subscription.py`, `tests/test_digest_brevo_feedback.py`

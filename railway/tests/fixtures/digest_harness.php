@@ -301,7 +301,9 @@ if (isset($argv[2]) && $argv[2] !== '') require $argv[2];
 
 function drive($fn) {
     $GLOBALS['__redirect'] = null;
-    try { $fn(); } catch (AltRedirect $e) {}
+    // AltDie as well as AltRedirect: a handler may END the request with a
+    // page instead of a redirect, and the unsubscribe GET now does.
+    try { $fn(); } catch (AltRedirect $e) {} catch (AltDie $e) {}
     $url = (string) $GLOBALS['__redirect'];
     return preg_match('/alt_dg=([a-z]+)/', $url, $m) ? $m[1] : $url;
 }
@@ -373,14 +375,17 @@ alt_digest_cron_run();
 $health = get_option('alt_source_health');
 $out['health_row'] = $health['digest_mailer'] ?? null;
 
-// 6. Unsubscribe: one click, idempotent, then nothing ever sends again.
+// 6. Unsubscribe: one press of the button, idempotent, then nothing ever
+//    sends again. A POST, because a GET only ASKS since 2026-08-17.
 $mail_count_before_unsub = count($mails);
 $_REQUEST = array('t' => $r2['unsub_token']);
-$_SERVER['REQUEST_METHOD'] = 'GET';
+$_POST = array('alt_unsub_confirm' => '1');
+$_SERVER['REQUEST_METHOD'] = 'POST';
 $out['unsub1'] = drive('alt_digest_unsubscribe');
 $r3 = row('reader@example.com');
 $out['status_after_unsub'] = $r3['status'];
 $out['unsub2'] = drive('alt_digest_unsubscribe');
+$_POST = array();
 $r4 = row('reader@example.com');
 $out['unsub_idempotent_same_stamp'] = $r3['unsubscribed_at'] === $r4['unsubscribed_at'];
 list($sent3, ) = alt_digest_send('weekly');
@@ -552,8 +557,10 @@ $out['clicks_after_flood'] = (int) $wpdb->get_var(
 
 // One unsubscribe inside the 48h window after that send.
 $_REQUEST = array('t' => row('b@example.com')['unsub_token']);
-$_SERVER['REQUEST_METHOD'] = 'GET';
+$_POST = array('alt_unsub_confirm' => '1');
+$_SERVER['REQUEST_METHOD'] = 'POST';
 drive('alt_digest_unsubscribe');
+$_POST = array();
 
 $stats = alt_digest_stats();
 $out['stats'] = $stats;
@@ -767,10 +774,28 @@ $r = $request(alt_digest_legacy_confirm_url($p['confirm_token']));
 $routes['legacy_confirm_result'] = $r['state'];
 $routes['legacy_confirm_status'] = row('oldroute@example.com')['status'];
 
-// (c) Unsubscribe: public path, by GET.
+// (c) Unsubscribe: public path, by GET. IT MUST NOT UNSUBSCRIBE. A scanner
+//     fetching links in a delivered message is the caller this separates out.
 $p = $seed_pending('unsubget@example.com');
-$routes['public_unsub_get_result'] = $request(alt_digest_unsub_url($p['unsub_token']))['state'];
+$r = $request(alt_digest_unsub_url($p['unsub_token']));
+$routes['public_unsub_get_code'] = $r['code'];
+$routes['public_unsub_get_body'] = $r['body'];
+$routes['public_unsub_get_result'] = $r['state'];
 $routes['public_unsub_get_status'] = row('unsubget@example.com')['status'];
+// And the button on that page, posted the way a browser would post it.
+$routes['public_unsub_button_status'] = 'NOT ATTEMPTED';
+if (preg_match('/<form[^>]*action="([^"]+)"/', (string) $r['body'], $fm)) {
+    $routes['public_unsub_form_action'] = $fm[1];
+    $routes['public_unsub_form_is_post'] = (bool) preg_match('/<form[^>]*method="post"/i', (string) $r['body']);
+    $posted = $request($fm[1], 'POST', array(
+        'action' => 'alt_digest_unsub', 't' => $p['unsub_token'],
+        'alt_unsub_confirm' => '1'));
+    $routes['public_unsub_button_state'] = $posted['state'];
+    $routes['public_unsub_button_status'] = row('unsubget@example.com')['status'];
+}
+// A GET on a row that is ALREADY unsubscribed says so rather than asking again.
+$routes['public_unsub_get_again_state'] =
+    $request(alt_digest_unsub_url($p['unsub_token']))['state'];
 
 // (d) Unsubscribe: public path, by the RFC 8058 one-click POST.
 $p = $seed_pending('unsubpost@example.com');
@@ -788,10 +813,24 @@ $r = $request(alt_digest_legacy_unsub_url($p['unsub_token']), 'POST',
 $routes['legacy_unsub_post_code'] = $r['code'];
 $routes['legacy_unsub_post_status'] = row('unsuboldpost@example.com')['status'];
 
-// (f) And the legacy GET.
+// (f) And the legacy GET, which must not unsubscribe either. That URL is in
+//     the List-Unsubscribe header of every digest already delivered.
 $p = $seed_pending('unsuboldget@example.com');
-$routes['legacy_unsub_result'] = $request(alt_digest_legacy_unsub_url($p['unsub_token']))['state'];
+$r = $request(alt_digest_legacy_unsub_url($p['unsub_token']));
+$routes['legacy_unsub_get_code'] = $r['code'];
+$routes['legacy_unsub_get_body'] = $r['body'];
+$routes['legacy_unsub_result'] = $r['state'];
 $routes['legacy_unsub_status'] = row('unsuboldget@example.com')['status'];
+
+// (f2) A GET carrying the human marker in its QUERY STRING must still not
+//      write anything. The marker is read from $_POST alone for this reason.
+$p = $seed_pending('unsubforge@example.com');
+$request(alt_digest_unsub_url($p['unsub_token']) . '?alt_unsub_confirm=1');
+$routes['forged_marker_get_status'] = row('unsubforge@example.com')['status'];
+
+// (f3) A GET on a token nobody holds reads the way it always has.
+$routes['unknown_token_get_state'] =
+    $request(alt_digest_unsub_url(str_repeat('e', 64)))['state'];
 
 // (g) A token the purge already deleted, POSTed by a provider. Nothing to do,
 //     and saying so with a 4xx would be recorded against the sending domain.
@@ -807,6 +846,8 @@ $before = count($mails);
 post_signup('fromline@example.com', array('layoff'));
 $confirm_mail = end($mails);
 $routes['confirm_mail_headers'] = $confirm_mail['headers'];
+$routes['confirm_mail_body'] = $confirm_mail['body'];
+$routes['confirm_mail_unsub_token'] = row('fromline@example.com')['unsub_token'];
 $from_of = function ($headers) {
     foreach ((array) $headers as $h) {
         if (stripos($h, 'from:') === 0) return $h;

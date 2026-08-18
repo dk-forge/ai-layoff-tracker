@@ -1655,6 +1655,15 @@ put two copies in one inbox. Do not add a recipient query anywhere else.
   tier on a Monday is the 2026-08-17 defect returning. Do NOT answer it by
   adding a second cron line. One schedule is the point, and the fix belongs in
   `resolve_freqs()`.
+- **Subscribers are vanishing without complaining**: check whether a GET can
+  write the row again. `alt_digest_unsubscribe()` must render a page on GET
+  and write only on POST, and the marker that tells a reader's button apart
+  from a provider's one-click POST must be read from `$_POST` alone. A GET
+  that unsubscribes is invisible: a corporate link scanner fetches the URLs in
+  a delivered message, the reader never learns their subscription stopped, and
+  nobody files a complaint. Do not put an unsubscribe link back into the
+  confirmation email's body either. The `List-Unsubscribe` header covers every
+  client that offers a stop button.
 - **Somebody who takes two tiers got one email on a Monday**: the per-period
   guard has gone back to being shared. It must read
   `alt_digest_last_sent_column($freq)`, so `last_sent_daily` and

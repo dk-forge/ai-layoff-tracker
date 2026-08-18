@@ -57,16 +57,53 @@ holds the tier resolution, the two recipient calls a Monday makes, and the
 per-tier column in both the query and the recording route. Every one of them
 was red against the code as shipped.
 
-**Open, not fixed here: an unsubscribe can happen with no human present.**
-`alt_digest_unsubscribe()` writes the row BEFORE it looks at the request
-method, so a plain GET unsubscribes. The confirmation email carries the
-unsubscribe URL in its body, one line under the confirm URL. A corporate link
-scanner that fetches both URLs at delivery confirms the address and then
-unsubscribes it, and the health digest's "3 subscribers, 2 unsubscribed" is
-consistent with exactly that. The RFC 8058 POST path is correct and must stay
-one click. Writing it up rather than changing it: the repair adds a click for
-real readers, and that is the owner's call. See the finding in this session's
-report.
+### The same version fixes a second defect: a GET could unsubscribe
+
+`alt_digest_unsubscribe()` wrote the row BEFORE it looked at the request
+method, so any GET unsubscribed. That is not theoretical here. The
+confirmation email carried the unsubscribe URL in its body, one line under the
+confirm URL, and Brevo rewrites every link at the relay. A corporate link
+scanner fetching the URLs in that one delivered message therefore confirmed an
+address and then unsubscribed it, with nobody present. The reader never learns
+it happened, never receives what they asked for, and never complains: they
+conclude the product does not work. The health digest read "Subscribers 3 (+3
+this week), last digest sent to 1, 0 clicks, 2 unsubscribed". This file already
+knew scanners follow these links, in the 'expired' copy: "clicked after a mail
+scanner already followed it".
+
+**A GET must not mutate.** RFC 8058 one-click is a POST precisely because the
+header is machine-called, and an in-body link followed by a scanner is the
+case that requirement exists to separate.
+
+- **GET** renders a page with one unmistakable button and writes nothing. No
+  address to retype, no login, no form to fill in, and **no JavaScript**: a
+  reader may open it in a stripped down client, and a page whose only button
+  needs a script is a page where nothing stops. There is no nonce either. A
+  logged out nonce proves nothing an attacker could not also obtain, and an
+  expired one means a reader who wants out cannot get out. The 64 character
+  token that only ever travelled to one mailbox is the credential.
+- **POST** writes the row and returns a bare 200, exactly as before. Gmail and
+  Yahoo are unchanged, and every unsubscribe URL already sitting in an inbox
+  keeps working by POST. A reader who pressed the button is told apart by a
+  field the button posts, read from `$_POST` alone so no query string can
+  forge it, and lands on the same panel every other terminal state uses.
+
+**And the cause, not only the mechanism: the unsubscribe link is out of the
+confirmation email's body.** What was removed is two lines, "Already changed
+your mind? One click stops everything:" and the URL under it. The confirm link
+is untouched and the `List-Unsubscribe` header is untouched, so any client
+offering a stop button still has one. Nobody reading that message needs an
+in-body link: they have agreed to nothing yet, and ignoring the email already
+stops everything, since the row is deleted after the retention window.
+
+**The evidence that would turn the inference into a fact is not reachable from
+this repo.** It would be the existing unsubscribed rows whose `unsubscribed_at`
+sits within a minute or two of their `confirmed_at`, which is the scanner
+fingerprint. `/subscriber-stats` is counts only by design, no route anywhere
+exposes a per-row timestamp, and this environment holds no `WP_API_KEY`. So it
+stays an inference. The owner can settle it in phpMyAdmin:
+`SELECT id, confirmed_at, unsubscribed_at FROM wp_alt_subscribers WHERE status
+= 'unsubscribed';`
 
 ## 2026-08-17 - the coverage claim becomes a measurement that recomputes itself (railway + docs, no deploy)
 
