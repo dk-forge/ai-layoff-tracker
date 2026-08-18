@@ -369,6 +369,38 @@ class TheRegisterRefusesToAverage(unittest.TestCase):
                          "as coverage and its denominator is this register, not the world")
 
 
+class TheVerdictAgreesWithItself(unittest.TestCase):
+    """"1 have no disclosure regime at all" is what the first green run printed.
+
+    NO_REGIME is the count most likely to sit at exactly one for a long time —
+    it is the hardest claim to earn — so this is the tally whose agreement
+    breaks most often and matters most.
+    """
+
+    def _verdict(self, tallies, scope=70):
+        return cc.judge({
+            "measured_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "scope_state": cc.MEASURED, "undeclared": [], "expired": [],
+            "tallies": tallies, "countries_in_scope": scope})[1]
+
+    def test_a_single_country_takes_a_singular_verb(self):
+        detail = self._verdict({cc.NO_REGIME: 1, cc.REGIME_WITH_AGGREGATE: 1,
+                                cc.REGIME_NO_AGGREGATE: 1})
+        self.assertIn("1 has no disclosure regime at all", detail)
+        self.assertIn("1 publishes a countable total", detail)
+        self.assertIn("1 has a regime that publishes no aggregate", detail)
+
+    def test_several_countries_take_a_plural_verb(self):
+        detail = self._verdict({cc.NO_REGIME: 3, cc.REGIME_WITH_AGGREGATE: 10,
+                                cc.REGIME_NO_AGGREGATE: 22})
+        self.assertIn("3 have no disclosure regime at all", detail)
+        self.assertIn("10 publish a countable total", detail)
+
+    def test_zero_takes_a_plural_verb(self):
+        self.assertIn("0 have no disclosure regime at all",
+                      self._verdict({cc.NO_REGIME: 0}))
+
+
 class NotACountryIsNotAFinding(unittest.TestCase):
     """"Multiple countries" is a scope bucket, not a place.
 

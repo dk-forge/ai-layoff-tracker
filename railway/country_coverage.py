@@ -1921,11 +1921,19 @@ def judge(report, now=None):
     backlog = report.get("backlog") or []
     tail = (f"; {len(backlog)} still unclassified and acknowledged as outstanding work "
             f"(oldest declared {report.get('backlog_oldest')})") if backlog else ""
+    # "1 have no disclosure regime at all" is the line this verdict actually
+    # printed on its first green run. NO_REGIME is the count most likely to sit
+    # at exactly one for a long time — it is the hardest claim in the register
+    # to earn — so the agreement is not decoration.
+    def _n(count, plural, singular):
+        return f"{count} {singular if count == 1 else plural}"
     return PASS, (f"{report.get('countries_in_scope')} countries in scope: "
-                  f"{t.get(REGIME_WITH_AGGREGATE, 0)} publish a countable total, "
-                  f"{t.get(REGIME_NO_AGGREGATE, 0)} have a regime that publishes no "
-                  f"aggregate, {t.get(NO_REGIME, 0)} have no disclosure regime at all, "
-                  f"{t.get(REFUSED, 0)} refused (publisher blocks AI agents)" + tail)
+                  f"{_n(t.get(REGIME_WITH_AGGREGATE, 0), 'publish', 'publishes')} a "
+                  f"countable total, "
+                  f"{_n(t.get(REGIME_NO_AGGREGATE, 0), 'have', 'has')} a regime that "
+                  f"publishes no aggregate, "
+                  f"{_n(t.get(NO_REGIME, 0), 'have', 'has')} no disclosure regime at "
+                  f"all, {t.get(REFUSED, 0)} refused (publisher blocks AI agents)" + tail)
 
 
 def load_measurement(path=None):
