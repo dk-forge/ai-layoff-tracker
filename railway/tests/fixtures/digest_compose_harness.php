@@ -122,11 +122,41 @@ function rest_do_request($req) {
     return new WP_REST_Response_Stub($FIXTURE[$key]);
 }
 
+/**
+ * The blog posts, for `compose: articles`. Stubbed rather than faked out: the
+ * composer reads the title, the permalink, the excerpt, the GMT publish date
+ * and the body word count, so the fixture supplies exactly those five and
+ * nothing invents one. A fixture item with no `content` gets no read time,
+ * which is the real behaviour for a post whose body cannot be counted.
+ */
+function get_posts($args = array()) {
+    global $FIXTURE;
+    $out = array();
+    foreach (($FIXTURE['posts'] ?? array()) as $p) {
+        $o = new stdClass();
+        $o->post_title = (string) ($p['title'] ?? '');
+        $o->post_excerpt = (string) ($p['excerpt'] ?? '');
+        $o->post_date_gmt = (string) ($p['date'] ?? '');
+        $o->post_content = (string) ($p['content'] ?? '');
+        $o->permalink = (string) ($p['link'] ?? '');
+        $out[] = $o;
+    }
+    return $out;
+}
+function get_the_title($p) { return $p->post_title; }
+function get_permalink($p) { return $p->permalink; }
+function get_the_excerpt($p) { return $p->post_excerpt; }
+function wp_strip_all_tags($s) { return strip_tags((string) $s); }
+
 require $argv[1];
 
 $which = $FIXTURE['compose'] ?? 'layoff';
-$out = ($which === 'talent')
-    ? alt_digest_compose_talent($FIXTURE['from'], $FIXTURE['to'], 0)
-    : alt_digest_compose_layoff($FIXTURE['from'], $FIXTURE['to'], 0);
+if ($which === 'talent') {
+    $out = alt_digest_compose_talent($FIXTURE['from'], $FIXTURE['to'], 0);
+} elseif ($which === 'articles') {
+    $out = alt_digest_compose_articles($FIXTURE['from'], $FIXTURE['to'], 0);
+} else {
+    $out = alt_digest_compose_layoff($FIXTURE['from'], $FIXTURE['to'], 0);
+}
 
 echo json_encode($out === null ? array('null' => true) : $out);

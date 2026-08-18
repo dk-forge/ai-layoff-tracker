@@ -201,14 +201,17 @@ function alt_api_digest_recipients($request) {
         $send_id = 0;
     }
 
-    $label = $freq === 'daily' ? 'Daily' : 'Weekly';
     $response = new WP_REST_Response(array(
         'available'  => true,
         'freq'       => $freq,
         'send_id'    => $send_id,
         'from'       => $from_date,
         'to'         => $to_date,
-        'subject'    => '[AskTheRecruiter] ' . $label . ' tracker digest',
+        // FALLBACK ONLY, and dated even so. The relay composes the real
+        // subject in digest_layout.subject_line() and uses this when it
+        // cannot; alt_digest_fallback_subject is the same string the
+        // in-WordPress sender falls back to, so the two cannot drift.
+        'subject'    => alt_digest_fallback_subject($freq, $to_date),
         'sections'   => $sections,
         // Where a reader changes WHAT they get rather than stopping
         // everything. Built here, from home_url(), so the relay never carries

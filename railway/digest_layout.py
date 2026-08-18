@@ -163,6 +163,37 @@ VARIANT_STYLES = {
     # The small print a block earns: a reconciliation, a definition, a basis.
     ("p", "note"): (f"margin:0 0 14px;font-family:{FONT};font-size:13px;"
                     f"line-height:1.55;color:{MUTED};"),
+    # ------------------------------------------------------------------
+    # The article item. THE SECTION THIS EMAIL WAS WEAKEST AT, and the one a
+    # general reader most wants: it printed a title and a severed first
+    # sentence in a bullet list, which is a list of links with extra words.
+    #
+    # The separation is a `border-top` on the item's own `td`, not an `<hr>`
+    # and not an empty spacer row. That is measured rather than preferred:
+    # caniemail puts `<table>` at 100% support and `<hr>` at 72.97%, and Email
+    # on Acid's spacing survey says outright that empty table cells do not
+    # reliably retain their height, while `padding` is reliable ON A CELL (not
+    # on a table, which desktop Outlook ignores). So every gap in this block is
+    # cell padding and every rule is a cell border.
+    #
+    # Three sizes, so the block has a shape a skimmer can enter at any point:
+    # the title is the biggest thing in the section after its heading, the
+    # standfirst is body size, and the meta line is the same grey small print
+    # every other qualifier in this email uses. Nothing is below 14px: iOS
+    # enlarges smaller text by itself, which would break the hierarchy on the
+    # device most of these are read on.
+    # ------------------------------------------------------------------
+    ("td", "item"): (f"padding:14px 0 0;font-family:{FONT};"
+                     f"border-top:1px solid {RULE};vertical-align:top;"),
+    ("td", "item-first"): (f"padding:2px 0 0;font-family:{FONT};"
+                           f"vertical-align:top;"),
+    ("p", "item-title"): (f"margin:0 0 5px;font-family:{FONT};font-size:17px;"
+                          f"line-height:1.35;font-weight:700;"
+                          f"letter-spacing:-0.01em;color:{INK};"),
+    ("p", "item-blurb"): (f"margin:0 0 5px;font-family:{FONT};font-size:15px;"
+                          f"line-height:1.5;color:{INK};"),
+    ("p", "item-meta"): (f"margin:0 0 14px;font-family:{FONT};font-size:13px;"
+                         f"line-height:1.5;color:{MUTED};"),
     # The row label and the row figure. Same cell style, different weight and
     # a narrower measure, so a long company name wraps and the number does not.
     ("td", "label"): (f"padding:7px 10px 7px 0;font-family:{FONT};font-size:15px;"

@@ -1,5 +1,187 @@
 # Tech Log
 
+## 2026-08-18 - a US state in the country column, two senders with two subjects, and every count that governed a plural (2.20.85)
+
+The owner received the daily digest and sent back a list. Five defects, one of
+which is a wrong number on a public surface and the rest of which are the
+reasons a citable product reads as machine output. All five are here, with what
+each one actually turned out to be.
+
+### 1. North Carolina was printed as a country, and it was the ROW
+
+Live in the delivered email:
+
+    Where the jobs were
+    ... counted where the jobs were rather than where the employer is based.
+      United States    365 jobs
+      North Carolina     1 job
+
+**It was a bad row, not a bad render.** The block reads `top_countries` off
+/aggregate, which is a `GROUP BY country`, so the column really held the
+string. Verified live the same day on the successor case:
+
+    id 134152  Vestis Services, LLC  job_count 1  layoff_date 2026-08-17
+    state "NC"  country "Kentucky"  source_type warn  edited 1
+    excerpt "Layoff at Vestis Services, LLC in Lexington KY"
+
+That is an NC WARN notice whose site is in Lexington, Kentucky. **How many
+others**: exactly one, today. `/facets` returns 74 distinct country values and
+`Kentucky` is the only state-shaped one; `North Carolina` is no longer among
+them, and `country=North Carolina` returns 0 rows, so that row has already been
+superseded or corrected since the send. One at a time is the shape of this
+defect, which is why it went eight months unnoticed.
+
+**How it got in, and why nothing stopped it.** `edited = 1`, and db.php:4233 is
+the only line in the plugin that sets it, so the value was written through
+`/edit`. Nothing automated can produce it: `sources/warn.py`,
+`sources/warn_custom.py` and `erm_import.py` all hard-code
+`country => "United States"`, `warn_import.py` never touches the field, and
+`/enrich-context` writes only `employer_country`. It was a human correction
+that put the site's state in the country field. Nothing rejected it because
+`alt_normalize_country()`'s documented rule is "unknown single countries are
+returned unchanged (never lose data)" - correct for a country nobody thought to
+map, wrong for a value that is not a country at all.
+
+**The fix is in the normaliser, not the renderer.** Every path already goes
+through it: `/add`, `/bulk`, `/edit`, the re-normalise migration and the country
+FILTER. So one guard closes the class on all of them at once, and in both
+directions: a reader who filters on "Kentucky" now gets the United States rows
+rather than a dead facet. Filtering at render would have made the digest look
+right while the tracker's country dropdown, the exports, the facet pages and
+the public API kept serving the state. One wrong value, five surfaces.
+
+**Georgia is deliberately absent from the list.** It is a sovereign country as
+well as a US state, and in a column whose job is to name countries the country
+is the more likely meaning; a US-Georgia row is caught by its `state` column
+instead. Puerto Rico and Guam are left alone too: they are routinely counted as
+separate jurisdictions and folding one would be a judgement, not a
+normalisation. `tests/test_country_is_not_a_state.py` holds all of it,
+executing the real function rather than grepping for it.
+
+The live row itself still needs correcting at source; the guard stops the next
+one but does not rewrite a row already stored.
+
+### 2. "Cite this is broken" was the markup, not the words
+
+Reproduced from the composer output before touching anything. The block used
+`data-alt="kicker"`, and digest_layout.py documents that variant as *the eyebrow
+over a headline figure*: 11px, uppercase, letterspaced, grey, `margin:0 0 4px`
+because it is built to sit tight above a 34px number. Over 13px grey note text
+it rendered SMALLER than the thing it labelled, in the same grey, with none of
+the top space every other block label gets from `h3`, two lines above the rule
+that starts the next tracker. It read as a stray fragment. It was also the only
+block label in the message that was not a heading element, so a screen reader
+moving by heading skipped the citation entirely.
+
+The citation string also had the URL concatenated into the same paragraph
+("... accessed 18 August 2026. https://..."), so a reference meant to be
+selected and pasted had to be separated from a sentence first.
+
+Now a real `<h3>Cite this</h3>` like every other block, with the URL as its own
+paragraph. It is STILL plain text and still not an anchor: a counted link in a
+published story records the counter instead of our address, which is why
+alt_digest_cite_note says so at length. The test asserts both halves.
+
+### 3. The subject carried no date, and there were two of them
+
+    [AskTheRecruiter] Daily tracker digest
+
+over a body that said 17 to 18 August 2026. **Two senders composed two
+different subjects.** `railway/digest_send.py` relays through Brevo and
+composes in `digest_layout.subject_line()`, which names the trackers and dates
+the window. `alt_digest_send()` in subscribe.php is the in-WordPress wp_mail
+sender, which takes over whenever the relay has not claimed the tier, and it
+spelled its own. Which subject a subscriber got depended on which process
+happened to be sending, and the dateless one is the one that reached the owner.
+
+`alt_digest_subject_line()` is now a line-for-line port of the Python function,
+and `tests/test_digest_subject_agreement.py` drives BOTH over the same ten
+inputs and fails on any difference. The dateless literal now exists once, in
+`alt_digest_fallback_subject()`, which dates it too - a fallback is still a
+subject somebody receives. digest-api.php asks that function rather than
+spelling its own. Change one implementation, change the other, same commit.
+
+### 4. "2026 so far" is now "YTD 2026"
+
+Asked for twice. The earlier reasoning was that a bare "YTD" does not name the
+year, so a forwarded fragment is ambiguous. "YTD 2026" names it, so the
+objection is satisfied and the owner's wording wins. Both sections.
+
+### 5. Every count that governed a plural
+
+He quoted three:
+
+    1 of the 5 companies listed ... link to an entry page
+    1 more sit below the lines shown
+    Open the tracker on this week
+
+There were more, and the class is what matters. `alt_digest_jobs_phrase()` has
+existed since the first send carrying a comment saying "1 jobs" is the line a
+sceptical reader looks at hardest - and it governed exactly one noun. Every
+other count in the file interpolated a number in front of a hard-coded plural.
+Rendering the composers with a window holding one entry, one company, one
+country and one source produced: "1 verified job cuts", "All 1 entries ... are
+verified, across 1 companies", "across 1 entries", "Of those, 1 were attributed
+to AI", "1 are on entries with no country recorded", plus the three above.
+
+`alt_digest_count()` and `alt_digest_verb()` now build the count and the word it
+governs together, and `tests/test_digest_singular_plural.py` renders all three
+composers over fixtures where every count is one, sweeping for `1 <plural>` in
+BOTH parts and asserting the named verb agreements by phrase. A window of one
+is rare and completely ordinary - it is what a daily digest looks like on a
+quiet Sunday - and nobody was ever going to hit it by hand.
+
+"Open the tracker on this week" became "Open the tracker for 17 to 18 August
+2026". It is not only better English: that link carries a specific window and a
+specific date basis, so the label now says which, and the line still means
+something once it is quoted or read out of context by a screen reader.
+
+### The articles section, which was the weakest and is the one a general reader wants
+
+It was a `<ul>` of titles, each with a `<br>` and a severed first sentence.
+Nothing in it separated one item from the next except a bullet, which is the
+weakest divider in an email and the thing a client is most likely to restyle.
+
+Three changes, all inside the hard constraints (no images, no `url()`, no style
+block, every rule inline, tables only, ~600px, `assert_message_is_clean`
+unmodified):
+
+- **Each item is its own cell with a `border-top` hairline.** Measured, not
+  preferred: caniemail puts `<table>` at 100% client support and `<hr>` at
+  72.97%, and Email on Acid's spacing survey says outright that empty spacer
+  rows do not reliably keep their height while `padding` is reliable ON A CELL
+  (desktop Outlook ignores it on tables). So every gap is cell padding and every
+  break is a cell border. The first item carries no rule, or it would read as
+  the end of the caption.
+- **Three sizes**: title 17px bold, standfirst 15px, meta 13px grey. Nothing
+  below 14px except the meta line, which matches every other qualifier in the
+  message.
+- **A meta line per item: the post's own publication date and a counted read
+  time** at 220 words a minute, omitted entirely when the body cannot be
+  counted. Neither is invented. It makes an item self-contained once somebody
+  quotes or forwards one line, which is the doctrine the rest of the email
+  already follows.
+
+**The truncation is answered at the cause.** `alt_digest_standfirst()` now
+tries the first complete sentence within 160 characters, then within 240, and
+only cuts when the author's opening sentence is longer than that. A long
+complete thought beats a short broken one; the marked ellipsis fallback stays
+for the case where neither works.
+
+**What was removed to pay for the added line**: the bullet list and its
+`<br>`-joined blurb, and the standfirst cap was NOT raised generally (160 stays
+the target; 240 is a fallback, not a new budget). Net length is close to flat.
+
+### What is NOT changed, and why
+
+The talent section is still a `<ul>` of signals. It is a list, and the two
+defects the owner named in it (the undated-signal caveat and the ranking) were
+fixed in earlier sessions. Giving it the article treatment would spend the
+nine-second budget on the section he did not name.
+
+No period-over-period delta was added anywhere. No figure is composed in
+digest_layout.py. `assert_message_is_clean` is untouched.
+
 ## 2026-08-18 - the healer was blind to self-timeouts, and the suite had grown past its wall
 
 Two problems, one root: **a `timeout-minutes` kill is reported by GitHub as

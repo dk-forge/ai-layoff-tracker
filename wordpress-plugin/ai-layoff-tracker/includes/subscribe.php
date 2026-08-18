@@ -1637,6 +1637,96 @@ function alt_digest_date_range($from, $to) {
 }
 
 /**
+ * THE SUBJECT LINE, AND THERE ARE TWO SENDERS THAT HAVE TO AGREE ON IT.
+ *
+ * WHAT WENT OUT ON 2026-08-18. "[AskTheRecruiter] Daily tracker digest". No
+ * date anywhere in it, while the body said 17 to 18 August 2026. A digest
+ * whose whole pitch is that every figure names its own window shipped the one
+ * line a reader sees first with no window at all, and a mailbox holding a
+ * month of them cannot tell one from another.
+ *
+ * THE TWO SENDERS. railway/digest_send.py relays through Brevo and composes
+ * its subject in digest_layout.subject_line(). alt_digest_send() in this file
+ * is the in-WordPress wp_mail sender, which takes over whenever the relay has
+ * not claimed the tier (see alt_digest_external_active), and it composed its
+ * own. They disagreed: one named the trackers and dated the window, the other
+ * said "Daily tracker digest". Which subject a subscriber got depended on
+ * which process happened to be sending, which is not a thing a reader should
+ * be able to notice.
+ *
+ * So this is a PORT of digest_layout.subject_line, deliberately line for line,
+ * and tests/test_digest_subject_agreement.py drives both implementations over
+ * the same inputs and fails on any difference. Change one, change the other,
+ * in the same commit.
+ *
+ * $headings are the sections' own first lines, in order, exactly as the Python
+ * side reads them; a section that cannot name itself is skipped by both.
+ * $fallback is what the site would have said anyway, used unchanged whenever
+ * this cannot do better, so a failure here is never a subject-less email.
+ */
+function alt_digest_period_phrase($to, $freq) {
+    $stamp = alt_digest_date_range($to, $to);
+    if ($stamp === '') return '';
+    return (strtolower(trim((string) $freq)) === 'weekly')
+        ? 'the week to ' . $stamp : $stamp;
+}
+
+/** Characters, not bytes: the 78 ceiling is a reading limit and the tracker
+ *  names are ASCII today but the ceiling must not tighten if one stops being. */
+function alt_digest_chars($s) {
+    return function_exists('mb_strlen') ? mb_strlen((string) $s, 'UTF-8') : strlen((string) $s);
+}
+
+function alt_digest_subject_line($freq, $to, $headings, $fallback) {
+    $names = array();
+    foreach ((array) $headings as $h) {
+        $h = trim((string) $h);
+        if ($h !== '') $names[] = $h;
+    }
+    $phrase = alt_digest_period_phrase($to, $freq);
+    if (!$names || $phrase === '') return $fallback;
+
+    if (count($names) === 1) {
+        $joined = $names[0];
+    } else {
+        $last = $names[count($names) - 1];
+        $joined = implode(', ', array_slice($names, 0, -1)) . ' and ' . $last;
+    }
+    $subject = $joined . ': ' . $phrase;
+    if (alt_digest_chars($subject) > 78) {
+        // Too long to read in a list. Lead with the first and count the rest,
+        // which is honest and stays short however many sections there are.
+        $subject = $names[0] . ' and ' . (count($names) - 1) . ' more: ' . $phrase;
+    }
+    return alt_digest_chars($subject) <= 78 ? $subject : $fallback;
+}
+
+/** What the SITE calls a section: its own first line, nothing else. The Python
+ *  side reads the identical thing (digest_layout.section_heading). */
+function alt_digest_section_heading($text) {
+    foreach (preg_split('/\r\n|\r|\n/', (string) $text) as $line) {
+        $line = trim($line);
+        if ($line !== '') return $line;
+    }
+    return '';
+}
+
+/**
+ * The dateless subject, which is now only ever a FALLBACK, and dated even so.
+ *
+ * Both senders use this when alt_digest_subject_line cannot compose (an
+ * unreadable window, or no section that can name itself). It carries the day
+ * it goes out, because "the subject must carry the date" is the requirement
+ * and a fallback is still a subject somebody receives.
+ */
+function alt_digest_fallback_subject($freq, $to) {
+    $label = (strtolower(trim((string) $freq)) === 'weekly') ? 'Weekly' : 'Daily';
+    $stamp = alt_digest_date_range($to, $to);
+    return '[AskTheRecruiter] ' . $label . ' tracker digest'
+         . ($stamp === '' ? '' : ', ' . $stamp);
+}
+
+/**
  * A ranked list as an aligned two-column table, in both body parts.
  *
  * WHY A TABLE AND NOT A BULLET LIST. A column of figures a reader has to hunt
@@ -1697,7 +1787,7 @@ function alt_digest_rank_table($rows) {
  * $shown    total of the lines actually printed
  * $covered  total across every value the endpoint returned for this dimension
  * $headline the verified figure the block sits under
- * $unit     'job cuts', for the sentence
+ * $unit     'job cut', SINGULAR; alt_digest_count pluralises it
  * $missing  what an uncovered row lacks, e.g. 'no country recorded'
  * $range    the window, because this line has to stand on its own too
  */
@@ -1744,15 +1834,19 @@ function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing,
     if ($shown === $headline) return '';
     $parts = array();
     $parts[] = 'These lines cover ' . number_format_i18n($shown) . ' of the '
-             . number_format_i18n($headline) . ' verified ' . $unit . ' in '
+             . alt_digest_count($headline, 'verified ' . $unit) . ' in '
              . $range . '.';
     $ranked = $covered - $shown;
     if ($ranked > 0) {
-        $parts[] = number_format_i18n($ranked) . ' more sit below the lines shown.';
+        $parts[] = number_format_i18n($ranked)
+                 . alt_digest_verb($ranked, ' more sits', ' more sit')
+                 . ' below the lines shown.';
     }
     $unclassified = $headline - $covered;
     if ($unclassified > 0) {
-        $parts[] = number_format_i18n($unclassified) . ' are on entries with '
+        $parts[] = number_format_i18n($unclassified)
+                 . alt_digest_verb($unclassified, ' is on an entry with ',
+                                                  ' are on entries with ')
                  . $missing . '.';
     }
     return implode(' ', $parts);
@@ -1766,8 +1860,36 @@ function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing,
  * exactly the line a sceptical reader looks at hardest.
  */
 function alt_digest_jobs_phrase($n) {
+    return alt_digest_count($n, 'job', 'jobs');
+}
+
+/**
+ * A COUNT AND THE NOUN IT GOVERNS, AGREEING. The general case of the above.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A HABIT. The owner read a delivered digest
+ * on 2026-08-18 and found three disagreements in one message: "1 of the 5
+ * companies listed ... link to an entry page", "1 more sit below the lines
+ * shown", and, on any window holding a single entry, "All 1 entries ... are
+ * verified, across 1 companies". alt_digest_jobs_phrase already existed and
+ * already carried a comment saying this exact class of error is what a
+ * sceptical reader looks at hardest. It was applied to ONE noun. Every other
+ * count in the file interpolated a number in front of a hard-coded plural.
+ *
+ * A digest that wants to be quoted cannot read as machine output, and a
+ * disagreeing verb is the cheapest possible tell. So the count and the word
+ * it governs are built together, here, and
+ * tests/test_digest_singular_plural.py renders every block with a count of
+ * exactly one and fails on a "1 <plural>" anywhere in either part.
+ */
+function alt_digest_count($n, $singular, $plural = null) {
     $n = (int) $n;
-    return number_format_i18n($n) . ($n === 1 ? ' job' : ' jobs');
+    if ($plural === null) $plural = $singular . 's';
+    return number_format_i18n($n) . ' ' . ($n === 1 ? $singular : $plural);
+}
+
+/** The verb (or any word) a count governs. `alt_digest_verb(1,'sits','sit')`. */
+function alt_digest_verb($n, $singular, $plural) {
+    return ((int) $n === 1) ? $singular : $plural;
 }
 
 /**
@@ -2241,7 +2363,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $ann_entries = (int) ($totals['announced_entries'] ?? 0);
     $ver_jobs = max(0, $all_jobs - $ann_jobs);
     $ver_entries = max(0, $all_entries - $ann_entries);
-    $companies = number_format_i18n((int) ($totals['companies'] ?? 0));
+    $companies_n = (int) ($totals['companies'] ?? 0);
     $has_announced = ($ann_jobs > 0 || $ann_entries > 0);
 
     /*
@@ -2299,12 +2421,14 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $scope = $range . ', ' . $geo . ', counted by the date the cuts take effect.';
     $html = '<h2>AI Layoff Tracker</h2>'
-          . '<p data-alt="kicker">Verified job cuts</p>'
+          . '<p data-alt="kicker">'
+          . esc_html(alt_digest_verb($ver_jobs, 'Verified job cut', 'Verified job cuts'))
+          . '</p>'
           . '<p data-alt="stat">' . esc_html(number_format_i18n($ver_jobs)) . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
     // The text part leads with the same three facts as ONE sentence, because
     // that line is also the inbox preheader and a snippet has to stand alone.
-    $lede = number_format_i18n($ver_jobs) . ' verified job cuts, ' . $scope;
+    $lede = alt_digest_count($ver_jobs, 'verified job cut') . ', ' . $scope;
     /*
       THE INBOX SNIPPET, composed for its own ceiling rather than borrowed
       from the line above. The lede is 143 characters once the geography
@@ -2321,7 +2445,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       vocabulary here to drift from that one.
     */
     $preheader = alt_digest_fit_preheader(
-        number_format_i18n($ver_jobs) . ' verified job cuts, ' . $range,
+        alt_digest_count($ver_jobs, 'verified job cut') . ', ' . $range,
         array($geo, 'counted by the date the cuts take effect'));
     $text = "AI Layoff Tracker\n{$lede}\n";
 
@@ -2379,7 +2503,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                   . implode(', ', $sources) . '.';
         if ($src_shown !== $ver_jobs) {
             $src_line .= ' That covers ' . number_format_i18n($src_shown) . ' of the '
-                       . number_format_i18n($ver_jobs) . ' verified job cuts in '
+                       . alt_digest_count($ver_jobs, 'verified job cut') . ' in '
                        . $range . '.';
         }
         $html .= '<p data-alt="source">' . esc_html($src_line) . '</p>';
@@ -2396,14 +2520,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       above is the whole set rather than a slice they have to go and check.
     */
     if ($has_announced) {
-        $tier = $range . ' holds ' . number_format_i18n($all_entries) . ' entries, '
-              . number_format_i18n($ver_entries) . ' of them verified. '
+        $tier = $range . ' holds ' . alt_digest_count($all_entries, 'entry', 'entries')
+              . ', ' . number_format_i18n($ver_entries) . ' of them verified. '
               . 'Including announced estimates, the same window holds '
-              . number_format_i18n($all_jobs) . ' job cuts across ' . $companies . ' companies.';
+              . alt_digest_count($all_jobs, 'job cut') . ' across '
+              . alt_digest_count($companies_n, 'company', 'companies') . '.';
     } else {
-        $tier = 'All ' . number_format_i18n($all_entries) . ' entries in ' . $range
-              . ' are verified, across ' . $companies . ' companies. '
-              . 'The window holds no announced estimates.';
+        $tier = ($all_entries === 1
+                    ? 'The one entry in ' . $range . ' is verified'
+                    : 'All ' . number_format_i18n($all_entries) . ' entries in '
+                      . $range . ' are verified')
+              . ', across ' . alt_digest_count($companies_n, 'company', 'companies')
+              . '. The window holds no announced estimates.';
     }
     if (function_exists('alt_announced_tier_sentence')) {
         $tier .= ' ' . alt_announced_tier_sentence();
@@ -2437,8 +2565,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     if ($ai_jobs > 0) {
         $ai_line = 'Attributed to AI by the employer: ' . number_format_i18n($ai_jobs)
-                 . ' of those verified job cuts, across ' . number_format_i18n($ai_entries)
-                 . ' entries, ' . $range . ', worldwide.';
+                 . ' of those verified job cuts, across '
+                 . alt_digest_count($ai_entries, 'entry', 'entries')
+                 . ', ' . $range . ', worldwide.';
     } else {
         $ai_line = 'No verified job cuts worldwide in ' . $range
                  . ' carry an explicit AI attribution from the employer.';
@@ -2543,8 +2672,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             } elseif ($announced_rows > 0) {
                 $caption = $range . ', ranked by job count. '
                          . $announced_rows . ' of these ' . count($rows)
-                         . ' are announcements, marked below, and sit outside the '
-                         . 'verified figure above.';
+                         . alt_digest_verb($announced_rows,
+                               ' is an announcement, marked below, and sits',
+                               ' are announcements, marked below, and sit')
+                         . ' outside the verified figure above.';
             } else {
                 $caption = $range . ', verified only, ranked by job count.';
             }
@@ -2596,9 +2727,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                   here is why.
                 */
                 $basis[] = $linked . ' of the ' . $count . ' companies listed for '
-                         . $range . ' link to an entry page naming the filing or report '
-                         . 'behind the row. The rest arrived through a bulk filing '
-                         . 'import, which builds no page.';
+                         . $range . alt_digest_verb($linked, ' links', ' link')
+                         . ' to an entry page naming the filing or report behind the '
+                         . 'row. '
+                         . alt_digest_verb($count - $linked, 'The other one arrived',
+                                                             'The rest arrived')
+                         . ' through a bulk filing import, which builds no page.';
             }
             /*
               THE CAVEAT THAT USED TO BE HERE IS GONE, because it is no longer
@@ -2675,7 +2809,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         list($c_html, $c_text) = alt_digest_rank_table($rows);
         $html .= $c_html;
         $text .= $c_text;
-        $note = alt_digest_reconcile_note($shown, $covered, $ver_jobs, 'job cuts',
+        $note = alt_digest_reconcile_note($shown, $covered, $ver_jobs, 'job cut',
                                           'no country recorded', $range);
         if ($note !== '') {
             $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
@@ -2717,7 +2851,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             $html .= '<p data-alt="note">' . esc_html($shape) . '</p>';
             $text .= $shape . "\n";
         }
-        $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cuts',
+        $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cut',
                                           'no industry recorded', $range);
         if ($note !== '') {
             $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
@@ -2781,15 +2915,19 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                 $ytd_geo = alt_digest_geo_scope($ytd_jobs, $ytd_covered);
                 $ytd_scope = $ytd_range . ', ' . $ytd_geo
                            . ', counted by the date the cuts take effect.';
-                $html .= '<h3>' . esc_html($year) . ' so far</h3>'
-                       . '<p data-alt="kicker">Verified job cuts</p>'
+                $html .= '<h3>YTD ' . esc_html($year) . '</h3>'
+                       . '<p data-alt="kicker">'
+                       . esc_html(alt_digest_verb($ytd_jobs, 'Verified job cut',
+                                                  'Verified job cuts')) . '</p>'
                        . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_jobs)) . '</p>'
                        . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
-                $text .= "\n{$year} so far\n"
-                       . number_format_i18n($ytd_jobs) . ' verified job cuts, ' . $ytd_scope . "\n";
+                $text .= "\nYTD {$year}\n"
+                       . alt_digest_count($ytd_jobs, 'verified job cut') . ', '
+                       . $ytd_scope . "\n";
                 if ($ytd_ai > 0) {
                     $ytd_ai_line = 'Of those, ' . number_format_i18n($ytd_ai)
-                                 . ' were attributed to AI by the employer, '
+                                 . alt_digest_verb($ytd_ai, ' was', ' were')
+                                 . ' attributed to AI by the employer, '
                                  . $ytd_range . ', worldwide.';
                     $html .= '<p data-alt="note">' . esc_html($ytd_ai_line) . '</p>';
                     $text .= $ytd_ai_line . "\n";
@@ -2806,8 +2944,17 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     // was verified in a browser and for the two spellings of the basis.
     $open = alt_digest_tracker_url($from, $to);
     $click = alt_digest_track_link($send_id, $open);
-    $html .= '<p><a href="' . esc_url($click) . '">Open the tracker on this week</a></p>';
-    $text .= "\nOpen the tracker on this week:\n{$open}\n";
+    /*
+      DESCRIPTIVE LINK TEXT, because "Open the tracker on this week" was
+      awkward English and, worse, meant nothing once the line was quoted on
+      its own. This link does not land on the tracker's default view: it
+      carries THIS window and THIS date basis, so the label says which window.
+      A reader who forwards the line, or a screen reader that reads links out
+      of context, gets a destination they can identify.
+    */
+    $link_text = 'Open the tracker for ' . $range;
+    $html .= '<p><a href="' . esc_url($click) . '">' . esc_html($link_text) . '</a></p>';
+    $text .= "\n{$link_text}:\n{$open}\n";
 
     /*
       THE BIBLIOGRAPHY ENTRY, AT THE FOOT, WHERE ONE BELONGS.
@@ -2834,10 +2981,39 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     if ($read_date !== '') {
         list($cite, $cite_url, $cite_note) = alt_digest_cite_note(
             'AI Layoff Tracker', $range, $url, $read_date, $cite_label);
-        $html .= '<p data-alt="kicker">Cite this</p>'
-               . '<p data-alt="note">' . esc_html($cite . ' ' . $cite_url) . '</p>'
+        /*
+          WHAT THE OWNER SAW, AND IT WAS THE MARKUP RATHER THAN THE WORDS.
+
+          This block used `data-alt="kicker"`. In digest_layout.py that variant
+          is documented as "the eyebrow over a headline figure": 11px,
+          uppercase, letterspaced, grey, and `margin:0 0 4px` because it is
+          meant to sit tight above a 34px number. Here it sat above 13px grey
+          note text, so the LABEL rendered smaller than the thing it labelled
+          and in exactly the same grey, with none of the top space every other
+          block label in this email gets from `h3`. It read as a stray
+          fragment, not as a heading: a bare heading over more small print,
+          two lines from the section rule that starts the next tracker.
+
+          It was also the only block label in the message that was not a real
+          heading element, so a screen reader moving by heading skipped the
+          citation entirely.
+
+          And the citation string had the URL concatenated onto the end of the
+          sentence inside ONE paragraph: "... accessed 18 August 2026.
+          https://...". A reference somebody is meant to SELECT and paste
+          should not have to be separated from a sentence first, and the run-on
+          is what makes a client's autolinker swallow the trailing full stop.
+
+          So: a real `h3`, like every other block, and the URL on its own line.
+          It is STILL plain text and still not an anchor. See the docblock on
+          alt_digest_cite_note for why that is deliberate and must stay.
+        */
+        $html .= '<h3>Cite this</h3>'
+               . '<p data-alt="note">' . esc_html($cite) . '</p>'
+               . '<p data-alt="note">' . esc_html($cite_url) . '</p>'
                . '<p data-alt="note">' . esc_html($cite_note) . '</p>';
-        $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n" . $cite_note . "\n";
+        $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n\n"
+               . $cite_note . "\n";
     }
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
 }
@@ -2865,7 +3041,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     if ($range === '') return null;
 
     $url = home_url('/talent-intelligence-tracker/');
-    $companies = number_format_i18n((int) ($data['companies'] ?? 0));
+    $companies_n = (int) ($data['companies'] ?? 0);
     $verified = number_format_i18n((int) ($data['verified'] ?? 0));
     $totalf = number_format_i18n($total);
     /*
@@ -2884,20 +3060,24 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     */
     $scope = $range . ', worldwide, counted by the date the source published.';
     $html = '<h2>Talent Intelligence Tracker</h2>'
-          . '<p data-alt="kicker">New hiring signals</p>'
+          . '<p data-alt="kicker">'
+          . esc_html(alt_digest_verb($total, 'New hiring signal', 'New hiring signals'))
+          . '</p>'
           . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
-    $lede = $totalf . ' new hiring signals, ' . $scope;
+    $lede = alt_digest_count($total, 'new hiring signal') . ', ' . $scope;
     // The same rule as the layoff section, same reason. This lede happens to
     // fit today; composing the snippet anyway means it keeps fitting when
     // somebody adds a clause to the body, which is exactly how the other one
     // broke. See alt_digest_fit_preheader.
     $preheader = alt_digest_fit_preheader(
-        $totalf . ' new hiring signals, ' . $range,
+        alt_digest_count($total, 'new hiring signal') . ', ' . $range,
         array('worldwide', 'counted by the date the source published'));
     $text = "Talent Intelligence Tracker\n{$lede}\n";
-    $detail = 'From ' . $companies . ' companies, ' . $range . '. '
-            . $verified . ' of the ' . $totalf . ' are verified against primary documents.';
+    $detail = 'From ' . alt_digest_count($companies_n, 'company', 'companies') . ', '
+            . $range . '. ' . $verified . ' of the ' . $totalf . ' '
+            . alt_digest_verb($total, 'is', 'are')
+            . ' verified against primary documents.';
     $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
     $text .= $detail . "\n";
 
@@ -3011,12 +3191,15 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
             if ($ytd_total > 0) {
                 $ytd_scope = $ytd_range
                            . ', worldwide, counted by the date the source published.';
-                $html .= '<h3>' . esc_html($year) . ' so far</h3>'
-                       . '<p data-alt="kicker">Hiring signals</p>'
+                $html .= '<h3>YTD ' . esc_html($year) . '</h3>'
+                       . '<p data-alt="kicker">'
+                       . esc_html(alt_digest_verb($ytd_total, 'Hiring signal',
+                                                  'Hiring signals')) . '</p>'
                        . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_total)) . '</p>'
                        . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
-                $text .= "\n{$year} so far\n"
-                       . number_format_i18n($ytd_total) . ' hiring signals, ' . $ytd_scope . "\n";
+                $text .= "\nYTD {$year}\n"
+                       . alt_digest_count($ytd_total, 'hiring signal') . ', '
+                       . $ytd_scope . "\n";
             }
         }
     }
@@ -3097,11 +3280,26 @@ function alt_digest_standfirst($text) {
     $text = html_entity_decode((string) $text, ENT_QUOTES, 'UTF-8');
     $text = trim(preg_replace('/\s+/', ' ', $text));
     if ($text === '') return '';
+    /*
+      TWO PASSES AT A WHOLE SENTENCE BEFORE ANY CUTTING, which is the owner's
+      "it prints a truncated first sentence" answered at the cause. A complete
+      sentence is a unit the author wrote; a severed one is neither a summary
+      nor a quotation, and the research is blunt about it (front-load the point
+      and let the opening carry it, which a truncation does neither of).
+
+      So: the first sentence if it fits the reading budget; failing that the
+      first sentence even when it is long, because a long complete thought
+      beats a short broken one; and only when the author's opening sentence is
+      longer than $hard do we cut, at a word boundary, marked.
+    */
     $cap = 160;
-    // The first sentence, when one ends inside a readable distance. A full
-    // stop followed by a space and a capital is the shape; an abbreviation
-    // like "U.S. layoffs" does not match it, which is the point.
+    $hard = 240;
+    // A full stop followed by a space and a capital is the shape; an
+    // abbreviation like "U.S. layoffs" does not match it, which is the point.
     if (preg_match('/^(.{20,' . $cap . '}?[.!?])\s+[A-Z0-9"\']/u', $text, $m)) {
+        return trim($m[1]);
+    }
+    if (preg_match('/^(.{20,' . $hard . '}?[.!?])\s+[A-Z0-9"\']/u', $text, $m)) {
         return trim($m[1]);
     }
     if (strlen($text) <= $cap) return $text;
@@ -3165,10 +3363,41 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         if (trim($blurb) === '' && function_exists('get_the_excerpt')) {
             $blurb = wp_strip_all_tags((string) get_the_excerpt($post));
         }
+        /*
+          TWO FACTS PER ITEM, BOTH MEASURED, NEITHER WRITTEN.
+
+          The date is the post's own publication date, rendered through
+          alt_digest_date_range so it is the same "14 August 2026" shape as
+          every other date in this email rather than a second format. It makes
+          an item self-contained once somebody quotes or forwards one line,
+          which is the doctrine the rest of this section already follows.
+
+          The read time is COUNTED off the post's own body at 220 words a
+          minute, and it is omitted entirely when the body cannot be counted.
+          It is not an invented figure and it is not a guess: it is a word
+          count and a stated divisor. It earns the line because the one thing
+          a curated link block can promise a reader is how much of their time
+          a click costs, and a promise you cannot keep small is worth making
+          only when it is honestly small.
+        */
+        $when = alt_digest_date_range(
+            substr((string) (isset($post->post_date_gmt) ? $post->post_date_gmt : ''), 0, 10),
+            substr((string) (isset($post->post_date_gmt) ? $post->post_date_gmt : ''), 0, 10));
+        $meta = array();
+        if ($when !== '') $meta[] = $when;
+        $words = 0;
+        if (isset($post->post_content) && function_exists('str_word_count')) {
+            $words = (int) str_word_count(wp_strip_all_tags((string) $post->post_content));
+        }
+        if ($words > 0) {
+            $minutes = max(1, (int) round($words / 220));
+            $meta[] = alt_digest_count($minutes, 'min read', 'min read');
+        }
         $items[] = array(
             'title' => $title,
             'link'  => $link,
             'blurb' => alt_digest_standfirst($blurb),
+            'meta'  => implode(', ', $meta),
         );
     }
     if (!$items) return null;
@@ -3190,8 +3419,12 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
     $found = count($items);
     $items = array_slice($items, 0, 3);
     $range = alt_digest_date_range($from, $to);
-    $caption = $found > count($items)
-        ? 'The ' . count($items) . ' newest of ' . $found . ' posts we published in ' . $range . '.'
+    $shown = count($items);
+    $caption = $found > $shown
+        ? ($shown === 1
+            ? 'The newest of ' . $found . ' posts we published in ' . $range . '.'
+            : 'The ' . $shown . ' newest of ' . $found . ' posts we published in '
+              . $range . '.')
         : ($found === 1
             ? 'The one post we published in ' . $range . '.'
             : 'All ' . $found . ' posts we published in ' . $range . ', newest first.');
@@ -3211,25 +3444,54 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       this is the one place a ceiling applies.
     */
     $preheader = $range === '' ? '' : alt_digest_fit_preheader(rtrim($caption, '.'), array());
-    $html .= '<ul>';
-    foreach ($items as $item) {
+    /*
+      THE BREAKUP THE OWNER ASKED FOR, AND WHY IT IS A TABLE.
+
+      This was a `<ul>`: three titles, each with a `<br>` and a severed
+      sentence hanging under it, at one size, in one colour, with a bullet in
+      front. Nothing in it said where one item ended and the next began except
+      the bullet, and a bullet is the weakest separator in an email because it
+      is the one thing a client is most likely to restyle.
+
+      Each item is now its own cell with a hairline `border-top`, and the
+      separation is therefore a rule the reader can see rather than a glyph
+      they have to infer. That choice is measured, not aesthetic: `<table>` is
+      at 100% client support and `<hr>` at 72.97% (caniemail), and empty
+      spacer rows do not reliably keep their height (Email on Acid), so every
+      gap here is cell padding and every break is a cell border. The first
+      item carries no rule, because a rule directly under the caption would
+      read as the end of the caption rather than the start of a list.
+
+      NO STYLE IS WRITTEN HERE, as everywhere else in this file. The cell says
+      what it IS with data-alt and railway/digest_layout.py decides what that
+      looks like, so the design lives in one file and this one decides only
+      what a line means.
+    */
+    $html .= '<table role="presentation" width="100%" cellpadding="0" '
+           . 'cellspacing="0" border="0">';
+    foreach ($items as $i => $item) {
         // Counted the same way the other two sections count theirs: a
         // destination that fails the host guard is left unwrapped, never
         // dropped, so counting can never break or relocate a link.
         $click = alt_digest_track_link($send_id, $item['link']);
-        $html .= '<li><a href="' . esc_url($click) . '">'
-               . esc_html($item['title']) . '</a>';
+        $html .= '<tr><td data-alt="' . ($i === 0 ? 'item-first' : 'item') . '">'
+               . '<p data-alt="item-title"><a href="' . esc_url($click) . '">'
+               . esc_html($item['title']) . '</a></p>';
         $text .= '  - ' . $item['title'] . "\n";
         if ($item['blurb'] !== '') {
-            $html .= '<br>' . esc_html($item['blurb']);
+            $html .= '<p data-alt="item-blurb">' . esc_html($item['blurb']) . '</p>';
             $text .= '    ' . $item['blurb'] . "\n";
         }
-        $html .= '</li>';
+        if ($item['meta'] !== '') {
+            $html .= '<p data-alt="item-meta">' . esc_html($item['meta']) . '</p>';
+            $text .= '    ' . $item['meta'] . "\n";
+        }
+        $html .= '</td></tr>';
         // The plain URL in the text part: a text reader should not be handed a
         // machine shaped URL to squint at.
         $text .= '    ' . $item['link'] . "\n";
     }
-    $html .= '</ul>';
+    $html .= '</table>';
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
 }
 
@@ -3297,19 +3559,26 @@ function alt_digest_send($freq) {
 
     $rows = alt_digest_due_rows($freq);
 
-    $label = $freq === 'daily' ? 'Daily' : 'Weekly';
+    $fallback_subject = alt_digest_fallback_subject($freq, $to_date);
     $sent = 0;
     foreach ($rows as $row) {
         $parts_html = array();
         $parts_text = array();
+        // The sections' own first lines, in the order they appear, which is
+        // what names the trackers in the subject. Collected per recipient
+        // because the sections are: this list is what THIS person consented
+        // to, so the subject names what is actually inside their message.
+        $headings = array();
         foreach (array('layoff', 'talent', 'articles') as $list) {
             $cols = alt_digest_lists()[$list];
             if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq && $sections[$list]) {
                 $parts_html[] = $sections[$list]['html'];
                 $parts_text[] = $sections[$list]['text'];
+                $headings[] = alt_digest_section_heading($sections[$list]['text']);
             }
         }
         if (!$parts_html) continue;   // nothing to say to this person today
+        $subject = alt_digest_subject_line($freq, $to_date, $headings, $fallback_subject);
 
         $unsub = alt_digest_unsub_url($row['unsub_token']);
         // Text-first HTML: no images, no pixels, no external assets. See the
@@ -3328,7 +3597,7 @@ function alt_digest_send($freq) {
             alt_digest_from_header(),
             alt_digest_list_unsub_headers($row['unsub_token'])
         );
-        if (wp_mail($row['email'], '[AskTheRecruiter] ' . $label . ' tracker digest', $html, $headers)) {
+        if (wp_mail($row['email'], $subject, $html, $headers)) {
             $sent++;
             // The TIER's own stamp is what the guard reads. last_sent_at is
             // written beside it and is not read here any more: it is what an
