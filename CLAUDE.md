@@ -95,7 +95,7 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
    moved the AI-causation classifier with it. The env var is also set in no
    workflow, so it runs on its default everywhere. Decide which behaviour is
    intended before trusting either. WARN notices skip the LLM: `warn_import.py` scrapes
-   states via `warn-scraper` and bulk-upserts via `/bulk` (daily 11AM ET GitHub cron).
+   states via `warn-scraper` and bulk-upserts via `/bulk` (daily 9AM ET GitHub cron, `0 13 * * *`).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental
    news, distress/bankruptcy, foreign filings) funnels into the SAME `extract_layoff_data`

@@ -9,6 +9,24 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
+- **WORKING ON (current subject, 2026-08-18, LATEST):** the methodology page's
+  typed update cadence, landing as **2.20.89** (`templates/page-methodology.php`,
+  `railway/tests/test_ingest_schedule.py`, CLAUDE.md, TECHLOG). `2.20.88` fixed
+  the generated half (`data/ingest-schedule.json`); this is the SECOND consumer
+  of the same fact, which was typed and said "twice daily (morning and after US
+  market close)" for a cron that went once-daily on 2026-08-14, plus 11 AM ET /
+  noon ET for workflows that run at 9 AM ET / 11 AM ET. Now derived from
+  `alt_ingest_schedule()`, with the two GitHub-cron hours stating cadence only.
+  **A generator that reads `.github/workflows/` is the open follow-up.**
+  **BATON COLLISION, read this before the next one.** Two sessions fixed the JSON
+  half independently inside half an hour and both landed **2.20.88**. This one
+  read the baton as HELD, saw the holder's live branch touching zero plugin
+  files, and judged a version bump safe. It was not: the holder's NEXT commit was
+  the same fix. The generated file was byte-identical both ways so nothing was
+  lost, but the version collided and this side rebased onto 2.20.89. Reading the
+  baton is not holding it - if you need a plugin version and the baton is HELD,
+  say so here FIRST and wait for the release.
+
 - **WORKING ON (current subject, 2026-08-18):** the talent digest's two
   reader-visible defects, landed as **2.20.87** (`includes/subscribe.php`,
   `railway/tests/test_digest_scope_rules.py`, TECHLOG). Every row said the

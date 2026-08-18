@@ -69,7 +69,37 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
       <li><span class="alt-badge alt-badge-silver">Press release</span> Investor-relations and newsroom feeds that we have reviewed. This is the "Press release" source in the tracker's filter.</li>
       <li><span class="alt-badge alt-badge-bronze">News</span> Named reports that we find through GDELT and Google News. We keep one only when the record has usable evidence. Eurofound ERM is a separately labeled European announcement source with its own threshold.</li>
     </ul>
-    <p><b>How often it updates.</b> News and SEC filings: twice daily (morning and after US market close, ET). WARN notices: daily at 11 AM ET, sweeping every covered state. An automated anomaly review runs daily at noon ET. It flags statistically unusual entries for a person to inspect: very large single notices, the same company filing in several states, and weak source links. The review catches them before anyone else does. A monthly self-audit re-opens a random sample of published rows and re-checks each one against its own source.</p>
+    <?php /*
+       A CADENCE TYPED HERE GOES STALE WITHOUT ANYONE NOTICING.
+
+       This sentence read "twice daily (morning and after US market close, ET)"
+       while the cron had gone ONCE daily on 2026-08-14 and moved to the
+       evening on 2026-08-18. The tracker's own status strip was right the
+       whole time, because it derives the cadence from the real cron. So does
+       this now: data/ingest-schedule.json, generated from railway/railway.toml
+       and drift-guarded by tests/test_ingest_schedule.py. Without a schedule
+       the clause is OMITTED, not guessed — same contract as every other
+       generated figure on this page.
+
+       The WARN and anomaly-review hours are NOT derived (they are GitHub
+       workflow crons, which this generator does not read), so they state the
+       cadence only. They previously named 11 AM ET and noon ET; the workflows
+       actually run at 9 AM ET and 11 AM ET, and both had been wrong long
+       enough that nobody could date it. An unguarded hour is a promise this
+       page cannot keep.
+    */ ?>
+    <?php
+    $alt_ing     = function_exists('alt_ingest_schedule') ? alt_ingest_schedule() : null;
+    $alt_ing_n   = $alt_ing ? count($alt_ing['utc_hours']) : 0;
+    $alt_ing_lbl = function_exists('alt_ingest_times_label') ? alt_ingest_times_label() : '';
+    $alt_ing_say = '';
+    if ($alt_ing_n) {
+        $alt_ing_say = 'News and SEC filings: '
+            . ($alt_ing_n === 1 ? 'once daily' : ($alt_ing_n === 2 ? 'twice daily' : $alt_ing_n . ' times daily'))
+            . ($alt_ing_lbl ? ', at ' . $alt_ing_lbl : '') . '. ';
+    }
+    ?>
+    <p><b>How often it updates.</b> <?php echo esc_html($alt_ing_say); ?>WARN notices: daily, sweeping every covered state. An automated anomaly review runs daily. It flags statistically unusual entries for a person to inspect: very large single notices, the same company filing in several states, and weak source links. The review catches them before anyone else does. A monthly self-audit re-opens a random sample of published rows and re-checks each one against its own source.</p>
   </section>
 
   <section class="alt-method-sec" id="m-extract">
