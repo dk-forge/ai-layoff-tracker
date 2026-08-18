@@ -1,5 +1,132 @@
 # Tech Log
 
+## 2026-08-18 - the within-WARN revision pass never once ran for the pair in its own comment (2.20.86)
+
+`ops_status.py [3]` went red on the Tyson tripwire:
+
+    FAILING   Tyson Amarillo counts once (WARN filed twice):
+        10505 jobs (bound < 8945): the identical 1,761 Amarillo WARN notice
+        filed twice is counting twice - within-WARN revision dedup regressed
+
+The invariant's text was right about the symptom and wrong about the verb.
+Nothing regressed. **The pass has never worked, from the hour it shipped.**
+
+### What was actually on the page
+
+Two rows, both live, both counted:
+
+    136371  TX  1761  2026-01-20  Tyson Foods, Inc. (Amarillo B-Shift Operations
+    136079  TX  1761  2026-02-24  Tyson Foods, Inc (Amarillo B-Shift Operations) Updated
+
+Same state, same count, 35 days apart. `alt_reconcile_supersets` pass (3) is
+written for exactly this and names exactly this pair in its comment. It ran
+inside `foreach ($by as $grp)`, and `$by` is grouped on `company_key`:
+
+    tyson foods amarillo b shift operations
+    tyson foods amarillo b shift operations updated
+
+Texas republishes a revised notice by appending the word to the EMPLOYER cell,
+so the revision is a different company as far as the grouping is concerned. The
+duplicate is only ever ACROSS two groups. A pass that can only compare within
+one group can never see it. It was a no-op for its own example.
+
+### Why the guard slept through 25 days of it
+
+`data_integrity.tyson_warn_revision` was written on 2026-07-24, ten minutes
+after the pass, and bounds the live Tyson US-2026 sum at 8,945. **The
+double-counted sum that day was 7,184.** The guard passed because it had
+headroom, not because the thing it asserts was true. It only reddened on
+2026-08-18, when three unrelated and entirely legitimate Tyson WARN rows landed
+(IL 103, IL 2,495, UT 723) and pushed the doubled sum to 10,505.
+
+So the bound was never the finding, and widening it would have been the exact
+wrong move: the second row was the finding. This is the failure mode of a
+named-event tripwire written as a threshold over a total that grows — it can
+be satisfied by arithmetic that has nothing to do with its claim. The
+replacement guard is `railway/tests/test_warn_revision_dedup.py`, which asserts
+the KEYS agree rather than that a sum is under a number, and is deterministic
+rather than dependent on what else Tyson filed this month.
+
+### Blast radius, measured before anything changed
+
+The defect can only touch rows whose employer cell carries a revision marker,
+so the corpus was swept for all of them (`update`, `amended`, `revised`,
+`revision`, `corrected`, `amendment`): 60 rows, of which 16 are WARN rows at or
+above pass (3)'s 100-job floor. Each was checked for a same-state,
+same-exact-count sibling inside the 90-day window. No query hit the 200-row
+page cap, so the sweep is complete for this defect.
+
+    136079 / 136371   TX  1761  2026-02-24 / 2026-01-20   Tyson Amarillo B-Shift
+    141305 / 142097   TX   109  2024-08-02 / 2024-05-16   Signify/Genlyte Thomas
+
+**Two pairs. 1,870 jobs double-counted, 2 rows to move.** Not the whole corpus
+of revised notices, because most revision-marked rows are below the floor, are
+single filings, or (Massachusetts, Ohio) already differ by site.
+
+A third candidate was rejected on purpose and is now a test:
+
+    135004  OH  302  2026-05-31  UPDATE First Brands Group Wood
+    135331  OH  302  2026-04-30  First Brands Group Darke
+
+Two counties, two real notices, one coincidental headcount. Companies legally
+file several notices close together and WARN is deliberately exempt from fuzzy
+cross-outlet dedup; the site name is part of the employer cell and therefore
+part of the key, so these stay two rows. Within-notice revision and
+between-notice proximity are different problems and the fix keeps them so.
+
+### The fix
+
+Pass (3) lifted out of the per-company loop, run over every dated WARN row,
+grouped on `alt_warn_revision_key(company) | state | job_count`. State, exact
+count, the 100 floor and the 90-day window are unchanged.
+
+`alt_warn_revision_key()` is a SEPARATE key, used by this pass and nothing
+else. The tempting one-liner — add these words to `alt_company_key`'s stopword
+list — was rejected twice over: that key is the identity fuzzy dedup, the
+company directory and superset passes (1) and (2) all use for every source, and
+it over-strips. "Revision Optics, Inc." would key as `optics` and could then
+merge with an unrelated employer. So a TRAILING marker is always removed (no
+employer is called "... Updated") while a LEADING one is removed only when a
+multi-token employer survives: `UPDATE First Brands Group Seneca` loses its
+decoration, `Revision Optics, Inc.` keeps its name. Both ends loop, because
+Louisiana stacks them (`... UPDATE: UPDATE:`).
+
+### This is not a correction that needed /bulk-purge
+
+Changing an entry's job count changes its dedup hash, and that is the case that
+needs `/bulk-purge` plus a full re-import. **This is not that.** No row's
+company, count or date changes; the only column written is `superset_of`, by
+`alt_reconcile_supersets`, which is a clean-slate recompute (reset every mark to
+0, re-mark from current rows) and is reversible by definition. Both rows stay
+visible in the table — the row LIST shows every member — and only the aggregate
+job SUMs stop counting the revision twice.
+
+### What moved
+
+    /reconcile-supersets dry run  ->  see the run linked below
+    Tyson US-2026 (the invariant)     10,505  ->   8,744   (bound < 8,945, PASS)
+
+Headline effect is -1,870 jobs on `us_all_time` and `worldwide_all_time`, which
+is 0.027% of the US headline and far below that slice's 25,000/day movement
+floor, so `headline_movement` neither fires nor needs an incident. `ai_all_time`
+is untouched: neither row is AI-attributed.
+
+### The honest residual
+
+Two revision-marked rows are still mis-keyed and this fix does not reach them,
+because the marker is glued to the name by a scraping defect rather than
+appended as a decoration:
+
+    142820  IN  168  Tyson FoodsRevised (2/19/24)/td>
+    142866  IN  101  BorgWarner PDSRevised (2/16/24)
+
+There is no word boundary before `Revised` in `FoodsRevised`, so no marker rule
+can see it, and the trailing `/td>` says the real defect is in the Indiana
+scrape. Neither has a sibling today, so neither is double-counting anything —
+but a future revision of either would not be caught. That is an Indiana
+`warn_import` cell-parsing fix, not a dedup fix, and it is not done here.
+
+
 ## 2026-08-18 - a US state in the country column, two senders with two subjects, and every count that governed a plural (2.20.85)
 
 The owner received the daily digest and sent back a list. Five defects, one of

@@ -4508,6 +4508,63 @@ function alt_dedup_subset_verdict($candidate_jobs, $window, $min_share = 0.5) {
     return ((int) $candidate_jobs >= $sum) ? 'candidate_is_primary' : 'candidate_is_member';
 }
 
+// The words a state appends or prepends when it republishes a WARN notice.
+// Texas writes "... Operations) Updated", Ohio writes "UPDATE First Brands ...",
+// Massachusetts writes "*UPDATED* ...", Indiana writes "...-Revised".
+if (!defined('ALT_REVISION_MARKER_WORDS')) define('ALT_REVISION_MARKER_WORDS', 'updated?|revised|revision|amended|amendment|corrected|correction');
+
+/**
+ * Cut a state's revision decoration off an employer name.
+ *
+ * WHY THIS IS NOT A STOPWORD IN alt_company_key(). That key is the identity
+ * every other thing uses — fuzzy dedup, the company directory, superset passes
+ * (1) and (2), for every source. Adding these words there would over-strip a
+ * real name: "Revision Optics, Inc." would key as `optics` and could then merge
+ * with an unrelated employer. This decoration is a WARN-table artefact, so it
+ * is stripped for the WARN revision pass and nowhere else.
+ *
+ * A TRAILING marker is always decoration — no employer is called "... Updated".
+ * A LEADING marker is riskier, because there it can BE the name, so it is only
+ * removed when a multi-token employer survives: "UPDATE First Brands Group
+ * Seneca" loses its marker, "Revision Optics, Inc." keeps its name. Both ends
+ * loop, because Louisiana stacks them ("... UPDATE: UPDATE:").
+ *
+ * Never empties the name: a strip that would leave nothing is not applied.
+ */
+function alt_strip_revision_marker($name) {
+    $name = (string) $name;
+    $tail_rx = '/[\s*(\[\{,;:-]*\b(?:' . ALT_REVISION_MARKER_WORDS . ')\b[\s*)\]\}.,:;-]*$/i';
+    $head_rx = '/^[\s*(\[\{]*\b(?:' . ALT_REVISION_MARKER_WORDS . ')\b[\s*)\]\}.,:;-]*/i';
+    for ($i = 0; $i < 4; $i++) {
+        $next = preg_replace($tail_rx, '', $name);
+        if ($next === null || $next === $name) break;
+        if (trim($next, " \t*(){}[],.:;-") === '') break;
+        $name = $next;
+    }
+    $lead = $name;
+    for ($i = 0; $i < 4; $i++) {
+        $next = preg_replace($head_rx, '', $lead);
+        if ($next === null || $next === $lead) break;
+        if (trim($next, " \t*(){}[],.:;-") === '') break;
+        $lead = $next;
+    }
+    if ($lead !== $name && function_exists('alt_company_key')) {
+        $lk = alt_company_key($lead);
+        if ($lk !== '' && count(explode(' ', $lk)) >= 2) $name = $lead;
+    }
+    return trim($name);
+}
+
+/**
+ * The grouping key for the within-WARN revision pass: a notice and the amended
+ * copy the state republishes must land on ONE key. See the pass itself for the
+ * 2026-07/08 incident this exists for.
+ */
+function alt_warn_revision_key($name) {
+    if (!function_exists('alt_company_key')) return (string) $name;
+    return alt_company_key(alt_strip_revision_marker($name));
+}
+
 function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') {
     global $wpdb;
     $table = alt_db_table();
@@ -4519,6 +4576,10 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
     foreach ($rows as $r) { $before += (int) $r['job_count']; $by[$r['company_key']][] = $r; }
     $mark = array();      // member id => primary id (the row it's a subset of)
     $excluded = 0;
+    // Every dated WARN row, across ALL company_key groups. Passes (1) and (2)
+    // are per-company by nature; pass (3) is NOT, and grouping it per company
+    // is precisely what made it a no-op for 25 days — see the pass below.
+    $warn_all = array();
     // EDGAR writes source_type '8K' (uppercase — see sources/edgar.py and the
     // 8K literals elsewhere in this file). A strict in_array against '8k' never
     // matched, so every SEC filing was invisible to this dedup and an 8-K
@@ -4530,6 +4591,7 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
             $st = strtolower((string) $r['source_type']);
             if ($st === 'warn' && $r['layoff_date']) {
                 $warn[] = $r;
+                $warn_all[] = $r;
             } elseif (in_array($st, $news_types, true) && $r['layoff_date']) {
                 $news[] = $r;
             }
@@ -4588,29 +4650,54 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
                 }
             }
         }
-        // (3) within-WARN duplicate: same company + same STATE + EXACT same count
-        //     (>=100) within ~90 days is a notice + its refiled revision, not two
-        //     real events (Tyson: 1,761 Amarillo TX on both Jan 20 and Feb 24).
-        //     Keep the earliest; mark the rest. The >=100 floor protects the
-        //     legitimately-coincidental tiny multi-site filings (six sites of "2").
-        if (count($warn) >= 2) {
-            $wkey = array();
-            foreach ($warn as $w) {
-                if (!empty($mark[$w['id']]) || (int) $w['job_count'] < 100) continue;
-                $wkey[$w['state'] . '|' . (int) $w['job_count']][] = $w;
-            }
-            foreach ($wkey as $dupes) {
-                if (count($dupes) < 2) continue;
-                usort($dupes, function ($a, $b) {
-                    $d = strcmp((string) $a['layoff_date'], (string) $b['layoff_date']);
-                    return $d !== 0 ? $d : ((int) $a['id'] - (int) $b['id']);
-                });
-                $primary = $dupes[0];
-                for ($i = 1, $n = count($dupes); $i < $n; $i++) {
-                    $m = $dupes[$i];
-                    if (abs((strtotime($m['layoff_date']) - strtotime($primary['layoff_date'])) / 86400) > 90) continue;
-                    if (empty($mark[$m['id']])) { $mark[$m['id']] = (int) $primary['id']; $excluded += (int) $m['job_count']; }
-                }
+    }
+    // (3) within-WARN duplicate: same company + same STATE + EXACT same count
+    //     (>=100) within ~90 days is a notice + its refiled revision, not two
+    //     real events (Tyson: 1,761 Amarillo TX on both Jan 20 and Feb 24).
+    //     Keep the earliest; mark the rest. The >=100 floor protects the
+    //     legitimately-coincidental tiny multi-site filings (six sites of "2").
+    //
+    //     THIS PASS RAN INSIDE THE PER-COMPANY LOOP ABOVE AND THEREFORE NEVER
+    //     ONCE FIRED FOR THE PAIR IN ITS OWN COMMENT. `$by` is grouped on
+    //     company_key, and a state that republishes a notice puts the word in
+    //     the employer cell, so the revision keys as a DIFFERENT company:
+    //       "Tyson Foods, Inc. (Amarillo B-Shift Operations"          ->
+    //           tyson foods amarillo b shift operations
+    //       "Tyson Foods, Inc (Amarillo B-Shift Operations) Updated"  ->
+    //           tyson foods amarillo b shift operations updated
+    //     The duplicate is only ever ACROSS two groups; a pass that can only
+    //     look within one group can never see it. 1,761 jobs double-counted on
+    //     the live headline from 2026-07-24 to 2026-08-18, plus Signify/Genlyte
+    //     TX 109. The live guard that was supposed to catch this bounded the
+    //     Tyson sum at 8,945 when the doubled sum was 7,184, so it passed on
+    //     headroom for 25 days and only reddened when unrelated new rows
+    //     crossed the bound. Grouping is now revision-tolerant AND the pass
+    //     runs over every WARN row, so neither half can silently return.
+    //
+    //     It stays a WARN-vs-WARN pass keyed on state + EXACT count + 90 days.
+    //     WARN's exemption from fuzzy cross-outlet dedup is untouched: two
+    //     different sites are two rows even at an equal count, because the site
+    //     is part of the employer cell and so part of the key (First Brands
+    //     Darke and Wood, 302 each, OH, stay separate).
+    if (count($warn_all) >= 2) {
+        $wkey = array();
+        foreach ($warn_all as $w) {
+            if (!empty($mark[$w['id']]) || (int) $w['job_count'] < 100) continue;
+            $rk = alt_warn_revision_key($w['company']);
+            if ($rk === '') continue;
+            $wkey[$rk . '|' . $w['state'] . '|' . (int) $w['job_count']][] = $w;
+        }
+        foreach ($wkey as $dupes) {
+            if (count($dupes) < 2) continue;
+            usort($dupes, function ($a, $b) {
+                $d = strcmp((string) $a['layoff_date'], (string) $b['layoff_date']);
+                return $d !== 0 ? $d : ((int) $a['id'] - (int) $b['id']);
+            });
+            $primary = $dupes[0];
+            for ($i = 1, $n = count($dupes); $i < $n; $i++) {
+                $m = $dupes[$i];
+                if (abs((strtotime($m['layoff_date']) - strtotime($primary['layoff_date'])) / 86400) > 90) continue;
+                if (empty($mark[$m['id']])) { $mark[$m['id']] = (int) $primary['id']; $excluded += (int) $m['job_count']; }
             }
         }
     }
