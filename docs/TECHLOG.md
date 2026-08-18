@@ -48,6 +48,19 @@ evictions, which stay skipped). Verified by running the sibling's own
 returns the cause and its `classify` returns healable. Only two healers exist;
 there is no third.
 
+**And the first attempt shipped an invalid workflow.** The new condition merged
+with ONE closing paren too many. PyYAML parses it - to YAML a condition is just
+a string - so every local check was green, and **GitHub refused to load
+self-heal.yml at all**: a cancelled `Card contract` run on main produced a `CI
+failure alert` run and **no Self-heal run whatsoever**, for fifteen minutes, on
+a healer that had just been fixed to catch more. An invalid workflow does not
+fail loudly; it stops existing, and the only trace is a run named after the FILE
+(`.github/workflows/self-heal.yml`) with `event: push` (run 32104628520).
+
+`tests/test_self_heal.py` now balances the parens in every `if:` in that file -
+not full expression validation, but exactly the mistake an editor of it makes.
+Red-before verified by putting the paren back.
+
 ### Why the suite outgrew 15 minutes, measured
 
 The test step, from the run API: **499s** (2026-08-16 06:57) -> **863s**

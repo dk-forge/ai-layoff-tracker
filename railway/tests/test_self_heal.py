@@ -13,6 +13,7 @@ Two promises are held here, offline, no network, no keys:
    path off FORBIDDEN would flip the corresponding assertion.
 """
 import io
+import re
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -410,6 +411,32 @@ class TheWorkflowFileKeepsItsShape(unittest.TestCase):
         self.assertIn(
             "if: always() && steps.gate.outputs.heal == 'yes'", self.src)
         self.assertIn("claude-execution-output.json", self.src)
+
+    def test_every_job_condition_is_a_balanced_expression(self):
+        """PyYAML is not a validator for these, and this cost a real outage.
+
+        On 2026-08-18 the `heal` condition shipped with ONE closing paren too
+        many. The file parsed as YAML - the condition is just a string to YAML -
+        so every local check was green, and GitHub refused to load the whole
+        workflow: no Self-heal run at all for fifteen minutes, on a healer that
+        had just been fixed to catch more. An invalid workflow does not fail
+        loudly; it stops existing.
+
+        Balance is not full expression validation, but it is the class of
+        mistake an editor of this file actually makes.
+        """
+        conditions = re.findall(r"^\s*if: >-\n((?:^\s{6,}.*\n)+)",
+                                self.src, re.M)
+        conditions += re.findall(r"^\s*if: (?!>-)(.+)$", self.src, re.M)
+        self.assertGreaterEqual(len(conditions), 4,
+                                "the `if:` conditions stopped being findable")
+        for cond in conditions:
+            depth = 0
+            for ch in cond:
+                depth += (ch == "(") - (ch == ")")
+                self.assertGreaterEqual(depth, 0,
+                                        f"closes a paren it never opened:\n{cond}")
+            self.assertEqual(depth, 0, f"unbalanced parens:\n{cond}")
 
     def test_the_kill_switch_exists(self):
         self.assertIn("SELF_HEAL_DISABLED", self.src)
