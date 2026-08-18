@@ -6,21 +6,34 @@
 # Both daily runs are expressed instead as a comma list in a single cron
 # expression on this service.
 #
-# Once daily since 2026-08-14, the owner's freshness-for-cost call: the
-# product updates daily, one pull at noon US Eastern lands after the full
-# morning news cycle (overnight news, the prior day's after-close 8-Ks, and
-# the morning announcement window). Same decision as the talent tracker's
-# collect.yml. Cost: halves the paid discovery/extraction runs. Trade: filings
-# made after the 4 PM ET close now appear the NEXT day rather than same-day.
+# Once daily since 2026-08-14, the owner's freshness-for-cost call. Moved from
+# noon to the EVENING on 2026-08-18, at his suggestion. Cost is unchanged;
+# what changes is what a single pull can see.
 #
-# Timezone note: Railway cron runs in UTC. 16:00 UTC == noon Eastern during
-# daylight saving (EDT, summer); in winter (EST, UTC-5) it fires at 11 AM
-# Eastern. To hold noon year-round shift to "0 17 * * *" in winter.
+# WHY 22:00 UTC RATHER THAN 16:00. At noon Eastern this job ran BEFORE the two
+# things it most wants to read. SEC 8-K traffic peaks after the 4 PM close, so
+# every same-day Item 2.05 waited for tomorrow. State WARN offices post
+# through the working day, so an afternoon notice waited too. Running after
+# the close catches both on the day they happen. What it now defers is
+# overnight news, which a once-daily cadence was always going to defer.
+#
+# IT ALSO FIXES THE DIGEST'S FRESHNESS, which nobody designed and nobody
+# noticed. The digest sends at 13:10 UTC. Against a 16:00 collection it was
+# reporting figures gathered TWENTY-ONE HOURS earlier - yesterday's pull, read
+# this morning - because the report ran BEFORE the collection, not after it.
+# Against a 22:00 collection it reads work finished fifteen hours earlier and
+# on the correct side of it. Collect, then report.
+#
+# Timezone note: Railway cron runs in UTC. 22:00 UTC == 6 PM Eastern in
+# daylight saving (EDT); in winter (EST) it fires at 5 PM Eastern, still after
+# the close. No winter shift is needed for correctness, only for tidiness.
+# IF YOU MOVE THIS, check it stays AFTER 21:00 UTC and BEFORE the 13:10 UTC
+# digest, or the report goes back to describing the previous day.
 
 [build]
 builder = "NIXPACKS"
 
 [deploy]
 startCommand = "python cron.py"
-cronSchedule = "0 16 * * *"
+cronSchedule = "0 22 * * *"
 restartPolicyType = "NEVER"
