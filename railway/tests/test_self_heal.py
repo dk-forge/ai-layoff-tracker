@@ -80,14 +80,14 @@ class GateSkipsTheKnownExpectedClasses(unittest.TestCase):
         self.assertFalse(heal)
         self.assertIn("LIVE-DATA", reason)
 
-    def test_a_self_timeout_is_never_healed(self):
-        # Self-timeouts arrive as conclusion `cancelled` (see ci_alert
-        # _SELF_TIMEOUT); the gate refuses everything that is not `failure`.
-        heal, reason = self_heal.classify(
-            "Archive WARN sources to Wayback", "cancelled",
-            "the job cancelled ITSELF on timeout-minutes")
-        self.assertFalse(heal)
-        self.assertIn("cancelled", reason)
+    def test_a_cancellation_from_outside_the_job_is_never_healed(self):
+        # A superseded push or a concurrency group produces `cancelled` with no
+        # timeout line anywhere in the annotations, and nothing is wrong.
+        for cause in ("", "The operation was canceled.",
+                      "##[error]The operation was canceled."):
+            heal, reason = self_heal.classify("Tests", "cancelled", cause)
+            self.assertFalse(heal, cause)
+            self.assertIn("OUTSIDE the job", reason)
 
     def test_success_and_startup_failure_are_not_healed(self):
         for conclusion in ("success", "startup_failure", "timed_out", ""):
@@ -125,6 +125,71 @@ class GateSkipsTheKnownExpectedClasses(unittest.TestCase):
         # look: the healer reads the run itself.
         heal, _ = self_heal.classify("Tests", "failure", "")
         self.assertTrue(heal)
+
+
+class ASelfTimeoutReachesTheHealer(unittest.TestCase):
+    """The blind spot of 2026-08-18, armed.
+
+    A job killed by its own `timeout-minutes` is reported by GitHub as
+    `cancelled`, not `timed_out` or `failure`. ci_alert.py knew that and mailed
+    it as CI SELF-TIMEOUT; self_heal.py did not and skipped it. "Tests"
+    self-killed at 15m0s on main (run 32099117561) and six Self-heal runs in the
+    next half hour were `skipped` with no PR opened.
+
+    Both halves are pinned here: a self-timeout IS healed, an ordinary
+    cancellation is NOT, and the discrimination is ci_alert's ONE function
+    rather than a second copy that can drift back apart.
+    """
+
+    # Verbatim shape of the annotation a self-killed job leaves behind.
+    ANNOTATION = "The job has exceeded the maximum execution time of 15m0s"
+
+    def test_the_annotation_a_self_killed_job_leaves_is_recognised(self):
+        cause = ci_alert.self_timeout_cause(self.ANNOTATION)
+        self.assertIsNotNone(cause)
+        self.assertIn("15m0s", cause)
+
+    def test_the_cause_line_round_trips_back_to_a_self_timeout_verdict(self):
+        # The gate is handed the cause STRING, not the annotation, so the
+        # verdict must survive the trip. It did not: the annotation says "has
+        # exceeded" and the cause line says "it exceeded", so re-matching the
+        # regex would have quietly answered "ordinary cancellation".
+        cause = ci_alert.self_timeout_cause(self.ANNOTATION)
+        self.assertTrue(ci_alert.is_self_timeout_cause(cause))
+        self.assertFalse(ci_alert.is_self_timeout_cause(""))
+        self.assertFalse(ci_alert.is_self_timeout_cause(
+            "##[error]The operation was canceled."))
+
+    def test_a_self_timeout_on_main_IS_healable(self):
+        cause = ci_alert.self_timeout_cause(self.ANNOTATION)
+        heal, reason = self_heal.classify("Tests", "cancelled", cause)
+        self.assertTrue(heal, reason)
+        self.assertIn("healable", reason)
+
+    def test_a_self_timeout_on_a_branch_is_still_that_branch_s_problem(self):
+        cause = ci_alert.self_timeout_cause(self.ANNOTATION)
+        heal, reason = self_heal.classify(
+            "Tests", "cancelled", cause, branch="claude/some-work")
+        self.assertFalse(heal)
+        self.assertIn("branch", reason)
+
+    def test_a_self_timeout_of_the_alarm_channel_is_still_never_healed(self):
+        cause = ci_alert.self_timeout_cause(self.ANNOTATION)
+        for workflow in ("CI failure alert", "Alert drain", "Self-heal"):
+            heal, _ = self_heal.classify(workflow, "cancelled", cause)
+            self.assertFalse(heal, workflow)
+
+    def test_the_discrimination_is_ci_alerts_and_is_not_copied(self):
+        # ONE definition. self_heal must not carry its own timeout regex or its
+        # own "exceeded the maximum execution time" string — that second copy
+        # is exactly the drift that produced this bug in the first place.
+        src = (ROOT / "railway" / "self_heal.py").read_text(encoding="utf-8")
+        self.assertNotIn("exceeded the maximum", src)
+        self.assertIn("ci_alert.is_self_timeout_cause", src)
+        self.assertIn("ci_alert.self_timeout_of_run", src)
+
+    def test_ci_alert_exports_the_shared_entry_point(self):
+        self.assertTrue(callable(getattr(ci_alert, "self_timeout_of_run", None)))
 
 
 class TheFingerprintIsTheBudgetLedger(unittest.TestCase):
@@ -326,6 +391,25 @@ class TheWorkflowFileKeepsItsShape(unittest.TestCase):
     def test_the_pr_is_a_draft_and_a_human_merges(self):
         self.assertIn("--draft", self.src)
         self.assertIn("gh pr ready", self.src)
+
+    def test_the_job_condition_admits_a_cancelled_run(self):
+        # An expression cannot read check-run annotations, so the workflow must
+        # let `cancelled` through to the gate STEP, which can. If this reverts
+        # to `failure`-only, every self-timeout goes unhealed and silent again.
+        self.assertIn("github.event.workflow_run.conclusion == 'cancelled'",
+                      self.src)
+        self.assertIn("github.event.workflow_run.conclusion == 'failure'",
+                      self.src)
+
+    def test_the_healer_is_told_not_to_answer_a_timeout_by_moving_the_wall(self):
+        self.assertIn("RAISING THE CEILING IS NOT", self.src)
+
+    def test_the_cli_transcript_is_kept_even_when_the_healer_declines(self):
+        # The healer's commonest outcome is a green run that opened nothing.
+        # `if: failure()` preserved nothing for exactly that case.
+        self.assertIn(
+            "if: always() && steps.gate.outputs.heal == 'yes'", self.src)
+        self.assertIn("claude-execution-output.json", self.src)
 
     def test_the_kill_switch_exists(self):
         self.assertIn("SELF_HEAL_DISABLED", self.src)

@@ -1798,6 +1798,46 @@ then walk `getBoundingClientRect()` and `paddingLeft` from a paragraph up to
   HTML shields most anonymous traffic; a 500 observed right after a push is this window,
   not an outage — re-check after the deploy run goes green before reverting anything.
 
+## "Tests" timed out (the suite outgrew its wall)
+
+**Do not lower `timeout-minutes` and do not raise it as a first move.** A lower
+ceiling makes a slow suite fail sooner, not pass; a higher one silences the
+alarm that catches this class. **Measure first** — that is not advice, it is
+where the answer has been every time so far.
+
+```bash
+cd railway
+time python3 run_tests.py --group rest        # everything that does not need a browser
+time python3 run_tests.py --group rendered    # the 14 modules that drive real Chrome
+```
+
+CI runs those two as parallel matrix jobs, so the wall clock is the larger half,
+not the sum. The split is derived from each module's own source (does it import
+`cdp`?) and `tests/test_test_groups.py` proves the halves are total and
+disjoint, so a module can never fall out of both and stop running unnoticed.
+
+For per-module numbers, run the suite under a timing result class and sort by
+module. Every self-timeout in this repo's history has had a real, local cause:
+
+| Date | Cost | Cause |
+|---|---|---|
+| 2026-08-14 | ~90s/test | `CronWiringTests` did not stub `local_news`; a real 87-query RSS pull with a 1s pacing sleep |
+| 2026-08-18 | 20.1s/test, 140.6s | the SAME harness, one table row later: `regional_feeds` + `national_feeds` unstubbed, paying 15.0s + 5.0s of `time.sleep(GAP)` |
+| 2026-08-18 | 37.3s | `test_national_feeds` / `test_regional_feeds` set `*_GAP_SECONDS` in the environ, but `GAP` is read at IMPORT time and `test_cost_funnel` imports the collectors first under `discover` |
+| 2026-08-18 | 100.8s | `reader_segments()` recomputing one 100-second walk in two tests |
+
+So the checklist is: **a sleep, a network call, or work repeated per test that
+belongs per module.** Fix it where it lives. `CronWiringTests` now patches
+`time.sleep` and `socket.getaddrinfo` to raise a **BaseException** (an
+`AssertionError` is swallowed by `cron.run()`'s own `except Exception` — that
+was verified, not assumed), so the next unstubbed source fails loudly in the
+test that forgot it instead of quietly buying twenty seconds a run.
+
+If measurement genuinely says the suite is that big, raising the ceiling is a
+legitimate answer — but write the measured runtime and the date beside it, the
+way the comment in `tests.yml` does, so the next person can see whether it
+drifted again.
+
 ## The self-healer (draft PRs from red CI — what it may and may never do)
 
 `.github/workflows/self-heal.yml` listens for every workflow completing, and
@@ -1834,11 +1874,32 @@ diffs the branch after the fact and goes red on a violation):
   `self-heal.yml` itself (`self_heal.FORBIDDEN` is the one list);
 - never heals the known-expected reds: live-data invariant FAILs (a human
   closes those with `--close-incident`; ci_alert has already emailed them),
-  self-timeouts (already mailed as CI SELF-TIMEOUT), host-outage-shaped
-  failures, branch/PR reds (they have an author), or the alert workflows
-  themselves. The classification is REUSED from `ci_alert.py` — one
-  definition, so a failure cannot be healed and classified needs-a-human at
+  host-outage-shaped failures, cancellations from outside a job (a superseded
+  push, a concurrency group), branch/PR reds (they have an author), or the
+  alert workflows themselves. The classification is REUSED from `ci_alert.py` —
+  one definition, so a failure cannot be healed and classified needs-a-human at
   the same time.
+
+**A SELF-TIMEOUT IS HEALED, and until 2026-08-18 it was not even seen.** A job
+killed by its own `timeout-minutes` is reported by GitHub as `cancelled`, not
+`timed_out` — character-identical at the conclusion level to a run a new push
+superseded. `ci_alert.py` learned that months ago and mails those as **CI
+SELF-TIMEOUT**; the healer's job condition said `conclusion == 'failure'` and
+had not. On 2026-08-18 "Tests" self-killed at 15m0s on main and **six Self-heal
+runs in the next half hour were `skipped`, no PR opened**. Two components
+reading one event with two vocabularies, and nothing comparing them.
+
+The discrimination now lives in exactly one place and both call it:
+`ci_alert.self_timeout_of_run(repo, run_id)` (reads the job's **check-run
+annotations** — a self-killed job has no failed STEP, so `--log-failed` is
+empty) and `ci_alert.is_self_timeout_cause(cause)` for a caller holding the
+cause string. The workflow's `if:` now admits `cancelled` **because a workflow
+expression cannot read annotations** — only the gate step can, so the routine
+cancellations are skipped there, by name, with the reason in the log. Do not
+put `failure`-only back to save that minute: the saving is the bug. The
+healer's own hard limit ("never widen a ceiling, floor, timeout") is what keeps
+the fix honest — the answer to a self-timeout is to make the job fit, and
+raising the ceiling stays a human's judgement call.
 
 **Budget is structural:** one healer at a time (concurrency group), one open
 PR per cause fingerprint (the branch name is the ledger), hard ceiling of 3

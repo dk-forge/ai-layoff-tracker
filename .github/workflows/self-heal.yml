@@ -10,9 +10,9 @@ name: Self-heal
 #
 # THE GATE COMES FIRST, because most red runs here are alarms working as
 # designed: live-data invariant FAILs are closed by a human with
-# --close-incident (ci_alert.py has already emailed them), self-timeouts are
-# already mailed as CI SELF-TIMEOUT and arrive as `cancelled` (not admitted
-# here at all), host-outage-shaped failures have nothing wrong in the
+# --close-incident (ci_alert.py has already emailed them), a cancellation from
+# outside the job is routine (a self-timeout wears the same word and IS healed
+# — see the job condition), host-outage-shaped failures have nothing wrong in the
 # checkout, and the alert workflows themselves are never healed. The gate
 # REUSES ci_alert.py's classification — one definition, so a failure cannot
 # be healed and classified needs-a-human at the same time.
@@ -56,21 +56,35 @@ concurrency:
 
 jobs:
   heal:
-    # `failure` only, on MAIN only: a branch red is that branch's session's
-    # (or PR author's) defect, never the healer's. Self-timeouts arrive as
-    # `cancelled` and are already mailed as CI SELF-TIMEOUT; cancellations are
-    # routine; success needs nothing. The name checks stop the healer healing
-    # the alarm channel or
-    # recursing on itself (ci_alert.py also lists these in NEVER_HEAL — the
-    # gate re-checks, this just skips the checkout for the common case).
+    # On MAIN only: a branch red is that branch's session's (or PR author's)
+    # defect, never the healer's. Success needs nothing.
+    #
+    # `cancelled` IS ADMITTED HERE, and that is not a widening — it is the fix
+    # for a whole blind class. A job killed by its own `timeout-minutes` is
+    # reported by GitHub as `cancelled`, not `timed_out`, character-identical at
+    # this level to a run a new push superseded. This condition said `failure`
+    # only, so on 2026-08-18 "Tests" self-killed at 15m0s on main, ci_alert.py
+    # emailed it as CI SELF-TIMEOUT, and six Self-heal runs in the following
+    # half hour evaluated this expression to false and skipped. The alerter had
+    # been taught the quirk; the healer had not.
+    #
+    # An expression cannot read check-run annotations, so it cannot tell the two
+    # apart — only the gate STEP can, via ci_alert.self_timeout_of_run(). So
+    # every cancelled run on main now pays for one checkout and one gate, and
+    # the routine ones are skipped there, by name, with the reason in the log.
+    # Do NOT restore `failure`-only here to save that minute: the saving is the
+    # bug. The name checks stop the healer healing the alarm channel or
+    # recursing on itself (self_heal.NEVER_HEAL re-checks — this just skips the
+    # checkout for the common case).
     if: >-
       vars.SELF_HEAL_DISABLED != 'true' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event.workflow_run.conclusion == 'failure' &&
+       ((github.event.workflow_run.conclusion == 'failure' ||
+         github.event.workflow_run.conclusion == 'cancelled') &&
         github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.name != 'Self-heal' &&
         github.event.workflow_run.name != 'CI failure alert' &&
-        github.event.workflow_run.name != 'Alert drain'))
+        github.event.workflow_run.name != 'Alert drain')))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     outputs:
@@ -157,6 +171,17 @@ jobs:
                expired credential, a judgement call), STOP: open no PR, push
                no branch, and state plainly in your final message why the gate
                should have skipped it.
+            3b. IF THIS RUN KILLED ITSELF ON `timeout-minutes` (the cause line
+               says so; the conclusion reads `cancelled`), the defect is that
+               the job no longer fits its wall — so MEASURE before you touch
+               anything, and report the slowest modules with numbers. Real
+               causes look like: an unstubbed network call, a sleep, a fixture
+               rebuilt per test, a process started per test instead of per
+               class. Fix the cost where it lives. RAISING THE CEILING IS NOT
+               A FIX YOU MAY MAKE — it is a judgement call with a measured
+               reason, and it belongs to a human. If measurement says the
+               suite is honestly that big, open NOTHING and say so with the
+               numbers.
             4. If it is a code defect: fix it on a NEW branch named exactly
                `${{ steps.gate.outputs.branch }}`, and verify the failing
                test/assertion is red before your change and green after it.
@@ -196,8 +221,16 @@ jobs:
       # owner's OAuth token was one of the guesses it cost. The CLI writes its
       # own log into the runner's temp dir and nothing preserves it. Print it on
       # failure so the NEXT failure arrives with a cause attached.
+      # ...and it is NOT `if: failure()`, because the healer's most common
+      # outcome is a SUCCESSFUL run that opened nothing. Run 32012019645
+      # (2026-08-17) authenticated, worked a real failure for 5m47s across 40
+      # turns, spent $1.72, recorded `permission_denials_count: 15`, and left
+      # behind exactly one line of evidence: "no PR was opened." Whether it
+      # declined on judgement or was simply blocked by its own allowlist was
+      # unanswerable from the log. A healer that can decline silently cannot be
+      # audited, and the owner has twice asked whether it earns its keep.
       - name: What did the CLI actually say?
-        if: failure()
+        if: always() && steps.gate.outputs.heal == 'yes'
         run: |
           F="${RUNNER_TEMP}/claude-execution-output.json"
           if [ -f "$F" ]; then

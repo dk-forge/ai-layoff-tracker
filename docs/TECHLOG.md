@@ -1,5 +1,113 @@
 # Tech Log
 
+## 2026-08-18 - the healer was blind to self-timeouts, and the suite had grown past its wall
+
+Two problems, one root: **a `timeout-minutes` kill is reported by GitHub as
+`cancelled`**, not `failure` and not `timed_out`.
+
+### The blind spot (the more important half)
+
+`Tests` self-killed at 15m0s on main (run 32099117561, commit a442367), and on
+the PR branch minutes earlier. `ci_alert.py` handled it correctly - it has
+known the quirk for weeks and mails those as **CI SELF-TIMEOUT**, its own email
+even saying "GitHub reports this as `cancelled`, not `timed_out`, which is why
+it produced no email before now."
+
+`self-heal.yml` gated on `conclusion == 'failure'`. **Six Self-heal runs in the
+half hour after the timeout were `skipped`, and no PR was opened.** The alerter
+had been taught; the healer had not. Two components reading one event with two
+vocabularies, and nothing comparing them.
+
+**The fix is one definition, called twice, never copied.** `ci_alert.py` now
+exports `SELF_TIMEOUT_MARKER`, `is_self_timeout_cause(cause)` and
+`self_timeout_of_run(repo, run_id)`; `self_heal.py` calls them and carries no
+timeout string of its own (a test asserts `"exceeded the maximum" not in` its
+source). The workflow's `if:` admits `cancelled` **because a workflow
+expression cannot read check-run annotations** - and the annotations are the
+only place the distinction lives, since a self-killed job has no failed STEP
+and `--log-failed` returns empty. So every cancelled run on main pays one
+checkout and one gate, and the routine ones (superseded push, concurrency
+group) are skipped *there*, by name, with the reason in the log.
+
+**A near-miss worth recording.** The obvious implementation - re-run the
+`_SELF_TIMEOUT` regex over the cause string in the gate - silently does not
+work: the annotation says "has exceeded" and the cause line ci_alert composes
+says "it exceeded". It would have answered "ordinary cancellation" for every
+self-timeout, which is the bug again with more code. Hence the explicit marker
+constant and a round-trip test.
+
+**Proved, not assumed.** `self_heal.py gate --run-id 32099117561 --conclusion
+cancelled` now prints `heal: yes` with the real cause `it exceeded the maximum
+execution time of 15m0s`; the same gate against run 31929706775 (a genuine
+externally-cancelled deploy) prints `heal: no`. Both against the live API.
+
+**The sibling repo had the identical gate and the identical blind spot**, and
+carries the same fix (its `cancelled` also covers talent-collect lock
+evictions, which stay skipped). Verified by running the sibling's own
+`ci_alert.self_timeout_of_run` against this repo's real self-timeout run: it
+returns the cause and its `classify` returns healable. Only two healers exist;
+there is no third.
+
+### Why the suite outgrew 15 minutes, measured
+
+The test step, from the run API: **499s** (2026-08-16 06:57) -> **863s**
+(2026-08-17 07:42) -> **822s** (2026-08-17 20:53) -> **self-killed** at 900s.
+The 2026-08-14 baseline was 353s. A local run reproduced it at **869.4s**.
+
+Two of those minutes were not honest growth:
+
+- **`test_cost_funnel.CronWiringTests` was 140.6s of pure sleep.** It stubs
+  every source in `cron.run()`'s table - except `regional_feeds` and
+  `national_feeds`, which joined that table after the harness was written. All
+  seven tests ran the real pullers and paid their per-feed pacing: 15.0s + 5.0s
+  = **20.1s each**. With sleeps neutralised the same test is 0.1s. This is the
+  2026-08-14 defect recurring, one table row later, and the comment warning
+  about it was already sitting in the file - **a comment is not a guard**. It
+  now has one: the harness patches `time.sleep` and `socket.getaddrinfo` to
+  raise, so an unstubbed source fails loudly in the test that forgot it. The
+  tripwire raises a **BaseException**, not an AssertionError, because
+  `cron.run()` wraps each collector in `except Exception` by design - verified:
+  with an AssertionError the removed-stub fixture still passed green.
+- **`test_national_feeds` (23.2s) and `test_regional_feeds` (14.1s) lost the
+  same import-order race.** Both set their `*_GAP_SECONDS` env var, but `GAP`
+  is read at import time and `test_cost_funnel` imports `cron` (and through it
+  both collectors) first under `discover`. They now set `GAP` on the module,
+  which cannot lose that race. The shipped default is untouched.
+- **`test_reader_copy_says_entries` recomputed a 100-second walk twice** (201.6s
+  for 8 tests). `reader_segments()` is now memoised; nothing writes those files
+  during a run. The `> 500` floor still runs on the populating walk.
+
+Three fixes, **177.9s -> 0.018s** for the first three modules and 201.6s ->
+100.8s for the fourth. No assertion was deleted, skipped or marked slow.
+
+### And the ceiling stays at 15 minutes
+
+Lowering it makes a slow suite fail sooner, not pass. Raising it silences the
+alarm that caught this. Instead `Tests` now runs as **two matrix jobs in
+parallel** - `rendered` (the 14 modules that drive a real headless Chrome
+through `cdp.py`) and `rest` - so the wall clock is the larger half instead of
+the sum. The split is **derived from each module's own source**, never a
+hand-kept list, and `tests/test_test_groups.py` pins that the two groups are
+total and disjoint against the same glob `discover` uses, so a module cannot
+fall out of both halves and stop running while CI stays green. `fail-fast` is
+off: one half failing must not CANCEL the other, which would manufacture
+exactly the ambiguous conclusion this whole entry is about. The live-data
+verdict steps are scoped to `rest`, the half that actually reads the live site,
+so the other half cannot answer for it.
+
+### One more observation: the healer has produced zero PRs
+
+It has had genuine opportunities and opened nothing. The only Self-heal run
+today that got past the gate and authenticated (32012019645) worked for 5m47s
+across 40 turns, spent $1.72, finished `is_error: false`, and recorded
+**`permission_denials_count: 15`**. Whether it declined on judgement or was
+simply blocked by its own tool allowlist is **not answerable from the log**:
+the action hides the CLI transcript, and this workflow only printed it
+`if: failure()` - so a green run that opened nothing left one line, "no PR was
+opened." That step now runs whenever the gate said yes. The next decline will
+arrive with a reason attached, which is the evidence needed before anyone can
+say whether the healer earns its keep.
+
 ## 2026-08-17 - the daily digest never went out on a Monday (2.20.84)
 
 **What the owner saw.** "I also didn't get my daily emails?" He was right, and
