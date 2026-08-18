@@ -498,6 +498,12 @@ def main() -> int:
     sent_rows = 0
     failed_rows = 0
     for freq in freqs:
+        if remaining == 0:
+            # The run's whole allowance is spent. Asking the site for this
+            # tier's list would open a send row nothing could ever fill.
+            print(f"DIGEST_LIMIT is spent, so the {freq} tier was not asked "
+                  f"for. Re-run without a limit to send it.")
+            break
         outcome = _run_tier(freq, transport, from_addr, reply_to, remaining)
         codes.append(outcome["code"])
         sent_rows += outcome["sent"]

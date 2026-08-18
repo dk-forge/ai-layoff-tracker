@@ -520,6 +520,37 @@ class RunWiring(unittest.TestCase):
                  if c.args[0] == "digest-recipients"]
         self.assertEqual(asked, ["daily", "weekly"])
 
+    def test_the_limit_is_one_ceiling_for_the_whole_run(self):
+        """DIGEST_LIMIT exists for a first live send, so a Monday must not
+        quietly double it by giving each tier its own allowance."""
+        import datetime
+        env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k",
+               "DIGEST_LIMIT": "1"}
+        transport = FakeTransport()
+        two = [{"id": 1, "email": "one@example.com", "unsub_url": UNSUB,
+                "lists": ["layoff"]},
+               {"id": 2, "email": "two@example.com", "unsub_url": UNSUB,
+                "lists": ["layoff"]}]
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(digest_send, "_call") as call, \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send, "resolve_transport",
+                                  return_value=(transport, "fake")), \
+                mock.patch.object(digest_send, "_today",
+                                  return_value=datetime.date(2026, 8, 17)), \
+                mock.patch("sys.stdout", io.StringIO()), \
+                mock.patch.object(digest_send.time, "sleep"):
+            call.side_effect = [_payload(freq="daily", send_id=11, recipients=two),
+                                {"ok": True}]
+            digest_send.main()
+        self.assertEqual(len(transport.delivered), 1,
+                         "one ceiling for the run, not one per tier")
+        asked = [c.args[1]["freq"] for c in call.call_args_list
+                 if c.args[0] == "digest-recipients"]
+        self.assertEqual(asked, ["daily"],
+                         "a spent allowance must not open the other tier's "
+                         "send row for a message it cannot send")
+
     def test_an_install_without_the_table_reads_unknown_not_zero(self):
         env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k"}
         buf = io.StringIO()
