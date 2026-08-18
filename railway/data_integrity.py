@@ -1594,6 +1594,58 @@ class RollingRecallInvariant:
                       pending=(state == UNKNOWN and measurement is None))
 
 
+class CountryCoverageInvariant:
+    """Every country in the corpus has an established disclosure regime, or says
+    it has not been checked.
+
+    WHAT IT ASSERTS. That railway/country_coverage_measurement.json exists, is
+    younger than country_coverage.MAX_MEASUREMENT_AGE_DAYS, could read the live
+    country scope, and contains a classification for every country the tracker
+    actually holds rows for — none of them past
+    country_coverage.MAX_ASSESSMENT_AGE_DAYS.
+
+    WHAT IT DELIBERATELY DOES NOT ASSERT. Any coverage figure, any floor, and
+    any worldwide percentage. Most countries in this corpus have no countable
+    denominator to be complete against, and for many of them that is a fact
+    about the country's law rather than a gap in ours — a floor would be
+    alarming on a foreign parliament. See country_coverage's docstring for why
+    a national notification total is NOT a recall denominator.
+
+    THE FAILURE IT EXISTS TO CATCH is the one that made the register necessary:
+    a country arrives in the data — a new source, a new GDELT language, a
+    correction that re-places a row — and nobody ever establishes whether there
+    is a disclosure regime there, so "we cover country X" stays an opinion while
+    every check in the repo reads green. UNASSESSED and NO_REGIME look identical
+    on any dashboard that only counts what it found, and they are opposite
+    states: one is somebody's outstanding work, the other is a publishable fact.
+
+    MISSING DATA. No register, an unreadable one, a stale one, or one whose run
+    could not read the live country list -> UNKNOWN, never a pass. A scope that
+    could not be read is explicitly NOT a finding that every country is fine.
+    """
+
+    key = "country_coverage_fresh"
+    label = "Every country in the corpus has a classified disclosure regime"
+    reads_live_data = False        # reads the committed register, not the site
+
+    def __init__(self, measurement_path=None):
+        self.measurement_path = measurement_path
+
+    def run(self, ctx):
+        try:
+            import country_coverage
+        except ImportError:                                  # pragma: no cover - path fallback
+            sys.path.insert(0, str(HERE))
+            import country_coverage
+        measurement = country_coverage.load_measurement(self.measurement_path)
+        state, detail = country_coverage.judge(measurement)
+        # Same rule as rolling_recall: never written is PENDING — still UNKNOWN
+        # on the dashboard and in the workflow's exit code, but a fresh checkout
+        # does not redden a push.
+        return Result(self, state, detail=detail,
+                      pending=(state == UNKNOWN and measurement is None))
+
+
 class ErmProvenanceInvariant:
     """A published ERM row still carries the country it was imported with.
 
@@ -2004,6 +2056,12 @@ INVARIANTS = (
     # re-enumeration that does age with the data, and asserts only that the
     # figure is still being computed. No floor, on purpose: see the class.
     RollingRecallInvariant(),
+    # Both of the above measure ONE slice of one country. This one watches the
+    # question they cannot reach: for every OTHER country in the corpus, has
+    # anybody established what exists to be found there at all? It carries no
+    # figure and no floor — it asserts that no country is sitting in the data
+    # unclassified and that no classification has aged past its expiry.
+    CountryCoverageInvariant(),
     # And this one asks a third question neither of those can: has a row that is
     # ALREADY published been quietly re-scored since it was imported? It reads
     # each ERM row's own import-time excerpt back out of the published text, so

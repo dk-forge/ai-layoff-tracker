@@ -1,0 +1,1101 @@
+{
+  "backlog": [
+    "Argentina",
+    "Australia",
+    "Bosnia and Herzegovina",
+    "Botswana",
+    "Brazil",
+    "Bulgaria",
+    "Cambodia",
+    "Canada",
+    "Chile",
+    "China",
+    "Colombia",
+    "Czechia",
+    "Estonia",
+    "Hong Kong",
+    "Hungary",
+    "Iceland",
+    "India",
+    "Indonesia",
+    "Isle of Man",
+    "Israel",
+    "Japan",
+    "Jersey",
+    "Kenya",
+    "Kuwait",
+    "Latvia",
+    "Mexico",
+    "Morocco",
+    "Netherlands",
+    "New Zealand",
+    "Nigeria",
+    "Pakistan",
+    "Peru",
+    "Poland",
+    "Romania",
+    "Serbia",
+    "Singapore",
+    "Slovakia",
+    "South Africa",
+    "South Korea",
+    "Switzerland",
+    "Taiwan",
+    "Thailand",
+    "T\u00fcrkiye",
+    "United Kingdom",
+    "Uruguay",
+    "Vietnam"
+  ],
+  "backlog_oldest": "2026-08-18",
+  "countries": {
+    "Argentina": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 528,
+      "state": "unknown",
+      "stored_name": "Argentina"
+    },
+    "Australia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 3120,
+      "jobs": 46021,
+      "state": "unknown",
+      "stored_name": "Australia"
+    },
+    "Austria": {
+      "age_days": 0,
+      "aggregate": "NONE located. AMS's own statistics host iambweb.ams.or.at carries a blanket robots.txt disallow, so the search was confined to what is reachable elsewhere \u2014 this classification is therefore weaker than Germany's and should be re-checked before it is quoted",
+      "assessed": "2026-08-18",
+      "authority": "Arbeitsmarktservice (AMS), 30 days before the dismissals",
+      "cite": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008593",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 130680,
+      "regime": "Fruhwarnsystem \u2014 s.45a Arbeitsmarktforderungsgesetz (AMFG)",
+      "state": "not_measurable",
+      "stored_name": "Austria",
+      "threshold": "banded within 30 days: 5 in an establishment of 21-99; 5% in 100-599; 30 in 600+; or 5 workers aged 50+ regardless of size"
+    },
+    "Bangladesh": {
+      "age_days": 0,
+      "aggregate": "NONE located at dife.gov.bd, dol.gov.bd or bbs.gov.bd",
+      "assessed": "2026-08-18",
+      "authority": "a copy of the notice goes to the Inspector General (DIFE) and the collective bargaining agent",
+      "cite": "https://dife.portal.gov.bd/",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 18000,
+      "regime": "Bangladesh Labour Act 2006 s.20 (retrenchment) and s.16 (lay-off)",
+      "state": "not_measurable",
+      "stored_name": "Bangladesh",
+      "threshold": "per worker with at least one year's continuous service, one month's notice or pay in lieu. There is NO mass threshold, so the duty is individual rather than collective and would not produce an event count even if published"
+    },
+    "Belgium": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED, and derived directly from the notifications: firms announcing intent, firms notifying a project, and workers affected, by month, region, province and sector, back to 2009. PDF only, no CSV/XLSX/API, released quarterly as a cumulative year-to-date file with per-month detail inside, roughly 6-7 weeks after period end. Verified live on 2026-08-18: HTTP 200, 646,655 bytes, application/pdf. NEAR-MISS to exclude: 'entreprises en restructuration reconnues' is a benefit-eligibility recognition covering firms too small for CCT 24, a different population",
+      "assessed": "2026-08-18",
+      "authority": "the directeur of the subregional employment service (VDAB / FOREM / Actiris) and the President of the SPF Emploi management committee. ONEM/RVA does NOT receive the notification; its role is downstream benefit administration",
+      "cite": "https://emploi.belgique.be/fr/themes/restructuration/licenciement-collectif/statistiques-relatives-aux-restructurations",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 230131,
+      "regime": "Licenciement collectif \u2014 CCT n.24 of 2 Oct 1975 art. 2 with the AR of 24 May 1976 (filing plus a 30-day standstill), and the loi du 13 fevrier 1998 ('loi Renault') ch. VII artt. 62-70 for the procedural and sanction layer",
+      "state": "measured",
+      "stored_name": "Belgium",
+      "threshold": "reported as: in establishments of 20+, over 60 days, 10 dismissals at 20-99 employees; 10% at 100-299; 30 at 300+. UNVERIFIED against CCT n.24 primary text in this pass \u2014 recorded as recollection, not as a finding. The PUBLISHED FIGURES, by contrast, were read out of the PDF itself and do reconcile"
+    },
+    "Bosnia and Herzegovina": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 18,
+      "state": "unknown",
+      "stored_name": "Bosnia and Herzegovina"
+    },
+    "Botswana": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 4000,
+      "state": "unknown",
+      "stored_name": "Botswana"
+    },
+    "Brazil": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 400,
+      "jobs": 12940,
+      "state": "unknown",
+      "stored_name": "Brazil"
+    },
+    "Bulgaria": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 32851,
+      "state": "unknown",
+      "stored_name": "Bulgaria"
+    },
+    "Cambodia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 1000,
+      "state": "unknown",
+      "stored_name": "Cambodia"
+    },
+    "Canada": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 480,
+      "jobs": 83601,
+      "state": "unknown",
+      "stored_name": "Canada"
+    },
+    "Chile": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 50,
+      "state": "unknown",
+      "stored_name": "Chile"
+    },
+    "China": {
+      "also_stored_as": [
+        "People's Republic of China"
+      ],
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 500,
+      "jobs": 16190,
+      "state": "unknown",
+      "stored_name": "China"
+    },
+    "Colombia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 1200,
+      "state": "unknown",
+      "stored_name": "Colombia"
+    },
+    "Croatia": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED but ANNUAL and PDF only, which is too coarse to serve as a denominator for a tracker reporting monthly. Recorded here as a published total because it is one; it is not a build candidate",
+      "assessed": "2026-08-18",
+      "authority": "Hrvatski zavod za zaposljavanje (HZZ)",
+      "cite": "https://www.hzz.hr/statistika/",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 24360,
+      "regime": "Kolektivno zbrinjavanje viska radnika \u2014 Zakon o radu, transposing Directive 98/59/EC",
+      "state": "measured",
+      "stored_name": "Croatia",
+      "threshold": "20 or more workers within 90 days"
+    },
+    "Cyprus": {
+      "age_days": 0,
+      "aggregate": "UNDETERMINED \u2014 the ministry host blocks us, so we cannot say whether a count is published. Recorded as refused rather than as 'no aggregate', which would be an unearned negative",
+      "assessed": "2026-08-18",
+      "authority": "the Ministry of Labour and Social Insurance",
+      "cite": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A31998L0059",
+      "class": "refused",
+      "entries": 0,
+      "jobs": 9238,
+      "refusal_host": "www.mlsi.gov.cy",
+      "refusal_reason": "THE BLOCK SITS UPSTREAM OF EVEN FINDING OUT. Blanket 'Disallow: /' with Googlebot exempted, which is a block aimed at everything that is not a search engine, ourselves included",
+      "regime": "Collective redundancy notification under the Termination of Employment Law, transposing Directive 98/59/EC \u2014 so a regime certainly exists (Directive 98/59/EC art. 3(1) is unconditional); what is unknown is whether anything is published from it",
+      "state": "not_measurable",
+      "stored_name": "Cyprus",
+      "threshold": "banded from 10 workers over 30 days, per the Directive floor"
+    },
+    "Czechia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 224810,
+      "state": "unknown",
+      "stored_name": "Czechia"
+    },
+    "Denmark": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED. Monthly count of persons AND companies varslet, by region, municipality and DB07 industry, back to 2007-01, released on the 7th business day. CONSTRAINT, stated rather than smoothed over: the figure is readable without a credential only as HTML or a PowerBI export; api.jobindsats.dk answers 401 'Missing bearer token'. So an unattended pipeline would need either a credential we do not have or a materially more brittle scrape than Sweden's plain .xlsx",
+      "assessed": "2026-08-18",
+      "authority": "Det Regionale Beskaeftigelsesraad, administered via STAR",
+      "cite": "https://www.jobindsats.dk/databank/arbejdsmarked/status-pa-arbejdsmarkedet/virksomhedernes-behov-for-arbejdskraft/antal-varslinger-om-afskedigelser/",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 121287,
+      "regime": "Varsling om afskedigelser af storre omfang \u2014 lov om varsling m.v. i forbindelse med afskedigelser af storre omfang, transposing Directive 98/59/EC",
+      "state": "measured",
+      "stored_name": "Denmark",
+      "threshold": "10 in an establishment of 20-99; 10% in 100-299; 30 in 300+, within 30 days"
+    },
+    "Estonia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 24932,
+      "state": "unknown",
+      "stored_name": "Estonia"
+    },
+    "Finland": {
+      "age_days": 0,
+      "aggregate": "NONE. The complete StatFin 'tyonv' table list was enumerated through the PxWeb API on 2026-08-18 and contains no muutosneuvottelut table. NEAR-MISS: the fully-furloughed stock series is short-time work, not dismissal",
+      "assessed": "2026-08-18",
+      "authority": "the TE office / employment authority",
+      "cite": "https://www.finlex.fi/fi/laki/ajantasa/2021/20211333",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 167107,
+      "regime": "Muutosneuvottelut (formerly yhteistoimintaneuvottelut) \u2014 laki yhteistoiminnasta yrityksissa (1333/2021), with notification to the employment authority",
+      "state": "not_measurable",
+      "stored_name": "Finland",
+      "threshold": "employers of 20 or more; 10 or more workers triggers the longer process"
+    },
+    "France": {
+      "age_days": 0,
+      "aggregate": "EXISTS AND IS PUBLISHED \u2014 DARES issues the PSE series (procedures and employees concerned) quarterly as XLSX \u2014 AND WE MAY NOT FETCH IT. This is the largest single loss in the register: France is our fifth-largest country by volume and the figure is exactly the right shape. No crawlable mirror exists: the DARES organisation on data.gouv.fr carries 35 datasets and none is PSE, the one 'licenciements economiques' dataset there is abandoned with a 2010Q4 file on a dead host, and the POEM portal's PSE page returns HTTP 500 with no PSE export in its catalogue",
+      "assessed": "2026-08-18",
+      "authority": "DREETS (the regional directorate), which validates or homologates",
+      "cite": "https://dares.travail-emploi.gouv.fr/donnees/les-licenciements",
+      "class": "refused",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 1125411,
+      "refusal_host": "dares.travail-emploi.gouv.fr (also travail-emploi.gouv.fr, legifrance.gouv.fr)",
+      "refusal_reason": "THE PUBLISHER DEMONSTRABLY HAS THE FIGURE AND BLOCKS US. The host serves an F5/TSPD JavaScript bot defence instead of content; robots.txt itself is unreadable and a plain fetch of the data page returned an explicit human-verification CAPTCHA. legifrance.gouv.fr sits behind a Cloudflare managed challenge (403 on robots.txt). No attempt was made to route around any of these, and none should be",
+      "regime": "Plan de sauvegarde de l'emploi (PSE) \u2014 Code du travail L.1233-61, with L.1233-57-4 requiring DREETS to validate an accord or homologate a unilateral document within 15 or 21 days",
+      "state": "not_measurable",
+      "stored_name": "France",
+      "threshold": "10 or more dismissals within 30 days in a firm of 50 or more"
+    },
+    "Germany": {
+      "age_days": 0,
+      "aggregate": "NONE. The Bundesagentur fur Arbeit's own complete Fachstatistiken publication calendar was enumerated on 2026-08-18 and contains no product for Entlassung / Massenentlassung / KSchG at all \u2014 the s.17 filings appear to be purely administrative. This establishes that no REGULAR SERIES exists; it does not rule out ad hoc Sonderauswertungen or parliamentary answers, neither of which would be a usable denominator. NEAR-MISS, excluded explicitly: BA does publish 'Realisierte Kurzarbeit', which is SHORT-TIME WORK and not dismissal. Germany is our fourth-largest country by volume, so this is a significant and deliberate blank",
+      "assessed": "2026-08-18",
+      "authority": "the Agentur fur Arbeit for the establishment, before the dismissals",
+      "cite": "https://www.gesetze-im-internet.de/kschg/__17.html",
+      "class": "regime_no_aggregate",
+      "entries": 150,
+      "jobs": 1675894,
+      "regime": "Massenentlassungsanzeige \u2014 s.17(1) and (3) Kundigungsschutzgesetz (KSchG)",
+      "state": "not_measurable",
+      "stored_name": "Germany",
+      "threshold": "per establishment within 30 days: more than 5 where 21-59 employees; 10% or more than 25 where 60-499; at least 30 where 500+"
+    },
+    "Greece": {
+      "age_days": 0,
+      "aggregate": "NONE isolating collective dismissal. The ERGANI system publishes monthly hiring and separation FLOWS, which is a near-miss: it does not break out collective dismissals, and a total separations figure is not a collective-dismissal denominator",
+      "assessed": "2026-08-18",
+      "authority": "the Ministry of Labour / the Supreme Labour Council (ASE)",
+      "cite": "https://www.et.gr/",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 123409,
+      "regime": "Omadikes apolyseis \u2014 L. 1387/1983 as amended, transposing Directive 98/59/EC",
+      "state": "not_measurable",
+      "stored_name": "Greece",
+      "threshold": "6 in establishments of 20-150; 5% or up to 30 in larger, per month"
+    },
+    "Hong Kong": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 6000,
+      "state": "unknown",
+      "stored_name": "Hong Kong"
+    },
+    "Hungary": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 172493,
+      "state": "unknown",
+      "stored_name": "Hungary"
+    },
+    "Iceland": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 400,
+      "state": "unknown",
+      "stored_name": "Iceland"
+    },
+    "India": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 14529,
+      "jobs": 139611,
+      "state": "unknown",
+      "stored_name": "India"
+    },
+    "Indonesia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 200,
+      "state": "unknown",
+      "stored_name": "Indonesia"
+    },
+    "Ireland": {
+      "age_days": 0,
+      "aggregate": "UNDETERMINED, because the department's own host blocks us. What is known: the Redundancy Payments Scheme statistics are a NEAR-MISS (payment claims, not notifications) and must not be used. Whether DETE publishes a count of s.12 notifications could not be established from what remains reachable",
+      "assessed": "2026-08-18",
+      "authority": "the Minister for Enterprise, Trade and Employment (DETE)",
+      "cite": "https://www.irishstatutebook.ie/eli/1977/act/7/enacted/en/html",
+      "class": "refused",
+      "entries": 45,
+      "jobs": 132596,
+      "refusal_host": "www.gov.ie (also www.oireachtas.ie)",
+      "refusal_reason": "THE BLOCK SITS UPSTREAM OF EVEN FINDING OUT \u2014 this is the second shade of refusal, not France's. www.gov.ie carries 'User-agent: ClaudeBot / Disallow: /' (also GPTBot, Google-Extended, Amazonbot, Applebot) and oireachtas.ie serves a human-verification interstitial, so the publication question itself is unanswerable rather than answered negatively. enterprise.gov.ie IS open and did not carry the series",
+      "regime": "Collective redundancy notification \u2014 Protection of Employment Act 1977 s.12, transposing Directive 98/59/EC",
+      "state": "not_measurable",
+      "stored_name": "Ireland",
+      "threshold": "banded over 30 days: 5 in an establishment of 21-49; 10 in 50-99; 10% in 100-299; 30 in 300+"
+    },
+    "Isle of Man": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 50,
+      "state": "unknown",
+      "stored_name": "Isle of Man"
+    },
+    "Israel": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 684,
+      "jobs": 1824,
+      "state": "unknown",
+      "stored_name": "Israel"
+    },
+    "Italy": {
+      "age_days": 0,
+      "aggregate": "UNDETERMINED, and the honest answer changed during this assessment. An earlier pass recorded 'the Comunicazioni Obbligatorie report folds collective dismissal into an undifferentiated Licenziamento total'. THAT CLAIM IS WITHDRAWN: it was never actually checked, and it cannot now be checked, because the report lives on a host that names ClaudeBot and disallows it. Having no positive evidence that a count is published is NOT the same as having verified that none is, and Italy is recorded as the second \u2014 refused \u2014 rather than the first. NEAR-MISS that remains true and excluded either way: CIG/CIGS hours authorised (D.Lgs 148/2015) is short-time work, not dismissal",
+      "assessed": "2026-08-18",
+      "authority": "the competent regional office (Regione / Ispettorato Territoriale del Lavoro), or the Ministero del Lavoro where units span more than one region \u2014 unverified against primary text",
+      "cite": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:1991-07-23;223",
+      "class": "refused",
+      "entries": 0,
+      "jobs": 455455,
+      "refusal_host": "www.cliclavoro.gov.it",
+      "refusal_reason": "THE BLOCK SITS UPSTREAM OF EVEN FINDING OUT. The host serving the Comunicazioni Obbligatorie report carries 'User-agent: ClaudeBot / Disallow: /' (also CCBot, GPTBot, Google-Extended, Amazonbot, Applebot-Extended, Bytespider, meta-externalagent). Its 'Content-Signal: search=yes,ai-train=no,use=reference' line sits under 'User-agent: *' and is OVERRIDDEN for us by our own named group \u2014 a trap worth remembering, because an earlier reading of this same file concluded crawling was permitted. dati.lavoro.gov.it resolves but will not connect, and anpal.gov.it is DNS SERVFAIL: do not cite ANPAL as a live publisher",
+      "regime": "Licenziamento collettivo \u2014 L. 223/1991 artt. 4 and 24. THRESHOLD AND ARTICLE NUMBERS ARE UNVERIFIED against primary text in this pass and are recorded as recollection, not as a finding; verify before quoting",
+      "state": "not_measurable",
+      "stored_name": "Italy",
+      "threshold": "reported as more than 15 employees and at least 5 dismissals within 120 days in one province \u2014 UNVERIFIED, see regime"
+    },
+    "Japan": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 33566,
+      "state": "unknown",
+      "stored_name": "Japan"
+    },
+    "Jersey": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 50,
+      "state": "unknown",
+      "stored_name": "Jersey"
+    },
+    "Kenya": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 3100,
+      "state": "unknown",
+      "stored_name": "Kenya"
+    },
+    "Kuwait": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 1500,
+      "state": "unknown",
+      "stored_name": "Kuwait"
+    },
+    "Latvia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 19532,
+      "state": "unknown",
+      "stored_name": "Latvia"
+    },
+    "Lithuania": {
+      "age_days": 0,
+      "aggregate": "UNDETERMINED. A published series is plausible \u2014 the employment service is the notified authority and publishes other labour series \u2014 but it could not be verified",
+      "assessed": "2026-08-18",
+      "authority": "Uzimtumo tarnyba (the employment service)",
+      "cite": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A31998L0059",
+      "class": "refused",
+      "entries": 0,
+      "jobs": 48921,
+      "refusal_host": "uzt.lt",
+      "refusal_reason": "THE BLOCK SITS UPSTREAM OF EVEN FINDING OUT. A Cloudflare wall returns 403 to everything including its own robots.txt, so no crawl directive could even be read",
+      "regime": "Grupes darbuotoju atleidimas \u2014 Darbo kodeksas, transposing Directive 98/59/EC",
+      "state": "not_measurable",
+      "stored_name": "Lithuania",
+      "threshold": "banded from 10 workers over 30 days, per the Directive floor"
+    },
+    "Luxembourg": {
+      "age_days": 0,
+      "aggregate": "NONE located in ADEM's published series",
+      "assessed": "2026-08-18",
+      "authority": "ADEM and the Comite de conjoncture",
+      "cite": "https://adem.public.lu/fr/publications/adem.html",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 10109,
+      "regime": "Licenciement collectif / plan de maintien dans l'emploi \u2014 Code du travail, transposing Directive 98/59/EC",
+      "state": "not_measurable",
+      "stored_name": "Luxembourg",
+      "threshold": "7 dismissals over 30 days, or 15 over 90 days"
+    },
+    "Malaysia": {
+      "age_days": 0,
+      "aggregate": "NONE derived from the PK filings. NEAR-MISS: PERKESO's Employment Insurance System 'Loss of Employment' series is monthly and good quality, but it counts INSURANCE CLAIMS rather than employer notifications and covers a different population",
+      "assessed": "2026-08-18",
+      "authority": "the nearest Jabatan Tenaga Kerja (JTK/JTKSM) office",
+      "cite": "https://jtksm.mohr.gov.my/",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 3445,
+      "regime": "Retrenchment notification, Borang PK \u2014 Employment Act 1955 s.63 with the Employment (Retrenchment) Notification 2004",
+      "state": "not_measurable",
+      "stored_name": "Malaysia",
+      "threshold": "filed 30 days before retrenchment for Parts I-IV; covers retrenchment, VSS, temporary lay-off and wage reduction"
+    },
+    "Malta": {
+      "age_days": 0,
+      "aggregate": "NONE located. Both nso.gov.mt and dier.gov.mt sit behind a Cloudflare wall, so as with Austria this is a weaker negative than Germany's",
+      "assessed": "2026-08-18",
+      "authority": "the Director of Industrial and Employment Relations (DIER)",
+      "cite": "https://legislation.mt/eli/sl/452.80/eng",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 6670,
+      "regime": "Collective Redundancies (Protection of Employment) Regulations, transposing Directive 98/59/EC",
+      "state": "not_measurable",
+      "stored_name": "Malta",
+      "threshold": "10 in establishments of 20-99; 10% in 100-299; 30 in 300+, over 30 days"
+    },
+    "Mexico": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 4424,
+      "state": "unknown",
+      "stored_name": "Mexico"
+    },
+    "Morocco": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 300,
+      "state": "unknown",
+      "stored_name": "Morocco"
+    },
+    "Netherlands": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 950,
+      "jobs": 410250,
+      "state": "unknown",
+      "stored_name": "Netherlands"
+    },
+    "New Zealand": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 675,
+      "state": "unknown",
+      "stored_name": "New Zealand"
+    },
+    "Nigeria": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 32,
+      "state": "unknown",
+      "stored_name": "Nigeria"
+    },
+    "Norway": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED. NAV's AG200 monthly .xlsx reports workplaces AND persons affected, with masseoppsigelse broken out separately from permittering (furlough) \u2014 the near-miss that would otherwise dominate the series \u2014 plus splits by industry, county and cause. History only from 2020-03, small cells suppressed, and the attachment URL carries a fresh UUID every month so the index page must be scraped rather than the URL templated",
+      "assessed": "2026-08-18",
+      "authority": "NAV (Arbeids- og velferdsetaten)",
+      "cite": "https://www.nav.no/no/nav-og-samfunn/statistikk/arbeidssokere-og-stillinger-statistikk",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 63201,
+      "regime": "Masseoppsigelse \u2014 arbeidsmarkedsloven s.8 (duty to notify NAV) with arbeidsmiljoloven s.15-2 (consultation and notification on collective redundancy)",
+      "state": "measured",
+      "stored_name": "Norway",
+      "threshold": "at least 10 workers within 30 days"
+    },
+    "Pakistan": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 137,
+      "state": "unknown",
+      "stored_name": "Pakistan"
+    },
+    "Peru": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 1600,
+      "state": "unknown",
+      "stored_name": "Peru"
+    },
+    "Philippines": {
+      "age_days": 0,
+      "aggregate": "EXISTS AND IS THE BEST-SHAPED REGIME FOUND ANYWHERE \u2014 the PSA's Job Displacement Monitoring System is built explicitly from 'all establishments reporting shutdown/retrenchments to DOLE Regional Offices', which is precisely a notification-derived denominator. Catalogue entries were visible for 2000, 2001, 2004, 2011 and 2012; whether it is still current could NOT be established, because the host refuses us",
+      "assessed": "2026-08-18",
+      "authority": "the DOLE Regional Office, and the affected worker",
+      "cite": "https://psada.psa.gov.ph/index.php/catalog/155",
+      "class": "refused",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 1200,
+      "refusal_host": "psa.gov.ph and psada.psa.gov.ph (also www.dole.gov.ph)",
+      "refusal_reason": "THE PUBLISHER HAS THE FIGURE AND BLOCKS US BY NAME. Both PSA hosts carry 'User-agent: ClaudeBot / Disallow: /' (alongside GPTBot, CCBot, Google-Extended, Amazonbot, Applebot-Extended, Bytespider and meta-externalagent), with a Content-Signal of 'search=yes,ai-train=no,use=reference'. www.dole.gov.ph returns 403 on robots.txt itself, so it is behind a bot wall too",
+      "regime": "Labor Code art. 298 (ex-283) \u2014 30 days' written notice of retrenchment, redundancy or closure, filed as the Establishment Termination Report (RKS Form 5)",
+      "state": "not_measurable",
+      "stored_name": "Philippines",
+      "threshold": "30 days before the intended date; any retrenchment, redundancy or closure"
+    },
+    "Poland": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 609236,
+      "state": "unknown",
+      "stored_name": "Poland"
+    },
+    "Portugal": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED. Monthly, quarterly and annual reports carrying BOTH procedures and workers, back to 2012, roughly a one to two month lag, with near-templatable filenames of the form Relatorio-Despedimento-Coletivo-YYYY.MM.pdf. PDF only \u2014 there is no CSV, XLSX or API, so building on it would mean adding a PDF dependency to a hash-pinned lock for one country",
+      "assessed": "2026-08-18",
+      "authority": "DGERT (Direcao-Geral do Emprego e das Relacoes de Trabalho)",
+      "cite": "https://www.dgert.gov.pt/despedimento-coletivo",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 92844,
+      "regime": "Despedimento coletivo \u2014 Codigo do Trabalho art. 359.o and following",
+      "state": "measured",
+      "stored_name": "Portugal",
+      "threshold": "2 workers in a firm under 50, or 5 in a firm of 50+, within 3 months"
+    },
+    "Romania": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 316882,
+      "state": "unknown",
+      "stored_name": "Romania"
+    },
+    "Serbia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 850,
+      "state": "unknown",
+      "stored_name": "Serbia"
+    },
+    "Singapore": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 4000,
+      "jobs": 6970,
+      "state": "unknown",
+      "stored_name": "Singapore"
+    },
+    "Slovakia": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 79308,
+      "state": "unknown",
+      "stored_name": "Slovakia"
+    },
+    "Slovenia": {
+      "age_days": 0,
+      "aggregate": "NONE located. NOTE pxweb.stat.si names ClaudeBot in its robots.txt, so the statistical office's own database was not queried",
+      "assessed": "2026-08-18",
+      "authority": "Zavod RS za zaposlovanje (ZRSZ)",
+      "cite": "http://www.pisrs.si/Pis.web/pregledPredpisa?id=ZAKO5944",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 73606,
+      "regime": "Odpoved vecjemu stevilu delavcev \u2014 Zakon o delovnih razmerjih (ZDR-1), transposing Directive 98/59/EC",
+      "state": "not_measurable",
+      "stored_name": "Slovenia",
+      "threshold": "banded from 10 workers depending on establishment size, over 30 days"
+    },
+    "South Africa": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 1671,
+      "state": "unknown",
+      "stored_name": "South Africa"
+    },
+    "South Korea": {
+      "also_stored_as": [
+        "Korea"
+      ],
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 3987,
+      "state": "unknown",
+      "stored_name": "South Korea"
+    },
+    "Spain": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED, and the best-shaped source found anywhere in this corpus. Monthly XLSX and PDF on fixed calendar months with a stable URL pattern, giving empresas, procedimientos and trabajadores afectados split by CNAE sector, cause, firm size, sex and province. Roughly a two-month lag; monthly figures are provisional until the annual consolidation. Critically it SEPARATES despido colectivo from suspension de contrato / reduccion de jornada (ERTE) and isolates the Mecanismo RED \u2014 both short-time work and both fatal near-misses if folded in. Verified live on 2026-08-18: HTTP 200, 484,927 bytes, openxmlformats spreadsheet",
+      "assessed": "2026-08-18",
+      "authority": "the labour authority of the autonomous community, or the Ministry's Direccion General de Trabajo where the firm spans more than one",
+      "cite": "https://www.mites.gob.es/estadisticas/reg/reg26may/reg_05_2026.xlsx",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 0,
+      "jobs": 429121,
+      "regime": "Despido colectivo \u2014 art. 51 Estatuto de los Trabajadores with RD 1483/2012; the statistical return itself is mandated by Orden ESS/2541/2012",
+      "state": "measured",
+      "stored_name": "Spain",
+      "threshold": "banded over 90 days: 10 in a firm under 100; 10% in 100-300; 30 in 300+; or the whole workforce where more than 5 and the firm closes"
+    },
+    "Sri Lanka": {
+      "age_days": 0,
+      "aggregate": "NONE, and this is the instructive case in the whole register: an APPROVAL regime generates a far stronger administrative record than a notification regime, and Sri Lanka still publishes only PROSECUTIONS from it. The Labour Statistics volumes for 2017-2019 were read directly and their single TEWA table is 'Enforcement of Labour Laws and Prosecutions' \u2014 case counts and sums recovered, not applications received or approved. The series appears to stop at 2019. So the existence of an approval duty predicts nothing about publication",
+      "assessed": "2026-08-18",
+      "authority": "Commissioner General of Labour",
+      "cite": "https://www.labourdept.gov.lk/",
+      "class": "regime_no_aggregate",
+      "entries": 0,
+      "jobs": 1500,
+      "regime": "Termination of Employment of Workmen (Special Provisions) Act No. 45 of 1971 (TEWA) \u2014 note this is a PRIOR APPROVAL regime, stronger than mere notification: the Commissioner General must decide within two months",
+      "state": "not_measurable",
+      "stored_name": "Sri Lanka",
+      "threshold": "employers of 15+ workmen, any non-disciplinary termination; excludes the public sector, co-operatives and under 180 days' service"
+    },
+    "Sweden": {
+      "age_days": 0,
+      "aggregate": "PUBLISHED, and the cleanest in the corpus. Monthly count of persons affected by varsel, by SNI industry and by county, back to 1992-01, as a direct .xlsx, roughly two weeks after month end. Verified live on 2026-08-18: HTTP 200, 130,155 bytes, openxmlformats spreadsheet. The download URL carries a generated id and the county file lagged the industry file by four months when checked, so an automated build must read the index page rather than template the URL",
+      "assessed": "2026-08-18",
+      "authority": "Arbetsformedlingen",
+      "cite": "https://arbetsformedlingen.se/download/18.1d7e68af19f87d573c91d73/1786515252048/web-varsel-bransch-199201-2026-07.xlsx",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
+      "entries": 700,
+      "jobs": 283833,
+      "regime": "Varsel om uppsagning under lag (1974:13) om vissa anstallningsframjande atgarder (framjandelagen) ss.1, 2, 2a \u2014 the employer must give the public employment service advance notice of a planned reduction, months ahead on a sliding scale",
+      "state": "measured",
+      "stored_name": "Sweden",
+      "threshold": "at least 5 workers affected, or 20 within 90 days. NOTE this is far BELOW the Directive 98/59/EC floor, so the Swedish count covers a wider population than its neighbours' and must never be summed with them"
+    },
+    "Switzerland": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 385,
+      "state": "unknown",
+      "stored_name": "Switzerland"
+    },
+    "Taiwan": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 2201,
+      "state": "unknown",
+      "stored_name": "Taiwan"
+    },
+    "Thailand": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 400,
+      "state": "unknown",
+      "stored_name": "Thailand"
+    },
+    "T\u00fcrkiye": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 2200,
+      "state": "unknown",
+      "stored_name": "T\u00fcrkiye"
+    },
+    "United Kingdom": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 28239,
+      "jobs": 1824287,
+      "state": "unknown",
+      "stored_name": "United Kingdom"
+    },
+    "United States": {
+      "age_days": 0,
+      "aggregate": "MEASURED. EDGAR full-text search enumerates every Item 2.05 filing for a period exactly, so the denominator is the universe rather than a sample \u2014 this is the one slice in the project that supports the word RECALL, and railway/rolling_recall.py measures it every week. The WARN layer is a SECOND regime in the same country and it is NOT measurable: there is no national aggregate at all (US DOL keeps no database, BLS Mass Layoff Statistics ended 2013) and Wisconsin, which publishes the right figure, disallows AI agents. See rolling_recall.assess_state_warn()",
+      "assessed": "2026-08-18",
+      "authority": "SEC (Item 2.05); state rapid-response / dislocated worker units (WARN)",
+      "cite": "https://efts.sec.gov/LATEST/search-index?q=%22Item%202.05%22&forms=8-K",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "closed_enumeration_primary_regulator_index",
+      "entries": 24053,
+      "jobs": 6043335,
+      "regime": "SEC 8-K Item 2.05 (costs associated with exit or disposal activities), Securities Exchange Act s.13/15(d) \u2014 a US public company recording a material charge for an exit activity files an 8-K carrying that code in its SGML header. SEPARATELY, state WARN acts and the federal WARN Act 29 U.S.C. 2101 compel notice to state dislocated-worker units",
+      "state": "measured",
+      "stored_name": "United States",
+      "threshold": "Item 2.05: any material exit-or-disposal charge, no headcount floor. Federal WARN: 100+ employees, 50+ affected at a site"
+    },
+    "Uruguay": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 390,
+      "state": "unknown",
+      "stored_name": "Uruguay"
+    },
+    "Vietnam": {
+      "class": "unassessed",
+      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "entries": 0,
+      "jobs": 2786,
+      "state": "unknown",
+      "stored_name": "Vietnam"
+    }
+  },
+  "countries_in_scope": 70,
+  "exactly_measurable": [
+    "Belgium",
+    "Croatia",
+    "Denmark",
+    "Norway",
+    "Portugal",
+    "Spain",
+    "Sweden",
+    "United States"
+  ],
+  "excluded_not_a_country": [
+    {
+      "entries": 116928,
+      "jobs": 4791574,
+      "name": "Multiple countries",
+      "why": "a scope, not a place \u2014 no legislature, no regime"
+    }
+  ],
+  "expired": [],
+  "max_assessment_age_days": 183,
+  "measured_at": "2026-08-18T23:30:32Z",
+  "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
+  "refusal_hosts": 30,
+  "refusal_ledger": [
+    {
+      "alternative": "none \u2014 data.gouv.fr carries no PSE dataset and the POEM portal 500s",
+      "country": "France",
+      "host": "dares.travail-emploi.gouv.fr",
+      "nature": "F5/TSPD JavaScript bot defence serves a CAPTCHA instead of content; robots.txt itself is unreadable",
+      "verified_here": false
+    },
+    {
+      "alternative": "www.normattiva.it for the statute (Allow: /); no data alternative",
+      "country": "Italy",
+      "host": "www.cliclavoro.gov.it",
+      "nature": "robots.txt: 'User-agent: ClaudeBot / Disallow: /' (also CCBot, GPTBot, Google-Extended, Amazonbot, Applebot-Extended, Bytespider, meta-externalagent). Its Content-Signal line sits under 'User-agent: *' and is OVERRIDDEN by our own named group \u2014 an earlier reading of this same file wrongly concluded crawling was permitted",
+      "verified_here": true
+    },
+    {
+      "alternative": "none \u2014 this is the best-shaped regime found anywhere and it is lost",
+      "country": "Philippines",
+      "host": "psa.gov.ph, psada.psa.gov.ph",
+      "nature": "robots.txt names ClaudeBot with 'Disallow: /'; www.dole.gov.ph returns 403 on robots.txt itself",
+      "verified_here": true
+    },
+    {
+      "alternative": "enterprise.gov.ie is open but did not carry the series",
+      "country": "Ireland",
+      "host": "www.gov.ie",
+      "nature": "reported as robots.txt '# Anthropic AI / User-agent: ClaudeBot / Disallow: /' (also GPTBot, Google-Extended, Amazonbot, Applebot). What was verified HERE is stronger and simpler: the host returns HTTP 403 to our identifying user agent on /robots.txt itself, so the directive cannot even be read. Either way it is a refusal. www.oireachtas.ie serves a human-verification interstitial",
+      "verified_here": true
+    },
+    {
+      "alternative": "none found",
+      "country": "Cyprus",
+      "host": "www.mlsi.gov.cy",
+      "nature": "blanket 'Disallow: /' with Googlebot exempted \u2014 a block aimed at everything that is not a search engine",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Lithuania",
+      "host": "uzt.lt",
+      "nature": "Cloudflare wall returns 403 to everything including its own robots.txt, so no crawl directive can even be read",
+      "verified_here": false
+    },
+    {
+      "alternative": "stat.gov.pl (fully open) and the regional *.praca.gov.pl subdomains, which carry no ClaudeBot rule",
+      "country": "Poland",
+      "host": "psz.praca.gov.pl",
+      "nature": "robots.txt names ClaudeBot specifically and disallows everything; it is the only agent named",
+      "verified_here": true
+    },
+    {
+      "alternative": "legislation.gov.au (crawl-delay 10)",
+      "country": "Australia",
+      "host": "www.austlii.edu.au, classic.austlii.edu.au",
+      "nature": "robots.txt names ClaudeBot, GPTBot, CCBot, Google-Extended and others with 'Disallow: /'",
+      "verified_here": false
+    },
+    {
+      "alternative": "laws.mol.gov.tw",
+      "country": "Taiwan",
+      "host": "law.moj.gov.tw",
+      "nature": "blanket 'User-agent: * / Disallow: /'",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Hong Kong",
+      "host": "www.elegislation.gov.hk",
+      "nature": "'Disallow: /' for everyone, 'Allow: /' for Googlebot only",
+      "verified_here": false
+    },
+    {
+      "alternative": "labourbureau.gov.in",
+      "country": "India",
+      "host": "www.data.gov.in",
+      "nature": "blanket 'User-agent: * / Disallow: /'",
+      "verified_here": false
+    },
+    {
+      "alternative": "legislation.gov.au",
+      "country": "Australia",
+      "host": "data.gov.au",
+      "nature": "blanket 'User-agent: * / Disallow: /'",
+      "verified_here": false
+    },
+    {
+      "alternative": "labourbureau.gov.in, which answered 200 to our agent",
+      "country": "India",
+      "host": "*.gov.in and *.nic.in (labour.gov.in, indiacode.nic.in, legislative.gov.in, pib.gov.in)",
+      "nature": "an Akamai configuration returns 403 to an identifying AI-agent user agent while reportedly serving a browser one. VERIFIED HERE only in the half that can be verified without misbehaving: labour.gov.in and www.data.gov.in both answer 403 to our own agent string while labourbureau.gov.in answers 200. The browser-UA half was NOT tested and must not be \u2014 presenting a browser UA there is spoofing to defeat an access control aimed at us, the same reading that keeps Wisconsin refused. The 403 alone is sufficient to record the refusal",
+      "verified_here": true
+    },
+    {
+      "alternative": "none found",
+      "country": "Bulgaria",
+      "host": "az.government.bg",
+      "nature": "robots disallows /web/, which is exactly where the bulletin PDFs live; the HTML index is crawlable and the data files are not",
+      "verified_here": false
+    },
+    {
+      "alternative": "the datavis.nisra.gov.uk HTML report, reported to carry the same figures",
+      "country": "United Kingdom (Northern Ireland)",
+      "host": "nisra.gov.uk",
+      "nature": "robots disallows *.xlsx",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Austria",
+      "host": "iambweb.ams.or.at",
+      "nature": "robots.txt blanket disallow on the AMS statistics host, so the publication question for Austria could not be closed from outside",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Malta",
+      "host": "nso.gov.mt, dier.gov.mt",
+      "nature": "Cloudflare interstitial in front of both the statistics office and the labour relations department, so neither could be queried",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Slovenia",
+      "host": "pxweb.stat.si",
+      "nature": "robots.txt names ClaudeBot on the statistical office's PxWeb database, so SURS could not be queried for a collective-dismissal table",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Greece",
+      "host": "ypergasias.gov.gr",
+      "nature": "the labour ministry host blocks AI agents, so whether ERGANI breaks out collective dismissals could only be answered from secondary material",
+      "verified_here": false
+    },
+    {
+      "alternative": "www.cbs.nl is clean; the UWV dashboard itself is JS-only",
+      "country": "Netherlands",
+      "host": "www.uwv.nl/nl/webpublicaties",
+      "nature": "the ONLY path UWV's robots.txt disallows \u2014 and the likely home of any WMCO collective-dismissal series. Not aimed at AI agents specifically, but it applies to us",
+      "verified_here": false
+    },
+    {
+      "alternative": "emploi.belgique.be, which is the actual publisher and has no robots.txt at all",
+      "country": "Belgium",
+      "host": "www.leforem.be",
+      "nature": "robots.txt: 'User-agent: GPTBot / Disallow:/' and 'User-agent: ClaudeBot / Disallow:/'",
+      "verified_here": false
+    },
+    {
+      "alternative": "emploi.belgique.be",
+      "country": "Belgium",
+      "host": "statbel.fgov.be",
+      "nature": "F5/TSPD bot wall instead of a robots file",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Netherlands",
+      "host": "cao.minszw.nl",
+      "nature": "Anubis proof-of-work interstitial",
+      "verified_here": false
+    },
+    {
+      "alternative": "apps.eurofound.europa.eu, a separate host that serves normally",
+      "country": "EU-wide",
+      "host": "www.eurofound.europa.eu",
+      "nature": "Vercel checkpoint interstitial",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "United Kingdom",
+      "host": "whatdotheyknow.com",
+      "nature": "bot wall interstitial. Relevant because UK HR1 notification counts have historically surfaced through FOI requests archived there",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Canada (Quebec)",
+      "host": "cnesst.gouv.qc.ca",
+      "nature": "bot wall interstitial on the Quebec labour standards commission",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "Singapore",
+      "host": "sso.agc.gov.sg",
+      "nature": "bot wall on Singapore Statutes Online, so the Employment Act retrenchment-notification text could not be read from primary source",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "China",
+      "host": "mohrss.gov.cn",
+      "nature": "bot wall on the human resources and social security ministry, the body that would receive Labour Contract Law art. 41 reports",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "international",
+      "host": "natlex.ilo.org",
+      "nature": "bot wall on the ILO's national labour law database \u2014 the single most useful cross-country source for exactly this register, and unusable",
+      "verified_here": false
+    },
+    {
+      "alternative": "none found",
+      "country": "France",
+      "host": "legifrance.gouv.fr",
+      "nature": "Cloudflare managed challenge, 403 on robots.txt",
+      "verified_here": false
+    }
+  ],
+  "refused": [
+    "Cyprus",
+    "France",
+    "Ireland",
+    "Italy",
+    "Lithuania",
+    "Philippines"
+  ],
+  "scope_basis": "countries the tracker holds rows for, read live from /aggregate",
+  "scope_state": "measured",
+  "tallies": {
+    "no_regime": 0,
+    "refused": 6,
+    "regime_no_aggregate": 10,
+    "regime_with_aggregate": 8,
+    "unassessed": 46
+  },
+  "unassessed": [
+    "Argentina",
+    "Australia",
+    "Bosnia and Herzegovina",
+    "Botswana",
+    "Brazil",
+    "Bulgaria",
+    "Cambodia",
+    "Canada",
+    "Chile",
+    "China",
+    "Colombia",
+    "Czechia",
+    "Estonia",
+    "Hong Kong",
+    "Hungary",
+    "Iceland",
+    "India",
+    "Indonesia",
+    "Isle of Man",
+    "Israel",
+    "Japan",
+    "Jersey",
+    "Kenya",
+    "Kuwait",
+    "Latvia",
+    "Mexico",
+    "Morocco",
+    "Netherlands",
+    "New Zealand",
+    "Nigeria",
+    "Pakistan",
+    "Peru",
+    "Poland",
+    "Romania",
+    "Serbia",
+    "Singapore",
+    "Slovakia",
+    "South Africa",
+    "South Korea",
+    "Switzerland",
+    "Taiwan",
+    "Thailand",
+    "T\u00fcrkiye",
+    "United Kingdom",
+    "Uruguay",
+    "Vietnam"
+  ],
+  "undeclared": [],
+  "vocabulary_duplicates": [
+    {
+      "canonical": "South Korea",
+      "entries": 0,
+      "jobs": 1197,
+      "stored": "Korea"
+    },
+    {
+      "canonical": "China",
+      "entries": 0,
+      "jobs": 2,
+      "stored": "People's Republic of China"
+    }
+  ]
+}

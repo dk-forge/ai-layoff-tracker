@@ -1217,6 +1217,91 @@ were checked on 2026-08-17; the reasoning is in the definition doc. To re-check:
 - If a state qualifies, update `WARN_ASSESSED_AT` and build the slice; do not
   extend the expiry without re-checking, which is the whole point of the clock.
 
+## Classify a country's disclosure regime (ops_status `[3d]`)
+
+`railway/country_coverage.py` holds one entry per country the tracker has rows
+for. `[3d]` goes **UNKNOWN** when a country appears in the corpus with no entry,
+or when an entry has aged past `MAX_ASSESSMENT_AGE_DAYS` (183). Both are work
+owed; neither is a coverage regression.
+
+**The question is narrower than it looks.** It is *not* "can we find layoff data
+for this country". It is: **does a public authority publish a periodic COUNT
+derived from a statutory notification duty?** Three answers, and only the first
+is a recall opportunity:
+
+| class | what it means | what to do about it |
+|---|---|---|
+| `regime_with_aggregate` | a statute compels notification AND the authority publishes a count | a denominator exists. Read the caveat below before building anything on it |
+| `regime_no_aggregate` | a statute compels notification, nothing countable is published | nothing to do. Sampling is possible in principle; say what it would cost, do not do it casually |
+| `no_regime` | no statutory mass-dismissal disclosure duty exists at all | **this is a publishable finding, not a gap.** There is nothing to be complete against |
+| `refused` | a denominator (or the ability to check for one) is behind an AI-agent block, paywall, bot wall or CAPTCHA | record it with its host and reason. **It stays refused** |
+| `unassessed` | nobody has looked | the only one of the five that is our defect |
+
+**Inside the EU/EEA, `no_regime` is not an available answer.** Directive
+98/59/EC Art. 3(1) makes notification unconditional in every member state, so the
+regime question is settled before it is asked and the only live question is
+whether the receiving authority publishes anything. Do not spend an afternoon
+rediscovering this. Do note the three holes the Directive itself creates:
+Art. 1(1)(a) gives states a **choice of two thresholds** (so counts are not
+comparable between neighbours and must never be summed into a European figure),
+Art. 1(2) **excludes public-sector, fixed-term and seagoing workers** outright,
+and Art. 5 lets a state set a lower floor.
+
+### The caveat that matters most before quoting anything from a country entry
+
+**A national notification total is NOT a recall denominator.** Item 2.05
+enumerates identifiable EVENTS, each of which we either hold or do not. A labour
+ministry publishes a periodic count of affected workers with no identities
+attached. Dividing our stored jobs by that figure yields **share of the official
+total**, and it is not recall, for two reasons that do not go away with better
+collection:
+
+- the official total includes every notified 30-person cut at an employer no
+  outlet will ever name. A news-and-filings tracker cannot hold those and is not
+  trying to, so a low share is the **expected and correct** result, not a gap.
+- the periods do not line up. A notification is dated when filed; our rows carry
+  an announcement date and an effective date that can be a year apart, and
+  `country_basis=any` unions job location with employer HQ for the table while
+  headline stats stay strict job-location.
+
+So label it `share of the official total`, never `recall`, and **never print it
+beside the Item 2.05 band** — `rolling_recall` already refuses to ship a sampled
+number next to an exact one and this is that refusal in a different unit.
+
+### To classify or re-check a country
+
+1. **Find the statute first, not the data.** Name the instrument, the article,
+   the authority that receives the notification, and the threshold that triggers
+   it. An entry without those cannot be argued with, and an unfalsifiable entry
+   is worse than a blank because it stops anybody looking again.
+2. **Check `robots.txt` before fetching anything**, every time. A host that
+   disallows ClaudeBot / GPTBot / CCBot / Google-Extended, or serves a bot wall
+   or CAPTCHA, is `refused` — record `refusal_host` and `refusal_reason` and
+   move on. **Do not rename the agent to get round a block aimed at the agent.**
+   This has already cost real denominators: Wisconsin's annual WARN total,
+   France's DARES PSE series, and the Philippine Statistics Authority's Job
+   Displacement Monitoring System, which is the best-shaped regime found
+   anywhere and unreachable. Naming the loss is the deliverable.
+3. **Reject near-misses explicitly.** Short-time work is not dismissal
+   (Germany's Kurzarbeit, Italy's CIG/CIGS, Spain's ERTE and Mecanismo RED);
+   total separations are not collective dismissals (Brazil's CAGED); benefit
+   claims are not notifications. Spain's monthly file is usable *because* it
+   splits `despido colectivo` from the ERTE series in the same workbook.
+4. **Add the entry to `REGISTER` in `railway/country_coverage.py`** with today's
+   date, and re-run `python3 railway/country_coverage.py --write`. Never
+   hand-edit `country_coverage_measurement.json`; it is a measurement, not a
+   setting.
+5. **`unassessed` is not `no_regime`.** They look identical on any dashboard
+   that only counts what it found, and they are opposite states — one is
+   somebody's outstanding work, the other is a fact about the world. The
+   register keeps them apart on purpose and `judge()` reddens on the first.
+
+Do **not** answer a stale entry by extending the expiry. The clock exists
+because parliaments amend statutes and ministries start and stop publishing
+series; a standing finding nobody revisits is a stale claim wearing a permanent
+exemption, which is the defect `benchmark_freshness.py` exists to catch one
+floor down.
+
 ## Adjudicating the SEC Item 2.05 gold set (the only way recall moves)
 
 `recall_goldset.measure()` counts an event only where the manifest says

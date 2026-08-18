@@ -1,0 +1,107 @@
+name: Per-country coverage register
+
+# WHAT EXISTS TO BE FOUND, PER COUNTRY — re-checked against the live corpus
+# rather than remembered.
+#
+# `rolling-recall.yml` measures ONE slice exactly (US SEC Item 2.05) because
+# EDGAR enumerates that universe for a period. It says nothing about the other
+# 72 countries in the corpus, and the honest answer for most of them is not "we
+# have not measured it yet" — it is that NO countable denominator exists to be
+# complete against, which is a fact about that country's disclosure law rather
+# than a gap in ours.
+#
+# This job does not measure coverage. It re-reads the live list of countries the
+# tracker holds rows for and checks that every one of them has a classified
+# disclosure regime that has not aged past its expiry. The failure it exists to
+# catch is a country arriving in the data — a new source, a new GDELT language,
+# a correction that re-places a row — with nobody ever establishing whether
+# there is a regime there, while every check in the repo reads green.
+#
+# IT PUBLISHES NO PERCENTAGE, here or anywhere. A worldwide rate over a register
+# whose own coverage is the denominator would be quoted as a coverage figure and
+# it would flatter. The register carries counts of countries per category and
+# the regime named for each; what to claim in public is the owner's decision,
+# made on purpose, not a side effect of a cron.
+#
+# COST: $0.00. One public read of our own /aggregate. No model is called on any
+# path and none should ever be added — a measurement that spends money is a
+# measurement that gets switched off in a lean month.
+#
+# WHY IT COMMITS. The set being described changes with no commit of ours (a new
+# country enters the corpus; a ministry starts or stops publishing a series), so
+# a result that lives only in the runner resets every night and its age can
+# never be read. data_integrity.CountryCoverageInvariant and ops_status [3d]
+# read the committed file, and one older than
+# country_coverage.MAX_MEASUREMENT_AGE_DAYS reports UNKNOWN rather than a pass.
+
+on:
+  schedule:
+    # Thursdays 1:10 PM ET, twenty minutes after rolling-recall on the same day:
+    # both page the live host and neither is urgent, so they are kept adjacent
+    # and sequential rather than scattered across the week.
+    - cron: '10 17 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: country-coverage
+  cancel-in-progress: false
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    # One HTTP request and a dictionary walk. The ceiling is here to kill a hung
+    # request, not to bound real work.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # No pip install and no lock: this module is stdlib-only and keyless, by
+      # design. A measurement that needs a dependency is a measurement that
+      # breaks when the lock is refreshed.
+      - name: Classify every country in the corpus
+        id: classify
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        # The exit code is captured rather than allowed to end the job, so the
+        # register is still committed before the run is failed below. A result
+        # that leaves no committed evidence is the worst of both.
+        run: |
+          set +e
+          python3 railway/country_coverage.py --write
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit the register
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add railway/country_coverage_measurement.json
+          # A week in which no country entered or left the corpus legitimately
+          # produces no delta but the timestamp, and that is committed on
+          # purpose: a register whose age cannot be read resolves to UNKNOWN,
+          # not to a pass.
+          git diff --cached --quiet && { echo "no change to commit"; exit 0; }
+          git commit -m "coverage: per-country disclosure regimes $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1
+      - name: Report the verdict
+        run: |
+          rc="${{ steps.classify.outputs.rc }}"
+          case "$rc" in
+            0) echo "every country in the corpus has a live classification" ;;
+            # UNKNOWN is the honest state when a country has entered the data
+            # with no entry in the register, when a classification has aged past
+            # its expiry, or when the live country list could not be read. Only
+            # the first two are work owed; the third is an outage. None of them
+            # is a coverage regression and none must be read as one — but none
+            # is a pass either, so the run goes red and ci_alert.py mails the
+            # cause, which names the country.
+            3) echo "::error::the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."; exit 3 ;;
+            *) echo "::error::country coverage reported a breach (exit $rc) - see the step above"; exit "$rc" ;;
+          esac
