@@ -1033,6 +1033,87 @@ def main():
         print(f"    UNKNOWN - could not read the rolling coverage measurement: {exc}")
         issues.append("COVERAGE: measurement unreadable")
 
+    # 3d. PER-COUNTRY PICTURE — what EXISTS to be found, per country.
+    #
+    # [3c] measures one slice of one country exactly and says nothing about the
+    # other 72 in the corpus. The gap that leaves is not "coverage we have not
+    # measured yet", it is a claim nobody can defend: for most countries there
+    # is NO countable denominator to be complete against, and for many of them
+    # that is a fact about the country's law rather than a gap in ours.
+    #
+    # This prints the shape of that answer — how many countries publish a
+    # countable total, how many have a notification regime that publishes
+    # nothing, how many have no disclosure regime at all, and how many are
+    # REFUSED because the publisher disallows AI agents. It deliberately prints
+    # NO percentage: a worldwide rate over a register whose own coverage is the
+    # denominator would be quoted as a coverage figure and would flatter.
+    #
+    # An UNASSESSED country is the one thing here that is a defect on our side,
+    # so it is named and it makes the section UNKNOWN.
+    print("\n[3d] PER-COUNTRY DISCLOSURE REGIMES  (what exists to be found, by country)")
+    try:
+        import country_coverage
+        cc_doc = country_coverage.load_measurement()
+        cc_state, cc_detail = country_coverage.judge(cc_doc)
+        if cc_doc is None:
+            print("    UNKNOWN - no per-country register has been written yet. What "
+                  "exists to be found per country is UNESTABLISHED, not fine.")
+            print("              Run: python3 railway/country_coverage.py --write")
+            not_provisioned.append("country_coverage (never classified)")
+        else:
+            t = cc_doc.get("tallies") or {}
+            if cc_doc.get("scope_state") == country_coverage.MEASURED:
+                print(f"    {cc_doc.get('countries_in_scope')} countries in the corpus, "
+                      f"classified against their own disclosure law:")
+                for cls, caption in (
+                        (country_coverage.REGIME_WITH_AGGREGATE,
+                         "publish a countable total -> a denominator exists"),
+                        (country_coverage.REGIME_NO_AGGREGATE,
+                         "regime exists, no aggregate published -> sampling only"),
+                        (country_coverage.NO_REGIME,
+                         "no disclosure regime at all -> nothing to be complete against"),
+                        (country_coverage.REFUSED,
+                         "REFUSED - publisher disallows AI agents, recorded not routed around"),
+                        (country_coverage.UNASSESSED,
+                         "not yet classified (see the backlog line below)")):
+                    n = t.get(cls, 0)
+                    if n:
+                        print(f"      {n:>3}  {caption}")
+                exact = cc_doc.get("exactly_measurable") or []
+                if exact:
+                    print(f"    a denominator exists in: {', '.join(exact)}")
+                    # Said every session, because it is the sentence that stops
+                    # the next number from being labelled wrongly.
+                    print("    ONLY the US slice supports the word RECALL (Item 2.05 "
+                          "enumerates events). The rest are national worker totals, so "
+                          "the honest label there is SHARE OF THE OFFICIAL TOTAL.")
+                backlog = cc_doc.get("backlog") or []
+                if backlog:
+                    print(f"    backlog: {len(backlog)} acknowledged, oldest declared "
+                          f"{cc_doc.get('backlog_oldest')} - shrinking this is the work")
+                for name in (cc_doc.get("undeclared") or [])[:8]:
+                    print(f"      UNDECLARED  {name}  (arrived in the data unnoticed)")
+                ledger = cc_doc.get("refusal_ledger") or []
+                if ledger:
+                    ver = sum(1 for r in ledger if r.get("verified_here"))
+                    print(f"    refusal ledger: {len(ledger)} hosts refuse us "
+                          f"({ver} re-verified here). Do NOT re-probe or build against "
+                          f"them - see REFUSAL_LEDGER in railway/country_coverage.py")
+                for dup in cc_doc.get("vocabulary_duplicates") or []:
+                    print(f"      VOCABULARY  '{dup['stored']}' stored alongside "
+                          f"'{dup['canonical']}' - one country, two spellings")
+            else:
+                print("    UNKNOWN   the live country scope could not be read:")
+                _print_wrapped(cc_doc.get("detail") or "", indent="              ")
+            if cc_state == country_coverage.UNKNOWN:
+                issues.append("COVERAGE: the per-country register is UNVERIFIED")
+                _print_wrapped(cc_detail, indent="              ")
+            print(f"    classified {cc_doc.get('measured_at')} - a register of what "
+                  f"EXISTS to be found, never a worldwide percentage")
+    except Exception as exc:
+        print(f"    UNKNOWN - could not read the per-country register: {exc}")
+        issues.append("COVERAGE: per-country register unreadable")
+
     # 4. RECENT CI — is any workflow red right now?
     #
     # Section [3] deliberately re-queries the live API instead of reading a CI

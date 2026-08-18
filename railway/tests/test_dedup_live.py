@@ -334,6 +334,7 @@ class InvariantCoverage(unittest.TestCase):
         "headline_containment": ("test_headline_containment", "TheIncidentItWasWrittenFor"),
         "erm_provenance": ("test_erm_provenance_check", "WiredIntoTheOneRegistry"),
         "rolling_recall_fresh": ("test_rolling_recall", "WiredIntoTheOneRegistry"),
+        "country_coverage_fresh": ("test_country_coverage", "WiredIntoTheOneRegistry"),
     }
 
     @staticmethod
