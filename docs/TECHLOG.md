@@ -84,6 +84,224 @@ and `announcement_date` only, never job-location `country`, and `/edit` pins the
 row. That route is a plugin change and a version bump, and it is not worth
 racing another session's deploy for 82 rows. Written down rather than
 half-built.
+## 2026-08-18 - the per-country claim stops being an opinion, and the answer is mostly negative (railway + docs, no deploy)
+
+**The problem.** `rolling_recall` measures ONE slice exactly - US SEC Item 2.05,
+where EDGAR's structured item array enumerates the universe for a period, so the
+denominator is not a sample. The other sixty-nine countries in the corpus were
+unmeasured, and unmeasured is not the same as uncovered. The owner's goal is
+worldwide coverage he can DEFEND per country, and "we cover country X" was an
+opinion in every country but one.
+
+**What this is NOT.** Not a second framework. `railway/country_coverage.py`
+borrows rolling_recall's whole vocabulary - MEASURED / NOT_MEASURABLE / UNKNOWN,
+an assessment that carries a date and EXPIRES after 183 days, and the rule that
+a declared thing which cannot be computed says so rather than dropping out of an
+average. What is new is the axis: not "how much of this slice do we hold" but
+"what exists to be found here at all, and who says so".
+
+### The finding is mostly negative, and that is the deliverable
+
+Of **70 countries** in scope, read live from `/aggregate` rather than typed:
+
+| | count | meaning |
+|---|---|---|
+| publishes a countable total | **10** | a denominator exists |
+| regime exists, publishes nothing | **22** | sampling only; cost stated, not paid |
+| REFUSED | **6** | publisher blocks AI agents. Recorded, not routed around |
+| **no disclosure regime at all** | **1** | Brazil, and only Brazil |
+| declared outstanding | **31** | acknowledged backlog, dated |
+
+**Exactly ONE country has been established to have no regime at all.** That is
+the answer to "how many countries are in category three", and it is a far more
+useful finding than the table of guesses it replaces. Inside the EU/EEA the
+answer is structurally unavailable: **Directive 98/59/EC art. 3(1) is
+unconditional** -
+"Employers shall notify the competent public authority in writing of any
+projected collective redundancies." For half the corpus the regime question is
+settled before it is asked. The live question is only ever whether the receiving
+authority PUBLISHES anything, and neighbours with near-identical statutes answer
+it very differently: Spain ships a monthly XLSX, Germany ships nothing.
+
+### The trap that is worth more than any entry in the register
+
+**A published national total is NOT the Item 2.05 denominator.** Item 2.05
+enumerates identifiable EVENTS, each of which we hold or do not, so the ratio is
+recall. A labour ministry publishes a periodic count of affected workers with no
+identities attached. Dividing our stored jobs by that figure gives **share of
+the official total**, and calling it recall would be wrong in two ways that
+better collection cannot fix:
+
+- the official total includes every notified thirty-person cut at an employer no
+  outlet will ever name. A news-and-filings tracker cannot hold those and is not
+  trying to, so **a low share is the expected, correct result**, not a gap.
+- the periods do not line up. A notification is dated when filed; our rows carry
+  an announcement date and an effective date that can be a year apart.
+
+`ops_status [3d]` prints that sentence **every session**, because it is the one
+that stops the next number being labelled wrongly. And the register carries no
+worldwide percentage at all: averaging a measured country against an
+unmeasurable one produces a figure whose denominator is the register's own
+coverage rather than the world's, and it would be quoted.
+
+### The five findings worth more than the table
+
+**The UK hypothesis was wrong in our favour.** Going in, the working assumption
+was that UK HR1 counts surface only through ad hoc FOI. They do not. **The
+Insolvency Service publishes a monthly management-information table, unbroken
+since 2020-01** - HR1 forms received, total potential redundancies and unique
+employers - verified directly here at 80 rows, from 368 forms / 29,496 potential
+in 2020-01 to 350 / 22,280 / 319 employers in 2026-07. A parallel sweep
+attributed it to ONS; that is wrong, and the correction matters because **the
+ONS Labour Force Survey redundancy rate is a survey estimate** and is the exact
+near-miss here. Northern Ireland is a separate statute and a separate publisher
+(NISRA, Employment Rights (NI) Order 1996) and adds the dimension GB lacks:
+proposed AND confirmed, with industry. The UK is our second-largest country by
+volume and it went from unmeasured to two published notification series.
+
+**Singapore is the most instructive NO in the register, because everything about
+it looks like a yes.** It has the cleanest notification duty in its region -
+employers with 10+ employees must notify MOM within 5 working days - and it
+publishes a clean quarterly retrenchment series. **The two are not connected.**
+MOM attributes the series verbatim to the Labour Market Survey and its coverage
+note says the data pertain to private establishments **each with at least 25
+employees**. The duty bites at 10. Different universes, rounded to the nearest
+10 besides. A register that had matched "has notification duty" with "publishes
+retrenchment figures" would have produced a confident wrong denominator.
+
+**Authorisation regimes concentrate the data and then do not release it**, which
+inverts the intuition that a stronger legal duty yields a better denominator.
+Colombia and Peru make a collective dismissal legally void without ministry
+authorisation, so the state necessarily holds a complete register - neither
+publishes a count. Turkiye's ISKUR and Israel's Employment Service hold
+statutorily complete registers and publish nothing. Argentina holds one and
+**formally refused** the breakdown under its own FOI law. Sri Lanka's TEWA is
+the purest case: an approval regime since 1971 whose only published output is
+*prosecutions*. The existence of an approval duty predicts nothing about
+publication.
+
+**Thresholds are shaped so differently that cross-country counts would not be
+comparable even if everyone published.** Kenya has no threshold at all - the
+duty bites on a single redundancy. Israel is a flat 10 workers regardless of
+firm size. Sweden is 5, below the EU floor. Colombia slides 5-30% over six
+months. Chile's usable figure comes from an individual-notice duty with no mass
+threshold at all, and is worker-level rather than event-level. **Summing any of
+these is summing different things**, which is why the module has no worldwide
+figure and why `judge()` reports counts of countries rather than a rate.
+
+**Two claims were held back rather than published, and that is the discipline
+this register exists to enforce.** New Zealand and Hong Kong both look like
+genuine `NO_REGIME` - Employment New Zealand's guidance frames every duty as
+employer-to-employee with no threshold anywhere, and the Hong Kong Labour
+Department's own 13-chapter guide to Cap. 57 has no mass-redundancy chapter at
+all. Neither is recorded, because in both cases **the statute itself was walled
+off**: legislation.govt.nz serves an AWS WAF challenge and elegislation.gov.hk
+allows only Googlebot and Bingbot. "No regime exists" is the strongest claim
+this register can make about a country and it is the one claim that has to rest
+on the statute. Taiwan is held back for the opposite reason: **two sweeps
+disagree.** One reports an open CSV series back to 2005 plus a decoy dataset
+running 43x the real one; the other verified that the term appears zero times in
+the TOCs of both MOL flagship publications and could not reach the dataset layer
+at all. Recording either would be recording an argument as a fact.
+
+### The refusal ledger, because a refusal in prose gets rediscovered
+
+**42 hosts refuse or block us**, now recorded as a data structure with the nature of each
+block and the permitted alternative where one exists. Two failures it prevents,
+pulling opposite ways: somebody spends an afternoon re-arriving at the same 403,
+or - worse - does not recognise it as a refusal, retries with a different agent
+string, and quietly turns a respected block into a defeated one.
+
+The two real losses are both right-shaped denominators we may not have:
+
+- **France.** DARES publishes the PSE series (procedures and employees
+  concerned) quarterly as XLSX. The host serves an F5/TSPD bot defence and a
+  CAPTCHA; robots.txt is not even readable. No crawlable mirror exists - the
+  DARES organisation on data.gouv.fr has 35 datasets and none is PSE. France is
+  our fifth-largest country by volume.
+- **The Philippines.** The PSA's Job Displacement Monitoring System is built
+  explicitly from establishments reporting retrenchments to DOLE regional
+  offices - **precisely a notification-derived denominator, the best-shaped
+  regime found anywhere.** `psa.gov.ph` carries `User-agent: ClaudeBot /
+  Disallow: /`, verified directly. `www.dole.gov.ph` 403s its own robots.txt.
+
+Also recorded: every `*.gov.in` and `*.nic.in` host returns 403 to an
+identifying agent while reportedly serving a browser one. Only the half that can
+be checked without misbehaving was checked - `labour.gov.in` and `data.gov.in`
+answer 403 to our agent, `labourbureau.gov.in` answers 200. **The browser-UA half
+was deliberately not tested**: presenting a browser UA there is spoofing to
+defeat an access control aimed at us, the same reading that keeps Wisconsin
+refused.
+
+### Two corrections during the work, both recorded rather than quietly fixed
+
+1. **Italy was read backwards.** An early pass recorded `www.cliclavoro.gov.it`
+   as permitting us. It names ClaudeBot and disallows it - verified directly
+   here. Its `Content-Signal: search=yes,ai-train=no,use=reference` line sits
+   under `User-agent: *` and is **overridden by our own named group**, which is
+   exactly how the first reading went wrong. The claim that decided Italy's
+   verdict ("the CO report folds collective dismissal into an undifferentiated
+   Licenziamento total") was **never actually checked and is withdrawn** - and it
+   cannot now be checked, because the report lives on that host. Italy is
+   REFUSED, not negatively established. Having no positive evidence a count is
+   published is not the same as having verified none is.
+2. **This module's own docstring was wrong about the Directive.** It said
+   art. 1(2) still excludes seagoing crews. **Directive (EU) 2015/1794 art. 4(1)
+   deleted art. 1(2)(c) in 2015**, read verbatim off EUR-Lex. It was written from
+   recollection, and the Commission's own summary page was reported still stale
+   on the point - so a secondary source would have confirmed the error rather
+   than caught it.
+
+Thresholds that came from recollection rather than primary text are **labelled
+as such in the register** (Belgium, Italy) instead of being presented as
+findings. Sweden's were then read off the riksdag's own text: s.1 of lag
+(1974:13) requires written varsel to Arbetsformedlingen "om minst fem
+arbetstagare berors". `riksdagen.se` is worth noting for the opposite reason to
+the rest of the ledger - it names Claudebot, Claude-User and Claude-SearchBot in
+order to PERMIT them.
+
+### The backlog is the one concession, and it is not a snooze button
+
+If `judge()` went UNKNOWN on every unclassified country, the invariant would be
+red from the day it shipped until the last country on earth landed. This repo
+knows what that does - the Spirit assertion reddened CI eight times in one
+afternoon, and eight identical emails is how an alert channel gets filtered.
+
+So the guarded failure is narrowed to the one that is actually a defect: not "we
+have not finished the world" but **"a country ARRIVED in the data and nobody
+noticed"**. A country in `ACKNOWLEDGED_BACKLOG` is dated outstanding work and
+passes; a country in the corpus that is in NEITHER the register nor the backlog
+reddens and names itself. That is the `DECLARED_SLICES` idiom pointed at a set
+that grows on its own. Two things stop it becoming an exemption: adding a country
+is a code change with a reviewer (a test asserts no runtime path can grow it),
+and `[3d]` prints the count and the oldest date every session.
+
+**A vocabulary defect surfaced and was reported rather than absorbed:** "Korea"
+is stored alongside "South Korea" and "People's Republic of China" alongside
+"China". The register maps them to one entry - a statute does not change with
+the spelling used to store a row - but it prints the duplication every run.
+Fixing it belongs to `alt_normalize_country`, not here, and absorbing it
+silently would have made this register the thing that hid it.
+
+### Cost, and what was deliberately not done
+
+**$0.00 per run.** One public read of our own `/aggregate`; stdlib only, so it
+installs no lock. No model is called on any path and none should be added.
+
+**Nothing reader-facing changed** - no plugin file, no deploy, no version bump.
+A per-country coverage claim on a public page is a promise and the owner should
+make it deliberately. **And no country was measured against its national total**,
+even where the file is sitting there in a permitted format: getting the label
+right ("share of the official total") mattered more than producing a number
+quickly, and `rolling_recall` already refuses to ship a sampled figure beside an
+exact one.
+
+New: `railway/country_coverage.py`, `railway/country_coverage_measurement.json`,
+`railway/tests/test_country_coverage.py` (37 tests),
+`.github/workflows/country-coverage.yml` (Thursdays, 20 minutes after
+rolling-recall). Changed: `data_integrity.CountryCoverageInvariant`,
+`ops_status [3d]`, `test_dedup_live` invariant claim map, RUNBOOK ("classify a
+country's disclosure regime").
 
 ## 2026-08-18 - one generator, two consumers, one of them wired to it (2.20.89)
 

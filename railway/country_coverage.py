@@ -438,6 +438,76 @@ REFUSAL_LEDGER = (
     {"host": "legifrance.gouv.fr", "country": "France",
      "nature": "Cloudflare managed challenge, 403 on robots.txt",
      "alternative": "none found", "verified_here": False},
+    # --- added on the second sweep
+    {"host": "saflii.org", "country": "South Africa",
+     "nature": "robots.txt names ClaudeBot, CCBot, GPTBot and Google-Extended with "
+               "'Disallow: /'. ccma.org.za, which publishes the s.189A figures, is "
+               "WAF-403 and refuses its own robots.txt",
+     "alternative": "none found — this is why South Africa stays unclassified",
+     "verified_here": False},
+    {"host": "nevo.co.il", "country": "Israel",
+     "nature": "bans GPTBot, Google-Extended, Perplexity and '*' outright. "
+               "taasuka.gov.il, the receiving authority, returns 403 to all automated "
+               "clients",
+     "alternative": "btl.gov.il serves the Employment Service Law text",
+     "verified_here": False},
+    {"host": "www.legislation.govt.nz", "country": "New Zealand",
+     "nature": "AWS WAF bot challenge on every request, not bypassed. This is why "
+               "New Zealand's apparent 'no regime' is NOT recorded as one — the "
+               "Employment Relations Act 2000 was never read",
+     "alternative": "employment.govt.nz guidance is permitted (Crawl-delay 5) but is "
+                    "guidance, not statute", "verified_here": False},
+    {"host": "www.mbie.govt.nz", "country": "New Zealand",
+     "nature": "Incapsula interstitial, noindex/nofollow",
+     "alternative": "www.employment.govt.nz", "verified_here": False},
+    {"host": "www.servicesaustralia.gov.au", "country": "Australia",
+     "nature": "connection reset on every request — the authority that receives Fair "
+               "Work Act s.530 notices, so its silence cannot be distinguished from "
+               "its unreachability",
+     "alternative": "none found", "verified_here": False},
+    {"host": "gov.im, legislation.gov.im", "country": "Isle of Man",
+     "nature": "WAF 'Request Rejected' page to automated fetching across every "
+               "government host, so no Manx statute could be read",
+     "alternative": "none found", "verified_here": False},
+    {"host": "www2.congreso.gob.pe", "country": "Peru",
+     "nature": "blanket 'Disallow: /'",
+     "alternative": "gob.pe for MTPE material", "verified_here": False},
+    {"host": "knbs.or.ke, kenyalaw.org", "country": "Kenya",
+     "nature": "knbs.or.ke serves a JavaScript bot challenge and has an expired TLS "
+               "certificate; kenyalaw.org returns 403",
+     "alternative": "labour.go.ke", "verified_here": False},
+    # --- NOT robots refusals: environment or design blocks, recorded so nobody
+    # mistakes them for a publisher saying no. These are worth RETRYING from a
+    # different network, which a genuine refusal never is.
+    {"host": "statdb.mol.gov.tw", "country": "Taiwan",
+     "nature": "NOT A REFUSAL — no robots.txt, but /html/mon/ returns 403 and the "
+               "statistics query application times out. An environment or WAF block, "
+               "so Taiwan's dataset question is unanswered rather than answered "
+               "negatively, and is worth retrying from another network",
+     "alternative": "www.mol.gov.tw serves the publication TOCs and the statute "
+                    "guidance and is permitted", "verified_here": False},
+    {"host": "data.gov.tw", "country": "Taiwan",
+     "nature": "NOT A REFUSAL — fully client-rendered with no server-side content, and "
+               "the REST API requires an Authorization key. This is exactly where the "
+               "reported real/decoy dataset pair would live and it could not be "
+               "enumerated",
+     "alternative": "none without a key", "verified_here": False},
+    # --- path-level disallows a production collector must honour
+    {"host": "donneesquebec.ca/recherche/api/, data.ontario.ca/api/, "
+             "datos.gob.ar/api/, datos.gob.cl/api/, data.gov.il/api/, "
+             "catalogodatos.gub.uy/api/", "country": "Canada, Argentina, Chile, "
+             "Israel, Uruguay",
+     "nature": "path-level 'Disallow: /api/' on the open-data portals. Recorded "
+               "because two research passes queried these APIs before reading the "
+               "robots file and stopped on seeing it — the rule is to read robots.txt "
+               "BEFORE the first content request, and the order is what went wrong",
+     "alternative": "the HTML search paths on the same hosts are permitted",
+     "verified_here": False},
+    {"host": "argentina.gob.ar (all PDF/DOC/XLS paths), INEGI /rnm/.../download/*, "
+             "STPS /07_justicia_lab/", "country": "Argentina, Mexico",
+     "nature": "path-level disallows covering exactly the document formats a "
+               "statistics collector would want",
+     "alternative": "the HTML pages on the same hosts", "verified_here": False},
 )
 
 
@@ -470,16 +540,6 @@ REFUSAL_LEDGER = (
 BACKLOG_DECLARED = "2026-08-18"
 
 ACKNOWLEDGED_BACKLOG = {
-    'Argentina': ("2026-08-18",
-      "procedimiento preventivo de crisis under Ley 24.013, filed with "
-      "the Ministerio de Trabajo — a strong candidate for a countable "
-      "filing series. Unresolved."
-      ),
-    'Australia': ("2026-08-18",
-      "Fair Work Act 2009 s.530 requires notifying Services Australia of "
-      "15+ redundancies. Whether counts are published is unresolved; a "
-      "negative is expected."
-      ),
     'Bosnia and Herzegovina': ("2026-08-18",
       "not yet researched, and harder than most: the Federation, Republika "
       "Srpska and Brcko District each have their own labour law, so there may "
@@ -489,12 +549,6 @@ ACKNOWLEDGED_BACKLOG = {
       "not yet researched. The Employment Act redundancy provisions are the "
       "likely instrument; whether a notification duty to the Commissioner of "
       "Labour exists, and whether anything is published, is unresolved."
-      ),
-    'Brazil': ("2026-08-18",
-      "dispensa coletiva after the 2017 reform and the 2022 STF decision. "
-      "NEAR-MISS to reject: Novo CAGED records all admissions and "
-      "dismissals monthly, which is a total separations series, not a "
-      "collective-dismissal notification count."
       ),
     'Bulgaria': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
@@ -507,29 +561,13 @@ ACKNOWLEDGED_BACKLOG = {
       "identified and no aggregate was located, but the search was not "
       "exhaustive."
       ),
-    'Canada': ("2026-08-18",
-      "group termination notice to the Minister under Canada Labour Code "
-      "s.212 (federally regulated) plus separate provincial regimes "
-      "(Ontario ESA Form 1, Quebec avis de licenciement collectif). "
-      "Quebec has historically published notice listings. Unresolved, and "
-      "the federal/provincial split means there may be no single national "
-      "denominator even if provinces publish."
-      ),
-    'Chile': ("2026-08-18",
-      "not yet researched. Codigo del Trabajo art. 161 (necesidades de la "
-      "empresa) is the likely instrument; whether a notification duty to the "
-      "Direccion del Trabajo exists, and whether anything is published, is "
-      "unresolved."
-      ),
     'China': ("2026-08-18",
-      "Labour Contract Law art. 41 requires reporting economic layoffs of "
-      "20+ or 10% of the workforce to the local labour administration. "
-      "Whether any count is published is unresolved; a negative is "
-      "expected but was not verified."
-      ),
-    'Colombia': ("2026-08-18",
-      "collective dismissal requires Ministerio de Trabajo authorisation. "
-      "Unresolved."
+      "Labour Contract Law art. 41 requires reporting economic layoffs of 20+ "
+      "or 10% of the workforce to the local labour administration. Publication "
+      "UNRESOLVED and likely to stay so: mohrss.gov.cn — the ministry that would "
+      "receive those reports — serves an obfuscated JavaScript anti-bot "
+      "challenge in place of a robots.txt, and it was not routed around. "
+      "stats.gov.cn returns no robots file and was not queried."
       ),
     'Czechia': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
@@ -542,10 +580,15 @@ ACKNOWLEDGED_BACKLOG = {
       "not yet researched; host is open, so this is cheap to close."
       ),
     'Hong Kong': ("2026-08-18",
-      "whether any duty to notify the Labour Department of mass "
-      "redundancy exists under the Employment Ordinance (Cap. 57) is "
-      "unresolved. As with New Zealand, a 'no regime' finding must be "
-      "earned, not assumed."
+      "STRONGLY INDICATED NO_REGIME, DELIBERATELY NOT RECORDED AS ONE. The "
+      "Labour Department's own Concise Guide covers the whole Employment "
+      "Ordinance in 13 chapters — termination, employment protection, severance "
+      "and long service payment — and has NO chapter on collective or mass "
+      "redundancy at all; chapter 11 was read in full and carries no "
+      "notification duty. But Cap. 57 itself is robots-refused: "
+      "elegislation.gov.hk disallows everyone except Googlebot and Bingbot, so "
+      "the Ordinance was never read. Same rule as New Zealand — the statute "
+      "carries this claim or nothing does."
       ),
     'Hungary': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
@@ -558,12 +601,18 @@ ACKNOWLEDGED_BACKLOG = {
       "EEA member, Vinnumalastofnun is the likely notified authority."
       ),
     'India': ("2026-08-18",
-      "Industrial Disputes Act 1947 Ch. V-B requires PRIOR GOVERNMENT "
-      "PERMISSION for retrenchment in establishments above 100 (300 in "
-      "some states) — an approval regime, which generates a stronger "
-      "record than notification. Whether the Labour Bureau or any state "
-      "publishes application or permission counts is unresolved. Note Sri "
-      "Lanka shows an approval duty predicts nothing about publication."
+      "A PERMISSION REGIME, NOT A NOTIFICATION ONE, and the distinction is "
+      "load-bearing: permission can be REFUSED and the layoff then never "
+      "happens, so a count of applications is not a count of layoffs. Industrial "
+      "Disputes Act 1947 Ch. V-B (establishments above 100, or 300 in some "
+      "states) — STATUTE NOT VERIFIED here and must not be restated from "
+      "memory. One sweep reports the only published series is voluntary state "
+      "returns, roughly 3 years stale, scanned-image PDFs, with implausible "
+      "single-digit national case counts; another found no "
+      "industrial-disputes/retrenchment series in the Labour Bureau navigation "
+      "at all. Neither is verified. ACCESS: every *.gov.in and *.nic.in host "
+      "403s an identifying agent; labourbureau.gov.in answers 200 and is the "
+      "permitted route."
       ),
     'Indonesia': ("2026-08-18",
       "PHK under UU 13/2003 as amended by UU 6/2023 and PP 35/2021; the "
@@ -575,31 +624,24 @@ ACKNOWLEDGED_BACKLOG = {
       "aggregate."
       ),
     'Isle of Man': ("2026-08-18",
-      "Crown Dependency with its own law — redundancy notification to the "
-      "Department for Enterprise. Same reasoning as Jersey. Unresolved."
-      ),
-    'Israel': ("2026-08-18",
-      "not yet researched. Whether any mass dismissal notification duty to a "
-      "public authority exists is unresolved — the pre-dismissal hearing is an "
-      "employee-facing duty, not a notification to the state, and must not be "
-      "mistaken for one."
+      "LEANS NO_REGIME AT MEDIUM CONFIDENCE, NOT RECORDED. Converging "
+      "independent legal sources state Manx employers are not caught by a "
+      "UK-style 20+ collective consultation requirement, and no notification "
+      "duty to any department was found. But every Isle of Man government host "
+      "(gov.im, legislation.gov.im) returns a WAF 'Request Rejected' page to "
+      "automated fetching, so no statute was read. The small-jurisdiction "
+      "hypothesis — that a complete published list might exist where the numbers "
+      "are tiny — was tested here and in Jersey and held in neither."
       ),
     'Japan': ("2026-08-18",
-      "the large-scale employment change notification to Hello Work under "
-      "the Employment Measures Act exists (30+ leaving in a month). "
-      "Whether MHLW publishes counts of those notifications is "
-      "unresolved. NEAR-MISS to reject: the employment adjustment subsidy "
-      "is short-time work support, not dismissal."
-      ),
-    'Jersey': ("2026-08-18",
-      "Crown Dependency with its OWN law — Employment (Jersey) Law 2003 "
-      "collective redundancy notification to the Minister. A small "
-      "jurisdiction where a complete published list might genuinely "
-      "exist. Unresolved."
-      ),
-    'Kenya': ("2026-08-18",
-      "Employment Act s.40 requires notification to the labour officer. "
-      "Publication unresolved."
+      "the large-scale employment change notification to Hello Work under the "
+      "Employment Measures Act exists (30+ workers leaving in a month). Whether "
+      "MHLW publishes counts is UNRESOLVED — the sweep assigned to it never "
+      "reached e-Stat. GOOD NEWS FOR WHOEVER PICKS IT UP: e-stat.go.jp's "
+      "robots.txt disallows only /core/, /profiles/ and similar, so the "
+      "statistics paths are open and this is cheap to close. NEAR-MISS to "
+      "reject: the employment adjustment subsidy is short-time work support, "
+      "not dismissal."
       ),
     'Kuwait': ("2026-08-18",
       "not yet researched. Labour Law in the Private Sector No. 6 of 2010 is "
@@ -610,12 +652,6 @@ ACKNOWLEDGED_BACKLOG = {
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
       "notification regime exists; ONLY the publication question is open. "
       "not yet researched; host is open, so this is cheap to close."
-      ),
-    'Mexico': ("2026-08-18",
-      "terminacion colectiva under LFT art. 434/435 requires "
-      "authorisation from the labour tribunal. Publication unresolved. "
-      "NEAR-MISS: IMSS insured-employment change is a net employment "
-      "series."
       ),
     'Morocco': ("2026-08-18",
       "Code du Travail art. 66-71 requires the governor's authorisation "
@@ -633,11 +669,16 @@ ACKNOWLEDGED_BACKLOG = {
       "alone."
       ),
     'New Zealand': ("2026-08-18",
-      "whether ANY statutory mass-redundancy notification duty to a "
-      "public authority exists is unresolved. A verified 'no regime' "
-      "would be a publishable finding — it must NOT be recorded as one on "
-      "the current evidence, which is a hypothesis that was sent out to "
-      "be tested and never came back."
+      "STRONGLY INDICATED NO_REGIME, DELIBERATELY NOT RECORDED AS ONE. "
+      "Employment New Zealand's own redundancy guidance frames every obligation "
+      "as employer-to-employee — fair process, notice, redeployment, final pay — "
+      "with zero occurrences of any notification-to-authority duty and no "
+      "numeric threshold anywhere. That is good evidence of absence. But "
+      "legislation.govt.nz serves an AWS WAF bot challenge that was not "
+      "bypassed, so the Employment Relations Act 2000 was never read. "
+      "'No regime exists' is the strongest claim this register can make about a "
+      "country and it is the one claim that must rest on the statute itself. TO "
+      "CLOSE: one human reading of the Act."
       ),
     'Nigeria': ("2026-08-18",
       "Labour Act s.20 covers redundancy with notification to the trade "
@@ -651,10 +692,6 @@ ACKNOWLEDGED_BACKLOG = {
       "variants were NOT checked. Deliberately NOT recorded as 'no "
       "regime' on this evidence."
       ),
-    'Peru': ("2026-08-18",
-      "cese colectivo requires MTPE authorisation — an approval regime. "
-      "Unresolved."
-      ),
     'Poland': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
       "notification regime exists; ONLY the publication question is open. "
@@ -667,45 +704,55 @@ ACKNOWLEDGED_BACKLOG = {
       "notification regime exists; ONLY the publication question is open. "
       "not yet researched."
       ),
-    'Serbia': ("2026-08-18",
-      "Labour Law programme for redundant employees (visak zaposlenih). "
-      "Publication unresolved."
-      ),
-    'Singapore': ("2026-08-18",
-      "mandatory retrenchment notification to MOM exists (Employment Act, "
-      "employers of 10+, since 2017) and MOM publishes retrenchment "
-      "counts. The open question is the one that decides everything: "
-      "whether the published figure is NOTIFICATION-derived, Labour "
-      "Market Survey-derived, or a blend. A survey estimate is a "
-      "near-miss, not a denominator."
-      ),
     'Slovakia': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
       "notification regime exists; ONLY the publication question is open. "
       "not yet researched."
       ),
     'South Africa': ("2026-08-18",
-      "s.189/189A Labour Relations Act, with CCMA facilitation for "
-      "large-scale retrenchment. Whether the CCMA annual report or the "
-      "Department of Employment and Labour publishes s.189A referral "
-      "counts is unresolved."
+      "THE STATUTE IS VERIFIED AND THE AGGREGATE IS NOT, so it is not "
+      "classified. Labour Relations Act 66 of 1995 s.189/s.189A applies to "
+      "employers over 50 employees, banding from 10 dismissals (up to 200 staff) "
+      "to 50 (501+), with a CCMA facilitation route. The CCMA Annual Report is "
+      "reported to carry s.189A employees-facing-retrenchment and jobs-saved as "
+      "a performance indicator, annually on an April-March year at a 6-7 month "
+      "lag. THE FIGURES CAME FROM SEARCH-RESULT SUMMARIES, NOT A READ OF THE "
+      "SOURCE: ccma.org.za is WAF-403 and the parliamentary mirror's PDF has no "
+      "text layer. TO CLOSE: a human verifies one year. NOTE even then it would "
+      "be a FLOOR, not a complete count — it covers matters referred to the "
+      "CCMA, not all employer notifications. saflii.org names ClaudeBot and "
+      "disallows it."
       ),
     'South Korea': ("2026-08-18",
       "dismissal for managerial reasons under the Labor Standards Act "
-      "carries a reporting duty to the Minister of Employment and Labor "
-      "above a threshold. Whether MOEL or KOSIS publishes counts is "
-      "unresolved. NEAR-MISS to reject: employment insurance separation "
-      "records count all separations, not mass-dismissal reports."
+      "carries a reporting duty to the Minister of Employment and Labor above a "
+      "threshold. Publication UNRESOLVED — never reached. Both candidate hosts "
+      "are open to a non-Googlebot fetcher (kosis.kr is 'User-agent:* / Allow: "
+      "/' with search paths restricted for Googlebot only; laborstat.moel.go.kr "
+      "restricts only Googlebot), so this is cheap to close. NEAR-MISS to "
+      "reject: employment insurance separation records count ALL separations, "
+      "not mass-dismissal reports."
       ),
     'Switzerland': ("2026-08-18",
       "outside the EU/EEA for this purpose — Art. 335d-335g Code of "
       "Obligations, cantonal notification. Not yet researched."
       ),
     'Taiwan': ("2026-08-18",
-      "Act for Worker Protection of Mass Redundancy requires a redundancy "
-      "plan be filed with the local labour authority and the Ministry of "
-      "Labor. Whether MOL publishes a series of those filings is "
-      "unresolved and is a strong candidate."
+      "TWO SWEEPS DISAGREE AND NEITHER IS RECORDED AS FACT. One reported "
+      "PUBLISHES_AGGREGATE via an open CSV/JSON endpoint back to 2005, plus a "
+      "DECOY dataset (mass-redundancy EARLY WARNING, triggered by wage arrears) "
+      "running roughly 43x the real series. A second sweep could not reach the "
+      "dataset layer at all and verified the opposite-facing fact: 大量解僱 "
+      "appears ZERO times in the TOCs of both MOL flagship publications (the "
+      "monthly 勞動統計月報 and the annual 勞動統計年報). What IS verified is the "
+      "regime: the 解僱計畫書 is filed with the local labour authority 60 days "
+      "ahead, size-banded (<30 employees: >10 in 60 days; 30-199: >1/3 or >20 in "
+      "a day; 200-499: >1/4 or >50; >=500: >1/5 or >80; firm-wide >200 in 60 "
+      "days). TO CLOSE: reach statdb.mol.gov.tw (403/timeout from here, an "
+      "environment block rather than a robots refusal) or enumerate data.gov.tw, "
+      "which is client-rendered and needs an API key. If the decoy is real, BOTH "
+      "identifiers must be recorded, because naming only the correct one will not "
+      "stop somebody picking the wrong one."
       ),
     'Thailand': ("2026-08-18",
       "Labour Protection Act B.E. 2541 s.121 requires 60 days' notice to "
@@ -715,27 +762,11 @@ ACKNOWLEDGED_BACKLOG = {
       "Publication unresolved. NEAR-MISS: social security job-loss counts "
       "are claims."
       ),
-    'Türkiye': ("2026-08-18",
-      "toplu isci cikarma under Is Kanunu art. 29 requires notification "
-      "to ISKUR, which publishes monthly bulletins. Whether those "
-      "bulletins carry the toplu isci cikarma count is unresolved and is "
-      "a strong candidate."
-      ),
-    'United Kingdom': ("2026-08-18",
-      "our SECOND-LARGEST country by volume and the highest-value open "
-      "question in the register. Form HR1 under s.193 TULRCA 1992 (20+ at "
-      "one establishment in 90 days, to the Insolvency Service) certainly "
-      "exists; whether a regular published series of HR1 counts exists, "
-      "or only ad hoc FOI releases, is unresolved. Northern Ireland's "
-      "Department for the Economy proposed/confirmed redundancy series is "
-      "a separate and strong candidate. NEAR-MISSES to reject: the LFS "
-      "redundancy rate is a survey estimate, and Redundancy Payments "
-      "Service figures are insolvency payment claims."
-      ),
     'Uruguay': ("2026-08-18",
-      "not yet researched. Whether a collective dismissal notification duty to "
-      "the Ministerio de Trabajo y Seguridad Social exists, and whether "
-      "anything is published, is unresolved."
+      "LEANS NO REGIME, UNRESOLVED. Whether a collective dismissal "
+      "notification duty to the Ministerio de Trabajo y Seguridad Social exists "
+      "was not settled. NOTE for whoever picks it up: catalogodatos.gub.uy "
+      "disallows /api/, so use the permitted HTML path."
       ),
     'Vietnam': ("2026-08-18",
       "Labour Code 2019 requires a labour utilisation plan and 30 days' "
@@ -942,6 +973,111 @@ REGISTER = {
     # A REGIME EXISTS AND NOTHING COUNTABLE IS PUBLISHED
     # -----------------------------------------------------------------------
 
+    "United Kingdom": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("TWO regimes, because the UK has two statutes and two publishers. GREAT "
+                   "BRITAIN: advance notification of redundancies on form HR1, Trade Union "
+                   "and Labour Relations (Consolidation) Act 1992 s.193. NORTHERN IRELAND: "
+                   "the Employment Rights (Northern Ireland) Order 1996 as amended 2006 — "
+                   "NOT TULRCA, which does not extend there. A parallel sweep attributed "
+                   "the GB series to ONS; that is WRONG and the correction matters, "
+                   "because the ONS Labour Force Survey redundancy rate is a SURVEY "
+                   "ESTIMATE and the classic near-miss here"),
+        "authority": ("GB: the Insolvency Service (Redundancy Payments Service) on behalf "
+                      "of the Secretary of State. NI: NISRA collects on behalf of the "
+                      "Department for the Economy"),
+        "threshold": "20 or more proposed dismissals at one establishment within 90 days",
+        "aggregate": ("PUBLISHED IN BOTH, and this overturns the working hypothesis that UK "
+                      "HR1 counts surface only through FOI. GB: a monthly management-"
+                      "information table, unbroken from 2020-01, giving HR1 forms received, "
+                      "total potential redundancies AND unique employers submitting. "
+                      "VERIFIED DIRECTLY on 2026-08-18: HTTP 200, 80 table rows, "
+                      "2020-01 (368 forms / 29,496 potential) through 2026-07 (350 / "
+                      "22,280 / 319 employers). Roughly a one-month lag. THREE CAVEATS "
+                      "THAT CHANGE HOW IT MAY BE USED: it is explicitly NOT Official "
+                      "Statistics and is revisable; it is HTML only with no CSV or XLSX "
+                      "attachment; and it is dated by MONTH OF RECEIPT, not the month "
+                      "redundancies are proposed, so it runs on a different clock from "
+                      "anything we date by event. NI: monthly proposed AND confirmed "
+                      "redundancies with an industry split, inside the NISRA Labour Market "
+                      "Report — the extra dimension GB lacks. Together they give near "
+                      "complete UK coverage from a statutory notification base"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-18",
+        "cite": ("https://www.gov.uk/government/publications/"
+                 "publication-of-data-on-advanced-notification-of-redundancy-scheme/"
+                 "management-information-on-advanced-notification-of-redundancy-scheme"),
+        "caveat_partial_refusal": ("the NI workbook is robots-disallowed: nisra.gov.uk and "
+                                   "economy-ni.gov.uk both carry 'Disallow: /*.xlsx' under "
+                                   "'User-agent: *'. The HTML gateway pages ARE permitted "
+                                   "and carry the same figures, so NI needs a deliberate "
+                                   "ingestion decision rather than a fetch. economy-ni "
+                                   "throttles rather than blocks AI agents "
+                                   "('User-agent: ClaudeBot / Crawl-delay: 5')"),
+    },
+
+    'Chile': {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": (
+                   "NO collective-dismissal regime exists — and the denominator exists "
+                   "anyway, which is why this entry is worth reading twice. Codigo del "
+                   "Trabajo art. 162 inc. 4 requires a copy of EVERY termination notice "
+                   "to go to the Inspeccion del Trabajo, and art. 162 requires the "
+                   "Inspecciones to keep a register of them. Art. 161 inc. 1 "
+                   "('necesidades de la empresa') is the economic-redundancy ground. So "
+                   "Chile publishes a usable figure through an individual-notice duty "
+                   "rather than a collective one"),
+        "authority": (
+                   "Inspeccion del Trabajo / Direccion del Trabajo"),
+        "threshold": (
+                   "none — the duty attaches to every termination notice, not to a mass "
+                   "threshold"),
+        "aggregate": (
+                   "PUBLISHED. 'Trabajadores involucrados con un unico empleador "
+                   "registrado en cartas de aviso de termino de contrato', monthly PDF "
+                   "back to 2020-01, roughly a two-month lag, broken out by causal "
+                   "(including art. 161 inc. 1), sector, firm size and region. THREE "
+                   "LIMITS THAT MUST TRAVEL WITH IT: it is WORKER-level, not event-level "
+                   "— no employer grouping and no threshold, so it can never be matched "
+                   "against our rows as events; it is dated by month of REGISTRATION, "
+                   "not effective termination; and the Direccion del Trabajo itself "
+                   "warns a registered notice may not result in an actual termination. "
+                   "Describe it as an economic-dismissal WORKER denominator, never as "
+                   "layoff events"),
+        "denominator_basis": (
+                   "national_notification_aggregate"),
+        "cite": (
+                   "https://www.dt.gob.cl/portal/1629/w3-propertyvalue-188840.html"),
+        "assessed": "2026-08-18",
+    },
+    'Brazil': {
+        "class": NO_REGIME,
+        "regime": (
+                   "NO mass-dismissal disclosure regime exists, and this is the first "
+                   "and so far ONLY country in the register where that has been "
+                   "established rather than assumed. CLT art. 477-A stands, and the "
+                   "STF's mass-dismissal precedent — RE 999.435 / Tema 638, decided June "
+                   "2022 and modulated prospectively to 2022-06-14 — requires prior "
+                   "UNION negotiation, running to the union and NOT to the State. There "
+                   "is no notification duty to the Ministerio do Trabalho at all. TWO "
+                   "CORRECTIONS recorded because both would have been visible errors: "
+                   "the precedent is Tema 638, NOT ADI 6363 (which concerned MP 936/2020 "
+                   "furloughs), and 'prior union negotiation' is not a disclosure regime"),
+        "authority": None,
+        "threshold": None,
+        "aggregate": (
+                   "NONE, and there is nothing for one to be derived from. NEAR-MISS, "
+                   "excluded with its magnitude stated: Novo CAGED is monthly at roughly "
+                   "a 1.5-month lag and counts EVERY separation — quits, deaths, "
+                   "retirements, end-of-term — as individual contract events with no "
+                   "collective flag, no employer grouping and no threshold. Using it as "
+                   "a layoff denominator would overstate by roughly two orders of "
+                   "magnitude"),
+        "cite": (
+                   ""
+                   "https://portal.stf.jus.br/jurisprudenciaRepercussao/tema.asp?num=638"),
+        "assessed": "2026-08-18",
+    },
     "Germany": {
         "class": REGIME_NO_AGGREGATE,
         "regime": "Massenentlassungsanzeige — s.17(1) and (3) Kundigungsschutzgesetz (KSchG)",
@@ -1126,6 +1262,279 @@ REGISTER = {
         "cite": "https://dife.portal.gov.bd/",
     },
 
+    "Canada": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Group termination — Canada Labour Code s.212(1) for federally "
+                   "regulated employers, verified verbatim against the Justice Laws "
+                   "consolidation, PLUS separate provincial regimes: Ontario ESA Form 1, "
+                   "and Quebec's Loi sur les normes du travail RLRQ c. N-1.1 artt. 84.0.1 "
+                   "and 84.0.4, verified against LegisQuebec"),
+        "authority": ("federal: 'the Head' in writing, with a copy to the Minister of "
+                      "Employment and Social Development and the Canada Employment "
+                      "Insurance Commission. Quebec: the ministre de l'Emploi et de la "
+                      "Solidarite sociale"),
+        "threshold": ("federal: 50 or more within any 4-week period, at least 16 weeks "
+                      "ahead. Quebec: 10 or more over 2 consecutive months, with 8, 12 or "
+                      "16 weeks' notice by size"),
+        "aggregate": ("NONE. A claim reached this register that Quebec publishes a monthly "
+                      "PER-EMPLOYER register — a WARN-equivalent, which would have been the "
+                      "only one outside the US — and it is CONTRADICTED. The whole "
+                      "quebec.ca sitemap was enumerated (10,781 URLs) and exactly three "
+                      "pages mention licenciement: the submission form, the employer "
+                      "guidance, and its parent. No register, no listing, no statistics "
+                      "page; the old Emploi-Quebec site now redirects. Federally, "
+                      "open.canada.ca returns nothing for group termination, licenciement "
+                      "collectif or layoff notice. Provinces other than Ontario and Quebec "
+                      "were not checked"),
+        "assessed": "2026-08-18",
+        "cite": "https://laws-lois.justice.gc.ca/eng/acts/L-2/section-212.html",
+    },
+
+    "Australia": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Fair Work Act 2009 s.530, 'Employer to notify Centrelink of certain "
+                   "proposed dismissals' — verified verbatim from the official "
+                   "consolidation: an employer dismissing 15 or more employees for reasons "
+                   "of an economic, technological, structural or similar nature must give "
+                   "written notice stating reasons, numbers, categories and timing"),
+        "authority": ("the Chief Executive Officer of the Commonwealth Services Delivery "
+                      "Agency (Centrelink / Services Australia)"),
+        "threshold": "15 or more employees",
+        "aggregate": ("NONE FOUND — but this negative is weaker than Germany's and is "
+                      "labelled so rather than levelled up. Both obvious verification "
+                      "routes were unavailable: data.gov.au carries a blanket "
+                      "'User-agent: * / Disallow: /' with no alternative, and "
+                      "servicesaustralia.gov.au reset every connection. So this is an "
+                      "inference from an incomplete search, not a completed check"),
+        "assessed": "2026-08-18",
+        "cite": "https://www.legislation.gov.au/C2009A00028/latest/text",
+    },
+
+    "Singapore": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Mandatory retrenchment notification to MOM — statutory citation "
+                   "DELIBERATELY ABSENT: MOM's own page names no Act or section and none "
+                   "was verified, so none is recorded. The DUTY itself is quoted from "
+                   "MOM: employers with a Singapore-registered business and at least 10 "
+                   "employees who notify any employee of retrenchment must notify MOM "
+                   "within 5 working days"),
+        "authority": "Ministry of Manpower (MOM)",
+        "threshold": "employers with at least 10 employees, any retrenchment notified",
+        "aggregate": ("THE MOST INSTRUCTIVE NEGATIVE IN THE REGISTER, because everything "
+                      "about it looks like a yes. Singapore has the cleanest notification "
+                      "duty in its region AND publishes a clean quarterly retrenchment "
+                      "series — and the two are NOT connected. MOM attributes the series "
+                      "verbatim to 'Labour Market Survey, Manpower Research & Statistics "
+                      "Department, MOM', and its own coverage note says the data pertain "
+                      "to private sector establishments EACH WITH AT LEAST 25 EMPLOYEES "
+                      "plus the public sector. The notification duty bites at 10. Those "
+                      "are DIFFERENT UNIVERSES, and the figures are rounded to the nearest "
+                      "10 besides. It is a survey near-miss and must never be described as "
+                      "a notification count. Honest limit: MOM publishes no explicit "
+                      "sentence saying notification data are unused, so this rests on the "
+                      "source attribution and the frame, not on a disclaimer"),
+        "assessed": "2026-08-18",
+        "cite": "https://stats.mom.gov.sg/Pages/Retrenchment-Summary-Table.aspx",
+    },
+
+    'Argentina': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Procedimiento Preventivo de Crisis — Ley 24.013 arts. 98-105. "
+                   "Structurally the closest thing to a US WARN notice anywhere in Latin "
+                   "America: threshold-gated and filed before the dismissals"),
+        "authority": (
+                   "Secretaria de Trabajo"),
+        "threshold": (
+                   "more than 15% of the workforce in firms under 400, more than 10% in "
+                   "400-1000, more than 5% above 1000"),
+        "aggregate": (
+                   "NONE PUBLISHED. The counts that circulate in the press come from Ley "
+                   "27.275 freedom-of-information requests, and the ministry FORMALLY "
+                   "REFUSED the breakdown by workers, sector and geography under art. 5. "
+                   "So this is a FOIA play, not a scrape, and the cost of the sample is "
+                   "a legal request per period rather than a fetch"),
+        "cite": (
+                   ""
+                   "https://www.argentina.gob.ar/servicio/iniciar-procedimiento-preventivo-de-crisis-de-empresa-ppce"),
+        "assessed": "2026-08-18",
+    },
+    'Türkiye': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Toplu isci cikarma — Is Kanunu 4857 art. 29, verified verbatim: 30 "
+                   "days' written notice to the union representatives, the regional "
+                   "directorate AND ISKUR"),
+        "authority": (
+                   "ISKUR and the regional directorate of labour"),
+        "threshold": (
+                   "10 workers in workplaces of 20-100; 10% in 101-300; 30 in 301+, "
+                   "within one month"),
+        "aggregate": (
+                   "NONE, and the hypothesis was chased to a conclusion rather than "
+                   "abandoned. The July 2026 ISKUR monthly bulletin (33 tables) and the "
+                   "2025 yearbook (38 tables) were machine-parsed and neither carries a "
+                   "toplu isci cikarma table. FALSE-FRIEND WARNING for anyone "
+                   "re-checking: keyword hits on 'toplu' are all Toplum Yararina "
+                   "Programlar, a different scheme entirely. ISKUR holds a statutorily "
+                   "complete register and publishes none of it, which makes it the "
+                   "single highest-leverage freedom-of-information target in this "
+                   "register"),
+        "cite": (
+                   "https://www.iskur.gov.tr/kurumsal/istatistikler/"),
+        "assessed": "2026-08-18",
+    },
+    'Israel': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Employment Service Law 1959 s.37, verified verbatim in Hebrew: an "
+                   "employer dismissing 10 or more workers simultaneously or within one "
+                   "month must notify the competent Employment Service bureau. "
+                   "Notification only, no approval"),
+        "authority": (
+                   "the competent Employment Service bureau"),
+        "threshold": (
+                   "10 or more workers, a FLAT threshold regardless of firm size — "
+                   "unlike almost every other regime here, which bands by size"),
+        "aggregate": (
+                   "UNKNOWN rather than established absent, and the distinction is kept: "
+                   "taasuka.gov.il, which is the receiving authority and therefore the "
+                   "only body that could publish it, returns 403 to all automated "
+                   "clients. NEAR-MISS to reject if anyone re-checks: nevo.co.il bans "
+                   "GPTBot, Google-Extended, Perplexity and '*' outright"),
+        "cite": (
+                   "https://www.btl.gov.il/Laws1/00_0050_000000.pdf"),
+        "assessed": "2026-08-18",
+    },
+    'Colombia': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Ley 50 de 1990 art. 67 — PRIOR AUTHORISATION from the Ministerio del "
+                   "Trabajo, not mere notification; an unauthorised collective dismissal "
+                   "'no producira ningun efecto'. CORRECTION recorded: there is no 'CST "
+                   "art. 66-A'; cite Ley 50/1990 arts. 66-67"),
+        "authority": (
+                   "Ministerio del Trabajo"),
+        "threshold": (
+                   "over 6 months, sliding by size: 30% in firms of 10-50, down to 5% "
+                   "above 1000"),
+        "aggregate": (
+                   "NONE FOUND. datos.gov.co returns zero matching datasets. "
+                   "mintrabajo.gov.co was unreachable, so the ministry's own microsite "
+                   "is UNKNOWN rather than checked, and this negative is labelled weaker "
+                   "for it"),
+        "cite": (
+                   ""
+                   "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=281"),
+        "assessed": "2026-08-18",
+    },
+    'Peru': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Cese colectivo por motivos economicos — D.S. 003-97-TR arts. 46-52, "
+                   "requiring MTPE authorisation"),
+        "authority": (
+                   "Ministerio de Trabajo y Promocion del Empleo (MTPE)"),
+        "threshold": (
+                   "10% of the workforce"),
+        "aggregate": (
+                   "NONE, chased to a conclusion: the 2022 Anuario Estadistico Sectorial "
+                   "XLSX bundle (16 chapter workbooks) and the 2020 PDF (338 pages) were "
+                   "machine-searched and neither carries a cese colectivo chapter. "
+                   "CRITICAL FALSE FRIEND, recorded because a phrase-matching scraper "
+                   "would produce a badly wrong number: MTPE's 'ceses colectivos' pages "
+                   "are the Registro Nacional de Trabajadores Cesados Irregularmente, "
+                   "which is a public-sector 1990-2000 compensation list and nothing to "
+                   "do with current collective dismissal"),
+        "cite": (
+                   "https://www.gob.pe/mtpe"),
+        "assessed": "2026-08-18",
+    },
+    'Kenya': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Employment Act 2007 s.40 — one month's notice to the union and to "
+                   "the labour officer of the area"),
+        "authority": (
+                   "the labour officer of the area — DECENTRALISED, which likely "
+                   "explains the absence of any national aggregate"),
+        "threshold": (
+                   "NONE. The duty bites on a single redundancy, so it would not yield "
+                   "an event count comparable with any threshold-gated regime here even "
+                   "if published"),
+        "aggregate": (
+                   "NONE FOUND, and UNKNOWN at the statistical office: knbs.or.ke serves "
+                   "a JavaScript bot challenge and has an expired TLS certificate, and "
+                   "kenyalaw.org returns 403. Neither was bypassed"),
+        "cite": (
+                   "https://www.labour.go.ke/publications"),
+        "assessed": "2026-08-18",
+    },
+    'Serbia': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Program resavanja viska zaposlenih — Zakon o radu arts. 153-160: the "
+                   "programme must be delivered within 8 days to the representative "
+                   "union and to the NSZ, which returns a non-binding opinion within 15 "
+                   "days"),
+        "authority": (
+                   "Nacionalna sluzba za zaposljavanje (NSZ)"),
+        "threshold": (
+                   "more than 10 employees in firms of 20-100; 10% in 100-300; 30+ above "
+                   "300, over 30 days; or 20+ over 90 days regardless of size"),
+        "aggregate": (
+                   "NONE. The NSZ 2025 annual report was read directly: 'visak "
+                   "zaposlenih' appears only as a BENEFICIARY CATEGORY in active labour "
+                   "market programmes, never as a count of programmes submitted. A "
+                   "secondary source claims roughly 9,000 a year from the 2015-2020 "
+                   "reports and could not be verified. nsz.gov.rs is fully open "
+                   "('User-agent: * / Disallow:'), so this negative is a strong one"),
+        "cite": (
+                   "https://www.nsz.gov.rs/sadrzaj/izvestaj-i-program-rada-nsz/4109"),
+        "assessed": "2026-08-18",
+    },
+    'Jersey': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Employment (Jersey) Law 2003 Article 60N — where 12 or more "
+                   "employees are proposed for redundancy at one establishment within 30 "
+                   "days the employer must notify the Minister at least 30 days before "
+                   "the first dismissal, and failure is a CRIMINAL offence. THRESHOLD "
+                   "CAUTION recorded rather than smoothed over: an automated read of the "
+                   "statute returned '20 or more', which is wrong; gov.je, JACS and "
+                   "several law firms all say 12, and the machine reading was not "
+                   "asserted"),
+        "authority": (
+                   "the Minister for Social Security"),
+        "threshold": (
+                   "12 or more employees at one establishment within 30 days"),
+        "aggregate": (
+                   "NONE. opendata.gov.je returns 'No datasets found for redundancy'. "
+                   "The small-jurisdiction hypothesis — that a complete published list "
+                   "might exist where the numbers are tiny — was tested here and did not "
+                   "hold"),
+        "cite": (
+                   "https://www.jerseylaw.je/laws/current/l_42_2003"),
+        "assessed": "2026-08-18",
+    },
+    'Mexico': {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": (
+                   "Terminacion colectiva de las relaciones de trabajo — Ley Federal del "
+                   "Trabajo arts. 433-439, requiring approval from the labour tribunal"),
+        "authority": (
+                   "the Tribunal Laboral (formerly the Junta de Conciliacion y "
+                   "Arbitraje)"),
+        "threshold": (
+                   "collective termination on the statutory economic grounds; no simple "
+                   "headcount band"),
+        "aggregate": (
+                   "NONE FOUND. NEAR-MISS to reject: IMSS insured-employment change is a "
+                   "NET employment series and says nothing about dismissals specifically"),
+        "cite": (
+                   "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf"),
+        "assessed": "2026-08-18",
+    },
     # -----------------------------------------------------------------------
     # REFUSED — a block aimed at AI agents, recorded rather than routed around
     # -----------------------------------------------------------------------
