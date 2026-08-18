@@ -1,5 +1,90 @@
 # Tech Log
 
+## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
+
+### What was asked, and what the measurement said instead
+
+The brief: a third of the verified job cuts in the live week carry no country,
+so find the broken collector, stamp its rows, and close a gap that keeps the
+digest saying "worldwide including entries with no country recorded". The
+premise's shape was wrong in a way only counting could show.
+
+Measured live 2026-08-18, twice and from two independent directions - by paging
+`/query?sort=country&dir=asc` (blanks sort first) and, separately, by
+subtracting `/aggregate`'s `top_countries` verified column from the verified
+headline. The two agree to the job:
+
+| slice | unplaced verified jobs | share | rows carrying it |
+|---|---|---|---|
+| all time | 229,209 | 3.3% | 82 |
+| 2026 | 100,897 | 18.3% | 41 |
+| week 2026-08-10..17 | 5,591 | 32.3% | **7** |
+
+The whole blank-country population of the corpus is **109 rows** out of 64,245
+(82 verified, 27 announced). There is no broken collector. There is no
+concentration: 82 news, 27 SEC filings, spread over 38 months and 12 host
+domains. The current week reads as "a third of the mass" because seven rows
+happen to be large, and one of them - an unlocated 8-K at 4,320 - is most of it.
+A rate that swings 3.3% / 18.3% / 32.3% across nested windows is not a systemic
+hole; it is a handful of big rows moving in and out of a small denominator.
+
+Nor is the blank a bug. `extractor.py:184` instructs the model to return null
+for country when the source does not state it, and the excerpts confirm it is
+obeying: "Google axes 12,000 jobs", "Exxon Mobil to cut 2,000 jobs in global
+workforce restructuring". Those sources do not say where. The blank is the
+strict rule working. Placing them needs a fresh read of each source body, which
+is what the 2026-07-15 correction did for 88 rows, one at a time.
+
+### The defect the measurement actually found
+
+`railway/legacy_row_repair.py` is the tool for exactly this backlog, and its
+docstring states the rule precisely: country comes from a US state code on the
+row, or from a US STATE GOVERNMENT WARN source. The code did not implement the
+sentence. `_US_HOST_RX` opened with a bare `\.gov\b`, and `www.sec.gov` ends
+in `.gov`.
+
+Every one of the 109 blank rows has an empty `state`. So the state branch could
+place none of them and the host branch decided all of them - and 27 carry a
+`www.sec.gov` URL. One dispatch of the manual "Legacy row repair" workflow with
+`--apply --only country` would have written "United States" onto all 27,
+including **Klarna Group plc** (6-K, Sweden), **ING GROEP NV** (6-K,
+Netherlands), **Vasta Platform Ltd** (6-K, Brazil), **Brightstar Lottery PLC**
+and **SLB LIMITED/NV**. A foreign private issuer files on EDGAR precisely
+BECAUSE it is foreign; the filing venue is not the job location.
+
+The write would not have been cheap to undo either. `/edit` sets `edited=1` and
+rewrites the dedup hash, so each row is pinned against re-import, and the claim
+is published in the corrections log. An unplaced row is honest. A wrongly placed
+row is a wrong number on a public page and inside every per-country figure a
+reader may quote.
+
+The host test is now gated on the row's own `source_type`, whitelisted to
+`warn` and `federal_rif` - the two types for which a US government host really
+does determine the jurisdiction. The state-code branch is untouched, because it
+is the branch that carries the real WARN backlog and it is correct.
+`railway/tests/test_legacy_country_inference.py` pins it on the six live rows
+verbatim; against the old logic all six place, against the new one none do.
+
+### What was deliberately NOT done
+
+No mass fill. Nothing was written to the live data at all. Every remaining
+candidate needs a source read, and a model that guesses from an outlet's
+nationality would put invented geography into a dataset whose whole claim is
+that nothing is invented - "Švedski gigant" in a Serbian outlet is a Swedish
+company, not a Serbian layoff, and neither of those is necessarily the job
+location.
+
+The bounded job that WOULD be defensible is a re-read of the 82 verified blank
+rows' source bodies through the existing extractor path, evidence-required,
+returning unknown freely. It is priced at roughly **$0.02 for the whole
+backlog** (82 rows, one metered call each at flash-lite rates, measured against
+the $0.0009-$0.0151 per-row costs in the live per-source ledger). It needs a
+server route that does not exist: `/enrich-context` writes `employer_country`
+and `announcement_date` only, never job-location `country`, and `/edit` pins the
+row. That route is a plugin change and a version bump, and it is not worth
+racing another session's deploy for 82 rows. Written down rather than
+half-built.
+
 ## 2026-08-18 - one generator, two consumers, one of them wired to it (2.20.89)
 
 `2.20.88` regenerated `data/ingest-schedule.json` after `3362e61` moved the cron
