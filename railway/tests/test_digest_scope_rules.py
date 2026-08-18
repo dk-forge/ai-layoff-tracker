@@ -205,7 +205,7 @@ def talent_fixture(**over):
                 {"company": "Sanad Service Centres",
                  "headline": "create more than 2,200 jobs",
                  "published_date": "2026-08-14", "headcount": 2200},
-                {"company": "Sudamericana de L\u00e1cteos",
+                {"company": "Sudamericana de Lácteos",
                  "headline": "vuelve a abrir sus puertas tras seis meses",
                  "published_date": "2026-08-13", "headcount": 80},
                 {"company": "Northwind", "headline": "opens a Dublin hub",
@@ -942,6 +942,152 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
         self.assertIn("1,332 new hiring signals", snippet)
         self.assertIn("9 to 16 August 2026", snippet)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheRowDoesNotSayTheCompanyTwice(unittest.TestCase):
+    """The live send of 2026-08-18 repeated the company on five rows of five.
+
+        Banco do Brasil: Banco do Brasil anuncia 680 novas vagas ...
+
+    The format was `company: headline`, and a headline is written to open with
+    the company, so the label restated the label. MEASURED over the real week
+    2026-08-11 to 2026-08-18, 1,411 signals: 1,090 headlines (77.2%) open with
+    the stored company once both sides are folded, 172 more (12.2%) name it
+    mid-sentence, 47 (3.3%) never name it, and 56 (4.0%) carry no company.
+
+    EVERY PAIR BELOW IS REAL, copied from that week. The three ways to get
+    this wrong are all live cases rather than hypotheticals: an unconditional
+    drop loses the 3.3%, a prefix strip mangles the 12.2%, and a `strpos` on
+    the raw strings misses every accent, legal suffix and possessive.
+    """
+
+    @staticmethod
+    def _rows(pairs):
+        return [{"company": c, "headline": h, "published_date": "2026-08-17",
+                 "headcount": 100 - i, "source_name": "Fixture Wire"}
+                for i, (c, h) in enumerate(pairs)]
+
+    def _render(self, pairs):
+        fixture = talent_fixture()
+        fixture["talent"]["rows"] = self._rows(pairs)
+        return compose(fixture)["text"]
+
+    def _line(self, pairs, needle):
+        for line in self._render(pairs).splitlines():
+            if line.strip().startswith("- ") and needle in line:
+                return line
+        self.fail("no row matched " + needle)
+
+    def test_a_headline_opening_with_the_company_drops_the_label(self):
+        line = self._line([("Banco do Brasil",
+                            "Banco do Brasil anuncia 680 novas vagas")],
+                          "Banco do Brasil")
+        self.assertEqual(line.count("Banco do Brasil"), 1)
+        self.assertNotIn("Banco do Brasil: Banco do Brasil", line)
+
+    def test_the_headline_itself_is_never_trimmed(self):
+        """The naive fix. "Le PSG va recruter" is not improved by becoming
+        "va recruter", and 12.2% of the week names the company mid-sentence."""
+        line = self._line([("PSG", "Le PSG va recruter 3 joueurs en un weekend !")],
+                          "PSG")
+        self.assertIn("Le PSG va recruter 3 joueurs en un weekend !", line)
+        self.assertEqual(line.count("PSG"), 1)
+
+    def test_a_headline_that_does_not_name_the_company_keeps_its_label(self):
+        """The 3.3%, and the reason the label is not dropped unconditionally.
+        Both pairs are live rows from the measured week."""
+        line = self._line([("Arcos Dorados",
+                            "Gran Opening de McDonald's Ciudad Colon reunio a la comunidad")],
+                          "Arcos Dorados")
+        self.assertIn("Arcos Dorados: Gran Opening", line)
+        line = self._line([("SILQ", "ShopUp's parent platform raises $100m")], "SILQ")
+        self.assertIn("SILQ: ShopUp's parent platform", line)
+
+    def test_the_match_survives_accents_and_a_leading_article(self):
+        """Stored "El Consistorio de Trujillo", written the same way with an
+        accented verb after it. A byte comparison folds neither."""
+        line = self._line([("El Consistorio de Trujillo",
+                            "El Consistorio de Trujillo contratará 56 personas")],
+                          "Consistorio")
+        self.assertEqual(line.count("El Consistorio de Trujillo"), 1)
+        line = self._line([("Sudamericana de Lácteos",
+                            "La empresa Sudamericana de Lácteos vuelve a abrir sus puertas")],
+                          "Sudamericana")
+        self.assertEqual(line.count("Sudamericana de Lácteos"), 1)
+
+    def test_the_match_survives_a_legal_suffix_the_headline_drops(self):
+        """Stored with the suffix, published without it. Live, twice, in one
+        week: Theta Edge Bhd and ATLAN Holdings Bhd."""
+        line = self._line([("Theta Edge Bhd",
+                            "Theta Edge Appoints Dato Amrul As CEO")], "Theta Edge")
+        self.assertNotIn("Theta Edge Bhd:", line)
+
+    def test_the_match_survives_a_curly_possessive(self):
+        line = self._line([("Yuno",
+                            "Qatar’s Rasmal Ventures backs Yuno’s $45 million Series B")],
+                          "Yuno")
+        self.assertNotIn("Yuno: Qatar", line)
+
+    def test_a_partial_overlap_is_not_treated_as_a_match(self):
+        """DELIBERATELY CONSERVATIVE. The two mistakes cost different amounts:
+        a missed match reprints one label, a wrong match deletes the only
+        identification the row had. So every token must be present, in order,
+        and "Dangote Refinery" is not "Dangote Petroleum Refinery"."""
+        line = self._line([("Dangote Petroleum Refinery & Petrochemicals FZE",
+                            "Dangote Refinery secures $400 million commitment")],
+                          "Dangote")
+        self.assertIn("Dangote Petroleum Refinery & Petrochemicals FZE: ", line)
+
+    def test_a_row_with_no_company_prints_the_headline_alone(self):
+        line = self._line([("", "ColdTrack plans to hire about 50 people")], "ColdTrack")
+        self.assertFalse(line.strip().startswith("- :"))
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheRowSaysWhoPublishedIt(unittest.TestCase):
+    """Two of the five rows in the live send were Portuguese and Spanish.
+
+    THE MEASUREMENT THAT DECIDED IT, over 2026-08-11 to 2026-08-18: 1,411
+    signals, 64 (4.5%) already excluded on script. Of the 77 naming a
+    headcount, and so of the only rows this list can show, 17 are Latin-script
+    and not English. That is 22% of the rows and 74% of the jobs named, two of
+    the top five by size and four of the top ten. Dropping them would delete
+    three quarters of the biggest signals of the week.
+
+    SO THEY STAY, AND THEY ARE NOT LABELLED WITH A LANGUAGE, because we store
+    none and would have to infer it. The row carries its SOURCE instead, which
+    is stored, and the caption says the headline is a quotation. Neither is a
+    guess.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = compose(talent_fixture())["text"]
+
+    def test_the_caption_says_the_headline_is_a_quotation(self):
+        self.assertIn("Each headline is quoted as its source published it, "
+                      "in that source's own language", self.text)
+
+    def test_no_row_is_labelled_with_a_guessed_language(self):
+        """The schema has no language column. Naming one would be a claim the
+        reader cannot check, in a product whose pitch is that they all can."""
+        for word in ("Spanish", "Portuguese", "in Spanish", "translated"):
+            self.assertNotIn(word, self.text)
+
+    def test_a_row_carrying_a_source_prints_it(self):
+        fixture = talent_fixture()
+        fixture["talent"]["rows"] = [
+            {"company": "Banco do Brasil",
+             "headline": "Banco do Brasil anuncia 680 novas vagas",
+             "published_date": "2026-08-17", "headcount": 680,
+             "source_name": "Ceisc"}]
+        self.assertIn("(680 jobs, Ceisc, 17 Aug 2026)", compose(fixture)["text"])
+
+    def test_a_row_carrying_no_source_prints_none(self):
+        """Absent is absent. The shipped fixture rows carry no source_name, so
+        this is the same assertion the ranking tests already make."""
+        self.assertIn("(2,200 jobs, 14 Aug 2026)", self.text)
 
 
 if __name__ == "__main__":

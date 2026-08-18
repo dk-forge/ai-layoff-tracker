@@ -9,7 +9,20 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON (current subject, 2026-08-18):** the within-WARN revision dedup
+- **WORKING ON (current subject, 2026-08-18):** the talent digest's two
+  reader-visible defects, landed as **2.20.87** (`includes/subscribe.php`,
+  `railway/tests/test_digest_scope_rules.py`, TECHLOG). Every row said the
+  company twice because `company: headline` sat over a headline written to
+  open with the company; measured over the live week, the label is redundant
+  on 89.4% of 1,411 rows and load bearing on the 3.3% the headline never
+  names, so it is dropped CONDITIONALLY on a contiguous all-token match with
+  both sides ASCII folded and legal suffixes stripped, never by prefix strip
+  and never unconditionally. The untranslated Spanish and Portuguese rows STAY:
+  of the 74 headcount rows that survive the script filter, 17 are Latin-script
+  non-English and they carry 74% of the jobs named, two of the top five. They
+  are not labelled with a guessed language either; each row now names its
+  stored `source_name` and the caption says the headline is a quotation.
+- **PREVIOUSLY WORKING ON (2026-08-18, later):** the within-WARN revision dedup
   that never once ran for the pair in its own comment, landed as **2.20.86**
   (`includes/db.php`, `railway/tests/test_warn_revision_dedup.py`, ARCHITECTURE,
   TECHLOG). `ops_status [3]` said "within-WARN revision dedup regressed";

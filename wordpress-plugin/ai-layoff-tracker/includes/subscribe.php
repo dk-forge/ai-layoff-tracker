@@ -1980,6 +1980,139 @@ function alt_digest_fit_preheader($required, $optional, $max = 130) {
  * `headcount` is read defensively: absent, null and zero all mean "names no
  * number", and none of them may be treated as a measured zero.
  */
+/**
+ * ASCII-fold a name to comparable tokens, WITHOUT the intl extension.
+ *
+ * `Normalizer::normalize` would be the obvious call and it is not available:
+ * intl is not guaranteed on this host, and WordPress core's `remove_accents`
+ * is not loaded by the composer test harness. A function that exists in
+ * production and not in the test is a function no test covers, so the mapping
+ * is spelled here and both run the identical code.
+ *
+ * The tokens dropped at the end are the parts that differ between a company
+ * as STORED and the same company as WRITTEN in a headline: legal forms
+ * (Inc, Bhd, GmbH, S.A.), and the leading articles that a Romance-language
+ * headline carries and a database field does not. "ATLAN Holdings Bhd" and
+ * "Atlan Holdings" have to reach the same tokens or the comparison is a
+ * string equality test wearing a hat.
+ */
+function alt_digest_name_tokens($value) {
+    $s = (string) $value;
+    // Curly to straight, so "Yuno's" and "Yuno's" fold together, and the
+    // ampersand to the word, so "Brasfield & Gorrie" matches either spelling.
+    $s = str_replace(array("\xe2\x80\x99", "\xe2\x80\x98", "\xc2\xb4"), "'", $s);
+    $s = str_replace('&', ' and ', $s);
+    $from = array(
+        'à','á','â','ã','ä','å','ā','ă','ą','ç','ć','č','ď','đ','è','é','ê','ë',
+        'ē','ĕ','ė','ę','ě','ğ','ģ','ì','í','î','ï','ī','į','ı','ķ','ļ','ľ','ł',
+        'ñ','ń','ņ','ň','ò','ó','ô','õ','ö','ø','ō','ŏ','ő','ŕ','ř','ś','ş','š',
+        'ţ','ť','ù','ú','û','ü','ū','ŭ','ů','ű','ų','ý','ÿ','ź','ż','ž','æ','œ',
+        'ß','þ','ð',
+    );
+    $to = array(
+        'a','a','a','a','a','a','a','a','a','c','c','c','d','d','e','e','e','e',
+        'e','e','e','e','e','g','g','i','i','i','i','i','i','i','k','l','l','l',
+        'n','n','n','n','o','o','o','o','o','o','o','o','o','r','r','s','s','s',
+        't','t','u','u','u','u','u','u','u','u','u','y','y','z','z','z','ae','oe',
+        'ss','th','d',
+    );
+    $s = str_replace($from, $to, alt_digest_lower($s));
+    $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+    $drop = array(
+        'inc' => 1, 'incorporated' => 1, 'corp' => 1, 'corporation' => 1,
+        'co' => 1, 'company' => 1, 'llc' => 1, 'lp' => 1, 'llp' => 1,
+        'ltd' => 1, 'limited' => 1, 'plc' => 1, 'gmbh' => 1, 'ag' => 1,
+        'sa' => 1, 'nv' => 1, 'bv' => 1, 'ab' => 1, 'oy' => 1, 'oyj' => 1,
+        'as' => 1, 'spa' => 1, 'srl' => 1, 'sas' => 1, 'pty' => 1, 'bhd' => 1,
+        'sdn' => 1, 'pte' => 1, 'fze' => 1, 'holdings' => 1, 'holding' => 1,
+        'group' => 1, 'the' => 1, 'a' => 1, 'an' => 1, 'la' => 1, 'le' => 1,
+        'el' => 1, 'los' => 1, 'las' => 1, 'les' => 1, 'de' => 1, 'del' => 1,
+        'di' => 1, 'da' => 1, 'do' => 1,
+    );
+    $out = array();
+    foreach (explode(' ', trim($s)) as $token) {
+        if ($token === '' || isset($drop[$token])) continue;
+        $out[] = $token;
+    }
+    return $out;
+}
+
+/**
+ * Lowercase a UTF-8 string without mb_string, which is also not guaranteed.
+ *
+ * Only the accented Latin range matters here, because everything else is
+ * either already ASCII or is about to be discarded by the script filter.
+ */
+function alt_digest_lower($s) {
+    $s = strtolower((string) $s);
+    $upper = array('À','Á','Â','Ã','Ä','Å','Ā','Ă','Ą','Ç','Ć','Č','Ď','Đ','È',
+                   'É','Ê','Ë','Ē','Ĕ','Ė','Ę','Ě','Ğ','Ģ','Ì','Í','Î','Ï','Ī',
+                   'Į','İ','Ķ','Ļ','Ľ','Ł','Ñ','Ń','Ņ','Ň','Ò','Ó','Ô','Õ','Ö',
+                   'Ø','Ō','Ŏ','Ő','Ŕ','Ř','Ś','Ş','Š','Ţ','Ť','Ù','Ú','Û','Ü',
+                   'Ū','Ŭ','Ů','Ű','Ų','Ý','Ź','Ż','Ž','Æ','Œ','Þ','Ð');
+    $lower = array('à','á','â','ã','ä','å','ā','ă','ą','ç','ć','č','ď','đ','è',
+                   'é','ê','ë','ē','ĕ','ė','ę','ě','ğ','ģ','ì','í','î','ï','ī',
+                   'į','i','ķ','ļ','ľ','ł','ñ','ń','ņ','ň','ò','ó','ô','õ','ö',
+                   'ø','ō','ŏ','ő','ŕ','ř','ś','ş','š','ţ','ť','ù','ú','û','ü',
+                   'ū','ŭ','ů','ű','ų','ý','ź','ż','ž','æ','œ','þ','ð');
+    return str_replace($upper, $lower, $s);
+}
+
+/**
+ * DOES THIS HEADLINE ALREADY NAME THIS COMPANY?
+ *
+ * THE DEFECT THIS ANSWERS. The list printed `company: headline` on every row,
+ * and a headline is written to open with the company, so the live send of
+ * 2026-08-18 repeated the name on five rows out of five:
+ *
+ *     Banco do Brasil: Banco do Brasil anuncia 680 novas vagas ...
+ *
+ * MEASURED, over the real week 2026-08-11 to 2026-08-18, 1,411 signals:
+ * 1,090 headlines (77.2%) open with the stored company name once both sides
+ * are folded, another 172 (12.2%) name it mid-sentence, 47 (3.3%) do not name
+ * it at all, and 56 (4.0%) carry no company. So the label is redundant on
+ * about nine rows in ten and load bearing on the rest.
+ *
+ * WHICH IS WHY THE LABEL IS DROPPED CONDITIONALLY AND NOT ALWAYS. The 3.3%
+ * are the rows where the label is doing all of the work, and they are not
+ * marginal cases: "Arcos Dorados" over a headline about a McDonald's opening
+ * in Costa Rica, "SILQ" over "ShopUp's parent platform raises $100m", "Auger"
+ * over "This former Amazon exec is moving his startup's HQ to Texas". Dropping
+ * the label always would leave those three rows naming nobody.
+ *
+ * AND WHY THE HEADLINE IS NEVER TRIMMED. Cutting the name out of the headline
+ * is the naive fix and it mangles the 12.2% that name the company mid
+ * sentence: "Le PSG va recruter 3 joueurs" becomes "va recruter 3 joueurs".
+ * A headline is a sentence somebody wrote. We quote it or we do not.
+ *
+ * THE MATCH IS DELIBERATELY CONSERVATIVE, because the two mistakes cost very
+ * different amounts. Failing to spot a match leaves one row reading the way
+ * every row read before this change, which is a blemish. Spotting a match
+ * that is not there deletes the only identification the row had. So this
+ * requires EVERY token of the company, contiguously, in order: a partial
+ * overlap ("Dangote Refinery" against "Dangote Petroleum Refinery &
+ * Petrochemicals FZE") keeps its label rather than gambling on it.
+ *
+ * It is a token comparison and not `strpos`, so it survives the ways the two
+ * spellings differ in the live data: accents ("Sudamericana de Lácteos"),
+ * legal suffixes ("Theta Edge Bhd" in a headline reading "Theta Edge"),
+ * possessives ("Yuno's $45 million Series B"), curly apostrophes, and the
+ * ampersand written either way.
+ */
+function alt_digest_headline_names_company($company, $headline) {
+    $needle = alt_digest_name_tokens($company);
+    $hay = alt_digest_name_tokens($headline);
+    // A company that folds to nothing is a company we cannot compare. Say no,
+    // and the caller keeps whatever label it has.
+    if (!$needle || !$hay) return false;
+    $n = count($needle);
+    $limit = count($hay) - $n;
+    for ($i = 0; $i <= $limit; $i++) {
+        if (array_slice($hay, $i, $n) === $needle) return true;
+    }
+    return false;
+}
+
 function alt_digest_talent_rank($rows, $limit) {
     $rows = array_values(is_array($rows) ? $rows : array());
     $keyed = array();
@@ -3114,8 +3247,40 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         $rows = alt_digest_talent_rank(
             is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 5);
         if ($rows) {
+            /*
+              THE CAPTION CARRIES THE LANGUAGE ANSWER, ONCE, FOR THE WHOLE
+              LIST. Two of the five rows in the live send of 2026-08-18 were
+              Portuguese and Spanish, and in an English digest they read as
+              unfinished work rather than as worldwide coverage.
+
+              MEASURED before choosing, over 2026-08-11 to 2026-08-18: 1,411
+              signals, of which 64 (4.5%) are already excluded on script. Of
+              the 77 that name a headcount, and so of the only rows this list
+              can ever show, 17 are Latin-script and not English. Those 17 are
+              22% of the rows and 74% of the jobs named. Two of the top five by
+              size and four of the top ten. Dropping non-English rows would
+              delete three quarters of the biggest signals of the week to tidy
+              a fifth of the list, so it is not done.
+
+              THE ROW IS NOT LABELLED WITH A LANGUAGE EITHER, because we do not
+              store one and would have to infer it from the headline. That is
+              the same class of guess the script filter had to be corrected for
+              once, and a short headline is the worst case for it: a stopword
+              classifier run over this week could not decide 68 of 1,347
+              Latin-script headlines, German and Portuguese among them. Naming
+              a language we guessed is a claim the reader cannot check, in a
+              product whose whole pitch is that every claim can be checked.
+
+              SO THE ROW CARRIES ITS SOURCE, WHICH IS STORED AND NOT INFERRED,
+              and the caption says plainly that the headline is a quotation.
+              A reader who meets a Portuguese line then knows why it is there
+              and who published it, and a reporter gets the outlet they need to
+              go and check it. `source_name` is present on 100% of the week's
+              rows; a row missing it prints nothing rather than a placeholder.
+            */
             $caption = $range . ', the signals naming the most jobs first, then the '
-                     . 'tracker\'s own order.';
+                     . 'tracker\'s own order. Each headline is quoted as its source '
+                     . 'published it, in that source\'s own language.';
             $html .= '<h3>Biggest signals</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>'
                    . '<ul>';
@@ -3123,9 +3288,22 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
             $undated = 0;
             foreach ($rows as $row) {
                 $row = (array) $row;
-                $line = trim((string) ($row['company'] ?? ''));
+                /*
+                  THE LABEL ONLY WHEN THE HEADLINE DOES NOT ALREADY CARRY IT.
+                  See alt_digest_headline_names_company for the measurement and
+                  for why this is not a prefix strip and not an unconditional
+                  drop. With no headline the label IS the row, and with no
+                  company the headline is.
+                */
+                $co = trim((string) ($row['company'] ?? ''));
                 $head = trim((string) ($row['headline'] ?? ''));
-                $line = $line !== '' ? ($head !== '' ? $line . ': ' . $head : $line) : $head;
+                if ($head === '') {
+                    $line = $co;
+                } elseif ($co === '' || alt_digest_headline_names_company($co, $head)) {
+                    $line = $head;
+                } else {
+                    $line = $co . ': ' . $head;
+                }
                 if ($line === '') continue;
                 // The signal's own publication date, which is also what the
                 // since/until window selects on. Some signals reach us with
@@ -3143,6 +3321,12 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 $facts = array();
                 $jobs = isset($row['headcount']) ? (int) $row['headcount'] : 0;
                 if ($jobs > 0) $facts[] = alt_digest_jobs_phrase($jobs);
+                // WHO PUBLISHED IT. The row's own stored outlet, never
+                // derived from the URL and never guessed: a row that carries
+                // no source name prints no source, in the same way a row that
+                // carries no date prints no date.
+                $outlet = trim((string) ($row['source_name'] ?? ''));
+                if ($outlet !== '') $facts[] = $outlet;
                 if ($when !== '') { $facts[] = $when; } else { $undated++; }
                 if ($facts) $line .= ' (' . implode(', ', $facts) . ')';
                 $html .= '<li>' . esc_html($line) . '</li>';

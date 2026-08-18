@@ -149,6 +149,117 @@ but a future revision of either would not be caught. That is an Indiana
 `warn_import` cell-parsing fix, not a dedup fix, and it is not done here.
 
 
+## 2026-08-18 - the talent digest said the company twice and shipped headlines it could not explain (2.20.87)
+
+The owner read the delivered digest and named two defects in the talent
+section. Both were visible in the email, both on all five rows.
+
+### 1. Every row repeated the company inside its own headline
+
+Live, that morning:
+
+    - Banco do Brasil: Banco do Brasil anuncia 680 novas vagas ...
+    - Formosa Ha Tinh: Formosa Ha Tinh contratara a 300 trabajadores ...
+
+Five of five. The format was `company: headline`, and a headline is written to
+open with the company, so the label restated itself.
+
+**MEASURED FIRST, over the real week 2026-08-11 to 2026-08-18, 1,411 signals**,
+by running the shipped PHP over the live rows rather than over a fixture:
+
+| The headline ... | rows | share |
+|---|---|---|
+| opens with the stored company | 1,090 | 77.2% |
+| names it mid-sentence | 172 | 12.2% |
+| never names it | 47 | 3.3% |
+| there is no stored company | 56 | 4.0% |
+
+**So the label is dropped CONDITIONALLY, and the three obvious fixes are all
+wrong.** Dropping it always loses the 3.3%, and those are not marginal rows:
+"Arcos Dorados" over a headline about a McDonald's opening in Costa Rica,
+"SILQ" over "ShopUp's parent platform raises $100m", "Auger" over "This former
+Amazon exec is moving his startup's HQ to Texas". Each would name nobody.
+Trimming the company out of the headline mangles the 12.2% that name it
+mid-sentence: "Le PSG va recruter 3 joueurs" becomes "va recruter 3 joueurs".
+And a `strpos` on the raw strings misses every accent, legal suffix and
+possessive in the data.
+
+`alt_digest_headline_names_company()` compares TOKENS. Both sides are ASCII
+folded, lowercased, `&` written as the word, curly apostrophes straightened,
+and legal forms plus leading articles dropped (`Bhd`, `GmbH`, `S.A.`, `El`,
+`La`, `de`). A match needs EVERY company token, contiguously, in order.
+
+**The conservatism is deliberate and it is asymmetric.** A missed match
+reprints one label, which is a blemish. A wrong match deletes the only
+identification the row had. So a partial overlap keeps its label: "Dangote
+Refinery secures $400 million" does NOT match "Dangote Petroleum Refinery &
+Petrochemicals FZE", and "Zenas BioPharmas Nettoverlust" does not match "Zenas
+BioPharma".
+
+The fold is spelled out in the plugin rather than taken from `remove_accents`
+or `Normalizer`. intl is not guaranteed on this host and core's helper is not
+loaded by the composer harness, and a function that exists in production but
+not in the test is a function no test covers.
+
+**Verified against the live corpus, not the fixture**: the label drops on
+1,266 of 1,411 rows (89.7%). Of the 51 riskiest drops, a single short company
+token matched away from the headline's start, all 51 are true matches by
+inspection (PSG, Yuno, STERIS, Wipro, Getnet). Zero false positives.
+
+### 2. It shipped untranslated headlines, and the answer is not to drop them
+
+Two of the five were Portuguese and Spanish. The script filter added earlier
+excludes non-Latin scripts; Spanish and Portuguese pass it.
+
+**MEASURED BEFORE CHOOSING**, same week. 1,411 signals, of which 64 (4.5%) are
+already excluded on script. The list can only ever show rows naming a
+headcount, and there are 77 of those. Of the 74 that survive the script
+filter, **17 are Latin-script and not English: 22% of the rows and 74% of the
+jobs named**. Two of the top five by size, four of the top ten.
+
+So dropping non-English rows deletes three quarters of the biggest signals of
+the week in order to tidy a fifth of the list. The owner's own test for this
+was "if dropping five percent of rows loses a third of the biggest signals,
+that decides it". It loses three quarters. **They stay.**
+
+**They are NOT labelled with a language either.** There is no language column,
+so a label would be inferred from the headline, which is the same class of
+guess the script filter had to be corrected for once. A short headline is the
+worst case for it: a stopword classifier over this week could not decide 68 of
+1,347 Latin-script headlines, with German and Portuguese among the failures.
+Naming a language we guessed is a claim the reader cannot check.
+
+**Translation was rejected** and the owner had already argued against it. It
+costs a paid call per row and puts a sentence in the email that no reader,
+and no test, can verify against the source.
+
+**So the row carries its SOURCE, which is stored and not inferred**, and the
+caption says once, for the whole list, that the headline is a quotation:
+
+    ... the signals naming the most jobs first, then the tracker's own order.
+    Each headline is quoted as its source published it, in that source's own
+    language.
+
+A reader meeting a Portuguese line now knows why it is there and who published
+it, and a reporter gets the outlet they need to check it. `source_name` is
+present on 100% of the week's rows; a row missing it prints nothing rather
+than a placeholder, the same rule the undated rows already follow.
+
+### What the section looks like now, rendered on the live week
+
+    - Data Centre Solutions Provider Plans To Hire 2,100 Employees In Malaysia
+      (2,100 jobs, BusinessToday Malaysia, 17 Aug 2026)
+    - Banco do Brasil anuncia 680 novas vagas para especialistas e edital segue
+      em fase de estudos (680 jobs, Ceisc, 17 Aug 2026)
+
+**Verified:** 377 digest tests green, 12 new in `test_digest_scope_rules.py`
+holding both rules over pairs copied from the live week rather than invented.
+`style_check.py` 0 findings, overall mean grade 6.99. The singular and plural
+suite still renders every block with a count of one. No signup-page string
+moved, so the phone fold is unchanged and `test_signup_fold_stamp` confirms
+it. No figure moved, no delta was added, `assert_message_is_clean` untouched.
+
+
 ## 2026-08-18 - a US state in the country column, two senders with two subjects, and every count that governed a plural (2.20.85)
 
 The owner received the daily digest and sent back a list. Five defects, one of
