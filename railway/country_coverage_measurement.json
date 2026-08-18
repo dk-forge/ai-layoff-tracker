@@ -700,15 +700,16 @@
       "aggregate": "PUBLISHED, and the cleanest in the corpus. Monthly count of persons affected by varsel, by SNI industry and by county, back to 1992-01, as a direct .xlsx, roughly two weeks after month end. Verified live on 2026-08-18: HTTP 200, 130,155 bytes, openxmlformats spreadsheet. The download URL carries a generated id and the county file lagged the industry file by four months when checked, so an automated build must read the index page rather than template the URL",
       "assessed": "2026-08-18",
       "authority": "Arbetsformedlingen",
-      "cite": "https://arbetsformedlingen.se/download/18.1d7e68af19f87d573c91d73/1786515252048/web-varsel-bransch-199201-2026-07.xlsx",
+      "cite": "https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svensk-forfattningssamling/lag-197413-om-vissa-anstallningsframjande_sfs-1974-13/",
       "class": "regime_with_aggregate",
+      "data_url": "https://arbetsformedlingen.se/download/18.1d7e68af19f87d573c91d73/1786515252048/web-varsel-bransch-199201-2026-07.xlsx",
       "denominator_basis": "national_notification_aggregate",
       "entries": 700,
       "jobs": 283833,
-      "regime": "Varsel om uppsagning under lag (1974:13) om vissa anstallningsframjande atgarder (framjandelagen) ss.1, 2, 2a \u2014 the employer must give the public employment service advance notice of a planned reduction, months ahead on a sliding scale",
+      "regime": "Varsel om driftsinskrankning under lag (1974:13) om vissa anstallningsframjande atgarder (framjandelagen) ss.1-2. VERIFIED AGAINST PRIMARY TEXT on the riksdag's own site, which is one of the few hosts in this whole exercise that names Claude agents in order to PERMIT them (crawl-delay 1). s.1: the employer 'skall ... skriftligen varsla Arbetsformedlingen, om minst fem arbetstagare berors', and likewise where 90 days of cuts will reach twenty. s.2 sets the notice period on a sliding scale: 2 months up to 25 workers, 4 months for 26-100, 6 months above that",
       "state": "measured",
       "stored_name": "Sweden",
-      "threshold": "at least 5 workers affected, or 20 within 90 days. NOTE this is far BELOW the Directive 98/59/EC floor, so the Swedish count covers a wider population than its neighbours' and must never be summed with them"
+      "threshold": "at least 5 workers affected, or 20 within 90 days \u2014 read from the statute, not recalled. NOTE this is far BELOW the Directive 98/59/EC floor, so the Swedish count covers a WIDER population than Denmark's (at the floor) or Norway's (10), and the three must never be summed into a Nordic or European figure"
     },
     "Switzerland": {
       "class": "unassessed",
@@ -803,7 +804,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-08-18T23:30:32Z",
+  "measured_at": "2026-08-18T23:33:44Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "refusal_hosts": 30,
   "refusal_ledger": [

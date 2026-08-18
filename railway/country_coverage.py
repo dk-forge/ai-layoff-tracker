@@ -780,15 +780,21 @@ REGISTER = {
 
     "Sweden": {
         "class": REGIME_WITH_AGGREGATE,
-        "regime": ("Varsel om uppsagning under lag (1974:13) om vissa "
-                   "anstallningsframjande atgarder (framjandelagen) ss.1, 2, 2a — the "
-                   "employer must give the public employment service advance notice of a "
-                   "planned reduction, months ahead on a sliding scale"),
+        "regime": ("Varsel om driftsinskrankning under lag (1974:13) om vissa "
+                   "anstallningsframjande atgarder (framjandelagen) ss.1-2. VERIFIED "
+                   "AGAINST PRIMARY TEXT on the riksdag's own site, which is one of the "
+                   "few hosts in this whole exercise that names Claude agents in order to "
+                   "PERMIT them (crawl-delay 1). s.1: the employer 'skall ... skriftligen "
+                   "varsla Arbetsformedlingen, om minst fem arbetstagare berors', and "
+                   "likewise where 90 days of cuts will reach twenty. s.2 sets the notice "
+                   "period on a sliding scale: 2 months up to 25 workers, 4 months for "
+                   "26-100, 6 months above that"),
         "authority": "Arbetsformedlingen",
-        "threshold": ("at least 5 workers affected, or 20 within 90 days. NOTE this is "
-                      "far BELOW the Directive 98/59/EC floor, so the Swedish count "
-                      "covers a wider population than its neighbours' and must never be "
-                      "summed with them"),
+        "threshold": ("at least 5 workers affected, or 20 within 90 days — read from the "
+                      "statute, not recalled. NOTE this is far BELOW the Directive "
+                      "98/59/EC floor, so the Swedish count covers a WIDER population "
+                      "than Denmark's (at the floor) or Norway's (10), and the three must "
+                      "never be summed into a Nordic or European figure"),
         "aggregate": ("PUBLISHED, and the cleanest in the corpus. Monthly count of persons "
                       "affected by varsel, by SNI industry and by county, back to 1992-01, "
                       "as a direct .xlsx, roughly two weeks after month end. Verified live "
@@ -799,8 +805,11 @@ REGISTER = {
                       "template the URL"),
         "denominator_basis": "national_notification_aggregate",
         "assessed": "2026-08-18",
-        "cite": ("https://arbetsformedlingen.se/download/18.1d7e68af19f87d573c91d73/"
-                 "1786515252048/web-varsel-bransch-199201-2026-07.xlsx"),
+        "cite": ("https://www.riksdagen.se/sv/dokument-och-lagar/dokument/"
+                 "svensk-forfattningssamling/"
+                 "lag-197413-om-vissa-anstallningsframjande_sfs-1974-13/"),
+        "data_url": ("https://arbetsformedlingen.se/download/18.1d7e68af19f87d573c91d73/"
+                     "1786515252048/web-varsel-bransch-199201-2026-07.xlsx"),
     },
 
     "Norway": {
