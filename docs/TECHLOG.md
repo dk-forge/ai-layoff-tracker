@@ -1,5 +1,123 @@
 # Tech Log
 
+## 2026-08-18 - three degraded items, one sentence: a host we could not REACH is not a source that BROKE
+
+`ops_status.py` carried three items that read as three unrelated faults. They
+were the same fault, written three ways: an upstream host did not answer the
+datacentre, and each collector converted "could not reach" into a verdict about
+our own code.
+
+### 1. LA=33 (floor 324) - "likely site drift". The parser was perfect.
+
+`warn_custom_legacy` degraded with `Custom WARN state(s) collapsed vs their own
+history - likely site drift: LA=33 (floor 324)`.
+
+Measured, not reasoned: `fetch_la()` returns **324** from a laptop. Probing
+`laworks.net` directly, only two of the twelve per-year PDFs exist live:
+
+    2015 404   2019 404   2023 404   2024 404   2025 200   2026 200
+
+Parsing those two live years alone yields **21 + 12 = 33**. Every year from
+2015 to 2024 comes from a Wayback snapshot, Wayback was unreachable from the
+runner that morning (the same outage as item 3, in the same hour), and
+`fetch_la` treated "the archive did not answer" identically to "the archive has
+no snapshot": it printed `no live or archived PDF` and carried on. So a
+complete Wayback outage renders as a 90% collapse of Louisiana, and the health
+page names the one component that was working.
+
+`fetch_la` now distinguishes the two. A coherent 404 from `web.archive.org` is
+a year genuinely absent from the archive - a real gap, ours to solve by finding
+another route. A transport error, a 429 or a 5xx is the archive refusing to
+serve this runner, and that is recorded in `warn_custom.SOURCE_UNREACHABLE`.
+`warn_import.describe_state_drift` annotates those states
+(`LA=33 (floor 324) [NOT site drift - web.archive.org did not answer for N
+year(s)...]`) and the message drops the "likely site drift" hypothesis entirely
+when every collapsed state said it could not reach its documents.
+
+Deliberately NOT an exception: the reachable years are still real notices worth
+upserting, and throwing them away to make the failure loud trades data for a
+message. The floor ratchet already skips a drifted state, so nothing is taught.
+
+### 2. `economynext_lk: HTTP 202` - the feed answers everyone except us
+
+`national_feeds` degraded with `feed broke: economynext_lk: HTTP 202`. Probed
+2026-08-18 from a laptop, **all fifteen feeds returned HTTP 200 with a
+well-formed RSS document**, economynext.com included, and its robots.txt
+permits us. A 202 carrying a non-feed body is a bot wall keyed on the
+datacentre's address range. Nothing in this repo is broken and nothing in it
+can be changed to make that host answer.
+
+Two fixes, and the second is the one that matters:
+
+* **Every failing feed is now named.** `pull_national_feeds.last_error` was a
+  single slot, overwritten per feed, so a sweep in which three feeds were
+  blocked reported exactly one. "Is this an instance or a class?" is the first
+  question anyone asks about a blocked host, and the collector was structurally
+  unable to answer it about itself. `.failures` is now a list;
+  `.last_error` is kept and summarises all of them.
+* **A bot wall is classified `unreachable`, a dead URL is still `broke`.**
+  202/403/429/451/503 mean the host is not serving this network. 404/410 mean
+  the URL in this file is now wrong, and a 200 whose body is not RSS means the
+  publisher changed scheme - both of those stay `broke`, because they are ours
+  to fix and blurring them into "unreachable" would be the silencing this is
+  not.
+
+The status is **still `degraded` either way**. The health page must never claim
+a source is working when the collector cannot read it; only the wording moved,
+and it had to, because "feed broke" sends a session to audit a parser that is
+returning valid RSS to every other network.
+
+What is left for the owner: the feed stays armed and stays degraded, which is a
+true statement about a real gap. Dropping it would remove the only Sri Lankan
+publisher in the catalogue, so that is a coverage decision, not a repair.
+
+### 3. `zero snapshots taken - Wayback unreachable?` - the question mark was the defect
+
+`Archive WARN sources to Wayback` went RED on 2026-08-17 and, being weekly,
+would have stayed red until 2026-08-24. The run log shows both halves of an
+Internet Archive outage in one sweep: connect timeouts to `web.archive.org`
+interleaved with blanket 404s from `/save/` for forty-odd URLs that archive
+fine from a laptop.
+
+The old ending guessed, and the message admitted it. This repo already settled
+the general form for undeliverable alerts - HELD, not lost, exit 0 - and the
+reasoning transfers here *because an unarchived URL is genuinely not lost*:
+`/save/` is idempotent, the full set fits inside one sweep, and the week
+rotation re-attempts every document. Nothing has to be remembered for next week
+to be equivalent to this week, which is the bar RUNBOOK sets.
+
+So the run asks one more question before deciding. `wayback_reachable()` hits
+the availability API - a lookup, not a crawl, so sub-second, free and
+independent of any capture. Zero snapshots with the archive unreachable prints
+HELD and exits 0. **Zero snapshots while the archive is answering normally
+still exits 1**, because that is a defect here (an empty URL list, a changed
+`/save/` contract, a wrong UA) and the run must still be able to say so. The
+exit code was not softened; the verdict gained a fact it did not have.
+
+The backstop for a long outage is unchanged and is the right one:
+`data_integrity.archive_recheck_cadence` fails when the oldest un-archived URL's
+last attempt passes the promised cycle, which is a bound on the outcome rather
+than on any single run.
+
+### Also observed, external, not fixed here
+
+* `warn_us` degraded the same day for **OR**: `ccwd.hecc.oregon.gov` failed DNS
+  resolution from the runner (`[Errno -5] No address associated with
+  hostname`). It resolves from this machine. First occurrence; the generic tier
+  goes through the upstream `warn-scraper` library, so there is no per-state
+  unreachability channel to annotate there, and its "likely open-scraper drift"
+  wording carries the same hypothesis-as-finding problem that item 1 fixes.
+* `test_ingest_schedule.test_committed_json_matches_railway_toml` fails on
+  `main` as of 3362e61: `railway.toml` moved the cron to `0 22 * * *` and
+  `wordpress-plugin/.../data/ingest-schedule.json` still says `0 16 * * *`, so
+  the tracker page promises the wrong next-update time. Regenerate with
+  `python3 railway/generate_ingest_schedule.py`. Left to the session that owns
+  that commit.
+
+Files: `railway/archive_sources.py`, `railway/sources/national_feeds.py`,
+`railway/sources/warn_custom.py`, `railway/warn_import.py`, `railway/cron.py`,
+`railway/tests/test_unreachable_is_not_broken.py`. No plugin change, no deploy.
+
 ## 2026-08-18 - the within-WARN revision pass never once ran for the pair in its own comment (2.20.86)
 
 `ops_status.py [3]` went red on the Tyson tripwire:

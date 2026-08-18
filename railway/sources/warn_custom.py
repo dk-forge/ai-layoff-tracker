@@ -426,42 +426,83 @@ def _la_entries_from_tables(tables, url):
     return out
 
 
-def fetch_la():
+def fetch_la(get=None):
     """Louisiana: per-year text-layer PDFs, updated in place. laworks.net now
     hosts only the current two years — WarnNotices2015-2024.pdf all 404 on the
     live site (verified 2026-07-18) — so removed years fall back to a Wayback
     Machine snapshot taken after the year closed (same trust as MN's CDX
-    discovery). Every year is fail-isolated."""
+    discovery). Every year is fail-isolated.
+
+    THE COUNT THIS STATE REPORTS IS ONLY MEANINGFUL IF THE ARCHIVE ANSWERED.
+    Two of eleven years are live; the other nine ride entirely on
+    web.archive.org. When that host does not answer, this function used to
+    return the two live years and say nothing, and 33 notices against a floor
+    of 324 read on the health page as "collapsed vs its own history — likely
+    site drift", which is an accusation against a parser that is working.
+    Measured on 2026-08-18: this returns 324 from a laptop and returned 33 from
+    the runner the same morning, and 33 is exactly 21 (2025) + 12 (2026).
+
+    So a year that is MISSING is distinguished from a year that was
+    UNREACHABLE. A coherent 404 from Wayback means no snapshot of that year
+    exists — a real gap in the archive, ours to solve by finding another route.
+    A transport error or a 5xx/429 from web.archive.org means we never got to
+    ask, and that is recorded in SOURCE_UNREACHABLE for the caller to say out
+    loud instead of blaming the parser.
+
+    `get` is injectable so the tests can drive both branches without a network.
+    """
     from datetime import date as _date
+    do_get = get or (lambda u, **kw: requests.get(u, **kw))
     out = []
+    unreachable_years = []
     for y in range(2015, _date.today().year + 1):
         live = f"https://www.laworks.net/Downloads/WFD/WarnNotices{y}.pdf"
         content, source = None, live
         try:
-            resp = requests.get(live, headers=UA, timeout=60)
+            resp = do_get(live, headers=UA, timeout=60)
             if resp.status_code == 200 and resp.content[:4] == b"%PDF":
                 content = resp.content
         except Exception:
             pass
+        archive_answered = True
         if content is None:
             # April-after-year-end targets a complete-year snapshot while
             # steering clear of later capture dates that archived the 404
             wayback = f"https://web.archive.org/web/{y + 1}0401id_/{live}"
+            archive_answered = False
             for attempt in range(2):  # Wayback is slow and flaky — retry once
                 try:
-                    resp = requests.get(wayback, headers=UA, timeout=90)
-                    if resp.status_code == 200 and resp.content[:4] == b"%PDF":
-                        content, source = resp.content, wayback
-                    break
+                    resp = do_get(wayback, headers=UA, timeout=90)
                 except Exception:
                     continue
+                # A 429 or a 5xx is the archive refusing to serve this runner,
+                # which is the same fact as a timeout wearing a status code.
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    break
+                archive_answered = True
+                if resp.status_code == 200 and resp.content[:4] == b"%PDF":
+                    content, source = resp.content, wayback
+                break
         if content is None:
-            print(f"    LA {y}: no live or archived PDF")
+            if archive_answered:
+                print(f"    LA {y}: no live PDF and no archived snapshot")
+            else:
+                unreachable_years.append(y)
+                print(f"    LA {y}: web.archive.org did not answer — this "
+                      f"year is UNREAD, not absent")
             continue
         try:
             out += _la_entries_from_tables(_pdf_tables(content), source)
         except Exception as exc:
             print(f"    LA {y}: PDF parse failed ({exc})")
+    if unreachable_years:
+        SOURCE_UNREACHABLE["LA"] = (
+            f"web.archive.org did not answer for {len(unreachable_years)} "
+            f"year(s) ({unreachable_years[0]}-{unreachable_years[-1]}); "
+            f"only the {len(range(2015, _date.today().year + 1)) - len(unreachable_years)} "
+            f"reachable year(s) are in this count")
+        print(f"::warning:: LA is INCOMPLETE this run: "
+              f"{SOURCE_UNREACHABLE['LA']}")
     return out
 
 
@@ -1173,6 +1214,15 @@ def fetch_ky():
     return out
 
 
+#: States whose fetcher could not REACH one of its source documents this run,
+#: as {STATE: why}. Populated during a sweep and cleared at the start of the
+#: next one. This is the channel that keeps "we could not read it" from being
+#: reported as "the site drifted" — see fetch_la. It is deliberately NOT an
+#: exception: the reachable years are still real notices worth upserting, and
+#: throwing them away to make the failure loud would trade data for a message.
+SOURCE_UNREACHABLE = {}
+
+
 CUSTOM_STATES = {
     "TX": fetch_tx, "FL": fetch_fl, "GA": fetch_ga, "OH": fetch_oh,
     "MI": fetch_mi, "CO": fetch_co, "ID": fetch_id, "LA": fetch_la,
@@ -1183,6 +1233,7 @@ CUSTOM_STATES = {
 
 def pull_warn_custom(states):
     """Fetch the custom states (intersection with `states`, or all when 'all')."""
+    SOURCE_UNREACHABLE.clear()
     scrape_all = len(states) == 1 and str(states[0]).lower() == "all"
     wanted = list(CUSTOM_STATES) if scrape_all else [s.upper() for s in states if s.upper() in CUSTOM_STATES]
     results = []

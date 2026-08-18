@@ -364,8 +364,22 @@ def run():
                 # is no longer an RSS document (the changed-scheme shape).
                 fn = (pull_regional_feeds if source == "regional_feeds"
                       else pull_national_feeds)
+                # national_feeds classifies each failure: a feed that answers a
+                # laptop and refuses this datacentre (202/403/429/451/503) is
+                # UNREACHABLE, and saying "feed broke" about it sent a session
+                # hunting a parser that was working. Still degraded either way —
+                # the health page must never claim a source is working when the
+                # collector cannot read it. regional_feeds has no classifier
+                # yet, so it keeps the original single-slot wording.
+                failures = getattr(fn, "failures", None)
                 err = getattr(fn, "last_error", None)
-                if err:
+                if failures is not None:
+                    from sources.national_feeds import health_verdict
+                    status, detail = health_verdict(failures)
+                    report_source_health(source, status, len(pulled), detail)
+                    if status != "ok":
+                        print(f"::warning::{source} degraded: {detail}")
+                elif err:
                     report_source_health(source, "degraded", len(pulled),
                                          f"feed broke: {err}")
                     print(f"::warning::{source} degraded: {err}")
