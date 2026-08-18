@@ -101,15 +101,37 @@ company, count or date changes; the only column written is `superset_of`, by
 visible in the table — the row LIST shows every member — and only the aggregate
 job SUMs stop counting the revision twice.
 
-### What moved
+### What moved, measured
 
-    /reconcile-supersets dry run  ->  see the run linked below
-    Tyson US-2026 (the invariant)     10,505  ->   8,744   (bound < 8,945, PASS)
+Deployed as 2.20.86, then `/reconcile-supersets` dry run, then apply. The
+server's own diff agreed with the sweep above to the row:
 
-Headline effect is -1,870 jobs on `us_all_time` and `worldwide_all_time`, which
-is 0.027% of the US headline and far below that slice's 25,000/day movement
-floor, so `headline_movement` neither fires nor needs an incident. `ai_all_time`
-is untouched: neither row is AI-attributed.
+    {"dry_run": false, "members_marked": 405, "jobs_before": 10070113,
+     "jobs_excluded": 107857, "jobs_after": 9962256, "changes": 2}
+
+    136079  Tyson Amarillo B-Shift "Updated"   1761  was=0  now=136371
+    141305  Signify/Genlyte "(Updated)"         109  was=0  now=142097
+
+**changes: 2. Two rows, 1,870 jobs, nothing un-excluded and nothing else
+touched.** The probe also confirms the fix does what it claims without
+rewriting anything: 136079's STORED `company_key` is still
+`tyson foods amarillo b shift operations updated`. The revision key is computed
+at reconcile time, so no row's identity, name, count or date changed — only
+`superset_of`, which is why this needed no `/bulk-purge` and stays reversible.
+
+Live, verified after the apply:
+
+    Tyson US-2026 (the invariant)   10,505  ->   8,744   (bound < 8,945, PASS)
+    US jobs, all time            6,960,555  -> 6,958,685   (-1,870, -2 entries)
+    Worldwide jobs, all time    20,432,759  -> 20,430,889  (-1,870, -2 entries)
+    ops_status [3]              17 passing, 1 FAILING -> 18 passing
+
+Headline effect is -1,870 on `us_all_time` and `worldwide_all_time`: 0.027% of
+the US headline, against that slice's 25,000/day movement floor. So
+`headline_movement` neither fired nor needed an incident, and
+`railway/headline_incidents.json` `open` is still `{}` — checked, not assumed.
+`ai_all_time` is untouched; neither row is AI-attributed. Both rows remain
+visible in the public table, as members of one event.
 
 ### The honest residual
 

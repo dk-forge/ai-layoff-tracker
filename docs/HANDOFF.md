@@ -9,7 +9,25 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON (current subject, 2026-08-18):** the healer that could not see a
+- **WORKING ON (current subject, 2026-08-18):** the within-WARN revision dedup
+  that never once ran for the pair in its own comment, landed as **2.20.86**
+  (`includes/db.php`, `railway/tests/test_warn_revision_dedup.py`, ARCHITECTURE,
+  TECHLOG). `ops_status [3]` said "within-WARN revision dedup regressed";
+  nothing regressed. Pass (3) of `alt_reconcile_supersets` ran inside the
+  `company_key` loop, and Texas republishes a revised WARN notice by appending
+  the word to the EMPLOYER cell, so the pair keys as two companies and a
+  per-company pass can never see it. The live guard slept through 25 days of it
+  because it bounds the Tyson sum at 8,945 and the DOUBLED sum was 7,184 — it
+  passed on headroom, not agreement, and only reddened when three unrelated
+  legitimate Tyson rows crossed the bound. Swept the whole corpus first: 60
+  revision-marked rows, 16 WARN at or above the 100 floor, **two real pairs,
+  1,870 jobs** (Tyson Amarillo TX 1,761 + Signify/Genlyte TX 109). A third
+  same-count pair is REJECTED and pinned as a test (First Brands Darke vs Wood,
+  OH, 302 each — two counties, two real notices). Applied via
+  `/reconcile-supersets`, which reported `changes: 2` and touched nothing else;
+  no `/bulk-purge` was needed because only `superset_of` changed. [3] now reads
+  18 passing and no headline incident opened.
+- **PREVIOUSLY WORKING ON (2026-08-18, earlier):** the healer that could not see a
   self-timeout, and the suite that outgrew its wall. GitHub reports a
   `timeout-minutes` kill as `cancelled`, so `self-heal.yml`'s `failure`-only
   gate skipped six times in the half hour after "Tests" self-killed at 15m0s on
