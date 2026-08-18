@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.89
+ * Version: 2.20.90
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.89');
+define('ALT_VERSION', '2.20.90');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1704,9 +1704,9 @@ function alt_faq_items() {
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff entries totaling ' . $f($n['jobs']) . ' job cuts worldwide, counted by effective date: the day each cut takes effect, with anything dated later than today left out. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. The totals on the tracker page itself are counted by filing date by default, which is a different question and a different number for the same year, so the two are not meant to match; the date basis switch on the page moves between them. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, which is Eurofound\'s official per-company database of announced restructuring across the EU27, Norway and historically the UK (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' entries in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, Eurofound\'s per-company database of announced restructuring across the EU27, Norway and historically the UK, which its national correspondents compile from media reports rather than from government filings (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' entries in total.'),
         array('What sources do you use?',
-            'Official government filings and legally required notices first: every SEC 8-K/6-K filing, official WARN mass-layoff notices from ' . alt_warn_states_phrase() . ' (each a live link on our Data Sources page), and the EU\'s Eurofound restructuring monitor. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
+            'Official government filings and legally required notices first: every SEC 8-K/6-K filing and official WARN mass-layoff notices from ' . alt_warn_states_phrase() . ' (each a live link on our Data Sources page). For the EU we read Eurofound\'s European Restructuring Monitor, an EU agency database compiled by national correspondents from media reports rather than from the confidential notifications employers file with labour authorities. Worldwide, we add named news coverage in 65+ languages from an editorially maintained trusted-outlet allowlist. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
         array('How is this different from other layoff trackers?',
             'Announcement surveys count corporate intentions on the day of the announcement. This job layoff tracker counts what has a verifiable document or quoted primary source behind it, so it is a documented floor rather than an estimate. Announcement-stage cuts are also tracked, but in a separately labeled tier that is never mixed into the verified totals.'),
