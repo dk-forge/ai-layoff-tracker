@@ -245,7 +245,41 @@ class CronWiringTests(unittest.TestCase):
         # instantly and unbounded when it throttled. Four Tests runs
         # self-cancelled on the 15-minute ceiling that afternoon; the suite
         # itself was ~6 minutes. The workflow's contract is offline and fast.
-        with patch.object(cron, "GATE_MODE", gate_mode), \
+        #
+        # ...AND IT HAPPENED AGAIN, because a comment is not a guard.
+        # regional_feeds and national_feeds joined that table afterwards and
+        # nobody added them here, so all seven of these tests ran the real
+        # pullers and paid their per-feed pacing: 15.0s + 5.0s = 20.1s EACH,
+        # 141s of pure sleep in every CI run, which is most of the distance
+        # "Tests" travelled from 353s (2026-08-14) to self-killing at 15m0s on
+        # 2026-08-18. Measured with sleeps neutralised, the same test is 0.1s.
+        #
+        # So the tripwire below is now the guard, and it is deliberately wider
+        # than the miss: this harness may not SLEEP and may not RESOLVE A HOST.
+        # A source added to cron's table without a stub here fails loudly on
+        # the first one it tries, in the test that forgot it, instead of
+        # quietly buying twenty seconds a run until the wall arrives.
+        # It raises a BaseException, NOT an AssertionError, and that detail is
+        # the whole guard. cron.run() wraps each collector in `except
+        # Exception` precisely so one broken source cannot kill a run - which
+        # means an ordinary assertion raised inside a source is caught,
+        # reported as "errors=1", and the test goes green having proved
+        # nothing. Verified: with an AssertionError the removed-stub fixture
+        # still passed. BaseException walks straight out through every
+        # `except Exception` in the chain and fails the test that forgot.
+        class _WentOffline(BaseException):
+            pass
+
+        def _offline(*a, **k):
+            raise _WentOffline(
+                "cron.run() slept or reached the network inside this harness. "
+                "Some source in cron.run()'s table is NOT stubbed below - it "
+                "is running for real. Add it to this `with` block rather than "
+                "letting the suite pay for it; see the comment above.")
+
+        with patch("time.sleep", _offline), \
+             patch("socket.getaddrinfo", _offline), \
+             patch.object(cron, "GATE_MODE", gate_mode), \
              patch.object(cron, "_mark_phase"), \
              patch.object(cron, "_spend_preflight"), \
              patch.object(cron, "report_source_health"), \
@@ -253,6 +287,8 @@ class CronWiringTests(unittest.TestCase):
              patch.object(cron, "pull_edgar_filings", return_value=[]), \
              patch.object(cron, "pull_google_news", return_value=[entry]), \
              patch.object(cron, "_pull_local_news_rows", return_value=[]), \
+             patch.object(cron, "_pull_regional_feeds_rows", return_value=[]), \
+             patch.object(cron, "_pull_national_feeds_rows", return_value=[]), \
              patch.object(cron, "pull_press_releases", return_value=[]), \
              patch.object(cron, "reviewed_feed_count", return_value=1), \
              patch.object(cron, "pull_gdelt_between", return_value=[]), \

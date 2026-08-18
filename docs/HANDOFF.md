@@ -9,7 +9,21 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON (current subject, 2026-08-17):** the daily digest that never went
+- **WORKING ON (current subject, 2026-08-18):** the healer that could not see a
+  self-timeout, and the suite that outgrew its wall. GitHub reports a
+  `timeout-minutes` kill as `cancelled`, so `self-heal.yml`'s `failure`-only
+  gate skipped six times in the half hour after "Tests" self-killed at 15m0s on
+  main, while `ci_alert.py` was mailing the same event as CI SELF-TIMEOUT. One
+  definition now serves both (`ci_alert.self_timeout_of_run` /
+  `is_self_timeout_cause`), the workflow admits `cancelled` so the gate STEP can
+  read the annotations an expression cannot, and **the sibling repo has the same
+  fix** (pushed there too). The suite itself: 353s -> 869s in four days, of
+  which 177.9s was `time.sleep` against stubbed hosts (an unstubbed source in
+  `CronWiringTests`, plus two import-order races on `GAP`) and 100.8s was one
+  100-second copy walk computed twice. All fixed where they lived, no assertion
+  weakened, and `Tests` now runs as two parallel matrix halves so the ceiling
+  stays 15 minutes and still means something. No plugin change, no deploy.
+- **PREVIOUSLY WORKING ON (2026-08-17):** the daily digest that never went
   out on a Monday, landed as **2.20.84** (`railway/digest_send.py`,
   `includes/subscribe.php`, `includes/digest-api.php`, `includes/db.php`,
   `.github/workflows/digest-send.yml`, three test files, TECHLOG). The relay
@@ -22,7 +36,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   page and only a POST writes the row, the RFC 8058 POST path is unchanged,
   and the unsubscribe link is out of the confirmation email's body so a link
   scanner can no longer confirm an address and then drop it.
-- **PREVIOUSLY WORKING ON:** the CONFIRMATION email's open
+- **AND BEFORE THAT:** the CONFIRMATION email's open
   pixel, landed as **2.20.78** (`includes/subscribe.php` copy and comments,
   `tests/test_digest_subscription.py`, `tests/test_digest_brevo_feedback.py`
   docstring, RUNBOOK, TECHLOG). Measured on a real send: Brevo injects its open

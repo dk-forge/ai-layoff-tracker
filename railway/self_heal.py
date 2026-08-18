@@ -23,10 +23,15 @@ are working as designed and already have an owner:
     closed by a HUMAN with --close-incident, never by code, and ci_alert.py
     has already emailed the owner about it under the branch-free live.data
     scope. A healer that "fixes" one can only loosen the invariant.
-  * a self-timeout has already been mailed as CI SELF-TIMEOUT, and the right
-    answer (raise the ceiling with the measured reason, or shrink the job) is
-    a judgement call. Self-timeouts arrive as conclusion `cancelled`, which
-    this gate refuses wholesale — only `failure` is ever healable.
+  * a cancellation from OUTSIDE the job (a superseded push, a concurrency
+    group, a human) is routine and healable by nobody. But a job that ran past
+    its own `timeout-minutes` ALSO arrives as `cancelled`, and that is a real,
+    repeating, permanent failure — one this gate refused wholesale until
+    2026-08-18, while ci_alert.py emailed the very same event as CI SELF-TIMEOUT.
+    The two are told apart by `ci_alert.self_timeout_of_run()`, called here,
+    never re-implemented. A self-timeout IS healed, and the healer's hard limit
+    against widening a ceiling is what keeps the fix honest: the answer is to
+    make the job fit, not to move the wall.
   * a host-outage-shaped failure (5xx from asktherecruiter.com, unreachable
     /alert) has nothing wrong in this checkout. The sibling repo's host-watch
     owns the outage; healing it would mint a PR against weather.
@@ -169,11 +174,28 @@ def classify(workflow, conclusion, cause, branch="main"):
                        "branch red is that branch's defect and its session's "
                        "(or PR author's) to fix — the healer only heals "
                        "unattended breakage on main.")
-    if (conclusion or "").lower() != "failure":
+    conc = (conclusion or "").lower()
+    if conc == "cancelled":
+        # `cancelled` is TWO different events wearing one word. A run stopped by
+        # a superseded push or a concurrency group is not a failure and must
+        # stay out of here. A job that ran past its own `timeout-minutes` is a
+        # real, permanent, repeating failure — GitHub just reports it as
+        # `cancelled` rather than `timed_out`. The discrimination is
+        # ci_alert.is_self_timeout_cause() and it is CALLED, never re-implemented:
+        # this gate refused `cancelled` wholesale until 2026-08-18, when "Tests"
+        # self-killed at 15m0s on main and six Self-heal runs in the next half
+        # hour skipped, while ci_alert emailed the same event as CI SELF-TIMEOUT.
+        if not ci_alert.is_self_timeout_cause(cause):
+            return False, ("cancelled by something OUTSIDE the job (a superseded "
+                           "push, a concurrency group, a human). That is routine "
+                           "and is not a failure. Only a run that killed itself "
+                           "on its own timeout-minutes is healable here.")
+        # fall through: a self-timeout IS a failure, and a code-shaped one.
+    elif conc != "failure":
         return False, (f"conclusion '{conclusion}' is not healable: only a plain "
-                       "failure is. Self-timeouts arrive as 'cancelled' and are "
-                       "already mailed as CI SELF-TIMEOUT; cancellations are "
-                       "routine; success needs nothing.")
+                       "failure, or a `cancelled` that is really a self-timeout, "
+                       "is. Cancellations from outside the job are routine; "
+                       "success needs nothing.")
     if (workflow or "").strip().lower() in NEVER_HEAL:
         return False, (f"'{workflow}' is the alarm channel (or the healer "
                        "itself), and the healer never touches the alarm channel.")
@@ -301,10 +323,16 @@ def gate(args):
         _wf, _con, branch, _url = run_metadata(repo, args.run_id)
 
     cause = ""
-    if (conclusion or "").lower() == "failure":
+    conc = (conclusion or "").lower()
+    if conc == "failure":
         cause, _context = ci_alert.extract_cause(
             ci_alert.fetch_failed_log(repo, args.run_id),
             limit=ci_alert.ALERT_CAUSE_LIMIT)
+    elif conc == "cancelled":
+        # A self-killed job has NO failed step, so --log-failed returns nothing;
+        # the distinguishing line lives in the job's check-run annotations. Same
+        # call the alerter makes, so the two cannot disagree about one run.
+        cause = ci_alert.self_timeout_of_run(repo, args.run_id) or ""
 
     heal, reason = classify(workflow, conclusion, cause, branch or "main")
     if not heal:

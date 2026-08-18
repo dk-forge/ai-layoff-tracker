@@ -16,16 +16,44 @@ on:
 
 jobs:
   railway-tests:
+    # TWO JOBS, ONE SUITE, RUN AT THE SAME TIME. Every assertion still runs;
+    # none is skipped, deleted or marked slow. `railway/run_tests.py` derives
+    # the split from each module's own source — a module that imports `cdp`
+    # starts a real headless Chrome — so the browser guards (rendered geometry,
+    # contrast, tap targets, phone folds) stop queueing behind the CPU-bound
+    # rest of the suite. railway/tests/test_test_groups.py pins that the two
+    # groups are total and disjoint against the same glob `discover` uses, so
+    # a module cannot fall out of both halves and stop running unnoticed.
+    #
+    # fail-fast is OFF deliberately: one half failing must not CANCEL the
+    # other. A cancelled job is a conclusion this repo's alerter and healer
+    # have to interpret, and manufacturing one out of an ordinary red would be
+    # noise on the exact channel that reports the red.
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [rest, rendered]
     runs-on: ubuntu-latest
-    # 15 minutes is ~2.3x the measured suite: 2,034 tests in 353s, ~6.5m job
-    # wall including the pip install (run 31824538127, 2026-08-14). When four
-    # runs self-cancelled on this ceiling that same day, the suite had NOT
-    # outgrown it: the cron tests were fetching Google News RSS for real (an
-    # unstubbed new source, 87 requests per test, unbounded under throttling)
-    # plus a 1s-per-query sleep frozen by import order. Both fixed where they
-    # lived. If this times out again, measure first - a network wait or a
-    # sleep in this suite is a defect to fix, not a reason to raise this
-    # number, and the self-timeout is the alarm that catches it.
+    # MEASURED, and the measurement is the point.
+    #
+    # 2026-08-14: 2,034 tests in 353s, ~6.5m job wall (run 31824538127), and
+    # this ceiling was ~2.3x that. Then it grew, honestly, one guard at a time:
+    #   2026-08-16 06:57  run 31932687603   test step 499s
+    #   2026-08-17 07:42  run 32007024227   test step 863s
+    #   2026-08-17 20:53  run 32068176667   test step 822s
+    #   2026-08-18 04:25  run 32099117561   SELF-KILLED at 15m0s, on main
+    # Nothing was wrong with any test. The suite simply grew past its wall,
+    # and running it as one serial job meant the wall clock was the SUM of two
+    # workloads with completely different shapes: Python that burns CPU, and
+    # Chrome that we sit and wait on. Split, the wall clock is the LARGER
+    # half instead of the sum.
+    #
+    # The ceiling is unchanged at 15 minutes, on purpose: lowering it makes a
+    # slow suite fail sooner, not pass, and raising it silences the one alarm
+    # that catches this class. If a half times out again, MEASURE FIRST
+    # (`python3 railway/run_tests.py --group <g>` and time it): an unstubbed
+    # network call, a sleep, or a browser started per test rather than per
+    # class is a defect to fix where it lives.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -61,13 +89,14 @@ jobs:
       - name: Run railway unit tests
         working-directory: railway
         env:
-          # tests/test_dedup_live.py writes 'evaluated' or 'unknown' here. See
-          # the two steps below for what reads it and why it is not enough for
-          # this job to simply be green.
+          # tests/test_dedup_live.py writes 'evaluated' or 'unknown' here. It
+          # lives in the `rest` group, which is why the three steps below are
+          # scoped to that group: see them for what reads this and why it is
+          # not enough for this job to simply be green.
           LIVE_DATA_VERDICT_FILE: ${{ runner.temp }}/live-data-verdict.txt
         run: |
           set -o pipefail
-          python -m unittest discover -s tests -p "test_*.py" -v 2>&1 \
+          python run_tests.py --group ${{ matrix.group }} 2>&1 \
             | sed -E 's/^([[:space:]]*)::(error|warning|notice)/\1;;\2/'
 
       # WHY A GREEN RUN IS NOT EVIDENCE THAT THE LIVE NUMBERS ARE FINE.
@@ -93,9 +122,17 @@ jobs:
       # degrades to the old behaviour; both answers here positively ran.
       # railway/tests/test_ci_alert.py pins both names to the constants the
       # alerter looks for.
+      #
+      # THE MATRIX DOES NOT DOUBLE THEM. `live_data_was_evaluated` scans
+      # `.jobs[].steps[]` across the whole run and counts only steps whose
+      # conclusion is `success`, so these are gated on `matrix.group == 'rest'`
+      # — the half that actually runs the live checks. In the `rendered` job
+      # they are SKIPPED, which the alerter ignores. If they ran in both, the
+      # half that never looked at the live site would be answering for the half
+      # that did.
       - name: Read the live-data verdict
         id: livedata
-        if: ${{ always() }}
+        if: ${{ always() && matrix.group == 'rest' }}
         run: |
           f="${{ runner.temp }}/live-data-verdict.txt"
           state=unknown
@@ -105,14 +142,14 @@ jobs:
           [ -f "$f" ] && tail -n +2 "$f" || true
 
       - name: Live-data invariants were evaluated
-        if: ${{ always() && steps.livedata.outputs.state == 'evaluated' }}
+        if: ${{ always() && matrix.group == 'rest' && steps.livedata.outputs.state == 'evaluated' }}
         run: |
           echo "The live-data invariants resolved to pass or fail in this run,"
           echo "so a green run of this workflow is entitled to clear an open"
           echo "live-data incident."
 
       - name: Live-data invariants were NOT evaluated
-        if: ${{ always() && steps.livedata.outputs.state != 'evaluated' }}
+        if: ${{ always() && matrix.group == 'rest' && steps.livedata.outputs.state != 'evaluated' }}
         run: |
           echo "The live-data invariants did not run in this run (unreachable"
           echo "site, or the deploy's own 503 maintenance window), so they"

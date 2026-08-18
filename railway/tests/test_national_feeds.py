@@ -24,6 +24,18 @@ os.environ.setdefault("NATIONAL_FEEDS_GAP_SECONDS", "0")
 
 from sources import national_feeds as nf  # noqa: E402
 
+# ...AND THE ENV VAR ALONE IS NOT ENOUGH, because `GAP` is read at IMPORT
+# time. Run alone this module imports national_feeds first and the line above
+# wins. Run under `discover`, test_cost_funnel has already imported cron,
+# which imports this collector, so GAP was fixed at 1.0 long before this file
+# was read and every paced fetch in here slept for real: 23.2s and 14.1s of
+# the 869s suite that self-killed on its 15-minute ceiling on 2026-08-18.
+# Exactly the import-order defect TECHLOG records for 2026-08-14, in two more
+# places. Setting it on the module cannot lose that race. These tests inject
+# every fetch, so there is no host to be polite to; the shipped default is
+# untouched.
+nf.GAP = 0.0
+
 CATALOGUE = Path(__file__).resolve().parents[1] / "data" / "source_catalogue.json"
 
 

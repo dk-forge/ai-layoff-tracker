@@ -116,8 +116,22 @@ DEF_TEXT = ("An entry is one layoff reported by one employer. "
             "Workers counts people.")
 
 
+#: Memoised because the extraction is a 100-SECOND regex walk over every
+#: reader-facing file in the product, and two tests need the same answer.
+#: Uncached it was the single most expensive thing in the whole suite: 201.6s
+#: of the 869s that killed "Tests" on its 15-minute ceiling on 2026-08-18,
+#: spent computing one identical list twice. Nothing writes to these files
+#: while the suite runs, so the second walk could only ever agree with the
+#: first. The `> 500` floor below still runs on the walk that populates it, so
+#: a broken extractor is still caught rather than cached.
+_SEGMENTS = None
+
+
 def reader_segments():
     """Every reader-facing string in this product, with file and line."""
+    global _SEGMENTS
+    if _SEGMENTS is not None:
+        return _SEGMENTS
     root = str(ROOT)
     segs = list(style_check.collect(root))
     for rel, page in EXTRA_TARGETS:
@@ -128,6 +142,7 @@ def reader_segments():
         "only %d reader-facing strings were extracted, which means the "
         "extractor stopped working and this test is checking nothing"
         % len(segs))
+    _SEGMENTS = segs
     return segs
 
 
