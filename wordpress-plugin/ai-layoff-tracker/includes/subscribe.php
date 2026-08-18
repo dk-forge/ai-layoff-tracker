@@ -151,13 +151,36 @@ function alt_digest_period_seconds($freq) {
 }
 
 /**
+ * The column holding when this ONE tier last went out.
+ *
+ * THE DEFECT THIS ANSWERS, 2026-08-17. There was one column, last_sent_at,
+ * and both tiers read it. Monday is the day both tiers send, so the first
+ * pass stamped the row and the second pass found the same person already
+ * sent to. A subscriber who takes the layoff list daily and the articles
+ * list weekly then received one email on a Monday instead of two, and
+ * nothing anywhere said so.
+ *
+ * The frequency is validated before it reaches the SQL, and the only two
+ * values it can hold are named here, so no caller can steer this at a column
+ * of its own choosing.
+ */
+function alt_digest_last_sent_column($freq) {
+    return alt_digest_valid_freq($freq) === 'daily'
+        ? 'last_sent_daily' : 'last_sent_weekly';
+}
+
+/**
  * Who is due for this tier, as ONE definition used by BOTH senders.
  *
  * Confirmed, consented to a list at this frequency, and not already sent to
- * inside the current period. That last clause is what makes two senders safe:
- * the built in wp_mail cron and the external relay (includes/digest-api.php)
- * read this same function, so even if both ran in the same minute nobody
- * receives two copies. A row is due, is sent, is stamped, and is then not due.
+ * inside THIS TIER'S current period. That last clause is what makes two
+ * senders safe: the built in wp_mail cron and the external relay
+ * (includes/digest-api.php) read this same function, so even if both ran in
+ * the same minute nobody receives two copies. A row is due, is sent, is
+ * stamped, and is then not due.
+ *
+ * Per tier, so the two passes of a Monday cannot suppress each other. The
+ * tiers are separate subscriptions and each one keeps its own clock.
  *
  * A 'bounced' row is not confirmed, so a dead mailbox drops out here without
  * any sender needing to know the concept exists.
@@ -165,13 +188,14 @@ function alt_digest_period_seconds($freq) {
 function alt_digest_due_rows($freq) {
     global $wpdb;
     $table = alt_subscribers_table();
+    $stamp = alt_digest_last_sent_column($freq);
     $cutoff = gmdate('Y-m-d H:i:s', time() - alt_digest_period_seconds($freq));
     return $wpdb->get_results($wpdb->prepare(
         "SELECT * FROM $table WHERE status = 'confirmed'
            AND ((consent_layoff = 1 AND freq_layoff = %s)
              OR (consent_talent = 1 AND freq_talent = %s)
              OR (consent_articles = 1 AND freq_articles = %s))
-           AND (last_sent_at IS NULL OR last_sent_at < %s)",
+           AND ($stamp IS NULL OR $stamp < %s)",
         $freq, $freq, $freq, $cutoff), ARRAY_A) ?: array();
 }
 
@@ -3208,7 +3232,14 @@ function alt_digest_send($freq) {
         );
         if (wp_mail($row['email'], '[AskTheRecruiter] ' . $label . ' tracker digest', $html, $headers)) {
             $sent++;
-            $wpdb->update($table, array('last_sent_at' => gmdate('Y-m-d H:i:s')), array('id' => $row['id']));
+            // The TIER's own stamp is what the guard reads. last_sent_at is
+            // written beside it and is not read here any more: it is what an
+            // older plugin build would guard on, so a rollback still holds.
+            $now = gmdate('Y-m-d H:i:s');
+            $wpdb->update($table, array(
+                alt_digest_last_sent_column($freq) => $now,
+                'last_sent_at' => $now,
+            ), array('id' => $row['id']));
         }
     }
     if ($send_id > 0) {
@@ -3271,7 +3302,12 @@ function alt_digest_purge() {
  * WP-Cron cannot make.
  *
  * Weekly digests go out on Mondays (UTC) from this same daily hook, so there
- * is exactly one schedule to monitor.
+ * is exactly one schedule to monitor. BOTH tiers run on a Monday, and both
+ * reach their own subscribers: until 2026-08-17 the two calls below shared
+ * one last-sent column, so the daily call stamped every row it mailed and the
+ * weekly call then found the same people already sent to. The guard is per
+ * tier now (alt_digest_last_sent_column), so this reads the way it always
+ * looked like it read.
  */
 function alt_digest_cron_run() {
     list($sent_d, $recip_d) = alt_digest_send('daily');

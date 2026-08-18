@@ -9,7 +9,18 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
-- **WORKING ON (current subject, 2026-08-17):** the CONFIRMATION email's open
+- **WORKING ON (current subject, 2026-08-17):** the daily digest that never went
+  out on a Monday, landed as **2.20.84** (`railway/digest_send.py`,
+  `includes/subscribe.php`, `includes/digest-api.php`, `includes/db.php`,
+  `.github/workflows/digest-send.yml`, three test files, TECHLOG). The relay
+  picked ONE tier per run and picked weekly on a Monday, so every daily
+  subscriber got nothing, weekly, in silence. Both tiers now run as two
+  independent passes inside the one 13:10 job, and the per-period guard is per
+  tier (`last_sent_daily` / `last_sent_weekly`) because a shared stamp let the
+  first pass hide everybody from the second. Schedule untouched. Open and NOT
+  fixed here: a plain GET can unsubscribe somebody who never clicked, written
+  up in TECHLOG.
+- **PREVIOUSLY WORKING ON:** the CONFIRMATION email's open
   pixel, landed as **2.20.78** (`includes/subscribe.php` copy and comments,
   `tests/test_digest_subscription.py`, `tests/test_digest_brevo_feedback.py`
   docstring, RUNBOOK, TECHLOG). Measured on a real send: Brevo injects its open
@@ -21,7 +32,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   message. The lever that WOULD separate it is an owner decision, written up in
   RUNBOOK "Open and click tracking", not half-built. The double opt-in
   mechanism is untouched.
-- **PREVIOUSLY WORKING ON:** bounce and complaint handling under **Brevo**, landed as
+- **AND BEFORE THAT:** bounce and complaint handling under **Brevo**, landed as
   **2.20.65** (`includes/digest-api.php` and
   `tests/test_digest_brevo_feedback.py` only). `/digest-webhook` verified a
   Svix signature and dispatched on Resend event names, so under Brevo it

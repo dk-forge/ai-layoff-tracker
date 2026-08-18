@@ -164,10 +164,14 @@ function alt_source_health_record($source, $status, $entries, $detail) {
 
 /** Minimal REST doubles so the digest can compose a layoff section. */
 class WP_REST_Request {
-    public $params = array(); public $route;
+    public $params = array(); public $route; public $json = null;
     public function __construct($m = 'GET', $route = '') { $this->route = $route; }
     public function set_param($k, $v) { $this->params[$k] = $v; }
     public function get_param($k) { return $this->params[$k] ?? null; }
+    /** The POST body /digest-complete reads. */
+    public function set_json_params($p) { $this->json = $p; }
+    public function get_json_params() { return $this->json; }
+    public function get_header($k) { return ''; }
 }
 class FakeRestResponse {
     private $data; private $err;
@@ -212,7 +216,9 @@ class FakeWpdb {
             created_at TEXT NOT NULL,
             confirmed_at TEXT NULL,
             unsubscribed_at TEXT NULL,
-            last_sent_at TEXT NULL)');
+            last_sent_at TEXT NULL,
+            last_sent_daily TEXT NULL,
+            last_sent_weekly TEXT NULL)');
         $this->install_digest_log_tables();
     }
     /** The send log + aggregate click counter, mirroring includes/db.php. */
@@ -632,7 +638,9 @@ $out['articles_mail_body'] = ($sent_articles > 0 && is_array($art_mail)) ? $art_
 
 // And the relay half: the route that hands addresses to the external sender.
 if (function_exists('alt_api_digest_recipients')) {
-    $wpdb->pdo->exec("UPDATE wp_alt_subscribers SET last_sent_at = NULL");
+    // Every stamp, because the guard is per tier now (alt_digest_last_sent_column).
+    $wpdb->pdo->exec("UPDATE wp_alt_subscribers SET last_sent_at = NULL,
+                      last_sent_daily = NULL, last_sent_weekly = NULL");
     $req = new WP_REST_Request('GET', '/layoffs/v1/digest-recipients');
     $req->set_param('freq', 'weekly');
     $res = alt_api_digest_recipients($req);
@@ -815,6 +823,144 @@ $routes['digest_from_line'] = $from_of(end($mails)['headers']);
 
 $out['routes'] = $routes;
 $_GET = array(); $_POST = array(); $_REQUEST = array();
+
+/* ------------------------------------------------------------------ */
+/* 15. MONDAY: BOTH TIERS RUN, AND NEITHER PASS CONSUMES THE OTHER.     */
+/*                                                                      */
+/* THE DEFECT, 2026-08-17. The relay picked ONE tier per run and picked  */
+/* weekly on a Monday, so every daily subscriber got nothing on a        */
+/* Monday. Fixing that alone was not enough: last_sent_at was a single   */
+/* column shared by both tiers, so whichever pass ran first stamped it   */
+/* and the second pass found the same person "already sent to". The      */
+/* guard is per tier now, and this drives both passes to prove it.       */
+/* ------------------------------------------------------------------ */
+
+$wpdb->pdo->exec('DELETE FROM wp_alt_subscribers');
+$wpdb->pdo->exec('DELETE FROM wp_alt_digest_sends');
+$wpdb->pdo->exec('DELETE FROM wp_alt_digest_links');
+unset($GLOBALS['__options']['alt_digest_external_claim']);
+$monday = array();
+
+// Posts inside both windows, so the articles section composes for either tier.
+$GLOBALS['__posts'] = array(
+    (object) array('ID' => 91, 'post_title' => 'A post from today',
+                   'post_name' => 'today-post', 'post_excerpt' => 'A standfirst.',
+                   'post_type' => 'post', 'post_status' => 'publish',
+                   'post_date_gmt' => gmdate('Y-m-d H:i:s', time() - 3600)),
+);
+
+$confirm_signup('daily-only@example.com', array('layoff'), 'daily');
+$confirm_signup('weekly-only@example.com', array('layoff'), 'weekly');
+// One person taking BOTH tiers, by their own two choices: the layoff box
+// daily and the articles box weekly. The form carries one frequency, so the
+// second is set the way a later preferences change leaves it.
+$confirm_signup('both-tiers@example.com', array('layoff', 'articles'), 'daily');
+$wpdb->pdo->exec("UPDATE wp_alt_subscribers SET freq_articles = 'weekly'
+                  WHERE email = 'both-tiers@example.com'");
+
+/*
+  DIGESTS ONLY. Each of the three signups above sent one confirmation email to
+  the same address, and counting from zero would score that as a digest and
+  make every number here one too high.
+*/
+$count_all = function ($address) use (&$mails) {
+    $n = 0;
+    foreach ($mails as $m) { if (($m['to'] ?? '') === $address) $n++; }
+    return $n;
+};
+$baseline = array();
+foreach (array('daily-only@example.com', 'weekly-only@example.com',
+               'both-tiers@example.com') as $__a) {
+    $baseline[$__a] = $count_all($__a);
+}
+$mails_to = function ($address) use ($count_all, $baseline) {
+    return $count_all($address) - (int) ($baseline[$address] ?? 0);
+};
+
+// Pass one: the daily tier, which is every day including Monday. On any other
+// day of the week this is the whole run.
+alt_digest_send('daily');
+$monday['after_daily_pass'] = array(
+    'daily_only'  => $mails_to('daily-only@example.com'),
+    'weekly_only' => $mails_to('weekly-only@example.com'),
+    'both_tiers'  => $mails_to('both-tiers@example.com'),
+);
+
+// Pass two: the weekly tier, which runs ADDITIONALLY on a Monday.
+alt_digest_send('weekly');
+$monday['after_weekly_pass'] = array(
+    'daily_only'  => $mails_to('daily-only@example.com'),
+    'weekly_only' => $mails_to('weekly-only@example.com'),
+    'both_tiers'  => $mails_to('both-tiers@example.com'),
+);
+
+// Each tier has its own send row. One row for two tiers would report half.
+$monday['send_row_freqs'] = array_map(
+    function ($r) { return $r['freq']; },
+    (array) $wpdb->get_results('SELECT freq FROM wp_alt_digest_sends ORDER BY id', ARRAY_A));
+
+// And the same day again changes nothing: the per tier guard holds inside the
+// period, so a re-run cannot put a second copy in anybody's inbox.
+alt_digest_send('daily');
+alt_digest_send('weekly');
+$monday['after_a_rerun'] = array(
+    'daily_only'  => $mails_to('daily-only@example.com'),
+    'weekly_only' => $mails_to('weekly-only@example.com'),
+    'both_tiers'  => $mails_to('both-tiers@example.com'),
+);
+
+/* The RELAY path, which is what actually sends today. Same two passes, driven
+   through the two keyed routes the GitHub Action calls. */
+if (function_exists('alt_api_digest_recipients') && function_exists('alt_api_digest_complete')) {
+    $wpdb->pdo->exec('UPDATE wp_alt_subscribers
+                      SET last_sent_at = NULL, last_sent_daily = NULL,
+                          last_sent_weekly = NULL');
+    unset($GLOBALS['__options']['alt_digest_external_claim']);
+
+    $ask = function ($freq) {
+        $req = new WP_REST_Request('GET', '/layoffs/v1/digest-recipients');
+        $req->set_param('freq', $freq);
+        return (array) alt_api_digest_recipients($req)->get_data();
+    };
+    $addresses = function ($data) {
+        return array_map(function ($r) { return $r['email']; },
+                         (array) ($data['recipients'] ?? array()));
+    };
+    $complete = function ($data, $freq) {
+        $req = new WP_REST_Request('POST', '/layoffs/v1/digest-complete');
+        $req->set_json_params(array(
+            'send_id' => (int) ($data['send_id'] ?? 0),
+            'freq' => $freq,
+            'eligible' => count((array) ($data['recipients'] ?? array())),
+            'sent_ids' => array_map(function ($r) { return (int) $r['id']; },
+                                    (array) ($data['recipients'] ?? array())),
+            'failed' => 0, 'transport' => 'fake',
+        ));
+        return alt_api_digest_complete($req)->get_data();
+    };
+
+    $daily_data = $ask('daily');
+    $monday['relay_daily_recipients'] = $addresses($daily_data);
+    $complete($daily_data, 'daily');
+    // THE ONE THAT MATTERED. The daily pass has just stamped everyone it
+    // mailed. The weekly pass must still see its own subscribers, including
+    // the person who takes both.
+    $weekly_data = $ask('weekly');
+    $monday['relay_weekly_recipients'] = $addresses($weekly_data);
+    $complete($weekly_data, 'weekly');
+
+    // Neither pass consumed the other's lease.
+    $monday['claims_after_both'] = array(
+        'daily'  => alt_digest_external_active('daily'),
+        'weekly' => alt_digest_external_active('weekly'),
+    );
+    // And a second ask inside the same period returns nobody, for either tier.
+    $monday['relay_daily_rerun'] = $addresses($ask('daily'));
+    $monday['relay_weekly_rerun'] = $addresses($ask('weekly'));
+    unset($GLOBALS['__options']['alt_digest_external_claim']);
+}
+$out['monday'] = $monday;
+$GLOBALS['__posts'] = array();
 
 // 12. No table, no numbers: UNKNOWN, never a zero.
 $wpdb->pdo->exec('DROP TABLE wp_alt_subscribers');

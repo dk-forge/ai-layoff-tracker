@@ -1,5 +1,73 @@
 # Tech Log
 
+## 2026-08-17 - the daily digest never went out on a Monday (2.20.84)
+
+**What the owner saw.** "I also didn't get my daily emails?" He was right, and
+it had been true every Monday since the relay was armed.
+
+**The defect.** `railway/digest_send.py` `resolve_freq()` returned ONE tier per
+run, and on a Monday it returned `weekly`. The workflow runs once a day, so the
+tier this function picked was the only tier that went out. Every daily
+subscriber received nothing on a Monday, silently, every week. The function's
+own docstring described the intended behaviour the whole time: "daily every
+day, weekly additionally on Mondays". Confirmed live: the scheduled run
+32036855542 logged `freq=weekly` and `0 eligible`.
+
+**The second defect, which the first one hid.** Running both tiers was not
+enough. `last_sent_at` was a single column and both tiers read it, so on a
+Monday the first pass stamped every row it mailed and the second pass found the
+same people already sent to. A subscriber taking the layoff list daily and the
+articles list weekly would have received one email instead of two: the same
+silence wearing a different shape. **The built-in wp_mail sender had this
+defect already** - `alt_digest_cron_run()` has always called both tiers on a
+Monday, and the weekly call has always found an empty list.
+
+**The fix, in three parts.**
+
+- `resolve_freqs()` returns a TUPLE of tiers: `("daily", "weekly")` on a
+  Monday, `("daily",)` otherwise. `DIGEST_FREQ` still forces exactly one tier
+  on any day, because that is what the dispatch input is for.
+- `main()` runs one independent pass per tier inside the SAME scheduled run.
+  The schedule is untouched: one cron, one job, two passes. Each pass gets its
+  own send row, its own lease and its own recipient list, because the server
+  keys all three by frequency already. `DIGEST_LIMIT` is one ceiling for the
+  whole run, not one per tier, so a Monday cannot quietly double the only
+  brake a first live send has.
+- The per-period guard is now PER TIER: `last_sent_daily` and
+  `last_sent_weekly`, chosen by `alt_digest_last_sent_column($freq)`, read by
+  `alt_digest_due_rows()` and written by both senders. `last_sent_at` is still
+  written beside them and is no longer read by the guard, so a rollback to an
+  older plugin build still holds the line rather than mailing the whole list
+  again. The deploy back-fills both columns from `last_sent_at`, because a
+  NULL would make every confirmed row due for both tiers on the day of the
+  repair.
+
+**A subscriber who takes both tiers now gets two emails on a Monday.** That
+follows from their own two choices and it is not merged. Merging would need
+the daily pass to know what the weekly pass is about to send, which is real
+complexity for an edge case.
+
+**How it is held.** `tests/test_digest_subscription.py BothTiersOnAMonday`
+drives BOTH passes through the real handlers and the real relay routes: a
+daily-only subscriber, a weekly-only subscriber, and one taking both. It reads
+1 / 0 / 1 after the daily pass and 1 / 1 / 2 after the weekly one, checks that
+recording the daily send does not hide anybody from the weekly ask, and checks
+that neither pass consumes the other's lease. `tests/test_digest_sender.py`
+holds the tier resolution, the two recipient calls a Monday makes, and the
+per-tier column in both the query and the recording route. Every one of them
+was red against the code as shipped.
+
+**Open, not fixed here: an unsubscribe can happen with no human present.**
+`alt_digest_unsubscribe()` writes the row BEFORE it looks at the request
+method, so a plain GET unsubscribes. The confirmation email carries the
+unsubscribe URL in its body, one line under the confirm URL. A corporate link
+scanner that fetches both URLs at delivery confirms the address and then
+unsubscribes it, and the health digest's "3 subscribers, 2 unsubscribed" is
+consistent with exactly that. The RFC 8058 POST path is correct and must stay
+one click. Writing it up rather than changing it: the repair adds a click for
+real readers, and that is the owner's call. See the finding in this session's
+report.
+
 ## 2026-08-17 - the coverage claim becomes a measurement that recomputes itself (railway + docs, no deploy)
 
 **The problem, stated as the owner would hear it.** Three stated goals - match

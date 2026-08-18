@@ -1648,6 +1648,19 @@ put two copies in one inbox. Do not add a recipient query anywhere else.
   breaks the published privacy note (an image, a remote fetch, a missing
   unsubscribe header). That is a defect in this repo, never a provider
   problem, and it is not retried. Fix the composer.
+- **A whole tier got nothing on one day of the week**: read the run log for
+  the tiers it opened with. `digest-send.yml` runs once a day and
+  `resolve_freqs()` decides which tiers go out inside it: daily every day,
+  weekly as well on a Monday, as two independent passes. A log that names one
+  tier on a Monday is the 2026-08-17 defect returning. Do NOT answer it by
+  adding a second cron line. One schedule is the point, and the fix belongs in
+  `resolve_freqs()`.
+- **Somebody who takes two tiers got one email on a Monday**: the per-period
+  guard has gone back to being shared. It must read
+  `alt_digest_last_sent_column($freq)`, so `last_sent_daily` and
+  `last_sent_weekly` each keep their own clock. A single `last_sent_at` lets
+  whichever pass runs first hide every subscriber from the second, which is
+  the same silence in a different shape.
 
 ### Changing any copy in the signup (READ THIS FIRST, it has broken four times)
 

@@ -21,9 +21,10 @@
  *                             already sent to in this period.
  *
  *   POST /digest-complete     keyed. Records what actually went out: the send
- *                             row's counts and last_sent_at per row id. Takes
- *                             IDS, never addresses, so the recording half of
- *                             the loop cannot leak one.
+ *                             row's counts, and the tier's own last-sent
+ *                             stamp per row id. Takes IDS, never addresses,
+ *                             so the recording half of the loop cannot leak
+ *                             one.
  *
  *   POST /digest-webhook      NOT key gated, because a provider cannot send
  *                             our key. Verified by the provider's own
@@ -47,9 +48,11 @@
  *   1. A lease. /digest-recipients stamps a claim, and the WP-Cron sender
  *      stands down for any tier claimed within ALT_DIGEST_CLAIM_HOURS. If the
  *      Action stops running, the claim ages out and wp_mail resumes by itself.
- *   2. A per period guard, in BOTH senders. A row whose last_sent_at falls
- *      inside the current period is not due, so even two senders racing on the
- *      same minute cannot put two copies in one inbox.
+ *   2. A per period guard, in BOTH senders. A row already sent to inside this
+ *      TIER'S current period is not due, so even two senders racing on the
+ *      same minute cannot put two copies in one inbox. The guard is per tier
+ *      because Monday runs both, and one shared stamp let the first pass hide
+ *      every subscriber from the second (fixed 2026-08-17).
  */
 
 if (!defined('ABSPATH')) exit;
@@ -245,9 +248,15 @@ function alt_api_digest_complete($request) {
     if ($ids && alt_digest_table_present(alt_subscribers_table())) {
         $now = gmdate('Y-m-d H:i:s');
         $place = implode(',', array_fill(0, count($ids), '%d'));
+        // THE TIER'S OWN STAMP, because on a Monday both tiers run and a
+        // shared one let the first pass hide everybody from the second.
+        // last_sent_at is written beside it, unread by the guard, so an
+        // older plugin build rolled back into place still holds the line.
+        $stamp = alt_digest_last_sent_column($freq);
         $stamped = (int) $wpdb->query($wpdb->prepare(
-            'UPDATE ' . alt_subscribers_table() . " SET last_sent_at = %s WHERE id IN ($place)",
-            array_merge(array($now), $ids)));
+            'UPDATE ' . alt_subscribers_table()
+            . " SET $stamp = %s, last_sent_at = %s WHERE id IN ($place)",
+            array_merge(array($now, $now), $ids)));
     }
     if ($send_id > 0 && alt_digest_table_present(alt_digest_sends_table())) {
         $wpdb->update(alt_digest_sends_table(),

@@ -457,6 +457,75 @@ class BehaviouralGuards(unittest.TestCase):
 
 
 @unittest.skipUnless(_php(), "php not installed")
+class BothTiersOnAMonday(unittest.TestCase):
+    """Monday sends the daily tier AND the weekly tier, and neither eats the other.
+
+    THE DEFECT, 2026-08-17. The relay chose one tier per run and chose weekly
+    on a Monday, so every daily subscriber received nothing on a Monday. The
+    first repair, running both tiers, was not enough on its own: last_sent_at
+    was one column for both tiers, so whichever pass ran first marked the
+    subscriber as already sent to and the second pass skipped them. That is
+    the same silence wearing a different shape, so the guard is per tier and
+    these read it through the real handlers.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE, DIGEST_API],
+                              capture_output=True, text=True, timeout=60)
+        assert proc.returncode == 0, proc.stderr or proc.stdout
+        cls.m = json.loads(proc.stdout)["monday"]
+
+    def test_the_daily_pass_alone_is_what_every_other_day_looks_like(self):
+        after = self.m["after_daily_pass"]
+        self.assertEqual(after["daily_only"], 1,
+                         "a daily subscriber gets one email on any day")
+        self.assertEqual(after["weekly_only"], 0,
+                         "a weekly subscriber gets nothing on a Tuesday")
+        self.assertEqual(after["both_tiers"], 1,
+                         "the daily half of a both-tiers subscription")
+
+    def test_the_weekly_pass_still_finds_everyone_it_should(self):
+        after = self.m["after_weekly_pass"]
+        self.assertEqual(after["daily_only"], 1,
+                         "the weekly pass must not mail a daily-only subscriber")
+        self.assertEqual(after["weekly_only"], 1,
+                         "a weekly subscriber gets their one email on Monday")
+        self.assertEqual(after["both_tiers"], 2,
+                         "two subscriptions at two cadences is two emails, and "
+                         "the daily pass must not have consumed the weekly one")
+
+    def test_each_tier_opens_its_own_send_row(self):
+        self.assertEqual(self.m["send_row_freqs"], ["daily", "weekly"])
+
+    def test_running_the_same_day_twice_sends_nobody_a_second_copy(self):
+        self.assertEqual(self.m["after_a_rerun"], self.m["after_weekly_pass"])
+
+    def test_the_relay_hands_out_each_tier_to_its_own_subscribers(self):
+        self.assertEqual(sorted(self.m["relay_daily_recipients"]),
+                         ["both-tiers@example.com", "daily-only@example.com"])
+        self.assertEqual(sorted(self.m["relay_weekly_recipients"]),
+                         ["both-tiers@example.com", "weekly-only@example.com"])
+
+    def test_recording_the_daily_send_does_not_hide_the_weekly_one(self):
+        """The per period guard, read where it actually broke.
+
+        /digest-complete stamps the rows the daily pass mailed. The weekly
+        ask happens after that, so this is the exact ordering the live job
+        performs on a Monday.
+        """
+        self.assertIn("both-tiers@example.com", self.m["relay_weekly_recipients"])
+
+    def test_neither_pass_consumes_the_other_lease(self):
+        self.assertTrue(self.m["claims_after_both"]["daily"])
+        self.assertTrue(self.m["claims_after_both"]["weekly"])
+
+    def test_asking_twice_in_one_period_returns_nobody(self):
+        self.assertEqual(self.m["relay_daily_rerun"], [])
+        self.assertEqual(self.m["relay_weekly_rerun"], [])
+
+
+@unittest.skipUnless(_php(), "php not installed")
 class TheArticlesList(unittest.TestCase):
     """The third consent box, driven end to end.
 

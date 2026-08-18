@@ -256,6 +256,8 @@ function alt_db_install() {
         confirmed_at DATETIME NULL,
         unsubscribed_at DATETIME NULL,
         last_sent_at DATETIME NULL,
+        last_sent_daily DATETIME NULL,
+        last_sent_weekly DATETIME NULL,
         PRIMARY KEY (id),
         UNIQUE KEY email (email),
         KEY status (status),
@@ -263,6 +265,28 @@ function alt_db_install() {
         KEY unsub_token (unsub_token),
         KEY status_created (status, created_at)
     ) $charset;");
+
+    /*
+      ONE LAST-SENT STAMP PER TIER, added 2026-08-17.
+
+      last_sent_at was a single column and both tiers read it, so on a Monday
+      the two passes suppressed each other: whichever ran first stamped the
+      row, and the second found the same person already sent to. A subscriber
+      taking both cadences then got one email instead of two, silently, every
+      Monday. See alt_digest_last_sent_column() in includes/subscribe.php.
+
+      last_sent_at is still written by both senders. It is what an older
+      plugin build reads, so a rollback still guards correctly rather than
+      mailing the whole list again.
+
+      The back-fill below runs once, on the deploy that adds the columns. A
+      NULL would make every confirmed row due for both tiers immediately, and
+      a duplicate on the day of a repair is the one outcome worth avoiding.
+    */
+    $wpdb->query("UPDATE $subscribers SET last_sent_daily = last_sent_at
+                  WHERE last_sent_daily IS NULL AND last_sent_at IS NOT NULL");
+    $wpdb->query("UPDATE $subscribers SET last_sent_weekly = last_sent_at
+                  WHERE last_sent_weekly IS NULL AND last_sent_at IS NOT NULL");
 
     // Digest send log. One row per send RUN (not per recipient), so the stats
     // route can answer "when did the last digest go out and to how many" from

@@ -24,6 +24,14 @@ name: Send email digest
 # 13:10 UTC daily, ten minutes after the site's own WP-Cron slot, so if this
 # job is armed it claims the tier and the built in wp_mail sender stands down
 # for that day rather than both sending.
+#
+# ONE SCHEDULE, AND ON A MONDAY TWO PASSES INSIDE IT. digest_send.py sends the
+# daily tier every day and the weekly tier additionally on Mondays, as two
+# independent passes in this same run. Do not add a second cron line for the
+# weekly tier: two schedules is two things to watch, and the reason this slot
+# is ten minutes after the site's own is that there is exactly one of them.
+# Until 2026-08-17 the job picked ONE tier and picked weekly on a Monday, so
+# every daily subscriber got nothing on a Monday. See docs/TECHLOG.md.
 
 on:
   schedule:
@@ -35,7 +43,7 @@ on:
         required: false
         default: '1'
       freq:
-        description: 'daily, weekly, or blank for auto (weekly on Mondays)'
+        description: 'daily, weekly, or blank for auto (both tiers on Mondays)'
         required: false
         default: ''
       limit:
