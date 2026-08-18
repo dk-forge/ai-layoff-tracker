@@ -83,7 +83,7 @@ HARNESS = os.path.join(HERE, "fixtures", "digest_compose_harness.php")
 PHP = shutil.which("php")
 
 # A four-digit year is the scope token. Every window this email can describe
-# is rendered with one, whether it is a range, a single day, or "2026 so far".
+# is rendered with one, whether it is a range, a single day, or "YTD 2026".
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
 
 # A data figure: a number wearing the unit it counts. This is deliberately
@@ -313,7 +313,7 @@ class NoHeadlineFigureLeavesItsGeographyToBeInferred(unittest.TestCase):
         fixture["layoff"]["top_countries"] = [
             _tuple("United States", verified, verified)]
         section = compose(fixture)
-        period = section["text"].split("\n2026 so far")[0]
+        period = section["text"].split("\nYTD 2026")[0]
         self.assertIn(GEO, period.splitlines()[1])
         self.assertNotIn("no country recorded", period,
                          "every verified cut in this window carries a "
@@ -371,9 +371,9 @@ class EveryFigureNamesItsWindow(unittest.TestCase):
         """It used to sit above a period-scoped country list. Every figure
         names itself now, so this is belt and braces, but the belt is cheap."""
         self.assertLess(self.text.index("Where the jobs were"),
-                        self.text.index("2026 so far"))
+                        self.text.index("YTD 2026"))
         self.assertLess(self.text.index("Which industries"),
-                        self.text.index("2026 so far"))
+                        self.text.index("YTD 2026"))
 
     def test_the_basis_and_the_tier_travel_with_the_headline(self):
         lede = self.text.splitlines()[1]
@@ -460,8 +460,12 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         """One of the two fixture leaders has no permalink, because a WARN row
         bulk-imported without a post does not get one."""
         text = compose(layoff_fixture())["text"]
+        # SINGULAR, since exactly one of the two links. The delivered digest
+        # of 2026-08-18 read "1 of the 5 companies listed ... link to an entry
+        # page" and the owner named it: a count driving a plural verb is the
+        # cheapest way for a citable product to read as machine output.
         self.assertIn("1 of the 2 companies listed for 9 to 16 August 2026 "
-                      "link to an entry page", text)
+                      "links to an entry page", text)
 
     def test_a_window_it_cannot_date_composes_nothing_at_all(self):
         """A section that cannot say what it covers does not go out."""
@@ -652,7 +656,7 @@ class TheEmailCanBeCited(unittest.TestCase):
         self.assertIn("a correction can lower it", self.text)
 
     def test_the_citation_block_is_the_last_thing_in_the_section(self):
-        self.assertLess(self.text.index("2026 so far"),
+        self.assertLess(self.text.index("YTD 2026"),
                         self.text.index("Cite this"))
 
 
@@ -701,7 +705,8 @@ class TheBiggestCutsTableDeclaresItsTier(unittest.TestCase):
 
     def test_the_caption_counts_them_and_says_they_are_outside_the_headline(self):
         text = compose(layoff_fixture())["text"]
-        self.assertIn("1 of these 2 are announcements, marked below, and sit "
+        # Singular, for the same reason as the entry-page claim above.
+        self.assertIn("1 of these 2 is an announcement, marked below, and sits "
                       "outside the verified figure above", text)
 
     def test_a_table_with_no_announced_row_says_verified_only(self):

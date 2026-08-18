@@ -275,8 +275,10 @@ function alt_fuzzy_dupe_exists($company, $date) {
  * Canonicalize country names: "US"/"USA" -> "United States", "UK" -> "United
  * Kingdom", and vague regions or multi-country phrases ("Global", "Europe",
  * "North America", "India and US") -> "Multiple countries", because splitting
- * one event across countries would double-count the jobs. Unknown single
- * countries are returned unchanged (never lose data).
+ * one event across countries would double-count the jobs. US STATE NAMES fold
+ * to "United States": a state is not a country, and letting one through put
+ * "North Carolina" in the digest's country table (see the block inside).
+ * Unknown single countries are returned unchanged (never lose data).
  */
 function alt_normalize_country($name) {
     $raw = trim((string) $name);
@@ -297,6 +299,55 @@ function alt_normalize_country($name) {
         'turks and caicos' => 'Turks and Caicos Islands',
     );
     if (isset($and_countries[$k])) return $and_countries[$k];
+
+    /*
+      A US STATE IS NOT A COUNTRY, and until 2026-08-18 this function let one
+      through. The rule below it says "unknown single countries are returned
+      unchanged (never lose data)", which is right for a country nobody
+      thought to map and wrong for a value that is not a country at all. The
+      cost was public: the daily digest of 2026-08-18 printed
+
+          Where the jobs were
+            United States    365 jobs
+            North Carolina     1 job
+
+      under a heading that says these are countries, and the tracker page's
+      country filter carried the same value. The row was real (an NC WARN
+      notice whose site is in Lexington KY), so it was a bad ROW and not a bad
+      render, and it entered through /edit, the one path a human drives. Every
+      collector hard-codes country => "United States" and /enrich-context
+      writes only employer_country, so nothing automated can produce this. It
+      still has to be impossible rather than unlikely: /edit, /add, /bulk and
+      the country FILTER all normalise through this one function, so a guard
+      here closes the class on every path at once, in both directions (a
+      reader who filters on "Kentucky" now gets the United States rows rather
+      than an empty page pointing at a value that should not exist).
+
+      GEORGIA IS DELIBERATELY ABSENT. It is a real country as well as a US
+      state, and folding it would lose a country to save a state. A Georgian
+      row is the more likely meaning of the word in a COUNTRY column, so it is
+      left alone; a US-Georgia row is caught by its `state` column instead.
+      District of Columbia is included because nothing else claims the name.
+      US territories (Puerto Rico, Guam) are left alone on purpose: they are
+      routinely counted as separate jurisdictions and calling one "United
+      States" here would be a judgement, not a normalisation.
+    */
+    static $us_states = null;
+    if ($us_states === null) {
+        $us_states = array_flip(array(
+            'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado',
+            'connecticut', 'delaware', 'district of columbia', 'florida',
+            'hawaii', 'idaho', 'illinois', 'indiana', 'iowa', 'kansas',
+            'kentucky', 'louisiana', 'maine', 'maryland', 'massachusetts',
+            'michigan', 'minnesota', 'mississippi', 'missouri', 'montana',
+            'nebraska', 'nevada', 'new hampshire', 'new jersey', 'new mexico',
+            'new york', 'north carolina', 'north dakota', 'ohio', 'oklahoma',
+            'oregon', 'pennsylvania', 'rhode island', 'south carolina',
+            'south dakota', 'tennessee', 'texas', 'utah', 'vermont',
+            'virginia', 'washington', 'west virginia', 'wisconsin', 'wyoming',
+        ));
+    }
+    if (isset($us_states[$k])) return 'United States';
 
     $map = array(
         'us' => 'United States', 'usa' => 'United States', 'united states' => 'United States',
