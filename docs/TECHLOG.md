@@ -36,10 +36,24 @@ says "it exceeded". It would have answered "ordinary cancellation" for every
 self-timeout, which is the bug again with more code. Hence the explicit marker
 constant and a round-trip test.
 
-**Proved, not assumed.** `self_heal.py gate --run-id 32099117561 --conclusion
-cancelled` now prints `heal: yes` with the real cause `it exceeded the maximum
-execution time of 15m0s`; the same gate against run 31929706775 (a genuine
-externally-cancelled deploy) prints `heal: no`. Both against the live API.
+**Proved, not assumed — in three places.**
+1. `self_heal.py gate --run-id 32099117561 --conclusion cancelled` prints
+   `heal: yes` with the real cause `it exceeded the maximum execution time of
+   15m0s`, read from that run's real annotations; the same gate against run
+   31929706775 (a genuine externally-cancelled deploy) prints `heal: no`.
+2. **The event filter, end to end on GitHub.** A `Card contract` run on main was
+   deliberately cancelled, and Self-heal run **32106854984** conclusion
+   `success` - the heal job RAN, where before this change the job condition was
+   false and every such run was `skipped`. Its gate printed `heal: no —
+   cancelled by something OUTSIDE the job`, and nothing was spent: the armed
+   step is gated on `heal == 'yes'`.
+3. The unit suite pins both directions plus the round-trip.
+
+What is NOT proved end to end is a real self-timeout arriving as a live
+`workflow_run` event and being healed, because manufacturing one would arm a
+real (paid) healer run against a problem this commit already fixed. The gate is
+the only thing that differs by conclusion, and it has been run against the real
+self-timeout's real annotations.
 
 **The sibling repo had the identical gate and the identical blind spot**, and
 carries the same fix (its `cancelled` also covers talent-collect lock
