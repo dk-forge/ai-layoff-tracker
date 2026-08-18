@@ -1,5 +1,138 @@
 # Tech Log
 
+## 2026-08-18 - the healer was not slow, it was blind: its own concurrency group was eating the failures
+
+### The measurement that started it
+
+`ops_status.py [4]` reported `RED Tests` on main. The healer had been fixed
+that same day to admit `cancelled` runs, and TECHLOG carried an end-to-end
+proof that a cancelled run reaches it. Both of those hold - re-verified here
+against the live API, not trusted:
+
+- Self-heal run **32106854984**: event `workflow_run`, branch main, conclusion
+  `success`, and the `heal` job actually RAN. Before the fix the job condition
+  was false and every such run was `skipped`.
+- `self_heal.py gate --run-id 32099117561 --conclusion cancelled` -> `heal: yes`,
+  cause `the job cancelled ITSELF on timeout-minutes: it exceeded the maximum
+  execution time of 15m0s`. The same gate on 31929706775 (a genuine outside
+  cancellation) -> `heal: no`.
+
+So the gate was right and the trigger was right, and the healer still did
+nothing about the red on main. The reason was one line above both of them.
+
+### 57 of the last 100 Self-heal runs were cancelled with ZERO jobs
+
+GitHub keeps at most ONE pending run per concurrency group. When a third run
+arrives while one is already waiting, the waiting one is cancelled - before any
+job starts, before the gate reads anything, before a decision exists to lose.
+This workflow triggers on `workflows: ['*']` and shared a single
+`group: self-heal` across the whole repo.
+
+Measured over one 90-minute window on 2026-08-18, the trigger traffic was:
+
+| triggering workflow | events | can the gate ever heal it? |
+|---|---|---|
+| CI failure alert | 116 | no - refused by name (NEVER_HEAL) |
+| Tests | 17 | yes |
+| Style standard | 17 | yes |
+| Card contract | 17 | yes |
+| Deploy WordPress plugin | 5 | yes |
+| Alert drain | 3 | no - refused by name |
+| everything else | 2 | yes |
+
+**Two thirds of the traffic was the alarm channel**, which the gate refuses by
+name anyway - but a refusal still needs a queue slot, and while it held one
+every other run in the group was cancellable. The group was saturated
+essentially all the time.
+
+The cost was not theoretical. The red `Tests` run on main completed at
+**23:35:14**; the Self-heal run created two seconds later, **32197798252**, was
+cancelled at 23:35:36 with `total_count: 0` jobs. The one genuinely healable
+failure of the evening was never gated, never diagnosed, never healed. The
+alarm channel had crowded out the alarm.
+
+### The fix: the group is keyed to the triggering run
+
+`group: self-heal-${{ github.event.workflow_run.id || github.run_id }}` - every
+group is a group of one, so nothing is ever cancelled while pending and EVERY
+failure reaches the gate.
+
+This costs nothing. A trigger the gate refuses by name now evaluates the job
+`if:` to false and concludes `skipped`, which consumes no runner minutes at
+all - where `cancelled` consumed a queue slot AND discarded a real decision.
+
+**Budget did not live there, and that was the misconception worth naming.** The
+group looked like spend control. It is not: it serialises runs, it does not
+bound them, and it cannot tell a paid heal from a free skip. The actual limits
+were always in the gate, where they are testable - one open PR per cause
+fingerprint (the branch name IS the fingerprint) and a hard `MAX_OPEN_PRS`
+ceiling, both already enforced in `self_heal.py` and pinned by tests. The paid
+step is additionally gated on `heal == 'yes'`, which is rare: 3 of the last 100
+runs. What the change gives up is serialisation of two SIMULTANEOUS distinct
+real failures on main; what it buys back is that either of them is seen at all.
+
+`test_one_healer_at_a_time` was deleted, because it had become a vacuous pass:
+it asserted the substring `group: self-heal`, which is a prefix of
+`group: self-heal-${{ ... }}`. It is replaced by
+`test_the_concurrency_group_cannot_discard_a_decision`, which asserts the
+property that actually matters.
+
+### The second gap: the guard did not forbid the things CLAUDE.md forbids by name
+
+`FORBIDDEN` is re-checked against the healer's real diff, so it is the only
+restraint that is a fact rather than a request. It listed 7 paths, and
+`railway/data_integrity.py` was not one of them - the file that defines every
+invariant and every tolerance. Nor were the committed baselines, the spend
+meters, the adjudication ledgers, the copy ceiling, or `self_heal.py` itself.
+
+The live-data GATE already refuses to heal a live-data FAIL, so the invariants
+were covered on that path. They were not covered on any OTHER path: a healer
+working an ordinary red had nothing stopping it reaching into
+`data_integrity.py` and widening a tolerance to make something green. That is
+the exact move CLAUDE.md forbids by name, after two individually correct guards
+agreed to erase an open incident on 2026-08-22.
+
+FORBIDDEN goes 7 -> 21 paths, grouped by why:
+
+- **spend and its meters** - `spend.py`, `spend_jobs.json`, `spend_month.json`.
+  Editing the ledger is editing the brake.
+- **the invariants and the state they stand on** - `data_integrity.py`,
+  `headline_incidents.json`, `headline_baseline.json`,
+  `recall_adjudications.json`, `warn_recall_adjudications.json`,
+  `deferral_ledger.json`.
+- **the copy standard and its ceiling** - `docs/STYLE.md`, `style_check.py`.
+  A 35-word sentence against a 30-word ceiling is MECHANICAL and the healer
+  should rewrite the sentence. Putting the checker out of reach while leaving
+  the page in reach is what makes the only available fix the correct one.
+- **the alarm channel** - `ci_alert.py`, `alert_outbox.json`, `ci-alert.yml`,
+  `alert-drain.yml`. NEVER_HEAL kept the healer off these workflows' failures;
+  this keeps it out of their code and state from any other failure.
+- **the healer itself** - `self-heal.yml`, `self_heal.py`,
+  `tests/test_self_heal.py`. A healer that can edit its own restraints has none.
+
+### What it may now fix that it could not before
+
+The mechanical class, added to the prompt as step 3c: when a failing assertion
+names the command that rebuilds a committed artifact ("X drifted from Y;
+regenerate with `python3 gen.py`"), the fix is to RUN THAT GENERATOR and commit
+exactly what it emits - not to hand-edit the generated file, and not to edit the
+test that noticed. It has one correct answer and the repo already knows it,
+which is precisely what makes it safe to automate. A cron moving and its
+generated consumer not being rebuilt is a defect the owner should never have
+been emailed about. Guard rail on the guard rail: if the generator changes files
+BEYOND the one the test named, the healer must stop and report instead - a
+generator with side effects is not the mechanical class.
+
+The boundary is now the same sentence in three places: mechanical (one correct
+answer the repo can produce) is healable; semantic (what we promise to check,
+how much drift we tolerate, whether an incident is closed, what we will spend)
+is a human's. It is stated in the prompt, enforced on the diff by `FORBIDDEN`,
+and pinned by `TheBoundaryIsMechanicalVersusSemantic` in
+`railway/tests/test_self_heal.py`, which restates the list BY HAND so that a
+path deleted from FORBIDDEN still fails a test instead of quietly becoming
+healable.
+
+
 ## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
 
 ### What was asked, and what the measurement said instead

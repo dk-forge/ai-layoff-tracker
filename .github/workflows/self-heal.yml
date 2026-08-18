@@ -50,8 +50,40 @@ permissions:
   # any additional access to this repo.
   id-token: write
 
+# ONE GROUP PER TRIGGERING RUN — never one shared group for the whole repo.
+#
+# A single `group: self-heal` looked like budget control and was in fact a
+# silent failure filter. GitHub keeps at most ONE pending run per concurrency
+# group: when a third run arrives while one is already waiting, the waiting one
+# is CANCELLED, before any job starts and before the gate has decided anything.
+# This workflow triggers on `workflows: ['*']`, and two thirds of that traffic
+# is the alarm channel itself — in one measured 90-minute window on 2026-08-18,
+# 116 of 177 trigger events were `CI failure alert`, which the gate refuses by
+# name anyway. The group was therefore saturated essentially all the time:
+# 57 of the last 100 Self-heal runs concluded `cancelled` with ZERO jobs.
+#
+# That is not a slow healer, it is a blind one. At 23:35:14 that day a real
+# `Tests` failure on main completed; the Self-heal run created two seconds
+# later (32197798252) was cancelled with zero jobs, so the one genuinely
+# healable failure of the evening was never gated, never diagnosed, and never
+# emailed as healed-or-not. The alarm channel had crowded out the alarm.
+#
+# Keying the group to the triggering run makes every group a group of one, so
+# nothing is ever cancelled while pending and EVERY failure reaches the gate.
+# This costs nothing: a trigger the gate refuses by name (the alarm channel,
+# the healer itself) now evaluates the job `if:` to false and concludes
+# `skipped`, which consumes no runner minutes at all — where `cancelled`
+# previously consumed a queue slot AND discarded a real decision.
+#
+# BUDGET IS UNCHANGED, because it never actually lived here. It lives in the
+# gate, which is where it can be tested: one open PR per cause fingerprint
+# (the branch name IS the fingerprint) and a hard ceiling of MAX_OPEN_PRS
+# simultaneous open healer PRs, both enforced in railway/self_heal.py and
+# pinned by tests/test_self_heal.py. The paid step is additionally gated on
+# `heal == 'yes'`, which is rare. Do NOT restore a shared group to "serialise
+# the spend": it does not bound the spend, and it demonstrably drops failures.
 concurrency:
-  group: self-heal
+  group: self-heal-${{ github.event.workflow_run.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -182,6 +214,22 @@ jobs:
                reason, and it belongs to a human. If measurement says the
                suite is honestly that big, open NOTHING and say so with the
                numbers.
+            3c. THE MECHANICAL CLASS — PREFER IT. If the failing assertion
+               names the command that rebuilds a committed artifact ("X
+               drifted from Y; regenerate with `python3 gen.py`", "the
+               generated file is stale", a checked-in file that a script in
+               this repo produces), then the fix is to RUN THAT GENERATOR and
+               commit exactly what it emits. Do not hand-edit the generated
+               file to match, and do not edit the test that noticed. Show the
+               generator's command and its output in the PR body, and confirm
+               the assertion is red before and green after. This class has one
+               correct answer and the repo already knows it, which is the whole
+               reason it is safe to automate — a cron moved and its generated
+               consumer was not rebuilt is a defect a human should never have
+               been emailed about. If running the generator changes files
+               BEYOND the one the test named, stop and report that instead:
+               a generator with side effects is not the mechanical class.
+
             4. If it is a code defect: fix it on a NEW branch named exactly
                `${{ steps.gate.outputs.branch }}`, and verify the failing
                test/assertion is red before your change and green after it.
@@ -197,10 +245,22 @@ jobs:
             if you break these, so breaking them only wastes the attempt:
             - never merge anything, never push to main, never `gh workflow run`
               or re-run any workflow, never edit workflow permissions;
-            - never touch: railway/spend.py, railway/headline_incidents.json,
-              railway/alert_outbox.json, railway/requirements.lock,
-              railway/requirements-min.lock, docs/HANDOFF.md,
-              .github/workflows/self-heal.yml;
+            - never touch any of these. The guard re-checks the real diff,
+              so editing one only wastes the attempt. Spend and its meters:
+              railway/spend.py, railway/spend_jobs.json,
+              railway/spend_month.json. The invariants and the human-owned
+              state they stand on: railway/data_integrity.py,
+              railway/headline_incidents.json, railway/headline_baseline.json,
+              railway/recall_adjudications.json,
+              railway/warn_recall_adjudications.json,
+              railway/deferral_ledger.json. The copy standard and its ceiling:
+              docs/STYLE.md, railway/style_check.py. The alarm channel:
+              railway/ci_alert.py, railway/alert_outbox.json,
+              .github/workflows/ci-alert.yml, .github/workflows/alert-drain.yml.
+              The hash-pinned locks: railway/requirements.lock,
+              railway/requirements-min.lock. The baton: docs/HANDOFF.md. The
+              healer itself: .github/workflows/self-heal.yml,
+              railway/self_heal.py, railway/tests/test_self_heal.py;
             - never widen a ceiling, floor, timeout, staleness bound or
               invariant to make a red go green — a loosened guardrail is a
               masked failure, not a fix;
