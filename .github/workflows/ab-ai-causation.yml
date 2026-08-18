@@ -1,0 +1,81 @@
+name: A/B AI causation (gold set)
+
+# Did the 2026-08-07 extraction-model swap degrade AI CAUSATION?
+#
+# `OPENROUTER_MODEL` moved to google/gemini-2.5-flash-lite on a news-EXTRACTION
+# gold set (30/30 counts, 0.388x cost). `MODEL` also governs `ai_explicit` --
+# extractor.py sets it in the full extraction and again in
+# classify_ai_evidence(), both on MODEL rather than CLASSIFY_MODEL because
+# "AI-causation is correctness-critical". So the swap moved the classifier
+# behind the field this product is named after, and nothing measured that.
+#
+# MANUAL DISPATCH ONLY, and deliberately never scheduled: this spends money to
+# answer a question, it is not a data job. It posts nothing, edits nothing and
+# reports no source health -- no WP_API_KEY is passed, so it cannot.
+#
+# WHAT A RUN COSTS. 200 items x 3 models = 600 calls; ~48K prompt and ~12K
+# completion tokens per model. At the prices read live from OpenRouter's
+# keyless /models on 2026-08-18 that is $0.073 (deepseek-chat $0.025 +
+# gpt-4.1-mini $0.038 + flash-lite $0.010), against a named $0.150 per-run
+# ceiling. The run prints the provider's own billed figure, not this estimate.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Items to score (0 = the whole frozen corpus)'
+        required: false
+        default: '0'
+      dry_run:
+        description: 'Build every prompt, call nothing, spend nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # The same brake every paid job here honours. If the month is spent it
+      # sets ALT_PAID_READS=off, every call raises PaidReadsOff, the run reports
+      # that it decided nothing and exits 0 -- a budget stop is a deferral, not
+      # a failure. Stdlib only, so it needs no install.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+
+      - name: Install deps
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+
+      - name: Label and score (posts nothing)
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AIC_LIMIT: ${{ github.event.inputs.limit != '0' && github.event.inputs.limit || '' }}
+          AIC_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+          AIC_OUT: ${{ runner.temp }}/ai-causation.json
+        run: python ab_ai_causation.py
+
+      # The gold set and the review file are the whole point of the run and
+      # they are written into the checkout, which is thrown away. Upload both
+      # so a session can commit them; this job has no write permission and
+      # must not push.
+      - name: Upload the gold set and the review file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-causation-goldset
+          path: |
+            ${{ runner.temp }}/ai-causation.json
+            docs/recall-reference-sets/ai-causation-2026-08.goldset.json
+            docs/recall-reference-sets/ai-causation-2026-08.review.md
+          if-no-files-found: warn

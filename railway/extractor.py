@@ -586,19 +586,19 @@ def _quote_is_supported(quote, raw_text):
     return len(q) >= 12 and q in source
 
 
-def classify_ai_evidence(raw_text):
-    """Reassess only AI causation for an already-recorded event.
+# The AI-causation ask and the guard that admits its answer, lifted out of
+# classify_ai_evidence() so a HARNESS can score the production decision rule
+# instead of a copy of it (railway/ab_ai_causation.py, 2026-08-18). Two
+# functions rather than one string constant because the guard is half the rule:
+# a causal label without a verbatim receipt is downgraded to `unknown`, and a
+# scorer that skipped that step would be measuring a model this pipeline never
+# takes at its word. Nothing about the production call changes — it calls these.
+AI_CAUSATION_TEXT_LIMIT = 6000
 
-    Historical rows keep their source, count and date. This deliberately
-    narrow call avoids an LLM "correcting" unrelated fields while allowing a
-    fresh read of the linked document to replace an old keyword-based AI flag.
-    """
-    raw_text = (raw_text or "")[:6000]
-    if not raw_text.strip():
-        return None
-    if not spend.paid_reads_enabled():
-        return _defer_for_spend("AI-causation reassessment")
-    prompt = """Classify AI causation in this layoff source. Return STRICT JSON only:
+
+def ai_causation_prompt(raw_text):
+    """The exact user prompt the AI-causation call sends."""
+    return """Classify AI causation in this layoff source. Return STRICT JSON only:
 {"ai_causation":"primary_cause|contributing_cause|selection_or_operations|context_only|explicitly_denied|unknown","ai_language":"exact source phrase or null","confidence":0-100}
 
 AI is primary/contributing only if this text explicitly says AI, automation,
@@ -607,6 +607,51 @@ or use of AI in operations is not causal. Never infer. The phrase must be an
 exact quote from the supplied text.
 
 TEXT:\n""" + raw_text
+
+
+def finalize_ai_causation(result, raw_text):
+    """Admit (or downgrade) a model's raw AI-causation JSON.
+
+    Returns the stored shape, or None when the model did not return an object.
+    A causal label whose claimed quote is not verbatim in `raw_text` becomes
+    `unknown` — the guard that stops a fabricated or context-only quote
+    reaching the AI headline metric.
+    """
+    if not isinstance(result, dict):
+        return None
+    cause = result.get("ai_causation")
+    cause = cause if cause in AI_CAUSATION else "unknown"
+    quote = result.get("ai_language")
+    if cause in {"primary_cause", "contributing_cause"} and not _quote_is_supported(quote, raw_text):
+        cause, quote = "unknown", None
+    try:
+        confidence = max(0, min(100, int(result.get("confidence") or 0)))
+    except (TypeError, ValueError):
+        confidence = 0
+    return {"ai_causation": cause,
+            "ai_language": quote.strip() if isinstance(quote, str) else "",
+            "confidence": confidence}
+
+
+def ai_explicit_from_causation(cause):
+    """The single definition of `ai_explicit`, shared by the extraction path,
+    the reassessment path and anything scoring either of them."""
+    return cause in {"primary_cause", "contributing_cause"}
+
+
+def classify_ai_evidence(raw_text):
+    """Reassess only AI causation for an already-recorded event.
+
+    Historical rows keep their source, count and date. This deliberately
+    narrow call avoids an LLM "correcting" unrelated fields while allowing a
+    fresh read of the linked document to replace an old keyword-based AI flag.
+    """
+    raw_text = (raw_text or "")[:AI_CAUSATION_TEXT_LIMIT]
+    if not raw_text.strip():
+        return None
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("AI-causation reassessment")
+    prompt = ai_causation_prompt(raw_text)
     try:
         # MODEL (never CLASSIFY_MODEL): AI-causation is correctness-critical.
         # But MINI_SYSTEM, not SYSTEM_PROMPT: this narrow call carries its
@@ -624,18 +669,7 @@ TEXT:\n""" + raw_text
     except Exception as exc:
         print(f"AI evidence reassessment failed: {exc}")
         return None
-    if not isinstance(result, dict):
-        return None
-    cause = result.get("ai_causation")
-    cause = cause if cause in AI_CAUSATION else "unknown"
-    quote = result.get("ai_language")
-    if cause in {"primary_cause", "contributing_cause"} and not _quote_is_supported(quote, raw_text):
-        cause, quote = "unknown", None
-    try:
-        confidence = max(0, min(100, int(result.get("confidence") or 0)))
-    except (TypeError, ValueError):
-        confidence = 0
-    return {"ai_causation": cause, "ai_language": quote.strip() if isinstance(quote, str) else "", "confidence": confidence}
+    return finalize_ai_causation(result, raw_text)
 
 
 def extract_context_evidence(raw_text):
@@ -1084,7 +1118,7 @@ TEXT:
     if causation in {"primary_cause", "contributing_cause"} and not quote_supported:
         causation = "unknown"
     extracted["ai_causation"] = causation
-    extracted["ai_explicit"] = causation in {"primary_cause", "contributing_cause"}
+    extracted["ai_explicit"] = ai_explicit_from_causation(causation)
     # Announcement-stage vs executed/filed: SEC filings and WARN notices are by
     # definition filed events, so only news can carry the announced flag.
     extracted["announced"] = (
