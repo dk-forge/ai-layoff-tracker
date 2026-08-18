@@ -132,6 +132,103 @@ and pinned by `TheBoundaryIsMechanicalVersusSemantic` in
 path deleted from FORBIDDEN still fails a test instead of quietly becoming
 healable.
 
+## 2026-08-18 - two countries can now be measured exactly, and the useful half of the answer is which cannot
+
+### The claim that had no number
+
+`rolling_recall` measures one slice exactly: US SEC 8-K Item 2.05, where EDGAR
+enumerates the universe for a period. Everything else in the corpus was an
+opinion, and the stated goal is worldwide coverage that can be DEFENDED per
+country. A parallel pass built the per-country REGISTRY (which countries publish
+a countable total at all). This is the collectors for the ones that do.
+
+`railway/national_denominators.py` fetches the collective-redundancy totals
+published by the authority that RECEIVES the notifications, divides our own
+holdings for the same country and window by them, and reports the result the way
+`rolling_recall` reports its own: MEASURED / NOT MEASURABLE / UNKNOWN, a band
+rather than a point, an assessment that carries a date and expires, and a
+declared slice that says why it could not be computed instead of dropping out.
+Every state constant, the Wilson interval and the settle lag are IMPORTED from
+that module - nothing here is a second copy of a rule that lives there.
+
+### What is now measured, live, 2026-08-18
+
+| country | notified | we hold | coverage band |
+|---|---|---|---|
+| Great Britain (HR1, TULRCA 1992 s.193, 2025-07..2026-06) | 303,097 workers | 47,834..48,318 | **15.8% - 15.9%** |
+| Estonia (koondamisteated, Töötukassa, 2025-07..2026-06) | 2,941 workers | 695 | **23.6%** |
+
+Both denominators are the publisher's own universe rather than a sample, so
+anyone can download the same file and check the arithmetic. The band's ends are
+`country=X` (strict job location, misses global cuts that hit X) and
+`country_basis=any` (unions employer domicile, counts a global cut whole).
+
+Taiwan's series (大量解僱通報, ~11,752 workers over 337 plants in 2025) parses and
+was read by hand today; the module reports it UNKNOWN from this machine because
+OpenSSL 3.6 rejects the ministry's intermediate for carrying no Subject Key
+Identifier. That is an environment fact and it is reported as one - it is never
+to be cleared by disabling verification.
+
+### Four things this measurement refuses to do
+
+**It will not add two countries together.** Directive 98/59/EC lets each member
+state pick between two threshold formulations and go lower still; Sweden's floor
+is five workers, Croatia's twenty; Taiwan counts 廠場, so one company filing for
+four plants counts four times. `combine()` raises `IncomparableSeries` unless the
+unit AND the period match, and the test asserts the refusal. There is no
+worldwide percentage in the module and there must not be one.
+
+**It will not read the Taiwanese twin.** Dataset 27508 (大量解僱預警通報) sits
+beside 27505 with a near-identical title, is the wage-arrears early-warning
+tripwire under a different statute, and is keyed on Western years instead of ROC
+years. Its 2025 figures are 6,579 / 503,386 against 337 / 11,752 - a factor of
+43. The parser refuses a Western-year column rather than converting it, and the
+test fixture carries 27508's exact shape.
+
+**It will not sum a partial window.** ONS writes `[c]` for a confidential
+suppression; summed as zero it shrinks the denominator, which INFLATES our
+coverage - the direction a broken measurement must never fail in. A window
+missing any of its twelve months raises.
+
+**It will not report a ratio above 1.0 as coverage.** Our rows are not a subset
+of the notified population, so a ratio over 1 means the numerator left the
+denominator's universe. Northern Ireland proved it on the first run: the series
+is NI-only, our country vocabulary spells every NI row "United Kingdom", and the
+ratio came out at 177%. NI is therefore NOT MEASURABLE with the denominator
+still read and freshness-checked every run - a denominator with no matching
+numerator is not a measurement.
+
+### The negative findings, which are worth more than estimates
+
+Five countries publish a real total this project still cannot use, each recorded
+with its reason and an expiry:
+
+- **Netherlands** - current reports behind an Anubis proof-of-work wall. Not a
+  robots directive, and equally not ours to solve.
+- **Romania, Latvia** - annual PDF only. That is a lock question rather than a
+  parsing one: a PDF dependency in a hash-pinned lock for one country is not
+  worth it, and the lock exists because twenty workflows once installed
+  unverified packages next to two API keys.
+- **Poland, Iceland** - the publisher's page carries only the current period and
+  keeps no archive, so any history would be OURS. A denominator this project
+  assembles is not an independent denominator. Iceland is worse still: a month
+  with no collective redundancies gets no post at all, so absence is not zero.
+
+So the honest ceiling, stated plainly: **of every country surveyed, only a
+handful can ever be measured exactly, and today two of them are.** That is a
+more useful sentence than a table of estimates would have been.
+
+### Cost, robots, and what is not published
+
+$0.00. Seven file or API requests and eight `/aggregate` reads, all free and
+keyless; no model is called on any path. The .xlsx reader is a zip and some XML
+rather than openpyxl, so the measurement cannot break when the lock is
+refreshed. robots.txt was read before the first content request on every host;
+`apiservice.mol.gov.tw` rejects its own robots.txt through a WAF and serves the
+data to our identifying agent under an open licence, which is recorded as
+"permitted with the robots file unreadable" rather than as either a pass or a
+refusal. Nothing here reaches a reader-facing surface: the figures land in the
+repo and in `ops_status [3e]`, and what to claim publicly is the owner's call.
 
 ## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
 

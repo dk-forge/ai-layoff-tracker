@@ -1,0 +1,214 @@
+{
+  "declared_slices": [
+    "tw_mass_dismissal_notifications",
+    "gb_hr1_potential_redundancies",
+    "ee_collective_redundancy_notices",
+    "ni_proposed_redundancies",
+    "nl_collective_dismissal_notifications",
+    "ro_collective_dismissal",
+    "lv_collective_redundancy",
+    "pl_group_layoffs",
+    "is_hopuppsagnir"
+  ],
+  "measured_at": "2026-08-18T23:58:37Z",
+  "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
+  "slices": {
+    "ee_collective_redundancy_notices": {
+      "authority": "Eesti Töötukassa",
+      "cadence": "monthly",
+      "caveats": [
+        "the series is revised back to the start of the previous calendar year at every monthly release, and the whole history was revised in January 2025 — this collector re-reads the FULL history every run for that reason",
+        "'Teade 1' vs 'Teade 2' is undefined in the file's own legend; Teade 2 runs at 84-89% of Teade 1 every year, so they are two stages of one duty and are never summed. The wider one is used, which cannot flatter us"
+      ],
+      "confirmed_interval": [
+        0.22131070343552756,
+        0.2520056202675877
+      ],
+      "country": "Estonia",
+      "counts": "persons named in redundancy notices (notice type 'Teade 1')",
+      "coverage_lower": 0.23631417885073105,
+      "coverage_upper": 0.23631417885073105,
+      "denominator": 2941,
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "of the 2,941 workers notified to Eesti Töötukassa in 2025-07..2026-06, we hold between 695 (23.6%) and 695 (23.6%) jobs",
+      "held_detail": {
+        "entries_any": 4,
+        "entries_strict": 4
+      },
+      "held_jobs_any": 695,
+      "held_jobs_strict": 695,
+      "key": "ee_collective_redundancy_notices",
+      "label": "Estonia koondamisteated — recipients of collective redundancy notices filed with Töötukassa",
+      "licence": "CC BY-NC 3.0 — non-commercial. Used here to MEASURE, never republished to a reader-facing surface",
+      "period": {
+        "from": "2025-07-01",
+        "kind": "months_12",
+        "label": "2025-07..2026-06",
+        "to": "2026-06-30"
+      },
+      "period_age_days": 49,
+      "publisher_updated": "2026-08-07T10:04:45.938Z",
+      "robots": "avaandmed.eesti.ee and andmed.eesti.ee both serve no robots.txt (404). tootukassa.ee allows the statistics path with Crawl-delay: 10, and is not fetched by this collector",
+      "secondary": {
+        "note": "summed over 12 months, so an employer filing in two months counts twice",
+        "unit": "employers",
+        "value": 111
+      },
+      "source_url": "https://andmed.eesti.ee/api/v2/datasets/4c2af1b0-711a-4b7f-9751-be90f8963a5e/distribution/38d297d0-4f7b-4d26-b31a-f93261952221/file",
+      "state": "measured",
+      "unit": "workers"
+    },
+    "gb_hr1_potential_redundancies": {
+      "authority": "Insolvency Service, published by ONS",
+      "cadence": "monthly",
+      "caveats": [
+        "POTENTIAL redundancies at the date the HR1 was received, not actual job losses, and not the month the redundancies take effect — it runs on a different clock from anything we date by event",
+        "GREAT BRITAIN ONLY. Northern Ireland is a separate regime and a separate slice. Our own country vocabulary has no GB/NI split, so this slice's NUMERATOR includes Northern Irish events while its denominator does not — a bias UPWARD on measured coverage, bounded by NI's small share",
+        "proposals under 20 are out of scope of the duty; TUPE, pension and contract-variation filings are stripped; agriculture is excluded",
+        "'[c]' marks confidential suppression and is read as MISSING, never 0",
+        "official statistics in development, and revisable"
+      ],
+      "confirmed_interval": [
+        0.15652388834418074,
+        0.15911971427655186
+      ],
+      "country": "United Kingdom",
+      "counts": "potential redundancies on HR1 forms, by month of RECEIPT",
+      "coverage_lower": 0.15781746437609082,
+      "coverage_upper": 0.15941431290972857,
+      "denominator": 303097,
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "of the 303,097 workers notified to Insolvency Service, published by ONS in 2025-07..2026-06, we hold between 47,834 (15.8%) and 48,318 (15.9%) jobs",
+      "held_detail": {
+        "entries_any": 18,
+        "entries_strict": 17
+      },
+      "held_jobs_any": 48318,
+      "held_jobs_strict": 47834,
+      "key": "gb_hr1_potential_redundancies",
+      "label": "Great Britain HR1 potential redundancies (TULRCA 1992 s.193)",
+      "licence": "Open Government Licence v3.0",
+      "period": {
+        "from": "2025-07-01",
+        "kind": "months_12",
+        "label": "2025-07..2026-06",
+        "to": "2026-06-30"
+      },
+      "period_age_days": 49,
+      "publisher_updated": "2026-08-17T23:00:00.000Z",
+      "robots": "ons.gov.uk serves no robots.txt (404) — no directive to obey",
+      "secondary": {
+        "note": "summed over 12 months, so an employer filing in two months counts twice",
+        "unit": "employers",
+        "value": 4057
+      },
+      "series_breaks": [
+        {
+          "from": "2027-01-01",
+          "why": "Employment Rights Act 2025 s.195A regulations widen the collective consultation duty beyond a single establishment. Expect a definitional step-change in HR1 volumes — a series break, not an anomaly"
+        }
+      ],
+      "source_url": "https://www.ons.gov.uk/file?uri=/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/hr1potentialredundancies/august2026/hr1aug2026.xlsx",
+      "state": "measured",
+      "unit": "workers"
+    },
+    "is_hopuppsagnir": {
+      "assessed_at": "2026-08-18",
+      "country": "Iceland",
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "monthly, as a prose news post, 1-3 days after month end — and a month with no collective redundancies gets NO POST AT ALL. Absence is therefore not zero, and a collector could never tell 'no cuts' from 'not published yet' or 'the post moved'. Combined with an unarchived prose format, that makes the series unusable as a denominator even though the underlying figure is real",
+      "key": "is_hopuppsagnir",
+      "label": "Iceland Vinnumálastofnun hópuppsagnir",
+      "state": "not_measurable"
+    },
+    "lv_collective_redundancy": {
+      "assessed_at": "2026-08-18",
+      "country": "Latvia",
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "published as PROSE inside an annual PDF report, roughly six months behind. Same lock objection as Romania, and worse: prose rather than a table, so the parse would be brittle as well as costly",
+      "key": "lv_collective_redundancy",
+      "label": "Latvia NVA collective redundancy notifications",
+      "state": "not_measurable"
+    },
+    "ni_proposed_redundancies": {
+      "authority": "NISRA, for the Department for the Economy",
+      "cadence": "annual",
+      "caveats": [
+        "a SEPARATE regime from GB, never a substitute for it. NI is the only part of the UK that publishes CONFIRMED redundancies as well as proposed, so no UK-wide confirmed figure exists",
+        "the final row of the published series is labelled as a financial year but is the rolling twelve months to the report month — it is excluded",
+        "rounded to the nearest 10; totals from fewer than 3 businesses withheld",
+        "our country vocabulary has no NI split, so this slice's numerator is the whole UK. It is reported as an UPPER-BOUND-ONLY comparison"
+      ],
+      "country": "United Kingdom",
+      "counts": "proposed redundancies, by financial year (April-March)",
+      "denominator": 2980,
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "the denominator IS published and was read live (2,980 workers, 2024/25), and no matching numerator exists: the denominator covers Northern Ireland alone and the tracker's country vocabulary has no NI split — every NI row is stored as 'United Kingdom'. A UK numerator over an NI denominator is not a coverage figure (it measured 177% on the first run). The denominator is read and kept fresh so that this becomes measurable the day rows carry a UK region",
+      "key": "ni_proposed_redundancies",
+      "label": "Northern Ireland proposed redundancies (Employment Rights (NI) Order 1996)",
+      "licence": "accredited official statistics, Open Government Licence",
+      "period": {
+        "from": "2024-04-01",
+        "kind": "financial_year_apr_mar",
+        "label": "2024/25",
+        "to": "2025-03-31"
+      },
+      "period_age_days": 505,
+      "publisher_updated": null,
+      "robots": "datavis.nisra.gov.uk serves no readable robots.txt. nisra.gov.uk's wildcard block names admin paths only. The XLSX is NOT fetched either way — the HTML report carries the same figures and a previous assessment recorded an xlsx disallow",
+      "secondary": {
+        "label": "confirmed redundancies (GB has no counterpart)",
+        "unit": "workers",
+        "value": 2370
+      },
+      "source_url": "https://datavis.nisra.gov.uk/economy-and-labour-market/labour-market-report-august-2026.html",
+      "state": "not_measurable",
+      "unit": "workers"
+    },
+    "nl_collective_dismissal_notifications": {
+      "assessed_at": "2026-08-18",
+      "country": "Netherlands",
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "the current reports sit behind an Anubis proof-of-work interstitial on cao.minszw.nl. A proof-of-work wall is not a robots directive but it is equally not ours to solve, so it is refused rather than defeated. The UWV January press release carries the headline (355 notifications / ~25,000 employees for 2025) as annual prose, which is a citation and not a series",
+      "key": "nl_collective_dismissal_notifications",
+      "label": "Netherlands WMCO collective dismissal notifications",
+      "state": "not_measurable"
+    },
+    "pl_group_layoffs": {
+      "assessed_at": "2026-08-18",
+      "country": "Poland",
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "published monthly on ssgk.stat.gov.pl, and the page carries ONLY the current month with no archive: the figures are Polish prose rounded to the nearest 0.1 thousand ('3,1 tys.'). A series could only be built by accumulating our own captures, at which point the denominator is ours and not the publisher's — the one thing this framework must not do. stat.gov.pl allows everything; psz.praca.gov.pl names ClaudeBot and disallows all, and is never fetched",
+      "key": "pl_group_layoffs",
+      "label": "Poland GUS zwolnienia grupowe (establishments and workers)",
+      "state": "not_measurable"
+    },
+    "ro_collective_dismissal": {
+      "assessed_at": "2026-08-18",
+      "country": "Romania",
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "published, and only inside an annual report PDF as a month-by-month table. Reading it needs a PDF dependency added to a hash-pinned lock for one country, and the lock exists because twenty workflows once installed unverified packages next to two API keys. Worth revisiting if a second PDF-only country becomes buildable at the same time",
+      "key": "ro_collective_dismissal",
+      "label": "Romania ANOFM collective dismissal notifications",
+      "state": "not_measurable"
+    },
+    "tw_mass_dismissal_notifications": {
+      "authority": "勞動部 (Ministry of Labor)",
+      "cadence": "annual",
+      "caveats": [
+        "家數 counts 廠場 (establishments/plants), so one company notifying for four sites counts four times — the establishment figure is NOT an employer count and must not be compared with GB's employer column",
+        "annual only, ROC years, roughly a six-month lag"
+      ],
+      "country": "Taiwan",
+      "counts": "workers notified, annually, by ROC year",
+      "denominator_basis": "national_notification_aggregate",
+      "detail": "TLS chain verification failed from THIS environment ([SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Missing Subject Key Identifier (_ssl.c:1081)) — the publisher's certificate chain is rejected by the local OpenSSL, which is an environment fact, not a coverage fact and not a source outage. UNKNOWN from here, and the workflow run is the place to check before treating it as a breakage. Verification is never to be disabled to clear this",
+      "key": "tw_mass_dismissal_notifications",
+      "label": "Taiwan 大量解僱通報 — plants and workers notified under the Act for Worker Protection of Mass Dismissal, art. 4",
+      "licence": "政府資料開放授權條款 (Open Government Data License), free reuse",
+      "robots": "apiservice.mol.gov.tw returns an F5 'Request Rejected' page for /robots.txt itself, so no directive could be read. The data endpoints answer 200 to our own identifying agent string under an explicit open-data licence, and no block aimed at agents was found. Recorded as PERMITTED WITH THE ROBOTS FILE UNREADABLE — if that ever becomes a 403 to this agent it is a refusal and stays one. statfy.mol.gov.tw was unreachable and its robots.txt has never been read: treat as NOT permitted",
+      "state": "unknown",
+      "unit": "workers"
+    }
+  }
+}
