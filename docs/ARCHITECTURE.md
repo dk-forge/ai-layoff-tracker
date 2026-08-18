@@ -106,6 +106,14 @@ automatable or licensed for reuse.
   revisions (Tyson 1,761 Amarillo). Aggregate job SUMs use `superset_of = 0` (headline/bars/monthly), so an event
   counts ONCE; the row LIST still shows every member (no lost site detail). Self-maintaining (daily), reversible
   (unmark). Live guard: `railway/tests/test_dedup_live.py`.
+  **Pass (3) does NOT group on `company_key`, and that is load-bearing** (TECHLOG 2026-08-18): it ran inside the
+  per-company loop from the day it shipped, and a state that republishes a notice writes the word into the employer
+  cell (`... Operations` vs `... Operations) Updated`), so the pair keys as two companies and a per-company pass can
+  never see it — it was a no-op for its own example for 25 days. It now runs over every WARN row and groups on
+  `alt_warn_revision_key()`, a revision-tolerant key used HERE AND NOWHERE ELSE (adding those words to
+  `alt_company_key` would change fuzzy dedup and the directory for every source, and would key "Revision Optics" as
+  `optics`). A leading marker is only stripped when a multi-token employer survives. Different sites at an equal
+  count stay separate, because the site is part of the employer cell (First Brands Darke vs Wood, 302 each, OH).
 - **Countries:** canonical "United States"/"United Kingdom"; regions & multi-country phrases
   ("Global", "Europe", "India and US") → **"Multiple countries"** (splitting would double-count).
   Real "and"-countries (Trinidad and Tobago…) are whitelisted first.
