@@ -196,7 +196,7 @@ class RequestUrlGuardTests(unittest.TestCase):
 class DormancyTests(unittest.TestCase):
     """Armed by committed default at a measured $2.27/month worst case (the
     derivation lives in ARMED_BY_DEFAULT's comment). Both directions are
-    pinned: a default that quietly disarms loses fifteen countries without a
+    pinned: a default that quietly disarms loses fourteen countries without a
     diff, and an off switch that quietly stops working makes every dry run a
     paid run."""
 

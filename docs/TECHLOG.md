@@ -1,5 +1,61 @@
 # Tech Log
 
+## 2026-08-18 - a correctly labelled feed that still collects nothing (2.20.92)
+
+Earlier the same day, `economynext_lk` was reclassified from `broke` to
+`unreachable`: it answers HTTP 202 to the collector's datacentre and HTTP 200
+to a laptop, so it is a bot wall keyed on an address range and there is no
+parser fault to fix. That was right, and it left the feed armed, degraded and
+collecting **zero rows**, with the arm-vs-retire question escalated. A correct
+label is not a fixed source, and neither retiring the publisher (Sri Lanka's
+only one in the catalogue) nor skipping it was an acceptable answer.
+
+### What was measured, in the order it was tried
+
+1. **Other paths on the same host.** `/feed/atom/` answers 200 with a body that
+   does not parse as a feed; the `wp-json/wp/v2/posts` endpoint the same;
+   `/category/economy/feed/` 404s. `robots.txt` was read first and permits
+   `/feed/`. No alternative path exists, and a path probed from a laptop proves
+   nothing about the runner's range anyway - the wall is on the address, not
+   the URL.
+2. **Is the content already arriving through a path we run?** It is. Asking the
+   Sri Lanka market's own committed queries against its own Google News
+   editions (`en-LK`, `si-LK`, `ta-LK`, exactly as `local_news` asks them)
+   returned **241 items, 4 of them from economynext.com** - alongside
+   dailymirror.lk 9, sundaytimes.lk 6, island.lk 4, themorning.lk 4, ft.lk 3.
+   economynext.com is also already a listed domain in `sources/gdelt.py`. So
+   the direct feed was a SECOND route to a publisher two collectors already
+   reach.
+
+The direct feed's own contribution, measured: **0 stored rows over the 14 days
+to 2026-08-18** (`ops_status [2a]`, `national_feeds`: 8 calls, 6 items, 0
+stored), and the single item that passed the relevance filter on a laptop probe
+was a false positive - an SLT-Mobitel fiber/5G/AI investment story with no
+headcount in it.
+
+### The fix
+
+`economynext_lk` is gone from `national_feeds.FEEDS`. EconomyNext moves to
+catalogue status `researched` - "Researched, watched through its market sweep",
+the status that already existed for exactly this - with the measurement above as
+its evidence. Sri Lanka keeps its coverage through the route that actually
+reaches it, and the sources page, the catalogue partial, `assets/health.js`
+`meta{}` and the arming arithmetic (14 feeds, $2.12/month worst case) all move
+in the same commit. One stale line went with it: the Daily FT refusal row said
+"EconomyNext is wired for Sri Lanka instead", which stopped being true here.
+
+**What was NOT done, deliberately.** No user agent was spoofed. A 202 aimed at
+automated clients is an access control, and the standard browser-ish UA we send
+to our own WP host is a different thing entirely. Moving the job to GitHub
+Actions - a different address range - was available and was not taken, because
+it is address-shopping around a soft block and it was not needed once the
+content turned out to arrive anyway.
+
+`classify_failure` and `UNREACHABLE_STATUSES` stay exactly as they are. They are
+general: the next feed to hit an address-range wall still has to be told apart
+from one whose URL we broke. What changed is that "unreachable" is now the
+beginning of a procedure, written down in RUNBOOK, rather than a place to stop.
+
 ## 2026-08-18 - the healer was not slow, it was blind: its own concurrency group was eating the failures
 
 ### The measurement that started it
@@ -132,6 +188,7 @@ and pinned by `TheBoundaryIsMechanicalVersusSemantic` in
 path deleted from FORBIDDEN still fails a test instead of quietly becoming
 healable.
 
+
 ## 2026-08-18 - two countries can now be measured exactly, and the useful half of the answer is which cannot
 
 ### The claim that had no number
@@ -229,7 +286,6 @@ data to our identifying agent under an open licence, which is recorded as
 "permitted with the robots file unreadable" rather than as either a pass or a
 refusal. Nothing here reaches a reader-facing surface: the figures land in the
 repo and in `ops_status [3e]`, and what to claim publicly is the owner's call.
-
 ## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
 
 ### What was asked, and what the measurement said instead
@@ -654,9 +710,15 @@ a source is working when the collector cannot read it; only the wording moved,
 and it had to, because "feed broke" sends a session to audit a parser that is
 returning valid RSS to every other network.
 
-What is left for the owner: the feed stays armed and stays degraded, which is a
+What was left for the owner: the feed stays armed and stays degraded, which is a
 true statement about a real gap. Dropping it would remove the only Sri Lankan
 publisher in the catalogue, so that is a coverage decision, not a repair.
+
+**RESOLVED the same day (2.20.92, entry at the top of this log).** It was not a
+coverage decision in the end, because the coverage was already there: the Sri
+Lanka market sweep returns economynext.com items under its own live queries, so
+the direct feed was redundant rather than load bearing. The feed is dropped and
+the publisher is `researched`, watched through its market sweep.
 
 ### 3. `zero snapshots taken - Wayback unreachable?` - the question mark was the defect
 

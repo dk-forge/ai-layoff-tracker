@@ -33,7 +33,6 @@ says why, not an omission. The short version, so nobody re-probes from memory:
                          site-level feed is the one that parses.
     Post-Courier (PG)     10 items shipping FULL article text (~6.6k chars)
     ABC Color Economia    33 items, via the publisher's arc outbound feed
-    EconomyNext (LK)      20 items
     Biznis.rs (RS)        50 items, ~1,260-char descriptions
     Gestion Economia (PE) 69 items, via the publisher's arc outbound feed
 
@@ -61,6 +60,28 @@ says why, not an omission. The short version, so nobody re-probes from memory:
     Mongolia   theubposts.com fails TLS, ubpost.mn and Montsame 404, news.mn
                times out.
     Moldova    Mold-Street answered 503 on three separate probes.
+
+  DROPPED AS REDUNDANT, not retired and not lost:
+    Sri Lanka  EconomyNext was wired here on 2026-08-14 and answered HTTP 202
+               to the collector's own network from 2026-08-18 - a bot wall
+               keyed on the datacentre's address range, since the same feed
+               answers 200 from a laptop. The answer was neither to disguise
+               the client nor to drop the country: MEASURED on 2026-08-18, the
+               live Sri Lanka market sweep in local_news returns
+               economynext.com items under its own committed queries (4 of 241
+               items across the en/si/ta editions, alongside dailymirror.lk 9,
+               sundaytimes.lk 6, island.lk 4, themorning.lk 4, ft.lk 3), and
+               economynext.com is already a listed GDELT domain. The direct
+               feed was therefore a SECOND route to a publisher we already
+               read: over the 14 days to 2026-08-18 it stored zero rows, and
+               the one item that passed the relevance filter on a laptop probe
+               was a false positive (an SLT-Mobitel 5G/AI investment story).
+               So the publisher moved to catalogue status "researched" -
+               watched through its market sweep - and Sri Lanka keeps its
+               coverage through the route that actually reaches it. The other
+               paths on that host were probed too and none is an alternative:
+               /feed/atom/ and the wp-json posts endpoint both answer 200 with
+               a body that is not RSS, and /category/economy/feed/ 404s.
 
 ONE PUBLISHER PER COUNTRY, and no aggregators, ever - the rule is imported
 from local_news so there is a single definition of what a compiled tally is.
@@ -185,9 +206,6 @@ FEEDS = (
                                "category/economia/?outputType=xml",
          "ABC Color", "Paraguay", "es",
          "the economy desk of a Paraguayan national daily, in Spanish"),
-    Feed("economynext_lk", "https://economynext.com/feed/",
-         "EconomyNext", "Sri Lanka", "en",
-         "a Sri Lankan economic news publication"),
     Feed("biznis_rs", "https://biznis.rs/feed/",
          "Biznis.rs", "Serbia", "sr",
          "a Serbian business publication reporting in Serbian"),
@@ -208,13 +226,13 @@ def by_key(key):
 #: The committed arming decision, priced from the live feeds on 2026-08-14 at
 #: the measured news-path rate of $0.000315 per candidate.
 #:
-#:   15 feeds x MAX_PER_FEED 8 x 2 runs/day x 30 days x $0.000315 = $2.27/month
+#:   14 feeds x MAX_PER_FEED 8 x 2 runs/day x 30 days x $0.000315 = $2.12/month
 #:
 #: That is the WORST case: it assumes every feed hits its cap on every run,
 #: which requires eight fresh, never-before-seen collective-layoff stories per
 #: feed per run. The realistic figure is far lower - seen_urls dedup makes a
 #: repeated URL free forever, and the relevance filter passed 0 of the ~600
-#: items on the wiring-day probe. $2.27 fits the discretionary room left after
+#: items on the wiring-day probe. $2.12 fits the discretionary room left after
 #: the committed path ($4.92) and the local-news markets ($5.14) inside the
 #: $14.00 allowance in railway/spend.py, and it is under the $4/month bar the
 #: owner set for arming by default. So this ships ARMED.
@@ -447,8 +465,16 @@ def build_raw(feed, item):
 # well-formed RSS document, economynext.com included, and its robots.txt
 # permits us. A 202 carrying a non-feed body is the signature of a bot wall
 # keyed on the datacentre's address range — the collector runs from Railway,
-# not from a laptop — so nothing in this file is broken and nothing in it can
-# be fixed to make that host answer.
+# not from a laptop — so nothing in this file was broken and nothing in it
+# could be fixed to make that host answer.
+#
+# CORRECTLY LABELLED IS NOT COLLECTING, so the label was not the end of it.
+# That feed is gone from FEEDS as of the same day, because the measurement
+# above it shows the publisher already reaches us through the Sri Lanka market
+# sweep; see "DROPPED AS REDUNDANT" in the module docstring. What is kept here
+# is the CLASSIFIER, which is general: the next feed to hit an address-range
+# wall must still be told apart from a feed whose URL we broke, and answering
+# a wall by spoofing the client is not on the list of options.
 #
 # Three statuses in this set for the same reason: 403 (refused), 429 (throttled)
 # and 503 (unavailable) are all "this host is not serving this network right
