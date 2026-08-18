@@ -1155,6 +1155,24 @@ add_action('admin_post_alt_digest_confirm', 'alt_digest_confirm');
 add_action('admin_post_nopriv_alt_digest_confirm', 'alt_digest_confirm');
 
 /**
+ * Where an unsubscribe ends, stated absolutely rather than taken from the
+ * referer.
+ *
+ * alt_digest_redirect() returns the reader to wp_get_referer(), which is right
+ * for the signup form: it is submitted FROM the page the reader should land
+ * back on. The unsubscribe is not. Its confirmation page lives at the
+ * unsubscribe URL itself, so the button's POST carries that URL as its
+ * referer, and returning there re-enters the same handler. The row is already
+ * unsubscribed by then, so the handler redirects again, to the same referer,
+ * forever. This names the destination instead.
+ */
+function alt_digest_unsub_redirect($code) {
+    wp_safe_redirect(add_query_arg(array('alt_dg' => $code),
+                                   home_url('/ai-layoff-tracker/')) . '#alt-digest');
+    exit;
+}
+
+/**
  * The page a reader lands on after following an unsubscribe link in an email.
  *
  * ONE CLICK, AND NOTHING TO FILL IN. No address to retype, no login, no
@@ -1224,8 +1242,8 @@ function alt_digest_unsubscribe() {
     if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
         // A used or purged token reads the same as it always has, and an
         // address already unsubscribed is not asked to confirm it twice.
-        if (!$row) alt_digest_redirect('expired');
-        if ($row['status'] === 'unsubscribed') alt_digest_redirect('unsubscribed');
+        if (!$row) alt_digest_unsub_redirect('expired');
+        if ($row['status'] === 'unsubscribed') alt_digest_unsub_redirect('unsubscribed');
         alt_digest_unsub_confirm_page($row['unsub_token']);   // ends the request
     }
 
@@ -1256,8 +1274,8 @@ function alt_digest_unsubscribe() {
     if (empty($_POST['alt_unsub_confirm'])) {
         wp_die('Unsubscribed.', 'Unsubscribed', array('response' => 200));
     }
-    if (!$row) alt_digest_redirect('expired');
-    alt_digest_redirect('unsubscribed');
+    if (!$row) alt_digest_unsub_redirect('expired');
+    alt_digest_unsub_redirect('unsubscribed');
 }
 add_action('admin_post_alt_digest_unsub', 'alt_digest_unsubscribe');
 add_action('admin_post_nopriv_alt_digest_unsub', 'alt_digest_unsubscribe');

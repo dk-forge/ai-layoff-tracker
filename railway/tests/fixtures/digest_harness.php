@@ -42,7 +42,17 @@ function wp_unslash($s) { return $s; }
 function wp_json_encode($d) { return json_encode($d); }
 function home_url($p = '') { return 'https://example.test/blog' . $p; }
 function admin_url($p = '') { return 'https://example.test/blog/wp-admin/' . $p; }
-function wp_get_referer() { return 'https://example.test/blog/ai-layoff-tracker/'; }
+/*
+  THE REFERER THE REQUEST ACTUALLY CARRIED, not a fixed one. This returned the
+  tracker page unconditionally, so anything reading it was tested against a
+  value no real request had to produce. That hid a redirect loop: the
+  unsubscribe button POSTs from a page whose URL is the unsubscribe route, and
+  a handler returning the reader to the referer re-enters itself.
+*/
+function wp_get_referer() {
+    $ref = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+    return $ref !== '' ? $ref : 'https://example.test/blog/ai-layoff-tracker/';
+}
 function wp_nonce_field(...$a) { echo ''; }
 function wp_verify_nonce($n, $a) { return $n === 'good-nonce'; }
     /*
@@ -710,8 +720,12 @@ $routes = array();
  * calling the handler directly. This is the whole point: a link in an inbox is
  * a URL, and what has to be proved is that the URL arrives somewhere.
  */
-$request = function ($url, $method = 'GET', $post = array()) {
+$request = function ($url, $method = 'GET', $post = array(), $referer = '') {
     $_GET = array(); $_POST = $post; $_REQUEST = $post;
+    // A browser posting a form sends the page it was on. That page is what
+    // makes the unsubscribe redirect interesting, so it is not optional here.
+    if ($referer !== '') $_SERVER['HTTP_REFERER'] = $referer;
+    else unset($_SERVER['HTTP_REFERER']);
     $parts = parse_url($url);
     $_SERVER['REQUEST_URI'] = $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
     $_SERVER['REQUEST_METHOD'] = $method;
@@ -721,7 +735,8 @@ $request = function ($url, $method = 'GET', $post = array()) {
         $_REQUEST = array_merge($q, $_REQUEST);
     }
     $GLOBALS['__redirect'] = null;
-    $result = array('code' => 0, 'redirected' => false, 'state' => '', 'body' => '');
+    $result = array('code' => 0, 'redirected' => false, 'state' => '',
+                    'body' => '', 'to' => '');
     try {
         // admin-post.php URLs never reach the front-end dispatcher; WordPress
         // fires the admin_post_* action for them. Both are exercised here the
@@ -736,6 +751,7 @@ $request = function ($url, $method = 'GET', $post = array()) {
     } catch (AltRedirect $e) {
         $result['redirected'] = true;
         $result['code'] = 302;
+        $result['to'] = (string) $e->getMessage();
         $result['state'] = preg_match('/alt_dg=([a-z]+)/', (string) $e->getMessage(), $m) ? $m[1] : '';
     } catch (AltDie $e) {
         $result['code'] = (int) $e->getCode();
@@ -787,10 +803,13 @@ $routes['public_unsub_button_status'] = 'NOT ATTEMPTED';
 if (preg_match('/<form[^>]*action="([^"]+)"/', (string) $r['body'], $fm)) {
     $routes['public_unsub_form_action'] = $fm[1];
     $routes['public_unsub_form_is_post'] = (bool) preg_match('/<form[^>]*method="post"/i', (string) $r['body']);
+    // The referer a browser sends here is the confirmation page itself, whose
+    // URL is the unsubscribe route.
     $posted = $request($fm[1], 'POST', array(
         'action' => 'alt_digest_unsub', 't' => $p['unsub_token'],
-        'alt_unsub_confirm' => '1'));
+        'alt_unsub_confirm' => '1'), alt_digest_unsub_url($p['unsub_token']));
     $routes['public_unsub_button_state'] = $posted['state'];
+    $routes['public_unsub_button_to'] = $posted['to'];
     $routes['public_unsub_button_status'] = row('unsubget@example.com')['status'];
 }
 // A GET on a row that is ALREADY unsubscribed says so rather than asking again.

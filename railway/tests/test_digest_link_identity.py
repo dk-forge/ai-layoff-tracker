@@ -178,6 +178,16 @@ class TheNewRouteReachesTheSameHandler(_Harness):
                          "a human who pressed the button must land on the "
                          "same panel every other terminal state uses")
 
+    def test_the_button_does_not_send_the_reader_back_into_the_handler(self):
+        """The confirmation page lives AT the unsubscribe URL, so the POST
+        carries that URL as its referer. A redirect back to the referer
+        re-enters this handler, which redirects to the referer again."""
+        to = self.routes["public_unsub_button_to"]
+        self.assertNotIn("/unsubscribe/", to,
+                         "the reader was sent back to the unsubscribe route, "
+                         "which is a redirect loop: %r" % (to,))
+        self.assertIn("alt_dg=unsubscribed", to)
+
     def test_a_query_string_cannot_forge_the_button(self):
         """The marker is read from $_POST alone, so no GET can dress up as a
         press of the button."""
