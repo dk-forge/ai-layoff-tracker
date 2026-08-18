@@ -107,6 +107,38 @@ accused the only component that was working.
 4. **Record what you learned in `source_value.py`** — the worth line and the
    routes. The next breakage should arrive with candidates attached.
 
+**A host that would not answer is NOT a source that broke** (added 2026-08-18).
+Before you audit a parser, check whether the collector ever got to read
+anything. Three separate degraded items on 2026-08-18 were one fact: an
+upstream host refused the datacentre and the collector reported it as our
+defect.
+* `warn_custom_legacy` said `LA=33 (floor 324) - likely site drift`. Louisiana's
+  parser returns 324 from a laptop; 33 is exactly the two years laworks.net
+  still hosts live, because the other ten come from Wayback and Wayback was
+  down. `fetch_la` now separates "no snapshot exists" (a real archive gap) from
+  "the archive did not answer" (recorded in `warn_custom.SOURCE_UNREACHABLE`),
+  and `warn_import.describe_state_drift` annotates the state instead of
+  blaming it. **If a collapse message carries `[NOT site drift - ...]`, the
+  scraper is fine and there is nothing here to fix.**
+* `national_feeds` said `feed broke: economynext_lk: HTTP 202`. That feed
+  serves valid RSS everywhere except the runner's address range.
+  202/403/429/451/503 now classify as `unreachable` and read as "could not be
+  READ from this network" on the health page; 404/410 and a 200 that is not RSS
+  stay `broke`, because those are ours to fix. **Status stays `degraded` in
+  both cases** - an unreadable source is never reported as working.
+* Every failing feed is now named. `last_error` used to be one slot, so three
+  blocked feeds reported one, and you could not tell an instance from a class.
+
+**`Archive WARN sources to Wayback` went red with "zero snapshots"**
+Ask which kind of zero it was; the run now tells you. `HELD: ... the Internet
+Archive is not answering this runner at all` is a third-party outage, exits 0,
+and next week's sweep re-attempts every document (`/save/` is idempotent, so
+nothing is lost). `ERROR: zero snapshots ... while the Internet Archive IS
+answering` is a defect in `archive_sources.py` - check the URL list, the
+`/save/` contract and the UA - and still exits 1. Do not answer a HELD by
+re-running it in a loop; the bound that catches a long outage is
+`data_integrity.archive_recheck_cadence`, not this job.
+
 **Do NOT** answer a zero by lowering an expectation or by marking the source
 soft-degraded. And do not add a source to `zero_is_outage` unless a zero is
 genuinely impossible for it: a bankruptcy watchlist that found nothing this week

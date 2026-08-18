@@ -302,6 +302,33 @@ def detect_generic_state_drift(counts, expected, baselines=None, *,
     return sorted(drift)
 
 
+def describe_state_drift(drifted, counts, floors, unreachable=None):
+    """The human-readable body of a collapse message, one entry per state.
+
+    A state whose fetcher reported it could not REACH its source documents is
+    annotated with that reason, because the two failures need opposite
+    responses and the message used to give them the same one. "LA=33 (floor
+    324) — likely site drift" was true about the number and wrong about the
+    cause: laworks.net hosts only the current two years, the other nine come
+    from web.archive.org, the archive was unreachable from the runner that
+    morning, and 33 is exactly the two live years. A session reading that
+    message goes and audits a parser that returns 324 from any other network.
+
+    Passing no `unreachable` map reproduces the original wording exactly, so a
+    genuine collapse still reads as a genuine collapse.
+    """
+    unreachable = unreachable or {}
+    parts = []
+    for st in drifted:
+        line = f"{st}={counts.get(st, 0)}"
+        if st in floors:
+            line += f" (floor {int(floors[st])})"
+        if st in unreachable:
+            line += f" [NOT site drift — {unreachable[st]}]"
+        parts.append(line)
+    return ", ".join(parts)
+
+
 BATCH = 1000
 FAILED_BATCHES = 0
 
@@ -524,15 +551,22 @@ def main():
               "collapse is UNDETECTABLE this run (UNKNOWN, not a pass). Seeding from "
               "this run's counts.")
     if _real_drift:
-        _detail = ", ".join(
-            f"{st}={_got_by_state.get(st, 0)}"
-            + (f" (floor {int(_floors_c[st])})" if st in _floors_c else "")
-            for st in _real_drift)
-        print(f"::warning:: legacy WARN scraper(s) collapsed vs their own history — "
-              f"likely site drift: {_detail}")
+        from sources.warn_custom import SOURCE_UNREACHABLE as _UNREACHABLE
+        _detail = describe_state_drift(_real_drift, _got_by_state, _floors_c,
+                                       unreachable=_UNREACHABLE)
+        # "likely site drift" is a hypothesis, and it is the WRONG one whenever
+        # the fetcher already told us it could not reach the documents. Only
+        # claim drift for the states that have not said otherwise.
+        _blamed = [st for st in _real_drift if st not in _UNREACHABLE]
+        _lead = ("Custom WARN state(s) collapsed vs their own history"
+                 + (" — likely site drift" if _blamed else
+                    " because their source documents were UNREACHABLE, not "
+                    "because the scrapers drifted")
+                 + ": ")
+        print(f"::warning:: legacy WARN scraper(s) collapsed vs their own "
+              f"history: {_detail}")
         report_source_health("warn_custom_legacy", "degraded", 0,
-                             "Custom WARN state(s) collapsed vs their own history — "
-                             "likely site drift: " + _detail)
+                             _lead + _detail)
     elif _expected_c:
         # Report OK explicitly. Without this the reporter only ever writes on
         # failure, so a RESOLVED drift stayed red forever (NV sat degraded for

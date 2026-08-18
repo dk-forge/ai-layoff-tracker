@@ -439,14 +439,76 @@ def build_raw(feed, item):
     }
 
 
+# ---------------------------------------------------------------------------
+# A FEED WE CANNOT READ IS NOT A FEED THAT BROKE
+#
+# On 2026-08-18 the health page said "feed broke: economynext_lk: HTTP 202".
+# Probed the same day from a laptop, all fifteen feeds answered HTTP 200 with a
+# well-formed RSS document, economynext.com included, and its robots.txt
+# permits us. A 202 carrying a non-feed body is the signature of a bot wall
+# keyed on the datacentre's address range — the collector runs from Railway,
+# not from a laptop — so nothing in this file is broken and nothing in it can
+# be fixed to make that host answer.
+#
+# Three statuses in this set for the same reason: 403 (refused), 429 (throttled)
+# and 503 (unavailable) are all "this host is not serving this network right
+# now". 451 is legal geoblocking, which is the same fact with a different cause.
+#
+# What stays a BREAK, deliberately: 404 and 410 mean the document moved or was
+# withdrawn and the URL in this file is now wrong, and a 200 whose body is not
+# RSS means the publisher changed scheme. Both of those are ours to fix, and
+# blurring them into "unreachable" would be exactly the silencing this is not.
+UNREACHABLE_STATUSES = frozenset({202, 403, 429, 451, 503})
+
+
+def classify_failure(status):
+    """'unreachable' (nothing here to fix) or 'broke' (something here to fix)."""
+    return "unreachable" if status in UNREACHABLE_STATUSES else "broke"
+
+
+def health_verdict(failures):
+    """(status, detail) for the source-health ledger, from the failure list.
+
+    Never resolves a feed we could not read to `ok`: an unreadable feed is
+    degraded, same as a broken one, because the health page must not claim a
+    source is working when the collector cannot read it. Only the WORDING
+    differs, and it has to, because "feed broke" sent a session to a parser
+    that was working.
+    """
+    if not failures:
+        return "ok", ""
+    def _say(group):
+        return ", ".join(f"{f['feed']}: {f['detail']}" for f in group)
+    blocked = [f for f in failures if f["kind"] == "unreachable"]
+    broken = [f for f in failures if f["kind"] == "broke"]
+    parts = []
+    if broken:
+        parts.append("feed broke: " + _say(broken))
+    if blocked:
+        parts.append(
+            f"{len(blocked)} feed(s) could not be READ from this network "
+            f"(bot wall / throttle / geoblock — the publisher serves these "
+            f"fine elsewhere, so there is no parser fault to fix): "
+            + _say(blocked))
+    return "degraded", "; ".join(parts)
+
+
 def pull_national_feeds(feeds=None, fetch=None):
     """Return (rows, stats). Armed by default; NATIONAL_FEEDS=off disarms.
 
     `fetch` is injectable for tests: fetch(url, timeout) -> (status, text).
-    Fail-loud: pull_national_feeds.last_error is set on any HTTP/parse/shape
-    failure so the caller degrades the source instead of masking a dead feed.
+    Fail-loud: every failing feed is appended to pull_national_feeds.failures
+    (with its kind, see `classify_failure`) so the caller degrades the source
+    instead of masking a dead feed.
+
+    `.failures` is a LIST because `.last_error` was one slot, overwritten per
+    feed, so a sweep in which three feeds were blocked reported exactly one —
+    and "is this an instance or a class?" is the first question anyone asks
+    about a blocked host. `.last_error` is kept for compatibility and now
+    summarises ALL of them rather than whichever happened to fail last.
     """
     pull_national_feeds.last_error = None
+    pull_national_feeds.failures = []
     picked = tuple(feeds) if feeds else armed_feeds()
     stats = {f.key: {"fetched": 0, "aggregator": 0, "dropped": 0,
                      "kept": 0, "errors": 0} for f in picked}
@@ -462,27 +524,32 @@ def pull_national_feeds(feeds=None, fetch=None):
         return r.status_code, r.text
     do_fetch = fetch or _default_fetch
 
+    def _fail(feed, kind, detail):
+        stats[feed.key]["errors"] += 1
+        pull_national_feeds.failures.append(
+            {"feed": feed.key, "kind": kind, "detail": detail})
+        pull_national_feeds.last_error = "; ".join(
+            f"{f['feed']}: {f['detail']}" for f in pull_national_feeds.failures)
+
     rows, seen_links = [], set()
     for feed in picked:
         st = stats[feed.key]
         try:
             status, body = do_fetch(feed.url, feed.timeout)
         except Exception as e:
-            st["errors"] += 1
-            pull_national_feeds.last_error = f"{feed.key}: {type(e).__name__}: {e}"
+            # A transport error never reached the publisher at all, so it is
+            # the purest case of unreachable.
+            _fail(feed, "unreachable", f"{type(e).__name__}: {e}")
             time.sleep(GAP)
             continue
         if status != 200:
-            st["errors"] += 1
-            pull_national_feeds.last_error = f"{feed.key}: HTTP {status}"
+            _fail(feed, classify_failure(status), f"HTTP {status}")
             time.sleep(GAP)
             continue
         items, is_feed = _parse_items(body)
         if not is_feed:
-            st["errors"] += 1
-            pull_national_feeds.last_error = (
-                f"{feed.key}: 200 but the body is not an RSS feed - "
-                f"scheme changed?")
+            _fail(feed, "broke",
+                  "200 but the body is not an RSS feed - scheme changed?")
             time.sleep(GAP)
             continue
         for it in items:
