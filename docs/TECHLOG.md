@@ -1,5 +1,119 @@
 # Tech Log
 
+## 2026-08-18 - the Mazovia register was reading three of its eleven notices, and every Quebec row cited an index instead of a document (2.20.92)
+
+### What was asked, and what was already there
+
+The brief was to BUILD two sources: Quebec's monthly collective-dismissal list
+and the Mazowieckie register at WUP Warszawa, named as the only two per-employer
+layoff registers outside the US. Both have been live for weeks
+(`sources/quebec.py` since 2.19.112, `sources/wup_mazowieckie.py` since
+2.19.136), wired into `warn_import.py`, the sources page, `health.js` `meta{}`
+and both staleness ceilings. Nothing needed building. What the audit found
+instead is what a green health line was hiding in each of them.
+
+### Mazovia: three of eleven, and "ok" every day
+
+The listing page was serving three monthly posts. The collector was returning
+three notices from one of them. Three separate defects, none visible to a
+zero-check, because the run was never zero:
+
+| post | notices listed | parsed before | parsed after |
+|---|---:|---:|---:|
+| luty (February) | 4 | **0** | 4 |
+| marzec (March) | 3 | 3 | 3 |
+| czerwiec (June) | 4 | **0** | 4 |
+| unique after dedup | 10 | 3 | **10** |
+| jobs | 384 | 80 | **384** |
+
+1. **February yielded zero anchors over one capital letter.** The office writes
+   the legal form both ways - "Sp. z o.o." in March, "sp. z o.o." in February -
+   and `_LEGAL` required a capital S. Four named employers and 164 jobs were
+   absent from the register, and nothing said so.
+2. **June's four notices were all skipped on their dates.** The deadline pattern
+   read only "do końca <month> <year>". June phrases every one of its notices as
+   an explicit day ("planowany termin do 31 lipca 2026 r.") or a month range
+   ("proces zaplanowano na czerwiec-lipiec 2026 r."). Three forms are read now.
+   The dated form requires the literal "do" so a FILING date cannot pass as a
+   completion date: the Bank Nowy item names both, and only September is ours.
+3. **June's largest notice had no legal form at all.** "Firma Budowlana
+   ANNA-BUD", 76 people, produced no anchor - so it was missing from the rows
+   AND from the skipped tally that was supposed to reveal it. A second anchor
+   reads the list item's own "<Name> - <lowercase industry>;" shape, guarded by
+   a prose-token list, because "Zwolnienia będą realizowane etapowo -" is
+   capitalised, dot-free, four tokens, and sits in front of a real count and a
+   real deadline.
+
+**The audit that makes this checkable.** Each post states its own total for the
+notices it lists, and our rows now have to sum to it: 164, 80, 140. The health
+detail carries the comparison, so "the collector ran" and "the collector read
+the register" stop being the same sentence. The run reads 384 of 384.
+
+The comparison is made BEFORE dedup, deliberately. The declared totals are per
+post and Bank Nowy appears in two of them; after dedup the two sides measure
+different things and the audit would show a permanent 3-job shortfall that means
+nothing.
+
+The OTHER number in the same paragraph is not ours and must never become ours.
+"W czerwcu 2026 r. pracę na Mazowszu straciło 280 osób" counts dismissals
+carried out that month, from notices filed earlier. Our rows are the newly
+notified intentions, 140. Auditing against 280 would call a correct parse broken.
+
+### Quebec: 142 live rows, all citing the same index page
+
+Two defects, both about what a reader can do with a row.
+
+**Every row's `source_url` was the ministry's publications index.** All 142 of
+them. A reader who wanted to check one landed on a page listing every MESS
+publication and had to work out which month to open. The collector knows the
+exact PDF it read each notice out of; it just was not threading it through.
+`_entry` now takes the month's URL.
+
+**The ministry's own caveats reached no reader.** MESS states four things about
+every monthly list: the notices are an intention to dismiss, a dismissal may
+fall outside the month its notice arrived in, a cancelled layoff is never
+removed, and the list is a snapshot it does not revise. A Quebec figure runs
+structurally HIGH against dismissals actually carried out, and the site said
+nothing about it anywhere. The short form is now on every row's excerpt; the
+full statement is a new methodology section, "What a notice register does not
+tell you", linked from the sources-page row. That section also states the
+Mazovia intentions-versus-completions split, and the one difference that matters
+for US WARN: most states mark a notice rescinded and we drop those rows, while
+Quebec publishes no such marker, so the same correction is not available there.
+
+Neither change touches `dedup_hash` (company + date + count), so `/bulk`
+field-updates the 142 stored rows in place. No purge.
+
+### The archive nobody had read
+
+`QUEBEC_MONTHS` defaults to 4, and no workflow ever set it, so the live corpus
+was the last four months: 142 rows, all 2026. A dry run over the whole CDN
+window, measured 2026-08-18:
+
+```
+1318 notices / 48,391 jobs from 36 monthly PDFs (2023-08 .. 2026-07)
+the documents declare 1357 / 49,954  ->  97.1% of what they state they hold
+```
+
+So roughly 1,176 rows and 43,700 jobs of a statutory register were sitting
+unread behind a default. `warn-import.yml` takes a `quebec_months` input now; a
+backfill is a manual dispatch at 40. It costs nothing but bandwidth - this path
+makes no model call - and the dedup hash makes it idempotent.
+
+`headline_movement` will not fire on it, and that was checked rather than hoped:
+the movement allowance is `|Δentries| * base_mean * mean_factor`, which at
+`worldwide_all_time`'s live base_mean of 320.4 over 1,176 arriving entries is
+about 4.5M jobs against a 43,700 move. The guard is built to allow exactly this
+shape - movement that arriving rows explain - and it is the entry count, not the
+job count, that has to be honest for that to hold.
+
+### What did not change
+
+The Polish host was re-checked before any request. `wupwarszawa.praca.gov.pl`
+and `warszawa.praca.gov.pl` both serve a robots.txt that allows us and names no
+AI agent; the ClaudeBot disallow is on `psz.praca.gov.pl`, which this collector
+does not touch. `cnesst.gouv.qc.ca` remains untouched and unneeded.
+
 ## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
 
 ### What was asked, and what the measurement said instead

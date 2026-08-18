@@ -94,13 +94,13 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Quebec collective dismissals</b></td><td>Quebec, Canada</td>
-        <td>Official monthly notices employers must file with Quebec's Ministere de l'Emploi et de la Solidarite sociale (MESS) for a collective dismissal. Parsed from the ministry's monthly PDFs, no AI processing.</td>
+        <td>Official monthly notices employers must file with Quebec's Ministere de l'Emploi et de la Solidarite sociale (MESS) for a collective dismissal. Parsed from the ministry's monthly PDFs, no AI processing. Every row links the month's own PDF. These are notices of intended dismissal, and the ministry never removes one that was later cancelled, so the total runs high against layoffs actually carried out. See <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/#alt-notice-registers')); ?>">what a notice register does not tell you</a>.</td>
         <td>Verified</td>
         <td><a href="https://www.quebec.ca/gouvernement/ministeres-organismes/emploi-solidarite-sociale/publications" target="_blank" rel="noopener">MESS publications &#8599;</a></td>
       </tr>
       <tr>
         <td><b>Mazowieckie collective dismissals</b></td><td>Mazovia region, Poland</td>
-        <td>Official monthly notifications employers must file with the regional labour office (WUP Warszawa) before a collective redundancy. It is the only one of Poland's 16 voivodeship offices that publishes employers by name. Parsed from the office's monthly register posts, no AI processing.</td>
+        <td>Official monthly notifications employers must file with the regional labour office (WUP Warszawa) before a collective redundancy. It is the only one of Poland's 16 voivodeship offices that publishes employers by name. Parsed from the office's monthly register posts, no AI processing. We read the newly notified redundancies, not the separate count of dismissals completed that month.</td>
         <td>Verified</td>
         <td><a href="https://wupwarszawa.praca.gov.pl/urzad/dla-mediow" target="_blank" rel="noopener">WUP Warszawa register &#8599;</a></td>
       </tr>
