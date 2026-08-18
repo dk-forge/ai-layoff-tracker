@@ -1,5 +1,59 @@
 # Tech Log
 
+## 2026-08-18 - one generator, two consumers, one of them wired to it (2.20.89)
+
+`2.20.88` regenerated `data/ingest-schedule.json` after `3362e61` moved the cron
+to `0 22 * * *`, which fixed red CI and the tracker page's next-update promise.
+It did not touch the SECOND place that states the same fact, because nothing
+pointed at it: `templates/page-methodology.php` typed it.
+
+    <p><b>How often it updates.</b> News and SEC filings: twice daily
+    (morning and after US market close, ET). WARN notices: daily at 11 AM ET
+    ... An automated anomaly review runs daily at noon ET.
+
+Three errors in one sentence, none of which any test could see:
+
+- **"twice daily"** - the cron went ONCE daily on 2026-08-14, four days earlier.
+- **"morning and after US market close"** - there is no morning run any more.
+- **"11 AM ET" / "noon ET"** - `warn-import.yml` runs `0 13 * * *` (9 AM ET) and
+  `data-quality.yml` runs `0 15 * * *` (11 AM ET). The 2026-08-13 workflow audit
+  found and fixed exactly this 2-hour WARN error where it had propagated into
+  `data-quality.yml` and `reconcile-supersets.yml`. It looked only inside the
+  repo, so the wrong hour survived on the one surface a reader actually sees -
+  the page written for journalists to check a figure before they cite it.
+
+The tracker's own status strip was correct through all of it, because
+`shortcodes.php` derives the cadence from `alt_ingest_schedule()`. The generator
+was built precisely so this could not drift, and then a second consumer was
+written by hand and nothing noticed for four days.
+
+### Fix
+
+- The news/SEC clause is now echoed from `alt_ingest_schedule()` +
+  `alt_ingest_times_label()`, the same pair the status strip uses. DST-correct by
+  construction. With no schedule the clause is OMITTED, not guessed - the same
+  contract every other generated figure on that page already had.
+- The WARN and anomaly-review hours are NOT derivable here (they are GitHub
+  workflow crons; the generator reads `railway.toml` only), so they now state the
+  cadence and no hour. An unguarded clock time on a public page is a promise with
+  nothing behind it. **If those hours are wanted back they need a generator that
+  reads `.github/workflows/`** - that is the open follow-up, not a typing job.
+- `test_methodology_cadence_is_derived_not_typed` fails on any clock time in that
+  paragraph and on the clause not being derived. Verified failing against the old
+  copy before passing against the new, so it is not vacuous.
+- `CLAUDE.md` carried the same stale "daily 11AM ET" for `warn_import`; corrected
+  to 9AM ET with the cron quoted.
+
+### The other thing this run found
+
+Two sessions fixed the JSON half independently within half an hour, both landing
+`2.20.88`. The baton read HELD the whole time and the holder's live branch
+touched zero plugin files, which is what made the collision look safe from here.
+**Reading the baton is not the same as holding it.** The generated file was
+byte-identical both ways (the generator is deterministic, by design), so nothing
+was lost - but the version number collided and one side had to rebase.
+
+
 ## 2026-08-18 - three degraded items, one sentence: a host we could not REACH is not a source that BROKE
 
 `ops_status.py` carried three items that read as three unrelated faults. They
