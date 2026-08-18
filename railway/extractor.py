@@ -672,6 +672,78 @@ def classify_ai_evidence(raw_text):
     return finalize_ai_causation(result, raw_text)
 
 
+def extract_job_location_evidence(raw_text, company=""):
+    """Job-LOCATION country stated outright in a source, or None.
+
+    This exists for the 2026-08-18 blank-country backlog: rows the extractor
+    correctly left unplaced because the excerpt it read never said where the
+    jobs were. Sometimes the ARTICLE does say and the excerpt did not carry it,
+    and re-reading the body is the only honest way to find out.
+
+    It answers ONE question - where are the cut jobs - and returns nothing
+    else, so it cannot move a count, a date, a stage or an AI label. Three
+    things it must never do, each of which is a way a real dataset acquires
+    invented geography:
+      * read the publisher's nationality as the job location. A Swedish
+        company reported in a Serbian outlet is neither a Serbian layoff nor a
+        Serbian employer.
+      * read the employer's headquarters as the job location. That conflation
+        is the whole reason `country` and `employer_country` are two fields.
+      * name a country because a global company obviously has staff there.
+
+    Returning None is a correct and expected answer. Most sources in this
+    backlog genuinely do not state a location, and a row that stays blank is
+    honest; `employer_country` is the field that makes such a row findable.
+
+    Uses MODEL, not CLASSIFY_MODEL: this is reading a fact out of a body, the
+    same act as extraction, and it feeds a published per-country figure.
+    """
+    raw_text = (raw_text or "")[:6000]
+    if not raw_text.strip():
+        return None
+    if not spend.paid_reads_enabled():
+        return _defer_for_spend("job-location re-read")
+    prompt = ("""Read this layoff source and return STRICT JSON only:
+{"country":"the country the CUT JOBS were located in, or null","country_evidence":"exact source phrase stating that location, or null"}
+
+The question is WHERE THE ELIMINATED JOBS WERE, nothing else.
+
+Return null unless the text states the location of the cuts. In particular:
+- The publisher's country is NOT the job location.
+- The company's headquarters is NOT the job location.
+- "A global company must have staff there" is NOT a stated location.
+- A cut described as global, worldwide or spanning several countries has no
+  single country: return null.
+If the text names a city, region or state, return the country it is in.
+"country_evidence" must be copied EXACTLY from TEXT, character for character.
+
+"""
+              + (f"The employer is {company}.\n\n" if str(company or "").strip() else "")
+              + "TEXT:\n" + raw_text)
+    try:
+        response = spend.metered_call(MODEL, lambda: _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
+            model=MODEL, max_tokens=250,
+            messages=[{"role": "system", "content": MINI_SYSTEM},
+                      {"role": "user", "content": prompt}],
+        ), what="job-location re-read")
+        content = response.choices[0].message.content if response.choices else ""
+        result = _parse_json_response(content or "")
+    except Exception as exc:
+        print(f"Job-location re-read failed: {exc}")
+        return None
+    if not isinstance(result, dict):
+        return None
+    country = result.get("country")
+    quote = result.get("country_evidence")
+    if not isinstance(country, str) or not country.strip():
+        return None
+    if not _quote_is_supported(quote, raw_text):
+        # An unquotable location is an invented one. Blank is the right answer.
+        return None
+    return {"country": country.strip(), "country_evidence": quote.strip()}
+
+
 def extract_context_evidence(raw_text):
     """Extract only explicit domicile and public announcement-date evidence.
 
