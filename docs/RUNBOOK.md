@@ -817,6 +817,67 @@ figures into the repo, a secret, or an Actions log to make them checkable. The
 constraint is the owner's standing decision, reconfirmed 2026-08-12, and the
 staleness signal is what was built *because of* it, not in spite of it.
 
+## Something that is not a country is in the country column
+
+**The symptom**: a country list (the digest's "Where the jobs were", the
+tracker's country dropdown, `/facets`, a `/country-layoffs/` page) shows a
+value that is not a country. Found 2026-08-18 with "North Carolina 1 job"
+printed in the delivered digest, and again the same day as "Kentucky".
+
+**First: is it the ROW or the render?** It is almost always the row. The
+digest, the dropdown and the facet pages all read `top_countries` from
+`/aggregate`, which is a plain `GROUP BY country`. Check:
+
+```bash
+UA="AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+curl -s "https://asktherecruiter.com/blog/wp-json/layoffs/v1/facets?cb=$RANDOM" -A "$UA" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['countries'])"
+curl -s -G "https://asktherecruiter.com/blog/wp-json/layoffs/v1/query" \
+  --data-urlencode "country=THE VALUE" --data-urlencode "cb=$RANDOM" -A "$UA" \
+  | python3 -m json.tool | head -40
+```
+
+If `/facets` lists it, the column holds it and **it is the row**. Do not filter
+it out at render: the digest would look right while the dropdown, the exports,
+the facet pages and the public API kept serving it.
+
+**Second: which path wrote it?** Look at `edited` on the row.
+
+- `edited: true` means it came through `/edit`, which is the human correction
+  path (`.github/workflows/edit-entries.yml`, `railway/apply_correction.py`).
+  db.php:4233 is the only line in the plugin that sets the flag.
+- `edited: false` means a collector or an enricher. Every WARN collector
+  hard-codes `country => "United States"` (`sources/warn.py`,
+  `sources/warn_custom.py`), `erm_import.py` sets a real country, and
+  `/enrich-context` writes only `employer_country`. So an unedited bad value
+  means a collector regressed and that is the thing to fix.
+
+**Third: correct the row at source.** `country` is not in any dedup hash, so a
+plain edit is enough - no `/bulk-purge`, no re-import (that rule is for job
+counts).
+
+```bash
+gh workflow run edit-entries.yml \
+  -f edits='[{"id": 134152, "fields": {"country": "United States"}}]' \
+  -f reason='why, in one sentence, for the public corrections trail'
+```
+
+Then re-check `/facets` with a cache buster.
+
+**Fourth: close the class, not the instance.** Every write path AND the country
+filter normalise through `alt_normalize_country()` in `includes/api.php`, so a
+guard there closes it everywhere at once and in both directions. US state names
+are already folded there (2026-08-18); a new class of bad value goes in the
+same place, with a test in `railway/tests/test_country_is_not_a_state.py`,
+which executes the real function rather than grepping for it.
+
+**Do not "complete" the state list with Georgia.** It is a sovereign country as
+well as a US state, and in a column whose job is to name countries the country
+is the more likely meaning. Puerto Rico and Guam are out for a different
+reason: they are routinely counted as separate jurisdictions, so folding one
+would be a judgement rather than a normalisation.
+
+
 ## How to ADD a new source (the pattern every collector follows)
 Never write to the DB directly. Every source produces "raw entries" and hands
 them to the shared pipeline, so it inherits dedup + entity-alias + country/
