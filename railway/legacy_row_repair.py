@@ -21,6 +21,24 @@ that the layoff happened in the United Kingdom, and guessing from a news domain
 would put invented geography into a dataset whose whole claim is that nothing
 is invented. Rows we cannot resolve are reported and left alone.
 
+A .gov URL IS NOT A US JOB LOCATION, and until 2026-08-18 this file believed it
+was. The host rule was written for state labor departments, but it was written
+as a bare `\\.gov\\b`, and `www.sec.gov` ends in `.gov`. Measured live that day,
+every one of the 109 blank-country rows in the corpus carried an empty `state`,
+and 27 of them were SEC filings — so a single `--apply --only country` run would
+have stamped ALL 27 as "United States", among them Klarna Group plc (6-K,
+Sweden), ING GROEP NV (6-K, Netherlands), Vasta Platform Ltd (6-K, Brazil),
+Brightstar Lottery PLC and SLB LIMITED/NV. Not one of those cuts is known to be
+in the United States, and the write is not cheap to undo: /edit pins the row
+(`edited=1`, dedup hash rewritten) and publishes the claim in the corrections
+log. EDGAR is a filing venue, not a job location; a foreign private issuer files
+on sec.gov precisely BECAUSE it is foreign. The host test is therefore gated on
+the row's own source_type — `warn` (a state notice) and `federal_rif` (a US
+federal agency separation record), the two types for which a US government host
+really does determine the country. A blank-country 8-K or news row is left
+blank, which is the honest outcome; the evidence is in the filing body, and
+reading it is a different job than this one.
+
     WP_SITE_URL=... WP_API_KEY=... python3 railway/legacy_row_repair.py
         --apply           actually write (default is a dry run)
         --max 500         cap the number of edits
@@ -48,6 +66,12 @@ TIMEOUT = 60
 _US_HOST_RX = re.compile(
     r"(\.gov\b|\.us\b|dol\.|dllr\.|edd\.ca\.gov|floridajobs|texas\.gov|"
     r"illinoisworknet|virginiaworks|jobs\.alaska|dwd\.wisconsin|labor\.hawaii)", re.I)
+# ...but only for the two source types where a US government host IS the
+# jurisdiction. See the module docstring: sec.gov ends in .gov and hosts the
+# filings of foreign private issuers, so an 8-K/6-K row must never be placed
+# by its host. Keep this a whitelist: a new source type is unplaceable by host
+# until someone shows that its host determines the job location.
+_HOST_INFERABLE_SOURCE_TYPES = {"warn", "federal_rif"}
 _US_STATES = {
     'AL','AK','AZ','AR','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN','KS',
     'KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ','NM','NV',
@@ -100,7 +124,9 @@ def _infer_country(row):
     state = str(row.get("state") or "").strip().upper()
     if state in _US_STATES:
         return "United States"
-    if _US_HOST_RX.search(str(row.get("source_url") or "")):
+    source_type = str(row.get("source_type") or "").strip().lower()
+    if (source_type in _HOST_INFERABLE_SOURCE_TYPES
+            and _US_HOST_RX.search(str(row.get("source_url") or ""))):
         return "United States"
     return None
 
