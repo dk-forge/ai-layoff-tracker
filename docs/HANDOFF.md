@@ -399,6 +399,18 @@ holder, so the start-of-session ritual surfaces it automatically.
   with it. Written here before the push, and main re-read immediately before
   merging, per the 2.20.92 collision note below.
 
+**BATON TAKEN 2026-08-19 ON THE OWNER'S INSTRUCTION, not under the stale
+clause.** The holder below is unchanged in kind (still `local`); this session
+was told explicitly to claim it and finish the plugin-side half of PR #163,
+which deliberately touched no plugin file and consumed no version precisely
+because the baton read HELD. That half is two things: the `digest_weekly`
+health id has no display label, so the public health page renders the external
+weekly slot with the generic "Operational collector" fallback; and four
+comments in `includes/subscribe.php` (plus one in
+`railway/tests/test_digest_scope_rules.py`) still describe the 13:10 UTC send
+slot that no longer exists. **Claiming 2.20.118**, and re-reading main
+immediately before the merge, per the 2.20.92 collision note below.
+
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
