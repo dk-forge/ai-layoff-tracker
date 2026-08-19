@@ -41,8 +41,13 @@ jobs:
           # Restore pip's wheel cache, keyed on THIS lock's own hash. A lock
           # change changes the key, so a cache entry can never outlive the lock
           # that vouched for it, and the hash-verified install below still
-          # checks every artifact it uses. The two locks are keyed separately
-          # on purpose: a health job must not pull the heavy cache.
+          # checks every artifact it uses.
+          #
+          # Only the FULL lock is cached. The min-lock jobs deliberately have
+          # no cache: measured 2026-08-19, a 130 MB restore made their 4-second
+          # install about 5 seconds SLOWER, and setup-python's prefix
+          # restore-key meant they pulled this heavy cache anyway. RUNBOOK,
+          # "Runner minutes". Do not add it back.
           cache: 'pip'
           cache-dependency-path: railway/requirements.lock
       - name: Verify secret
