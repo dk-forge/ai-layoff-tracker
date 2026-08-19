@@ -206,6 +206,38 @@ most `TRACKER_LEARN_MAX_CANDIDATES` reads of our own public API. No model is
 called on any path, the step carries no `OPENROUTER_API_KEY`, and it runs with
 `ALT_PAID_READS=off` so a paid call added here later fails instead of spending.
 
+### The output is a post-mortem, not a coverage ratio
+
+The question the owner actually asked is "how did we miss it, so we can wire the
+thing that would have caught it". So each miss is classified into one of six
+causes (`MISS_CAUSES`) and only the CAUSE is written down: `not_wired` (a real
+newsroom our allowlist does not admit — the highest-value class and the one that
+permanently reduces dependence), `vocabulary_gap`, `language_edition`,
+`country_edition`, `unclassified` (everything covered and we still missed it,
+which is a defect on our side and is named rather than folded into a gap we do
+not have), and `unreachable`.
+
+`unreachable` is in the taxonomy and is NEVER assigned by the machine. A paywall
+cannot be seen without fetching the page and fetching it is the one thing this
+loop must not do; a paywalled miss is a closed finding the owner records and
+stops on. The same rule covers the comparator that disallows AI agents by name
+in its robots.txt: that is a refusal to record, so the hand-pasted local file is
+the DESIGNED path for those items, not a degraded one. `learn_local` runs the
+identical post-mortem over items the owner pastes locally, queries the free news
+feed for the ORIGINATING outlet of each miss, and commits nothing at all — a
+different scope must never splice into the scheduled trend.
+
+### Recall is a band with a stated scope, or it is a number waiting to be misquoted
+
+One run judges a handful of announcements, so a bare percentage claims precision
+the denominator cannot support: `recall_band` stores a Wilson interval, and the
+scope is stored beside it. This is measured against the public NEWS record for
+the anchor vocabulary. It is not a ratio against anybody's tracker, and the
+comparators in play have genuinely different universes - one US-only and survey
+based, two tech-only and global, one a legal-filing floor we already exceed - so
+a single blended ratio across them would be an artifact of scope mismatch, not a
+measurement. Bands, never a point, and never summed across incompatible series.
+
 ### The leak safety is structural, and that was the design constraint
 
 Everything this loop reads is a name. Exactly one sink may carry one -

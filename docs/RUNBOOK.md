@@ -1186,7 +1186,26 @@ add one: a measurement that spends money is a measurement that gets switched off
 in a lean month, and the whole value of this loop is that it never has to argue
 for its budget.
 
-**What the email contains, and what to do with each kind:**
+**The email is a POST-MORTEM, not a score.** For each item we do not hold it
+answers two questions: how it reached the public record (which outlet, which
+language, which country) and **which of our tiers should have caught it**. Only
+the second is ever written down here. The cause histogram is committed; the item
+that taught it stays in the inbox.
+
+| cause | what it means | what closes it |
+|---|---|---|
+| `not_wired` | a real newsroom carried it and our allowlist does not admit it | **the highest-value finding** — wire the publisher |
+| `vocabulary_gap` | the wording was invisible to the terms we search | add the term |
+| `language_edition` | it reached the record in another language | add a native term |
+| `country_edition` | filed from a country with no market entry | decide whether there is a register there |
+| `unreachable` | paywalled or behind a bot wall | **a CLOSED finding.** Record it and stop. Never bypass |
+| `unclassified` | trusted outlet, covered country and language, wording we search — and we still missed it | usually a defect on our side; investigate |
+
+`unreachable` is never assigned by the machine and never should be: the loop
+fetches no page, so it cannot see a paywall, and looking is the one thing it
+must not do. The owner closes those from the email.
+
+**What to do with each rule kind:**
 
 | rule | what it means | the change |
 |---|---|---|
@@ -1205,8 +1224,19 @@ let the name stay in the inbox it arrived in.
 **The number to watch is independent recall**, printed in the Actions log and
 committed to `railway/tracker_learning_state.json`: of the announcements the run
 could judge, the share our own pipeline already held, unaided. Adopting the
-rules is what should make it climb. Read the TREND, never a single point — one
-run is a 36-hour window of world news and moves several points on nothing.
+rules is what should make it climb.
+
+**It is recorded as a BAND and quoting the point instead is a mistake.** One run
+judges a handful of announcements, so the Wilson interval is wide on purpose.
+Read the trend, never a single run. And read the SCOPE that is stored beside it:
+this is measured against the public news record for our anchor vocabulary. It is
+NOT a ratio against anybody else's tracker. Never compare it with one whose
+scope differs (US-only, tech-only, or a legal-filing floor we already exceed),
+and never sum figures across trackers measuring different universes.
+
+**A comparator listing feeds source discovery ONLY, never a gold set.** The gold
+sets are adjudicated separately and conflating the two corrupts the one
+measurement we trust.
 
 **If a run says UNKNOWN**, GDELT throttled the query (its public endpoint is
 shared and does this routinely; it also refuses an over-long query with an HTTP
@@ -1221,6 +1251,24 @@ runs that produced no rule, and steps straight back up on the first rule. That
 is the loop saying it has taught what this method can teach, which is a result,
 not a fault. Do not answer it by lowering `RULE_FLOOR` — the floors are what
 stop one-off headlines becoming forty unactionable "rules" a day.
+
+**The hand-pasted path, for items no machine may fetch.** At least one
+comparator disallows AI agents by name in its robots.txt. That is a refusal to
+record, not an obstacle to route around: we do not crawl it. Where a listing
+cannot be fetched, the owner pastes the items into a LOCAL, gitignored file and
+runs the same post-mortem over them:
+
+```bash
+# one item per line: `Company | 500 | 2026-08-01`, or a plain headline
+TRACKER_LEARN_LOCAL=scratchpad/misses.txt WP_SITE_URL=https://asktherecruiter.com/blog \
+  WP_API_KEY=... python3 railway/tracker_diff.py --learn
+```
+
+For each item we do not hold it queries the free news feed for the ORIGINATING
+outlet — that is legitimate discovery and is the whole point — and classifies
+the cause the same way. **A local run commits nothing**: it is a different
+scope from the scheduled trend and must never be spliced into it, and the item
+list is the owner's and stays on his machine.
 
 **The other half of `tracker_diff` (the chase) stays dormant** and needs no
 attention: it wants a reference company list that only ever arrived in a secret

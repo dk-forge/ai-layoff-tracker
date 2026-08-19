@@ -651,7 +651,13 @@ def main(argv=None):
         # chase (`run`) needs a reference list that only ever arrived in a
         # secret and stays dormant without it; the learning half (`learn_run`)
         # needs no secret at all and is the one that is armed.
-        learn_run() if learn else run()
+        local = os.environ.get("TRACKER_LEARN_LOCAL", "").strip()
+        if learn and local:
+            learn_local(local)
+        elif learn:
+            learn_run()
+        else:
+            run()
         return 0
     except Exception as exc:
         if not DRY:
@@ -708,6 +714,10 @@ LEARN_QUERY_ATTEMPTS = max(1, min(3, int(os.environ.get("TRACKER_LEARN_QUERY_ATT
 # vocabulary, bounded by characters rather than by term count so a longer term
 # added later cannot silently push it back over.
 LEARN_QUERY_CHARS = max(80, min(300, int(os.environ.get("TRACKER_LEARN_QUERY_CHARS", "200"))))
+# Seconds to wait after a 429, multiplied by the attempt. GDELT asks for one
+# request every five seconds; this is deliberately more patient than that and
+# still far short of the ingest's backoff, which this query must never rival.
+LEARN_THROTTLE_WAIT = max(5, min(120, int(os.environ.get("TRACKER_LEARN_THROTTLE_WAIT", "30"))))
 LEARN_MAX_CANDIDATES = max(5, min(400, int(os.environ.get("TRACKER_LEARN_MAX_CANDIDATES", "120"))))
 # A headline headcount below this is usually a single-site or single-role note
 # that our net is not trying to catch; counting it as a miss would manufacture
@@ -725,6 +735,20 @@ LEARN_QUIET_RUNS = max(2, int(os.environ.get("TRACKER_LEARN_QUIET_RUNS", "3")))
 # The measurement method is versioned so a trend line can never silently splice
 # two different definitions of the same percentage.
 LEARN_METHOD = "m4"
+
+# WHY WE MISSED IT — the post-mortem taxonomy, and the ONLY thing about a miss
+# that is ever written down here. The item that taught the lesson stays in the
+# owner's inbox; the CAUSE is the repo artifact, because a run that ends in
+# "which of our tiers should have caught this, and why did it not" is the one
+# that permanently reduces dependence. `not_wired` is the highest-value class:
+# a real newsroom carrying the story that our allowlist does not admit.
+#
+# `unreachable` is never assigned automatically and that is deliberate. This
+# loop fetches no page, so it cannot see a paywall or a bot wall — and it must
+# not try. A paywalled miss is a CLOSED finding: record the cause, stop, never
+# bypass. The owner closes those from the email.
+MISS_CAUSES = ("not_wired", "vocabulary_gap", "language_edition",
+               "country_edition", "unreachable", "unclassified")
 
 RULE_KINDS = ("vocabulary", "outlet", "country_edition", "language")
 # Minimum unmatched articles before a rule is worth the owner's attention. An
@@ -749,15 +773,22 @@ class LeakGuard(RuntimeError):
 
 # Every string any public sink is allowed to contain. Not a filter over free
 # text — an allowlist of the whole vocabulary. A name cannot be spelled with it.
-_PUBLIC_WORDS = frozenset(RULE_KINDS) | frozenset({
-    "learn", "ok", "degraded", "unknown", "pass", "fail",
-    "daily", "weekly", "quiet", "skipped", "ran", LEARN_METHOD,
+_PUBLIC_WORDS = frozenset(RULE_KINDS) | frozenset(MISS_CAUSES) | frozenset({
+    "learn", "local", "ok", "degraded", "unknown", "pass", "fail",
+    "daily", "weekly", "quiet", "skipped", "ran",
 })
-_PUBLIC_KEYS = frozenset(RULE_KINDS) | frozenset({
+# A method tag is admitted BY SHAPE (`m4`), not by being the current constant.
+# Pinning the constant meant a state file holding an older run's `m2` could not
+# be rewritten: the guard refused our own committed history and failed the run.
+# It was right to - the fix is a rule that covers every version of the same
+# field, not an exception for today's value.
+_PUBLIC_METHOD_RX = re.compile(r"^m\d{1,3}$")
+_PUBLIC_KEYS = frozenset(RULE_KINDS) | frozenset(MISS_CAUSES) | frozenset({
     "date", "method", "mode", "cadence", "window_hours", "corpus", "candidates",
     "matched", "unmatched", "unknown", "independent_recall_pct", "rules",
     "rules_by_kind", "history", "quiet_runs", "emailed", "state", "explored",
-    "rule_misses",
+    "rule_misses", "causes", "recall_low_pct", "recall_high_pct", "scope",
+    "dropped",
 })
 _PUBLIC_DATE_RX = re.compile(r"^\d{4}-\d{2}-\d{2}(T[0-9:]{5,8}Z)?$")
 
@@ -774,7 +805,8 @@ def assert_nameless(obj, path="root"):
     if isinstance(obj, bool) or obj is None or isinstance(obj, (int, float)):
         return obj
     if isinstance(obj, str):
-        if obj in _PUBLIC_WORDS or _PUBLIC_DATE_RX.match(obj):
+        if (obj in _PUBLIC_WORDS or _PUBLIC_DATE_RX.match(obj)
+                or _PUBLIC_METHOD_RX.match(obj)):
             return obj
         raise LeakGuard(f"{path}: refusing to publish free text")
     if isinstance(obj, dict):
@@ -807,9 +839,97 @@ def public_render(facts):
 
 # --- reading the reference universe ---------------------------------------
 
+def parse_gdelt_json(text):
+    """Return (articles, dropped). GDELT's ArtList payload is not always valid
+    JSON, and that is not a transport fault.
+
+    Measured on a real run: `Invalid \\escape: line 1 column 114236` — one
+    article title carrying a lone backslash, 114KB into an otherwise fine
+    response. The strict parser rejects the WHOLE body for it, which is how a
+    single unescapable headline discards two hundred good articles.
+
+    So: strict first, then `strict=False` (which tolerates raw control
+    characters), then a per-article salvage that parses each object on its own
+    and DROPS only the ones that will not parse. `dropped` is returned rather
+    than swallowed, because a run that could not read part of its own corpus is
+    UNKNOWN for that part and must not be recorded as a quiet day.
+    """
+    text = text or ""
+    for kwargs in ({}, {"strict": False}):
+        try:
+            return (json.loads(text, **kwargs).get("articles") or []), 0
+        except Exception:
+            continue
+    # Salvage. ArtList objects are flat, so a brace pair is one article.
+    articles, dropped = [], 0
+    for chunk in re.findall(r"\{[^{}]*\}", text):
+        for candidate in (chunk, re.sub(r'\\(?![\\"/bfnrtu])', r"\\\\", chunk)):
+            try:
+                obj = json.loads(candidate, strict=False)
+            except Exception:
+                continue
+            if isinstance(obj, dict) and obj.get("url"):
+                articles.append(obj)
+            break
+        else:
+            dropped += 1
+    return articles, dropped
+
+
+def _learn_fetch(query, start, end):
+    """One GDELT read for the learning corpus, with the three outcomes kept
+    apart. Returns (articles, dropped, state) where state is:
+
+      None        we read it (possibly with `dropped` articles salvaged past)
+      "unknown"   the host did not answer, or answered 429 — neither party's
+                  defect, and never a verdict about our code
+      "ours"      the host answered and refused OUR query (a 4xx, or the plain
+                  text "Your query was too short or too long")
+
+    A malformed payload is theirs, an unreachable host is nobody's, a rejected
+    query is ours. The sibling collectors learned this the hard way by turning
+    "could not reach" into a verdict about themselves; this module will not
+    repeat it in a new file.
+
+    NO PAID CALL EXISTS ON THIS PATH — the whole learning loop calls no model —
+    so the retry below cannot put two charges behind one gate read. If that ever
+    stops being true, the retry has to move outside `spend.metered_call`, not
+    inside it.
+    """
+    from sources import gdelt
+    params = {"query": query, "mode": "ArtList", "format": "json",
+              "maxrecords": LEARN_MAX_RECORDS, "sortby": "datedesc",
+              "startdatetime": start.strftime("%Y%m%d%H%M%S"),
+              "enddatetime": end.strftime("%Y%m%d%H%M%S")}
+    for attempt in range(LEARN_QUERY_ATTEMPTS):
+        try:
+            resp = requests.get(gdelt.GDELT_URL, params=params,
+                                headers={"User-Agent": gdelt.BROWSER_UA}, timeout=45)
+        except Exception:
+            continue                      # transport: retry, then UNKNOWN
+        if resp.status_code == 429:
+            time.sleep(LEARN_THROTTLE_WAIT * (attempt + 1))
+            continue
+        if 400 <= resp.status_code < 500:
+            return [], 0, "ours"
+        if resp.status_code != 200:
+            continue
+        body = resp.text or ""
+        if not body.lstrip().startswith("{"):
+            # A 200 carrying prose. GDELT refuses an over-long query this way,
+            # and it is deterministic: retrying it is wasted work.
+            return [], 0, "ours"
+        articles, dropped = parse_gdelt_json(body)
+        # A parse failure is deterministic too — the same bytes parse the same
+        # way — so it is never retried.
+        return articles, dropped, None
+    return [], 0, "unknown"
+
+
 def _learn_corpus(window_hours=None):
     """The layoff-news corpus BEFORE our trusted-domain gate, from the GDELT
-    API we already call. Returns (anchor, rotating, error). Never fetches a page.
+    API we already call. Returns (anchor, rotating, dropped, error). Never
+    fetches an article page.
 
     TWO SLICES, AND THE SPLIT IS THE POINT. Independent recall is only a trend
     if its denominator is comparable between runs, so it is measured on the
@@ -820,17 +940,8 @@ def _learn_corpus(window_hours=None):
     articles while the everyday words yield several times that, so letting the
     rotation into the measurement would make the number swing on which words
     came up rather than on our coverage.
-
-    THE ATTEMPT BUDGET IS DELIBERATELY SMALLER THAN THE INGEST'S. GDELT's public
-    endpoint is shared and throttles hard: measured from here on 2026-08-18 the
-    default five attempts spent 426 seconds in backoff and still came back
-    empty. The ingest is right to be that patient — it is collecting data and a
-    lost window is data nobody re-reads. This query collects nothing. It is the
-    same rule gdelt.py already applies to its rotating segment sweeps: a
-    rate-limited query is skipped with a log line and comes back around, and it
-    must never sit on a shared endpoint that the ingest needs next."""
+    """
     from datetime import datetime, timedelta, timezone, date as _date
-    from sources import gdelt
     try:
         from source_registry import discovery_terms
         terms = discovery_terms()
@@ -838,20 +949,14 @@ def _learn_corpus(window_hours=None):
         terms = ()
     end = datetime.now(timezone.utc)
     start = end - timedelta(hours=window_hours or LEARN_WINDOW_HOURS)
-    patience = gdelt.QUERY_ATTEMPTS
-    gdelt.QUERY_ATTEMPTS = min(patience, LEARN_QUERY_ATTEMPTS)
-    try:
-        anchor, _rl, err = gdelt._query_window(
-            learn_query(terms, None), start, end, LEARN_MAX_RECORDS)
-        # The exploring half is best-effort: it widens what the rules can see
-        # and must never decide whether the run happened.
-        rotating, _rl2, _err2 = gdelt._query_window(
-            learn_query(terms, _date.today()), start, end, LEARN_MAX_RECORDS)
-    finally:
-        gdelt.QUERY_ATTEMPTS = patience
-    if anchor is None:
-        return [], [], (err or "window abandoned")
-    return anchor, (rotating or []), None
+    anchor, dropped, state = _learn_fetch(learn_query(terms, None), start, end)
+    if state:
+        return [], [], 0, state
+    # The exploring half is best-effort: it widens what the rules can see and
+    # must never decide whether the run happened.
+    rotating, dropped_r, _state = _learn_fetch(
+        learn_query(terms, _date.today()), start, end)
+    return anchor, rotating, dropped + dropped_r, None
 
 
 def learn_query(terms, today):
@@ -1029,6 +1134,71 @@ def vocab_phrase(title):
     return ""
 
 
+def classify_miss(art, trusted_domains, discovery, markets=None):
+    """Which of our tiers should have caught this, and why it did not.
+
+    One cause per miss, most actionable first, so the committed histogram
+    answers "what kind of blindness is costing us most" rather than
+    double-counting one article across four buckets. Observation only: this
+    function reads the GDELT record and nothing else, and it never assigns
+    `unreachable` — a paywall cannot be seen without fetching the page, and
+    fetching it is the one thing this loop must never do."""
+    domain = str(art.get("domain") or "").lower().strip()
+    language = str(art.get("language") or "").strip().lower()
+    country = str(art.get("sourcecountry") or "").strip()
+    trusted = {d.lower() for d in (trusted_domains or [])}
+    if domain and not _covered_by_allowlist(domain, trusted):
+        return "not_wired"
+    if language and language not in ("english", "en", ""):
+        return "language_edition"
+    if country and _market_iso2(country, markets) is None:
+        return "country_edition"
+    if not vocab_hit(str(art.get("title") or ""), discovery):
+        return "vocabulary_gap"
+    return "unclassified"
+
+
+# GDELT files a country NAME; the registry is keyed by ISO2. Only the markets
+# we actually carry are mapped, because the question this answers is "is this
+# country one we have thought about", and an unmapped name is a legitimate NO.
+_MARKET_NAMES = {
+    "united states": "US", "canada": "CA", "united kingdom": "GB",
+    "australia": "AU", "japan": "JP", "india": "IN", "hong kong": "HK",
+    "singapore": "SG", "south africa": "ZA", "brazil": "BR", "mexico": "MX",
+    "south korea": "KR", "israel": "IL",
+}
+
+
+def _market_iso2(country_name, markets=None):
+    iso2 = _MARKET_NAMES.get(str(country_name or "").strip().lower())
+    if iso2 is None:
+        return None
+    if markets is None:
+        try:
+            from source_registry import MARKETS as markets
+        except Exception:
+            return iso2
+    return iso2 if iso2 in markets else None
+
+
+def recall_band(matched, judged):
+    """A BAND, never a point. One run judges single-digit-to-dozens of
+    announcements, so a bare percentage reads as precision the denominator
+    cannot support. Wilson score at 95%, which behaves at small n and at 0 or
+    100 where the normal approximation does not."""
+    if not judged:
+        return None, None, None
+    from math import sqrt
+    z = 1.96
+    p = matched / judged
+    denom = 1 + z * z / judged
+    centre = (p + z * z / (2 * judged)) / denom
+    spread = z * sqrt(p * (1 - p) / judged + z * z / (4 * judged * judged)) / denom
+    return (round(100.0 * p, 1),
+            round(100.0 * max(0.0, centre - spread), 1),
+            round(100.0 * min(1.0, centre + spread), 1))
+
+
 def rank_rules(unmatched, trusted_domains, discovery):
     """Turn unmatched articles into RULES, ranked. Returns a list of dicts
     {kind, subject, count, examples} — the PRIVATE object. Pure and tested."""
@@ -1112,45 +1282,91 @@ def _rule_instruction(rule):
             f'sources/gdelt.py NATIVE_TERMS ({rule["count"]} unmatched stories).')
 
 
-def _email_rules(rules, facts):
+_CAUSE_NOTE = {
+    "not_wired": ("PUBLISHER NOT WIRED — the highest-value class. A real newsroom "
+                  "carried this and our allowlist does not admit it."),
+    "vocabulary_gap": ("VOCABULARY GAP — the wording was invisible to the terms we "
+                       "search for."),
+    "language_edition": ("LANGUAGE EDITION — it reached the record in another "
+                         "language and our native terms do not cover it."),
+    "country_edition": ("COUNTRY EDITION — filed from a country with no entry in "
+                        "the market registry."),
+    "unclassified": ("UNCLASSIFIED — a trusted outlet in a covered country and "
+                     "language carried it and we still do not hold it. Worth a "
+                     "look: this is usually a defect on our side, not a gap."),
+}
+
+
+def _postmortem_lines(misses):
+    """Per-miss post-mortem for the owner: how it reached the public record and
+    which of our tiers should have caught it. NAMES LIVE HERE AND NOWHERE ELSE."""
+    by_cause = {}
+    for art in misses or []:
+        by_cause.setdefault(art.get("_alt_cause") or "unclassified", []).append(art)
+    lines = []
+    for cause in MISS_CAUSES:
+        group = by_cause.get(cause) or []
+        if not group:
+            continue
+        lines.append(f"{_CAUSE_NOTE.get(cause, cause.upper())}  ({len(group)})")
+        for art in group[:6]:
+            outlet = str(art.get("domain") or "").strip() or "unknown outlet"
+            where = ", ".join(x for x in (str(art.get("sourcecountry") or "").strip(),
+                                          str(art.get("language") or "").strip()) if x)
+            lines.append(f"  - {str(art.get('title') or '')[:110]}")
+            lines.append(f"      reached the record via {outlet}"
+                         + (f" ({where})" if where else ""))
+        lines.append("")
+    return lines
+
+
+def _email_rules(rules, facts, misses=None):
     """Owner-only. Every NAME in this whole module leaves through this one
     function and no other. Best-effort; never raises."""
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     key = os.environ.get("WP_API_KEY", "")
-    if not (site and key and rules):
+    if not (site and key) or not (rules or misses):
         return False
+    low, high = facts.get("recall_low_pct"), facts.get("recall_high_pct")
+    band = f"{low}% to {high}%" if low is not None else "not measurable this run"
     lines = [
-        "The learning run compared the worldwide layoff-news corpus against our",
-        "own rows and found coverage we do not have. Each line below is a change,",
-        "not a score.",
+        "The learning run compared the public layoff-news record against our own",
+        "rows. Below is a post-mortem of what we did not hold: how each item",
+        "reached the record, and which of our tiers should have caught it.",
         "",
-        f"Independent recall this run: {facts.get('independent_recall_pct')}% "
-        f"({facts.get('matched')} of {facts.get('candidates')} announcements we "
-        "could match found by our own pipeline, unaided).",
+        f"Independent recall this run: {band} (a BAND, not a point — "
+        f"{facts.get('matched')} of {facts.get('candidates')} announcements we",
+        "could judge, found by our own pipeline with no pointer from anybody).",
+        "SCOPE: the public news record for our anchor vocabulary. It is not a",
+        "ratio against anyone else's tracker and must never be compared with one",
+        "or summed across trackers whose scopes differ.",
         "",
     ]
-    for kind in RULE_KINDS:
-        of_kind = [r for r in rules if r["kind"] == kind]
-        if not of_kind:
-            continue
-        lines.append(f"{kind.replace('_', ' ').upper()}:")
-        for rule in of_kind[:8]:
-            lines.append("  - " + _rule_instruction(rule))
-            for ex in rule["examples"][:1]:
-                if ex != rule["subject"]:
-                    lines.append(f"      seen: {ex[:120]}")
+    lines += _postmortem_lines(misses)
+    if rules:
+        lines.append("THE CHANGES THIS SUGGESTS:")
+        for kind in RULE_KINDS:
+            for rule in [r for r in rules if r["kind"] == kind][:8]:
+                lines.append("  - " + _rule_instruction(rule))
         lines.append("")
     lines += [
         "Paste into a Claude Code session in the ai-layoff-tracker repo:",
         '  "Adopt the rules from today\'s tracker learning email: add the terms,',
         '   review the outlets, and update the sources page in the same session."',
         "",
-        "These outlets are DISCOVERY signals. Never store an aggregator or another",
-        "tracker as a source, and never put any name from this email in the repo.",
+        "RULES FOR ACTING ON THIS EMAIL:",
+        "  * If the originating outlet is paywalled or behind a bot wall, that is",
+        "    a CLOSED finding. Record it as unreachable and stop. Never bypass a",
+        "    paywall, a bot wall or a CAPTCHA, and honour every robots.txt.",
+        "  * Never store an aggregator or another layoff tracker as a source.",
+        "    They inform discovery; they never become a row.",
+        "  * Never put any name from this email into the repo, a commit message,",
+        "    a log line or a test fixture. The lesson travels; the item does not.",
     ]
     try:
         requests.post(f"{site}/wp-json/layoffs/v1/alert",
-                      json={"subject": f"Tracker learning: {len(rules)} rule(s) to apply",
+                      json={"subject": f"Tracker learning: {len(misses or [])} miss(es), "
+                                       f"{len(rules)} change(s) to make",
                             "message": "\n".join(lines)},
                       headers={**UA, "X-ALT-KEY": key}, timeout=30)
         return True
@@ -1159,6 +1375,139 @@ def _email_rules(rules, facts):
         # was carrying into the Actions log.
         print("learning email could not be delivered (non-fatal)")
         return False
+
+
+def parse_local_items(text):
+    """Items pasted by hand into a LOCAL, gitignored file. One per line, either
+    `Company | 500 | 2026-08-01` or a plain headline. Blank lines and `#`
+    comments ignored. Pure, so the format is tested rather than remembered."""
+    items = []
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        company = parts[0]
+        jobs = None
+        when = None
+        for extra in parts[1:]:
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", extra):
+                when = extra
+            else:
+                digits = re.sub(r"[^0-9]", "", extra)
+                if digits:
+                    jobs = int(digits)
+        if jobs is None:
+            jobs = headline_jobs(line)
+        if not company:
+            continue
+        items.append({"company": company, "jobs": jobs, "date": when, "line": line})
+    return items
+
+
+def _originating_outlet(company):
+    """Where did this item reach the public record? A company-targeted query on
+    the free, keyless news feed we already run — the automated version of
+    googling a miss to find the outlet that carried it.
+
+    This reads a SEARCH FEED, never a comparator's site. It fetches no page
+    behind a paywall or a bot wall, and it exists to answer "which publisher
+    should we have been reading", not to reconstruct anybody's database."""
+    try:
+        from sources.google_news import pull_google_news
+        hits = pull_google_news(company_names=[company]) or []
+    except Exception:
+        return None
+    for raw in hits:
+        title = str(raw.get("raw_text") or "").split("\n")[0]
+        m = re.search(r"https?://(?:www\.)?([^/]+)", str(raw.get("source_url") or ""))
+        domain = (m.group(1).lower() if m else "")
+        if domain and "google." in domain:
+            domain = re.sub(r"[^a-z0-9.]+", "", str(raw.get("source_name") or "").lower())
+        return {"title": title, "domain": domain, "language": "English",
+                "sourcecountry": ""}
+    return None
+
+
+def learn_local(path, today=None):
+    """The hand-pasted path, and it is the DESIGNED one, not a degraded one.
+
+    Where a comparator's listing cannot be fetched — and at least one disallows
+    AI agents by name in its robots.txt, which is a refusal to record and not an
+    obstacle to route around — the items arrive by the owner pasting them into a
+    LOCAL, gitignored file. Nothing about that file is ever committed: this
+    function writes no state, and the only thing it prints is a nameless
+    histogram of CAUSES. The post-mortem itself goes to the owner's inbox.
+
+    Run it from a local session:
+        TRACKER_LEARN_LOCAL=scratchpad/misses.txt python3 tracker_diff.py --learn
+    """
+    from datetime import date as _date
+    today = today or _date.today()
+    try:
+        with open(path) as fh:
+            items = parse_local_items(fh.read())
+    except OSError:
+        print("tracker-learn local: no readable item file at the configured path")
+        return {"date": today.isoformat(), "method": LEARN_METHOD, "mode": "local",
+                "state": "unknown"}
+    facts = {"date": today.isoformat(), "method": LEARN_METHOD, "mode": "local",
+             "candidates": len(items)}
+    try:
+        from sources.gdelt import TRUSTED_DOMAINS
+    except Exception:
+        TRUSTED_DOMAINS = set()
+    try:
+        from source_registry import discovery_terms
+        discovery = discovery_terms()
+    except Exception:
+        discovery = ()
+    matched = unknown = 0
+    misses = []
+    for item in items:
+        token = headline_employer_token(item["company"]) or item["company"].split()[0]
+        rows = _our_rows(token)
+        if rows is None:
+            unknown += 1
+            continue
+        if item["jobs"] is None:
+            # Without a headcount we cannot tell one event from another at the
+            # same employer. Judging it anyway is how a held event becomes a
+            # phantom miss.
+            unknown += 1
+            continue
+        when = None
+        if item["date"]:
+            y, m, d = (int(x) for x in item["date"].split("-"))
+            when = _date(y, m, d)
+        verdict = rows_verdict(rows, item["jobs"], when)
+        if verdict == "match":
+            matched += 1
+        elif verdict == "unknown":
+            unknown += 1
+        else:
+            art = _originating_outlet(item["company"]) or {
+                "title": item["line"], "domain": "", "language": "",
+                "sourcecountry": ""}
+            art["_alt_cause"] = classify_miss(art, TRUSTED_DOMAINS, discovery)
+            misses.append(art)
+    judged = matched + len(misses)
+    point, low, high = recall_band(matched, judged)
+    facts.update({"matched": matched, "unmatched": len(misses), "unknown": unknown,
+                  "independent_recall_pct": point, "recall_low_pct": low,
+                  "recall_high_pct": high, "scope": "local", "state": "ran"})
+    causes = {}
+    for art in misses:
+        causes[art["_alt_cause"]] = causes.get(art["_alt_cause"], 0) + 1
+    facts["causes"] = causes
+    rules = rank_rules(misses, TRUSTED_DOMAINS, discovery)
+    facts["rules"] = len(rules)
+    facts["emailed"] = bool(_email_rules(rules, facts, misses))
+    # NOTHING IS COMMITTED FROM A LOCAL RUN. The item list is the owner's and
+    # stays on his machine; this scope is not the scheduled trend and must not
+    # be spliced into it.
+    print("tracker-learn local:", public_render(facts))
+    return facts
 
 
 def learn_run(today=None):
@@ -1180,7 +1529,19 @@ def learn_run(today=None):
         return facts
     facts["cadence"] = "daily"
 
-    anchor, rotating, err = _learn_corpus()
+    anchor, rotating, dropped, err = _learn_corpus()
+    if err == "ours":
+        # The host answered and refused OUR query. That is a defect here, not an
+        # outage, and it is the one case that should page somebody.
+        facts["state"] = "fail"
+        facts["corpus"] = 0
+        print("tracker-learn: FAIL — the corpus host refused our query; this is "
+              "ours to fix, not an outage")
+        report_source_health("tracker_diff", "degraded", 0,
+                             "learning run FAILED: the corpus host answered and "
+                             "refused our query (a rejected query is our defect, "
+                             "not an outage). " + public_render(facts))
+        return facts
     if err:
         # An upstream throttle is UNKNOWN. Three things it must not become:
         #   * a PASS — the word UNKNOWN leads the health detail and a point is
@@ -1206,6 +1567,7 @@ def learn_run(today=None):
         return facts
     facts["corpus"] = len(anchor)
     facts["explored"] = len(rotating)
+    facts["dropped"] = dropped
 
     def _candidates(articles, measured):
         out = []
@@ -1255,7 +1617,16 @@ def learn_run(today=None):
     # pipeline already holds — with no pointer from anybody. Nothing in this
     # loop stores a row, so every find here is unaided by construction and this
     # number is the one that should trend up as the rules are adopted.
-    facts["independent_recall_pct"] = round(100.0 * matched / judged, 1) if judged else None
+    point, low, high = recall_band(matched, judged)
+    facts["independent_recall_pct"] = point
+    facts["recall_low_pct"] = low
+    facts["recall_high_pct"] = high
+    # The scope is recorded with the number because a recall figure without one
+    # is the thing that gets quoted wrongly. This is measured against the public
+    # NEWS record for the anchor vocabulary — it is not a ratio against anybody
+    # else's tracker, and it must never be summed with one or compared to a
+    # comparator whose scope differs (US-only, tech-only, or a filing floor).
+    facts["scope"] = "learn"
 
     try:
         from sources.gdelt import TRUSTED_DOMAINS
@@ -1266,17 +1637,37 @@ def learn_run(today=None):
         discovery = discovery_terms()
     except Exception:
         discovery = ()
-    rules = rank_rules([a for a, _m in unmatched], TRUSTED_DOMAINS, discovery)
+
+    # THE POST-MORTEM. For every miss: how it reached the public record (outlet,
+    # language, country — owner's inbox only) and WHICH OF OUR TIERS should have
+    # caught it (the cause — the only part written down). The histogram is the
+    # artifact worth trending: "two of four misses were publisher not wired" is
+    # a sourcing decision; a coverage ratio is not.
+    misses = [a for a, _m in unmatched]
+    causes = {}
+    for art in misses:
+        cause = classify_miss(art, TRUSTED_DOMAINS, discovery)
+        art["_alt_cause"] = cause
+        causes[cause] = causes.get(cause, 0) + 1
+    facts["causes"] = causes
+    rules = rank_rules(misses, TRUSTED_DOMAINS, discovery)
     facts["rules"] = len(rules)
     facts["rules_by_kind"] = {kind: sum(1 for r in rules if r["kind"] == kind)
                               for kind in RULE_KINDS if any(r["kind"] == kind for r in rules)}
     facts["state"] = "ran"
-    facts["emailed"] = bool(_email_rules(rules, facts))
+    facts["emailed"] = bool(_email_rules(rules, facts, misses))
 
     history = [h for h in history if isinstance(h, dict)]
-    history.append({k: facts[k] for k in
-                    ("date", "method", "rules", "matched", "unmatched", "unknown",
-                     "candidates", "independent_recall_pct") if k in facts})
+    keys = ["date", "method", "rules", "matched", "unmatched", "unknown",
+            "candidates", "independent_recall_pct", "recall_low_pct",
+            "recall_high_pct", "causes", "dropped"]
+    if dropped:
+        # We could not read part of our own corpus, so "no rule found" is not a
+        # thing we know. Dropping the `rules` key keeps this point out of the
+        # earned-cadence test entirely: a loop must never wean itself quiet on
+        # the strength of articles it failed to parse.
+        keys.remove("rules")
+    history.append({k: facts[k] for k in keys if k in facts})
     state["history"] = history[-LEARN_HISTORY_MAX:]
     state["quiet_runs"] = sum(1 for h in state["history"][-LEARN_QUIET_RUNS:]
                               if not int(h.get("rules") or 0))

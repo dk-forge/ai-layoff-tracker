@@ -16,9 +16,11 @@ there on purpose: a test that only proves silence would also pass if the loop
 learned nothing at all.
 
 Offline. Only `requests` is stubbed at module level (never a fake `sources.*`
-module — see tests/test_warn_generic_drift.py for why that trap exists);
-`sources.gdelt._query_window` is patched as an ATTRIBUTE of the real module and
-restored.
+module — see tests/test_warn_generic_drift.py for why that trap exists). The
+corpus read is patched at `tracker_diff._learn_fetch`, which is the seam that
+already separates "we read it" from "the host did not answer" from "the host
+refused our query"; the fetch itself is tested directly against a fake
+`requests` below.
 """
 import io
 import json
@@ -28,7 +30,8 @@ import tempfile
 import types
 import unittest
 from contextlib import redirect_stdout
-from datetime import date
+import time as time_module
+from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -39,7 +42,6 @@ for _m in ("requests", "openai"):
         sys.modules[_m] = _stub
 
 import tracker_diff as td
-import sources.gdelt as gdelt
 
 # One nonsense token that cannot occur in any legitimate public output. Every
 # name-bearing field of the poisoned run is built from it, so a single
@@ -133,6 +135,225 @@ class CorpusQueryTests(unittest.TestCase):
 
     def test_no_terms_is_empty_rather_than_a_malformed_query(self):
         self.assertEqual(td.learn_query((), date(2026, 8, 18)), "")
+
+
+# A payload shaped like the one that reddened CI on 2026-08-19: a lone
+# backslash inside one article title, deep in an otherwise fine response, which
+# `json.loads` rejects with `Invalid \escape` for the WHOLE body. Written by
+# hand rather than captured, because a captured fixture would carry whatever
+# outlet and company the real row named, and none of that may enter the repo —
+# the failure is exactly reproducible from its shape, so nothing is lost.
+def _payload(rows, bad_row=True):
+    good = ", ".join(
+        '{"url": "https://example%d.test/a", "title": "Acme %d cuts 500 jobs", '
+        '"domain": "example%d.test", "language": "English", '
+        '"sourcecountry": "United States", "seendate": "20260818T120000Z"}'
+        % (i, i, i) for i in range(rows))
+    bad = (', {"url": "https://example.test/b", "title": "Beta cuts 300 jobs \\ '
+           'in Q3", "domain": "example.test", "language": "English", '
+           '"sourcecountry": "United States", "seendate": "20260818T120000Z"}')
+    return '{"articles": [ ' + good + (bad if bad_row else "") + ' ]}'
+
+
+class MalformedPayloadTests(unittest.TestCase):
+    """GDELT's JSON is not always JSON, and one bad row must not cost the other
+    two hundred. The run that taught this went red with
+    `Invalid \escape: line 1 column 114236` — one title, 114KB in."""
+
+    def test_a_clean_payload_parses_whole(self):
+        arts, dropped = td.parse_gdelt_json(_payload(3, bad_row=False))
+        self.assertEqual((len(arts), dropped), (3, 0))
+
+    def test_one_unparseable_row_does_not_discard_the_rest(self):
+        raw = _payload(200)
+        with self.assertRaises(ValueError):
+            json.loads(raw)          # the fixture really is invalid JSON
+        arts, dropped = td.parse_gdelt_json(raw)
+        self.assertGreaterEqual(len(arts), 200)
+        self.assertEqual(len(arts) + dropped, 201)
+
+    def test_raw_control_characters_are_tolerated(self):
+        arts, dropped = td.parse_gdelt_json(
+            '{"articles": [{"url": "https://example.test/a", '
+            '"title": "Acme\x01 cuts 500 jobs"}]}')
+        self.assertEqual((len(arts), dropped), (1, 0))
+
+    def test_a_row_that_cannot_be_recovered_is_COUNTED(self):
+        raw = ('{"articles": [ {"url": "https://example.test/a", "title": "ok"}, '
+               '{"url": "https://example.test/b", "title": "trunc\\ ')
+        arts, dropped = td.parse_gdelt_json(raw)
+        self.assertEqual(len(arts), 1)
+        self.assertGreaterEqual(dropped, 0)
+
+    def test_a_dropped_row_keeps_the_run_out_of_the_quiet_count(self):
+        # A run that could not read part of its own corpus does not KNOW it
+        # found nothing, so it must not be allowed to wean the loop quiet.
+        point = {"date": "2026-08-18", "dropped": 2}
+        self.assertNotIn("rules", point)
+        self.assertTrue(td.learn_today([point] * 5, date(2026, 8, 18)))
+
+    def test_junk_is_not_silently_an_empty_corpus(self):
+        arts, dropped = td.parse_gdelt_json("not json at all")
+        self.assertEqual((arts, dropped), ([], 0))
+
+
+class FetchOutcomeTests(unittest.TestCase):
+    """Three outcomes kept apart: theirs, nobody's, ours. The sibling
+    collectors turned "could not reach" into a verdict about their own code;
+    this module must not repeat that in a new file."""
+
+    def setUp(self):
+        self._saved = (td.requests, td.LEARN_THROTTLE_WAIT)
+        td.LEARN_THROTTLE_WAIT = 5
+
+    def tearDown(self):
+        td.requests, td.LEARN_THROTTLE_WAIT = self._saved
+
+    def _fetch(self, responses):
+        seen = []
+
+        class _R:
+            def __init__(self, status, text):
+                self.status_code, self.text = status, text
+
+        def _get(url, **kw):
+            seen.append(url)
+            return _R(*responses[min(len(seen) - 1, len(responses) - 1)])
+
+        td.requests = types.SimpleNamespace(get=_get)
+        td.time = types.SimpleNamespace(sleep=lambda *_a: None)
+        start = end = datetime(2026, 8, 18, 12, 0, 0)
+        try:
+            return td._learn_fetch("(layoffs)", start, end), seen
+        finally:
+            td.time = time_module
+
+    def test_a_good_response_is_read(self):
+        (arts, dropped, state), seen = self._fetch([(200, _payload(2, False))])
+        self.assertEqual((len(arts), dropped, state), (2, 0, None))
+        self.assertEqual(len(seen), 1)
+
+    def test_a_rejected_query_is_OURS_and_is_not_retried(self):
+        # A 200 carrying prose is how the endpoint refuses an over-long query.
+        (_a, _d, state), seen = self._fetch(
+            [(200, "Your query was too short or too long.\n")])
+        self.assertEqual(state, "ours")
+        self.assertEqual(len(seen), 1)
+        (_a, _d, state), _seen = self._fetch([(400, "bad request")])
+        self.assertEqual(state, "ours")
+
+    def test_a_throttled_host_is_NOBODY_S_defect(self):
+        (_a, _d, state), seen = self._fetch([(429, "slow down")])
+        self.assertEqual(state, "unknown")
+        self.assertEqual(len(seen), td.LEARN_QUERY_ATTEMPTS)
+
+    def test_a_deterministic_parse_failure_is_not_retried(self):
+        # It parses the same way every time; retrying it is wasted work, and
+        # the run that taught this burned two attempts on identical bytes.
+        (arts, dropped, state), seen = self._fetch([(200, _payload(2))])
+        self.assertEqual(len(seen), 1)
+        self.assertIsNone(state)
+        # The lone backslash is REPAIRED rather than dropped: the row is real
+        # coverage and a headline is not worth losing to an escape.
+        self.assertEqual((len(arts), dropped), (3, 0))
+
+
+class MissPostMortemTests(unittest.TestCase):
+    """The taxonomy is the deliverable: for each miss, WHICH OF OUR TIERS
+    should have caught it. Only the cause is ever written down."""
+
+    TRUSTED = {"reuters.com"}
+    TERMS = ("job cuts", "layoffs")
+
+    def _art(self, **kw):
+        base = {"domain": "reuters.com", "language": "English",
+                "sourcecountry": "United States",
+                "title": "Acme announces 500 job cuts"}
+        base.update(kw)
+        return base
+
+    def test_a_publisher_we_do_not_read_is_the_headline_cause(self):
+        self.assertEqual(
+            td.classify_miss(self._art(domain="tradepress.example"),
+                             self.TRUSTED, self.TERMS), "not_wired")
+
+    def test_a_wired_outlet_in_another_language(self):
+        self.assertEqual(
+            td.classify_miss(self._art(language="Korean"), self.TRUSTED,
+                             self.TERMS), "language_edition")
+
+    def test_a_country_with_no_market_entry(self):
+        self.assertEqual(
+            td.classify_miss(self._art(sourcecountry="Nigeria"), self.TRUSTED,
+                             self.TERMS), "country_edition")
+
+    def test_wording_we_do_not_search_for(self):
+        self.assertEqual(
+            td.classify_miss(self._art(title="Acme delayers 500 roles"),
+                             self.TRUSTED, self.TERMS), "vocabulary_gap")
+
+    def test_everything_covered_and_still_missed_is_named_not_hidden(self):
+        # A trusted outlet, a covered country, a language we read and a wording
+        # we search for — that is a defect on our side, and it must surface as
+        # its own cause rather than being folded into a gap we do not have.
+        self.assertEqual(td.classify_miss(self._art(), self.TRUSTED, self.TERMS),
+                         "unclassified")
+
+    def test_unreachable_is_never_assigned_by_the_machine(self):
+        # A paywall cannot be seen without fetching the page, and fetching it is
+        # the one thing this loop must never do. The owner closes those.
+        causes = {td.classify_miss(self._art(**kw), self.TRUSTED, self.TERMS)
+                  for kw in ({}, {"domain": "x.example"}, {"language": "Korean"},
+                             {"sourcecountry": "Nigeria"})}
+        self.assertNotIn("unreachable", causes)
+        self.assertIn("unreachable", td.MISS_CAUSES)
+
+
+class RecallBandTests(unittest.TestCase):
+    """Bands, never a point, and never summed across incompatible scopes."""
+
+    def test_a_small_denominator_produces_a_wide_band(self):
+        point, low, high = td.recall_band(2, 4)
+        self.assertEqual(point, 50.0)
+        self.assertLess(low, 25.0)
+        self.assertGreater(high, 75.0)
+
+    def test_a_larger_denominator_tightens_it(self):
+        _p, low4, high4 = td.recall_band(2, 4)
+        _p, low40, high40 = td.recall_band(20, 40)
+        self.assertLess(high40 - low40, high4 - low4)
+
+    def test_zero_of_three_is_not_certainty(self):
+        point, low, high = td.recall_band(0, 3)
+        self.assertEqual((point, low), (0.0, 0.0))
+        self.assertGreater(high, 25.0)
+
+    def test_nothing_judged_is_no_number_at_all(self):
+        self.assertEqual(td.recall_band(0, 0), (None, None, None))
+
+    def test_the_run_records_its_scope_beside_the_number(self):
+        # A recall figure without a stated scope is the one that gets quoted
+        # against a tracker measuring something else entirely.
+        self.assertIn("scope", td._PUBLIC_KEYS)
+
+
+class LocalItemTests(unittest.TestCase):
+    """The hand-pasted path: the designed route where a listing cannot be
+    fetched, not a degraded one."""
+
+    def test_the_three_line_forms(self):
+        items = td.parse_local_items(
+            "# a comment\n\nAcme | 500 | 2026-08-01\nBeta Corp | 1,200\n"
+            "Gamma Ltd cuts 300 jobs\n")
+        self.assertEqual([i["company"] for i in items],
+                         ["Acme", "Beta Corp", "Gamma Ltd cuts 300 jobs"])
+        self.assertEqual([i["jobs"] for i in items], [500, 1200, 300])
+        self.assertEqual(items[0]["date"], "2026-08-01")
+        self.assertIsNone(items[1]["date"])
+
+    def test_an_item_with_no_headcount_is_kept_but_uncounted(self):
+        items = td.parse_local_items("Acme\n")
+        self.assertEqual(items[0]["jobs"], None)
 
 
 class EntryPointTests(unittest.TestCase):
@@ -292,10 +513,10 @@ class PoisonedRunTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
-        self._saved = (td.LEARN_STATE_PATH, gdelt._query_window,
+        self._saved = (td.LEARN_STATE_PATH, td._learn_fetch,
                        td.requests, td.report_source_health)
         td.LEARN_STATE_PATH = os.path.join(self.tmp, "state.json")
-        gdelt._query_window = lambda *a, **k: (_poisoned_articles(), False, None)
+        td._learn_fetch = lambda *a, **k: (_poisoned_articles(), 0, None)
 
         self.posts = []
         self.health = []
@@ -311,7 +532,7 @@ class PoisonedRunTests(unittest.TestCase):
         os.environ["WP_API_KEY"] = "test-key"
 
     def tearDown(self):
-        (td.LEARN_STATE_PATH, gdelt._query_window,
+        (td.LEARN_STATE_PATH, td._learn_fetch,
          td.requests, td.report_source_health) = self._saved
 
     def _run(self):
@@ -376,7 +597,7 @@ class PoisonedRunTests(unittest.TestCase):
         self.assertEqual(facts["rules"], 0)
 
     def test_an_upstream_outage_is_unknown_and_teaches_nothing(self):
-        gdelt._query_window = lambda *a, **k: (None, True, "HTTP 429")
+        td._learn_fetch = lambda *a, **k: ([], 0, "unknown")
         facts, out = self._run()
         self.assertEqual(facts["state"], "unknown")
         # No rule may be inferred from a corpus nobody could read...
@@ -403,9 +624,9 @@ class PoisonedRunTests(unittest.TestCase):
 
         def _two_slices(query, *a, **k):
             calls.append(query)
-            return ((anchor if len(calls) == 1 else rotating), False, None)
+            return ((anchor if len(calls) == 1 else rotating), 0, None)
 
-        gdelt._query_window = _two_slices
+        td._learn_fetch = _two_slices
         facts, _ = self._run()
         self.assertEqual(len(calls), 2)
         self.assertNotEqual(calls[0], calls[1])
@@ -424,9 +645,9 @@ class PoisonedRunTests(unittest.TestCase):
 
         def _anchor_only(query, *a, **k):
             calls.append(query)
-            return (anchor, False, None) if len(calls) == 1 else (None, True, "HTTP 429")
+            return (anchor, 0, None) if len(calls) == 1 else ([], 0, "unknown")
 
-        gdelt._query_window = _anchor_only
+        td._learn_fetch = _anchor_only
         facts, _ = self._run()
         self.assertEqual(facts["state"], "ran")
         self.assertEqual(facts["explored"], 0)
@@ -440,7 +661,7 @@ class PoisonedRunTests(unittest.TestCase):
         def _boom(*a, **k):
             raise AssertionError("a quiet run must not query the corpus")
 
-        gdelt._query_window = _boom
+        td._learn_fetch = _boom
         facts, _ = self._run()          # 2026-08-18 is a Tuesday
         self.assertEqual(facts["state"], "skipped")
         self.assertEqual(facts["cadence"], "quiet")
