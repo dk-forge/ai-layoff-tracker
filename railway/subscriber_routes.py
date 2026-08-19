@@ -179,6 +179,9 @@ def check(site=SITE, token=None):
             probes.append(Probe(label, FAIL,
                                 "404: the route did not resolve. Readers clicking this "
                                 "link in an email reach a dead page."))
+        elif status == 503:
+            probes.append(Probe(label, UNKNOWN,
+                                "HTTP 503: site is in its deploy maintenance window."))
         elif status >= 400:
             probes.append(Probe(label, FAIL, f"HTTP {status}: the route did not answer."))
         else:
@@ -206,6 +209,9 @@ def check(site=SITE, token=None):
             probes.append(Probe(label, FAIL,
                                 "404: the one-click endpoint promised in every "
                                 "List-Unsubscribe-Post header is dead."))
+        elif status == 503:
+            probes.append(Probe(label, UNKNOWN,
+                                "HTTP 503: site is in its deploy maintenance window."))
         else:
             probes.append(Probe(label, FAIL,
                                 f"HTTP {status}: a provider needs a bare 2xx here and may "
@@ -219,7 +225,10 @@ def check(site=SITE, token=None):
         if got is None:
             continue
         status, location, body = got
-        if status >= 400:
+        if status == 503:
+            probes.append(Probe(label, UNKNOWN,
+                                "HTTP 503: site is in its deploy maintenance window."))
+        elif status >= 400:
             probes.append(Probe(label, FAIL,
                                 f"HTTP {status}: a link already sent to a real address "
                                 "no longer works."))
@@ -231,11 +240,17 @@ def check(site=SITE, token=None):
         return Result(FAIL,
                       "; ".join(f"{p.label}: {p.detail}" for p in failed),
                       probes)
-    if unreachable:
-        return Result(UNKNOWN,
-                      "could not reach " + ", ".join(sorted(set(unreachable)))
-                      + ". This is NOT a pass.",
-                      probes)
+    # 503 (deploy maintenance window) is UNKNOWN, never FAIL, matching every
+    # other live check against this host (data_integrity.py, published_figures.py,
+    # ci_alert.py): the site answered, but with the status it deliberately
+    # returns while an FTPS deploy is landing, not with a broken route.
+    unknown = [p for p in probes if p.verdict == UNKNOWN and p.label not in unreachable]
+    if unreachable or unknown:
+        parts = []
+        if unreachable:
+            parts.append("could not reach " + ", ".join(sorted(set(unreachable))))
+        parts.extend(f"{p.label}: {p.detail}" for p in unknown)
+        return Result(UNKNOWN, "; ".join(parts) + ". This is NOT a pass.", probes)
     return Result(PASS,
                   f"{len(probes)} probe(s) answered: both public routes resolve, the "
                   "one-click POST returns 200, a GET does not act, and the pre-2.20.77 "

@@ -130,6 +130,26 @@ class TheClassifierCannotSmoothOverAFailure(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("NOT a pass", result.detail)
 
+    def test_a_503_on_a_public_route_is_unknown_not_fail(self):
+        # The site answers 503 for everything under /blog/ while an FTPS
+        # deploy is landing (CLAUDE.md: "deploy maintenance window"). That is
+        # not a broken route, and every other live check against this host
+        # (data_integrity.py, published_figures.py, ci_alert.py) reads a 503
+        # as UNKNOWN rather than FAIL for exactly this reason.
+        result, _ = self._check_against({("GET", "confirm"): (503, "", b"")})
+        self.assertEqual(UNKNOWN, result.verdict)
+        self.assertFalse(result.ok)
+        self.assertIn("503", result.detail)
+        self.assertIn("NOT a pass", result.detail)
+
+    def test_a_503_on_the_one_click_post_is_unknown_not_fail(self):
+        # This block classifies status independently from the GET routes
+        # above (a bare 2xx is required, not just <400), so 503 needs its own
+        # UNKNOWN case here too.
+        result, _ = self._check_against({("POST", "unsubscribe"): (503, "", b"")})
+        self.assertEqual(UNKNOWN, result.verdict)
+        self.assertIn("503", result.detail)
+
     def test_the_healthy_shape_passes_and_probes_every_route(self):
         result, calls = self._check_against({})
         self.assertEqual(PASS, result.verdict, result.detail)
