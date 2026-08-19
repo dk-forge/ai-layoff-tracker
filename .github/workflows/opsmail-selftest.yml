@@ -1,0 +1,52 @@
+name: Ops mail selftest
+
+# Prove, on demand, that operational mail actually leaves the building.
+#
+# WHY IT IS WORTH A WORKFLOW. Operational alerts moved off
+# `/wp-json/layoffs/v1/alert` and onto Resend on 2026-08-19, so the alarm would
+# stop depending on the host it monitors. Two things about a mail relay can only
+# be learned by using it: whether the key works, and whether the From address is
+# on a domain the account has verified. Neither is visible from a code review,
+# and finding out during a real incident is finding out too late.
+#
+# It is manual only. Nothing schedules it, so it costs nothing and cannot
+# itself become a source of mail.
+#
+# THE KEY IS NEVER PRINTED. `--domains` names the verified sending domains,
+# which are not secret, and railway/opsmail.py scrubs the key out of any error
+# body before it reaches a log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      send:
+        description: 'Send a real test email (unchecked = just list the verified domains)'
+        type: boolean
+        default: false
+      subject:
+        description: 'Subject of the test email'
+        default: 'OPS MAIL SELFTEST'
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # No pip install. opsmail.py is stdlib-only, like the rest of the
+      # alerting path, so no dependency resolver can take the alarm down.
+      - name: Check the relay
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+        run: |
+          python3 railway/opsmail.py --domains \
+            ${{ inputs.send && '--send' || '' }} \
+            --subject "${{ inputs.subject }}"

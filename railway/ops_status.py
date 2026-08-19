@@ -344,7 +344,42 @@ def _report_held_alerts():
         lines.append(f"  ... and {len(held) - 4} more")
     if worst >= _HELD_ALERT_FAIL_LOUD:
         lines.append("  These have failed too many times to be an outage. Check "
-                     "WP_API_KEY and that the plugin carrying /alert is live.")
+                     "RESEND_API_KEY, and check that OPS_MAIL_FROM uses a "
+                     "domain the Resend account has verified.")
+    return lines
+
+
+#: The committed open/resolved ledger, read straight off disk like the outbox
+#: above and for the same reason: this file promises no dependencies and no
+#: side effects.
+_ALERT_STATE = Path(__file__).resolve().parent / "alert_state.json"
+
+
+def _report_open_alarms():
+    """What the alerter is currently keeping QUIET, and since when.
+
+    New with the move to Resend, and worth having in its own right. The
+    open/resolved state used to live in a WordPress option where no session
+    could read it, so "why have I heard nothing about this?" had no answer short
+    of the database. A suppressed alarm is a deliberate silence, and a
+    deliberate silence should be legible.
+    """
+    import json
+
+    try:
+        doc = json.loads(_ALERT_STATE.read_text())
+        entries = doc.get("open") or {}
+    except Exception as exc:  # noqa: BLE001
+        return [f"UNKNOWN: could not read alert_state.json ({exc})"]
+    if not entries:
+        return ["none — nothing is being suppressed, so a red run will mail"]
+    rows = sorted(entries.items(), key=lambda kv: int(kv[1].get("first", 0)))
+    lines = [f"{len(rows)} open; a repeat of the same cause stays quiet until a "
+             f"green run clears it"]
+    for key, meta in rows[:4]:
+        lines.append(f"  {key}\n        {str(meta.get('subject') or '')[:66]}")
+    if len(rows) > 4:
+        lines.append(f"  ... and {len(rows) - 4} more")
     return lines
 
 
@@ -1276,11 +1311,18 @@ def main():
     # so while it was down the CI alerter could not send mail either. Alerts
     # raised in that window are HELD in railway/alert_outbox.json and delivered
     # by alert-drain.yml; this is where a session sees what is still waiting.
-    print("\n[4b] HELD ALERTS  (raised, not yet delivered — /alert lives on the host)")
+    print("\n[4b] HELD ALERTS  (raised, not yet delivered by alert-drain.yml)")
     for line in _report_held_alerts():
         print(f"    {line}")
     if _held_alerts_need_a_human():
         issues.append("alerts are held and not being delivered")
+
+    # And the other half of the same question: what is deliberately NOT being
+    # said. Operational mail moved off the host on 2026-08-19 and the ledger
+    # came with it, so this is readable from a checkout for the first time.
+    print("\n[4b2] OPEN ALARMS  (railway/alert_state.json; what is being suppressed)")
+    for line in _report_open_alarms():
+        print(f"    {line}")
 
     # 4c. The audience. Counts only, never an address.
     print("\n[4c] DIGEST SUBSCRIBERS  (keyed /subscriber-stats; counts only, no addresses)")

@@ -6,6 +6,23 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CLAIMED BY A SIDE SESSION (2026-08-19): operational mail moved to
+  Resend.** The baton was read as HELD by `local` and is NOT claimed here.
+  **No plugin file was touched and no version was consumed** - the change is
+  Python and workflows only, so `reader_freshness.py` has nothing to verify.
+  CI alerts, the RECOVERED notices, the weekly health digest and the CI noise
+  report now send through `railway/opsmail.py` (Resend, `RESEND_API_KEY`)
+  instead of `/wp-json/layoffs/v1/alert`, so the alarm no longer depends on the
+  host it monitors. The open/resolved ledger moved with it, from the
+  `alt_ci_alert_state` WordPress option into the committed
+  `railway/alert_state.json`, and **the claim is committed before the send** so
+  the dedup guarantee did not pay for the move. **The subscriber digest is
+  untouched**: `digest-send.yml` still selects `DIGEST_TRANSPORT: smtp` (Brevo)
+  and `digest_transport.py` was not edited. The `/alert` route itself is still
+  deployed and still used by `link_check.py`, `process_tips.py`,
+  `openrouter_balance_check.py`, `tracker_diff.py`, `curated_probe.py`,
+  `daily_classification_spotcheck.py` and `source_verification_audit.py`; those
+  were out of scope and can move the same way later.
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.109.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. **TWO COLLISIONS: main took 2.20.107 and then

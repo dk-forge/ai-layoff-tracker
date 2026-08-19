@@ -559,6 +559,8 @@ class TheBoundaryIsMechanicalVersusSemantic(unittest.TestCase):
 
     def test_it_may_never_edit_the_alarm_channel_that_reports_on_it(self):
         for path in ("railway/ci_alert.py", "railway/alert_outbox.json",
+                     "railway/opsmail.py", "railway/alert_state.py",
+                     "railway/alert_state.json",
                      ".github/workflows/ci-alert.yml",
                      ".github/workflows/alert-drain.yml"):
             self.assertEqual(self_heal.violations([path]), [path], path)

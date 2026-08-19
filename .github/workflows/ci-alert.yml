@@ -98,10 +98,32 @@ jobs:
       # promise, so ci_alert.py exits 0 and this run stays green. It exits
       # non-zero only when the alert can be neither delivered NOR held — the one
       # state where nobody is ever going to hear about the failure.
+      # The claim is a commit, so the committer has to exist before the alerter
+      # runs. See the ALERT_STATE_COMMIT note below.
+      - name: Identify the committer
+        run: |
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+
+      # RESEND_API_KEY, and no WP credential at all. This step no longer touches
+      # asktherecruiter.com: `/alert` was a route on the host the alerts are
+      # about, so the alarm went mute at exactly the moment it was needed, twice
+      # on 2026-07-31 and twice again on 2026-08-19. Operational mail leaves
+      # through Resend now. It also stops CI alerts sharing the subscriber
+      # relay's 300-a-day free tier, where a bad afternoon of red runs could
+      # have eaten the allowance the reader digest depends on.
+      #
+      # ALERT_STATE_COMMIT: the open/resolved ledger moved off the endpoint and
+      # into railway/alert_state.json, and the claim is COMMITTED BEFORE THE
+      # SEND. `git push` to main is the compare-and-swap that keeps two racing
+      # runners from both mailing one cause. Set it here and nowhere a test can
+      # see it.
       - name: Alert on failure / clear on recovery
         env:
-          WP_SITE_URL: https://asktherecruiter.com/blog
-          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+          ALERT_STATE_COMMIT: '1'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json
@@ -123,7 +145,7 @@ jobs:
       # main, fold the envelope in again. `alert_outbox.py enqueue` is idempotent
       # in the alert's key, so a race with a concurrent alert costs a retry and
       # never a duplicate email.
-      - name: Hold the alert until the host is back
+      - name: Hold the alert until the relay is back
         if: ${{ !cancelled() }}
         env:
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json

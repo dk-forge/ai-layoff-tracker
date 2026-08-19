@@ -1,5 +1,73 @@
 # Tech Log
 
+## 2026-08-19 - operational mail moved to Resend, and the ledger came with it
+
+**The ask, and the bigger prize inside it.** The owner's Brevo free tier is 300
+emails a day, and CI alerts shared it with the subscriber digest. Tonight that
+was harmless: 36 of 300 used, one subscriber. It stops being harmless the first
+week there is a real list, because a bad afternoon of red CI could eat the quota
+and silently stop the digest reaching readers, and a send that hits a provider
+ceiling mid-run can mark a subscriber as sent when they were not.
+
+The quota was the smaller half. Alerts POSTed to `/wp-json/layoffs/v1/alert`, a
+route on the WordPress host they report about. On 2026-07-31 Bluehost 504'd and
+the sibling tracker's alerter failed four times saying "HTTP 504 from /alert",
+mute at exactly the moment it was needed. The held outbox was the right fix for
+DELIVERY and no fix at all for the DEPENDENCY. The host went down twice again on
+2026-08-19. Sending through Resend removes the coupling outright.
+
+**What moved.** `railway/opsmail.py` (new, stdlib, `RESEND_API_KEY`) carries CI
+alerts, the RECOVERED notices, the weekly health digest and the CI noise report.
+`ci_alert._post_once` now calls it and reads no WordPress credential at all;
+`tests/test_ops_mail_split.py` parses both modules with `ast` and fails on a
+string literal that could still build a request to the host. The reader digest
+is untouched: `digest-send.yml` still selects `DIGEST_TRANSPORT: smtp` and
+`digest_transport.py` is not edited. Two budgets, two failure domains, and the
+smaller allowance deliberately given to the side that cannot use a large one.
+
+**Where the state went, and why that is not a downgrade.** The open/resolved
+ledger lived in the `alt_ci_alert_state` WordPress option, next to `wp_mail`,
+for a good reason: a "sent" record that can disagree with what was actually sent
+is worth less than no record. A fire-and-forget Resend send keeps no record, so
+the ledger came here, to `railway/alert_state.json`.
+
+That is the part worth being careful about. **A committed file read at checkout
+and written at push has a race a server-side option did not.** Two runners that
+both read "nothing is open" both mail, and eight identical emails in one
+afternoon is how an alert channel gets filtered. So the claim is COMMITTED
+BEFORE THE SEND, and the commit is the compare-and-swap: `git push` to main is
+atomic, exactly one racing runner wins it, and the loser re-derives on the new
+main, finds the cause already open and goes quiet. Losing five pushes running
+does not silence the alert, because five lost races with the cause still absent
+means five DIFFERENT alarms; it sends and says loudly that the claim went
+unrecorded. Resend's `Idempotency-Key` is an independent second guard on the
+same transition.
+
+`alert_state.decide()` mirrors `alt_api_alert()` line for line: raise once per
+cause, `STILL FAILING` at 14 days, clear by scope prefix, mail the clear only if
+something was open, cap at 200 entries. The live-data scope is unchanged, so one
+incident is still one alarm across every branch that noticed it.
+
+**Two consequences named rather than discovered.** An alarm is now recorded open
+before it is known to be delivered, where the endpoint recorded only on a
+successful send; the promise is kept a different way, because an undeliverable
+alert is HELD in `alert_outbox.json` and delivered by `alert-drain.yml`, so a
+claimed alarm is a queued one. The only gap left is "could neither send NOR
+hold", which was already the one state that reddens the run. And the drain calls
+`ci_alert.deliver`, never `post_alert`: a held alert has already been ruled on,
+and running it through the ledger again would find its own cause open and
+swallow it.
+
+**What got better as a side effect.** `ops_status.py [4b2]` prints what the
+alerter is currently SUPPRESSING. While that state lived in a WordPress option,
+"why have I heard nothing about this?" had no answer short of the database. A
+deliberate silence should be legible.
+
+**Proof.** `.github/workflows/opsmail-selftest.yml` (manual only, nothing
+schedules it) lists the account's verified sending domains and sends one real
+email. Two things about a relay can only be learned by using it: whether the key
+works, and whether the From address is on a verified domain. Finding out during
+a real incident is finding out too late.
 ## 2026-08-19 - every digest that goes out now has a permanent, citable URL (2.20.109)
 
 A digest with no permanent URL cannot be cited. This product's whole

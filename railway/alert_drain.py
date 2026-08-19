@@ -56,23 +56,29 @@ from datetime import datetime, timezone
 import alert_outbox
 import ci_alert
 import gh_fallback
+import opsmail
 
 
-def drain(outbox: dict, site: str, key: str) -> tuple[int, int, str, bool]:
+def drain(outbox: dict, site: str = "", key: str = "") -> tuple[int, int, str, bool]:
     """Deliver held alerts, oldest first.
 
     Returns (delivered, remaining, last_note, host_down). Stops at the first
-    TRANSIENT failure: if the host is still away there is nothing to learn from
-    hammering it, and every entry keeps its place. A SETTLED refusal (bad key,
-    missing route) does NOT stop the drain — every entry will hit it, and the
-    count of how many is the size of the problem.
+    TRANSIENT failure: if the relay is still away there is nothing to learn
+    from hammering it, and every entry keeps its place. A SETTLED refusal (a
+    missing key, an unverified sender) does NOT stop the drain, because every
+    entry will hit it and the count of how many is the size of the problem.
+
+    `ci_alert.deliver`, NOT `ci_alert.post_alert`. A held alert has already been
+    ruled on by the ledger and its claim is already committed. Running it
+    through the ledger a second time would find its own cause open and suppress
+    it, which is an alert lost to the machinery meant to protect it.
     """
     delivered = 0
     note = ""
     host_down = False
     for entry in alert_outbox.pending(outbox):
         payload = entry.get("payload") or {}
-        ok, note, transient = ci_alert.post_alert(site, key, payload)
+        ok, note, transient = ci_alert.deliver(payload)
         if ok:
             alert_outbox.mark_delivered(entry, f"delivered late: {note}")
             delivered += 1
@@ -105,18 +111,16 @@ def main(argv=None) -> int:
         print(f"  {entry.get('raised_at')}  x{entry.get('attempts', 0)}  "
               f"{(entry.get('payload') or {}).get('subject', entry.get('key'))[:70]}")
 
-    site = (args.site or "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key):
-        print("::error::WP_SITE_URL / WP_API_KEY are not set, so held alerts "
-              "cannot be delivered and the owner stays uninformed about every "
-              "failure in this queue.")
+    if not opsmail.configured():
+        print("::error::RESEND_API_KEY is not set, so held alerts cannot be "
+              "delivered and the owner stays uninformed about every failure in "
+              "this queue.")
         return 1
     if args.dry_run:
         print(f"[dry-run] would attempt {len(held)} delivery/deliveries")
         return 0
 
-    delivered, remaining, note, host_down = drain(outbox, site, key)
+    delivered, remaining, note, host_down = drain(outbox)
     alert_outbox.save(outbox, args.outbox)
     print(f"delivered {delivered}, {remaining} still held")
 
@@ -126,7 +130,7 @@ def main(argv=None) -> int:
     if remaining == 0:
         if not args.no_fallback:
             ok, fallback_note = gh_fallback.close(
-                repo, note=(f"The host answered again at {now} and all "
+                repo, note=(f"The relay answered again at {now} and all "
                             f"{delivered} held alert(s) were delivered. "
                             "Closing; this is the last email about it."))
             if fallback_note != "no fallback issue was open":
@@ -148,7 +152,7 @@ def main(argv=None) -> int:
         # The BEHAVIOUR is right and is unchanged: when nothing is able to tell
         # the owner, a red run is the only signal left. What was wrong was the
         # sentence, so the claim now sits on the paths where it is true.
-        print("::warning::the host is still not answering, so "
+        print("::warning::the relay is still not answering, so "
               f"{remaining} alert(s) stay held. A down host is not a defect in "
               "this repository, and a red run here would fire the CI alert, "
               "which posts to the down host — so holding the queue is not, by "
@@ -175,11 +179,12 @@ def main(argv=None) -> int:
               "and the next drain that reaches the host delivers them.")
         return 0
 
-    # The host answered and still refused. That is a wrong key or a missing
-    # route, and it will not fix itself while the queue quietly grows.
-    print(f"::error::the host is reachable and still refusing these alerts "
-          f"({note}). {remaining} alert(s) will not arrive on their own — check "
-          "WP_API_KEY and that the plugin carrying /alert is deployed.")
+    # The relay answered and still refused. That is a bad key or an unverified
+    # sender, and it will not fix itself while the queue quietly grows.
+    print(f"::error::the mail relay is reachable and still refusing these "
+          f"alerts ({note}). {remaining} alert(s) will not arrive on their own. "
+          "Check RESEND_API_KEY and that OPS_MAIL_FROM uses a domain this "
+          "Resend account has verified.")
     return 1
 
 

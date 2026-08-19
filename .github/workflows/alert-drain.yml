@@ -67,8 +67,11 @@ jobs:
       - name: Deliver what was held
         id: drain
         env:
-          WP_SITE_URL: https://asktherecruiter.com/blog
-          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # Resend, not the WordPress host. A queue that exists because the host
+          # went down must not need the host to empty itself.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           DRY: ${{ inputs.dry_run && '--dry-run' || '' }}

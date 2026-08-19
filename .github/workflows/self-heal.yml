@@ -259,6 +259,8 @@ jobs:
               railway/deferral_ledger.json. The copy standard and its ceiling:
               docs/STYLE.md, railway/style_check.py. The alarm channel:
               railway/ci_alert.py, railway/alert_outbox.json,
+              railway/opsmail.py, railway/alert_state.py,
+              railway/alert_state.json,
               .github/workflows/ci-alert.yml, .github/workflows/alert-drain.yml.
               The hash-pinned locks: railway/requirements.lock,
               railway/requirements-min.lock. The baton: docs/HANDOFF.md. The

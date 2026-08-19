@@ -44,13 +44,24 @@ jobs:
         with:
           python-version: '3.12'
 
+      # The alarm's claim is a commit (railway/alert_state.json), so the
+      # committer has to exist before the reporter runs.
+      - name: Identify the committer
+        run: |
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+
       # No pip install: railway/ci_noise_report.py is stdlib-only, like
       # ci_alert.py — a reporting path must not be breakable by a dependency
       # resolution failure.
       - name: Count the week's noise, mail once only if there is any
         env:
-          WP_SITE_URL: https://asktherecruiter.com/blog
-          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # It mails through ci_alert.post_alert, so it moved with it: Resend
+          # for the send, railway/alert_state.json for the cause key.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+          ALERT_STATE_COMMIT: '1'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json
@@ -61,11 +72,12 @@ jobs:
           fi
           python3 railway/ci_noise_report.py $EXTRA
 
-      # Same held-alert dance as ci-alert.yml, for the same reason: /alert is
-      # a route on the host being reported about. An undeliverable alert is
+      # Same held-alert dance as ci-alert.yml, and it survives the move to
+      # Resend for the same reason it was built: a relay can be down too. An
+      # undeliverable alert is
       # HELD, never lost and never a red run of its own; alert-drain.yml
       # delivers the outbox every 30 minutes.
-      - name: Hold the alert until the host is back
+      - name: Hold the alert until the relay is back
         if: ${{ !cancelled() }}
         env:
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json
