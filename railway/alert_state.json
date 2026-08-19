@@ -16,8 +16,13 @@
       "first": 1787153537,
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
+    },
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1787161951,
+      "last": 1787161951,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,460,529 jobs / 65,034 entries"
     }
   },
-  "updated_at": "2026-08-19T17:34:35+00:00",
+  "updated_at": "2026-08-19T17:52:32+00:00",
   "version": 1
 }
