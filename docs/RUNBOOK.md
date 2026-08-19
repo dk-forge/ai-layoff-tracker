@@ -1345,6 +1345,18 @@ when the digest gets easier. "Already known" is remembered in
 `scratchpad/recall-known.json` (local, because the subjects are names); only its
 counts reach the repo.
 
+**An outlet lesson asserts "we do not read this host", and that claim is
+checked against every collector, not just the news one.** `TRUSTED_DOMAINS` is
+the NEWS crawler's allowlist, so on the first live run five of five outlet
+suggestions were state WARN portals and filing hosts we already ingest through
+other collectors. The run is now two passes: it reads our own rows first, and
+any host appearing as a `source_url` on a row we hold counts as already read,
+along with the committed source catalogue's feed hosts. If you see a suggestion
+for something we obviously already ingest, that widened set has a hole in it —
+add the host's collector to it rather than ignoring the email, because an outlet
+lesson that is wrong about the one thing it claims is how this channel gets
+filtered.
+
 **Do not "fix" a recall figure by widening the denominator.** The first version
 scored 73.3% on a probe built entirely from rows we demonstrably hold, because
 lines below the headcount floor were being counted as coverage misses. The

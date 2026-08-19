@@ -367,6 +367,26 @@ def read_denylist(path):
 
 # --- our own corpus --------------------------------------------------------
 
+def catalogue_hosts():
+    """Feed hosts named in the committed source catalogue. Never raises.
+
+    These are OUR OWN collectors' hosts, already public on the sources page, so
+    reading them here carries no privacy question. They exist to stop the outlet
+    lesson proposing something we demonstrably already read.
+    """
+    try:
+        blob = json.loads((pathlib.Path(__file__).resolve().parent
+                           / "data" / "source_catalogue.json").read_text())
+    except Exception:
+        return set()
+    out = set()
+    for row in (blob.get("sources") or []):
+        host = registrable_domain((row.get("feed_url") or "").strip())
+        if host:
+            out.add(host)
+    return out
+
+
 def our_rows(token, timeout=30):
     """Rows we hold for an employer token, or None when the lookup could not be
     made. None is UNKNOWN and leaves the denominator — an API blip must never be
@@ -800,8 +820,13 @@ def run(worklist_path=None, denylist_path=None, report_path=None, known_path=Non
     # 200%.
     per_item = []
     refusals = []
-    recovered = 0
+    pending = []          # items needing blame assigned, judged in PASS 2
     row_cache = {}
+
+    # PASS 1 — READ OUR OWN CORPUS AND DECIDE WHAT WE HOLD. Blame is not
+    # assigned here, because the question "do we already read this host?"
+    # cannot be answered correctly until every row this run will see has been
+    # read. See `covered` below for what that fixes.
     for item in items:
         if item.get("closed"):
             # THE SOURCE IS INACCESSIBLE AND STAYS RECORDED AS SUCH. That fact
@@ -812,28 +837,14 @@ def run(worklist_path=None, denylist_path=None, report_path=None, known_path=Non
             refusals.append({"domain": item.get("domain") or "",
                              "reason": item.get("reason") or "inaccessible",
                              "date": today.isoformat()})
-            # THE EVENT USUALLY IS NOT INACCESSIBLE. Chase it in the open press,
-            # bounded — see RECOVER_MAX for why the bound is the guard against
-            # this becoming database reconstruction rather than discovery.
-            if recovered < RECOVER_MAX:
-                recovered += 1
-                tier, item_lessons = diagnose(item, 0, trusted, discovery,
-                                              suppressed, search)
-            else:
-                tier, item_lessons = "recovery_unknown", []
-            lessons.extend(item_lessons)
-            per_item.append(item_lessons)
-            tiers[tier] = tiers.get(tier, 0) + 1
+            pending.append((item, "closed", 0))
             continue
         headline = item.get("headline") or ""
         jobs = headline_jobs(headline)
         token = headline_employer_token(headline)
         if not jobs or not token:
             unparsed += 1
-            tier, item_lessons = diagnose(item, 0, trusted, discovery, suppressed)
-            lessons.extend(item_lessons)
-            per_item.append(item_lessons)
-            tiers[tier] = tiers.get(tier, 0) + 1
+            pending.append((item, "unparsed", 0))
             continue
         key = token.lower()
         if key not in row_cache:
@@ -860,10 +871,49 @@ def run(worklist_path=None, denylist_path=None, report_path=None, known_path=Non
             unknown += 1
         else:
             missed += 1
-            tier, item_lessons = diagnose(item, jobs, trusted, discovery, suppressed)
-            lessons.extend(item_lessons)
-            per_item.append(item_lessons)
-            tiers[tier] = tiers.get(tier, 0) + 1
+            pending.append((item, "miss", jobs))
+
+    # EVERY HOST WE ALREADY READ, not just the ones GDELT's allowlist names.
+    #
+    # This is a defect the first live run surfaced. `_covered_by_allowlist`
+    # consults `TRUSTED_DOMAINS`, which is the NEWS crawler's allowlist — so a
+    # state WARN portal or a filing host, which we ingest through an entirely
+    # different collector, read as "an outlet we do not read" and was duly
+    # proposed for wiring. The suggestion was not merely useless; it was wrong
+    # about the one thing the outlet lesson asserts.
+    #
+    # The fix costs nothing and needs no extra call: a host that appears as the
+    # `source_url` of a row we already hold is, by demonstration, a host we
+    # already read. Those rows are in `row_cache` from PASS 1. The committed
+    # source catalogue's feed hosts join them for the collectors whose rows this
+    # particular run happened not to touch.
+    covered = {d.lower() for d in trusted}
+    covered |= catalogue_hosts()
+    for rows in row_cache.values():
+        for row in rows or []:
+            host = registrable_domain(row.get("source_url") or "")
+            if host:
+                covered.add(host)
+
+    # PASS 2 — ASSIGN BLAME, now that "do we read this host" can be answered.
+    recovered = 0
+    for item, kind, jobs in pending:
+        if kind == "closed":
+            if recovered < RECOVER_MAX:
+                recovered += 1
+                tier, item_lessons = diagnose(item, jobs, covered, discovery,
+                                              suppressed, search)
+            else:
+                # THE EVENT USUALLY IS NOT INACCESSIBLE, but the chase is
+                # bounded — see RECOVER_MAX for why that bound is the guard
+                # against this becoming database reconstruction. Past it the
+                # honest answer is UNKNOWN, never "unreachable".
+                tier, item_lessons = "recovery_unknown", []
+        else:
+            tier, item_lessons = diagnose(item, jobs, covered, discovery, suppressed)
+        lessons.extend(item_lessons)
+        per_item.append(item_lessons)
+        tiers[tier] = tiers.get(tier, 0) + 1
 
     judged = matched + missed
     facts["judged"] = judged

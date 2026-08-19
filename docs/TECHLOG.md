@@ -321,6 +321,29 @@ ITEMS, and one item naming an unwired outlet in unfamiliar wording yields two
 lessons. It is now the share of examined items that produced at least one NEW
 lesson, which is a proportion and cannot exceed 100.
 
+**A third bug, found by reading the first real output rather than the first
+green test.** Every one of the five outlet suggestions in the first live run was
+a host we already ingest — state WARN portals and a filing host. The outlet
+lesson consults `_covered_by_allowlist`, which knows `TRUSTED_DOMAINS`, and that
+is the NEWS crawler's allowlist; collectors that are not the news crawler are
+invisible to it. So the loop's only output was confidently wrong about the one
+thing an outlet lesson asserts, which is exactly how an advisory channel teaches
+its reader to stop opening it. The fix needs no extra call and no new data: a
+host that appears as the `source_url` of a row we already hold is, by
+demonstration, a host we already read, and those rows are in memory from the
+pass that decided what we hold. The run is therefore two passes now — blame
+cannot be assigned until every row the run will see has been read — and the
+committed source catalogue's feed hosts join the set for collectors this run
+did not happen to touch. After the fix the same probe proposed zero outlets.
+
+**And the first genuine lesson the loop produced is a real one:** `lays off`, in
+the present tense, is not among the 47 discovery terms, while `layoff`,
+`layoffs`, `laid off` and `mass layoff` are. That is one of the most common
+headline constructions in English-language layoff coverage. It is recorded here
+and mailed as a review instruction rather than applied, because adding a term
+changes production ingest and the GDELT query has a documented length ceiling —
+this loop proposes, a human decides.
+
 **The growth mechanism is two numbers, not one.** `curated_recall_pct` should
 climb as lessons are adopted. `taught_pct` - dependence - should fall, and it is
 the half recall cannot tell you, because recall also rises when the digest gets
