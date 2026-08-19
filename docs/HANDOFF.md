@@ -6,6 +6,18 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **CLOSED BY A SIDE SESSION (2026-08-19): the `us_all_time` containment
+  incident.** The baton was read as HELD by `local` and is NOT claimed here.
+  **No plugin file was touched and no version was consumed** — the change is
+  `railway/headline_incidents.json`, `railway/headline_baseline.json` (both
+  written only by `--close-incident`, never by hand) and the reviewer name in
+  `railway/close_us_all_time_2026-08-19.sh`, plus TECHLOG. The verdict: the
+  -34,303 complement move is CORRECT behaviour, the 28 `employer_country` fills
+  from PR #112 carrying 75,893 jobs, re-measured live in this session rather
+  than taken from the package. The pair now reads UNKNOWN until the next
+  `data-integrity.yml` run advances the containment group together — that is by
+  design after any close, not a new failure.
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.99.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. The change closes the FAILING
