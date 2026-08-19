@@ -510,6 +510,84 @@ class RefusalLedger(unittest.TestCase):
         self.assertEqual(items[0]["reason"], "botwall")
 
 
+class AHostWeAlreadyReadIsNotAGap(unittest.TestCase):
+    """THE OUTLET LESSON ASSERTS "WE DO NOT READ THIS HOST". IT HAS TO BE TRUE.
+
+    Found on the first live run. `_covered_by_allowlist` consults
+    `TRUSTED_DOMAINS`, which is the NEWS crawler's allowlist — so a state WARN
+    portal or a filing host, ingested through an entirely different collector,
+    read as an outlet we do not read and was proposed for wiring. Five of the
+    five outlet suggestions in that run were hosts we demonstrably already
+    ingest. The suggestion was not merely useless: it was wrong about the single
+    thing an outlet lesson claims, which is the fastest way to teach the owner
+    to stop reading these emails.
+
+    The fix needs no extra call. A host appearing as the `source_url` of a row
+    we already hold is, by demonstration, a host we already read — and those
+    rows are already in memory from the pass that decided what we hold. That is
+    why the run is two passes: blame cannot be assigned until every row the run
+    will see has been read.
+    """
+
+    def setUp(self):
+        import tempfile
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self._rows, self._email = cp.our_rows, cp._email
+        self._state = cp.STATE_PATH
+        cp.STATE_PATH = self.tmp / "state.json"
+        cp._email = lambda report, facts: False
+
+    def tearDown(self):
+        cp.our_rows, cp._email, cp.STATE_PATH = self._rows, self._email, self._state
+
+    def _run(self, text, rows):
+        wl = self.tmp / "w.txt"
+        wl.write_text(text, encoding="utf-8")
+        cp.our_rows = lambda token, timeout=30: rows(token)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            facts = cp.run(worklist_path=wl, denylist_path=self.tmp / "none.txt",
+                           report_path=self.tmp / "r.md",
+                           known_path=self.tmp / "known.json",
+                           refusal_path=self.tmp / "ref.json",
+                           today=date(2026, 8, 18))
+        return facts, (self.tmp / "r.md").read_text()
+
+    def test_a_host_seen_on_a_row_we_hold_is_not_proposed(self):
+        """One item we hold cites the host; a second, missed item comes from the
+        same host. It must not be proposed — we read it, we just lack that row."""
+        def rows(token):
+            if token.lower().startswith("alpha"):
+                return [{"job_count": 500, "layoff_date": "2026-08-10",
+                         "source_type": "warn",
+                         "source_url": "https://portal.example/warn.xlsx"}]
+            return []
+        facts, report = self._run(
+            "Alpha lays off 500 employees  https://portal.example/a\n"
+            "Beta lays off 700 employees  https://portal.example/b\n", rows)
+        self.assertEqual(facts["new_outlets"], 0)
+        self.assertNotIn("Review portal.example", report)
+
+    def test_an_unrelated_unwired_host_is_still_proposed(self):
+        """NON-VACUITY: the widened set must not suppress everything."""
+        facts, report = self._run(
+            "Beta lays off 700 employees  https://genuinely-new.example/b\n",
+            lambda token: [])
+        self.assertEqual(facts["new_outlets"], 1)
+        self.assertIn("Review genuinely-new.example", report)
+
+    def test_the_committed_source_catalogue_counts_as_read(self):
+        hosts = cp.catalogue_hosts()
+        self.assertGreater(len(hosts), 0, "no catalogue hosts parsed; guard is vacuous")
+        for host in hosts:
+            self.assertNotIn("://", host)
+            self.assertFalse(host.startswith("www."))
+
+    def test_a_missing_catalogue_is_an_empty_set_not_a_crash(self):
+        real = cp.catalogue_hosts()
+        self.assertIsInstance(real, set)
+
+
 class LocalOnly(unittest.TestCase):
     def test_the_default_worklist_is_inside_the_gitignored_scratchpad(self):
         """A workflow would need the worklist, and the worklist in the repo IS
