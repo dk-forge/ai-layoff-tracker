@@ -263,6 +263,32 @@ jobs:
           # expire is not reported as a stuck deploy.
           python3 railway/reader_freshness.py --wait-for "$VERSION" --timeout 600 --interval 15
 
+      # The two links that live inside an email. The step above watches the page
+      # a reader browses to; this watches the only two URLs a reader is ever
+      # SENT, and both turned up in the live 404 log on 2026-08-19. Nothing in
+      # this product could have said so: the send reports success, the relay
+      # credential verifies, and a confirmation nobody completes reads as "0 of
+      # 0 eligible", which is true and says nothing. A dead unsubscribe is worse
+      # than a bug, because the List-Unsubscribe-Post header on every message
+      # promises Gmail and Yahoo a working POST endpoint.
+      #
+      # Same asymmetry as the contrast step. Exit 2 (a route is 404ing right
+      # now) fails the deploy. Exit 3 (could not be probed) warns, because a
+      # host outage must not manufacture red runs.
+      - name: Verify the confirm and unsubscribe links still resolve
+        run: |
+          set -uo pipefail
+          python3 railway/subscriber_routes.py
+          STATUS=$?
+          if [ "$STATUS" = "2" ]; then
+            echo "::error::A subscriber-facing email route is not answering. See RUNBOOK 'a subscriber route is 404ing'."
+            exit 1
+          fi
+          if [ "$STATUS" = "3" ]; then
+            echo "::warning::The subscriber routes could NOT be probed. This is UNKNOWN, not a pass."
+          fi
+          exit 0
+
       # And the check that measures what those bytes RENDER AS. The step above
       # proves readers have the new version; it cannot tell a readable page
       # from one whose paragraphs are 1.06:1 against their own background,

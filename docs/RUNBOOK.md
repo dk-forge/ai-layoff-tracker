@@ -2525,6 +2525,48 @@ The note renders above the edition; the edition's own text never changes.
   whichever pass runs first hide every subscriber from the second, which is
   the same silence in a different shape.
 
+### A subscriber route is 404ing (`ops_status.py [1c]`)
+
+**What you are looking at.** One of the only two links a reader is ever given
+is not answering on the deployed site:
+
+    /blog/ai-layoff-tracker/confirm/<token>
+    /blog/ai-layoff-tracker/unsubscribe/<token>
+
+**Do the unsubscribe first if you have to choose.** A dead confirm link means
+a list that stays empty. A dead unsubscribe means mail people cannot stop
+receiving, and that produces spam complaints instead of unsubscribes. Complaint
+rate is what ends a sending domain, and the `List-Unsubscribe-Post` header on
+every message we send promises Gmail and Yahoo a working POST endpoint.
+
+**A 404 here is decidable, and that is deliberate.** No handler in
+`subscribe.php` answers a bad token with a 404. An unknown, expired or already
+used token redirects to `?alt_dg=expired`, and a one-click POST for a token
+that matches nothing answers a bare 200. So a 404 means the ROUTE did not
+resolve. It never means the token was rejected. The two are different defects
+with different fixes, and `tests/test_subscriber_routes_live.py` pins the
+property that keeps them apart.
+
+**In order:**
+
+1. `python3 railway/subscriber_routes.py`. It names the failing shape, needs no
+   key, and draws a probe token that cannot be any subscriber's.
+2. Check `alt_digest_public_route_dispatch()` is still hooked on
+   `parse_request`. That hook is why the route works on the first request after
+   an FTP upload. **Do not answer a 404 by adding a rewrite rule.** A rule only
+   exists once the table is flushed, FTP deploys bypass every hook that would
+   flush it, and the window where the rule is missing is a window where a real
+   reader's confirmation link 404s.
+3. Check the deploy landed at all: `ops_status.py [1]` and `[1b]`. A half
+   uploaded plugin serves the old `subscribe.php`, and the old one did not have
+   this route.
+4. Re-run the probe until it reads PASS. **UNKNOWN is not a pass**: a probe
+   that never reached the host has told you nothing.
+
+**Never answer this by weakening the handlers.** The per-tier guards
+(`last_sent_daily` / `last_sent_weekly`), the RFC 8058 headers, and the rule
+that a GET asks while only a POST writes are all load bearing.
+
 ### The digest cannot authenticate (`credential=REJECTED`)
 
 **What you are looking at.** The relay refused `DIGEST_SMTP_USER` /

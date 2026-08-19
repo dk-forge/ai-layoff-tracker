@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CLAIMED BY A SIDE SESSION (2026-08-19): the confirm and
+  unsubscribe links are now watched.** The baton was read as HELD by `local`
+  and is NOT claimed here. **No plugin file was touched and no version was
+  consumed**, so `reader_freshness.py` has nothing to verify and the next
+  plugin release is still 2.20.114. Both subscriber-facing paths appeared in
+  the live 404 log; probed on 2.20.113 they resolve, and no handler in
+  `subscribe.php` answers a bad token with a 404, so a 404 there means the
+  route did not resolve rather than that the token was rejected. New
+  `railway/subscriber_routes.py` probes both routes, both methods and both URL
+  shapes from outside with a token that can never be a subscriber's; it is
+  `ops_status.py [1c]`, a step in `deploy-plugin.yml`, and
+  `railway/tests/test_subscriber_routes_live.py`. **No subscriber record was
+  read or repaired**, and the per-tier send guards and RFC 8058 headers are
+  untouched.
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.113.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is.
   **A follow-up to 2.20.110, which shipped the employer browse index with no
