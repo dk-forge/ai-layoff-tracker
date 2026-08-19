@@ -258,6 +258,52 @@ $alt_bd_titles = array(
               echo alt_cite_box_html(alt_facet_heading($alt_f), $alt_f['url']); // escaped inside
           } ?>
 
+    <?php
+    /* THE LIGHTER HALF OF THE COMPANY PAGE'S NEXT-STEP BLOCK.
+     *
+     * The company pages carry the full version, because somebody searching one
+     * employer plus "layoffs" has already identified themselves as connected to
+     * that employer. A facet page is a slice of the record, and the person
+     * reading "California layoffs" is much more often researching than
+     * affected. So this version is deliberately shorter and, more importantly,
+     * carries NO product line at all. The commercial mention stays on the one
+     * surface where the reader's intent is personal, and the pages a reporter
+     * is most likely to slice the data from stay entirely free of it.
+     *
+     * RENDERED ONLY WHERE IT IS TRUE. The three items are United States
+     * programmes, so this appears on US state pages and on the United States
+     * country page and nowhere else. An industry page spans every country and a
+     * non-US country page is not covered by any of it, and a block of links
+     * that do not apply is worse than no block.
+     */
+    $alt_ns_show = $alt_f['dim'] === 'state'
+        || ($alt_f['dim'] === 'country' && $alt_f['value'] === 'United States');
+    if ($alt_ns_show) : ?>
+    <aside class="alt-next-step" aria-labelledby="alt-next-step-h">
+        <span class="alt-detail-h">Not part of the record</span>
+        <h2 id="alt-next-step-h">If a layoff affects you</h2>
+        <p>Some people reach this page because the cuts are their own. These are
+        the first practical steps, and none of them costs anything.</p>
+        <ul class="alt-next-step-list">
+            <li><b>What the notice period means.</b> The federal WARN Act requires
+            covered US employers to give 60 days of written notice.
+            <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/#m-notice-gap')); ?>">We
+            measure what each notice we hold recorded</a>.</li>
+
+            <li><b>Unemployment insurance.</b> Your state runs it, not your
+            employer, and you file the claim yourself.
+            <a href="https://www.careeronestop.org/LocalHelp/UnemploymentBenefits/find-unemployment-benefits.aspx"
+               target="_blank" rel="noopener nofollow">Find your state office</a>.</li>
+
+            <li><b>Rapid Response.</b> States offer a free service to people in a
+            layoff. It covers benefits, health insurance and training.
+            <a href="https://www.dol.gov/agencies/eta/layoffs/workers"
+               target="_blank" rel="noopener nofollow">Read what it offers workers</a>.</li>
+        </ul>
+        <p class="alt-next-step-note">This is background, not legal advice.</p>
+    </aside>
+    <?php endif; ?>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('facet'); ?>

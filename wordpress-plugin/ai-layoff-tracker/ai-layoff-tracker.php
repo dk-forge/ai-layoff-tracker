@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.114
+ * Version: 2.20.115
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.114');
+define('ALT_VERSION', '2.20.115');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -222,6 +222,30 @@ function alt_cite_line($name, $url, $accessed = '') {
 function alt_cite_box_html($name, $url) {
     return '<div class="alt-cite-box"><span class="alt-detail-h">Cite this page</span><code>'
         . esc_html(alt_cite_line($name, $url)) . '</code></div>';
+}
+
+/**
+ * WHERE THE RESUME TOOL LIVES TODAY. One definition, on purpose.
+ *
+ * The tool is real and reachable, and it is NOT launched: asktherecruiter.com
+ * still serves a "coming soon" landing page, and the working app answers on a
+ * Railway hostname that belongs to a sandbox environment. That hostname is not
+ * a promise. It can change the next time the environment is rebuilt, and the
+ * company page block that links it renders on ~7,500 URLs.
+ *
+ * So the destination is a function rather than a literal in a template, and it
+ * is filterable. Repointing it at the real domain on launch day is one edit
+ * here, and because every page is server-rendered no stale link survives it.
+ *
+ * DO NOT describe this URL as a launched product anywhere in reader copy. What
+ * is true today is that a first draft is free and the tool is still in testing,
+ * and that is exactly what the copy says.
+ */
+function alt_next_step_tool_url() {
+    return apply_filters(
+        'alt_next_step_tool_url',
+        'https://asktherecruiter-sandbox-production.up.railway.app/'
+    );
 }
 
 function alt_output_jsonld($blocks) {
