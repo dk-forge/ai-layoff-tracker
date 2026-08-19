@@ -145,9 +145,21 @@ the end check.
   check without metering. The `make_call` you hand it must perform exactly ONE
   request — a callable that loops or retries internally puts several charges
   behind one gate read, which is the once-per-item defect that let a run
-  overshoot its ceiling by 36 calls (2026-08-11). Retry by calling it again. It
-  raises `spend.PaidReadsOff`; a budget stop is UNDECIDED, never a verdict, and
-  never a red run.
+  overshoot its ceiling by 36 calls (2026-08-11). **Retry ONLY via
+  `metered_call(attempts=N, retry_sleep=S)`**, which runs gate read -> request
+  -> meter on every attempt; never wrap a loop or an `attempts=` of your own
+  inside the callable. It raises `spend.PaidReadsOff`; a budget stop is
+  UNDECIDED, never a verdict, and never a red run.
+  **A retry you did not write still counts, and this is how it arrives.** Every
+  paid client must set `max_retries=0`: the OpenAI SDK defaults to 2 and
+  re-POSTs on 408/409/429/5xx and any connection error from INSIDE your
+  callable. Six scripts carried that default until 2026-08-19. A retried 429 is
+  usually free, but a **timeout is not** - the client stops waiting, the model
+  keeps generating, and OpenRouter bills a completion that no ledger entry, no
+  ceiling and no cost-per-row figure has ever seen. That is worse than an
+  overshoot, because an overshoot is at least measured.
+  `tests/test_one_request_per_metered_call.py` fails on a paid client built
+  without `max_retries=0` and on a metered callable that retries itself.
 - **Never write a row directly.** A new source builds a raw dict and calls `extract_layoff_data` → `post_to_wordpress`. The raw dict MUST set `raw_text` (the extractor reads ONLY that and returns None if empty — the bug that made supplemental news silently post zero). Mirror `sources/newsapi.py`. Ship key-gated sources DORMANT with dry-run diagnostics. See RUNBOOK "add a new source".
 - **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Competitor tracking lives ENTIRELY in the local benchmark (`gen.py` reads only our own `agg_*.json`; the competitor figures are maintained by hand in `scratchpad/bm-live.html`). **No secret is involved and none is needed.** The `BENCHMARK_FEED_URLS`/`BENCHMARK_COMPANIES` secrets power a SEPARATE, OPTIONAL automated loop (`tracker-diff`) that is **dormant by the owner's decision (2026-07-28)** — it exits green on its schedule and costs nothing. **Do not ask the owner to add those secrets.**
 - **The learning loop is armed; the chase is not. They are the same file.**
